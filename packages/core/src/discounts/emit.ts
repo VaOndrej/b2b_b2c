@@ -1,6 +1,7 @@
 // Emission per node (spec §3 "Emise per uzel", verdicts C1/C2). Every Won node
 // computes the SAME plan and emits only the stacks it owns:
-//   - the automatic node: stacks owned by automatic rules;
+//   - the automatic node: stacks owned by automatic rules, and every quantity
+//     tier (MVP 3: owner `tier:<setId>`, method automatic, never in a stack);
 //   - a code node: stacks owned by its rule, and only when the triggering code
 //     is one of that rule's entered codes.
 // Outside Shopify Plus only one product discount applies per cart line, so the

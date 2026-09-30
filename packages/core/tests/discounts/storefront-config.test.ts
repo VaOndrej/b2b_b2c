@@ -58,7 +58,7 @@ const PRO = {
 };
 
 test("K5: the storefront config of a Pro shop — reachable sets by id, amounts in Liquid money units, margin caps, preset, merchant texts", () => {
-  const built: StorefrontConfigV1 = buildStorefrontConfig(configOf(PRO), { configVersion: "cv-42", exponentOf: currencyExponent });
+  const built: StorefrontConfigV1 = buildStorefrontConfig(configOf(PRO), { configVersion: "cv-42" });
   assert.equal(STOREFRONT_CONFIG_VERSION, 1);
   assert.deepEqual(built, {
     v: 1,
@@ -80,12 +80,12 @@ test("K5: the storefront config of a Pro shop — reachable sets by id, amounts 
 
 test("K5 on Free: built from the gated config — one global set counted per product, scoped sets inert, no per-collection margin", () => {
   const free = gateConfigForPlan(configOf(PRO), "free").config;
-  const built = buildStorefrontConfig(free, { configVersion: "cv-1", exponentOf: currencyExponent });
+  const built = buildStorefrontConfig(free, { configVersion: "cv-1" });
   assert.deepEqual(built.tiers, {
     global: "global",
     sets: {
       global: { count: "product", breaks: [{ min: 3, pct: 10 }, { min: 5, pct: 15 }] },
-      vip: { count: "product", breaks: [] },
+      vip: { count: "cart", breaks: [] },
     },
   });
   assert.deepEqual(built.margin, { on: true, max: 10 }, "Free folds the collections: the strictest maximum");
@@ -94,9 +94,9 @@ test("K5 on Free: built from the gated config — one global set counted per pro
 test("K5: margin off, no sets, unknown preset in a hand-made config; nothing about costs ever ships", () => {
   const config = configOf({ modules: { margin: { ...MARGIN, enabled: false } } });
   (config.storefront as { appearancePreset: string }).appearancePreset = "neon";
-  const built = buildStorefrontConfig(config, { configVersion: "v", exponentOf: currencyExponent });
+  const built = buildStorefrontConfig(config, { configVersion: "v" });
   assert.deepEqual(built, { v: 1, cv: "v", tiers: { global: null, sets: {} }, margin: { on: false }, appearance: { preset: "default" }, texts: {} });
-  const json = JSON.stringify(buildStorefrontConfig(configOf(PRO), { configVersion: "v", exponentOf: currencyExponent }));
+  const json = JSON.stringify(buildStorefrontConfig(configOf(PRO), { configVersion: "v" }));
   for (const needle of ["gid://", "minMargin", "cost", "perCollection"]) assert.ok(!json.includes(needle), needle);
 });
 
@@ -111,18 +111,19 @@ test("K5: a set id that is an object key of Object.prototype is still an own ent
       },
     },
   });
-  const built = JSON.parse(JSON.stringify(buildStorefrontConfig(config, { configVersion: "v", exponentOf: currencyExponent })));
+  const built = JSON.parse(JSON.stringify(buildStorefrontConfig(config, { configVersion: "v" })));
   assert.deepEqual(Object.keys(built.tiers.sets), ["__proto__", "constructor"]);
   assert.deepEqual(built.tiers.sets.__proto__, { count: "line", breaks: [{ min: 2, pct: 5 }] });
   assert.equal(built.tiers.global, "constructor");
 });
 
-test("K5: `exponentOf` decides the conversion (the shop's own currency data); a junk exponent falls back to ISO", () => {
-  const config = configOf({ modules: { tiers: { sets: [{ id: "g", scope: "global", countAcross: "line", breaks: [{ minQty: 2, amountOff: { CZK: 1_234, XYZ: 77 } }] }] } } });
-  const withZero = buildStorefrontConfig(config, { configVersion: "v", exponentOf: (c) => (c === "CZK" ? 0 : Number.NaN) });
-  assert.deepEqual(withZero.tiers.sets.g.breaks, [{ min: 2, off: { CZK: 123_400, XYZ: 77 } }]);
-  const defaulted = buildStorefrontConfig(config, { configVersion: "v" });
-  assert.deepEqual(defaulted.tiers.sets.g.breaks, [{ min: 2, off: { CZK: 1_234, XYZ: 77 } }]);
+test("K5: amounts convert with money.ts currencyExponent — the same table checkout uses (an unknown code: 2 digits)", () => {
+  const config = configOf({
+    modules: { tiers: { sets: [{ id: "g", scope: "global", countAcross: "line", breaks: [{ minQty: 2, amountOff: { CZK: 1_234, JPY: 5, BHD: 12_345, XYZ: 77 } }] }] } },
+  });
+  assert.deepEqual(buildStorefrontConfig(config, { configVersion: "v" }).tiers.sets.g.breaks, [
+    { min: 2, off: { BHD: 1_234, CZK: 1_234, JPY: 500, XYZ: 77 } },
+  ]);
 });
 
 // --- K4: pdpMaxDiscountPercent ---------------------------------------------------------------------

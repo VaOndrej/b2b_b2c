@@ -90,12 +90,6 @@ export interface PdpMetafieldValue {
 export interface StorefrontConfigOptions {
   /** The ShopConfig version the config was read from (`cv`). */
   configVersion: string;
-  /**
-   * Minor-unit digits of a currency (the shop's own currency data when the
-   * caller has it); default money.ts currencyExponent (ISO 4217). A result that
-   * is not a whole number 0–4 falls back to currencyExponent.
-   */
-  exponentOf?: (currency: string) => number;
 }
 
 /** A value under a key that may be an Object.prototype name ("__proto__"): always an own, enumerable entry. */
@@ -104,22 +98,19 @@ function setOwn<T>(target: Record<string, T>, key: string, value: T): void {
 }
 
 /**
- * Minor units → Liquid money units (major × 100, K5), rounded DOWN for a
- * currency with more than 2 digits (the page never shows more than checkout
+ * Minor units → Liquid money units (major × 100, K5), with money.ts
+ * currencyExponent — the table checkout reads amounts with — rounded DOWN for
+ * a currency with more than 2 digits (the page never shows more than checkout
  * gives). Integer math: exact for every amount the config allows.
  */
-function liquidUnits(minor: number, exponent: number): number {
+function liquidUnits(minor: number, currency: string): number {
+  const exponent = currencyExponent(currency);
   return exponent <= 2 ? minor * 10 ** (2 - exponent) : Math.floor(minor / 10 ** (exponent - 2));
-}
-
-function exponentFor(currency: string, exponentOf: StorefrontConfigOptions["exponentOf"]): number {
-  const e = exponentOf ? exponentOf(currency) : Number.NaN;
-  return Number.isInteger(e) && e >= 0 && e <= 4 ? e : currencyExponent(currency);
 }
 
 type SetLike = ReadonlyDeep<WonDiscountsConfig>["modules"]["tiers"]["sets"][number];
 
-function storefrontSet(set: SetLike, exponentOf: StorefrontConfigOptions["exponentOf"]): StorefrontTierSet {
+function storefrontSet(set: SetLike): StorefrontTierSet {
   const breaks: StorefrontTierBreak[] = [];
   for (const b of [...set.breaks].sort((x, y) => x.minQty - y.minQty)) {
     if (typeof b.percent === "number") {
@@ -131,7 +122,7 @@ function storefrontSet(set: SetLike, exponentOf: StorefrontConfigOptions["expone
     for (const currency of Object.keys(b.amountOff ?? {}).sort()) {
       const minor = moneyFor(b.amountOff, currency);
       if (minor === null) continue;
-      setOwn(off, currency, liquidUnits(minor, exponentFor(currency, exponentOf)));
+      setOwn(off, currency, liquidUnits(minor, currency));
       any = true;
     }
     if (any) breaks.push({ min: b.minQty, off });
@@ -178,7 +169,7 @@ function storefrontTexts(locales: ReadonlyDeep<WonDiscountsConfig>["locales"]): 
 export function buildStorefrontConfig(gated: ReadonlyDeep<WonDiscountsConfig>, opts: StorefrontConfigOptions): StorefrontConfigV1 {
   const reachable = reachableTierSets(gated.modules.tiers.sets);
   const sets: Record<string, StorefrontTierSet> = {};
-  for (const set of reachable) setOwn(sets, set.id, storefrontSet(set, opts.exponentOf));
+  for (const set of reachable) setOwn(sets, set.id, storefrontSet(set));
   const preset = gated.storefront.appearancePreset;
   return {
     v: STOREFRONT_CONFIG_VERSION,

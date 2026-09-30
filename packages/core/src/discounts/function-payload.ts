@@ -78,6 +78,7 @@ import {
 import { fnv1a } from "./config/sanitize-helpers.ts";
 import type { NodeRole } from "./emit.ts";
 import { FUNCTION_CONFIG_BUDGET_BYTES, liveCampaigns, NO_CAMPAIGN_DATETIME, selectCampaign } from "./function-config.ts";
+import { gateConfigForPlan } from "./plan-gate.ts";
 import { buildMarginPayload, type FunctionMarginPayload, type MarginCollectionTuple } from "./margin.ts";
 import type { MoneyByCurrency } from "./money.ts";
 import { isFunctionConfigPayload } from "./plan.ts";
@@ -500,7 +501,10 @@ export interface WorstCaseShopFunctionConfig extends EncodedShopFunctionConfig {
 
 /**
  * The largest shared config this config can produce over time: every live
- * campaign as the selected one, and none. Save must be refused unless it fits.
+ * campaign as the selected one, and none — and the same config gated for Free
+ * (plan-gate.ts; it ships no campaign), which a Free shop runs: reducing a
+ * global tier set's `cart` counting to `product` makes it 3 B longer, while
+ * everything else the gate does only shortens it. Save must be refused unless it fits.
  * Byte size does not depend on the time zone (schedule days are fixed-length)
  * nor on which shop currency (always 3 letters: "XXX" stands in when none is
  * given, so an enabled margin's `cur` is always measured), so both are optional
@@ -517,6 +521,8 @@ export function buildShopFunctionConfigWorstCase(
     const encoded = build(config, campaign, zone, currency);
     if (encoded.bytes > worst.bytes) worst = { ...encoded, campaignId: campaign.id };
   }
+  const free = build(gateConfigForPlan(config, "free").config, null, zone, currency);
+  if (free.bytes > worst.bytes) worst = { ...free, campaignId: null };
   return worst;
 }
 

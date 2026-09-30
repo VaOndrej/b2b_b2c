@@ -3,6 +3,11 @@
 // in the storefront, which must say honestly why an entered code did nothing
 // (Shopify only shows `applicable: false`, spec §3).
 //
+// Quantity tiers (MVP 3): what a tier saves (with the break when every line
+// reached the same one), why it does not apply, and the hint "Přidej 1 ks a
+// dostaneš −15 %" (plan.progress.tierHint). A set has no name: it is "the
+// quantity discount"; items carry `tierSetId`, never a rule id.
+//
 // Margin protection (MVP 2): a lowered line, a lowered order discount, lines the
 // order discount leaves out and a rule margin zeroed are all said in words. The
 // REASON with numbers (cost price, minimum margin, the % ceiling) is for the
@@ -13,6 +18,8 @@ import {
   csPlural,
   describeMarginReason,
   describeRule,
+  describeTierBreak,
+  type DescribableTierBreak,
   echoCode as echo,
   entitledMinimumPhrase,
   enPlural,
@@ -22,7 +29,18 @@ import {
   MAX_ECHOED_CODE_LENGTH,
   type UiLocale,
 } from "./describe.ts";
-import { type CartPlan, type CodeOutcome, MAX_ENTERED_CODES, type PlanLine, type RuleOutcome, type ShippingValue } from "./plan.ts";
+import {
+  type CartPlan,
+  type CodeOutcome,
+  MAX_ENTERED_CODES,
+  type PlanLine,
+  type RuleOutcome,
+  type ShippingValue,
+  TIER_CANDIDATE_PREFIX,
+  TIER_LABEL,
+  type TierOutcome,
+  type TierStep,
+} from "./plan.ts";
 
 /**
  * One explanation line. `text` (and `code`) can contain what a shopper typed or
@@ -37,6 +55,8 @@ export interface ExplainItem {
   ruleId?: string;
   code?: string;
   lineIds?: string[];
+  /** A quantity tier set's id (MVP 3): the item is about that set, not about a rule. */
+  tierSetId?: string;
 }
 
 export interface ExplainOptions {
@@ -94,10 +114,15 @@ function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-function item(tone: ExplainItem["tone"], text: string, refs: { ruleId?: string; code?: string; lineIds?: string[] }): ExplainItem {
+function item(
+  tone: ExplainItem["tone"],
+  text: string,
+  refs: { ruleId?: string; code?: string; lineIds?: string[]; tierSetId?: string },
+): ExplainItem {
   const out: ExplainItem = { tone, text };
   if (refs.ruleId) out.ruleId = refs.ruleId;
   if (refs.code) out.code = refs.code;
+  if (refs.tierSetId) out.tierSetId = refs.tierSetId;
   if (refs.lineIds && refs.lineIds.length > 0) out.lineIds = [...refs.lineIds];
   return out;
 }
@@ -125,10 +150,90 @@ function applied(rule: RuleOutcome, plan: CartPlan, locale: UiLocale): string {
     : `${name} saves ${money} on ${n} ${enPlural(n, "item", "items")}.`;
 }
 
-function betterName(rule: RuleOutcome, plan: CartPlan, locale: UiLocale): string | null {
-  const id = rule.betterRuleIds?.[0];
+/** The name of what beat a rule or a tier: a rule's label, or "Množstevní sleva" for a tier (`tier:<set>`). */
+function betterName(outcome: { betterRuleIds?: string[] }, plan: CartPlan, locale: UiLocale): string | null {
+  const id = outcome.betterRuleIds?.[0];
+  if (id?.startsWith(TIER_CANDIDATE_PREFIX)) return q(TIER_LABEL[locale], locale);
   const better = id ? plan.rules.find((r) => r.ruleId === id) : undefined;
   return better ? q(labelOf(better, plan, locale), locale) : null;
+}
+
+// --- Quantity tiers (MVP 3) -----------------------------------------------------------------------
+
+/** A tier step as describe.ts reads it (the amount is in the plan currency). */
+function describableStep(s: TierStep, plan: CartPlan): DescribableTierBreak {
+  return s.percent !== null ? { minQty: s.minQty, percent: s.percent } : { minQty: s.minQty, amountOff: { [plan.currency]: s.amount ?? 0 } };
+}
+
+/** "−15 %" / "−50 Kč za kus": what a step takes off each item. */
+function stepValue(s: TierStep, plan: CartPlan, locale: UiLocale): string {
+  if (s.percent !== null) return `−${formatPercent(s.percent, locale)}`;
+  const money = formatMoney(s.amount ?? 0, plan.currency, locale);
+  return locale === "cs" ? `−${money} za kus` : `−${money} per item`;
+}
+
+/** The break every contributing line reached ("od 3 ks −10 %"), or null when they differ. */
+function uniformBreak(tier: TierOutcome, plan: CartPlan, locale: UiLocale): string | null {
+  const contributing = new Set(tier.lineIds);
+  const reached = tier.groups.filter((g) => g.lineIds.some((id) => contributing.has(id))).map((g) => g.reached);
+  const first = reached[0];
+  if (!first || reached.some((r) => r?.minQty !== first.minQty)) return null;
+  const text = describeTierBreak(describableStep(first, plan), { locale, currency: plan.currency });
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
+function tierSentences(tier: TierOutcome, plan: CartPlan, locale: UiLocale): ExplainItem[] {
+  const cs = locale === "cs";
+  const refs = { tierSetId: tier.setId, lineIds: tier.lineIds };
+  const info = (text: string) => [item("info", text, refs)];
+  const subject = cs ? "Množstevní sleva" : "The quantity discount";
+  switch (tier.state) {
+    case "applied": {
+      const money = formatMoney(tier.amount, plan.currency, locale);
+      const n = tier.lineIds.length;
+      const which = uniformBreak(tier, plan, locale);
+      const named = which ? `${subject} (${which})` : subject;
+      return [
+        item(
+          "success",
+          cs
+            ? `${named} ušetří ${money} na ${n} ${n === 1 ? "položce" : "položkách"}.`
+            : `${named} saves ${money} on ${n} ${enPlural(n, "item", "items")}.`,
+          refs,
+        ),
+      ];
+    }
+    case "outranked": {
+      const better = betterName(tier, plan, locale);
+      if (!better) return info(cs ? `${subject} se neuplatní: máš výhodnější slevu.` : `${subject} is not applied: another discount is better.`);
+      return info(cs ? `${subject} se neuplatní: výhodnější je ${better}.` : `${subject} is not applied: ${better} is better.`);
+    }
+    case "currency_missing":
+      return info(
+        cs
+          ? `${subject} nemá hodnotu pro měnu ${plan.currency}, proto se tu nenabízí.`
+          : `${subject} has no amount for ${plan.currency}, so it is not offered here.`,
+      );
+    case "not_combinable":
+      return info(cs ? `${subject} se nekombinuje s ostatními slevami v košíku.` : `${subject} does not combine with the other discounts in the cart.`);
+    case "margin_floor":
+      return info(cs ? `${subject} se neuplatní: ${AT_MINIMUM.cs}.` : `${subject} is not applied: ${AT_MINIMUM.en}.`);
+    case "zero_value":
+      return info(cs ? `${subject} tu nic neušetří.` : `${subject} saves nothing here.`);
+    default:
+      // disabled, no_target_lines, outlet_only (the outlet sentence covers it), below_tier (the hint says what is missing)
+      return [];
+  }
+}
+
+/** "Přidej 1 ks a dostaneš −15 %." — plan.progress.tierHint in words. */
+function tierHintSentence(plan: CartPlan, locale: UiLocale): ExplainItem[] {
+  const hint = plan.progress.tierHint;
+  if (!hint) return [];
+  const n = hint.missing;
+  const value = stepValue(hint.next, plan, locale);
+  const text = locale === "cs" ? `Přidej ${n} ks a dostaneš ${value}.` : `Add ${n} more ${enPlural(n, "item", "items")} to get ${value}.`;
+  return [item("info", text, { tierSetId: hint.setId, lineIds: hint.lineIds })];
 }
 
 /** Why an entered Won code does nothing (warning), or a note when it counts only inside another stack. */
@@ -319,9 +424,9 @@ function outletSentence(plan: CartPlan, locale: UiLocale): ExplainItem[] {
   const outlet = plan.lines.filter((l) => l.excluded === "outlet");
   const n = outlet.length;
   if (n === 0) return [];
-  const relevant = plan.rules.some(
-    (r) => r.discountClass !== "shipping" && r.state !== "disabled" && r.state !== "code_not_entered",
-  );
+  const relevant =
+    plan.rules.some((r) => r.discountClass !== "shipping" && r.state !== "disabled" && r.state !== "code_not_entered") ||
+    (plan.tiers ?? []).some((t) => t.state !== "disabled" && t.state !== "currency_missing");
   if (!relevant) return [];
   const text =
     locale === "cs"
@@ -404,6 +509,7 @@ export function explainPlan(plan: CartPlan, locale: UiLocale, opts: ExplainOptio
     ];
   }
   const out: ExplainItem[] = [];
+  const tiers = plan.tiers ?? [];
   for (const rule of plan.rules) {
     if (rule.state !== "applied") continue;
     out.push(item("success", capitalize(applied(rule, plan, locale)), {
@@ -412,12 +518,15 @@ export function explainPlan(plan: CartPlan, locale: UiLocale, opts: ExplainOptio
       lineIds: rule.lineIds,
     }));
   }
+  for (const tier of tiers) if (tier.state === "applied") out.push(...tierSentences(tier, plan, locale));
+  out.push(...tierHintSentence(plan, locale));
   for (const code of plan.codes) out.push(...codeSentences(code, plan, locale));
   out.push(...overLimitSentence(plan, locale));
   for (const rule of plan.rules) {
     if (rule.method === "code" || rule.state === "applied") continue;
     out.push(...automaticSentences(rule, plan, locale));
   }
+  for (const tier of tiers) if (tier.state !== "applied") out.push(...tierSentences(tier, plan, locale));
   for (const line of plan.lines) out.push(...cappedLineSentence(line, plan, locale, admin));
   out.push(...marginOrderSentences(plan, locale));
   out.push(...outletSentence(plan, locale));

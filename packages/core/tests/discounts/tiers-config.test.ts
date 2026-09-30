@@ -1,8 +1,11 @@
 // MVP 3 (contracts K1, K7): the tier-set sanitizer and the appearance preset.
 // A break has exactly one value (percent OR an amount per currency), breaks
-// are ascending and unique by minQty, set ids are unique; an appearance preset
-// is one of APPEARANCE_PRESETS. Every change is reported with structured params
-// (the admin words the issue from code + params only).
+// are ascending and unique by minQty (whole items 1–CONFIG_LIMITS.tierMinQty),
+// a set is of ONE kind (all percent or all amount: the lowest break's kind) and
+// its values never fall as the quantity grows (per currency for amounts); set
+// ids are unique; an appearance preset is one of APPEARANCE_PRESETS. Every
+// change is reported with structured params (the admin words the issue from
+// code + params only).
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -33,7 +36,7 @@ test("an empty amount next to a percent is no second value (a form sends both fi
 
 test("a break without a value (no percent, no amount in any currency) is dropped with an issue", () => {
   const { config, issues } = tiersOf([
-    set([{ minQty: 2 }, { minQty: 3, amountOff: {} }, { minQty: 4, percent: "10" }, { minQty: 5, amountOff: { CZK: 20_00 } }]),
+    set([{ minQty: 2 }, { minQty: 3, amountOff: {} }, { minQty: 4, percent: null }, { minQty: 5, amountOff: { CZK: 20_00 } }]),
   ]);
   assert.deepEqual(config.modules.tiers.sets[0].breaks, [{ minQty: 5, amountOff: { CZK: 20_00 } }]);
   assert.deepEqual(
@@ -46,19 +49,73 @@ test("a break without a value (no percent, no amount in any currency) is dropped
   );
 });
 
-test("a break without a usable minimum quantity is dropped with an issue; a fractional or < 1 one is floored to ≥ 1", () => {
-  const { config, issues } = tiersOf([set([{ percent: 5 }, { minQty: "3", percent: 5 }, { minQty: 2.9, percent: 5 }, { minQty: -4, percent: 1 }])]);
+test("a percent that is not a number takes the invalid_percent path: the default 0 % is saved (like a rule's value)", () => {
+  const { config, issues } = tiersOf([set([{ minQty: 4, percent: "10" }])]);
+  assert.deepEqual(config.modules.tiers.sets[0].breaks, [{ minQty: 4, percent: 0 }]);
+  assert.deepEqual(issues.map((i) => [i.path, i.code, i.params]), [
+    ["modules.tiers.sets[0].breaks[0].percent", "invalid_percent", { min: 0, max: 100, value: '"10"', fallback: 0 }],
+  ]);
+});
+
+test("a break without a usable minimum quantity is dropped with an issue; a fractional, < 1 or too large one is adjusted with an issue", () => {
+  const max = CONFIG_LIMITS.tierMinQty;
+  assert.equal(max, 10_000);
+  const { config, issues } = tiersOf([
+    set([{ percent: 5 }, { minQty: "3", percent: 5 }, { minQty: 2.9, percent: 5 }, { minQty: -4, percent: 1 }, { minQty: 25_000, percent: 9 }]),
+  ]);
   assert.deepEqual(config.modules.tiers.sets[0].breaks, [
     { minQty: 1, percent: 1 },
     { minQty: 2, percent: 5 },
+    { minQty: max, percent: 9 },
   ]);
   assert.deepEqual(
     issues.map((i) => [i.path, i.code, i.params ?? null]),
     [
       ["modules.tiers.sets[0].breaks[0]", "tier_break_without_quantity", null],
       ["modules.tiers.sets[0].breaks[1]", "tier_break_without_quantity", null],
+      ["modules.tiers.sets[0].breaks[2].minQty", "clamped_tier_quantity", { value: 2.9, to: 2, min: 1, max }],
+      ["modules.tiers.sets[0].breaks[3].minQty", "clamped_tier_quantity", { value: -4, to: 1, min: 1, max }],
+      ["modules.tiers.sets[0].breaks[4].minQty", "clamped_tier_quantity", { value: 25_000, to: max, min: 1, max }],
     ],
   );
+});
+
+test("a set is of one kind: the lowest break's kind wins, a break of the other kind is dropped with an issue", () => {
+  const { config, issues } = tiersOf([
+    set([{ minQty: 5, amountOff: { CZK: 50_00 } }, { minQty: 2, percent: 5 }, { minQty: 7, percent: 12 }, { minQty: 3, amountOff: { CZK: 10_00 } }]),
+  ]);
+  assert.deepEqual(config.modules.tiers.sets[0].breaks, [
+    { minQty: 2, percent: 5 },
+    { minQty: 7, percent: 12 },
+  ]);
+  assert.deepEqual(issues.map((i) => [i.path, i.code, i.params]), [
+    ["modules.tiers.sets[0].breaks[3]", "tier_break_other_kind", { minQty: 3 }],
+    ["modules.tiers.sets[0].breaks[0]", "tier_break_other_kind", { minQty: 5 }],
+  ]);
+});
+
+test("values never fall as the quantity grows: a percent, and an amount per currency, lower than an earlier break's is dropped", () => {
+  const percent = tiersOf([set([{ minQty: 2, percent: 10 }, { minQty: 3, percent: 5 }, { minQty: 5, percent: 10 }, { minQty: 8, percent: 15 }])]);
+  assert.deepEqual(percent.config.modules.tiers.sets[0].breaks.map((b) => [b.minQty, b.percent]), [
+    [2, 10],
+    [5, 10],
+    [8, 15],
+  ]);
+  assert.deepEqual(percent.issues.map((i) => [i.path, i.code, i.params]), [["modules.tiers.sets[0].breaks[1]", "tier_break_lower_value", { minQty: 3 }]]);
+  const amount = tiersOf([
+    set([
+      { minQty: 2, amountOff: { CZK: 50_00, EUR: 2_00 } },
+      { minQty: 3, amountOff: { CZK: 40_00 } }, // CZK falls
+      { minQty: 5, amountOff: { EUR: 3_00 } }, // EUR rises (no CZK: not compared in CZK)
+      { minQty: 7, amountOff: { CZK: 60_00, EUR: 1_00 } }, // EUR falls below the 5-item break
+      { minQty: 9, amountOff: { CZK: 60_00, EUR: 3_00 } },
+    ]),
+  ]);
+  assert.deepEqual(amount.config.modules.tiers.sets[0].breaks.map((b) => b.minQty), [2, 5, 9]);
+  assert.deepEqual(amount.issues.map((i) => [i.path, i.code, i.params]), [
+    ["modules.tiers.sets[0].breaks[1]", "tier_break_lower_value", { minQty: 3 }],
+    ["modules.tiers.sets[0].breaks[3]", "tier_break_lower_value", { minQty: 7 }],
+  ]);
 });
 
 test("a percent outside 0–100 is clamped with the existing clamped_percent issue", () => {
@@ -75,14 +132,14 @@ test("breaks come out ascending by minQty; a repeated minQty keeps the first and
       { minQty: 5, percent: 15 },
       { minQty: 3, percent: 10 },
       { minQty: 5, percent: 20 },
-      { minQty: 10, amountOff: { CZK: 100_00 } },
-      { minQty: 3, amountOff: { EUR: 1_00 } },
+      { minQty: 10, percent: 25 },
+      { minQty: 3, percent: 12 },
     ]),
   ]);
   assert.deepEqual(config.modules.tiers.sets[0].breaks, [
     { minQty: 3, percent: 10 },
     { minQty: 5, percent: 15 },
-    { minQty: 10, amountOff: { CZK: 100_00 } },
+    { minQty: 10, percent: 25 },
   ]);
   assert.deepEqual(
     issues.map((i) => [i.path, i.code, i.params]),
@@ -95,6 +152,7 @@ test("breaks come out ascending by minQty; a repeated minQty keeps the first and
 
 test("the break cap still keeps the first breaks given (then sorted)", () => {
   const breaks = Array.from({ length: CONFIG_LIMITS.breaksPerTierSet + 2 }, (_, i) => ({ minQty: 100 - i, percent: 1 }));
+  // (equal values never fall)
   const { config, issues } = tiersOf([set(breaks)]);
   const kept = config.modules.tiers.sets[0].breaks.map((b) => b.minQty);
   assert.equal(kept.length, CONFIG_LIMITS.breaksPerTierSet);
@@ -112,7 +170,7 @@ test("a repeated tier set id keeps the first set and reports the duplicate", () 
 
 test("the tier sanitizer is idempotent: a sanitized config sanitizes to itself without issues", () => {
   const first = tiersOf([
-    set([{ minQty: 5, percent: 15, amountOff: { CZK: 1 } }, { minQty: 3, percent: 10 }, { minQty: 3, percent: 1 }, { minQty: 7 }]),
+    set([{ minQty: 5, percent: 15, amountOff: { CZK: 1 } }, { minQty: 3, percent: 10 }, { minQty: 3, percent: 1 }, { minQty: 7 }, { minQty: 8, percent: 2 }, { minQty: 9, amountOff: { CZK: 1 } }]),
     { id: "s", scope: { collectionIds: ["gid://shopify/Collection/1"] }, countAcross: "cart", breaks: [{ minQty: 2, amountOff: { czk: 10_00, EUR: 40 } }] },
   ]).config;
   const again = sanitizeConfig(first);

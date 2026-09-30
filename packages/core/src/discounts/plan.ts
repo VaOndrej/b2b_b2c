@@ -14,8 +14,13 @@
 //                   (country), segment (unsupported), currency, targets,
 //                   minimum (the WHOLE cart, [spec] „minimum košíku“, or the
 //                   rule's own lines when its minimum scope is "entitled");
+//   prepareTiers    (MVP 3, plan-tiers.ts, its header is the port spec) each
+//                   line's quantity-tier candidate `tier:<setId>`: its set (K1:
+//                   `tierRef`, else the global set), counted per line / product
+//                   / cart over eligible lines, the highest offered break;
 //   planProducts    per line the better one for the customer wins, never a sum
-//                   (ties: priority desc, id asc); Pro `combinesWith` may stack,
+//                   (ties: priority desc, id asc) — a tier candidate competes
+//                   like a rule and never stacks; Pro `combinesWith` may stack,
 //                   searched among the MAX_STACK_CANDIDATES (6) best-ranked
 //                   candidates of the line only (the same for the order stack);
 //   applyMarginProtection  (MVP 2, only when `modules.margin` is on; the margin
@@ -29,7 +34,8 @@
 //   planShipping    one winner (percent above fixed: the function knows no
 //                   delivery cost); the Free product/order-with-shipping switches;
 //                   margin protection never touches shipping;
-//   buildOutcomes   per-rule and per-code states for explain/admin.
+//   buildOutcomes   per-rule and per-code states for explain/admin; per tier set
+//                   its state, counting groups and the "add N more" hint.
 //
 // Margin protection OFF (the default, and any payload without the enabled
 // compact margin) skips both margin steps: the plan is MVP 1's, decision for
@@ -74,7 +80,7 @@ import type { FunctionConfigPayload } from "./function-payload.ts";
 import { type MarginBasis, type MarginSource, readMarginPayload } from "./margin.ts";
 import {
   type Candidate,
-  label,
+  candidateLabel,
   orderAmount,
   ownerOf,
   type Rule,
@@ -83,13 +89,17 @@ import {
   type WorkLine,
 } from "./plan-internal.ts";
 import { applyMarginProtection, computeFloors, markTightLines, protectOrder } from "./plan-margin.ts";
+import { prepareTiers, TIER_CANDIDATE_PREFIX, tierCandidateId, TIER_LABEL, tierHint, tierOutcomes } from "./plan-tiers.ts";
 import { lineRuleIds } from "./targeting.ts";
+import type { TierCountAcross } from "./config.ts";
+
+export { TIER_CANDIDATE_PREFIX, tierCandidateId, TIER_LABEL };
 
 // --- Public plan shape ------------------------------------------------------------------
 
 export type DiscountClass = "product" | "order" | "shipping";
-/** Which module produced an allocation. MVP 3 adds "tiers", MVP 4 "rewards". */
-export type PlanModule = "codes";
+/** Which module produced an allocation: a discount rule, or a quantity tier set (MVP 3). MVP 4 adds "rewards". */
+export type PlanModule = "codes" | "tiers";
 
 export type RuleState =
   | "applied" // its node emits (part of) the plan
@@ -137,6 +147,7 @@ export type ShippingValue =
   | { fixedTotal: number; percent?: undefined };
 
 export interface PlanComponent {
+  /** The rule's id, or `tier:<setId>` for a quantity tier (module "tiers"). */
   ruleId: string;
   method: DiscountMethod;
   module: PlanModule;
@@ -273,9 +284,73 @@ export interface PlanWarning {
   ruleId?: string;
 }
 
-/** MVP 4 slot (free shipping / gift progress, tier hints). */
+// --- Quantity tiers (MVP 3, plan-tiers.ts) ------------------------------------------------------
+
+/**
+ * A tier set's state in the plan: the rule states that can apply to a set,
+ * plus `below_tier` (no counting group reached an offered break). `disabled` =
+ * the set has no break (e.g. a Pro set on Free, contract K1).
+ */
+export type TierState =
+  | "applied"
+  | "outranked"
+  | "not_combinable"
+  | "zero_value"
+  | "disabled"
+  | "currency_missing"
+  | "no_target_lines"
+  | "outlet_only"
+  | "below_tier"
+  | "margin_floor";
+
+/** One break in the cart currency: a percent, or an amount off each item (minor units). */
+export interface TierStep {
+  minQty: number;
+  percent: number | null;
+  amount: number | null;
+}
+
+/** The lines counted together (K2) and what they reach. */
+export interface TierGroupOutcome {
+  /** "line": one line; "product": the lines of one product; "cart": every eligible line of the set. Cart order. */
+  lineIds: string[];
+  count: number;
+  /** The highest offered break ≤ count, null = none. */
+  reached: TierStep | null;
+  /** The first offered break above count, null = none. */
+  next: TierStep | null;
+}
+
+export interface TierOutcome {
+  setId: string;
+  /** The id its plan components carry: `tier:<setId>`. */
+  ruleId: string;
+  count: TierCountAcross;
+  state: TierState;
+  /** Minor units the set contributes to the final plan. */
+  amount: number;
+  /** Lines where it contributes a product discount. */
+  lineIds: string[];
+  /** Counting groups of its eligible lines (none for a set no eligible line uses). */
+  groups: TierGroupOutcome[];
+  /** outranked: owners of the stacks that beat it (at most 3). */
+  betterRuleIds?: string[];
+}
+
+/** "Přidej 1 ks a dostaneš −15 %": the counting group closest to its next break (plan-tiers.ts tierHint). */
+export interface TierHint {
+  setId: string;
+  lineIds: string[];
+  count: number;
+  /** Items to add. */
+  missing: number;
+  next: TierStep;
+}
+
+/** MVP 4 slot (free shipping / gift progress); MVP 3 fills `tierHint`. */
 export interface PlanProgress {
   freeShipping?: { remaining: number; reached: boolean };
+  tierHint?: TierHint;
 }
 
 export interface CartPlan {
@@ -290,6 +365,8 @@ export interface CartPlan {
   shipping: PlanShipping | null;
   /** One per readable rule, in config order. */
   rules: RuleOutcome[];
+  /** One per tier set of the shop config (its order); [] when it has none. */
+  tiers: TierOutcome[];
   /** One per entered code, in entry order. */
   codes: CodeOutcome[];
   gifts: PlanGift[];
@@ -446,6 +523,7 @@ function readRule(raw: Rec, currency: string): Rule | null {
     id: raw.id as string,
     name: typeof raw.name === "string" ? raw.name : "",
     method,
+    module: "codes",
     enabled: raw.enabled === true,
     cls,
     valueKind,
@@ -612,6 +690,7 @@ function prepareLines(cart: NormalizedCart, engine: EngineFlags, campaignId: str
     ruleSet: lineRuleIds(line, campaignId, retargeted),
     product: null,
     floor: null,
+    tier: null,
   }));
   const cartScope = emptyScope();
   const ruleScopes = new Map<string, Scope>();
@@ -786,7 +865,7 @@ function pick(positive: Candidate[], cap: number, partners: Map<string, Set<stri
   for (const c of chosen) {
     const amount = Math.min(c.amount, remaining);
     if (amount <= 0) continue;
-    components.push({ rule: c.rule, amount });
+    components.push({ ...c, amount });
     remaining -= amount;
   }
   return { components, total: cap - remaining };
@@ -809,12 +888,12 @@ function buildStack(
     }
   }
   return {
-    components: picked.components.map((c) => ({ ruleId: c.rule.id, method: c.rule.method, module: "codes", amount: c.amount })),
+    components: picked.components.map((c) => ({ ruleId: c.rule.id, method: c.rule.method, module: c.rule.module, amount: c.amount })),
     amount: picked.total,
     ownerRuleId: owner.id,
     ownerMethod: owner.method,
     value: picked.components.length === 1 ? naturalValue(picked.components[0]) : { fixedTotal: picked.total },
-    message: picked.components.map((c) => label(c.rule, locale, currency)).join(" + "),
+    message: picked.components.map((c) => candidateLabel(c, locale, currency)).join(" + "),
   };
 }
 
@@ -828,7 +907,7 @@ function productAmount(rule: Rule, line: NormalizedLine): number {
 
 function planProducts(work: WorkLine[], ctx: StackContext): void {
   for (const w of work) {
-    if (w.excluded || w.ruleSet.size === 0) continue;
+    if (w.excluded || (w.ruleSet.size === 0 && !w.tier)) continue;
     const positive: Candidate[] = [];
     for (const id of w.ruleSet) {
       const rule = ctx.byId.get(id);
@@ -836,15 +915,18 @@ function planProducts(work: WorkLine[], ctx: StackContext): void {
       const amount = productAmount(rule, w.line);
       if (amount > 0) positive.push({ rule, amount });
     }
+    // The line's quantity tier (plan-tiers.ts): one more candidate, with its own value and message.
+    if (w.tier) positive.push(w.tier);
     if (positive.length === 0) continue;
     const unitPrice = w.line.unitPrice;
     w.product = buildStack(
       pick(positive, w.line.subtotal, ctx.partners),
       positive,
       (single) =>
-        single.rule.valueKind === "percentage"
+        single.value ??
+        (single.rule.valueKind === "percentage"
           ? { percent: single.rule.percent }
-          : { fixedPerItem: Math.min(single.rule.fixed ?? 0, unitPrice) },
+          : { fixedPerItem: Math.min(single.rule.fixed ?? 0, unitPrice) }),
       ctx.locale,
       ctx.currency,
     );
@@ -853,7 +935,14 @@ function planProducts(work: WorkLine[], ctx: StackContext): void {
 
 // --- Stage: order discount ---------------------------------------------------------------------
 
-function planOrderStage(rules: Rule[], work: WorkLine[], engine: EngineFlags, ctx: StackContext, marginOn: boolean): PlanOrder | null {
+function planOrderStage(
+  rules: Rule[],
+  tierRules: readonly Rule[],
+  work: WorkLine[],
+  engine: EngineFlags,
+  ctx: StackContext,
+  marginOn: boolean,
+): PlanOrder | null {
   const orderRules = rules.filter((r) => r.cls === "order" && r.state === null);
   const excludedLineIds = work.filter((w) => w.excluded !== null).map((w) => w.line.id);
   const planAt = (base: number): PlanOrder | null => {
@@ -885,6 +974,7 @@ function planOrderStage(rules: Rule[], work: WorkLine[], engine: EngineFlags, ct
   const orderWins = orderOnly !== null && orderOnly.amount > productTotal;
   const losing: DiscountClass = orderWins ? "product" : "order";
   for (const rule of rules) if (rule.cls === losing && rule.hadCandidate) rule.dropped = true;
+  if (losing === "product") for (const rule of tierRules) if (rule.hadCandidate) rule.dropped = true;
   if (orderWins) {
     for (const w of work) {
       w.product = null;
@@ -940,7 +1030,7 @@ function planShipping(
     ownerMethod: winner.rule.method,
     value: winner.value,
     amount: null,
-    message: label(winner.rule, cart.locale, cart.currency),
+    message: candidateLabel({ rule: winner.rule, amount: 0 }, cart.locale, cart.currency),
   };
 }
 
@@ -1029,21 +1119,26 @@ function buildPlan(cart: NormalizedCart, config: Rec): CartPlan {
   const codes = matchCodes(rules, cart, readMaxCodeLength(config));
   const { work, cartScope, ruleScopes } = prepareLines(cart, engine, campaign?.id ?? null, retargeted);
   gateRules(rules, { cart, marketCountries: readMarketCountries(config), cartScope }, ruleScopes, codes.enteredByRule);
+  // Campaign overrides never reach a tier (MVP 3): the sets are read as shipped.
+  const tiers = prepareTiers(work, (config.modules as Rec).tiers, locale, currency);
+  const byId = new Map(rulesById);
+  for (const rule of tiers.rules) byId.set(rule.id, rule);
 
-  const stackCtx: StackContext = { byId: rulesById, partners: partnersOf(rules), locale, currency };
+  const stackCtx: StackContext = { byId, partners: partnersOf(rules), locale, currency };
   planProducts(work, stackCtx);
   const margin = readMarginPayload((config.modules as Rec).margin);
   if (margin.enabled) {
     computeFloors(work, margin, cart);
     applyMarginProtection(work, stackCtx);
   }
-  const order = planOrderStage(rules, work, engine, stackCtx, margin.enabled);
+  const order = planOrderStage(rules, tiers.rules, work, engine, stackCtx, margin.enabled);
   if (margin.enabled) {
     if (order) order.marginProtected = true;
     markTightLines(work, order);
   }
   const shipping = planShipping(rules, work, order, engine, cart);
   const { outcomes, codeOutcomes } = buildOutcomes(rules, work, order, shipping, cart, codes);
+  const hint = tierHint(tiers, work);
 
   const lines: PlanLine[] = work.map((w) => ({
     lineId: w.line.id,
@@ -1070,10 +1165,11 @@ function buildPlan(cart: NormalizedCart, config: Rec): CartPlan {
     order,
     shipping,
     rules: outcomes,
+    tiers: tierOutcomes(tiers, work),
     codes: codeOutcomes,
     gifts: [],
     warnings: [],
-    progress: {},
+    progress: hint ? { tierHint: hint } : {},
     totals: { subtotal, productDiscount, orderDiscount, total: subtotal - productDiscount - orderDiscount },
   };
 }
@@ -1099,6 +1195,7 @@ function failedPlan(cart: NormalizedCart | null, reason: PlanFailure, error?: st
     order: null,
     shipping: null,
     rules: [],
+    tiers: [],
     codes: [],
     gifts: [],
     warnings: [],

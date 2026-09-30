@@ -54,6 +54,13 @@ export interface CartLineInput {
    * key is still understood (tolerant reader). The adapter may pass the whole map.
    */
   variantRuleIds?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * MVP 3 (contracts K1/K3): the product metafield's `tierRef` — the id of the
+   * scoped tier set of the product, as the sync wrote it. Absent (or not a
+   * non-empty string) = the payload's global set applies. A ref to a set the
+   * shop config does not carry gives the line NO tier (fail closed).
+   */
+  tierRef?: string;
 }
 
 export interface CartCampaignInput {
@@ -131,6 +138,8 @@ export interface NormalizedLine {
    * strictest setting applies (resolveProductMargin).
    */
   marginRefCount: number;
+  /** The product metafield's `tierRef` when a non-empty string, else null (the global set). */
+  tierRef: string | null;
 }
 
 export interface NormalizedCart {
@@ -277,6 +286,7 @@ export function normalizeCart(input: CartPlanInput): NormalizedCart {
       unitCostCurrency: typeof raw.unitCostCurrency === "string" ? raw.unitCostCurrency : null,
       marginRefs: strings(raw.marginRefs),
       marginRefCount: Array.isArray(raw.marginRefs) ? raw.marginRefs.length : 0,
+      tierRef: typeof raw.tierRef === "string" && raw.tierRef !== "" ? raw.tierRef : null,
     });
   }
 

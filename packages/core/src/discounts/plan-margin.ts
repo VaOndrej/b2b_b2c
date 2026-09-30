@@ -64,16 +64,20 @@ function cutInRankOrder(components: Candidate[], total: number): Candidate[] {
   return kept;
 }
 
-/** A stack rebuilt from what margin protection left of it: owner (ownerOf) and message recomputed. */
-function restack(kept: Candidate[], value: EmittedValue, ctx: StackContext): PlanStack {
+/**
+ * A stack rebuilt from what margin protection left of it: owner (ownerOf)
+ * recomputed; the message too, unless `message` is given (every component
+ * kept: the same message — a tier's names the break it reached on its line).
+ */
+function restack(kept: Candidate[], value: EmittedValue, ctx: StackContext, message?: string): PlanStack {
   const owner = ownerOf(kept);
   return {
-    components: kept.map((c) => ({ ruleId: c.rule.id, method: c.rule.method, module: "codes", amount: c.amount })),
+    components: kept.map((c) => ({ ruleId: c.rule.id, method: c.rule.method, module: c.rule.module, amount: c.amount })),
     amount: kept.reduce((sum, c) => sum + c.amount, 0),
     ownerRuleId: owner.id,
     ownerMethod: owner.method,
     value,
-    message: kept.map((c) => label(c.rule, ctx.locale, ctx.currency)).join(" + "),
+    message: message ?? kept.map((c) => label(c.rule, ctx.locale, ctx.currency)).join(" + "),
   };
 }
 
@@ -95,7 +99,8 @@ export function applyMarginProtection(work: WorkLine[], ctx: StackContext): void
       stack.components.map((c) => ({ rule: ctx.byId.get(c.ruleId) as Rule, amount: c.amount })),
       headroom,
     );
-    w.product = kept.length > 0 ? restack(kept, { fixedTotal: headroom }, ctx) : null;
+    const sameComponents = kept.length === stack.components.length;
+    w.product = kept.length > 0 ? restack(kept, { fixedTotal: headroom }, ctx, sameComponents ? stack.message : undefined) : null;
     w.marginCapped = {
       before: stack.amount,
       after: headroom,

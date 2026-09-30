@@ -28,7 +28,9 @@
 //   - tier sets (MVP 3, contract K1): the first global set stays, counting
 //     across the cart becomes per product (fewer items per count); a further
 //     global set goes (under K1 no product reaches it anyway); every SCOPED
-//     set stays but INERT (`breaks: []`, never cart counting), see below;
+//     set stays but INERT (`breaks: []`; its counting mode is left as it is —
+//     with no break it gives nothing, and the gated payload is never larger
+//     than the stored one's there), see below;
 //   - gift ladder: the first threshold stays, with its first gift only;
 //   - margin per collection: folded into the global floor, the STRICTEST value
 //     wins (a larger discount than the Pro setup allowed is never possible).
@@ -40,10 +42,11 @@
 // a larger discount. It is kept inert instead: its products keep their
 // `tierRef` to it (targeting.ts) and get no tier at all. What a Free shop runs
 // for a product is therefore its own Pro set (counted no wider) or nothing
-// (tests/discounts/tiers-gate.test.ts, property test). Caveat: with breaks
-// whose value FALLS as the quantity grows (3 ks −20 %, 5 ks −10 %), counting
-// per product instead of across the cart can reach a lower break with a
-// larger value; the admin should keep break values ascending.
+// (tests/discounts/tiers-gate.test.ts, property tests). Counting per product
+// instead of across the cart counts fewer items, and fewer items never reach
+// more: config/tiers.ts keeps a set of one kind with values that never fall
+// as the quantity grows (review I1: "3 ks −10 %, 10 ks −50 Kč/ks" or
+// "3 ks −20 %, 5 ks −10 %" would otherwise give more on Free for some carts).
 //
 // Downgrade (A6: running sales and campaigns finish, new ones cannot start).
 // Nothing is running at a downgrade in MVP 1 (no campaign or outlet UI yet), so
@@ -173,10 +176,7 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
     kept.countAcross = "product";
     stripped.push({ capability: "tier_count_across_cart", reason: "reduced", entityId: kept.id });
   }
-  for (const set of scopedSets) {
-    set.breaks = [];
-    if (set.countAcross === "cart") set.countAcross = "product";
-  }
+  for (const set of scopedSets) set.breaks = [];
   out.modules.tiers.sets = sets.filter((set) => set === kept || set.scope !== "global");
 
   // Rewards: one gift threshold, one gift.

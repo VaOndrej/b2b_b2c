@@ -21,6 +21,8 @@ export const CONFIG_LIMITS = Object.freeze({
   codeLength: 64,
   tierSets: 50,
   breaksPerTierSet: 10,
+  /** Largest `minQty` of a quantity break, whole items (MVP 3): larger is lowered to it, with an issue. */
+  tierMinQty: 10_000,
   giftTiers: 10,
   campaigns: 50,
   overridesPerCampaign: 200,

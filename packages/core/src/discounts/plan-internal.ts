@@ -7,7 +7,7 @@ import type { NormalizedLine, PlanLocale } from "./cart.ts";
 import type { DiscountMethod } from "./config.ts";
 import { type DescribableRule, describeRule } from "./describe.ts";
 import type { MarginBasis, MarginSettings } from "./margin.ts";
-import type { DiscountClass, PlanLineMarginCap, PlanStack, RuleOutcome, RuleState } from "./plan.ts";
+import type { DiscountClass, EmittedValue, PlanLineMarginCap, PlanModule, PlanStack, RuleOutcome, RuleState } from "./plan.ts";
 
 export type ValueKind = "percentage" | "fixed" | "freeShipping";
 
@@ -15,6 +15,8 @@ export interface Rule {
   id: string;
   name: string;
   method: DiscountMethod;
+  /** "codes" for a discount rule; "tiers" for a tier set's candidate (plan-tiers.ts, id `tier:<setId>`). */
+  module: PlanModule;
   enabled: boolean;
   cls: DiscountClass;
   valueKind: ValueKind;
@@ -51,6 +53,12 @@ export interface Rule {
 export interface Candidate {
   rule: Rule;
   amount: number;
+  /**
+   * A tier candidate's own value and message on its line (the break it
+   * reached there); absent for a rule, whose value and label come from the rule.
+   */
+  value?: EmittedValue;
+  label?: string;
 }
 
 export interface WorkLine {
@@ -63,6 +71,8 @@ export interface WorkLine {
   marginCapped?: PlanLineMarginCap;
   /** Margin on: the output must emit this line's product discount exactly (markTightLines). */
   marginTight?: true;
+  /** The line's tier candidate (plan-tiers.ts), null when its set gives it nothing. */
+  tier: Candidate | null;
 }
 
 export interface LineFloor {
@@ -95,6 +105,11 @@ export function ownerOf(components: Candidate[]): Rule {
 
 export function label(rule: Rule, locale: PlanLocale, currency: string): string {
   return rule.name || describeRule(rule.describable, locale, currency, { short: true });
+}
+
+/** A candidate's message: its own (a tier's break) or its rule's label. */
+export function candidateLabel(c: Candidate, locale: PlanLocale, currency: string): string {
+  return c.label ?? label(c.rule, locale, currency);
 }
 
 export function orderAmount(rule: Rule, base: number): number {

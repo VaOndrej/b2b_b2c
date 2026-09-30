@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { sanitizeConfig } from "../../src/discounts/config.ts";
-import { buildShopFunctionConfig } from "../../src/discounts/function-payload.ts";
+import { buildShopFunctionConfig, buildShopFunctionConfigWorstCase } from "../../src/discounts/function-payload.ts";
 import { buildTiersPayload, readTiersPayload } from "../../src/discounts/tiers.ts";
 
 const P = (n: number) => `gid://shopify/Product/${n}`;
@@ -30,7 +30,7 @@ const SETS = [
     countAcross: "cart",
     breaks: [
       { minQty: 5, amountOff: { EUR: 2_00, CZK: 50_00 } },
-      { minQty: 2, percent: 5 },
+      { minQty: 2, amountOff: { CZK: 20_00 } },
       { minQty: 10, amountOff: { CZK: 120_00 } },
     ],
   },
@@ -43,7 +43,7 @@ test("the shop config ships the compact tiers: [id, count, currencies, breaks]; 
   assert.deepEqual(payload.modules.tiers, {
     global: "global",
     sets: [
-      ["pro", "cart", ["CZK", "EUR"], [[2, 5], [5, [50_00, 2_00]], [10, [120_00, null]]]],
+      ["pro", "cart", ["CZK", "EUR"], [[2, [20_00, null]], [5, [50_00, 2_00]], [10, [120_00, null]]]],
       ["global", "product", [], [[3, 10], [5, 12.5]]],
     ],
   });
@@ -65,19 +65,19 @@ test("readTiersPayload: per cart currency, a break without a value there is not 
     id: "pro",
     count: "cart",
     breaks: [
-      { minQty: 2, percent: 5, amount: null, offered: true },
+      { minQty: 2, percent: null, amount: 20_00, offered: true },
       { minQty: 5, percent: null, amount: 50_00, offered: true },
       { minQty: 10, percent: null, amount: 120_00, offered: true },
     ],
   });
   const eur = readTiersPayload(payload, "EUR").sets.get("pro")!;
   assert.deepEqual(eur.breaks.map((b) => [b.minQty, b.amount, b.offered]), [
-    [2, null, true],
+    [2, null, false],
     [5, 2_00, true],
     [10, null, false],
   ]);
   const usd = readTiersPayload(payload, "USD").sets.get("pro")!;
-  assert.deepEqual(usd.breaks.map((b) => b.offered), [true, false, false]);
+  assert.deepEqual(usd.breaks.map((b) => b.offered), [false, false, false]);
 });
 
 test("readTiersPayload is tolerant: junk is skipped piece by piece, never thrown, never widened", () => {
@@ -117,4 +117,15 @@ test("readTiersPayload is tolerant: junk is skipped piece by piece, never thrown
   );
   assert.deepEqual(out.sets.get("no-breaks")!.breaks, []);
   assert.deepEqual(out.sets.get("junk-currencies")!.breaks.map((b) => b.offered), [false]);
+});
+
+test("the save-time worst case also measures the config gated for Free (a global set's cart counting becomes `product`: 3 B longer)", () => {
+  const cart = config([{ id: "g", scope: "global", countAcross: "cart", breaks: [{ minQty: 3, percent: 10 }] }]);
+  const stored = buildShopFunctionConfig(cart, OPTS);
+  const worst = buildShopFunctionConfigWorstCase(cart);
+  assert.equal(worst.bytes, stored.bytes + 3);
+  assert.equal(worst.payload.modules.tiers.sets[0][1], "product");
+  // Anything else the gate does only shortens the payload: then the stored config is the worst case.
+  const line = config([{ id: "g", scope: "global", countAcross: "line", breaks: [{ minQty: 3, percent: 10 }] }]);
+  assert.equal(buildShopFunctionConfigWorstCase(line).bytes, buildShopFunctionConfig(line, OPTS).bytes);
 });
