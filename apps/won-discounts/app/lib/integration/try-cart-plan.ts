@@ -7,6 +7,7 @@
 //                  function gets null → planCart(…, null), exactly like checkout);
 //   node vars      buildNodeVars(automatic) → campaignInputFromVars at `now`;
 //   targeting      each line's refs FROM THE PRODUCT METAFIELD Shopify holds
+//                  (MVP 3: its `tierRef` too — the product's Pro tier set, K1/K3)
 //                  (`productRefs`, read by try-cart.server.ts — item 2: what
 //                  checkout reads, even while a collection change is still
 //                  being propagated) — rule refs and margin refs (MVP 2); only
@@ -73,6 +74,8 @@ export interface ProductRefs {
   variantRuleIds: Readonly<Record<string, readonly string[]>>;
   /** Numeric ids of its collections with a margin setting (MVP 2; absent = none). */
   marginRefs?: readonly string[];
+  /** The id of its Pro tier set (MVP 3, K1/K3; absent = the global set). */
+  tierRef?: string;
 }
 
 export interface TryCartPlanInput {
@@ -169,7 +172,7 @@ export function cartInvolvesCollectionRules(config: WonDiscountsConfig, lines: r
 export function parseProductRefs(value: string | null | undefined): ProductRefs {
   if (!value) return { ruleIds: [], variantRuleIds: {} };
   try {
-    const parsed = JSON.parse(value) as { ruleIds?: unknown; variantRuleIds?: unknown; marginRefs?: unknown };
+    const parsed = JSON.parse(value) as { ruleIds?: unknown; variantRuleIds?: unknown; marginRefs?: unknown; tierRef?: unknown };
     const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
     const variantRuleIds: Record<string, string[]> = {};
     if (parsed.variantRuleIds && typeof parsed.variantRuleIds === "object" && !Array.isArray(parsed.variantRuleIds)) {
@@ -179,7 +182,13 @@ export function parseProductRefs(value: string | null | undefined): ProductRefs 
       }
     }
     const marginRefs = strings(parsed.marginRefs);
-    return { ruleIds: strings(parsed.ruleIds), variantRuleIds, ...(marginRefs.length > 0 ? { marginRefs } : {}) };
+    const tierRef = typeof parsed.tierRef === "string" && parsed.tierRef !== "" ? parsed.tierRef : null;
+    return {
+      ruleIds: strings(parsed.ruleIds),
+      variantRuleIds,
+      ...(marginRefs.length > 0 ? { marginRefs } : {}),
+      ...(tierRef ? { tierRef } : {}),
+    };
   } catch {
     return { ruleIds: [], variantRuleIds: {} };
   }
@@ -200,7 +209,12 @@ function recomputedRefs(config: WonDiscountsConfig, lines: readonly PricedLine[]
   return new Map(
     [...index].map(([productId, entry]) => [
       productId,
-      { ruleIds: entry.ruleIds, variantRuleIds: entry.variantRuleIds, ...(entry.marginRefs ? { marginRefs: entry.marginRefs } : {}) },
+      {
+        ruleIds: entry.ruleIds,
+        variantRuleIds: entry.variantRuleIds,
+        ...(entry.marginRefs ? { marginRefs: entry.marginRefs } : {}),
+        ...(entry.tierRef ? { tierRef: entry.tierRef } : {}),
+      },
     ]),
   );
 }
@@ -289,6 +303,8 @@ export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput)
       ruleIds: entry ? [...entry.ruleIds] : [],
       ...(entry && Object.keys(entry.variantRuleIds).length > 0 ? { variantRuleIds: entry.variantRuleIds } : {}),
       ...(entry?.marginRefs && entry.marginRefs.length > 0 ? { marginRefs: entry.marginRefs } : {}),
+      // MVP 3 (K1/K3): the product's Pro tier set as the sync wrote it (absent = the global set).
+      ...(entry?.tierRef ? { tierRef: entry.tierRef } : {}),
       ...(line.unitCost !== undefined ? { unitCost: line.unitCost } : {}),
       ...(line.unitCostCurrency !== undefined ? { unitCostCurrency: line.unitCostCurrency } : {}),
       ...(line.outlet ? { outlet: true } : {}),
@@ -354,6 +370,8 @@ export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput)
         discount,
         total: line.subtotal - discount,
         ...(marginOn && capped(line) ? { marginCapped: true } : {}),
+        // MVP 3: the line's product discount is (or includes) a quantity tier — tagged, never its id.
+        ...(discount > 0 && (line.product?.components ?? []).some((c) => c.module === "tiers") ? { tier: true } : {}),
       };
     }),
     ...(marginOn

@@ -32,7 +32,9 @@
 //   loadStoreSignals        → embed (read_themes), sync (resyncIfPending,
 //                             bounded, REL-1), native detection (cached) and
 //                             the Ochrana marže card (AdminSignals.margin,
-//                             integration/margin.server.ts; Přehled only).
+//                             integration/margin.server.ts; Přehled only) and
+//                             the Množstevní slevy card (AdminSignals.tiers,
+//                             integration/tiers.server.ts; Přehled only).
 // Every config read-modify-write runs under one per-shop lock (lock.server.ts).
 // Checkout verification is still not wired and says so.
 
@@ -65,10 +67,11 @@ import {
   undoNativeDiscount,
 } from "./integration/native.server";
 import { loadMarginOverview } from "./integration/margin.server";
+import { loadTiersOverview } from "./integration/tiers.server";
 import { uiFailureFromSave } from "./integration/results";
 import { overviewSync, refreshTargetingNow, resyncNow as resyncStored } from "./integration/sync-status.server";
+import { cachedRead, clearReadCache, readMarketNames, readShopContext, type ShopContext } from "./integration/themes.server";
 import { runTryCartPlan, type TryCartRun } from "./integration/try-cart.server";
-import { canReadMarkets } from "./sync/save-and-sync.server";
 import { canonicalJson } from "./sync/util";
 
 export { resolvePlan } from "./plan.server";
@@ -86,73 +89,22 @@ export function graphqlFrom(admin: {
 
 // --- Shop context ------------------------------------------------------------------------
 // (The plan: resolvePlan, re-exported above from app/lib/plan.server.ts — the one BILL-1 resolver.)
+// The shop's currency + zone and its market names are read in integration/themes.server.ts
+// (the store reads every admin screen shares, MVP 3) and re-exported here for the existing callers.
 
-export interface ShopContext {
-  currencyCode: string | null;
-  /** IANA zone, e.g. "Europe/Prague". */
-  timezone: string | null;
-}
-
-/** Shop currency + time zone (schedule days, "today" in Vyzkoušet košík). Degrades to nulls (REL-1). */
-export async function readShopContext(graphql: AdminGraphql): Promise<ShopContext> {
-  try {
-    const json = (await graphql(`#graphql
-      query WonDiscountsShopContext { shop { currencyCode ianaTimezone } }`)) as {
-      data?: { shop?: { currencyCode?: unknown; ianaTimezone?: unknown } };
-    };
-    const shop = json?.data?.shop;
-    const currency = typeof shop?.currencyCode === "string" && /^[A-Z]{3}$/.test(shop.currencyCode) ? shop.currencyCode : null;
-    const tz = typeof shop?.ianaTimezone === "string" && shop.ianaTimezone ? shop.ianaTimezone : null;
-    return { currencyCode: currency, timezone: tz };
-  } catch {
-    return { currencyCode: null, timezone: null };
-  }
-}
+export { readMarketNames, readShopContext, type ShopContext } from "./integration/themes.server";
 
 // --- Short-lived per-shop cache (theme and market reads) ----------------------------------
+// One cache for every theme / market read (integration/themes.server.ts: the
+// embed check here, the theme look of Množstevní slevy and Vzhled, MVP 3).
 
-/** How long a theme / market read is reused (PERF-1, API-3): a Přehled reload doesn't re-read themes. */
-export const SIGNAL_CACHE_TTL_MS = 60_000;
+export { SIGNAL_CACHE_TTL_MS } from "./integration/themes.server";
 
-const signalCache = new Map<string, { at: number; value: unknown }>();
-
-async function cached<T>(key: string, load: () => Promise<T>, opts: { fresh?: boolean; now?: number } = {}): Promise<T> {
-  const now = opts.now ?? Date.now();
-  const hit = signalCache.get(key);
-  if (!opts.fresh && hit && now - hit.at < SIGNAL_CACHE_TTL_MS) return hit.value as T;
-  const value = await load();
-  signalCache.set(key, { at: now, value });
-  if (signalCache.size > 5000) signalCache.delete(signalCache.keys().next().value as string);
-  return value;
-}
+const cached = cachedRead;
 
 /** Test hook: forget every cached read. */
 export function clearSignalCache(): void {
-  signalCache.clear();
-}
-
-/**
- * The shop's market names by handle (read_markets — an OPTIONAL scope, item 9),
- * so the admin shows "Česko", not "cz" (§4c). Without the scope (known from
- * the session), or when the read fails, {} — the UI then falls back to the handle.
- */
-export async function readMarketNames(graphql: AdminGraphql, shop: string, scopes?: string | null): Promise<MarketNames> {
-  if (!canReadMarkets(scopes)) return {};
-  return cached(`markets:${shop}`, async () => {
-    try {
-      const json = (await graphql(`#graphql
-        query WonDiscountsMarketNames { markets(first: 50) { nodes { handle name } } }`)) as {
-        data?: { markets?: { nodes?: { handle?: unknown; name?: unknown }[] } };
-      };
-      const out: Record<string, string> = {};
-      for (const node of json?.data?.markets?.nodes ?? []) {
-        if (typeof node?.handle === "string" && typeof node?.name === "string" && node.name.trim()) out[node.handle] = node.name;
-      }
-      return out;
-    } catch {
-      return {};
-    }
-  });
+  clearReadCache();
 }
 
 /** Active code rules vs. the cap, for the list, the editor and Tarif (shown before a save refuses). */
@@ -278,7 +230,7 @@ export async function loadStoreSignals(
     nativeDeadlineMs?: number;
   },
 ): Promise<AdminSignals> {
-  const [base, sync, native, margin] = await Promise.all([
+  const [base, sync, native, margin, tiers] = await Promise.all([
     loadAdminSignals({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql: opts.graphql, fresh: opts.fresh }),
     opts.sync ? overviewSync(ctx, loaded, { timezone: opts.timezone, deadlineMs: opts.syncDeadlineMs }) : Promise.resolve(NOT_WIRED_SIGNALS.sync),
     // `fresh` re-reads the theme only (onboarding's focus re-check); detection keeps its 60 s cache.
@@ -288,8 +240,10 @@ export async function loadStoreSignals(
     opts.sync
       ? loadMarginOverview(ctx, loaded, { timezone: opts.timezone, trigger: true, shopCurrency: opts.shopCurrency }).catch(() => undefined)
       : Promise.resolve(undefined),
+    // Množstevní slevy card (MVP 3, Přehled only): the set in force + the table on the product page.
+    opts.sync ? loadTiersOverview(ctx, loaded, { scopes: opts.scopes }).catch(() => undefined) : Promise.resolve(undefined),
   ]);
-  return { ...base, sync, native, ...(margin ? { margin } : {}) };
+  return { ...base, sync, native, ...(margin ? { margin } : {}), ...(tiers ? { tiers } : {}) };
 }
 
 // --- One call per loader ------------------------------------------------------------------

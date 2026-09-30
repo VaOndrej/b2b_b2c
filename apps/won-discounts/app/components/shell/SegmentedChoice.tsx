@@ -6,11 +6,16 @@
 
 import { useId, useState } from "react";
 
+import { PlanBadge } from "./PlanBadge";
 import { WON_FONT, WON_INK, WON_MUTED, WON_SELECT } from "./tokens";
 
 export interface ChoiceOption {
   value: string;
   label: string;
+  /** This option cannot be picked (a Pro option on Free, §16a: visible, never hidden). */
+  disabled?: boolean;
+  /** Pro option: the amber plan marker next to its label (§16b). */
+  pro?: boolean;
 }
 
 export function SegmentedChoice({
@@ -49,6 +54,7 @@ export function SegmentedChoice({
       >
         {options.map((option) => {
           const active = option.value === value;
+          const off = disabled || option.disabled === true;
           return (
             <label
               key={option.value}
@@ -59,14 +65,14 @@ export function SegmentedChoice({
                 gap: 6,
                 padding: "7px 13px",
                 borderRadius: 9,
-                cursor: disabled ? "not-allowed" : "pointer",
+                cursor: off ? "not-allowed" : "pointer",
                 background: active ? "#ffffff" : "transparent",
                 border: active ? "1px solid #c4cad2" : "1px solid transparent",
                 boxShadow: active ? "0 1px 4px rgba(0,0,0,.14)" : "none",
                 fontSize: 13,
                 fontWeight: active ? 700 : 600,
                 color: active ? WON_INK : WON_MUTED,
-                opacity: disabled ? 0.6 : 1,
+                opacity: off ? 0.6 : 1,
               }}
             >
               <input
@@ -74,7 +80,7 @@ export function SegmentedChoice({
                 name={name}
                 value={option.value}
                 checked={active}
-                disabled={disabled}
+                disabled={off}
                 onChange={() => setValue(option.value)}
                 style={{ position: "absolute", opacity: 0, width: 1, height: 1, margin: 0, pointerEvents: "none" }}
               />
@@ -82,6 +88,7 @@ export function SegmentedChoice({
                 <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: 999, background: WON_SELECT }} />
               ) : null}
               {option.label}
+              {option.pro ? <PlanBadge tier="pro" locked={option.disabled === true} /> : null}
             </label>
           );
         })}

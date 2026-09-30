@@ -24,6 +24,8 @@ interface ResourcePickerOptions {
   type: "product" | "collection";
   multiple?: boolean;
   selectionIds?: { id: string }[];
+  /** `variants: false` hides the variants (a whole-product pick, e.g. a tier set's scope). Resource Picker API, verified with the Shopify dev MCP. */
+  filter?: { variants?: boolean };
 }
 
 interface ShopifyGlobal {
@@ -50,12 +52,17 @@ function str(v: unknown): string {
   return typeof v === "string" ? v : "";
 }
 
-export async function pickProducts(selected: readonly string[]): Promise<PickResult<PickedProduct>> {
+export async function pickProducts(selected: readonly string[], opts: { variants?: boolean } = {}): Promise<PickResult<PickedProduct>> {
   const bridge = appBridge();
   if (!bridge?.resourcePicker) return { ok: false, reason: "unavailable" };
   let picked: unknown[] | undefined;
   try {
-    picked = await bridge.resourcePicker({ type: "product", multiple: true, selectionIds: selected.map((id) => ({ id })) });
+    picked = await bridge.resourcePicker({
+      type: "product",
+      multiple: true,
+      selectionIds: selected.map((id) => ({ id })),
+      ...(opts.variants === false ? { filter: { variants: false } } : {}),
+    });
   } catch {
     return { ok: false, reason: "unavailable" };
   }

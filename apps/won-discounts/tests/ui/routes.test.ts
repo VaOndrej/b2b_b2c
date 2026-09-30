@@ -1,3 +1,5 @@
+// The admin preview (MVP 3) imports the storefront CSS / locales with Vite `?raw`: node needs the hook first.
+import "./support/raw-import.ts";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -35,8 +37,9 @@ test("every admin route authenticates in its loader and action", () => {
       assert.match(firstStatement ?? "", /authenticate\.admin\(request\)/, `${file} ${kind}: authenticate before anything else`);
     }
   }
-  // 10 loaders (app, index, discounts, editor, try-cart, onboarding, module, settings, plan, margin) + 5 actions.
-  assert.ok(checked >= 15, `checked ${checked} loaders/actions`);
+  // 12 loaders (app, index, discounts, editor, try-cart, onboarding, module, settings, plan, margin, tiers, appearance)
+  // + 8 actions (index, editor, try-cart, onboarding, margin, tiers, appearance, settings).
+  assert.ok(checked >= 20, `checked ${checked} loaders/actions`);
 });
 
 test("no admin route takes the shop from the request; the request context is built from the session shop", () => {
@@ -57,8 +60,8 @@ test("no admin route takes the shop from the request; the request context is bui
     assert.doesNotMatch(source, /\bsaveConfig\(/, `${file} writes config directly instead of through ui-actions`);
   }
   // Přehled (loader + action), Slevy a kódy, editor (loader + action), try-cart (loader + action), onboarding (loader + action),
-  // Ochrana marže (loader + action).
-  assert.ok(wired >= 11, `${wired} wired contexts`);
+  // Ochrana marže, Množstevní slevy, Vzhled, Nastavení (loader + action each).
+  assert.ok(wired >= 17, `${wired} wired contexts`);
 });
 
 test("the integration layer never reads a shop from a form or a URL", () => {
@@ -96,6 +99,9 @@ for (const [file, params] of [
   ["app.onboarding.tsx", {}],
   ["app.try-cart.tsx", {}],
   ["app.margin.tsx", {}],
+  ["app.tiers.tsx", {}],
+  ["app.appearance.tsx", {}],
+  ["app.settings.tsx", {}],
 ] as const) {
   test(`${file}: an unauthenticated POST is refused by Shopify auth and writes nothing`, async () => {
     const mod = (await import(`../../app/routes/${file}`)) as { action: Action };
@@ -125,5 +131,7 @@ for (const [file, params] of [
     const stored = (await loadConfig(db.prisma, SHOP)).config;
     assert.deepEqual(stored.modules.codes.rules, []);
     assert.equal(stored.modules.margin.enabled, false, "margin protection stays off");
+    assert.deepEqual(stored.modules.tiers.sets, [], "no tier set written");
+    assert.equal(stored.storefront.appearancePreset, "default");
   });
 }

@@ -184,6 +184,8 @@ export interface AdminSignals {
   targeting?: TargetingView;
   /** Ochrana marže card on Přehled (MVP 2). Absent = not known. */
   margin?: MarginOverviewView;
+  /** Množstevní slevy card on Přehled (MVP 3). Absent = not known. Additive (T5). */
+  tiers?: TiersOverviewView;
 }
 
 // --- Ochrana marže (MVP 2) ------------------------------------------------------------------
@@ -429,6 +431,8 @@ export interface CartPlanLineView {
   total: number;
   /** Margin protection lowered this line's discount (the explain sentence says why). */
   marginCapped?: boolean;
+  /** The line's product discount is a quantity tier (MVP 3; the explain sentence names the break). Additive (T5). */
+  tier?: boolean;
 }
 
 /** One human sentence from explainPlan (engine), tied to lines when it is about them. */
@@ -508,12 +512,19 @@ export type TiersBlockView =
   | { state: "unknown"; addUrl: string | null }
   | { state: "no_scope" };
 
-/** The storefront config metafield (K5) as the last sync left it. */
+/**
+ * The storefront config metafield (K5) as the last sync left it: `cv` (the
+ * config version it was built from, app/lib/config.server.ts configVersionToken)
+ * is the stored config's → synced; another version → pending; the last sync
+ * failed and the metafield is not current → failed; never written → missing;
+ * the metafield could not be read → unknown (additive, T5).
+ */
 export type StorefrontSyncView =
   | { state: "synced"; at: string }
   | { state: "pending" }
   | { state: "failed"; at: string; problems: UiText[] }
-  | { state: "missing" };
+  | { state: "missing" }
+  | { state: "unknown" };
 
 /**
  * The live theme's look for a faithful preview (C5 fallback: settings_data via
@@ -527,8 +538,10 @@ export interface ThemeTokensView {
   colorText: string | null;
   colorBackground: string | null;
   colorAccent: string | null;
-  /** Corner radius of buttons/inputs in px. */
+  /** Corner radius of inputs in px (the storefront block's CSS rounds its rows with the theme's input radius). */
   radius: number | null;
+  /** Body text size in px (Horizon: paragraph size; Dawn: 1.6rem × body scale). Additive (T5). */
+  fontSize?: number | null;
 }
 
 /** A real product for the preview and "Zobrazit na mém webu". */
@@ -540,6 +553,8 @@ export interface PreviewProductView {
   currency: string;
   /** Storefront URL of the product (null when the shop domain is unknown). */
   url: string | null;
+  /** The shop's money format (`{{amount_with_comma_separator}} Kč`), so the preview writes prices like the storefront. Additive (T5). */
+  moneyFormat?: string | null;
 }
 
 export interface TiersPreviewView {

@@ -1,7 +1,8 @@
 // The five modules + campaigns + appearance (docs/won-discounts/rozhodnuti.md,
-// Admin IA). MVP 1 ships Slevy a kódy, MVP 2 Ochrana marže; the rest are
-// visible but not built yet — each has a real page that says so and links
-// onward (§13b: never a dead end). Every module stays in the nav, built or not.
+// Admin IA). MVP 1 ships Slevy a kódy, MVP 2 Ochrana marže, MVP 3 Množstevní
+// slevy and Vzhled; the rest are visible but not built yet — each has a real
+// page that says so and links onward (§13b: never a dead end). Every module
+// stays in the nav, built or not.
 
 import type { OnboardingGoal } from "@won/core/discounts/config";
 
@@ -12,10 +13,10 @@ export const ADMIN_MODULES = ["tiers", "rewards", "outlet", "margin", "campaigns
 export type AdminModule = (typeof ADMIN_MODULES)[number];
 
 /** Modules with their own screen (a static route, e.g. app.margin.tsx, wins over app.$module.tsx). */
-export const BUILT_MODULES = ["margin"] as const satisfies readonly AdminModule[];
+export const BUILT_MODULES = ["margin", "tiers", "appearance"] as const satisfies readonly AdminModule[];
 
 /** Modules that are visible but not built yet (app.$module.tsx → ComingSoonScreen). */
-export const UPCOMING_MODULES = ["tiers", "rewards", "outlet", "campaigns", "appearance"] as const satisfies readonly AdminModule[];
+export const UPCOMING_MODULES = ["rewards", "outlet", "campaigns"] as const satisfies readonly AdminModule[];
 export type UpcomingModule = (typeof UPCOMING_MODULES)[number];
 
 export interface ModuleMeta {
@@ -37,11 +38,9 @@ export const MODULE_META: Readonly<Record<AdminModule, ModuleMeta>> = {
 
 /** The not-yet-built modules' meta (ComingSoonScreen, Přehled "Další moduly"). */
 export const UPCOMING_MODULE_META: Readonly<Record<UpcomingModule, ModuleMeta>> = {
-  tiers: MODULE_META.tiers,
   rewards: MODULE_META.rewards,
   outlet: MODULE_META.outlet,
   campaigns: MODULE_META.campaigns,
-  appearance: MODULE_META.appearance,
 };
 
 export function isUpcomingModule(v: unknown): v is UpcomingModule {

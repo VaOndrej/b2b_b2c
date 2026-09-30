@@ -6,7 +6,6 @@ import { resolveLocale } from "../i18n";
 import { LocaleProvider, useT } from "../i18n/context";
 import { MoveDialog, MoveDialogBody, moveDialogHeading } from "../components/MoveDialog";
 import { isUpcomingModule, type UpcomingModule } from "../components/model/modules";
-import { currencyViews } from "../components/model/markets";
 import { isRecipeKey } from "../components/model/rule-form";
 import type { NativeDiscountView } from "../components/model/types";
 import { WonSection } from "../components/shell/WonSection";
@@ -17,6 +16,8 @@ import { buildOverviewProps, OverviewScreen, type OverviewScreenProps } from "..
 import { PlanScreen, type PlanScreenProps } from "../components/screens/PlanScreen";
 import { buildRuleEditorProps, RuleEditorScreen, type RuleEditorScreenProps } from "../components/screens/RuleEditorScreen";
 import { SettingsScreen, type SettingsScreenProps } from "../components/screens/SettingsScreen";
+import { AppearanceScreen, type AppearanceScreenProps } from "../components/screens/AppearanceScreen";
+import { TiersScreen, type TiersScreenProps } from "../components/screens/TiersScreen";
 import { MarginScreen, type MarginScreenProps } from "../components/screens/MarginScreen";
 import { buildTryCartProps, TryCartScreen, type TryCartScreenProps } from "../components/screens/TryCartScreen";
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
@@ -52,6 +53,14 @@ import {
   devRuleMarginImpact,
   devTryCartPlanMargin,
   DEV_TRY_CART_MARGIN_LINES,
+  DEV_TIERS_FIXTURE,
+  devAppearanceScreen,
+  devSettingsScreen,
+  devTiersOverview,
+  devTiersResult,
+  devTiersScreen,
+  devTryCartPlanTiers,
+  DEV_TRY_CART_TIER_LINES,
   isDevHarnessEnabled,
 } from "../lib/dev-harness.server";
 
@@ -80,15 +89,24 @@ import {
 //                                 ?plan=pro the count of variants, else no number) | &margin=computing
 //   /dev/preview/try-cart        a REAL engine plan on fixture prices; ?state=empty | ?state=not-wired | ?state=warnings
 //                                 | ?state=margin (EUR cart, costs by an estimated rate, capped lines)
+//                                 | ?state=tiers (MVP 3: the whole-store tier on the caps; &plan=pro: the hoodie's Pro set)
 //   /dev/preview/margin          Ochrana marže: Free by default, ?plan=pro; ?state=running | failed-first |
 //                                 reauth | zero | off | stale | failed | too-large | many | impact-updating |
 //                                 impact-computing | gate (Free with collection settings stored);
 //                                 ?rule=<id> (Přehled zásahů of one rule, narrowed like the server does);
 //                                 ?result=refreshed | saved | invalid | unreadable | fixes (sanitizer notes of a save)
+//   /dev/preview/tiers           Množstevní slevy (MVP 3): Free by default, ?plan=pro; ?state=empty | dawn |
+//                                 failed | pending | block-unknown | no-scope; ?theme=dawn;
+//                                 ?result=saved | invalid | unreadable
+//   /dev/preview/appearance      Vzhled: the four looks on the theme; ?state=empty (an example set), ?theme=dawn
+//   /dev/preview/settings        Nastavení: combination switches + markets; ?state=changed, ?plan=pro
+//   /dev/preview/overview        …also ?state=tiers (the Množstevní slevy card, the table not on the page yet),
+//                                 ?state=tiers-empty
+//   /dev/preview/rule-editor     …also &tiers=1 (a product rule competing with a tier set: the tier note)
 //   /dev/preview/onboarding      ?step=1|2|3, ?embed=on
 //   /dev/preview/move-dialog
-//   /dev/preview/coming-soon     ?module=tiers|rewards|outlet|campaigns|appearance
-//   /dev/preview/plan, /dev/preview/settings
+//   /dev/preview/coming-soon     ?module=rewards|outlet|campaigns
+//   /dev/preview/plan
 //   Any screen: ?locale=en for the English admin.
 //
 // Double guard against ever reaching a non-development environment:
@@ -113,6 +131,8 @@ export const HARNESS_SCREENS = [
   "plan",
   "settings",
   "margin",
+  "tiers",
+  "appearance",
 ] as const;
 export type HarnessScreen = (typeof HARNESS_SCREENS)[number];
 
@@ -174,6 +194,13 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
           ruleSync: DEV_RULE_SYNC_OK,
         });
       }
+      if (state === "tiers" || state === "tiers-empty") {
+        return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
+          ...wired,
+          signals: { ...DEV_SIGNALS, native: devNative(locale), tiers: devTiersOverview(state === "tiers" ? "off" : "empty") },
+          ruleSync: DEV_RULE_SYNC_OK,
+        });
+      }
       if (state === "empty") return buildOverviewProps(DEV_EMPTY_FIXTURE, { readOnly, timezone: DEV_TIMEZONE, now: DEV_NOW });
       return buildOverviewProps(DEV_OVERVIEW_FIXTURE, { readOnly });
     }
@@ -209,7 +236,8 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       const recipe = q.get("recipe");
       const ruleParam = q.get("rule") ?? "dev-fixture-4";
       const f2 = ruleParam.startsWith("dev-f2-");
-      const props = buildRuleEditorProps(f2 ? DEV_F2_FIXTURE : DEV_OVERVIEW_FIXTURE, {
+      const withTiers = q.get("tiers") === "1";
+      const props = buildRuleEditorProps(withTiers ? DEV_TIERS_FIXTURE : f2 ? DEV_F2_FIXTURE : DEV_OVERVIEW_FIXTURE, {
         ...(f2 && q.get("plan") !== "pro" ? devGate(locale) : {}),
         ...(f2 ? { ruleSync: DEV_RULE_SYNC_F2, marketsScope: false } : {}),
         ruleId: ruleParam,
@@ -237,6 +265,9 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       if (state === "empty") return base;
       if (state === "warnings") return { ...base, lines: DEV_TRY_CART_LINES, codes: "VIP10", currency: "CZK:cz", plan: devTryCartPlanWarnings(locale) };
       if (state === "margin") return { ...base, lines: DEV_TRY_CART_MARGIN_LINES, currency: "EUR:sk", plan: devTryCartPlanMargin(locale) };
+      if (state === "tiers") {
+        return { ...base, lines: DEV_TRY_CART_TIER_LINES, currency: "CZK:cz", plan: devTryCartPlanTiers(locale, q.get("plan") === "pro" ? "pro" : "free") };
+      }
       if (state === "not-wired") {
         return { ...base, lines: DEV_TRY_CART_LINES, codes: "VIP10", result: { ok: false as const, reason: "not_wired" as const, what: "tryCart" as const } };
       }
@@ -264,7 +295,14 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
     case "plan":
       return { pro: q.get("plan") === "pro", codeRules: codeRuleLimit(DEV_OVERVIEW_FIXTURE), maxRules: CONFIG_LIMITS.rules };
     case "settings":
-      return { currencies: currencyViews(DEV_OVERVIEW_FIXTURE.markets, { marketNames: names }) };
+      return devSettingsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state });
+    case "tiers":
+      return {
+        ...devTiersScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, theme: q.get("theme") }),
+        result: devTiersResult(q.get("result")),
+      };
+    case "appearance":
+      return devAppearanceScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, theme: q.get("theme") });
     case "margin":
       return {
         ...devMarginScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, focusRuleId: q.get("rule") }),
@@ -338,7 +376,13 @@ export default function DevPreview() {
       content = <PlanScreen {...(data as PlanScreenProps)} />;
       break;
     case "settings":
-      content = <SettingsScreen {...(data as SettingsScreenProps)} />;
+      content = <SettingsScreen {...(data as SettingsScreenProps)} result={submitted} />;
+      break;
+    case "tiers":
+      content = <TiersScreen {...(data as TiersScreenProps)} result={submitted ?? (data as TiersScreenProps).result} />;
+      break;
+    case "appearance":
+      content = <AppearanceScreen {...(data as AppearanceScreenProps)} result={submitted} />;
       break;
     case "margin":
       content = <MarginScreen {...(data as MarginScreenProps)} result={submitted ?? (data as MarginScreenProps).result} />;

@@ -24,6 +24,7 @@ import { productRuleIndex, variantKey } from "@won/core/discounts/targeting";
 
 import type {
   AdminSignals,
+  AppearanceScreenData,
   CartPlanView,
   CostCoverageView,
   CostMirrorView,
@@ -34,10 +35,23 @@ import type {
   MarginScreenData,
   MarginSettingsView,
   NativeView,
+  PreviewProductView,
   RuleSyncMap,
+  SettingsScreenData,
+  StorefrontSyncView,
+  ThemeTokensView,
+  TiersBlockView,
+  TiersOverviewView,
+  TiersScreenData,
   TryCartLineView,
   UiResult,
 } from "../components/model/types";
+import { presetOf } from "../components/model/appearance";
+import { tiersBlockAddUrl } from "../components/model/embed";
+import { currencyViews } from "../components/model/markets";
+import { TIERS_FIELD } from "../components/model/tiers";
+import { sampleSet } from "./integration/appearance.server";
+import { tiersOverviewOf, tiersScreenFacts } from "./integration/tiers.server";
 import { lossText, undoCostTexts, warningText } from "./native/copy";
 import { isDevHarnessEnvironment } from "./dev-harness-env";
 import { wordIssues } from "./integration/issue-copy";
@@ -830,3 +844,232 @@ export const DEV_TRY_CART_MARGIN_LINES: TryCartLineView[] = [
     unitPrice: { CZK: 149_00, EUR: 6_00 },
   },
 ];
+
+// --- Množstevní slevy, Vzhled, Nastavení (MVP 3) ----------------------------------------------------
+
+const DEV_P1 = "gid://shopify/Product/1";
+
+/**
+ * The F2 fixture with quantity tiers: a whole-store set (od 3 ks −10 %, od 5
+ * ks −15 %, od 10 ks −20 %, variants of a product counted together), a Pro set
+ * for Mikina Won and Podzimní kolekce (an amount per item, counted across the
+ * cart; its top tier has no EUR value — MKT-1), margin protection on and the
+ * "highlight" look — run through the real reader.
+ */
+export const DEV_TIERS_FIXTURE: WonDiscountsConfig = readStoredConfig({
+  ...DEV_F2_FIXTURE,
+  modules: {
+    ...DEV_F2_FIXTURE.modules,
+    margin: { enabled: true, global: { minMarginPercent: 20, maxDiscountPercent: 40 }, perCollection: [] },
+    tiers: {
+      sets: [
+        {
+          id: "global",
+          scope: "global",
+          countAcross: "product",
+          breaks: [
+            { minQty: 3, percent: 10 },
+            { minQty: 5, percent: 15 },
+            { minQty: 10, percent: 20 },
+          ],
+        },
+        {
+          id: "t_devautumn",
+          scope: { productIds: [DEV_P1], collectionIds: [DEV_C7] },
+          countAcross: "cart",
+          breaks: [
+            { minQty: 2, amountOff: { CZK: 30_00, EUR: 1_20 } },
+            { minQty: 6, amountOff: { CZK: 60_00 } },
+          ],
+        },
+      ],
+    },
+  },
+  storefront: { appearancePreset: "highlight", cardPricesEnabled: false },
+});
+
+/** Shopify titles of the fixture's scoped products / collections. */
+const DEV_TIER_TITLES: ReadonlyMap<string, string> = new Map([
+  [DEV_P1, "Mikina Won"],
+  [DEV_C7, "Podzimní kolekce"],
+]);
+
+/** The live theme as readThemeLook reads it (tmp/e2e-themes Horizon / Dawn settings_data). */
+export const DEV_TOKENS_HORIZON: ThemeTokensView = {
+  themeName: "Horizon",
+  fontBody: "Inter",
+  fontHeading: "Inter",
+  colorText: "#000000",
+  colorBackground: "#ffffff",
+  colorAccent: null,
+  radius: 4,
+  fontSize: 14,
+};
+export const DEV_TOKENS_DAWN: ThemeTokensView = {
+  themeName: "Dawn",
+  fontBody: "Assistant",
+  fontHeading: "Assistant",
+  colorText: "#121212",
+  colorBackground: "#ffffff",
+  colorAccent: "#c0392b",
+  radius: 0,
+  fontSize: 16,
+};
+
+/** The accent is the block's own setting (readThemeLook): no block on the product page → none. */
+function devTokens(theme: string | null | undefined, block: TiersBlockView): ThemeTokensView {
+  const tokens = theme === "dawn" ? DEV_TOKENS_DAWN : DEV_TOKENS_HORIZON;
+  return block.state === "on" ? tokens : { ...tokens, colorAccent: null };
+}
+
+/** A real product for the preview (readPreviewProduct): the shop's money format included. */
+export const DEV_PREVIEW_PRODUCT: PreviewProductView = {
+  productId: DEV_P1,
+  title: "Mikina Won",
+  unitPrice: 790_00,
+  currency: "CZK",
+  url: `https://${DEV_SHOP}/products/mikina-won`,
+  moneyFormat: "{{amount_with_comma_separator}} Kč",
+};
+
+const DEV_ADD_BLOCK_URL = tiersBlockAddUrl(DEV_SHOP, "dev-api-key");
+
+function devBlock(state: string | null): TiersBlockView {
+  if (state === "empty" || state === "block-off") return { state: "off", addUrl: DEV_ADD_BLOCK_URL };
+  if (state === "block-unknown") return { state: "unknown", addUrl: DEV_ADD_BLOCK_URL };
+  if (state === "no-scope") return { state: "no_scope" };
+  return { state: "on", themeName: "Horizon" };
+}
+
+function devStorefront(state: string | null): StorefrontSyncView {
+  if (state === "empty") return { state: "missing" };
+  if (state === "pending") return { state: "pending" };
+  if (state === "failed") {
+    return { state: "failed", at: "2026-09-28T16:20:00", problems: [{ key: "sync.problem.config", params: { detail: "metafieldsSet: Throttled (3 attempts)" } }] };
+  }
+  return { state: "synced", at: "2026-09-28T16:20:00" };
+}
+
+/**
+ * Množstevní slevy as loadTiersScreen hands it over (the same pure
+ * tiersScreenFacts), per harness state:
+ *   default        Free: the whole-store set, the Pro set stored (not in force:
+ *                  the gate sentences), margin on, a product rule that competes,
+ *                  the table on Horizon's product page, the storefront current;
+ *   plan=pro       the Pro set editable (MKT-1 note: its top tier has no EUR);
+ *   empty          a new shop: no set (the preview shows an example), the table
+ *                  not on the product page (the deep link), nothing written yet;
+ *   dawn           Dawn's tokens + a block accent; failed / pending — the
+ *                  storefront config; block-unknown / no-scope — the block check.
+ */
+export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; theme?: string | null }): TiersScreenData {
+  const config = opts.state === "empty" ? DEV_EMPTY_FIXTURE : DEV_TIERS_FIXTURE;
+  return {
+    plan: opts.plan,
+    shopCurrency: "CZK",
+    configVersion: "dev-config-version",
+    currencies: currencyViews(config.markets, { marketNames: DEV_MARKET_NAMES }),
+    ...tiersScreenFacts(config, { plan: opts.plan, locale: opts.locale, titles: DEV_TIER_TITLES, syncable: true }),
+    block: devBlock(opts.state),
+    storefront: devStorefront(opts.state),
+    preview: {
+      tokens: devTokens(opts.theme === "dawn" || opts.state === "dawn" ? "dawn" : opts.theme, devBlock(opts.state)),
+      preset: presetOf(config.storefront.appearancePreset),
+      product: DEV_PREVIEW_PRODUCT,
+    },
+  };
+}
+
+/** Množstevní slevy action results (harness `?result=`). */
+export function devTiersResult(kind: string | null): UiResult | null {
+  switch (kind) {
+    case "saved":
+      return { ok: true, message: "saved", sync: { ok: true, problems: [], warnings: [] } };
+    case "invalid":
+      return {
+        ok: false,
+        reason: "invalid",
+        errors: [
+          { field: TIERS_FIELD.percent("global", "r1"), key: "tiers.error.notAscending", params: { min: 3 } },
+          { field: TIERS_FIELD.min("global", "r2"), key: "tiers.error.minTaken", params: { min: 5 } },
+        ],
+      };
+    case "unreadable":
+      return { ok: false, reason: "unreadable_config" };
+    default:
+      return null;
+  }
+}
+
+/** Vzhled as loadAppearanceScreen hands it over; `empty` = no set yet (the looks show an example). */
+export function devAppearanceScreen(opts: { plan: "free" | "pro"; state: string | null; theme?: string | null }): AppearanceScreenData {
+  const config = opts.state === "empty" ? DEV_EMPTY_FIXTURE : DEV_TIERS_FIXTURE;
+  return {
+    plan: opts.plan,
+    configVersion: "dev-config-version",
+    preset: presetOf(config.storefront.appearancePreset),
+    tokens: devTokens(opts.theme, devBlock(opts.state)),
+    sample: sampleSet(config),
+    product: DEV_PREVIEW_PRODUCT,
+    block: devBlock(opts.state),
+    embed: opts.state === "empty" ? DEV_EMBED_OFF : DEV_EMBED_ON,
+  };
+}
+
+/** Nastavení: the switches as stored (`changed` = two switched off, as a shop may have them). */
+export function devSettingsScreen(opts: { plan: "free" | "pro"; state: string | null }): SettingsScreenData {
+  const c = DEFAULT_CONFIG.engine.combination;
+  const combination = {
+    outletWithAnything: c.outletWithAnything,
+    productWithOrder: c.productWithOrder,
+    productWithShipping: c.productWithShipping,
+    orderWithShipping: c.orderWithShipping,
+  };
+  return {
+    plan: opts.plan,
+    configVersion: "dev-config-version",
+    currencies: currencyViews(DEV_OVERVIEW_FIXTURE.markets, { marketNames: DEV_MARKET_NAMES }),
+    combination: opts.state === "changed" ? { ...combination, productWithOrder: false, productWithShipping: false } : combination,
+  };
+}
+
+/** The Přehled card (AdminSignals.tiers): the whole-store set in force, the table not on the product page yet. */
+export function devTiersOverview(state: "on" | "off" | "empty", plan: "free" | "pro" = "free"): TiersOverviewView {
+  return tiersOverviewOf(state === "empty" ? DEV_EMPTY_FIXTURE : DEV_TIERS_FIXTURE, plan, state === "on" ? devBlock(null) : devBlock("block-off"));
+}
+
+/** The cart of devTryCartPlanTiers: 4 caps reach the whole-store "od 3 ks −10 %", 2 hoodies are in the Pro set. */
+export const DEV_TRY_CART_TIER_LINES: TryCartLineView[] = [
+  { ...DEV_TRY_CART_LINES[0]!, quantity: 2 },
+  { ...DEV_TRY_CART_LINES[1]!, quantity: 4 },
+];
+
+/**
+ * Vyzkoušet košík with quantity tiers: the SAME planTryCart the action runs on
+ * DEV_TIERS_FIXTURE gated for the plan (BILL-1) — on Free the hoodie's Pro set is
+ * inert (no tier, K1), on Pro it gets that set through the product's tierRef;
+ * the caps get the whole-store set. Margin protection is on, no cost is known
+ * (the percent ceiling of 40 % does not lower a tier here).
+ */
+export function devTryCartPlanTiers(locale: "cs" | "en", plan: "free" | "pro" = "free"): CartPlanView {
+  const gated = gateConfigForPlan(DEV_TIERS_FIXTURE, plan, { now: "2026-09-28T14:00:00" }).config;
+  return planTryCart(gated, {
+    lines: DEV_TRY_CART_TIER_LINES.map((line) => ({
+      variantId: line.variantId,
+      productId: line.productId,
+      title: line.variantTitle ? `${line.title} (${line.variantTitle})` : line.title,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice.CZK ?? 0,
+      collectionIds: [],
+    })),
+    currency: "CZK",
+    countryCode: "CZ",
+    codes: [],
+    date: "2026-09-28",
+    time: "14:00:00",
+    shopTimezone: DEV_TIMEZONE,
+    locale,
+    market: DEV_MARKET_NAMES.cz,
+    shopCurrency: "CZK",
+  });
+}

@@ -332,7 +332,8 @@ export function TryCartScreen(props: TryCartScreenProps) {
                         <s-text type="strong">
                           {line.title} × {line.quantity}
                         </s-text>
-                        {line.marginCapped ? <MarginCappedChip /> : null}
+                        {line.tier ? <LineChip label={t("tryCart.tier")} /> : null}
+                        {line.marginCapped ? <LineChip label={t("tryCart.margin.capped")} /> : null}
                       </span>
                       <span style={{ fontFamily: WON_FONT, fontSize: 13 }}>
                         {line.discount > 0 ? (
@@ -380,8 +381,8 @@ export function TryCartScreen(props: TryCartScreenProps) {
  * it says from what, to what and why). Neutral ink, never red: protection
  * working is not a problem (§11a), and never amber: it is not a plan marker.
  */
-function MarginCappedChip() {
-  const { t } = useT();
+/** A quiet tag on a cart line: what shaped its discount (a quantity tier, the margin floor). Neutral, never a status colour. */
+function LineChip({ label }: { label: string }) {
   return (
     <span
       style={{
@@ -397,7 +398,7 @@ function MarginCappedChip() {
         border: "1px solid #c9d0d8",
       }}
     >
-      {t("tryCart.margin.capped")}
+      {label}
     </span>
   );
 }

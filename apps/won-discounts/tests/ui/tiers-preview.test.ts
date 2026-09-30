@@ -1,0 +1,98 @@
+// The admin preview imports the storefront CSS / locales with Vite `?raw`: node needs the hook first.
+import "./support/raw-import.ts";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { test } from "node:test";
+import { fileURLToPath } from "node:url";
+
+import { createElement, type ComponentProps } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+
+import type { TierSetView } from "../../app/components/model/types.ts";
+
+// The faithful preview of the quantity-tier block (MVP 3, doctrine A1/A4, C5):
+// the storefront's own markup (K8), CSS (confined to the preview) and texts
+// (the extension's locales — so the admin never words the block differently
+// from the storefront), on the live theme's tokens.
+
+const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const LOCALES = path.join(APP, "extensions/won-discounts-storefront/locales");
+
+const SET: TierSetView = {
+  id: "global",
+  scope: { kind: "global" },
+  countAcross: "line",
+  breaks: [
+    { minQty: 3, kind: "percent", percent: 10, amount: {} },
+    { minQty: 5, kind: "percent", percent: 12.5, amount: {} },
+  ],
+};
+
+async function preview(props: Record<string, unknown>, locale: "cs" | "en" = "cs"): Promise<string> {
+  const { TiersPreview } = await import("../../app/components/tiers/TiersPreview.tsx");
+  const { LocaleProvider } = await import("../../app/i18n/context.tsx");
+  const providerProps = { locale } as ComponentProps<typeof LocaleProvider>;
+  return renderToStaticMarkup(createElement(LocaleProvider, providerProps, createElement(TiersPreview, props as never)));
+}
+
+test("every storefront text the preview uses exists in each extension locale (cs, sk, en) — the preview never invents copy", async () => {
+  const { STOREFRONT_TEXT_KEYS } = await import("../../app/components/tiers/TiersPreview.tsx");
+  for (const file of ["cs.json", "sk.json", "en.default.json"]) {
+    const tiers = (JSON.parse(readFileSync(path.join(LOCALES, file), "utf8")) as { tiers?: Record<string, string> }).tiers ?? {};
+    for (const key of STOREFRONT_TEXT_KEYS) assert.equal(typeof tiers[key], "string", `${file}: tiers.${key}`);
+  }
+});
+
+test("K8 markup with the storefront's texts, the shop's money format, the theme tokens and the block's accent", async () => {
+  const html = await preview({
+    set: SET,
+    preset: "chips",
+    tokens: { themeName: "Dawn", fontBody: "Assistant", fontHeading: null, colorText: "#121212", colorBackground: "#fafafa", colorAccent: "#c0392b", radius: 6, fontSize: 16 },
+    product: { productId: "gid://shopify/Product/1", title: "Mikina", unitPrice: 1000_00, currency: "CZK", url: null, moneyFormat: "{{amount_with_comma_separator}} Kč" },
+    quantity: 5,
+  });
+  assert.match(html, /<div class="won-tiers won-tiers--chips" data-won-discounts-tiers="" data-state="ready" data-set-id="global" data-count-mode="line" data-preset="chips" style="--won-tiers-accent:#c0392b">/);
+  assert.match(html, /<p class="won-tiers__heading">Množstevní sleva<\/p>/);
+  assert.match(html, /<li class="won-tiers__row" data-won-discounts-tier-row="" data-min="3" data-active="false">/);
+  assert.match(html, /data-min="5" data-active="true"/);
+  assert.match(html, /−12,5\u00a0%/, "one decimal, a decimal comma (cs)");
+  assert.match(html, /875,00 Kč\/ks/);
+  assert.match(html, /data-unit-cents="87500"/);
+  assert.match(html, /5\u00a0ks za 4\.375,00 Kč \(875,00 Kč\/ks\)/);
+  assert.match(html, /<p class="won-tiers__next" data-won-discounts-tier-next="" hidden="">/, "no next tier at the top");
+  // The theme page around it: font, colors, the input radius variables the block CSS reads.
+  assert.match(html, /font-family:&quot;Assistant&quot;/);
+  assert.match(html, /background:#fafafa/);
+  assert.match(html, /--style-border-radius-inputs:6px;--inputs-radius:6px/);
+  assert.match(html, /Barvy a písmo z tématu Dawn\./);
+});
+
+test("no set yet → the labelled example; English admin → the English storefront texts; no theme → said", async () => {
+  const html = await preview({ set: null, preset: "default", tokens: null, product: null, currency: "EUR" }, "en");
+  assert.match(html, /Example: you have no tiers yet\./);
+  assert.match(html, /Quantity discount/);
+  assert.match(html, /From 3 items/);
+  assert.match(html, /−10%/);
+  assert.match(html, /The theme could not be read/);
+  assert.match(html, /Sample product/);
+  assert.doesNotMatch(html, /\{(min|pct|price|qty|total|count)\}/, "every placeholder filled");
+});
+
+test("a set with nothing offered in the currency (MKT-1) renders the block empty and hidden, and says why", async () => {
+  const html = await preview({
+    set: { ...SET, breaks: [{ minQty: 2, kind: "amount", percent: null, amount: { EUR: 100 } }] },
+    preset: "default",
+    tokens: null,
+    product: { productId: "p", title: "", unitPrice: 5000, currency: "CZK", url: null },
+  });
+  assert.match(html, /data-state="empty"[^>]*hidden=""/);
+  assert.match(html, /V CZK se tahle sada nenabízí\./);
+  assert.match(html, /Produkt bez názvu/, "never an id for an untitled product");
+});
+
+test("the look switcher and the stepper are plain buttons: nothing in the preview posts with the page's form", async () => {
+  const html = await preview({ set: SET, preset: "default", tokens: null, product: null, controls: true });
+  assert.doesNotMatch(html, /<(input|select|textarea)\b/);
+  assert.equal((html.match(/<button type="button"/g) ?? []).length, 6, "4 looks + − and +");
+});

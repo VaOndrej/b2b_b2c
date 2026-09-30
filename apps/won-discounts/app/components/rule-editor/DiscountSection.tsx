@@ -13,6 +13,7 @@ import { statusText, type RuleStatus } from "../model/rule-status";
 import type { MarginRuleImpactView } from "../model/types";
 import { CustomerPreview } from "./CustomerPreview";
 import { MarginNote } from "./MarginNote";
+import { TiersNote } from "./TiersNote";
 import { FieldGrid, FieldMessage, PickerRow, Shown, type EditorView } from "./parts";
 
 export function DiscountSection({
@@ -24,6 +25,7 @@ export function DiscountSection({
   onPick,
   pickUnavailable,
   marginImpact,
+  tiersActive = false,
 }: {
   ed: EditorView;
   status: RuleStatus;
@@ -34,6 +36,8 @@ export function DiscountSection({
   pickUnavailable: boolean;
   /** Margin protection lowers the saved rule (ruleMarginImpact; Free without a number); null/absent = none or off. */
   marginImpact?: MarginRuleImpactView | null;
+  /** A tier set runs on this plan: a product rule competes with it (MVP 3, A1). */
+  tiersActive?: boolean;
 }) {
   const { draft, defaults, codes, errorFor, tr } = ed;
   const { t } = tr;
@@ -105,6 +109,7 @@ export function DiscountSection({
           </s-stack>
         </Shown>
         {marginImpact && draft.id !== "new" ? <MarginNote impact={marginImpact} ruleId={draft.id} /> : null}
+        {tiersActive && valueKind !== "freeShipping" && (targetKind === "products" || targetKind === "collections") ? <TiersNote /> : null}
         {defaults.outside.length > 0 ? (
           // §14a: values in currencies whose market is off stay stored; removing one is explicit.
           <s-stack direction="block" gap="small-200">

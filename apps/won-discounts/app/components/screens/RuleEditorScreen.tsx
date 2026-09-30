@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Form, useSubmit } from "react-router";
 
 import type { DiscountRule, WonDiscountsConfig } from "@won/core/discounts/config";
+import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
 
 import { useT } from "../../i18n/context";
 import { pickCollections, pickProducts } from "../model/app-bridge";
@@ -73,6 +74,17 @@ export interface RuleEditorScreenProps {
    * null/absent = protection off or none.
    */
   marginImpact?: MarginRuleImpactView | null;
+  /**
+   * Množstevní slevy (MVP 3): a tier set with tiers runs on this plan — a
+   * product rule then competes with the tier on the same line (A1: the better
+   * one wins, never both); the editor says so. Additive (T5).
+   */
+  tiersActive?: boolean;
+}
+
+/** A tier set with tiers runs on the plan (the gated config, BILL-1). */
+function tiersRun(config: WonDiscountsConfig, pro: boolean): boolean {
+  return gateConfigForPlan(config, pro ? "pro" : "free").config.modules.tiers.sets.some((s) => s.breaks.length > 0);
 }
 
 export function buildRuleEditorProps(
@@ -119,6 +131,7 @@ export function buildRuleEditorProps(
     ...(rule && opts.gateOff?.includes(rule.id) ? { gateOff: true } : {}),
     ...(opts.marketsScope !== undefined ? { marketsScope: opts.marketsScope } : {}),
     ...(opts.gatePending ? { gatePending: true } : {}),
+    ...(tiersRun(config, opts.pro) ? { tiersActive: true } : {}),
   };
 }
 
@@ -268,6 +281,7 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
             onPick={(kind) => void choose(kind)}
             pickUnavailable={pickUnavailable}
             marginImpact={mode === "edit" ? props.marginImpact : null}
+            tiersActive={props.tiersActive === true}
           />
           <ApplySection ed={ed} codeRules={codeRules} />
           <MoreOptionsSection ed={ed} defaultOpen={moreOpen} />

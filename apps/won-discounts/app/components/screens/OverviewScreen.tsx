@@ -5,8 +5,9 @@
 // screenshots the real screen (audit P2-5). Props are plain serializable data
 // built by buildOverviewProps(); every word comes from i18n + the core formatter.
 //
-// Ochrana marže (MVP 2) has its own card once the signals know its state
-// (AdminSignals.margin; absent = not known, no card).
+// Ochrana marže (MVP 2) and Množstevní slevy (MVP 3) have their own cards once
+// the signals know their state (AdminSignals.margin / .tiers; absent = not
+// known, no card).
 //
 // "Běží" is green only for a rule that really runs (model/rule-status.ts):
 // switched on, inside its schedule, evaluable at checkout, and THIS version of
@@ -22,6 +23,7 @@ import { useT } from "../../i18n/context";
 import type { Translator } from "../../i18n";
 import { NativeDiscountsPanel, nativeSummary } from "../NativeDiscounts";
 import { MarginOverviewCard } from "../margin/MarginOverviewCard";
+import { TiersOverviewCard } from "../tiers/TiersOverviewCard";
 import { RecipeGrid } from "../RecipeGrid";
 import { RuleRow } from "../RuleRow";
 import { collectWarnings, type RuleWarning } from "../model/describe";
@@ -280,6 +282,8 @@ export function OverviewScreen({
         </WonSection>
 
         {status.margin ? <MarginOverviewCard margin={status.margin} sync={status.sync} /> : null}
+
+        {status.tiers ? <TiersOverviewCard tiers={status.tiers} /> : null}
 
         <WonSection title={t("overview.native.title")} glyph="move" summary={nativeSummary(status.native, tr)} anchor="native">
           <NativeDiscountsPanel native={status.native} mode="each" result={nativeResult} />

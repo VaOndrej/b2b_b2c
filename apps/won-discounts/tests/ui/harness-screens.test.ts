@@ -1,3 +1,5 @@
+// The admin preview (MVP 3) imports the storefront CSS / locales with Vite `?raw`: node needs the hook first.
+import "./support/raw-import.ts";
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 
@@ -129,6 +131,105 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
   { path: "margin?plan=pro&locale=en", expect: [/Margin protection/, /tax included for tax-inclusive prices/, /Refresh cost prices/, /Where protection steps in/] },
   { path: "plan", expect: [/Tarif/, /Pro · 29 USD/, /nejvýš 20 aktivních s kódem/, /nejvýš 25 slevových funkcí/] },
   { path: "settings", expect: [/Trhy a měny/, /CZK \(Česko\)/] },
+  // MVP 3: Množstevní slevy — the set, the honest sentences, the faithful preview (the storefront's K8 markup + texts +
+  // money format), the table on the product page, the storefront config, the Pro sets (K1) and what Free does not run.
+  {
+    path: "tiers",
+    expect: [
+      /Sada pro celý obchod/,
+      /Od 3 ks −10\u00a0%, od 5 ks −15\u00a0%, od 10 ks −20\u00a0%/,
+      /Pro funkce není aktivní/,
+      /Produkty v ní ve Free nedostanou žádnou množstevní slevu/,
+      /Varianty produktu dohromady/,
+      /Ve Free se kusy počítají po produktech/,
+      /S jinou slevou na stejný produkt se nesčítá: platí ta, která dá zákazníkovi víc\./,
+      /Teď se to týká 1 slevy na produkty\./,
+      /href="\/app\/settings#combination"/,
+      /Ochrana marže je zapnutá: u produktů s nízkou marží může úroveň vyjít nižší/,
+      /Zboží ve výprodeji a dárky úroveň nedostanou/,
+      /class="won-tiers won-tiers--highlight"/,
+      /data-won-discounts-tiers=""/,
+      /data-count-mode="product"/,
+      /data-won-discounts-tier-row="" data-min="3" data-active="true"/,
+      /data-won-discounts-live-price="" data-unit-cents="71100"/,
+      /711,00 Kč\/ks/,
+      /3\u00a0ks za 2\.133,00 Kč \(711,00 Kč\/ks\)/,
+      /Ještě 2\u00a0ks a zaplatíte 671,50 Kč\/ks\./,
+      /Barvy a písmo z tématu Horizon/,
+      /Náhled nepočítá s ochranou marže/,
+      /Tabulka je na stránce produktu v tématu Horizon/,
+      /Web má aktuální nastavení \(propsáno 28\. 9\. 2026 16:20\)/,
+      /Zobrazit na mém webu/,
+      /Sady pro vybrané produkty a kolekce/,
+      /Produkt ve vlastní sadě dostane jen ji, ne sadu pro celý obchod/,
+      /Uloženo, ve Free neplatí/,
+    ],
+  },
+  {
+    path: "tiers?plan=pro",
+    expect: [/Vybrat produkty/, /Vybrat kolekce/, /Mikina Won/, /Podzimní kolekce/, /Celý košík/, /V EUR \(Slovensko\) se úroveň od 6 ks nenabízí/, /Od 2 ks −30\u00a0Kč \/ 1,20\u00a0€ za kus/],
+  },
+  {
+    path: "tiers?state=empty",
+    expect: [
+      /Bez množstevních slev/,
+      /Vypnuto/,
+      /Přidej první úroveň/,
+      /Ukázka: zatím nemáš žádnou úroveň/,
+      /Tabulka zatím na stránce produktu není/,
+      /Přidat tabulku na stránku produktu/,
+      /addAppBlockId=dev-api-key\/quantity_tiers&amp;target=mainSection/,
+      /Na web se zatím nic nepropsalo/,
+      /Kolekce Doplňky/,
+    ],
+  },
+  { path: "tiers?state=failed", expect: [/Propsání na web selhalo 28\. 9\. 2026 16:20/, /metafieldsSet: Throttled/] },
+  { path: "tiers?state=dawn", expect: [/Barvy a písmo z tématu Dawn/, /--won-tiers-accent:#c0392b/, /--inputs-radius:0px/] },
+  { path: "tiers?state=no-scope", expect: [/Bez přístupu k tématu nevidíme/] },
+  { path: "tiers?result=invalid", expect: [/Sleva tady musí být aspoň taková jako od 3 ks/, /Úroveň od 5 ks už v sadě je/] },
+  {
+    path: "tiers?locale=en",
+    expect: [/Set for the whole store/, /From 3 items −10%, from 5 items −15%, from 10 items −20%/, /Quantity discount/, /711,00 Kč each/, /Add table to the product page|View on my site/],
+  },
+  {
+    path: "appearance",
+    expect: [
+      /Vzhled na webu: Zvýrazněná úroveň/,
+      /name="preset"/,
+      /value="tiles"/,
+      /won-tiers--default/,
+      /won-tiers--highlight/,
+      /won-tiers--chips/,
+      /won-tiers--tiles/,
+      /Kompaktní štítky v řádku/,
+      /Uloženo/,
+      /Vlastní vzhled bude v tarifu Pro v další verzi/,
+      /Vložení aplikace do tématu/,
+    ],
+  },
+  { path: "appearance?state=empty", expect: [/Ukázka: zatím nemáš žádnou úroveň/, /Přidat tabulku na stránku produktu/, /Zapnout v editoru tématu/] },
+  {
+    path: "settings",
+    expect: [
+      /Kombinování slev/,
+      /Sčítá se: produkty s objednávkou, produkty s dopravou a objednávka s dopravou/,
+      /Dvě slevy na stejný produkt se nesčítají nikdy/,
+      /Zboží ve výprodeji další slevy nedostane/,
+      /Výprodej přijde v další verzi/,
+      /Obě se sčítají\. Sleva z objednávky se počítá z ceny po slevách na produkty/,
+      /href="\/app\/try-cart"/,
+    ],
+  },
+  { path: "settings?state=changed", expect: [/Sčítá se: objednávka s dopravou/, /Platí buď slevy na produkty, nebo sleva z objednávky/, /Když má košík slevu na produkt \(i množstevní\), sleva na dopravu se neuplatní/] },
+  { path: "settings?locale=en", expect: [/Combining discounts/, /Adds up: products with order, products with shipping and order with shipping/] },
+  { path: "overview?state=tiers", expect: [/Množstevní slevy/, /Od 3 ks −10\u00a0%, od 5 ks −15\u00a0%, od 10 ks −20\u00a0%/, /Tabulka zatím na stránce produktu není/, /Přidat tabulku na stránku produktu/, /Upravit úrovně/] },
+  { path: "overview?state=tiers-empty", expect: [/Zatím žádná úroveň\. Kup víc, zaplať míň/, /Nastavit množstevní slevy/] },
+  {
+    path: "try-cart?state=tiers",
+    expect: [/Čepice/, /Množstevní sleva \(od 3 ks −10\u00a0%\) ušetří 156\u00a0Kč/, /Přidej 1 ks a dostaneš −15\u00a0%/, />Množstevní sleva</],
+  },
+  { path: "try-cart?state=tiers&plan=pro", expect: [/Množstevní sleva \(od 2 ks −30\u00a0Kč za kus\) ušetří 60\u00a0Kč/] },
+  { path: "rule-editor?rule=dev-f2-collection&tiers=1", expect: [/Na produktech s množstevní slevou platí výhodnější z nich: tahle sleva, nebo úroveň\. Nesčítají se\./, /href="\/app\/tiers"/] },
   {
     path: "overview?state=live&locale=en",
     expect: [/What&#x27;s running|What's running/, /Discounts outside Won/, /Move all \(2\)/, /Scheduled from 27 Nov 2026/],
@@ -177,9 +278,39 @@ for (const screen of SCREENS) {
   });
 }
 
-test("an unknown harness screen is a 404", async () => {
+test("an unknown harness screen is a 404; tiers and appearance are built modules now, not 'coming soon'", async () => {
   const { status } = await render("does-not-exist");
   assert.equal(status, 404);
+  assert.equal((await render("coming-soon?module=tiers")).status, 404);
+  assert.equal((await render("coming-soon?module=appearance")).status, 404);
+});
+
+test("the tier note is only for a product rule (an order rule does not compete with a tier)", async () => {
+  const { html } = await render("rule-editor?rule=dev-fixture-1&tiers=1");
+  assert.doesNotMatch(html, /Na produktech s množstevní slevou/);
+});
+
+test("MVP 3 screens: one save for the whole form, last on the page", async () => {
+  for (const path of ["tiers", "tiers?plan=pro", "appearance", "settings"]) {
+    const { html } = await render(path);
+    const submit = html.lastIndexOf('type="submit"');
+    assert.ok(submit > 0, `${path}: a submit button`);
+    assert.equal(html.indexOf('type="submit"'), submit, `${path}: exactly one submit button`);
+    assert.match(html, /data-save-bar/, `${path}: the App Bridge save bar`);
+  }
+});
+
+test("the preview is the storefront's markup (K8) with the storefront CSS confined to it — never a style for the admin", async () => {
+  const { html } = await render("tiers");
+  const style = /<style>([\s\S]*?)<\/style>/.exec(html)?.[1] ?? "";
+  assert.match(style, /^\.won-tiers-preview \{/, "every storefront rule nested under the preview scope");
+  assert.match(style, /\.won-tiers--chips \.won-tiers__row/);
+  // The markers the storefront script reads, in the K8 order.
+  const block = html.slice(html.indexOf('class="won-tiers won-tiers--'));
+  for (const marker of ["won-tiers__heading", "won-tiers__list", "won-tiers__row", "won-tiers__qty", "won-tiers__save", "won-tiers__unit", "won-tiers__live", "won-tiers__next"]) {
+    assert.ok(block.includes(marker), marker);
+  }
+  assert.match(block, /<ol class="won-tiers__list" role="list">/);
 });
 
 test("the harness action (forms posted in a preview) is guarded like the loader", async () => {

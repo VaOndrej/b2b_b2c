@@ -93,6 +93,16 @@ const COPY: Readonly<Record<string, IssueCopy | ((issue: ConfigIssue) => IssueCo
   too_many_rules: { key: "fix.too_many_rules", params: limit },
   too_many_tier_breaks: { key: "fix.too_many_tier_breaks", params: limit },
   too_many_tier_sets: { key: "fix.too_many_tier_sets", params: limit },
+  // MVP 3 (core config/tiers.ts, config/presentation.ts).
+  tier_break_without_quantity: { key: "fix.tier_break_without_quantity" },
+  tier_break_without_value: { key: "fix.tier_break_without_value", params: { min: "minQty" } },
+  tier_break_two_values: { key: "fix.tier_break_two_values", params: { min: "minQty" } },
+  duplicate_tier_break: { key: "fix.duplicate_tier_break", params: { min: "minQty" } },
+  duplicate_tier_set_id: { key: "fix.duplicate_tier_set_id" },
+  tier_break_other_kind: { key: "fix.tier_break_other_kind", params: { min: "minQty" } },
+  tier_break_lower_value: { key: "fix.tier_break_lower_value", params: { min: "minQty" } },
+  clamped_tier_quantity: { key: "fix.clamped_tier_quantity", params: { from: "value", to: "to", min: "min", max: "max" } },
+  unknown_appearance_preset: { key: "fix.unknown_appearance_preset" },
   unknown_onboarding_goal: { key: "fix.unknown_onboarding_goal" },
   value_target_mismatch: { key: "fix.value_target_mismatch" },
 };
