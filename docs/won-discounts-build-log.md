@@ -21,8 +21,12 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   zapne přes výběr země / `?country=SK` → ceny **EUR €8,95** fungují (Admin `contextualPricing` SK = 8.95 EUR).
   Ale produkty jsou v SK pořád **nedostupné** (`available: false`, `/cart/add.js` 422) → katalog trhu SK
   nejspíš neobsahuje produkty / Online Store publikaci (API appky to nevidí: `publishedInContext` chce
-  `read_publications`). Čeká na Ondřeje: Nastavení → Trhy → Slovensko → katalog/produkty (všechny nebo
-  `won-e2e-*`) + Online Store; doprava do SK (zóna); volitelně vlastní podsložka trhu (např. `/sk-sk`).
+  `read_publications`). **Příčina ověřena přes `shopify store execute` (Ondřejův CLI login, jen čtení):** trh
+  Slovensko je ACTIVE, EUR, katalog aktivní (autoPublish), simple-a `publishedInContext SK = true`, ale
+  **SK není v žádné dopravní zóně** (Obecný profil: Domestic US + International 27 zemí vč. CZ/DE, bez SK)
+  → produkty v SK nedostupné. Oprava: přidat Slovensko do zóny International (Nastavení → Doprava a
+  doručení → Obecný profil), nebo `deliveryProfileUpdate` přes CLI s „go“ od Ondřeje. `/sk` je jen jazyk,
+  trh SK se volí zemí (`?country=SK`); oba trhy sdílí doménu bez podsložky.
   Nutné pro MVP 4 (prahy CZ i SK) a pro SK scénář E2E marže (dnes přeskočený s důvodem).
 - `shopify app dev` běží s `WON_DEV_PLAN=pro` → před MVP 3 E2E restart bez něj (dev store je Free).
   Offline session appky na dev storu už existuje (webhooky fungují).
