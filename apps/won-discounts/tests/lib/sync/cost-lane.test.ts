@@ -175,6 +175,7 @@ test("the refused-write decision uses the settings checkout RUNS: a collection t
           steps: JSON.stringify([
             { step: "margin.too_large", ok: false, detail: "x", params: { collectionId: "gid://shopify/Collection/5", collection: "Velká", count: null } },
             { step: "products.scope", ok: true, detail: "x" },
+            { step: "shop_config.write", ok: true, detail: "x" },
           ]),
         },
       });

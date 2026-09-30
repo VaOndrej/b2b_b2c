@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 
+import { buildShopFunctionConfig, verifyShopFunctionConfig } from "@won/core/discounts/function-payload";
 import { buildMarginPayload, marginFloorUnit, resolveMargin } from "@won/core/discounts/margin";
-import { productRuleIndex } from "@won/core/discounts/targeting";
+import { decisiveMarginRefs, productRuleIndex } from "@won/core/discounts/targeting";
 
 import { bridgeMarginRefs, onlyAddsRefs } from "../../../app/lib/sync/products.ts";
-import { createSync } from "../../../app/lib/sync/sync.server.ts";
+import { operationName } from "../../../app/lib/sync/graphql.ts";
+import { marginTooLargeOf } from "../../../app/lib/sync/margin-fold.ts";
+import { backgroundProductPass, createSync, isSettingsSyncRunning, syncIdle } from "../../../app/lib/sync/sync.server.ts";
 import { createTestDatabase, type TestDatabase } from "../test-db.ts";
 import { FakeShopify } from "./fake-shopify.ts";
 import { autoRule, configWith, makeDeps } from "./helpers.ts";
@@ -86,7 +89,7 @@ test("margin collections are counted into the 10 000 limit FIRST: rule collectio
   assert.equal(result.steps.some((s) => s.step === "margin.too_large"), false, JSON.stringify(result.steps));
   const ruleStep = result.steps.find((s) => s.step === "products.too_large:r");
   assert.ok(ruleStep && !ruleStep.ok, "the RULE collection is the one left out (fail closed: less discount)");
-  assert.deepEqual(ruleStep!.params, { collections: "Collection 7", untitled: 0 }, "titles for the admin (the detail is for support)");
+  assert.deepEqual(ruleStep!.params, { collection: "Collection 7", count: 1 }, "a title for the admin (the detail is for support)");
   const shopConfig = deps.log.shopConfigs.at(-1)!;
   assert.equal(shopConfig.modules.margin.global.minMarginPercent, 10, "nothing folded: the margin collection fits");
 });
@@ -273,39 +276,20 @@ test("protection on and Shopify gives no shop currency → nothing is written, t
   assert.equal(off.ok, true, JSON.stringify(off.errors));
 });
 
-// --- Fix round 2 -----------------------------------------------------------------------------------
+// --- Fix rounds 2 + 3: the marginRef bridge across the flip ------------------------------------------
 
-/** The effective values a collection has in a margin module (an empty field = the global value). */
-type Mod = { enabled: boolean; global: { minMarginPercent?: number; maxDiscountPercent: number }; perCollection: { collectionId: string; minMarginPercent?: number; maxDiscountPercent?: number }[] };
-
-/** Decisive refs like the core's (the max effective min-margin and the min effective max-discount), independent of the core build. */
-function decisive(margin: Mod, members: readonly string[]): string[] {
-  const keyed = margin.perCollection.filter((o) => members.includes(o.collectionId) && (o.minMarginPercent !== undefined || o.maxDiscountPercent !== undefined));
-  if (keyed.length === 0) return [];
-  const m = (o: Mod["perCollection"][number]) => o.minMarginPercent ?? margin.global.minMarginPercent ?? 0;
-  const p = (o: Mod["perCollection"][number]) => o.maxDiscountPercent ?? margin.global.maxDiscountPercent;
-  const key = (o: Mod["perCollection"][number]) => o.collectionId.split("/").pop()!;
-  const strictM = Math.max(...keyed.map(m));
-  const strictP = Math.min(...keyed.map(p));
-  const both = keyed.find((o) => m(o) === strictM && p(o) === strictP);
-  if (both) return [key(both)];
-  return [key(keyed.find((o) => m(o) === strictM)!), key(keyed.find((o) => p(o) === strictP)!)].sort();
-}
-
-/** Real config targeting by the fake builders, with the decisive marginRefs added. */
-function decisiveDeps(fake: FakeShopify) {
-  const deps = makeDeps(fake, db.prisma, { plan: async () => "pro" });
-  const base = deps.productRuleIndex;
-  deps.productRuleIndex = (config, products) => {
-    const index = base(config, products);
-    const margin = config.modules.margin as unknown as Mod;
-    for (const product of products) {
-      const refs = margin.enabled ? decisive(margin, product.collectionIds) : [];
-      const entry = index.get(product.productId)!;
-      index.set(product.productId, refs.length > 0 ? { ...entry, marginRefs: refs } : entry);
-    }
-    return index;
+/**
+ * The real engine end to end: core productRuleIndex (decisive marginRefs) and
+ * the real shop payload (it carries the margin, so the bridge knows the LIVE
+ * settings); the payloads built are logged like the test builders log them.
+ */
+function coreDeps(fake: FakeShopify) {
+  const deps = makeDeps(fake, db.prisma, { plan: async () => "pro", productRuleIndex: (config, products) => productRuleIndex(config, products) });
+  deps.buildShopFunctionConfig = (config, options) => {
+    deps.log.shopConfigs.push(config);
+    return buildShopFunctionConfig(config, options);
   };
+  deps.verifyShopFunctionConfig = (json) => verifyShopFunctionConfig(json);
   return deps;
 }
 
@@ -313,91 +297,134 @@ const refsWritten = (fake: FakeShopify, productId: string) =>
   fake
     .mutations()
     .filter((c) => c.op === "WonSyncMetafieldsSet")
-    .flatMap((c, i) => (c.variables as { metafields: { ownerId: string; key: string; value: string }[] }).metafields.map((mf) => ({ i, ...mf })))
+    .flatMap((c) => (c.variables as { metafields: { ownerId: string; key: string; value: string }[] }).metafields)
     .filter((mf) => mf.ownerId === productId || mf.key === "function_config")
     .map((mf) => (mf.key === "function_config" ? "CONFIG" : ((JSON.parse(mf.value) as { marginRefs?: string[] }).marginRefs ?? [])));
 
-test("a REPLACED marginRef crosses the flip as the union of the old and the new refs, pruned after it (the coordinator's example: never looser than both configs)", async () => {
+const C5 = "gid://shopify/Collection/5";
+const C6 = "gid://shopify/Collection/6";
+const C7 = "gid://shopify/Collection/7";
+const C8 = "gid://shopify/Collection/8";
+const byMin = (entries: [string, number][]) => entries.map(([collectionId, minMarginPercent]) => ({ collectionId, minMarginPercent }));
+
+test("a REPLACED marginRef crosses the flip as the new refs + the live config's decisive refs, pruned after it (A 30/B 20 → A 10/B 25)", async () => {
   const fake = new FakeShopify();
   const product = fake.addProduct(1);
   fake.addCollection(5, [product.id]);
   fake.addCollection(6, [product.id]);
-  const deps = decisiveDeps(fake);
-  const sync = createSync(deps);
-  const oldConfig = marginConfig({ perCollection: [{ collectionId: COLLECTION, minMarginPercent: 30 }, { collectionId: OTHER, minMarginPercent: 20 }] });
-  await sync.syncShop(shop, oldConfig);
+  const sync = createSync(coreDeps(fake));
+  await sync.syncShop(shop, marginConfig({ perCollection: byMin([[C5, 30], [C6, 20]]) }));
   assert.deepEqual(fake.productMetafield(product.id), { ruleIds: [], variantRuleIds: {}, marginRefs: ["5"] });
   fake.calls = [];
-  // (A rule change too: the test builders' payload carries no margin, and the config must flip.)
-  const newConfig = marginConfig({ rules: [autoRule("r2")], perCollection: [{ collectionId: COLLECTION, minMarginPercent: 10 }, { collectionId: OTHER, minMarginPercent: 25 }] });
-  const result = await sync.syncShop(shop, newConfig);
+  const result = await sync.syncShop(shop, marginConfig({ perCollection: byMin([[C5, 10], [C6, 25]]) }));
   assert.equal(result.ok, true, JSON.stringify(result.errors));
-  // Before the flip [5, 6] (the old config resolves 30, the new one 25), then the config, then [6].
+  // Before the flip [5, 6] (the live config resolves 30, the new one 25), then the config, then [6].
   assert.deepEqual(refsWritten(fake, product.id), [["5", "6"], "CONFIG", ["6"]], JSON.stringify(result.steps));
   assert.deepEqual(fake.productMetafield(product.id), { ruleIds: [], variantRuleIds: {}, marginRefs: ["6"] });
-  const pruned = result.steps.find((s) => s.step === "products.prune");
-  assert.ok(pruned?.ok, JSON.stringify(result.steps));
+  assert.ok(result.steps.find((s) => s.step === "products.prune")?.ok, JSON.stringify(result.steps));
 });
 
-test("the new config HELD after a bridge: the product keeps the union, which the still-running old config resolves at least as strict as before", async () => {
+test("the round-3 example: in C/D/E it carried [C], it LEFT C; live C40/D30/E20 → new C40/D10/E35: the bridge [D, E] keeps the live 30 (never the 20 a dropped-C bridge gave), held or not", async () => {
+  const setup = async (hold: boolean) => {
+    const fake = new FakeShopify();
+    const product = fake.addProduct(1);
+    const ruled = fake.addProduct(2);
+    fake.addCollection(5, [product.id]);
+    fake.addCollection(6, [product.id]);
+    fake.addCollection(7, [product.id]);
+    const sync = createSync(coreDeps(fake));
+    const rules = [autoRule("r", { target: { kind: "products", productIds: [ruled.id], variantIds: [] } })];
+    const live = marginConfig({ rules, perCollection: byMin([[C5, 40], [C6, 30], [C7, 20]]) });
+    await sync.syncShop(shop, live);
+    assert.deepEqual((fake.productMetafield(product.id) as { marginRefs: string[] }).marginRefs, ["5"]);
+    fake.collections.set(C5, []); // the product leaves C
+    fake.calls = [];
+    if (hold) fake.fail("WonSyncMetafieldsDelete", { userErrors: [{ message: "Internal error" }] }, 1); // the rule's product cannot be cleared
+    const result = await sync.syncShop(shop, marginConfig({ rules: hold ? [] : rules, perCollection: byMin([[C5, 40], [C6, 10], [C7, 35]]) }));
+    return { fake, product, result, live };
+  };
+  const flipped = await setup(false);
+  assert.deepEqual(refsWritten(flipped.fake, flipped.product.id), [["6", "7"], "CONFIG", ["7"]], JSON.stringify(flipped.result.steps));
+  const held = await setup(true);
+  shop = `${shop}-held`;
+  assert.ok(held.result.steps.some((s) => s.step === "shop_config.write" && s.params?.held === "rule_refs"), JSON.stringify(held.result.steps));
+  const refs = (held.fake.productMetafield(held.product.id) as { marginRefs: string[] }).marginRefs;
+  assert.deepEqual(refs, ["6", "7"]);
+  assert.equal(resolveMargin(buildMarginPayload(held.live.modules.margin, "CZK"), refs)!.minMarginPercent, 30, "≥ min(live 30, new 35)");
+});
+
+test("a collection whose setting the new config drops is still read for the bridge's membership (a product that joined it gets the live floor across the flip)", async () => {
   const fake = new FakeShopify();
   const product = fake.addProduct(1);
-  const leaving = fake.addProduct(2);
-  fake.addCollection(5, [product.id]);
-  fake.addCollection(6, [product.id]);
-  const deps = decisiveDeps(fake);
-  const sync = createSync(deps);
-  const rules = [autoRule("r", { target: { kind: "products", productIds: [leaving.id], variantIds: [] } })];
-  const oldConfig = marginConfig({ rules, perCollection: [{ collectionId: COLLECTION, minMarginPercent: 30 }, { collectionId: OTHER, minMarginPercent: 20 }] });
-  await sync.syncShop(shop, oldConfig);
-  const before = fake.shopMetafieldValue("function_config");
-  fake.fail("WonSyncMetafieldsDelete", { userErrors: [{ message: "Internal error" }] }, 1); // the rule's product cannot be cleared
-  const result = await sync.syncShop(shop, marginConfig({ rules: [autoRule("r2")], perCollection: [{ collectionId: COLLECTION, minMarginPercent: 10 }, { collectionId: OTHER, minMarginPercent: 25 }] }));
-  assert.ok(result.pending.includes("stale_product_refs"));
-  assert.equal(fake.shopMetafieldValue("function_config"), before, "held");
-  assert.ok(result.steps.some((s) => s.step === "shop_config.write" && s.params?.held === "rule_refs"));
-  const refs = (fake.productMetafield(product.id) as { marginRefs: string[] }).marginRefs;
-  assert.deepEqual(refs, ["5", "6"]);
-  const oldMargin = buildMarginPayload(oldConfig.modules.margin, "CZK");
-  assert.equal(resolveMargin(oldMargin, refs)!.minMarginPercent, 30, "the old config (still running) resolves 30 — never the 20 a direct [6] would give");
+  fake.addCollection(8, []);
+  const sync = createSync(coreDeps(fake));
+  const ruleFor = (id: string) => autoRule(id, { target: { kind: "products", productIds: [product.id], variantIds: [] } });
+  // Live: global 10 %, collection 8 at 50 %. The product is not in it yet.
+  await sync.syncShop(shop, marginConfig({ rules: [ruleFor("r")], perCollection: byMin([[C8, 50]]) }));
+  fake.collections.set(C8, [product.id]); // it joins 8 (no refresh ran)
+  fake.calls = [];
+  // New: 8's setting goes, the global minimum rises to 45 %, and the product's rule changes (it is written in this sync).
+  const next = configWith([ruleFor("r2")], { modules: { codes: { rules: [ruleFor("r2")] }, margin: { enabled: true, global: { minMarginPercent: 45, maxDiscountPercent: 40 }, perCollection: [] } } });
+  const result = await sync.syncShop(shop, next);
+  assert.ok(fake.callsOf("WonSyncCollectionProducts").some((c) => (c.variables as { id: string }).id === C8), "8 is read (membership only)");
+  assert.equal(result.steps.some((s) => /too_large/.test(s.step)), false);
+  // Before the flip it carries [8] (the live config resolves 50 ≥ min(50, 45)), after it nothing.
+  assert.deepEqual(refsWritten(fake, product.id), [["8"], "CONFIG", []], JSON.stringify(result.steps));
+  assert.deepEqual(fake.productMetafield(product.id), { ruleIds: ["r2"], variantRuleIds: {} });
 });
 
-test("property: across the flip the bridge never resolves looser than the looser of the old and the new floor, and resolves exactly to the new one after it", () => {
-  let seed = 7;
+test("property (rounds 2 + 3): with random live/new settings and random joins and leaves, the bridge never resolves looser than min(live floor, new floor) for the product's collections under the LIVE config, and exactly the new floor under the NEW one — at most 4 refs", () => {
+  // mulberry32: a deterministic PRNG with good low bits (a failure always reproduces).
+  let a = 20260930 >>> 0;
   const rnd = (n: number) => {
-    seed = (seed * 1103515245 + 12345) % 2 ** 31;
-    return seed % n;
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return Math.floor((((t ^ (t >>> 14)) >>> 0) / 4294967296) * n);
   };
-  const maybe = (v: number) => (rnd(3) === 0 ? undefined : v);
-  const ids = ["gid://shopify/Collection/5", "gid://shopify/Collection/6", "gid://shopify/Collection/7"];
-  const moduleOf = (): Mod => ({
+  const ids = [C5, C6, C7, C8];
+  const key = (id: string) => id.split("/").pop()!;
+  const moduleOf = () => ({
     enabled: true,
     global: { minMarginPercent: rnd(40), maxDiscountPercent: 20 + rnd(80) },
-    perCollection: ids.map((collectionId) => ({ collectionId, minMarginPercent: maybe(rnd(60)), maxDiscountPercent: maybe(5 + rnd(90)) })),
+    // A collection may have no setting (never listed, or dropped by the new config).
+    perCollection: ids
+      .filter(() => rnd(5) > 0)
+      .map((collectionId) => ({
+        collectionId,
+        ...(rnd(3) > 0 ? { minMarginPercent: rnd(60) } : {}),
+        ...(rnd(3) > 0 ? { maxDiscountPercent: 5 + rnd(90) } : {}),
+      })),
   });
-  const floor = (m: Mod, refs: string[], price: number, cost: number | null) => {
-    const settings = resolveMargin(buildMarginPayload(m as never, "CZK"), refs)!;
+  const floor = (payload: ReturnType<typeof buildMarginPayload>, refs: string[], price: number, cost: number | null) => {
+    const settings = resolveMargin(payload, refs)!;
     return marginFloorUnit({ unitPrice: price, costMinor: cost, ...settings }).floorUnit;
   };
+  let round2WouldLoosen = 0;
   let directWouldLoosen = 0;
-  for (let i = 0; i < 2_000; i += 1) {
-    const oldM = moduleOf();
-    const newM = moduleOf();
-    const members = ids.filter(() => rnd(2) === 0);
-    const current = decisive(oldM, members);
-    const next = decisive(newM, members);
-    const bridge = bridgeMarginRefs(current, next, new Set());
-    const all = members.map((id) => id.split("/").pop()!);
+  for (let i = 0; i < 3_000; i += 1) {
+    const live = buildMarginPayload(moduleOf() as never, "CZK");
+    const next = buildMarginPayload(moduleOf() as never, "CZK");
+    const before = ids.filter(() => rnd(2) === 0).map(key);
+    const carried = decisiveMarginRefs(live, before); // what the product carries under the live config
+    const members = [...before.filter(() => rnd(4) > 0), ...ids.map(key).filter((k) => !before.includes(k) && rnd(4) === 0)]; // leaves and joins
+    const wanted = decisiveMarginRefs(next, members); // core productRuleIndex over its collections now
+    const bridge = bridgeMarginRefs(wanted, live, members);
+    assert.ok(bridge.length <= 4, `case ${i}: ${bridge}`);
+    const round2 = [...new Set([...wanted, ...carried.filter((ref) => members.includes(ref) || !ids.map(key).includes(ref))])];
     const price = 1_000 + rnd(9_000);
     for (const cost of [null, 100 + rnd(price)]) {
-      const oldTrue = floor(oldM, all, price, cost);
-      const newTrue = floor(newM, all, price, cost);
-      assert.ok(floor(oldM, bridge, price, cost) >= Math.min(oldTrue, newTrue), `old config, case ${i}`);
-      assert.equal(floor(newM, bridge, price, cost), newTrue, `new config, case ${i}`);
-      if (floor(oldM, next, price, cost) < Math.min(oldTrue, newTrue)) directWouldLoosen += 1;
+      const liveTrue = floor(live, members, price, cost);
+      const newTrue = floor(next, members, price, cost);
+      assert.ok(floor(live, bridge, price, cost) >= Math.min(liveTrue, newTrue), `live config, case ${i}`);
+      assert.equal(floor(next, bridge, price, cost), newTrue, `new config, case ${i}`);
+      if (floor(live, round2, price, cost) < Math.min(liveTrue, newTrue)) round2WouldLoosen += 1;
+      if (floor(live, wanted, price, cost) < Math.min(liveTrue, newTrue)) directWouldLoosen += 1;
     }
   }
-  assert.ok(directWouldLoosen > 0, "writing the new refs directly WOULD loosen some floors (what the bridge prevents)");
+  assert.ok(round2WouldLoosen > 0, "the round-2 bridge (carried refs minus the left ones) WOULD loosen some floors");
+  assert.ok(directWouldLoosen > 0, "writing the new refs directly WOULD loosen some floors");
 });
 
 test("a failed read of the targeted products holds the new config when a margin collection is in force — also with no product indexed yet (fresh shop)", async () => {
@@ -461,4 +488,139 @@ test("one refused product never blocks its batch (split per product): the others
   assert.deepEqual((fake.productMetafield(products[2]!.id) as { marginRefs?: string[] }).marginRefs, ["5"]);
   assert.ok(second.steps.some((s) => s.step === "shop_config.write" && s.params?.held === "margin_refs"), JSON.stringify(second.steps));
   assert.equal(fake.shopMetafieldValue("function_config"), before);
+});
+
+// --- Fix round 3: one source for "folded", the escalated refresh, the background count ------------------
+
+test("the fold every view uses is the LIVE config's (the applying run), never a newer products-only run", async () => {
+  const run = (steps: unknown[], minutesAgo: number) =>
+    db.prisma.syncRun.create({ data: { shop, ok: false, startedAt: new Date(Date.now() - minutesAgo * 60_000), steps: JSON.stringify(steps) } });
+  const tooLarge = { step: "margin.too_large", ok: false, detail: "x", params: { collectionId: C5, collection: "Velká", count: null } };
+  const applied = { step: "shop_config.write", ok: true, detail: "x" };
+  const scope = { step: "products.scope", ok: true, detail: "x" };
+  // Applied with the fold; a newer products-only refresh no longer reports it: checkout still runs the fold.
+  await run([tooLarge, scope, applied], 10);
+  await run([scope], 5);
+  assert.deepEqual(await marginTooLargeOf(db.prisma, shop), [{ collectionId: C5, title: "Velká", count: null }]);
+  // A newer products-only run that reports one the live config does not fold: not in force.
+  shop = `${shop}-b`;
+  await run([scope, applied], 10);
+  await run([tooLarge, scope], 5);
+  assert.deepEqual(await marginTooLargeOf(db.prisma, shop), []);
+});
+
+test("a refresh escalates to the full sync when a collection the live config folds FITS again (the payload unfolds), and not again once it matches", async () => {
+  const fake = new FakeShopify();
+  const a = fake.addProduct(1);
+  fake.addCollection(5, [a.id]);
+  fake.collectionCounts.set(C5, 12_000);
+  const { deps } = realDeps(fake);
+  const sync = createSync(deps);
+  const config = marginConfig({ perCollection: [{ collectionId: COLLECTION, minMarginPercent: 40 }] });
+  await sync.syncShop(shop, config);
+  assert.equal(deps.log.shopConfigs.at(-1)!.modules.margin.global.minMarginPercent, 40, "folded");
+  assert.equal((await marginTooLargeOf(db.prisma, shop)).length, 1);
+  fake.collectionCounts.delete(C5); // it shrank: 1 product
+  const refreshed = await sync.refreshProducts(shop, config);
+  assert.ok(refreshed.steps.some((s) => s.step === "shop_config.write" && s.ok), JSON.stringify(refreshed.steps.map((s) => s.step)));
+  assert.equal(deps.log.shopConfigs.at(-1)!.modules.margin.global.minMarginPercent, 10, "the live payload unfolds");
+  assert.deepEqual(await marginTooLargeOf(db.prisma, shop), [], "and every view follows it");
+  assert.deepEqual(fake.productMetafield(a.id), { ruleIds: [], variantRuleIds: {}, marginRefs: ["5"] });
+  const builds = deps.log.shopConfigs.length;
+  await sync.refreshProducts(shop, config);
+  assert.equal(deps.log.shopConfigs.length, builds, "matches now: products only");
+});
+
+/** Pause the fake at its next call of `op` (resolves `reached`), until `release()`. */
+function gate(fake: FakeShopify, op: string) {
+  const original = fake.graphql.bind(fake);
+  let reached!: () => void;
+  let release!: () => void;
+  const hit = new Promise<void>((resolve) => (reached = resolve));
+  const open = new Promise<void>((resolve) => (release = resolve));
+  let armed = true;
+  fake.graphql = (async (query: string, variables?: Record<string, unknown>) => {
+    if (armed && operationName(query) === op) {
+      armed = false;
+      reached();
+      await open;
+    }
+    return original(query, variables);
+  }) as typeof fake.graphql;
+  return { hit, release };
+}
+
+test("the escalated refresh counts as a settings sync while it runs (and keeps its lane), and never runs when a newer sync superseded it", async () => {
+  // Flags while the escalated full sync runs.
+  const fake = new FakeShopify();
+  const a = fake.addProduct(1);
+  fake.addCollection(5, [a.id]);
+  const { deps } = realDeps(fake);
+  const sync = createSync(deps);
+  const config = marginConfig({ perCollection: [{ collectionId: COLLECTION, minMarginPercent: 40 }] });
+  await sync.syncShop(shop, config);
+  fake.collectionCounts.set(C5, 12_000);
+  const paused = gate(fake, "WonSyncShop"); // the full sync's first call
+  await sync.refreshProducts(shop, config, { productWrites: "background" });
+  await paused.hit;
+  assert.equal(isSettingsSyncRunning(shop), true, "a settings sync runs");
+  assert.equal(backgroundProductPass(shop), "refresh", "still the refresh's lane");
+  paused.release();
+  await syncIdle(shop);
+  assert.equal(isSettingsSyncRunning(shop), false);
+  assert.equal(backgroundProductPass(shop), null);
+  assert.equal(deps.log.shopConfigs.at(-1)!.modules.margin.global.minMarginPercent, 40, "it folded");
+
+  // Superseded while deciding: the refresh does not run the full sync; the newer sync does (once).
+  shop = `${shop}-superseded`;
+  const fake2 = new FakeShopify();
+  const b = fake2.addProduct(1);
+  fake2.addCollection(5, [b.id]);
+  const { deps: deps2 } = realDeps(fake2);
+  const sync2 = createSync(deps2);
+  await sync2.syncShop(shop, config);
+  fake2.collectionCounts.set(C5, 12_000);
+  const sizes = gate(fake2, "WonSyncCollectionSizes"); // the refresh's size check
+  fake2.calls = [];
+  await sync2.refreshProducts(shop, config, { productWrites: "background" });
+  await sizes.hit;
+  const newer = sync2.syncShop(shop, config); // supersedes the refresh
+  sizes.release();
+  await newer;
+  await syncIdle(shop);
+  assert.equal(fake2.callsOf("WonSyncShop").length, 1, "one full sync: the newer one");
+});
+
+test("the background count says only the products that GAIN refs: a sync whose AFTER lane only prunes bridges reports none", async () => {
+  const fake = new FakeShopify();
+  const product = fake.addProduct(1);
+  fake.addCollection(5, [product.id]);
+  fake.addCollection(6, [product.id]);
+  const sync = createSync(coreDeps(fake));
+  await sync.syncShop(shop, marginConfig({ perCollection: byMin([[C5, 30], [C6, 20]]) }));
+  const result = await sync.syncShop(shop, marginConfig({ perCollection: byMin([[C5, 10], [C6, 25]]) }), { productWrites: "background" });
+  assert.ok(result.pending.includes("products_in_progress"), "the prune runs in the background");
+  assert.deepEqual(result.background, {}, "no 'Produkty, které slevu nově dostanou (N)' for a prune");
+  await syncIdle(shop);
+  assert.deepEqual(fake.productMetafield(product.id), { ruleIds: [], variantRuleIds: {}, marginRefs: ["6"] });
+});
+
+test("a breaker for shop-wide refusals: after 3 batches refused product by product, the rest is not split any more, the refusal is recorded once and the new config is held", async () => {
+  const fake = new FakeShopify();
+  const products = Array.from({ length: 80 }, (_, i) => fake.addProduct(100 + i));
+  const { deps } = realDeps(fake);
+  const sync = createSync(deps);
+  const target = { target: { kind: "products", productIds: products.map((p) => p.id), variantIds: [] } };
+  await sync.syncShop(shop, marginConfig({ rules: [autoRule("r", target)], perCollection: [] }));
+  for (const p of products) fake.refusedOwners.add(p.id);
+  fake.calls = [];
+  const before = fake.shopMetafieldValue("function_config");
+  // Every product only GAINS a rule (normally never held): Shopify refuses every write.
+  const result = await sync.syncShop(shop, marginConfig({ rules: [autoRule("r", target), autoRule("s", target)], perCollection: [] }));
+  const productSets = fake.callsOf("WonSyncMetafieldsSet").filter((c) => JSON.stringify(c.variables).includes('"product"'));
+  assert.equal(productSets.length, 3 * 26 + 1, "3 batches split (1 + 25 calls each), then the last batch as one call");
+  const set = result.steps.find((s) => s.step === "products.set");
+  assert.deepEqual(set?.params, { refused: 80, breaker: 1 }, JSON.stringify(set));
+  assert.ok(result.steps.some((s) => s.step === "shop_config.write" && s.params?.held === "products_refused"), JSON.stringify(result.steps));
+  assert.equal(fake.shopMetafieldValue("function_config"), before, "held");
 });

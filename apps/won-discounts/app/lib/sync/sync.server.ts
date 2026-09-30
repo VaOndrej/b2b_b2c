@@ -77,6 +77,7 @@
 //     syncing the same shop at once are not coordinated [unverified: MVP 1
 //     runs one instance]; adopt-before-create keeps it from duplicating nodes.
 
+import { readMarginPayload, type FunctionMarginPayload } from "@won/core/discounts/margin";
 import { gateConfigForPlan, type ShopPlan, type StrippedCapability } from "@won/core/discounts/plan-gate";
 
 import { SHOP_CONFIG_KEY, WON_NAMESPACE } from "./graphql";
@@ -98,6 +99,7 @@ import { clearSyncProgress } from "./progress";
 import { recordAppliedPlan, recordProductsSynced, recordShopTimezone } from "./sync-state.server";
 import { errorText, setMetafields, Transport } from "./transport";
 import type { ConfigView, PendingWork, SyncDeps, SyncResult, SyncStep } from "./types";
+import { foldedIn } from "./margin-fold";
 import { appliedRun, parseSteps, shopConfigApplied } from "./runs";
 import { sameJson } from "./util";
 
@@ -306,7 +308,8 @@ async function runSync(deps: SyncDeps, shop: string, config: ConfigView, options
   let background: SyncResult["background"];
   if (after && after.additions.length + after.prunes.length > 0 && options.productWrites === "background" && !rethrow) {
     pending.add("products_in_progress");
-    background = { products: after.additions.length + after.prunes.length };
+    // "Produkty, které slevu nově dostanou (N)": only the products that GAIN refs; pruned bridges are not news.
+    background = after.additions.length > 0 ? { products: after.additions.length } : {};
   } else if (after && !rethrow) {
     // Inline: the AFTER lane now (the shop config is already in place).
     try {
@@ -375,19 +378,27 @@ async function runBackgroundLane(
   return result;
 }
 
-/** Does the shop config live in Shopify already fold these margin collections (its applying run reported them too large)? */
-async function liveConfigFolds(deps: SyncDeps, shop: string, collectionIds: readonly string[]): Promise<boolean> {
+/**
+ * Does the shop config live in Shopify fold EXACTLY these margin collections
+ * (its applying run reported the same ones too large)? A difference either
+ * way — one grew past the limit, or one the live config folds fits again —
+ * means the live payload no longer matches what the admin and the product
+ * refs assume (audit fix round 3).
+ */
+async function liveFoldMatches(deps: SyncDeps, shop: string, collectionIds: readonly string[]): Promise<boolean> {
   const run = await appliedRun(deps.db, shop);
-  if (!run) return false;
-  const folded = new Set(run.steps.filter((step) => step.step === "margin.too_large").map((step) => String(step.params?.collectionId ?? "")));
-  return collectionIds.every((id) => folded.has(id));
+  const live = new Set(run ? foldedIn(run.steps).map((m) => m.collectionId) : []);
+  return live.size === new Set(collectionIds).size && collectionIds.every((id) => live.has(id));
 }
 
 /**
  * Products only (no shop config): the targeting refresh. Null = superseded by
  * a newer sync before it finished (nothing recorded; the newer one redoes it).
  * A margin collection that grew past the 10 000-product limit since the live
- * config was written escalates it to a full sync (the fold is in the payload).
+ * config was written — or one the live config folds that fits again —
+ * escalates it to a full sync in the same queue slot (the fold is in the
+ * payload): counted as a settings sync while it runs, the lane kept until it
+ * is done, and never when a newer sync superseded the refresh meanwhile.
  */
 async function runProductRefresh(
   deps: SyncDeps,
@@ -410,7 +421,7 @@ async function runProductRefresh(
     // Audit fix round 2: a margin collection that grew past the limit must be folded into the LIVE payload,
     // which a products-only refresh does not write — a full sync does it, unless the live config folds it already.
     const limits = await collectionLimits({ transport, config: gated, isCancelled: () => lane.cancelled });
-    if (limits.marginTooLarge.length > 0 && !(await liveConfigFolds(deps, shop, limits.marginTooLarge.map((m) => m.collectionId)))) {
+    if (!(await liveFoldMatches(deps, shop, limits.marginTooLarge.map((m) => m.collectionId)))) {
       escalate = true;
     } else {
       const result = await syncProducts({
@@ -432,12 +443,29 @@ async function runProductRefresh(
     if (error instanceof Response) rethrow = error;
     steps.push({ step: "products", ok: false, detail: `product targeting: ${errorText(error)}` });
   } finally {
-    if (lanes.get(shop) === lane) lanes.delete(shop);
-    clearSyncProgress(shop);
+    if (!escalate || rethrow) {
+      if (lanes.get(shop) === lane) lanes.delete(shop);
+      clearSyncProgress(shop);
+    }
   }
   if (escalate && !rethrow) {
-    // The whole sync, in this queue slot (it folds the payload and writes the refs in the right order).
-    return runSync(deps, shop, config, { configVersionId, productWrites: "inline" }, generations.get(shop) ?? 0);
+    try {
+      // A newer sync superseded this refresh meanwhile: it runs the whole sync itself.
+      if (lane.cancelled) return null;
+      // The whole sync, in this queue slot (it folds the payload and writes the refs in the right order):
+      // a settings sync while it runs (isSettingsSyncRunning), still this lane (backgroundProductPass).
+      settingsRuns.set(shop, (settingsRuns.get(shop) ?? 0) + 1);
+      try {
+        return await runSync(deps, shop, config, { configVersionId, productWrites: "inline" }, generations.get(shop) ?? 0);
+      } finally {
+        const left = (settingsRuns.get(shop) ?? 1) - 1;
+        if (left > 0) settingsRuns.set(shop, left);
+        else settingsRuns.delete(shop);
+      }
+    } finally {
+      if (lanes.get(shop) === lane) lanes.delete(shop);
+      clearSyncProgress(shop);
+    }
   }
   if (steps.length === 0) steps.push({ step: "products", ok: true, detail: "no targeted products and none to clean" });
   if (steps.some((step) => !step.ok)) pending.add("failed_steps");
@@ -506,7 +534,10 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
     return null;
   }
   // The collection size check, once: the product refs use `limits.config`, the payload `limits.payloadConfig` (P1-1).
-  const limits = await collectionLimits({ transport, config });
+  // The live config's margin collections are read too (membership for the marginRef bridge, audit fix round 3).
+  const liveMargin = shopState.functionConfig !== null ? liveMarginOf(shopState.functionConfig) : null;
+  const alsoRead = liveMargin?.enabled && liveMargin.col ? Object.keys(liveMargin.col).map((key) => `gid://shopify/Collection/${key}`) : [];
+  const limits = await collectionLimits({ transport, config, alsoRead });
   const payloadConfig = limits.payloadConfig;
   const payload = deps.buildShopFunctionConfig(payloadConfig, { now: nowLocal, shopTimezone, shopCurrency });
   if (!payload.fits) {
@@ -569,8 +600,9 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
     // No shop config in Shopify: the first sync after an install (or a reinstall) — check the index.
     verifyIndex: shopState.functionConfig === null,
     limits,
-    // The config flips after the BEFORE lane: marginRef changes carry a bridge across it (audit fix round 2).
-    bridge: storedJson !== null && !sameJson(storedJson, payload.json),
+    // The config flips after the BEFORE lane: marginRef changes carry a bridge across it, built with the
+    // margin settings of the config LIVE until the flip (audit fix rounds 2 + 3).
+    ...(storedJson !== null && !sameJson(storedJson, payload.json) ? { bridgeFrom: liveMarginOf(storedJson) } : {}),
   };
   let staleRisk = false;
   let holdReason: HoldReason = "products_unread";
@@ -626,7 +658,18 @@ const HOLD_DETAIL: Record<HoldReason, string> = {
   margin_refs:
     "held: the margin collections of some products could not be written, so the new config is not applied yet (the previous one stays); the next sync retries",
   products_unread: "held: the targeted products could not be read, so the new config is not applied yet (the previous one stays); the next sync retries",
+  products_refused:
+    "held: Shopify refused every product write in several batches in a row, so the new config is not applied yet (the previous one stays); the next sync retries",
 };
+
+/** The margin settings a live shop config JSON carries, as the engine reads them (off when absent or unreadable). */
+function liveMarginOf(json: string): FunctionMarginPayload {
+  try {
+    return readMarginPayload((JSON.parse(json) as { modules?: { margin?: unknown } } | null)?.modules?.margin);
+  } catch {
+    return { enabled: false };
+  }
+}
 
 /** `campaignVarsVersion` of a shop config JSON (null = no campaign, or unreadable). */
 function campaignVersionOf(json: string): string | null {

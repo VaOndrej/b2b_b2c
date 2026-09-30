@@ -24,7 +24,8 @@ export function coverageSummary(coverage: CostCoverageView | null, mirror: CostM
 
 /** The collapsed list names its first products (§9d: collapsed still tells the truth). */
 function sampleSummary(sample: CostCoverageView["sample"], missing: number, tr: Translator): string {
-  const names = sample.slice(0, 3).map((p) => p.title || tr.t("common.untitledProduct"));
+  // Mid-list an untitled product is lower-case ("Ponožky, produkt bez názvu"); first, it starts the line.
+  const names = sample.slice(0, 3).map((p, i) => p.title || tr.t(i === 0 ? "common.untitledProduct" : "common.untitledProductInList"));
   const rest = Math.max(0, missing - names.length);
   return rest > 0 ? `${names.join(", ")} ${tr.t("margin.costs.more", { n: rest })}` : tr.list(names);
 }

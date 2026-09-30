@@ -19,7 +19,7 @@
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
 
 import { useT } from "../../i18n/context";
-import { MARGIN_FIELD, MARGIN_PERCENT_STEP, percentInput } from "../model/margin";
+import { COLLECTION_READ_LIMIT, MARGIN_FIELD, MARGIN_PERCENT_STEP, percentInput } from "../model/margin";
 import type { GateNoteView, MarginCollectionView, MarginTooLargeView } from "../model/types";
 import { FieldGrid, FieldMessage } from "../rule-editor/parts";
 import { boolAttr } from "../shell/attrs";
@@ -151,13 +151,13 @@ export function CollectionsSection({
                       </>
                     ) : null}
                     <div style={{ marginBottom: 8 }}>
-                      <s-text type="strong">{c.title}</s-text>
+                      <s-text type="strong">{c.title.trim() || t("common.untitledCollection")}</s-text>
                       <FieldMessage text={errorFor(`collectionId[${i}]`)} />
                       {pro && tooLargeOf.has(c.collectionId) ? (
                         <RowNote tone="attention">
                           {tooLargeOf.get(c.collectionId)!.count === null
-                            ? t("margin.collections.tooLargeUncounted")
-                            : t("margin.collections.tooLarge", { count: tooLargeOf.get(c.collectionId)!.count! })}
+                            ? t("margin.collections.tooLargeUncounted", { limit: COLLECTION_READ_LIMIT })
+                            : t("margin.collections.tooLarge", { count: tooLargeOf.get(c.collectionId)!.count!, limit: COLLECTION_READ_LIMIT })}
                         </RowNote>
                       ) : null}
                     </div>

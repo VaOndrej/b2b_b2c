@@ -6,6 +6,7 @@
 // The sentences are UiText (i18n key + params): the screen words them in the
 // page's language. Pure; unit tested (tests/integration/sync-copy.test.ts).
 
+import { MAX_COLLECTION_PRODUCTS } from "../sync/products";
 import type { SyncStep } from "../sync/types";
 import type { SyncOutcomeView, UiText } from "../../components/model/types";
 
@@ -48,24 +49,29 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
     return { key: "sync.problem.rule", params: { rule, detail } };
   }
   if (step.step.startsWith("products.too_large:")) {
-    // Titles from the size read (products.ts collectionLimits), never GIDs; the rest "kolekce bez názvu".
+    // Titles from the size read (products.ts collectionLimits), never GIDs; else "kolekce bez názvu".
     const rule = ruleLabel(step.step.slice("products.too_large:".length), names);
-    const collections = typeof step.params?.collections === "string" ? step.params.collections : "";
-    const untitled = typeof step.params?.untitled === "number" ? step.params.untitled : 0;
-    if (!collections) return { key: "sync.problem.collectionTooLargeUntitled", params: { rule } };
-    return { key: untitled > 0 ? "sync.problem.collectionTooLargeSomeUntitled" : "sync.problem.collectionTooLarge", params: { rule, collections } };
+    const collection = typeof step.params?.collection === "string" ? step.params.collection : "";
+    const count = typeof step.params?.count === "number" ? step.params.count : 1;
+    if (!collection) return { key: "sync.problem.collectionTooLargeUntitled", params: { rule, limit: MAX_COLLECTION_PRODUCTS } };
+    return count > 1
+      ? { key: "sync.problem.collectionTooLargeMany", params: { rule, collection, n: count - 1, limit: MAX_COLLECTION_PRODUCTS } }
+      : { key: "sync.problem.collectionTooLarge", params: { rule, collection, limit: MAX_COLLECTION_PRODUCTS } };
   }
   if (step.step === "margin.too_large") {
     // The collection's title and size (products.ts collectionLimits): the stricter value applies to the whole store.
     // An exact count is ≤ 10 000 (Shopify counts exactly only up to it): the margin collections read first used the budget.
     const collection = typeof step.params?.collection === "string" ? step.params.collection : "";
     const count = typeof step.params?.count === "number" ? step.params.count : null;
+    const limit = MAX_COLLECTION_PRODUCTS;
     if (!collection) {
-      return count === null ? { key: "sync.problem.marginTooLargeUncountedUntitled" } : { key: "sync.problem.marginTooLargeUntitled", params: { count } };
+      return count === null
+        ? { key: "sync.problem.marginTooLargeUncountedUntitled", params: { limit } }
+        : { key: "sync.problem.marginTooLargeUntitled", params: { count, limit } };
     }
     return count === null
-      ? { key: "sync.problem.marginTooLargeUncounted", params: { collection } }
-      : { key: "sync.problem.marginTooLarge", params: { collection, count } };
+      ? { key: "sync.problem.marginTooLargeUncounted", params: { collection, limit } }
+      : { key: "sync.problem.marginTooLarge", params: { collection, count, limit } };
   }
   switch (step.step) {
     case "shop.read":
@@ -85,6 +91,7 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
       if (step.params?.held === "margin_refs") return { key: "sync.problem.configHeldMargin" };
       if (step.params?.held === "rule_refs") return { key: "sync.problem.configHeldRules" };
       if (step.params?.held === "products_unread") return { key: "sync.problem.configHeldProducts" };
+      if (step.params?.held === "products_refused") return { key: "sync.problem.configHeldRefused" };
       return { key: "sync.problem.config", params: { detail } };
     case "shop_config.verify":
       return { key: "sync.problem.config", params: { detail } };
@@ -92,11 +99,13 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
       return /no valid previous config|could not restore/i.test(step.detail)
         ? { key: "sync.problem.configLost", params: { detail } }
         : { key: "sync.problem.config", params: { detail } };
+    case "products.prune":
+      // Bridges left after the flip: never a looser floor (the same one applies), retried by the next sync.
+      return { key: "sync.problem.productsPrune" };
     case "products":
     case "products.set":
     case "products.clear":
     case "products.add":
-    case "products.prune":
     case "products.index":
       // Products Shopify refused one by one (products.ts sendProductWrites): counted, never listed by id.
       if (typeof step.params?.refused === "number" && step.params.refused > 0) return { key: "sync.problem.productsRefused", params: { n: step.params.refused } };

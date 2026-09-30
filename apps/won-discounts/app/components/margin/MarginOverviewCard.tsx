@@ -12,7 +12,7 @@
 import { describeMarginSettings } from "@won/core/discounts/describe";
 
 import { useT } from "../../i18n/context";
-import { ceilingOnlyText, mirrorNeedsRefresh, mirrorText, percentText } from "../model/margin";
+import { ceilingOnlyText, COLLECTION_READ_LIMIT, mirrorNeedsRefresh, mirrorText, percentText } from "../model/margin";
 import { uiText } from "../model/result-copy";
 import { syncSettled } from "../model/signals";
 import type { MarginOverviewView, SyncView } from "../model/types";
@@ -91,11 +91,11 @@ export function MarginOverviewCard({ margin, sync }: { margin: MarginOverviewVie
               <RowNote key={c.collectionId}>
                 {c.title
                   ? c.count === null
-                    ? t("sync.problem.marginTooLargeUncounted", { collection: c.title })
-                    : t("sync.problem.marginTooLarge", { collection: c.title, count: c.count })
+                    ? t("sync.problem.marginTooLargeUncounted", { collection: c.title, limit: COLLECTION_READ_LIMIT })
+                    : t("sync.problem.marginTooLarge", { collection: c.title, count: c.count, limit: COLLECTION_READ_LIMIT })
                   : c.count === null
-                    ? t("sync.problem.marginTooLargeUncountedUntitled")
-                    : t("sync.problem.marginTooLargeUntitled", { count: c.count })}
+                    ? t("sync.problem.marginTooLargeUncountedUntitled", { limit: COLLECTION_READ_LIMIT })
+                    : t("sync.problem.marginTooLargeUntitled", { count: c.count, limit: COLLECTION_READ_LIMIT })}
               </RowNote>
             ))}
           </WonRow>

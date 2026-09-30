@@ -131,8 +131,9 @@ test("readMarginForm: the toggle, percents (a comma decimal too), collections in
       minMarginPercent: 12.5,
       maxDiscountPercent: 40,
       collections: [
-        { collectionId: COLLECTION, title: COLLECTION, minMarginPercent: 30, maxDiscountPercent: null },
-        { collectionId: "gid://shopify/Collection/6", title: "gid://shopify/Collection/6", minMarginPercent: null, maxDiscountPercent: 10 },
+        // Titles are never taken from the form, and never a GID: "" (the page reads them).
+        { collectionId: COLLECTION, title: "", minMarginPercent: 30, maxDiscountPercent: null },
+        { collectionId: "gid://shopify/Collection/6", title: "", minMarginPercent: null, maxDiscountPercent: 10 },
       ],
     },
   });
@@ -947,6 +948,7 @@ test("Try Cart runs what checkout runs: a margin collection too large to read is
       steps: JSON.stringify([
         { step: "margin.too_large", ok: false, detail: "x", params: { collectionId: COLLECTION, collection: "Zimní", count: null } },
         { step: "products.scope", ok: true, detail: "x" },
+            { step: "shop_config.write", ok: true, detail: "x" },
       ]),
     },
   });
@@ -971,6 +973,7 @@ test("Pro preview with protection OFF and a folded collection: the loader and th
       steps: JSON.stringify([
         { step: "margin.too_large", ok: false, detail: "x", params: { collectionId: COLLECTION, collection: "Zimní", count: null } },
         { step: "products.scope", ok: true, detail: "x" },
+            { step: "shop_config.write", ok: true, detail: "x" },
       ]),
     },
   });

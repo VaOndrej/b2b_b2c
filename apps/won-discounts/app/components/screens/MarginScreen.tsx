@@ -106,7 +106,7 @@ export function MarginScreen(props: MarginScreenProps) {
         const prev = typed.get(item.id) ?? known.get(item.id);
         return {
           collectionId: item.id,
-          title: item.title || prev?.title || item.id,
+          title: item.title || prev?.title || "",
           minMarginPercent: prev?.minMarginPercent ?? null,
           maxDiscountPercent: prev?.maxDiscountPercent ?? null,
         };

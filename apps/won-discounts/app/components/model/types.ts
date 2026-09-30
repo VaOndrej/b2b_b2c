@@ -212,7 +212,7 @@ export interface CostCoverageView {
 
 export interface MarginCollectionView {
   collectionId: string;
-  /** The collection's Shopify title (the id when unknown). */
+  /** The collection's Shopify title ("" when unknown: the screen says "Kolekce bez názvu", never the id). */
   title: string;
   minMarginPercent: number | null;
   maxDiscountPercent: number | null;

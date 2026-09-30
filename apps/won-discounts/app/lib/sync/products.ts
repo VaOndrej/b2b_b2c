@@ -84,8 +84,8 @@
 // invalidates every hash of the shop (payloadHash = null), so this run
 // re-verifies and rewrites them all.
 
-import { marginCollectionIds } from "@won/core/discounts/margin";
-import { parseRuleRef, productMetafieldValue, variantKey } from "@won/core/discounts/targeting";
+import { marginCollectionIds, type FunctionMarginPayload } from "@won/core/discounts/margin";
+import { decisiveMarginRefs, parseRuleRef, productMetafieldValue, variantKey } from "@won/core/discounts/targeting";
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import { PRODUCT_KEY, WON_NAMESPACE } from "./graphql";
@@ -212,12 +212,13 @@ export interface ProductSyncArgs {
   limits?: CollectionLimits;
   /**
    * The shop config flips after the BEFORE lane (a full sync whose payload
-   * differs from the live one): a product whose marginRefs change carries the
-   * BRIDGE (bridgeMarginRefs) across the flip and is pruned to its new refs
-   * in the AFTER lane. Absent/false (a products-only refresh, an unchanged
-   * payload): the new refs are written directly.
+   * differs from the live one): the margin settings of the config LIVE until
+   * the flip. A product whose marginRefs change carries the BRIDGE
+   * (bridgeMarginRefs) across the flip and is pruned to its new refs in the
+   * AFTER lane. Absent (a products-only refresh, an unchanged payload): the
+   * new refs are written directly.
    */
-  bridge?: boolean;
+  bridgeFrom?: FunctionMarginPayload;
   /**
    * Checked before every Shopify read and write: true stops the pass with
    * SyncCancelled (a products-only refresh superseded by a newer sync). The
@@ -267,7 +268,7 @@ export interface ProductPlan {
 }
 
 /** Why a BEFORE lane holds the new shop config (the admin words each: sync-copy.ts). */
-export type HoldReason = "rule_refs" | "margin_refs" | "products_unread";
+export type HoldReason = "rule_refs" | "margin_refs" | "products_unread" | "products_refused";
 
 export interface ProductSyncResult {
   steps: SyncStep[];
@@ -310,6 +311,14 @@ export interface CollectionLimits {
   payloadConfig: ConfigView;
   steps: SyncStep[];
   marginTooLarge: MarginTooLarge[];
+  /**
+   * Collections read ONLY to know the membership the bridge needs (the live
+   * config's margin collections the new config no longer has — `alsoRead`),
+   * those that fit after everything else: they carry no rule and no setting
+   * of the new config. One that does not fit is simply not read (the refs a
+   * product carries for it are then kept as they are).
+   */
+  alsoRead: string[];
 }
 
 /**
@@ -348,12 +357,18 @@ export function foldMarginCollections(config: ConfigView, dropped: ReadonlySet<s
  * unreadable → nothing left out (the paging backstop still stops a read that
  * runs past the limit).
  */
-export async function collectionLimits(args: Pick<ProductSyncArgs, "transport" | "config" | "isCancelled">): Promise<CollectionLimits> {
+export async function collectionLimits(
+  args: Pick<ProductSyncArgs, "transport" | "config" | "isCancelled"> & { alsoRead?: readonly string[] },
+): Promise<CollectionLimits> {
   const { transport, config } = args;
   const marginIds = marginCollectionIds(config.modules.margin);
   const marginSet = new Set(marginIds);
-  const ids = [...marginIds, ...[...targetScopes(config).collectionIds].filter((id) => !marginSet.has(id))];
-  const unchanged: CollectionLimits = { config, payloadConfig: config, steps: [], marginTooLarge: [] };
+  const configIds = [...marginIds, ...[...targetScopes(config).collectionIds].filter((id) => !marginSet.has(id))];
+  const configSet = new Set(configIds);
+  // Read for membership only, counted LAST: they never push a rule's or a setting's collection out.
+  const extraIds = [...new Set(args.alsoRead ?? [])].filter((id) => !configSet.has(id));
+  const ids = [...configIds, ...extraIds];
+  const unchanged: CollectionLimits = { config, payloadConfig: config, steps: [], marginTooLarge: [], alsoRead: [] };
   if (ids.length === 0) return unchanged;
   const sizes = new Map<string, { count: number; exact: boolean; title: string | null }>();
   try {
@@ -373,13 +388,20 @@ export async function collectionLimits(args: Pick<ProductSyncArgs, "transport" |
   }
   const tooLarge = new Set<string>();
   let total = 0;
-  for (const id of ids) {
+  for (const id of configIds) {
     const size = sizes.get(id);
     if (!size) continue; // not found: the pass reports it
     if (!size.exact || total + size.count > MAX_COLLECTION_PRODUCTS) tooLarge.add(id);
     else total += size.count;
   }
-  if (tooLarge.size === 0) return unchanged;
+  const alsoRead: string[] = [];
+  for (const id of extraIds) {
+    const size = sizes.get(id);
+    if (!size || !size.exact || total + size.count > MAX_COLLECTION_PRODUCTS) continue;
+    total += size.count;
+    alsoRead.push(id);
+  }
+  if (tooLarge.size === 0) return { ...unchanged, alsoRead };
   const titleOf = (id: string) => sizes.get(id)?.title ?? null;
 
   const out = JSON.parse(JSON.stringify(config)) as ConfigView & { modules: { codes: { rules: RuleView[] }; margin: MarginView } };
@@ -403,14 +425,14 @@ export async function collectionLimits(args: Pick<ProductSyncArgs, "transport" |
   // The admin words it from `params` (sync-copy.ts): the titles it knows, and how many have none.
   const steps: SyncStep[] = [...affected].map(([ruleId, { name, collections }]) => {
     const titles = [...collections].map(titleOf).filter((t): t is string => !!t && t.trim() !== "");
-    const untitled = collections.size - titles.length;
     return {
       step: `products.too_large:${ruleId}`,
       ok: false,
       detail:
         `"${name || ruleId}" does not apply at checkout to ${[...collections].join(", ")}: the targeted collections have more than ` +
         `${MAX_COLLECTION_PRODUCTS} products together, more than Won reads per sync — every other rule is synced as usual`,
-      params: { collections: titles.join(", "), untitled },
+      // The first title the admin can name ("" = none titled) and how many collections in all.
+      params: { collection: titles[0] ?? "", count: collections.size },
     };
   });
   // A margin collection that does not fit: no new refs for its products; the payload folds it (fail closed).
@@ -431,7 +453,7 @@ export async function collectionLimits(args: Pick<ProductSyncArgs, "transport" |
   }
   const dropped = new Set(droppedMargin);
   if (dropped.size > 0) out.modules.margin.perCollection = out.modules.margin.perCollection.filter((o) => !dropped.has(o.collectionId));
-  return { config: out, payloadConfig: dropped.size > 0 ? foldMarginCollections(config, dropped) : config, steps, marginTooLarge };
+  return { config: out, payloadConfig: dropped.size > 0 ? foldMarginCollections(config, dropped) : config, steps, marginTooLarge, alsoRead };
 }
 
 async function targetedProducts(args: ProductSyncArgs, scopes: Scopes) {
@@ -631,6 +653,8 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
   steps.push(...limited.steps);
   const config = limited.config;
   const scopes = targetScopes(config);
+  // The live config's margin collections the new one dropped: read for the bridge's membership only.
+  for (const id of limited.alsoRead) scopes.collectionIds.add(id);
   const rows = await db.productTargetIndex.findMany({ where: { shop }, select: { productId: true, payloadHash: true, value: true } });
   const indexed = new Map(rows.map((row) => [row.productId, row.payloadHash]));
   // A margin collection too large to read: products that already carry its ref keep it (see the header).
@@ -751,17 +775,19 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
     // Every one of them may lose a ref, or lack a stricter collection the new config relies on: nothing may flip.
     return failedPlan(steps, toClear.length > 0 || wantedIndexed.length > 0 || marginNewcomers.length > 0);
   }
-  // Membership this pass knows: the collections it read (a ref to one of them the product is not in = it left).
+  // Membership for the bridge: the collections this pass read the product in, plus every ref it carries for a
+  // collection this pass did not read (membership unknown: the status quo is kept for it).
   const readKeys = new Set([...scopes.collectionIds].map(variantKey));
-  const knownLeft = (productId: string): Set<string> => {
-    const member = new Set([...(productCollections.get(productId) ?? [])].map(variantKey));
-    return new Set([...readKeys].filter((key) => !member.has(key)));
-  };
+  const liveMembers = (productId: string, current: string | null): string[] => [
+    ...[...(productCollections.get(productId) ?? [])].map(variantKey),
+    ...marginRefsOf(current).filter((ref) => !readKeys.has(ref)),
+  ];
   const prunes: FinalWrite[] = [];
+  const live = args.bridgeFrom;
   /** The BEFORE-lane write of a product across the flip: the bridge when its marginRefs change (see bridgeMarginRefs). */
   const bridged = (write: Write, current: string | null): IndexedWrite | null => {
-    if (!args.bridge) return { ...write, current };
-    const refs = bridgeMarginRefs(marginRefsOf(current), marginRefsOf(write.value), knownLeft(write.productId));
+    if (!live) return { ...write, current };
+    const refs = bridgeMarginRefs(marginRefsOf(write.value), live, liveMembers(write.productId, current));
     if (sameSet(refs, marginRefsOf(write.value))) return { ...write, current };
     prunes.push({ productId: write.productId, value: write.value, hash: write.hash });
     const value = withMarginRefs(write.value, refs);
@@ -794,9 +820,9 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
       gone.push(productId); // deleted, or already absent in Shopify: just untrack
       continue;
     }
-    if (!args.bridge) continue;
-    // A clear across the flip keeps the marginRefs of collections it may still be in (they go after the flip).
-    const kept = bridgeMarginRefs(marginRefsOf(node.metafield.value), [], knownLeft(productId));
+    if (!live) continue;
+    // A clear across the flip keeps the live config's decisive refs for the product (they go after the flip).
+    const kept = bridgeMarginRefs([], live, liveMembers(productId, node.metafield.value));
     if (kept.length === 0) continue;
     clearing.delete(productId);
     prunes.push({ productId, value: null, hash: null });
@@ -808,24 +834,29 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
   return { steps, staleRisk: false, complete: true, sets, clears: [...clearing], additions, prunes, liveMarginRefs };
 }
 
-// --- The marginRef bridge across the flip (audit fix round 2) --------------------------------------
+// --- The marginRef bridge across the flip (audit fix rounds 2 + 3) ---------------------------------
 
 /**
  * The marginRefs a product carries across the shop-config flip: its NEW refs
- * plus every ref it carries now, except refs of collections this pass read
- * and found it is no longer in (`knownLeft`). The engine takes the strictest
- * over a product's refs (resolveMargin), so with the membership unchanged:
- *   - under the OLD config (still running during the BEFORE lane, and kept
- *     when the new config is held) the bridge holds every ref the product
- *     carried → it resolves at least as strict as the status quo;
- *   - under the NEW config every ref of the bridge names a collection the
- *     product is in (or one without a setting, ignored) and it holds the new
+ * (core decisiveMarginRefs of the new config over the collections it is in)
+ * plus the LIVE config's decisive refs over its members — the collections
+ * this pass read it in, and any collection it carries a ref for that this pass
+ * did not read (membership unknown: kept as it is). The engine takes the
+ * strictest over a product's refs (resolveMargin; a decisive set resolves
+ * exactly like all of its collections), so:
+ *   - under the LIVE config (running during the BEFORE lane, and kept when
+ *     the new config is held) the bridge holds the live decisive refs → it
+ *     resolves at least as strict as the live config does for the product's
+ *     collections now — also after it left one;
+ *   - under the NEW config every other ref names a collection it is in, or
+ *     one the new config does not list (ignored), and it holds the new
  *     decisive refs → it resolves exactly to the new result.
- * So no floor is ever looser than the looser of the old and the new one. The
- * AFTER lane prunes it to the new refs (unchanged under the new config).
+ * At most 4 refs (2 + 2) and no growth across repeated holds: the live refs
+ * are recomputed from the live settings, never accumulated. The AFTER lane
+ * prunes to the new refs (unchanged under the new config).
  */
-export function bridgeMarginRefs(current: readonly string[], next: readonly string[], knownLeft: ReadonlySet<string>): string[] {
-  return [...new Set([...next, ...current.filter((ref) => !knownLeft.has(ref))])].sort();
+export function bridgeMarginRefs(next: readonly string[], live: FunctionMarginPayload, liveMembers: readonly string[]): string[] {
+  return [...new Set([...next, ...decisiveMarginRefs(live, liveMembers)])].sort();
 }
 
 const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.length && new Set([...a, ...b]).size === a.length;
@@ -846,6 +877,36 @@ interface WriteOutcome<W extends Write> {
   refused: { write: W; error: string }[];
   /** Calls that failed as a whole (transport / GraphQL after the retries). */
   failed: { writes: W[]; error: string }[];
+  /** Batches in a row Shopify refused completely, product by product (the breaker counts them). */
+  refusedInARow?: number;
+  /** The breaker tripped: Shopify refuses writes shop-wide, refused batches are no longer split this run. */
+  breaker?: boolean;
+}
+
+/** Batches refused completely in a row before refused batches stop being split per product (audit fix round 3). */
+export const REFUSAL_BREAKER_BATCHES = 3;
+
+/**
+ * One batch of a lane: sendProductWrites (a refused batch split per product)
+ * — until REFUSAL_BREAKER_BATCHES batches in a row were refused completely:
+ * then Shopify refuses writes shop-wide, and splitting the rest would only
+ * multiply the calls by 25; a refused batch is then recorded as a whole.
+ */
+async function writeProducts<W extends Write>(args: ProductSyncArgs, batch: readonly W[], out: WriteOutcome<W>): Promise<void> {
+  const written = out.written.length;
+  const refused = out.refused.length;
+  if (out.breaker) {
+    const one: WriteOutcome<W> = { written: [], refused: [], failed: [] };
+    await sendProductWrites(args, batch, one, false);
+    out.written.push(...one.written);
+    out.refused.push(...one.refused);
+    out.failed.push(...one.failed);
+    return;
+  }
+  await sendProductWrites(args, batch, out);
+  const allRefused = out.written.length === written && out.refused.length - refused === batch.length;
+  out.refusedInARow = allRefused ? (out.refusedInARow ?? 0) + 1 : 0;
+  if (out.refusedInARow >= REFUSAL_BREAKER_BATCHES) out.breaker = true;
 }
 
 /**
@@ -854,7 +915,12 @@ interface WriteOutcome<W extends Write> {
  * and sent per product (audit fix round 2), so one bad product never keeps
  * the other 24 — or the flip — back; each refused product is reported.
  */
-async function sendProductWrites<W extends Write>(args: ProductSyncArgs, batch: readonly W[], out: WriteOutcome<W> = { written: [], refused: [], failed: [] }): Promise<WriteOutcome<W>> {
+async function sendProductWrites<W extends Write>(
+  args: ProductSyncArgs,
+  batch: readonly W[],
+  out: WriteOutcome<W> = { written: [], refused: [], failed: [] },
+  split = true,
+): Promise<WriteOutcome<W>> {
   const { transport, db, shop } = args;
   for (const { productId } of batch) await upsertRow(db, shop, productId, null);
   let refused: string | null;
@@ -877,8 +943,8 @@ async function sendProductWrites<W extends Write>(args: ProductSyncArgs, batch: 
     out.written.push(...batch);
     return out;
   }
-  if (batch.length === 1) {
-    out.refused.push({ write: batch[0]!, error: refused });
+  if (batch.length === 1 || !split) {
+    for (const write of batch) out.refused.push({ write, error: refused });
     return out;
   }
   for (const write of batch) await sendProductWrites(args, [write], out);
@@ -886,9 +952,18 @@ async function sendProductWrites<W extends Write>(args: ProductSyncArgs, batch: 
 }
 
 /** One line for support: which products Shopify refused, and why (the merchant sentence has no ids: sync-copy.ts). */
-function refusedDetail(refused: readonly { write: Write; error: string }[]): string {
+function refusedDetail(refused: readonly { write: Write; error: string }[], breaker = false): string {
   const shown = refused.slice(0, 5).map((r) => `${r.write.productId}: ${r.error}`);
-  return `Shopify refused ${refused.length} product(s): ${shown.join("; ")}${refused.length > 5 ? "; …" : ""}`;
+  return (
+    `Shopify refused ${refused.length} product(s): ${shown.join("; ")}${refused.length > 5 ? "; …" : ""}` +
+    (breaker ? ` — every write in ${REFUSAL_BREAKER_BATCHES} batches in a row was refused: the rest was not split per product` : "")
+  );
+}
+
+/** The counts the admin words a refusal with (sync-copy.ts): how many products, and whether the breaker tripped. */
+function refusedParams(outcome: WriteOutcome<Write>): { params?: Record<string, number> } {
+  if (outcome.refused.length === 0) return {};
+  return { params: { refused: outcome.refused.length, ...(outcome.breaker ? { breaker: 1 } : {}) } };
 }
 
 /**
@@ -911,8 +986,10 @@ export async function applyProductChanges(args: ProductSyncArgs, plan: ProductPl
   const outcome: WriteOutcome<IndexedWrite> = { written: [], refused: [], failed: [] };
   for (const batch of chunks(plan.sets, METAFIELDS_SET_BATCH)) {
     checkCancelled(args);
-    await sendProductWrites(args, batch, outcome);
+    await writeProducts(args, batch, outcome);
   }
+  // Shopify refuses writes shop-wide: nothing the new config relies on can be trusted to be there.
+  if (outcome.breaker) hold("products_refused");
   let heldProducts = 0;
   for (const write of [...outcome.refused.map((r) => r.write), ...outcome.failed.flatMap((f) => f.writes)]) {
     const reason = holdsNothing(write.value, write.current, live);
@@ -923,7 +1000,7 @@ export async function applyProductChanges(args: ProductSyncArgs, plan: ProductPl
   }
   if (plan.sets.length > 0) {
     const failedCount = outcome.refused.length + outcome.failed.reduce((n, f) => n + f.writes.length, 0);
-    const errors = [...(outcome.refused.length > 0 ? [refusedDetail(outcome.refused)] : []), ...outcome.failed.map((f) => f.error)];
+    const errors = [...(outcome.refused.length > 0 ? [refusedDetail(outcome.refused, outcome.breaker)] : []), ...outcome.failed.map((f) => f.error)];
     steps.push({
       step: "products.set",
       ok: failedCount === 0,
@@ -934,7 +1011,7 @@ export async function applyProductChanges(args: ProductSyncArgs, plan: ProductPl
             (heldProducts > 0
               ? ` (${heldProducts} of them do not carry what the new config relies on — a rule they should lose, or their margin collections: the new config is held)`
               : " (they lack the new rules until the next sync)"),
-      ...(outcome.refused.length > 0 ? { params: { refused: outcome.refused.length } } : {}),
+      ...refusedParams(outcome),
     });
   }
 
@@ -1016,10 +1093,10 @@ export async function applyProductAdditions(args: ProductSyncArgs, additions: re
   setSyncProgress(shop, { phase: "writing", done: 0, total: toSet.length });
   for (const batch of chunks(toSet, METAFIELDS_SET_BATCH)) {
     if (cancelled()) return { steps, cancelled: true };
-    await sendProductWrites(args, batch, outcome);
+    await writeProducts(args, batch, outcome);
     setSyncProgress(shop, { phase: "writing", done: outcome.written.length, total: toSet.length });
   }
-  const errors = [...(outcome.refused.length > 0 ? [refusedDetail(outcome.refused)] : []), ...outcome.failed.map((f) => f.error)];
+  const errors = [...(outcome.refused.length > 0 ? [refusedDetail(outcome.refused, outcome.breaker)] : []), ...outcome.failed.map((f) => f.error)];
   steps.push({
     step: "products.add",
     ok: errors.length === 0,
@@ -1028,7 +1105,7 @@ export async function applyProductAdditions(args: ProductSyncArgs, additions: re
         ? `${outcome.written.length} product(s) got their new rules`
         : `${outcome.written.length}/${toSet.length} product(s) got their new rules; ${errors.join("; ")} (the rest lack them until the next sync)`) +
       (skipped > 0 ? `; ${skipped} deleted product(s) skipped` : ""),
-    ...(outcome.refused.length > 0 ? { params: { refused: outcome.refused.length } } : {}),
+    ...refusedParams(outcome),
   });
   return { steps, cancelled: false };
 }
@@ -1070,9 +1147,9 @@ export async function applyProductPrunes(args: ProductSyncArgs, prunes: readonly
   const outcome: WriteOutcome<Write> = { written: [], refused: [], failed: [] };
   for (const batch of chunks(toSet, METAFIELDS_SET_BATCH)) {
     if (cancelled()) return { steps, cancelled: true };
-    await sendProductWrites(args, batch, outcome);
+    await writeProducts(args, batch, outcome);
   }
-  const errors = [...(outcome.refused.length > 0 ? [refusedDetail(outcome.refused)] : []), ...outcome.failed.map((f) => f.error)];
+  const errors = [...(outcome.refused.length > 0 ? [refusedDetail(outcome.refused, outcome.breaker)] : []), ...outcome.failed.map((f) => f.error)];
   let cleared = 0;
   for (const batch of chunks(toDelete, METAFIELDS_DELETE_BATCH)) {
     if (cancelled()) return { steps, cancelled: true };
@@ -1098,7 +1175,7 @@ export async function applyProductPrunes(args: ProductSyncArgs, prunes: readonly
     detail:
       `${outcome.written.length + cleared}/${toSet.length + toDelete.length} product(s) finished after the flip (margin collections they no longer need)` +
       (errors.length > 0 ? `; ${errors.join("; ")} (they keep a stricter-or-equal set until the next sync)` : ""),
-    ...(outcome.refused.length > 0 ? { params: { refused: outcome.refused.length } } : {}),
+    ...refusedParams(outcome),
   });
   return { steps, cancelled: false };
 }

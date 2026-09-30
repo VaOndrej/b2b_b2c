@@ -38,6 +38,13 @@ export const MARGIN_INTENT = { save: "save", refreshCosts: "refreshCosts" } as c
 /** Where the margin forms post (the app.margin.tsx action), also from Přehled. */
 export const MARGIN_ACTION = "/app/margin";
 
+/**
+ * Collection members Won reads per sync (app/lib/sync/products.ts
+ * MAX_COLLECTION_PRODUCTS — a test pins that they are equal): said in the
+ * "too large" sentences, formatted like every number of the admin.
+ */
+export const COLLECTION_READ_LIMIT = 10_000;
+
 /** The Přehled zásahů block, optionally narrowed to one rule (§13c: the rule editor links to its own rows). */
 export function marginImpactHref(ruleId?: string | null): string {
   return ruleId ? `${MARGIN_ACTION}?rule=${encodeURIComponent(ruleId)}#impact` : `${MARGIN_ACTION}#impact`;
@@ -107,7 +114,7 @@ export function readMarginDraft(form: FormDataLike, stored: MarginSettingsView):
     maxDiscountPercent: max === undefined || max === null ? stored.maxDiscountPercent : max,
     collections: ids.map((collectionId, i) => ({
       collectionId,
-      title: titles.get(collectionId) ?? collectionId,
+      title: titles.get(collectionId) ?? "", // never a GID: the screen says "Kolekce bez názvu"
       minMarginPercent: pct(mins[i] ?? null, 95) ?? null,
       maxDiscountPercent: pct(maxes[i] ?? null, 100) ?? null,
     })),

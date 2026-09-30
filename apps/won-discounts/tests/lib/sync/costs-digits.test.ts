@@ -73,3 +73,33 @@ test("the cost mirror writes Shopify's decimal cost with at most 15 significant 
     assert.equal(JSON.parse(text), Number(amount), amount);
   }
 });
+
+test("an amount of ANY length is cut to 15 significant digits, rounded UP (the stricter side: a higher cost), and kept within the exponent range (audit fix round 3)", () => {
+  const next = rng(20260930);
+  const int = (n: number) => Math.floor(next() * n);
+  // Pinned: 18 significant digits round up in the 15th.
+  assert.equal(writtenCost("12.3456789012345678"), "12.3456789012346");
+  assert.equal(writtenCost("0.1000000000000001"), "0.100000000000001", "a tail beyond 15 digits always rounds up");
+  assert.equal(writtenCost("99999.99999999999999"), "100000", "the carry ripples");
+  assert.equal(writtenCost("12.3450000000000000000"), "12.345", "trailing zeros are not a tail");
+  for (let n = 0; n < 20_000; n += 1) {
+    const significant = 16 + int(20); // 16–35 significant digits
+    let digits = String(1 + int(9));
+    for (let i = 1; i < significant; i += 1) digits += String(int(10));
+    const point = 1 + int(Math.min(significant, 13)); // at most 13 integer digits (a cost below 10¹³)
+    const amount = `${digits.slice(0, point)}.${digits.slice(point)}`;
+    const text = writtenCost(amount);
+    const { significant: kept, exponent } = digitsOf(text);
+    assert.ok(kept <= 15, `${amount} → ${text}: ${kept} significant digits`);
+    assert.ok(exponent >= -22 && exponent <= 22, `${amount} → ${text}: exponent ${exponent}`);
+    const written = JSON.parse(text) as number;
+    assert.ok(written >= Number(amount), `${amount} → ${text}: rounded up (never a lower cost)`);
+    assert.ok((written - Number(amount)) / Number(amount) <= 1e-14, `${amount} → ${text}: within one unit of the 15th digit`);
+    assert.equal(JSON.stringify(written), text, "prints back as written");
+  }
+  // Out of any real range: clamped to what the engine reads the same (every floor saturates the money cap anyway).
+  const huge = writtenCost("123456789012345678901234567.5");
+  assert.ok(digitsOf(huge).exponent <= 22 && digitsOf(huge).significant <= 15, huge);
+  const tiny = writtenCost("0.000000000000000000000000123");
+  assert.ok(digitsOf(tiny).exponent >= -22 && JSON.parse(tiny) >= 1.23e-25, tiny);
+});

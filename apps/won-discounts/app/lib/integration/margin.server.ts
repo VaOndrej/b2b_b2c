@@ -88,7 +88,7 @@ function percentField(raw: FormDataEntryValue | null | undefined, max: number): 
  * order (empty = the global value; a row with both empty is dropped, a
  * repeated collection keeps its first row). Error fields: the input's name,
  * collections as `collectionId[i]` / `collectionMin[i]` / `collectionMax[i]`.
- * Titles are not trusted from the form (the id stands in; the page reads them).
+ * Titles are not trusted from the form ("" stands in; the page reads them).
  */
 export function readMarginForm(form: FormDataLike): { ok: true; settings: MarginSettingsView } | { ok: false; errors: FieldError[] } {
   const errors: FieldError[] = [];
@@ -115,7 +115,7 @@ export function readMarginForm(form: FormDataLike): { ok: true; settings: Margin
     if (!COLLECTION_GID.test(id) || cMin === undefined || cMax === undefined) continue;
     if ((cMin === null && cMax === null) || seen.has(id)) continue;
     seen.add(id);
-    collections.push({ collectionId: id, title: id, minMarginPercent: cMin, maxDiscountPercent: cMax });
+    collections.push({ collectionId: id, title: "", minMarginPercent: cMin, maxDiscountPercent: cMax });
   }
   if (collections.length > CONFIG_LIMITS.marginOverrides) {
     errors.push({ field: "collectionId[]", key: errorKey(MARGIN_FORM_ERRORS.tooManyCollections), params: { max: CONFIG_LIMITS.marginOverrides } });
@@ -157,7 +157,7 @@ function toSettings(margin: MarginModule, titles: ReadonlyMap<string, string>): 
     maxDiscountPercent: margin.global.maxDiscountPercent,
     collections: margin.perCollection.map((o) => ({
       collectionId: o.collectionId,
-      title: titles.get(o.collectionId) ?? o.collectionId,
+      title: titles.get(o.collectionId) ?? "", // never a GID: the screen says "Kolekce bez názvu"
       minMarginPercent: o.minMarginPercent ?? null,
       maxDiscountPercent: o.maxDiscountPercent ?? null,
     })),

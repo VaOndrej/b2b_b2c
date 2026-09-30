@@ -80,10 +80,48 @@ export interface UnitCost {
  */
 export function desiredCostValue(unitCost: UnitCost | null | undefined): string | null {
   if (!unitCost) return null;
-  const cost = Number(unitCost.amount);
+  const cost = metafieldCost(unitCost.amount);
   const cur = typeof unitCost.currencyCode === "string" ? unitCost.currencyCode.trim().toUpperCase() : "";
   if (!Number.isFinite(cost) || cost <= 0 || !/^[A-Z]{3}$/.test(cur)) return null;
   return JSON.stringify({ cost, cur });
+}
+
+/** Significant digits the written cost keeps: a JSON number the function (serde_json) reads exactly like JSON.parse. */
+export const COST_SIGNIFICANT_DIGITS = 15;
+/** The written cost's range (exponent within ±22 for the same reason); any floor beyond it saturates the money cap. */
+const COST_MIN = 1e-20;
+const COST_MAX = 1e15;
+
+/**
+ * Shopify's decimal cost as the metafield number (audit fix round 3, engine
+ * report): at most COST_SIGNIFICANT_DIGITS significant digits, a longer
+ * amount ROUNDED UP in the last kept digit (a higher cost = the stricter
+ * floor), within [COST_MIN, COST_MAX]. A number of ≤ 15 significant digits
+ * prints back as itself and parses the same in Rust and in JavaScript. NaN
+ * for anything that is not a decimal number.
+ */
+export function metafieldCost(amount: string): number {
+  const text = String(amount).trim();
+  const m = /^\+?(\d*)(?:\.(\d*))?$/.exec(text);
+  if (!m || (m[1] === "" && !m[2])) {
+    const value = Number(text); // an exponent form, or junk (NaN)
+    return Number.isFinite(value) ? Math.min(COST_MAX, value) : Number.NaN;
+  }
+  const whole = m[1] ?? "";
+  const digits = whole + (m[2] ?? "");
+  const lead = digits.length - digits.replace(/^0+/, "").length;
+  const significant = digits.slice(lead).replace(/0+$/, "");
+  if (significant === "") return 0;
+  let value: number;
+  if (significant.length <= COST_SIGNIFICANT_DIGITS) value = Number(text);
+  else {
+    // Keep 15 digits, one more unit in the 15th when anything non-zero follows (it always does here).
+    const kept = BigInt(digits.slice(lead, lead + COST_SIGNIFICANT_DIGITS)) + 1n;
+    const exponent = whole.length - lead - COST_SIGNIFICANT_DIGITS;
+    value = Number(`${kept}e${exponent}`);
+  }
+  if (value <= 0) return value;
+  return Math.min(COST_MAX, Math.max(COST_MIN, value));
 }
 
 /** A metafield value → {cost, cur} as the engine takes it, or null (junk, no cost — like the function). */

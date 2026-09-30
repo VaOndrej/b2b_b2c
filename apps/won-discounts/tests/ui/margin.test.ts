@@ -6,8 +6,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { marginFloorUnit } from "@won/core/discounts/margin";
 
+import { MAX_COLLECTION_PRODUCTS } from "../../app/lib/sync/products.ts";
 import {
   ceilingOnlyText,
+  COLLECTION_READ_LIMIT,
   impactReason,
   impactRuleSummary,
   impactSummary,
@@ -248,10 +250,61 @@ test("percents keep one decimal: a second decimal is refused before the save, ne
   assert.equal(cs.t("margin.error.decimals"), "Zadej nejvýš jedno desetinné místo, třeba 12,5.");
 });
 
-test("a collection over the limit is worded by WHY (audit fix round 2): over 10 000 on its own, or — exact count — the budget used by margin collections read first", () => {
-  assert.equal(cs.t("margin.collections.tooLargeUncounted"), "Kolekce má víc než 10 000 produktů, tolik Won při jedné synchronizaci nenačte. Proto platí přísnější hodnota pro celý obchod.");
-  const exact = cs.t("margin.collections.tooLarge", { count: 4600 });
-  assert.match(exact, /^Kolekce \(produktů: 4\u00a0600\) se už nevešla do limitu 10 000 produktů na jednu synchronizaci, ten spotřebovaly kolekce s nastavením marže, které Won čte dřív\./);
+test("a collection over the limit is worded by WHY (audit fix rounds 2 + 3): over 10 000 on its own, or — exact count — the budget used by margin collections read first; the limit in the admin's number format", () => {
+  assert.equal(COLLECTION_READ_LIMIT, MAX_COLLECTION_PRODUCTS, "the screens say the limit the sync applies");
+  assert.equal(
+    cs.t("margin.collections.tooLargeUncounted", { limit: COLLECTION_READ_LIMIT }),
+    "Kolekce má víc než 10\u00a0000 produktů, tolik Won při jedné synchronizaci nenačte. Proto platí přísnější hodnota pro celý obchod.",
+  );
+  const exact = cs.t("margin.collections.tooLarge", { count: 4600, limit: COLLECTION_READ_LIMIT });
+  assert.match(exact, /^Kolekce \(produktů: 4\u00a0600\) se už nevešla do limitu 10\u00a0000 produktů na jednu synchronizaci, ten spotřebovaly kolekce s nastavením marže, které Won čte dřív\./);
   assert.doesNotMatch(exact, /víc produktů, než Won/);
-  assert.match(en.t("margin.collections.tooLarge", { count: 4600 }), /\(4,600 products\) no longer fit/);
+  assert.match(en.t("margin.collections.tooLarge", { count: 4600, limit: COLLECTION_READ_LIMIT }), /\(4,600 products\) no longer fit the 10,000-product limit/);
+});
+
+test("an untitled collection or product is never named by its id (audit fix round 3): 'Kolekce bez názvu', and 'produkt bez názvu' mid-list", async () => {
+  const draft = readMarginDraft(
+    (() => {
+      const form = new FormData();
+      form.set("maxDiscountPercent", "40");
+      form.append("collectionId[]", "gid://shopify/Collection/99");
+      form.append("collectionMin[]", "10");
+      form.append("collectionMax[]", "");
+      return form;
+    })(),
+    SETTINGS,
+  );
+  assert.equal(draft.collections[0]!.title, "", "an unknown collection has no title, never the GID");
+  const { CollectionsSection } = await import("../../app/components/margin/CollectionsSection.tsx");
+  const { CostsSection } = await import("../../app/components/margin/CostsSection.tsx");
+  const Provider = LocaleProvider as unknown as (props: { locale: "cs" | "en"; children?: ReactNode }) => ReactElement;
+  const html = renderToStaticMarkup(
+    createElement(
+      Provider,
+      { locale: "cs" },
+      createElement(CollectionsSection, {
+        pro: true,
+        collections: [{ collectionId: "gid://shopify/Collection/99", title: "", minMarginPercent: 10, maxDiscountPercent: null }],
+        gateNotes: [],
+        onPick: () => undefined,
+        onRemove: () => undefined,
+        pickUnavailable: false,
+        errorFor: () => undefined,
+        decimalErrorFor: () => undefined,
+      }),
+    ),
+  );
+  assert.match(html, /Kolekce bez názvu/);
+  const costs = renderToStaticMarkup(
+    createElement(
+      Provider,
+      { locale: "cs" },
+      createElement(CostsSection, {
+        coverage: { variants: 3, variantsWithCost: 0, productsWithoutCost: 2, sample: [{ productId: "p1", title: "Ponožky", variantsWithoutCost: 1 }, { productId: "p2", title: "", variantsWithoutCost: 1 }] },
+        mirror: { state: "running", done: 1, total: 3, since: "2026-09-30T08:00:00" },
+        maxDiscountPercent: 40,
+      }),
+    ),
+  );
+  assert.match(costs, /Ponožky a produkt bez názvu|Ponožky, produkt bez názvu/);
 });
