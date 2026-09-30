@@ -2,6 +2,10 @@ import { copyFile, cp, mkdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 
 import { validateThemeCheckout } from "./runner-config.js";
+import {
+  applyTemplateOverlays,
+  planTemplateOverlays,
+} from "./template-overlays.js";
 
 function isWithin(parent, candidate) {
   const relative = path.relative(parent, candidate);
@@ -88,6 +92,7 @@ export async function inspectThemeWorkspace({
   themeKey,
   sourceDirectory,
   settingsDataOverlay,
+  templateOverlays,
 }) {
   const canonicalDirectory = validateThemeCheckout(themeKey, sourceDirectory);
   const workspaceDirectory = resolveThemeWorkspace({
@@ -100,7 +105,18 @@ export async function inspectThemeWorkspace({
     settingsDataOverlay,
   });
   await validateSettingsDataOverlay(overlayPath);
-  return { canonicalDirectory, workspaceDirectory, overlayPath };
+  const templateOverlayPlans = templateOverlays?.length
+    ? await planTemplateOverlays({
+        workspaceDirectory: canonicalDirectory,
+        templateOverlays,
+      })
+    : [];
+  return {
+    canonicalDirectory,
+    workspaceDirectory,
+    overlayPath,
+    templateOverlayPlans,
+  };
 }
 
 export async function prepareThemeWorkspace(options) {
@@ -121,6 +137,12 @@ export async function prepareThemeWorkspace(options) {
       overlayPath,
       path.join(workspaceDirectory, "config/settings_data.json"),
     );
+  }
+  if (options.templateOverlays?.length) {
+    await applyTemplateOverlays({
+      workspaceDirectory,
+      templateOverlays: options.templateOverlays,
+    });
   }
   return validateThemeCheckout(options.themeKey, workspaceDirectory);
 }
