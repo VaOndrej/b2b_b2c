@@ -127,7 +127,7 @@ type StorefrontTierBreak = { min: number; pct: number } | { min: number; off: Re
 
 **K6 — PDP počet a cena.** Počet na PDP = zvolené množství + kusy už v košíku, které se do téže úrovně počítají
 (`line`: stejná varianta, `product`: stejný produkt, `cart`: řádky se stejnou platnou sadou; čte se z Liquid `cart`
-při renderu, JS košík nenačítá). Sleva na kus = `min(pct, max)` % z ceny, resp. `min(off, cena × max / 100)`, kde
+při renderu, JS košík nenačítá; `line` = jen řádek, do kterého se přidání sloučí — stejná varianta bez vlastností a bez předplatného; dárkové řádky `_won_gift` se nepočítají; na signál změny košíku tématu JS počty z košíku vynuluje). Sleva na kus = `min(pct, max)` % z ceny, resp. `min(off, cena × max / 100)`, kde
 `max` = `pdp.max`, jinak strop z `margin` (K5), jinak 100.
 
 **K7 — Vzhledy.** `APPEARANCE_PRESETS = ["default", "highlight", "chips", "tiles"]` (`config.storefront.appearancePreset`;
