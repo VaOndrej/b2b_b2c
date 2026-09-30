@@ -3,6 +3,7 @@ import { CONFIG_LIMITS } from "./limits.ts";
 import {
   type IdAliases,
   isRecord,
+  preview,
   pushIssue,
   rememberAlias,
   sanitizeEntityId,
@@ -35,9 +36,11 @@ import type { ConfigIssue, TierBreak, TierSet, TierSetScope } from "./types.ts";
 //   tier_break_other_kind        not the kind of the set's lowest break → dropped {minQty};
 //   tier_break_lower_value       worth less than a lower break (in some currency) → dropped {minQty};
 //   duplicate_tier_set_id        an id already used → the later set is dropped {id}.
-// A percent outside 0–100 is clamped (clamped_percent); a percent that is not
-// a number is 0 with invalid_percent (as a rule's value); `percent: null` is no
-// percent; an amount goes through sanitizeMoney (clamped_money, too_many_currencies).
+// A percent outside 0–100 is clamped (clamped_percent); `percent: null` is no
+// percent; a percent that is not a number is invalid_percent: next to a usable
+// amount the amount is kept {…, fallback: "amount", minQty} (it is no second
+// value, fix round 2), else 0 % is saved {…, fallback: 0} (as a rule's value);
+// an amount goes through sanitizeMoney (clamped_money, too_many_currencies).
 
 /** Whole items, 1–CONFIG_LIMITS.tierMinQty; anything else adjusted with `clamped_tier_quantity`. */
 function sanitizeMinQty(v: number, issues: ConfigIssue[], path: string): number {
@@ -61,10 +64,22 @@ function sanitizeTierBreak(v: unknown, issues: ConfigIssue[], path: string): Tie
     return null;
   }
   const minQty = sanitizeMinQty(v.minQty, issues, path);
-  // Absent or null = no percent; anything else is one (junk → 0 with invalid_percent, as a rule's value).
-  const percent = v.percent === undefined || v.percent === null ? undefined : sanitizePercent(v.percent, 0, `${path}.percent`, issues);
   const amountOff = v.amountOff !== undefined ? sanitizeMoney(v.amountOff, issues, `${path}.amountOff`) : undefined;
   const hasAmount = amountOff !== undefined && Object.keys(amountOff).length > 0;
+  const percentGiven = v.percent !== undefined && v.percent !== null;
+  if (percentGiven && (typeof v.percent !== "number" || !Number.isFinite(v.percent)) && hasAmount) {
+    // A junk percent is no second value next to a usable amount: the amount stays.
+    pushIssue(
+      issues,
+      `${path}.percent`,
+      "invalid_percent",
+      `Expected a number between 0 and 100, got ${preview(v.percent)}; the break from ${minQty} items keeps its amount.`,
+      { min: 0, max: 100, value: preview(v.percent), fallback: "amount", minQty },
+    );
+    return { minQty, amountOff };
+  }
+  // Absent or null = no percent; junk with no amount → 0 with invalid_percent (as a rule's value).
+  const percent = percentGiven ? sanitizePercent(v.percent, 0, `${path}.percent`, issues) : undefined;
   if (percent !== undefined) {
     if (hasAmount) {
       pushIssue(

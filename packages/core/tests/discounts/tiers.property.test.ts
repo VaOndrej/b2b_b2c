@@ -121,7 +121,7 @@ test("property: tiers alone — every line gets exactly the independent K1/K2 mo
         assert.equal(l.product.components[0].module, "tiers");
       }
     }
-    for (const t of plan.tiers) if (t.state === "applied") modes.add(t.count);
+    for (const t of plan.tiers) if (t.state === "applied") modes.add(t.countAcross);
   }
   assert.ok(discounted > 300, `discounted lines: ${discounted}`);
   assert.equal(modes.size, 3, [...modes].join(","));

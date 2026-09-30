@@ -65,7 +65,7 @@ test("the tier is the highest minQty ≤ the count: 2 items → none, 3 → 10 %
   });
   assert.deepEqual(
     { ...tier(three, "g"), groups: undefined },
-    { setId: "g", ruleId: "tier:g", count: "line", state: "applied", amount: 30_00, lineIds: ["L1"], groups: undefined },
+    { setId: "g", ruleId: "tier:g", countAcross: "line", state: "applied", amount: 30_00, lineIds: ["L1"], groups: undefined },
   );
 
   const four = at(4);
@@ -140,6 +140,27 @@ test("a line whose tierRef names a set the payload does not have gets NO tier (n
   assert.deepEqual(tier(plan, "g").lineIds, ["B"]);
 });
 
+test("fix round 2: only an absent or null tierRef means the global set; any other unusable value gives NO tier (fail closed)", () => {
+  const payload = tiersPayload([GLOBAL]);
+  const at = (tierRef: unknown) =>
+    lineOf(planCart(cartOf([pline("L1", 1, 100_00, 4, { tierRef } as unknown as Partial<CartLineInput>)]), payload), "L1").product?.amount ?? 0;
+  assert.equal(at(undefined), 60_00);
+  assert.equal(at(null), 60_00);
+  for (const junk of [42, "", {}, ["g"], true]) assert.equal(at(junk), 0, JSON.stringify(junk));
+  assert.equal(at("g"), 60_00, "a ref naming the global set's id reads that set");
+});
+
+test("fix round 2: a tier never takes a slot of the Pro stack pool (the MAX_STACK_CANDIDATES best RULE candidates)", () => {
+  // Six 5 % rules that all combine, and a 10 % tier ranked above them: the stack is all six rules (30 %),
+  // not the five that would fit next to the tier in a pool of six.
+  const ids = ["r0", "r1", "r2", "r3", "r4", "r5"];
+  const rules = ids.map((id) => pct(id, 5, { combinesWith: { ruleIds: ids } }));
+  const plan = planCart(cartOf([pline("L1", 1, 100_00, 3, { ruleIds: ids })]), tiersPayload([GLOBAL], rules));
+  assert.deepEqual(winners(plan, "L1"), ids);
+  assert.equal(lineOf(plan, "L1").product?.amount, 90_00);
+  assert.equal(tier(plan, "g").state, "outranked");
+});
+
 test("Free: a product of a scoped set gets no tier (its set is inert), the rest the first global set counted per product", () => {
   const config = configOf([], {
     modules: {
@@ -160,7 +181,7 @@ test("Free: a product of a scoped set gets no tier (its set is inert), the rest 
   assert.equal(tier(plan, "pro").state, "disabled");
   // Per product on Free: 2 + 2 items of two products never reach 3 (across the cart they would).
   assert.equal(plan.totals.productDiscount, 0);
-  assert.equal(tier(plan, "g").count, "product");
+  assert.equal(tier(plan, "g").countAcross, "product");
 });
 
 // --- value: currencies and the item price ---------------------------------------------------------
@@ -205,12 +226,56 @@ test("a break worth nothing (0 %) is reached but saves nothing: zero_value", () 
   assert.equal(tier(plan, "g").state, "zero_value");
 });
 
-test("a set no line uses: no_target_lines; a set without breaks: disabled", () => {
+test("a set no line uses: no_target_lines (first, whatever else it lacks); a set without breaks: disabled", () => {
   const plan = planCart(
-    cartOf([pline("L1", 1, 100_00, 3)]),
-    tiersPayload([GLOBAL, { id: "s", scope: { productIds: [P(9)] }, countAcross: "line", breaks: [] }, { id: "t", scope: { productIds: [P(8)] }, countAcross: "line", breaks: [{ minQty: 2, percent: 5 }] }]),
+    cartOf([pline("L1", 1, 100_00, 3), pline("L2", 9, 100_00, 3, { tierRef: "s" })]),
+    tiersPayload([
+      GLOBAL,
+      { id: "s", scope: { productIds: [P(9)] }, countAcross: "line", breaks: [] },
+      { id: "t", scope: { productIds: [P(8)] }, countAcross: "line", breaks: [{ minQty: 2, percent: 5 }] },
+      { id: "u", scope: { productIds: [P(7)] }, countAcross: "line", breaks: [] },
+      { id: "v", scope: { productIds: [P(6)] }, countAcross: "line", breaks: [{ minQty: 2, amountOff: { EUR: 1_00 } }] },
+    ]),
   );
-  assert.deepEqual(plan.tiers.map((t) => [t.setId, t.state]), [["g", "applied"], ["s", "disabled"], ["t", "no_target_lines"]]);
+  assert.deepEqual(plan.tiers.map((t) => [t.setId, t.state]), [
+    ["g", "applied"],
+    ["s", "disabled"],
+    ["t", "no_target_lines"],
+    ["u", "no_target_lines"],
+    ["v", "no_target_lines"],
+  ]);
+});
+
+test("fix round 2: explain names a currency the tiers miss once, and only for sets the cart uses", () => {
+  const czkOnly = (id: string, product: number) => ({ id, scope: { productIds: [P(product)] }, countAcross: "line", breaks: [{ minQty: 2, amountOff: { CZK: 10_00 } }] });
+  const sets = [GLOBAL, czkOnly("a", 7), czkOnly("b", 8), czkOnly("c", 9)];
+  // EUR cart: product 1 in the global set; no line of a/b/c → not a word about them.
+  const unrelated = planCart(cartOf([pline("L1", 1, 4_00, 3)], { currency: "EUR" }), tiersPayload(sets));
+  assert.deepEqual(unrelated.tiers.map((t) => t.state), ["applied", "no_target_lines", "no_target_lines", "no_target_lines"]);
+  assert.ok(!explainPlan(unrelated, "cs").some((i) => i.text.includes("nemá hodnotu")));
+  // Lines of two of them: one sentence, not two identical ones.
+  const two = planCart(
+    cartOf([pline("A", 7, 4_00, 3, { tierRef: "a" }), pline("B", 8, 4_00, 3, { tierRef: "b" })], { currency: "EUR" }),
+    tiersPayload(sets),
+  );
+  assert.deepEqual(two.tiers.map((t) => t.state), ["no_target_lines", "currency_missing", "currency_missing", "no_target_lines"]);
+  assert.deepEqual(
+    explainPlan(two, "cs").filter((i) => i.text.includes("nemá hodnotu")).map((i) => [i.text, i.lineIds]),
+    [["Množstevní sleva nemá hodnotu pro měnu EUR, proto se tu nenabízí.", ["A", "B"]]],
+  );
+});
+
+test("fix round 2: outletWithAnything — outlet lines then count and can get a tier like any product discount", () => {
+  const payload = tiersPayload([{ ...GLOBAL, countAcross: "product" }], [], { engine: { combination: { outletWithAnything: true } } });
+  const plan = planCart(cartOf([pline("A", 1, 100_00, 2), pline("O", 1, 100_00, 2, { outlet: true })]), payload);
+  assert.deepEqual(plan.lines.map((l) => [l.lineId, l.excluded, l.product?.amount ?? 0]), [
+    ["A", null, 30_00],
+    ["O", null, 30_00],
+  ]);
+  assert.deepEqual(tier(plan, "g").groups.map((g) => [g.lineIds, g.count]), [[["A", "O"], 4]]);
+  // Off (the default): the outlet line neither counts nor gets the tier.
+  const off = planCart(cartOf([pline("A", 1, 100_00, 2), pline("O", 1, 100_00, 2, { outlet: true })]), tiersPayload([{ ...GLOBAL, countAcross: "product" }]));
+  assert.equal(off.totals.productDiscount, 0);
 });
 
 // --- tier vs product rules (A1) ------------------------------------------------------------------
@@ -331,6 +396,43 @@ test("progress.tierHint: the closest next break that would beat what the line al
 });
 
 // --- explain --------------------------------------------------------------------------------------
+
+test("explain: the tier's other states in words — not combinable, at the margin floor, worth nothing", () => {
+  const exclusive = planCart(
+    cartOf([pline("L1", 1, 100_00, 3)]),
+    tiersPayload([GLOBAL], [orderPct("o", 20)], { engine: { combination: { productWithOrder: false } } }),
+  );
+  const said = (plan: CartPlan, locale: "cs" | "en") => explainPlan(plan, locale).filter((i) => i.tierSetId === "g").map((i) => i.text);
+  // No "add 1 more" hint for a set the order discount beat under the exclusive switch: more items would not change that.
+  assert.deepEqual(said(exclusive, "cs"), ["Množstevní sleva se nekombinuje s ostatními slevami v košíku."]);
+  assert.deepEqual(said(exclusive, "en"), ["The quantity discount does not combine with the other discounts in the cart."]);
+  assert.equal(exclusive.progress.tierHint, undefined);
+  const margin = { enabled: true, global: { maxDiscountPercent: 50 }, perCollection: [] };
+  const floored = planCart(
+    cartOf([pline("L1", 1, 100_00, 4, { unitCost: 100, unitCostCurrency: "CZK" })]),
+    tiersPayload([GLOBAL], [], { modules: { margin } }),
+  );
+  assert.deepEqual(said(floored, "cs"), ["Množstevní sleva se neuplatní: ceny položek jsou už na nastaveném minimu."]);
+  assert.deepEqual(said(floored, "en"), ["The quantity discount is not applied: the item prices are already at the set minimum."]);
+  const zero = planCart(cartOf([pline("L1", 1, 100_00, 3)]), tiersPayload([{ ...GLOBAL, breaks: [{ minQty: 2, percent: 0 }] }]));
+  assert.deepEqual(said(zero, "cs"), ["Množstevní sleva tu nic neušetří."]);
+  assert.deepEqual(said(zero, "en"), ["The quantity discount saves nothing here."]);
+});
+
+test("progress.tierHint and the margin: no hint where the next break could not give more than the headroom", () => {
+  const margin = { enabled: true, global: { maxDiscountPercent: 50 }, perCollection: [] };
+  const payload = tiersPayload([GLOBAL], [], { modules: { margin } });
+  // Cost 88 Kč of 100 Kč: 12 Kč headroom an item; 3 items get 10 % (30 Kč), 15 % would be capped at 36 Kč → still more: hint.
+  const room = planCart(cartOf([pline("L1", 1, 100_00, 3, { unitCost: 88, unitCostCurrency: "CZK" })]), payload);
+  assert.equal(room.progress.tierHint?.next.minQty, 4);
+  // Cost 90 Kč: 10 Kč headroom an item, all of it taken by the 10 % break → 15 % would give nothing more: no hint.
+  const full = planCart(cartOf([pline("L1", 1, 100_00, 3, { unitCost: 90, unitCostCurrency: "CZK" })]), payload);
+  assert.equal(lineOf(full, "L1").product?.amount, 30_00);
+  assert.equal(full.progress.tierHint, undefined);
+  // At its floor with nothing yet (2 items, below the first break): no hint either.
+  const floor = planCart(cartOf([pline("L1", 1, 100_00, 2, { unitCost: 100, unitCostCurrency: "CZK" })]), payload);
+  assert.equal(floor.progress.tierHint, undefined);
+});
 
 test("explain: the tier in words (cs/en) — what it saves, what one more item gives, why it does not apply", () => {
   const payload = tiersPayload([GLOBAL]);

@@ -57,6 +57,14 @@ test("a percent that is not a number takes the invalid_percent path: the default
   ]);
 });
 
+test("fix round 2: a junk percent next to a usable amount is no second value — the amount stays, invalid_percent says so", () => {
+  const { config, issues } = tiersOf([set([{ minQty: 3, percent: "", amountOff: { CZK: 50_00 } }])]);
+  assert.deepEqual(config.modules.tiers.sets[0].breaks, [{ minQty: 3, amountOff: { CZK: 50_00 } }]);
+  assert.deepEqual(issues.map((i) => [i.path, i.code, i.params]), [
+    ["modules.tiers.sets[0].breaks[0].percent", "invalid_percent", { min: 0, max: 100, value: '""', fallback: "amount", minQty: 3 }],
+  ]);
+});
+
 test("a break without a usable minimum quantity is dropped with an issue; a fractional, < 1 or too large one is adjusted with an issue", () => {
   const max = CONFIG_LIMITS.tierMinQty;
   assert.equal(max, 10_000);

@@ -7,13 +7,19 @@
 // === PORT SPEC (the Rust function ports this 1:1; T2) =====================================
 //
 // Inputs: the cart (cart currency, lines in cart order), each line's product
-// metafield `tierRef` (CartLineInput.tierRef: a non-empty string, else none) and
-// the shop config's `modules.tiers` read by tiers.ts readTiersPayload for the
-// cart currency (its header lists every reading rule).
+// metafield `tierRef` (CartLineInput.tierRef) and the shop config's
+// `modules.tiers` read by tiers.ts readTiersPayload for the cart currency (its
+// header lists every reading rule).
 //
-// 1. Set of a line (K1). Gift lines have none. Else: `tierRef` present → the set
-//    with that id if the payload has it, else NONE (fail closed: never the
-//    global set); `tierRef` absent → the payload's `global` set, if any.
+// 1. Set of a line (K1). Gift lines have none. Else, by the metafield's
+//    `tierRef` (fix round 2: fail closed on anything unusable):
+//      absent, or JSON null  → the payload's `global` set, if any;
+//      a string              → the set with exactly that id if the payload has
+//                              it, else NONE ("" included: no set has that id);
+//      any other JSON value  → NONE (a number, an object, an array, a bool).
+//    Never the global set for a ref that is there but unusable. A line's set
+//    is looked up by id in a map built once from the payload's sets (never a
+//    scan over the sets per line).
 // 2. Eligible lines = lines of a set that can take a product discount: not a
 //    gift, and not outlet unless `engine.combination.outletWithAnything`
 //    (plan.ts `excluded === null`). Only they count, and only they get a tier.
@@ -30,9 +36,9 @@
 //    next = the first offered break with minQty > count (hint only, TS side).
 // 5. Candidate on each line of a group with a reached break, id
 //    `tier:<setId>` (TIER_CANDIDATE_PREFIX), method automatic, priority 0:
-//      percent p:  amount = round(subtotal × p / 100) — JS Math.round, i.e.
-//                  floor(x + 0.5), the same expression as a percentage rule;
-//                  natural value {percent: p};
+//      percent p:  amount = round(subtotal × p / 100) with JS Math.round
+//                  semantics — engine/js.rs `round` — the same expression
+//                  as a percentage rule; natural value {percent: p};
 //      amount a:   perItem = min(a, unitPrice); amount = perItem × quantity;
 //                  natural value {fixedPerItem: perItem}.
 //    amount 0 → no candidate. message = describe.ts describeTierBreak of the
@@ -43,11 +49,14 @@
 //    line, next to its product rules: rank amount desc, priority desc, id asc
 //    (plain string order of the ids: "a" < "tier:g" < "z"); the best one wins.
 //    A tier is never part of a Pro stack (no rule can list it in
-//    `combinesWith`); a Pro stack of rules beats it only with a larger total
-//    (the stack search starts from the best single candidate, see plan.ts
-//    pick). It then goes through margin protection like any product stack (a
-//    capped tier is {fixedTotal: headroom} with the same message), the Free
-//    product/order switch (the losing category's candidates are dropped) and
+//    `combinesWith`) and takes NO place in the stack pool (fix round 2): the
+//    pool is the MAX_STACK_CANDIDATES best-ranked RULE candidates of the line,
+//    as without tiers; the search's starting total is the best single
+//    candidate of the line, the tier included, so a Pro stack of rules beats
+//    the tier only with a larger total (plan.ts pick). It then goes through
+//    margin protection like any product stack (a capped tier is {fixedTotal:
+//    headroom} with the same message), the Free product/order switch (the
+//    losing category's candidates are dropped) and
 //    the output (function-output.ts) unchanged. Its owner is the tier itself,
 //    method automatic: ONLY the automatic node emits it.
 // Campaign overrides never touch a tier (MVP 3; overrides of tier sets come
@@ -150,8 +159,8 @@ function breaksAround(breaks: readonly TierBreakRead[], count: number): { reache
   return { reached, next: null };
 }
 
-/** A break as describe.ts reads it, in the cart currency. */
-function describable(b: TierBreakRead, currency: string): DescribableTierBreak {
+/** A break or step (engine form: percent or amount in the cart currency) as describe.ts reads it. */
+export function tierStepBreak(b: { minQty: number; percent: number | null; amount: number | null }, currency: string): DescribableTierBreak {
   return b.percent !== null ? { minQty: b.minQty, percent: b.percent } : { minQty: b.minQty, amountOff: { [currency]: b.amount ?? 0 } };
 }
 
@@ -194,7 +203,7 @@ export function prepareTiers(work: WorkLine[], raw: unknown, locale: PlanLocale,
       if (!reached) continue;
       sw.reachedAny = true;
       let text = labels.get(reached.minQty);
-      if (text === undefined) labels.set(reached.minQty, (text = describeTierBreak(describable(reached, currency), { locale, currency })));
+      if (text === undefined) labels.set(reached.minQty, (text = describeTierBreak(tierStepBreak(reached, currency), { locale, currency })));
       for (const w of lines) {
         const { amount, value } = amountOn(reached, w.line);
         w.tier = amount > 0 ? { rule: sw.rule, amount, value, label: text } : null;
@@ -209,9 +218,10 @@ export function prepareTiers(work: WorkLine[], raw: unknown, locale: PlanLocale,
 const step = (b: TierBreakRead | null): TierStep | null => (b ? { minQty: b.minQty, percent: b.percent, amount: b.amount } : null);
 
 function stateOf(sw: SetWork, contributes: boolean): TierState {
+  // No line first (fix round 2): a set the cart does not use is not about this cart at all.
+  if (sw.lines.length === 0) return "no_target_lines";
   if (sw.set.breaks.length === 0) return "disabled";
   if (!sw.set.breaks.some((b) => b.offered)) return "currency_missing";
-  if (sw.lines.length === 0) return "no_target_lines";
   if (sw.eligible === 0) return "outlet_only";
   if (!sw.reachedAny) return "below_tier";
   if (contributes) return "applied";
@@ -240,7 +250,7 @@ export function tierOutcomes(stage: TierStage, work: readonly WorkLine[]): TierO
     const out: TierOutcome = {
       setId: sw.set.id,
       ruleId: sw.rule.id,
-      count: sw.set.count,
+      countAcross: sw.set.count,
       state,
       amount: c?.amount ?? 0,
       lineIds: c?.lineIds ?? [],
@@ -256,13 +266,15 @@ export function tierOutcomes(stage: TierStage, work: readonly WorkLine[]): TierO
  * offered break (fewest items missing; ties: the group whose first line comes
  * first), among those where that break would give MORE than a line of the
  * group gets now — measured on its current quantities, capped at the line's
- * margin headroom. Null when there is none.
+ * margin headroom — and whose set the Free product/order switch did not drop
+ * (the order discount won: more items would not change that). Null when none.
  */
 export function tierHint(stage: TierStage, work: readonly WorkLine[]): TierHint | null {
   if (stage.sets.length === 0) return null;
   const position = new Map(work.map((w, i) => [w, i]));
   let best: { hint: TierHint; first: number } | null = null;
   for (const sw of stage.sets) {
+    if (sw.rule.dropped) continue;
     for (const g of sw.groups) {
       const next = g.next;
       if (!next || g.lines.length === 0) continue;

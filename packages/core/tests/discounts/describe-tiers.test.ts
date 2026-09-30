@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { type DescribableTierBreak, describeTierBreak, describeTierSet } from "../../src/discounts/describe.ts";
+import { type DescribableTierBreak, describeTierBreak, describeTierSet, describeTierValue } from "../../src/discounts/describe.ts";
 
 const NBSP = " ";
 const PERCENT_SET = { breaks: [{ minQty: 3, percent: 10 }, { minQty: 5, percent: 15 }] };
@@ -60,4 +60,11 @@ test("never an enum key, never minor units in the text", () => {
       assert.ok(!/5000|10000|200\b/.test(text), text);
     }
   }
+});
+
+test("describeTierValue: what a break takes off each item, as describeTierBreak says it", () => {
+  assert.equal(describeTierValue({ minQty: 3, percent: 10 }, { locale: "cs" }), `−10${NBSP}%`);
+  assert.equal(describeTierValue(AMOUNT_SET.breaks[0], { locale: "cs", currency: "CZK" }), `−50${NBSP}Kč za kus`);
+  assert.equal(describeTierValue(AMOUNT_SET.breaks[0], { locale: "en" }), "−CZK 50 / €2 per item");
+  assert.equal(describeTierValue(AMOUNT_SET.breaks[1], { locale: "en", currency: "EUR" }), "");
 });

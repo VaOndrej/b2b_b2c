@@ -365,22 +365,39 @@ export interface DescribeTierOptions {
   currencies?: readonly string[];
 }
 
+/** The currencies a tier break's amount is described in (`opts`), and those of them it has an amount for. */
+function tierCurrencies(b: DescribableTierBreak, opts: DescribeTierOptions): { listed: string[]; shown: string[] } {
+  const amount = b.amountOff ?? {};
+  const listed = opts.currency !== undefined ? [opts.currency] : [...(opts.currencies ?? Object.keys(amount))];
+  return { listed, shown: shownCurrencies(amount, listed) };
+}
+
+/**
+ * What a tier break takes off each item: "−10 %" · "−10%" · "−50 Kč za kus" ·
+ * "−CZK 50 / €2 per item" (the currencies as describeTierBreak picks them);
+ * "" when none of them has an amount. A percent wins over an amount.
+ */
+export function describeTierValue(b: DescribableTierBreak, opts: DescribeTierOptions): string {
+  const { locale } = opts;
+  if (typeof b.percent === "number") return `−${formatPercent(b.percent, locale)}`;
+  const { shown } = tierCurrencies(b, opts);
+  if (shown.length === 0) return "";
+  return `−${formatAmounts(b.amountOff ?? {}, shown, locale)} ${locale === "cs" ? "za kus" : "per item"}`;
+}
+
 /** "od 3 ks −10 %" (lower case: describeTierSet joins them; describeTierBreak capitalizes). */
 function tierBreakPhrase(b: DescribableTierBreak, opts: DescribeTierOptions): string {
   const { locale } = opts;
   const cs = locale === "cs";
   const from = cs ? `od ${b.minQty} ks` : `from ${b.minQty} ${enPlural(b.minQty, "item", "items")}`;
   // A percent wins over an amount (config/tiers.ts keeps the percent).
-  if (typeof b.percent === "number") return `${from} −${formatPercent(b.percent, locale)}`;
-  const amount = b.amountOff ?? {};
-  const listed = opts.currency !== undefined ? [opts.currency] : (opts.currencies ?? Object.keys(amount));
-  const shown = shownCurrencies(amount, listed);
+  if (typeof b.percent === "number") return `${from} ${describeTierValue(b, opts)}`;
+  const { listed, shown } = tierCurrencies(b, opts);
   const missing = listed.filter((c) => !shown.includes(c));
   const notOffered =
     missing.length === 0 ? "" : cs ? ` (v ${joinWords(missing, locale)} se nenabízí)` : ` (not offered in ${joinWords(missing, locale)})`;
   if (shown.length === 0) return missing.length > 0 ? `${from}${notOffered}` : `${from} ${cs ? "(bez hodnoty)" : "(no value)"}`;
-  const amounts = formatAmounts(amount, shown, locale);
-  return `${from} −${amounts} ${cs ? "za kus" : "per item"}${notOffered}`;
+  return `${from} ${describeTierValue(b, opts)}${notOffered}`;
 }
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);

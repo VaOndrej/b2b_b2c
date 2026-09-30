@@ -71,7 +71,7 @@
 
 import { type CartPlanInput, ENTERED_CODE_PADDING, type NormalizedCart, type NormalizedLine, normalizeCart, type PlanLocale } from "./cart.ts";
 import { codeHash } from "./code-hash.ts";
-import type { DiscountMethod, DiscountRuleValue, DiscountTargetKind, MinimumScope, ReadonlyDeep } from "./config.ts";
+import type { DiscountMethod, DiscountRuleValue, DiscountTargetKind, MinimumScope, ReadonlyDeep, TierCountAcross } from "./config.ts";
 import { DEFAULT_CONFIG } from "./config/defaults.ts";
 import { CONFIG_LIMITS } from "./config/limits.ts";
 import { DISCOUNT_TARGET_KINDS } from "./config/enums.ts";
@@ -81,6 +81,7 @@ import { type MarginBasis, type MarginSource, readMarginPayload } from "./margin
 import {
   type Candidate,
   candidateLabel,
+  label,
   orderAmount,
   ownerOf,
   type Rule,
@@ -89,11 +90,10 @@ import {
   type WorkLine,
 } from "./plan-internal.ts";
 import { applyMarginProtection, computeFloors, markTightLines, protectOrder } from "./plan-margin.ts";
-import { prepareTiers, TIER_CANDIDATE_PREFIX, tierCandidateId, TIER_LABEL, tierHint, tierOutcomes } from "./plan-tiers.ts";
+import { prepareTiers, TIER_CANDIDATE_PREFIX, tierCandidateId, TIER_LABEL, tierHint, tierOutcomes, tierStepBreak } from "./plan-tiers.ts";
 import { lineRuleIds } from "./targeting.ts";
-import type { TierCountAcross } from "./config.ts";
 
-export { TIER_CANDIDATE_PREFIX, tierCandidateId, TIER_LABEL };
+export { TIER_CANDIDATE_PREFIX, tierCandidateId, TIER_LABEL, tierStepBreak };
 
 // --- Public plan shape ------------------------------------------------------------------
 
@@ -257,7 +257,10 @@ export interface RuleOutcome {
   /** Schedule at day granularity (shop dates, inclusive). */
   startsOn?: string;
   endsOn?: string;
-  /** outranked: owners of the stacks that beat it (at most 3). */
+  /**
+   * outranked: owners of the stacks that beat it (at most 3) — a rule id, or
+   * `tier:<setId>` when a quantity tier beat it (MVP 3, plan.tiers).
+   */
   betterRuleIds?: string[];
   /** combined: the rule whose node emits the stack it is part of. */
   combinedInto?: string;
@@ -325,7 +328,8 @@ export interface TierOutcome {
   setId: string;
   /** The id its plan components carry: `tier:<setId>`. */
   ruleId: string;
-  count: TierCountAcross;
+  /** What counts toward minQty (K2). */
+  countAcross: TierCountAcross;
   state: TierState;
   /** Minor units the set contributes to the final plan. */
   amount: number;
@@ -835,9 +839,13 @@ function pick(positive: Candidate[], cap: number, partners: Map<string, Set<stri
   let chosen: Candidate[] = [positive[0]];
   if (partners.size > 0 && positive.length > 1) {
     // The stack cap: the rest can never be part of a stack (they stay in
-    // `positive`, so buildStack still counts them as outranked).
-    const pool = positive.length > MAX_STACK_CANDIDATES ? positive.slice(0, MAX_STACK_CANDIDATES) : positive;
-    let bestTotal = Math.min(cap, pool[0].amount);
+    // `positive`, so buildStack still counts them as outranked). A quantity
+    // tier can never stack, so it takes no place in the pool: the pool is the
+    // MAX_STACK_CANDIDATES best-ranked RULE candidates (the tier still competes
+    // as a single candidate through `bestTotal`).
+    const stackable = positive.some((c) => c.rule.module === "tiers") ? positive.filter((c) => c.rule.module !== "tiers") : positive;
+    const pool = stackable.length > MAX_STACK_CANDIDATES ? stackable.slice(0, MAX_STACK_CANDIDATES) : stackable;
+    let bestTotal = Math.min(cap, positive[0].amount); // the best single candidate, a tier included
     // A seed already inside an earlier greedy stack is skipped: it would mostly
     // rebuild the same stack, and without this the search is O(k³) per line when
     // many rules combine (the function runs under an instruction limit).
@@ -1030,7 +1038,7 @@ function planShipping(
     ownerMethod: winner.rule.method,
     value: winner.value,
     amount: null,
-    message: candidateLabel({ rule: winner.rule, amount: 0 }, cart.locale, cart.currency),
+    message: label(winner.rule, cart.locale, cart.currency),
   };
 }
 

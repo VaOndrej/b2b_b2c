@@ -56,11 +56,12 @@ export interface CartLineInput {
   variantRuleIds?: Readonly<Record<string, readonly string[]>>;
   /**
    * MVP 3 (contracts K1/K3): the product metafield's `tierRef` — the id of the
-   * scoped tier set of the product, as the sync wrote it. Absent (or not a
-   * non-empty string) = the payload's global set applies. A ref to a set the
-   * shop config does not carry gives the line NO tier (fail closed).
+   * scoped tier set of the product, as the sync wrote it. Absent or null = the
+   * payload's global set applies. Anything else that is not a set id of the
+   * shop config (another type, "", a set it does not carry) gives the line NO
+   * tier (fail closed: never the global set).
    */
-  tierRef?: string;
+  tierRef?: string | null;
 }
 
 export interface CartCampaignInput {
@@ -138,7 +139,11 @@ export interface NormalizedLine {
    * strictest setting applies (resolveProductMargin).
    */
   marginRefCount: number;
-  /** The product metafield's `tierRef` when a non-empty string, else null (the global set). */
+  /**
+   * The product metafield's `tierRef`: null when absent or null (the global
+   * set); a string as given; any other value "" — no set has that id, so the
+   * line gets no tier (fail closed, plan-tiers.ts step 1).
+   */
   tierRef: string | null;
 }
 
@@ -286,7 +291,7 @@ export function normalizeCart(input: CartPlanInput): NormalizedCart {
       unitCostCurrency: typeof raw.unitCostCurrency === "string" ? raw.unitCostCurrency : null,
       marginRefs: strings(raw.marginRefs),
       marginRefCount: Array.isArray(raw.marginRefs) ? raw.marginRefs.length : 0,
-      tierRef: typeof raw.tierRef === "string" && raw.tierRef !== "" ? raw.tierRef : null,
+      tierRef: raw.tierRef === undefined || raw.tierRef === null ? null : typeof raw.tierRef === "string" ? raw.tierRef : "",
     });
   }
 

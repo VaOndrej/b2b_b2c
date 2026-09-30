@@ -19,7 +19,7 @@ import {
   describeMarginReason,
   describeRule,
   describeTierBreak,
-  type DescribableTierBreak,
+  describeTierValue,
   echoCode as echo,
   entitledMinimumPhrase,
   enPlural,
@@ -39,7 +39,7 @@ import {
   TIER_CANDIDATE_PREFIX,
   TIER_LABEL,
   type TierOutcome,
-  type TierStep,
+  tierStepBreak,
 } from "./plan.ts";
 
 /**
@@ -160,31 +160,21 @@ function betterName(outcome: { betterRuleIds?: string[] }, plan: CartPlan, local
 
 // --- Quantity tiers (MVP 3) -----------------------------------------------------------------------
 
-/** A tier step as describe.ts reads it (the amount is in the plan currency). */
-function describableStep(s: TierStep, plan: CartPlan): DescribableTierBreak {
-  return s.percent !== null ? { minQty: s.minQty, percent: s.percent } : { minQty: s.minQty, amountOff: { [plan.currency]: s.amount ?? 0 } };
-}
-
-/** "−15 %" / "−50 Kč za kus": what a step takes off each item. */
-function stepValue(s: TierStep, plan: CartPlan, locale: UiLocale): string {
-  if (s.percent !== null) return `−${formatPercent(s.percent, locale)}`;
-  const money = formatMoney(s.amount ?? 0, plan.currency, locale);
-  return locale === "cs" ? `−${money} za kus` : `−${money} per item`;
-}
-
 /** The break every contributing line reached ("od 3 ks −10 %"), or null when they differ. */
 function uniformBreak(tier: TierOutcome, plan: CartPlan, locale: UiLocale): string | null {
   const contributing = new Set(tier.lineIds);
   const reached = tier.groups.filter((g) => g.lineIds.some((id) => contributing.has(id))).map((g) => g.reached);
   const first = reached[0];
   if (!first || reached.some((r) => r?.minQty !== first.minQty)) return null;
-  const text = describeTierBreak(describableStep(first, plan), { locale, currency: plan.currency });
+  const text = describeTierBreak(tierStepBreak(first, plan.currency), { locale, currency: plan.currency });
   return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
 function tierSentences(tier: TierOutcome, plan: CartPlan, locale: UiLocale): ExplainItem[] {
   const cs = locale === "cs";
-  const refs = { tierSetId: tier.setId, lineIds: tier.lineIds };
+  // Applied: the lines it discounts; otherwise the lines it counted (its groups).
+  const lineIds = tier.state === "applied" ? tier.lineIds : tier.groups.flatMap((g) => g.lineIds);
+  const refs = { tierSetId: tier.setId, lineIds };
   const info = (text: string) => [item("info", text, refs)];
   const subject = cs ? "Množstevní sleva" : "The quantity discount";
   switch (tier.state) {
@@ -231,7 +221,7 @@ function tierHintSentence(plan: CartPlan, locale: UiLocale): ExplainItem[] {
   const hint = plan.progress.tierHint;
   if (!hint) return [];
   const n = hint.missing;
-  const value = stepValue(hint.next, plan, locale);
+  const value = describeTierValue(tierStepBreak(hint.next, plan.currency), { locale, currency: plan.currency });
   const text = locale === "cs" ? `Přidej ${n} ks a dostaneš ${value}.` : `Add ${n} more ${enPlural(n, "item", "items")} to get ${value}.`;
   return [item("info", text, { tierSetId: hint.setId, lineIds: hint.lineIds })];
 }
@@ -526,7 +516,20 @@ export function explainPlan(plan: CartPlan, locale: UiLocale, opts: ExplainOptio
     if (rule.method === "code" || rule.state === "applied") continue;
     out.push(...automaticSentences(rule, plan, locale));
   }
-  for (const tier of tiers) if (tier.state !== "applied") out.push(...tierSentences(tier, plan, locale));
+  // Sets that do not apply: one sentence per distinct text (two sets missing EUR say it once, for both sets' lines).
+  const said = new Map<string, ExplainItem>();
+  for (const tier of tiers) {
+    if (tier.state === "applied") continue;
+    for (const sentence of tierSentences(tier, plan, locale)) {
+      const earlier = said.get(sentence.text);
+      if (!earlier) {
+        said.set(sentence.text, sentence);
+        out.push(sentence);
+      } else if (sentence.lineIds) {
+        earlier.lineIds = [...(earlier.lineIds ?? []), ...sentence.lineIds];
+      }
+    }
+  }
   for (const line of plan.lines) out.push(...cappedLineSentence(line, plan, locale, admin));
   out.push(...marginOrderSentences(plan, locale));
   out.push(...outletSentence(plan, locale));
