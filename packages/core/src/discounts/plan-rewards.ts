@@ -54,8 +54,11 @@ export interface GiftsStage {
 export function planGifts(work: WorkLine[], read: RewardsRead, base: number, currency: string, locale: PlanLocale): GiftsStage {
   const gifts: PlanGift[] = [];
   const warnings: PlanWarning[] = [];
-  const known = new Set(read.tiers.map((t) => t.id));
+  const known = new Set<string>();
   for (const tier of read.tiers) {
+    // A repeated tier id (junk payload) is ignored: the first one decides, as in the Rust reader.
+    if (known.has(tier.id)) continue;
+    known.add(tier.id);
     const id = giftCandidateId(tier.id);
     const threshold = tier.threshold[currency];
     const offered = threshold !== undefined;

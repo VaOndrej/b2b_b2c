@@ -233,29 +233,218 @@ pub fn is_local_date(s: &str) -> bool {
         })
 }
 
-/// `String(n)` for a finite number whose JS rendering is plain decimal notation
-/// (1e-6 ≤ |n| < 1e21, or 0): shortest round-trip digits, no trailing ".0".
-/// Both Rust's `Display` for f64 and JS pick the shortest digits that round-trip
-/// to the same double.
+/// `String(n)` (ECMAScript Number::toString, radix 10) for a finite number:
+/// the shortest digits that round-trip to the same double, in plain notation
+/// for 1e-6 ≤ |n| < 1e21 and exponent notation ("1e-7", "1.5e+21") outside.
+/// Written out here instead of Rust's float `Display` (MVP 4 Wasm size pass:
+/// `core::fmt`'s float printing was ~15 kB of the 256 kB limit); the digits are
+/// tested against Rust's own shortest `{:e}` on random doubles of every
+/// magnitude, the layout against JS.
 pub fn number_to_string(n: f64) -> String {
-    if n == 0.0 {
+    if n == 0.0 || !n.is_finite() {
+        // (A non-finite number never reaches here: every caller reads JSON numbers.)
         return "0".to_string();
     }
+    let mut out = String::with_capacity(24);
+    if n < 0.0 {
+        out.push('-');
+    }
+    let v = n.abs();
     // A whole number below 2^53 (a quantity, a whole percent, an amount): its
-    // digits, the text `Display` writes too, without the float formatter
-    // (~1.5 k Wasm instructions a number).
-    if n.fract() == 0.0 && n.abs() < 9_007_199_254_740_992.0 {
-        let mut out = String::with_capacity(17);
-        if n < 0.0 {
-            out.push('-');
-        }
-        push_digits(&mut out, n.abs() as u64);
+    // digits, without the digit search (a few dozen instructions).
+    if v.fract() == 0.0 && v < 9_007_199_254_740_992.0 {
+        push_digits(&mut out, v as u64);
         return out;
     }
-    let mut out = String::new();
-    use std::fmt::Write;
-    let _ = write!(out, "{}", n);
+    let (digits, point) = shortest_digits(v);
+    let k = digits.len() as i32;
+    let digit = |i: usize| char::from(b'0' + digits[i]);
+    if k <= point && point <= 21 {
+        digits.iter().for_each(|&d| out.push(char::from(b'0' + d)));
+        (0..point - k).for_each(|_| out.push('0'));
+    } else if 0 < point && point <= 21 {
+        for (i, &d) in digits.iter().enumerate() {
+            if i as i32 == point {
+                out.push('.');
+            }
+            out.push(char::from(b'0' + d));
+        }
+    } else if -6 < point && point <= 0 {
+        out.push_str("0.");
+        (0..-point).for_each(|_| out.push('0'));
+        digits.iter().for_each(|&d| out.push(char::from(b'0' + d)));
+    } else {
+        out.push(digit(0));
+        if k > 1 {
+            out.push('.');
+            digits[1..].iter().for_each(|&d| out.push(char::from(b'0' + d)));
+        }
+        let e = point - 1;
+        out.push('e');
+        out.push(if e < 0 { '-' } else { '+' });
+        push_digits(&mut out, u64::from(e.unsigned_abs()));
+    }
     out
+}
+
+/// A small unsigned big integer, little-endian base 2^32 (the digit search's
+/// numbers reach 2^1077 × 10).
+#[derive(Clone)]
+struct Big(Vec<u32>);
+
+impl Big {
+    fn from_u64(v: u64) -> Big {
+        Big(vec![v as u32, (v >> 32) as u32])
+    }
+    fn mul_small(&mut self, m: u32) {
+        let mut carry = 0u64;
+        for limb in self.0.iter_mut() {
+            let x = u64::from(*limb) * u64::from(m) + carry;
+            *limb = x as u32;
+            carry = x >> 32;
+        }
+        if carry > 0 {
+            self.0.push(carry as u32);
+        }
+    }
+    fn shl(&mut self, bits: u32) {
+        for _ in 0..bits / 32 {
+            self.0.insert(0, 0);
+        }
+        let b = bits % 32;
+        if b > 0 {
+            let mut carry = 0u32;
+            for limb in self.0.iter_mut() {
+                let next = *limb >> (32 - b);
+                *limb = (*limb << b) | carry;
+                carry = next;
+            }
+            if carry > 0 {
+                self.0.push(carry);
+            }
+        }
+    }
+    fn trim(&mut self) {
+        while self.0.len() > 1 && self.0.last() == Some(&0) {
+            self.0.pop();
+        }
+    }
+    fn cmp(&self, other: &Big) -> Ordering {
+        let (a, b) = (self.0.iter().rposition(|&x| x != 0), other.0.iter().rposition(|&x| x != 0));
+        match (a, b) {
+            (None, None) => Ordering::Equal,
+            (None, _) => Ordering::Less,
+            (_, None) => Ordering::Greater,
+            (Some(i), Some(j)) if i != j => i.cmp(&j),
+            (Some(i), _) => (0..=i).rev().map(|k| self.0[k].cmp(&other.0[k])).find(|o| o.is_ne()).unwrap_or(Ordering::Equal),
+        }
+    }
+    fn add(&self, other: &Big) -> Big {
+        let len = self.0.len().max(other.0.len());
+        let mut out = Vec::with_capacity(len + 1);
+        let mut carry = 0u64;
+        for i in 0..len {
+            let x = u64::from(*self.0.get(i).unwrap_or(&0)) + u64::from(*other.0.get(i).unwrap_or(&0)) + carry;
+            out.push(x as u32);
+            carry = x >> 32;
+        }
+        if carry > 0 {
+            out.push(carry as u32);
+        }
+        Big(out)
+    }
+    /// self -= other (self ≥ other).
+    fn sub(&mut self, other: &Big) {
+        let mut borrow = 0i64;
+        for i in 0..self.0.len() {
+            let x = i64::from(self.0[i]) - i64::from(*other.0.get(i).unwrap_or(&0)) - borrow;
+            borrow = i64::from(x < 0);
+            self.0[i] = (x + (borrow << 32)) as u32;
+        }
+        self.trim();
+    }
+}
+
+/// The shortest decimal digits of a finite v > 0 that read back as v, and the
+/// position of the decimal point: v ≈ 0.d₁d₂… × 10^point (Burger & Dybvig's
+/// free-format algorithm on exact big integers; a tie between two candidates
+/// goes to the closer one, an exact half to the larger digit — what Rust's
+/// shortest float printing gives too).
+fn shortest_digits(v: f64) -> (Vec<u8>, i32) {
+    let bits = v.to_bits();
+    let biased = ((bits >> 52) & 0x7ff) as i32;
+    let fraction = bits & ((1u64 << 52) - 1);
+    let (f, e) = if biased == 0 { (fraction, -1074) } else { (fraction | (1u64 << 52), biased - 1075) };
+    // IEEE round-half-even reading: a boundary itself reads back as v when f is even.
+    let even = f % 2 == 0;
+    let lower_closer = biased > 1 && fraction == 0;
+    // v = r / s; the neighbours' midpoints are v ± m⁺/s, v − m⁻/s.
+    let (mut r, mut s, mut mp, mut mm);
+    if e >= 0 {
+        r = Big::from_u64(f);
+        r.shl(e as u32 + if lower_closer { 2 } else { 1 });
+        s = Big::from_u64(if lower_closer { 4 } else { 2 });
+        mp = Big::from_u64(1);
+        mp.shl(e as u32 + u32::from(lower_closer));
+        mm = Big::from_u64(1);
+        mm.shl(e as u32);
+    } else {
+        r = Big::from_u64(f);
+        r.shl(if lower_closer { 2 } else { 1 });
+        s = Big::from_u64(1);
+        s.shl((-e) as u32 + if lower_closer { 2 } else { 1 });
+        mp = Big::from_u64(if lower_closer { 2 } else { 1 });
+        mm = Big::from_u64(1);
+    }
+    // point = ⌈log10 v⌉, from the binary exponent (may be one low), then fixed up.
+    let top = e + 63 - f.leading_zeros() as i32;
+    let mut point = ((f64::from(top) * 0.301_029_995_663_981_2) - 1e-10).ceil() as i32;
+    if point >= 0 {
+        (0..point).for_each(|_| s.mul_small(10));
+    } else {
+        for _ in 0..-point {
+            r.mul_small(10);
+            mp.mul_small(10);
+            mm.mul_small(10);
+        }
+    }
+    let high = |r: &Big, mp: &Big, s: &Big| {
+        let o = r.add(mp).cmp(s);
+        if even { o.is_ge() } else { o.is_gt() }
+    };
+    while high(&r, &mp, &s) {
+        s.mul_small(10);
+        point += 1;
+    }
+    let mut digits = Vec::with_capacity(17);
+    loop {
+        r.mul_small(10);
+        mp.mul_small(10);
+        mm.mul_small(10);
+        let mut d = 0u8;
+        while r.cmp(&s).is_ge() {
+            r.sub(&s);
+            d += 1;
+        }
+        let low = if even { r.cmp(&mm).is_le() } else { r.cmp(&mm).is_lt() };
+        let high = high(&r, &mp, &s);
+        if !low && !high {
+            digits.push(d);
+            continue;
+        }
+        let up = match (low, high) {
+            (true, false) => false,
+            (false, true) => true,
+            _ => {
+                let mut twice = r.clone();
+                twice.mul_small(2);
+                twice.cmp(&s).is_ge()
+            }
+        };
+        digits.push(d + u8::from(up));
+        break;
+    }
+    (digits, point)
 }
 
 /// The decimal digits of `n`, appended.
@@ -484,5 +673,94 @@ mod tests {
         assert_eq!(number_to_string(-0.0), "0");
         assert_eq!(number_to_string(33.33), "33.33");
         assert_eq!(number_to_string(0.1 + 0.2), "0.30000000000000004");
+        // JS's exponent notation outside 1e-6 ≤ |n| < 1e21 (MVP 4: was plain decimals).
+        assert_eq!(number_to_string(1e-7), "1e-7");
+        assert_eq!(number_to_string(0.000001), "0.000001");
+        assert_eq!(number_to_string(1.5e-7), "1.5e-7");
+        assert_eq!(number_to_string(1e21), "1e+21");
+        assert_eq!(number_to_string(1.2345e22), "1.2345e+22");
+        assert_eq!(number_to_string(123456789012345680000.0), "123456789012345680000");
+        assert_eq!(number_to_string(-14.285714285714286), "-14.285714285714286");
+        assert_eq!(number_to_string(5e-324), "5e-324");
+        assert_eq!(number_to_string(f64::MAX), "1.7976931348623157e+308");
+        assert_eq!(number_to_string(2.2250738585072014e-308), "2.2250738585072014e-308");
+        assert_eq!(number_to_string(9007199254740993.0), "9007199254740992");
+    }
+
+    /// The layout (plain vs exponent notation, the point, the sign) as node's
+    /// `String(n)` printed it for these doubles (generated 2026-10-01).
+    #[test]
+    fn layout_matches_js_string() {
+        let cases: [(f64, &str); 36] = [
+            (f64::from_bits(0x3e7ad7f29abcaf48), "1e-7"),
+            (f64::from_bits(0x3eb0c2ac1dbbe3d8), "9.99e-7"),
+            (f64::from_bits(0x3eb0c6f7a0b5ed8d), "0.000001"),
+            (f64::from_bits(0x3eb92a737110e454), "0.0000015"),
+            (f64::from_bits(0x3fb999999999999a), "0.1"),
+            (f64::from_bits(0x3fe0000000000000), "0.5"),
+            (f64::from_bits(0x3ff4000000000000), "1.25"),
+            (f64::from_bits(0x4040aa9fbe76c8b4), "33.333"),
+            (f64::from_bits(0x4058ffae147ae148), "99.995"),
+            (f64::from_bits(0x405edd2f1a9fbe77), "123.456"),
+            (f64::from_bits(0x430c6bf526340004), "1000000000000000.5"),
+            (f64::from_bits(0x432fffffffffffff), "4503599627370495.5"),
+            (f64::from_bits(0x4415af1d78b58c40), "100000000000000000000"),
+            (f64::from_bits(0x444b1a333426c08b), "999900000000000000000"),
+            (f64::from_bits(0x444b1ae4d6e2ef50), "1e+21"),
+            (f64::from_bits(0x444b1ae4d6e2ef52), "1.0000000000000003e+21"),
+            (f64::from_bits(0x4454542ba12a337c), "1.5e+21"),
+            (f64::from_bits(0x4490f0cf064dd592), "2e+22"),
+            (f64::from_bits(0x54b249ad2594c37d), "1e+100"),
+            (f64::from_bits(0x7fefffffffffffff), "1.7976931348623157e+308"),
+            (f64::from_bits(0x0000000000000001), "5e-324"),
+            (f64::from_bits(0x0000000000000005), "2.5e-323"),
+            (f64::from_bits(0x01a56e1fc2f8f359), "1e-300"),
+            (f64::from_bits(0x3f0078921ac6c11f), "0.0000314159"),
+            (f64::from_bits(0xbf201f31f46ed246), "-0.000123"),
+            (f64::from_bits(0xbe7ad7f29abcaf48), "-1e-7"),
+            (f64::from_bits(0xc534adf4b7320335), "-2.5e+25"),
+            (f64::from_bits(0x3fd3333333333334), "0.30000000000000004"),
+            (f64::from_bits(0x3fd5555555555555), "0.3333333333333333"),
+            (f64::from_bits(0x3fe5555555555555), "0.6666666666666666"),
+            (f64::from_bits(0x402c924924924925), "14.285714285714286"),
+            (f64::from_bits(0x402c924924924925), "14.285714285714286"),
+            (f64::from_bits(0x3eb0c6f7a0b5ed8d), "0.000001"),
+            (f64::from_bits(0x419d6f34547df3b6), "123456789.123"),
+            (f64::from_bits(0x3f505e1c15097c81), "0.000999"),
+            (f64::from_bits(0x426cbe991ee87000), "987654321987.5")
+        ];
+        for (v, js) in cases {
+            assert_eq!(number_to_string(v), js, "{v:e}");
+        }
+    }
+
+    /// The digits and decimal point equal Rust's own shortest round-trip
+    /// printing (`{:e}`, the algorithm JS uses too) on random doubles of every
+    /// magnitude, subnormals, powers of two and neighbours of powers of ten.
+    #[test]
+    fn shortest_digits_match_rusts_shortest_printing() {
+        let mut seed = 0x9e37_79b9_7f4a_7c15u64;
+        let mut next = || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed
+        };
+        let mut values: Vec<f64> = (0..200_000).map(|_| f64::from_bits(next() & 0x7fef_ffff_ffff_ffff)).filter(|v| *v > 0.0).collect();
+        values.extend((0..2000).map(|i| f64::from_bits(i + 1)));
+        values.extend((-1074..1024).map(|e| 2f64.powi(e)).filter(|v| *v > 0.0 && v.is_finite()));
+        for e in -300..300 {
+            let p = format!("1e{e}").parse::<f64>().unwrap();
+            values.extend([p, f64::from_bits(p.to_bits() + 1), f64::from_bits(p.to_bits() - 1)]);
+        }
+        values.extend((1..100_000).map(|i| f64::from(i) / 100.0));
+        for v in values {
+            let (digits, point) = shortest_digits(v);
+            let expected = format!("{v:e}");
+            let (mantissa, exp) = expected.split_once('e').unwrap();
+            let want: String = mantissa.chars().filter(char::is_ascii_digit).collect();
+            let got: String = digits.iter().map(|d| char::from(b'0' + d)).collect();
+            assert_eq!((got.as_str(), point), (want.as_str(), exp.parse::<i32>().unwrap() + 1), "{v:e}");
+        }
     }
 }

@@ -189,6 +189,17 @@ pub fn delivery_group_ids(root: &Value) -> Vec<String> {
     out
 }
 
+/// The numeric tail of a variant GID (plan-rewards.ts `variantNumber`: `/(\d+)$/`), when it is a safe integer.
+fn variant_number(id: &str) -> Option<u64> {
+    let digits = id.len() - id.bytes().rev().take_while(u8::is_ascii_digit).count();
+    let tail = &id[digits..];
+    if tail.is_empty() {
+        return None;
+    }
+    // Number(tail) as an exact integer: at most 2^53 - 1 (anything above matches no payload id).
+    tail.parse::<u64>().ok().filter(|n| *n <= 9_007_199_254_740_991)
+}
+
 /// One cart line as read (`readLine`), owned; `LineInput` borrows it.
 struct ReadLine {
     id: String,
@@ -196,6 +207,7 @@ struct ReadLine {
     unit_price: i64,
     outlet: bool,
     gift: bool,
+    gift_tier: Option<u32>,
     rule_ids: Vec<String>,
     variant_rule_ids: Vec<String>,
     unit_cost: Option<f64>,
@@ -276,6 +288,7 @@ impl RunInput {
         // set counts per product (K2).
         let tiers = &config.tiers;
         let tiers_on = !tiers.sets.is_empty();
+        let gift_tiers = &config.rewards.tiers;
         let set_index: Option<SetIndex> = tiers_on.then(|| SetIndex::of(&tiers.sets));
         let mut read_tiers: Vec<ReadTier> = Vec::with_capacity(if tiers_on { line_count } else { 0 });
         for line in lines_value.iter().flat_map(|l| (0..line_count).map(|i| l.get_at_index(i))) {
@@ -288,6 +301,7 @@ impl RunInput {
                 unit_price: 0,
                 outlet: false,
                 gift: false,
+                gift_tier: None,
                 rule_ids: Vec::new(),
                 variant_rule_ids: Vec::new(),
                 unit_cost: None,
@@ -331,7 +345,18 @@ impl RunInput {
             let amount = sole(&line_shape.get(&line, 2), Key::AmountPerQuantity).and_then(|per| sole(&per, Key::Amount));
             read.unit_price =
                 amount.and_then(|amount| DecimalText::read(&amount).text().and_then(|text| to_minor_units_with(text, exponent))).unwrap_or(0);
-            read.gift = sole(&line_shape.get(&line, 3), Key::Value).and_then(|value| non_empty(&value)).is_some();
+            let gift = sole(&line_shape.get(&line, 3), Key::Value).and_then(|value| non_empty(&value));
+            read.gift = gift.is_some();
+            // MVP 4 (R3): the tier it names, valid only with a variant that tier offers
+            // (rewards.ts: the variant id's numeric tail among the tier's variants).
+            if let Some(name) = gift.filter(|_| !gift_tiers.is_empty()) {
+                if let Some(index) = gift_tiers.iter().position(|t| t.id == name) {
+                    let variant = string(&variant_shape.get(&merchandise, 1)).unwrap_or_default();
+                    if variant_number(&variant).is_some_and(|n| gift_tiers[index].variants.contains(&n)) {
+                        read.gift_tier = Some(index as u32);
+                    }
+                }
+            }
             if let Some(index) = set_index.as_ref() {
                 // A gift line has no set (step 1).
                 let mut tier = ReadTier::default();
@@ -393,6 +418,7 @@ impl RunInput {
                     unit_price: l.unit_price,
                     outlet: l.outlet,
                     gift: l.gift,
+                    gift_tier: l.gift_tier,
                     rule_ids: &l.rule_ids,
                     variant_rule_ids: &l.variant_rule_ids,
                     unit_cost: l.unit_cost,

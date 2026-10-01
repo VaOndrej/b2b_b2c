@@ -60,8 +60,7 @@
                 "sets": []
               },
               "rewards": {
-                "gifts": [],
-                "countOtherDiscounts": false
+                "g": []
               },
               "margin": {
                 "enabled": false

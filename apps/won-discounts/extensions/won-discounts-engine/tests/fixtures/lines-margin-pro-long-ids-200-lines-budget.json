@@ -1,5 +1,5 @@
 {
-  "scenario": "Instruction budget, the Pro worst case with margin protection (drift audit P1/P2): 200 lines, each with 4 rule refs, the Pro stack VIP + S_x, a cost price, 2 marginRefs of 29 collections with a margin setting and 0 variant-level refs of other variants of its product: the input filled to Shopify's limit of 128 kB of MessagePack; 37 rules, a 10 % order discount. The exact output is over the budget: every stack goes to its top rule. Rule ids at the sanitizer's maximum of 64 characters (the config keeps 29 collections within its 9 000 B). With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.",
+  "scenario": "Instruction budget, the Pro worst case with margin protection (drift audit P1/P2): 200 lines, each with 4 rule refs, the Pro stack VIP + S_x, a cost price, 2 marginRefs of 29 collections with a margin setting and 0–1 variant-level refs of other variants of its product: the input filled to Shopify's limit of 128 kB of MessagePack; 37 rules, a 10 % order discount. The exact output is over the budget: every stack goes to its top rule. Rule ids at the sanitizer's maximum of 64 characters (the config keeps 29 collections within its 9 000 B). With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.",
   "payload": {
     "export": "cart-lines-discounts-generate-run",
     "target": "cart.lines.discounts.generate.run",
@@ -547,8 +547,7 @@
                 "sets": []
               },
               "rewards": {
-                "gifts": [],
-                "countOtherDiscounts": false
+                "g": []
               },
               "margin": {
                 "enabled": true,
@@ -730,7 +729,12 @@
                     "marginRefs": [
                       "4829302252662",
                       "4829303718868"
-                    ]
+                    ],
+                    "variantRuleIds": {
+                      "48468679000100": [
+                        "r_cdfd48f1940214cbadc30454e70fb4da1810a36863673958b65029125890f1"
+                      ]
+                    }
                   }
                 }
               }

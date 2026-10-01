@@ -19,6 +19,10 @@ pub struct LineInput<'a> {
     pub outlet: bool,
     /// A Won gift line (`_won_gift` attribute, non-empty).
     pub gift: bool,
+    /// MVP 4 (R3): a gift line whose `_won_gift` names a gift tier of the
+    /// config AND whose variant that tier offers — the tier's index into
+    /// `Rewards::tiers`, resolved once by the reader; none otherwise (paid).
+    pub gift_tier: Option<u32>,
     /// Product-wide refs (product metafield `ruleIds`).
     pub rule_ids: &'a [String],
     /// This variant's refs (product metafield `variantRuleIds`), usually none.
@@ -91,6 +95,8 @@ pub struct NormalizedLine<'a> {
     pub subtotal: i64,
     pub outlet: bool,
     pub gift: bool,
+    /// The valid gift tier of a gift line (LineInput `gift_tier`).
+    pub gift_tier: Option<u32>,
     /// Product-wide refs (`ruleIds`).
     pub rule_ids: &'a [String],
     /// This variant's refs.
@@ -153,6 +159,7 @@ pub fn normalize_cart(input: CartInput<'_>) -> NormalizedCart<'_> {
                 subtotal: mul_sat(quantity, unit_price),
                 outlet: line.outlet,
                 gift: line.gift,
+                gift_tier: line.gift_tier,
                 rule_ids: line.rule_ids,
                 variant_rule_ids: line.variant_rule_ids,
                 unit_cost: line.unit_cost,

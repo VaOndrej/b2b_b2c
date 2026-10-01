@@ -1124,7 +1124,98 @@ function generator(seed, onlySearch = false) {
     };
   }
 
+  // MVP 4 rewards (R1–R3): free shipping and gift tiers in every shape the
+  // reader must survive — valid compact payloads (as the sync writes them, Free
+  // gated or Pro ladders), junk entries, the pre-MVP 4 shape — against carts with
+  // gift lines of every kind: a valid variant, the fallback, a foreign variant,
+  // an unknown tier, several items, several lines, in currencies with and
+  // without a threshold, next to rules, an order discount, a shipping rule,
+  // margin protection and the Free switches.
+  function rewardCase() {
+    const currency = pick(["CZK", "CZK", "CZK", "EUR", "EUR", "USD", "JPY"]);
+    const tierIds = ["gift-1", "gift-2", "g3"];
+    const amounts = (cz, eu) => ({ ...(chance(0.95) ? { CZK: cz } : {}), ...(chance(0.6) ? { EUR: eu } : {}), ...(chance(0.15) ? { JPY: cz / 4 } : {}) });
+    let rewards;
+    const r = rnd();
+    if (r < 0.06) rewards = pick([null, 7, [], "x", { freeShipping: { threshold: { CZK: 1 } }, gifts: [], countOtherDiscounts: false }]);
+    else if (r < 0.12) {
+      rewards = {
+        s: pick([{ CZK: 0 }, { CZK: -5, EUR: "1" }, { CZK: 1.5 }, { CZK: 2 ** 53 }, [], null, { CZK: 500_00, __proto__: 3 }]),
+        g: [["gift-1", pick([{ CZK: 100_00 }, [], null, { CZK: 0 }]), pick([[1001, "1002", -3, 2.5, 2 ** 53, 1003], null, "x"])], pick([["", {}, []], "junk", ["gift-2"], 7]), ["gift-1", { CZK: 1 }, [1004]]],
+        o: pick([1, true, 0]),
+      };
+    } else {
+      const tierCount = 1 + int(3);
+      rewards = {
+        ...(chance(0.6) ? { s: amounts(pick([400_00, 800_00, 1500_00, 1]), pick([20_00, 40_00])) } : {}),
+        g: Array.from({ length: tierCount }, (_, i) => [tierIds[i], amounts(pick([300_00, 1000_00, 2500_00, 5000_00]), pick([10_00, 40_00, 100_00])), some([1001, 1002, 1003, 1004, 1005], 0.5).slice(0, 4)]),
+        ...(chance(0.3) ? { o: 1 } : {}),
+      };
+    }
+    const rules = [{ id: "r0", enabled: true, name: "Sleva r0", method: "automatic", value: { kind: "percentage", percent: pick([10, 20, 50]) }, target: { kind: "products" } }];
+    if (chance(0.4)) rules.push({ id: "o", enabled: true, name: "Objednávka", method: "automatic", value: { kind: "percentage", percent: pick([5, 10, 30]) }, target: { kind: "order" } });
+    if (chance(0.4)) rules.push({ id: pick(["ship", "a", "zz"]), enabled: true, name: "Doprava", method: "automatic", value: chance(0.5) ? { kind: "freeShipping" } : { kind: "percentage", percent: 50 }, target: { kind: "shipping" }, ...(chance(0.3) ? { priority: pick([1, -1]) } : {}) });
+    if (chance(0.2)) rules.push({ id: "r2", enabled: true, name: "Kód r2", method: "code", codeHashes: [codeHash("SAVE10")], value: { kind: "percentage", percent: 25 }, target: { kind: "order" } });
+    const margin = chance(0.3) ? { enabled: true, max: pick([10, 20, 50]), min: pick([0, 30]), cur: "CZK" } : null;
+    const lineCount = chance(0.85) ? 1 + int(12) : 60 + int(140);
+    const lines = Array.from({ length: lineCount }, (_, i) => {
+      const giftRoll = rnd();
+      const gift = giftRoll < 0.25 ? { value: pick([...tierIds, ...tierIds, "nope", " gift-1", ""]) } : null;
+      const variant = gift ? pick([1001, 1002, 1003, 1004, 1005, 1009, 12345678901234567890]) : 2000 + int(50);
+      return {
+        id: `gid://shopify/CartLine/${i}`,
+        quantity: gift ? pick([1, 1, 1, 2, 3]) : pick([1, 1, 2, 3, 5]),
+        cost: { amountPerQuantity: { amount: pick(["100.0", "249.9", "30.0", "10.05", "1000", "12.345", "0.5", "599.0", "1500.0"]) } },
+        gift,
+        merchandise: chance(0.97)
+          ? {
+              __typename: "ProductVariant",
+              id: chance(0.95) ? vid(variant) : pick(["gid://shopify/ProductVariant/abc", "1001", ""]),
+              wonVariant: margin && chance(0.6) ? { jsonValue: { cost: pick([1, 20, 300]), cur: "CZK" } } : null,
+              product: { id: `gid://shopify/Product/${1 + int(9)}`, wonProduct: { jsonValue: { ruleIds: chance(0.5) ? ["r0"] : [], variantRuleIds: {} } } },
+            }
+          : { __typename: "CustomProduct" },
+      };
+    });
+    const exportName = chance(0.6) ? LINES : DELIVERY;
+    const codeNode = chance(0.15);
+    const entered = chance(0.3) ? ["SAVE10"] : [];
+    const config = {
+      schemaVersion: 1,
+      campaignId: null,
+      campaignVarsVersion: null,
+      engine: { combination: { outletWithAnything: false, productWithOrder: chance(0.8), productWithShipping: chance(0.8), orderWithShipping: chance(0.85) } },
+      marketCountries: {},
+      modules: { codes: { rules }, tiers: { sets: [] }, rewards, ...(margin ? { margin } : {}) },
+      campaigns: [],
+    };
+    return {
+      exportName,
+      input: {
+        triggeringDiscountCode: codeNode && entered.length > 0 ? "save10" : null,
+        enteredDiscountCodes: entered.map((code) => ({ code })),
+        discount: {
+          discountClasses: ["PRODUCT", "ORDER", "SHIPPING"],
+          vars: { jsonValue: { role: codeNode ? "code" : "automatic", ...(codeNode ? { ruleId: "r2" } : {}), campaignId: null, campaignStart: "1970-01-01T00:00:00", campaignEnd: "1970-01-01T00:00:00", varsVersion: null } },
+        },
+        shop: { config: { jsonValue: config }, localTime: { date: "2026-10-01", campaignActive: false } },
+        localization: { country: { isoCode: "CZ" }, language: { isoCode: pick(["CS", "EN"]) } },
+        presentmentCurrencyRate: currency === "CZK" ? "1.0" : pick(["0.04", "6.5"]),
+        cart: {
+          cost: { subtotalAmount: { currencyCode: currency } },
+          ...(exportName === DELIVERY ? { deliveryGroups: [{ id: "gid://shopify/CartDeliveryGroup/1" }] } : {}),
+          lines,
+        },
+      },
+    };
+  }
+
   return function nextCase() {
+    if (onlySearch === "rewards") {
+      hostile = false;
+      large = false;
+      return rewardCase();
+    }
     if (onlySearch === "tiers") {
       hostile = false;
       large = false;
@@ -1314,6 +1405,37 @@ function stackCapBranches(input) {
 }
 
 /** The quantity-tier branches one case hit (from the TS plan and the payload as read). */
+/** Which MVP 4 reward branches a case reached (TS reference plan and emission). */
+function rewardBranches(c, output) {
+  const hits = new Set();
+  const adapted = adaptInput(c.input);
+  const { plan, emission } = emissionFor(adapted);
+  if (!plan || plan.reason) return hits;
+  const giftEmitted = emission.productCandidates.filter((x) => x.ruleId.startsWith("gift:"));
+  if (giftEmitted.length > 0) hits.add("gift emitted");
+  if (giftEmitted.some((x) => x.fixedTotal !== undefined && plan.lines.find((l) => l.lineId === x.lineId)?.quantity > 1)) hits.add("gift: one of several items free");
+  if (emission.deliveryCandidates.some((d) => d.ruleId === "reward:shipping")) hits.add("shipping reward emitted");
+  if (plan.rules.some((r) => r.discountClass === "shipping" && r.state === "outranked") && plan.shipping?.ruleId === "reward:shipping") hits.add("the reward beats a shipping rule");
+  if (plan.shipping && plan.shipping.ruleId !== "reward:shipping" && plan.progress.freeShipping?.reached) hits.add("a shipping rule beats the reward");
+  if (plan.warnings.some((w) => w.code === "reward_not_combinable")) hits.add("a Free switch drops the reward");
+  if (plan.warnings.some((w) => w.code === "market_missing_threshold")) hits.add("a reward not offered in the cart currency");
+  for (const g of plan.gifts) {
+    if (g.state === "below") hits.add("gift tier below its threshold");
+    if (g.state === "missing") hits.add("gift tier reached, no gift line");
+  }
+  if (plan.warnings.some((w) => w.code === "gift_not_earned")) hits.add("a paid gift line");
+  if (plan.warnings.some((w) => w.code === "gift_extra_paid")) hits.add("extra gift items or lines paid");
+  if (plan.gifts.filter((g) => g.state === "earned").length > 1) hits.add("two tiers of a ladder earned");
+  if (giftEmitted.length > 0 && emission.productCandidates.some((x) => !x.ruleId.startsWith("gift:"))) hits.add("gift next to a rule");
+  if (giftEmitted.length > 0 && plan.order) hits.add("gift next to an order discount");
+  if (giftEmitted.length > 0 && plan.lines.some((l) => l.marginCapped)) hits.add("gift next to margin protection");
+  const raw = c.input.shop.config.jsonValue.modules.rewards;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw) || !Array.isArray(raw.g) || raw.g.some((t) => !Array.isArray(t))) hits.add("hand-made junk reward payload");
+  if (plan.lines.length >= 50 && giftEmitted.length > 0) hits.add("50+ line cart with a gift");
+  if (output.operations.length === 0 && plan.gifts.length > 0) hits.add("nothing emitted with gift tiers configured");
+  return hits;
+}
+
 function tierBranches(c, output) {
   const hits = new Set();
   const ops = output.operations;
@@ -1660,6 +1782,58 @@ describe("Wasm (function-runner)", () => {
   // and off, the Free switches, both targets: Wasm = TS reference, every tier
   // branch ≥ MIN_HITS times.
   const TIER_CASES = Number(process.env.PARITY_TIER_CASES ?? 2400);
+  const REWARD_CASES = Number(process.env.PARITY_REWARD_CASES ?? 2400);
+  test(`rewards, seed 20261010 × ${REWARD_CASES}: Wasm = TS reference, every reward branch hit`, async () => {
+    const next = generator(20261010, "rewards");
+    const cases = Array.from({ length: REWARD_CASES }, next);
+    const failures = [];
+    /** @type {Map<string, number>} */
+    const hits = new Map();
+    let maxMemory = 0;
+    for (let i = 0; i < cases.length; i += 8) {
+      const batch = cases.slice(i, i + 8);
+      const results = await Promise.all(batch.map((c) => runWasm(runnerPath, wasmPath, c.exportName, c.input)));
+      results.forEach((result, j) => {
+        const c = batch[j];
+        const expected = referenceOutput(c.exportName, c.input);
+        for (const branch of rewardBranches(c, expected)) hits.set(branch, (hits.get(branch) ?? 0) + 1);
+        if (!result.success || !isDeepStrictEqual(result.output, expected)) failures.push({ index: i + j, exportName: c.exportName, got: result.output, logs: result.logs, expected, input: c.input });
+        maxMemory = Math.max(maxMemory, result.memory_usage ?? Number.POSITIVE_INFINITY);
+      });
+    }
+    if (failures.length > 0) {
+      const first = failures[0];
+      throw new Error(
+        `${failures.length}/${REWARD_CASES} reward cases differ; first #${first.index} ${first.exportName}\ngot      ${JSON.stringify(first.got)}\nexpected ${JSON.stringify(first.expected)}\nlogs ${first.logs}\ninput    ${JSON.stringify(first.input)}`,
+      );
+    }
+    const table = [...hits].sort((a, b) => a[1] - b[1]).map(([b, n]) => `${n}\t${b}`).join("\n");
+    console.info(`reward parity: ${REWARD_CASES} cases, 0 differ, largest memory ${maxMemory} KB\n${table}`);
+    const BRANCHES = [
+      "gift emitted",
+      "gift: one of several items free",
+      "shipping reward emitted",
+      "the reward beats a shipping rule",
+      "a shipping rule beats the reward",
+      "a Free switch drops the reward",
+      "a reward not offered in the cart currency",
+      "gift tier below its threshold",
+      "gift tier reached, no gift line",
+      "a paid gift line",
+      "extra gift items or lines paid",
+      "two tiers of a ladder earned",
+      "gift next to a rule",
+      "gift next to an order discount",
+      "gift next to margin protection",
+      "hand-made junk reward payload",
+      "50+ line cart with a gift",
+      "nothing emitted with gift tiers configured",
+    ];
+    const thin = BRANCHES.filter((b) => (hits.get(b) ?? 0) < MIN_HITS);
+    expect(thin, `branches hit fewer than ${MIN_HITS} times:\n${table}`).toEqual([]);
+    expect(maxMemory).toBeLessThanOrEqual(MEMORY_BOUND_KB);
+  }, 900_000);
+
   test(`quantity tiers, seed 20261007 × ${TIER_CASES}: Wasm = TS reference, every tier branch hit`, async () => {
     const next = generator(20261007, "tiers");
     const cases = Array.from({ length: TIER_CASES }, next);

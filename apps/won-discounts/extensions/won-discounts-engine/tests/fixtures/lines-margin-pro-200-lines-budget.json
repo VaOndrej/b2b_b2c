@@ -718,8 +718,7 @@
                 ]
               },
               "rewards": {
-                "gifts": [],
-                "countOtherDiscounts": false
+                "g": []
               },
               "margin": {
                 "enabled": true,
@@ -6636,6 +6635,9 @@
                       ],
                       "48468679011002": [
                         "r_039b127f577c8be8b081"
+                      ],
+                      "48468679011003": [
+                        "r_fca3e73ac29ab30cad03"
                       ]
                     },
                     "tierRef": "t_67d93cc563eeb90e360f"

@@ -285,7 +285,9 @@ constructed and mesh ones. On the fix-round build 64 → 65 moves as 63 → 64 a
 60-rule Pro shop 78.29 → 78.52 %, the top constructed base 99.14 → 99.41 %, a
 39-rule constructed base 96.31 → 96.40 %, the mesh cart 77.90 → 78.15 %.
 
-Wasm size: 253 170 B of Shopify's 256 000 B (MVP 2: 234 856 B; MVP 3 before
+Wasm size (MVP 4): **244 781 B** of 256 000 B. Rewards added ~4.9 kB; the float printing of `core::fmt` (~15 kB) gave way to `js::number_to_string`'s own digit search (see "Accepted edge differences", Number text). The CLI pipeline is `cargo build` (opt-level 3) → `wasm-opt -Oz` → trampoline; measured alternatives (105 fixtures, outputs equal): opt-level `s` 221 kB but +4.3 points of the instruction limit, `z` 188 kB +13.9, `-C llvm-args=-inline-threshold=150` −10.2 kB +0.9, `=100` −16.9 kB +1.1 — kept in reserve.
+
+Wasm size before MVP 4: 253 170 B of Shopify's 256 000 B (MVP 2: 234 856 B; MVP 3 before
 its fix round 1: 251 546 B — the capped tier message and the reader's set
 resolution added 1.6 kB). The tier code is kept small on purpose — one `learn`
 for every query shape instead of one per size, the breaks' rare unsorted case
@@ -635,6 +637,16 @@ Invariants:
   - Tier data of a line (its set, its product id) is kept beside the lines (`CartInput::tiers`), and the line candidates beside the work lines: the structures every stage walks keep their MVP 2 size (a larger `WorkLine` cost ~120 instructions a line, measured).
   - The tier part of the shared config is at most 550 B (`CONFIG_LIMITS.tierPayloadBytes`; save and sync refuse more, the function does not check it): that bounds the payload read and, with it, the costliest constructed carts (task-2-report "Cap measurement").
 
+## Rewards (MVP 4)
+
+The payload's `modules.rewards` is compact (`rewards.ts`, contract R5): `s` = free-shipping threshold per currency, `g` = `[tierId, threshold per currency, numeric variant ids]`, `o` = countOtherDiscounts (TypeScript warnings only). The reader (`config.rs` `read_rewards`) keeps a tier only when it is `[string ≠ "", object, array]`, a threshold only as a whole positive safe integer (`threshold_in`), a variant only as a positive safe integer; anything else offers nothing — the pre-MVP 4 shape too.
+
+- **R1, the base**: the non-gift lines' subtotal before every discount (`cart_scope.subtotal`, the same sum the cart minimum uses).
+- **R2, free shipping**: a shipping candidate `reward:shipping` (100 %, automatic, priority 0) ranked with the shipping rules (`plan_shipping`): 100 % above any lower percent or fixed amount, then priority desc, id asc (JS string order); the Free switches drop it with the rules.
+- **R3, the gift**: the reader resolves a gift line once — its `_won_gift` value names a tier (the first of that id) and its variant id's numeric tail is one of the tier's variants — into `gift_tier`; any other gift line is paid. The first such line of each reached tier gets `fixedTotal = its unit price` (one item free: 100 % on one item, the exact price of one item on more). The pseudo-rules `reward:shipping` and `gift:<tierId>` are appended to the plan's rules after every stage, so nothing earlier (tier shadows, margin, stacks) ever sees them.
+
+Measured (2026-10-01, `scratchpad/reward-budget.mjs` on every budget fixture): the worst rewards payload that still fits each config's 9 000 B (up to 10 tiers × 4 variants, 64-character tier ids, both thresholds at the money cap) plus a gift attribute on every 10th line adds at most **+1.53 points** of Shopify's limit; the heaviest realistic cart goes 87.15 → 87.37 %. Replay of the 2 173 logged dev-store runs: the MVP 4 build gives exactly the MVP 3 build's output on every one. Random parity: `rewards, seed 20261010 × 2400` (`tests/parity.test.js`), every reward branch.
+
 ## Accepted edge differences (junk data only)
 
 These differ from the TS reference only for values that the admin's
@@ -643,9 +655,7 @@ not covered by the random parity test.
 
 - **Priority.** A priority beyond ±9.2·10¹⁸ saturates in `i64`, while TS still orders such priorities. The sanitizer clamps priority to 0–1000 (`CONFIG_LIMITS.rulePriority`).
 - **Huge money.** Config amounts are capped at 10¹² minor units by the sanitizer (`CONFIG_LIMITS.moneyMinorUnits`) and both engines read a larger hand-made amount as that cap, so they always agree on it. Cart prices arrive as decimal strings and are refused above 2⁵³ − 1 minor units on both sides. What remains: a cart whose TOTAL passes 2⁵³ minor units (~90 trillion CZK) saturates in Rust and loses precision in TS.
-- **Number text.** Rust prints plain decimals where JS switches to exponent notation (≥ 10²¹ or < 10⁻⁶).
-  - For a line price given as a JSON number, both read the same value: Shopify sends prices as strings, and such numbers end as "no price" or 0 on both sides.
-  - Percentages are clamped to 0–100 and messages round them to 2 decimals. A percent below 10⁻⁶ would print differently but parse to the same number.
+- **Number text** — no longer a difference (MVP 4): `js::number_to_string` writes `String(n)` exactly as JS does, exponent notation included ("1e-7", "1e+21"), with its own shortest-digit search (Burger & Dybvig on small big integers) instead of Rust's float `Display` — tested against Rust's shortest `{:e}` digits on ~800 000 doubles of every magnitude and against node's `String(n)` layout (`engine::js` tests).
 - **Unicode case mapping.** Discount codes are upper-cased with Rust's Unicode tables (`upper_table.rs`, generated from this toolchain's `char::to_uppercase`; a toolchain with other tables fails its test until regenerated), while the admin hashes them with Node's ICU tables. A code containing a character whose upper-case form differs between those Unicode versions (only recently added characters) hashes differently. It then never matches, which fails closed: that code's rule does not apply.
 - **Outlet lists.** Lines are taken to share one outlet list when the list's length and first element agree. That is always true for what the sync writes, because a product lists its own variant GIDs and a variant belongs to one product. A hand-made metafield where two products list the same first GID but differ further on would be read as one list.
 - **Duplicate JSON keys.** Metafield JSON is stored parsed, so duplicate keys cannot reach the function.

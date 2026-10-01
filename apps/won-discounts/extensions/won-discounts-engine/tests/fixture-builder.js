@@ -61,6 +61,7 @@ export const SHOP_CURRENCY = "CZK";
  *                                        maximum is 64) instead of the app's 22 characters
  * @property {Record<string, unknown>} [margin]   modules.margin of the merchant config (MVP 2)
  * @property {Record<string, unknown>} [tiers]    modules.tiers of the merchant config (MVP 3: `{ sets: [...] }`)
+ * @property {Record<string, unknown>} [rewards]  modules.rewards of the merchant config (MVP 4: `{ freeShipping?, gifts }`)
  * @property {"free"} [plan]              the shop's plan: "free" ships the config gated for Free
  *                                        (plan-gate.ts gateConfigForPlan, as the sync does); default Pro
  * @property {string} [shopCurrency]      the shop currency (margin `cur`), default SHOP_CURRENCY
@@ -214,7 +215,12 @@ export function withRealisticIds(s) {
  * @param {Scenario} s
  */
 export function merchantConfig(s) {
-  const modules = { codes: { rules: s.rules }, ...(s.margin ? { margin: s.margin } : {}), ...(s.tiers ? { tiers: s.tiers } : {}) };
+  const modules = {
+    codes: { rules: s.rules },
+    ...(s.margin ? { margin: s.margin } : {}),
+    ...(s.tiers ? { tiers: s.tiers } : {}),
+    ...(s.rewards ? { rewards: s.rewards } : {}),
+  };
   const { config, issues } = sanitizeConfig({ ...(s.configExtra ?? {}), modules });
   if (issues.length > 0) {
     throw new Error(`${s.name}: sanitizer issues ${JSON.stringify(issues.map((i) => `${i.path} ${i.code}`))}`);

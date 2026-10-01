@@ -87,6 +87,7 @@ fn cart<'a>(lines: &'a [Line], codes: &[&'a str]) -> CartInput<'a> {
                 unit_price: l.price,
                 outlet: l.outlet,
                 gift: l.gift,
+                gift_tier: None,
                 rule_ids: &l.refs,
                 variant_rule_ids: &[],
                 unit_cost: l.cost,

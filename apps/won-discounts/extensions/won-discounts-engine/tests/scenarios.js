@@ -924,6 +924,159 @@ function allScenarios() {
     expected: out(delivery("Doprava zdarma", percent(100))),
   },
 
+  // --- rewards (MVP 4, contracts R1–R3, R6; plan-rewards.ts) -------------------------------------
+  {
+    name: "lines-rewards-gift-earned",
+    description:
+      "A gift from 1 500 Kč (variant 2001 or the fallback 2002). The base is the non-gift lines BEFORE discounts: 1 000 + 600 = 1 600 Kč even though a 20 % rule lowers line 1 — the tier is reached. The gift line (1 item, 300 Kč) gets 100 % with \"Dárek zdarma\"; the rule keeps its own candidate on line 1 only (never on the gift).",
+    target: "lines",
+    rules: [pct("summer", 20, { name: "Léto" })],
+    rewards: { gifts: [{ id: "gift-1", threshold: { CZK: 1500_00 }, choices: [variantId(2001)], fallbackVariantId: variantId(2002) }] },
+    role: AUTO,
+    lines: [
+      { n: 1, price: "1000.0", won: won("summer") },
+      { n: 2, price: "600.0", won: won() },
+      { n: 3, price: "300.0", gift: "gift-1", variant: 2001, won: won("summer") },
+    ],
+    expected: out(products(pc("Léto", [1], percent(20)), pc("Dárek zdarma", [3], percent(100)))),
+  },
+  {
+    name: "lines-rewards-gift-below-threshold",
+    description: "The same gift, the base 1 499,99 Kč: one haléř short — the gift line is paid (no candidate at all).",
+    target: "lines",
+    rules: [],
+    rewards: { gifts: [{ id: "gift-1", threshold: { CZK: 1500_00 }, choices: [variantId(2001)] }] },
+    role: AUTO,
+    lines: [
+      { n: 1, price: "1499.99", won: won() },
+      { n: 2, price: "300.0", gift: "gift-1", variant: 2001, won: null },
+    ],
+    expected: NONE,
+  },
+  {
+    name: "lines-rewards-gift-extra-items-and-lines",
+    description:
+      "Reached; the first gift line has 3 items at 120 Kč: one item free = 120 Kč off that line (40 Kč per item, the same total). A second gift line of the same tier (the fallback) is paid; a gift line naming an unknown tier and one with a variant the tier does not offer are paid.",
+    target: "lines",
+    rules: [],
+    rewards: { gifts: [{ id: "gift-1", threshold: { CZK: 1000_00 }, choices: [variantId(2001)], fallbackVariantId: variantId(2002) }] },
+    role: AUTO,
+    lines: [
+      { n: 1, price: "2000.0", won: won() },
+      { n: 2, price: "120.0", qty: 3, gift: "gift-1", variant: 2001, won: null },
+      { n: 3, price: "90.0", gift: "gift-1", variant: 2002, won: null },
+      { n: 4, price: "50.0", gift: "nope", variant: 2001, won: null },
+      { n: 5, price: "50.0", gift: "gift-1", variant: 2009, won: null },
+    ],
+    expected: out(products(pc("Dárek zdarma", [2], perItem("40.00")))),
+  },
+  {
+    name: "lines-rewards-gift-ladder-and-currency",
+    description:
+      "A Pro ladder: 1 000 Kč (gift 2001) and 3 000 Kč (gift 2003, CZK only). The EUR cart of 200 € reaches the first tier (its EUR threshold 40 €); the second tier has no EUR threshold — not offered in this market, its gift line is paid.",
+    target: "lines",
+    currency: "EUR",
+    rules: [],
+    rewards: {
+      gifts: [
+        { id: "gift-1", threshold: { CZK: 1000_00, EUR: 40_00 }, choices: [variantId(2001)] },
+        { id: "gift-2", threshold: { CZK: 3000_00 }, choices: [variantId(2003)] },
+      ],
+    },
+    role: AUTO,
+    lines: [
+      { n: 1, price: "200.0", won: won() },
+      { n: 2, price: "10.0", gift: "gift-1", variant: 2001, won: null },
+      { n: 3, price: "15.0", gift: "gift-2", variant: 2003, won: null },
+    ],
+    expected: out(products(pc("Dárek zdarma", [2], percent(100)))),
+  },
+  {
+    name: "lines-rewards-gift-free-plan",
+    description:
+      "A Free shop: of a two-tier ladder with a choice of two, only the first tier and its first gift ship (BILL-1). Both tiers are reached; the second choice of tier 1 and the gift of tier 2 are paid.",
+    target: "lines",
+    plan: "free",
+    rules: [],
+    rewards: {
+      gifts: [
+        { id: "gift-1", threshold: { CZK: 500_00 }, choices: [variantId(2001), variantId(2004)] },
+        { id: "gift-2", threshold: { CZK: 800_00 }, choices: [variantId(2003)] },
+      ],
+    },
+    role: AUTO,
+    lines: [
+      { n: 1, price: "1000.0", won: won() },
+      { n: 2, price: "20.0", gift: "gift-1", variant: 2004, won: null },
+      { n: 3, price: "30.0", gift: "gift-2", variant: 2003, won: null },
+      { n: 4, price: "40.0", gift: "gift-1", variant: 2001, won: null },
+    ],
+    expected: out(products(pc("Dárek zdarma", [4], percent(100)))),
+  },
+  {
+    name: "lines-rewards-gift-code-node",
+    description: "A code node never emits the gift (the automatic node owns it): the 10 % order code only.",
+    target: "lines",
+    rules: [withCodes(["DESET"], orderPct("ten", 10, { name: "Deset" }))],
+    rewards: { gifts: [{ id: "gift-1", threshold: { CZK: 1000_00 }, choices: [variantId(2001)] }] },
+    role: codeNode("ten"),
+    triggering: "DESET",
+    entered: ["DESET"],
+    lines: [
+      { n: 1, price: "1000.0", won: won() },
+      { n: 2, price: "300.0", gift: "gift-1", variant: 2001, won: null },
+    ],
+    expected: out(order("Deset", [2], percent(10))),
+  },
+  {
+    name: "delivery-rewards-free-shipping",
+    description:
+      "Free shipping from 1 000 Kč per currency (R2): 600 + 400 Kč of non-gift lines reach it (the gift line does not count) — the automatic node gives 100 % off delivery, \"Doprava zdarma\".",
+    target: "delivery",
+    rules: [],
+    rewards: { freeShipping: { threshold: { CZK: 1000_00 } }, gifts: [] },
+    role: AUTO,
+    lines: [
+      { n: 1, price: "600.0", won: won() },
+      { n: 2, price: "400.0", won: won() },
+      { n: 3, price: "500.0", gift: "gift-1", won: null },
+    ],
+    expected: out(delivery("Doprava zdarma", percent(100))),
+  },
+  {
+    name: "delivery-rewards-below-and-other-currency",
+    description: "999,99 Kč is one haléř short; nothing is emitted. (A cart in another currency without a threshold is the same: not offered.)",
+    target: "delivery",
+    rules: [],
+    rewards: { freeShipping: { threshold: { CZK: 1000_00 } }, gifts: [] },
+    role: AUTO,
+    lines: [{ n: 1, price: "999.99", won: won() }],
+    expected: NONE,
+  },
+  {
+    name: "delivery-rewards-vs-shipping-rule",
+    description:
+      "A 50 % shipping rule and the reached free-shipping reward: 100 % ranks above 50 % — the reward is the one candidate (the rule is outranked).",
+    target: "delivery",
+    rules: [{ id: "ship50", name: "Půl dopravy", method: "automatic", value: { kind: "percentage", percent: 50 }, target: { kind: "shipping" } }],
+    rewards: { freeShipping: { threshold: { CZK: 500_00 } }, gifts: [] },
+    role: AUTO,
+    lines: [{ n: 1, price: "800.0", won: won() }],
+    expected: out(delivery("Doprava zdarma", percent(100))),
+  },
+  {
+    name: "delivery-rewards-switch-blocks",
+    description:
+      "The Free switch \"product + shipping\" off and a product discount applies (10 % on line 1): every shipping discount is dropped, the reward too.",
+    target: "delivery",
+    rules: [pct("p10", 10, { name: "Deset" })],
+    configExtra: { engine: { combination: { productWithShipping: false } } },
+    rewards: { freeShipping: { threshold: { CZK: 500_00 } }, gifts: [] },
+    role: AUTO,
+    lines: [{ n: 1, price: "800.0", won: won("p10") }],
+    expected: NONE,
+  },
+
   // --- quantity tiers (MVP 3, plan-tiers.ts port spec; contracts K1/K2) -----------------------
   {
     name: "lines-tiers-line-count",

@@ -307,6 +307,62 @@ pub struct Config {
     pub max_code_length: usize,
     /// `modules.tiers` (MVP 3): the quantity tier sets.
     pub tiers: Tiers,
+    /// `modules.rewards` (MVP 4, R5): free shipping and the gift tiers.
+    pub rewards: Rewards,
+}
+
+/// One gift tier of `modules.rewards.g` (rewards.ts `readRewardsPayload`).
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct RewardTier {
+    pub id: String,
+    /// `gift:<id>` (plan-rewards.ts GIFT_CANDIDATE_PREFIX): the id its gift carries.
+    pub rule_id: String,
+    /// The threshold per currency (read in the cart currency only when the run knows it).
+    pub threshold: Money,
+    /// Numeric variant ids (choices + fallback): positive safe integers.
+    pub variants: Vec<u64>,
+}
+
+/// `modules.rewards` (R5): `s` free-shipping thresholds, `g` gift tiers in payload order.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Rewards {
+    pub shipping: Money,
+    pub tiers: Vec<RewardTier>,
+}
+
+/// `readThreshold` (rewards.ts): a whole positive amount (a safe integer) in `currency`, else none.
+pub fn threshold_in(money: &Money, currency: &str) -> Option<i64> {
+    money.money_for(currency).filter(|v| *v > 0.0 && v.fract() == 0.0 && *v <= MAX_SAFE_INTEGER).map(|v| v as i64)
+}
+
+const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_991.0;
+
+fn read_rewards(value: &Value, cur: Option<&str>) -> Rewards {
+    if !value.is_obj() {
+        return Rewards::default();
+    }
+    let list = prop(value, Key::RewardGifts);
+    let mut tiers = Vec::new();
+    for i in 0..list.array_len().unwrap_or(0) {
+        let raw = list.get_at_index(i);
+        // A malformed entry (not [id, threshold map, variant list]) is skipped whole.
+        let Some(id) = string(&raw.get_at_index(0)).filter(|id| !id.is_empty()) else { continue };
+        let threshold = raw.get_at_index(1);
+        let variants = raw.get_at_index(2);
+        if !raw.is_array() || !threshold.is_obj() {
+            continue;
+        }
+        let Some(len) = variants.array_len() else { continue };
+        let variants = (0..len)
+            .filter_map(|j| number(&variants.get_at_index(j)))
+            .filter(|n| *n > 0.0 && n.fract() == 0.0 && *n <= MAX_SAFE_INTEGER)
+            .map(|n| n as u64)
+            .collect();
+        let mut rule_id = String::from("gift:");
+        rule_id.push_str(&id);
+        tiers.push(RewardTier { id, rule_id, threshold: read_money(&threshold, cur), variants });
+    }
+    Rewards { shipping: read_money(&prop(value, Key::RewardShipping), cur), tiers }
 }
 
 /// `readMaxCodeLength` (plan.ts): a whole number ≥ 0, at most MAX_CODE_LENGTH;
@@ -733,6 +789,7 @@ impl Config {
             margin: read_margin_payload(&prop(&modules, Key::Margin)),
             max_code_length: read_max_code_length(&prop(&codes, Key::MaxCodeLength)),
             tiers: read_tiers(&prop(&modules, Key::Tiers), cur),
+            rewards: read_rewards(&prop(&modules, Key::Rewards), cur),
         })
     }
 }

@@ -25,7 +25,7 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 
 use super::cart::{normalize_cart, CartInput, NormalizedCart, NormalizedLine};
-use super::config::{Config, EngineFlags, FieldsRef, RawCampaign, RawRule, TargetKind, TierSet, ValueSpec};
+use super::config::{threshold_in, Config, EngineFlags, FieldsRef, RawCampaign, RawRule, TargetKind, TierSet, ValueSpec};
 use super::describe::{describe_short, DescribedValue};
 use super::table::{bytes_eq, Message, Table, Text};
 use super::hash::{hash_value, normalized_hash_within, parse_hash, MAX_ENTERED_CODES};
@@ -1440,15 +1440,21 @@ fn plan_order_stage<'a>(
 /// percent (free = 100 %) ranks above a fixed amount, larger first. When a Free
 /// switch forbids shipping next to the product/order discounts that apply,
 /// there is no winner.
-fn plan_shipping<'a>(
-    work: &[WorkLine<'a>],
-    order: Option<&PlanOrder<'a>>,
-    engine: &EngineFlags,
-    ctx: &StackContext<'_, 'a>,
-) -> Option<PlanShipping<'a>> {
+/// The shipping winner: a rule, or the free-shipping reward (MVP 4, R2) —
+/// whose pseudo-rule build_plan adds once the stacks are done.
+enum ShipWinner {
+    Rule(usize, ShippingValue),
+    Reward,
+}
+
+/// `reward:shipping` as it ranks among the shipping rules: priority 0, its id.
+const SHIPPING_REWARD_ID: &str = "reward:shipping";
+
+fn plan_shipping(work: &[WorkLine<'_>], order: Option<&PlanOrder<'_>>, engine: &EngineFlags, ctx: &StackContext<'_, '_>, reward: bool) -> Option<ShipWinner> {
     let rules = ctx.rules;
     struct Candidate {
-        rule: usize,
+        /// None = the reward (100 %).
+        rule: Option<usize>,
         value: ShippingValue,
         key: (f64, f64),
     }
@@ -1468,19 +1474,26 @@ fn plan_shipping<'a>(
             None => (ShippingValue::FixedTotal(fixed), fixed > 0, (0.0, fixed as f64)),
         };
         if worth {
-            candidates.push(Candidate { rule: i, value, key });
+            candidates.push(Candidate { rule: Some(i), value, key });
         }
+    }
+    if reward {
+        candidates.push(Candidate { rule: None, value: ShippingValue::Percent(100.0), key: (1.0, 100.0) });
     }
     // The first in (key desc, priority desc, id asc) order: keys are finite (a
     // percent or an amount), and rule orders unique, so there is one first.
+    let rank = |c: &Candidate| c.rule.map_or((0, SHIPPING_REWARD_ID), |i| (rules[i].priority, rules[i].id));
     let before = |a: &Candidate, b: &Candidate| {
-        let (ra, rb) = (&rules[a.rule], &rules[b.rule]);
+        let ((pa, ia), (pb, ib)) = (rank(a), rank(b));
         b.key
             .0
             .partial_cmp(&a.key.0)
             .unwrap_or(std::cmp::Ordering::Equal)
             .then_with(|| b.key.1.partial_cmp(&a.key.1).unwrap_or(std::cmp::Ordering::Equal))
-            .then_with(|| ra.order.cmp(&rb.order))
+            .then_with(|| match (a.rule, b.rule) {
+                (Some(x), Some(y)) => rules[x].order.cmp(&rules[y].order),
+                _ => pb.cmp(&pa).then_with(|| js::cmp_str(ia, ib)),
+            })
             .is_lt()
     };
     let winner = candidates.into_iter().reduce(|best, c| if before(&c, &best) { c } else { best })?;
@@ -1489,7 +1502,10 @@ fn plan_shipping<'a>(
     if blocked {
         return None;
     }
-    Some(PlanShipping { rule: winner.rule, value: winner.value, message: rules[winner.rule].label.clone() })
+    Some(match winner.rule {
+        Some(i) => ShipWinner::Rule(i, winner.value),
+        None => ShipWinner::Reward,
+    })
 }
 
 // --- The plan -------------------------------------------------------------------------------
@@ -1530,12 +1546,18 @@ fn failed_plan<'a>(cart: &NormalizedCart<'a>, reason: PlanFailure) -> CartPlan<'
 /// automatic, priority 0, never in a Pro stack; named as a rule would be where
 /// a stack lists its rules (a tier's own message is its break's).
 fn tier_rule<'a>(set: &'a TierSet, en: bool) -> Rule<'a> {
+    pseudo_rule(&set.rule_id, if en { "Quantity discount" } else { "Množstevní sleva" }, DiscountClass::Product)
+}
+
+/// An automatic, priority-0 rule no customer or merchant wrote: a tier set's
+/// (MVP 3) or a reward's (MVP 4: `reward:shipping`, `gift:<tierId>`).
+fn pseudo_rule<'a>(id: &'a str, label: &'static str, cls: DiscountClass) -> Rule<'a> {
     Rule {
-        id: &set.rule_id,
-        label: Cow::Borrowed(if en { "Quantity discount" } else { "Množstevní sleva" }),
+        id,
+        label: Cow::Borrowed(label),
         method_code: false,
         enabled: true,
-        cls: DiscountClass::Product,
+        cls,
         value_kind: ValueKind::Percentage,
         percent: 0.0,
         fixed: None,
@@ -1645,7 +1667,45 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
         }
         mark_tight_lines(&mut work, &cart, order.is_some());
     }
-    let shipping = plan_shipping(&work, order.as_ref(), &engine, &ctx);
+    // Rewards (MVP 4): the base is the non-gift lines before every discount (R1, `cart_scope`).
+    let base = cart_scope.subtotal;
+    let currency = cart.currency.as_str();
+    let rewards = &config.rewards;
+    let reward = threshold_in(&rewards.shipping, currency).is_some_and(|t| base >= t);
+    let winner = plan_shipping(&work, order.as_ref(), &engine, &ctx, reward);
+    drop(ctx);
+    let en = cart.locale_en;
+    let shipping = winner.map(|w| match w {
+        ShipWinner::Rule(i, value) => PlanShipping { rule: i, value, message: rules[i].label.clone() },
+        ShipWinner::Reward => {
+            let label = if en { "Free shipping" } else { "Doprava zdarma" };
+            rules.push(pseudo_rule(SHIPPING_REWARD_ID, label, DiscountClass::Shipping));
+            PlanShipping { rule: rules.len() - 1, value: ShippingValue::Percent(100.0), message: Cow::Borrowed(label) }
+        }
+    });
+    // R3: one item of the first valid gift line of each reached tier is free.
+    if !rewards.tiers.is_empty() {
+        let label = if en { "Free gift" } else { "Dárek zdarma" };
+        let mut given = vec![false; rewards.tiers.len()];
+        for (w, line) in work.iter_mut().zip(&cart.lines) {
+            let Some(t) = line.gift_tier.map(|t| t as usize) else { continue };
+            let tier = &rewards.tiers[t];
+            if given[t] || !threshold_in(&tier.threshold, currency).is_some_and(|threshold| base >= threshold) {
+                continue;
+            }
+            given[t] = true;
+            rules.push(pseudo_rule(&tier.rule_id, label, DiscountClass::Product));
+            let owner = rules.len() - 1;
+            let amount = line.unit_price;
+            w.product = Some(PlanStack {
+                components: vec![Component { rule: owner, amount }],
+                amount,
+                owner,
+                value: EmittedValue::FixedTotal(amount),
+                message: Cow::Borrowed(label),
+            });
+        }
+    }
 
     let lines = work
         .into_iter()
