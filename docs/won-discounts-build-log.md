@@ -46,8 +46,16 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   - Adversariální rozpočet odměn běží: rodiny MVP 3 (cap 550, `f40f0268…/scratchpad/mvp3-t2/fr1/cap550/fam`) × 3 varianty
     odměn (nejdražší payload, který se vejde do 9 000 B; dárky na každém 10. / všech / žádném řádku), generátor
     `scratchpad/rewfam/gen.mjs`. **Stop-pravidlo:** jeden průchod; ≥ 100 % → strop odměn v payloadu (největší ≤ 99,5 %).
+    **Výsledek (Wasm 245 237 B, 0 DIFF vůči TS):** nejdražší payload (místo z `marketCountries`) 9 960 vstupů max 89,15 %
+    (vytlačí dražší trhy); malý payload (1 úroveň, měna košíku) 6 640 vstupů **max 99,32 %**, 0 ≥ 99,5 %; kontrola bez
+    odměn na stejném buildu 3 320 vstupů max 99,21 % (MVP 3 build 98,67 % → engine MVP 4 +~0,5 b. i bez odměn). Strop
+    odměn není potřeba; rezerva k 100 % je malá → do auditu.
+  - Screenshoty adminu `cdad0fc` (`evidence/mvp4/admin/`, 16 PNG, bez přetečení).
+  - Živé E2E fáze A, běh 1 (`rewards`, Horizon): SF-1 ✓ (0 zápisů, progress = planCart, F-R2 ✓ `all_products`,
+    F-R4 ✓ POST přes app proxy, CLS ≤ 0,1) — spadlo na tap targets < 44 px (opraveno CSS, commit „44 × 44“); další testy
+    401 „access token expired“ z theme dev proxy (infrastruktura), Dawn 429. Restart app dev, běh 2 běží.
   **Zbývá v MVP 4:**
-  - Screenshoty adminu 390/1440 (Odměny Free/Pro/empty, Vyzkoušet košík rewards, karta Přehledu) — potřebují běžící
+  - ~~Screenshoty adminu 390/1440 (Odměny Free/Pro/empty, Vyzkoušet košík rewards, karta Přehledu) — potřebují běžící
     `shopify app dev` (harness na jeho portu), udělat v Task 8 před restartem pro E2E.
   - Task 8 živé E2E (profil `rewards` Free + `rewards-pro`; ověřit F-R1 překreslení draweru po `updateCart`, F-R2
     `all_products` v embedu, F-R3 dárek 0 v pokladně, F-R4 POST přes app proxy) + regresní profily MVP 1–3.
