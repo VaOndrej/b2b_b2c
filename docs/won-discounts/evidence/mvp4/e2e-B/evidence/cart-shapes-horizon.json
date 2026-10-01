@@ -1,0 +1,92 @@
+{
+  "at": "2026-10-01T21:25:13.833Z",
+  "theme": "Horizon",
+  "planMode": "pro",
+  "currency": "CZK",
+  "lines": [
+    {
+      "handle": "won-e2e-simple-b",
+      "quantity": 2,
+      "unitPrice": 1200,
+      "cart": {
+        "allocations": [
+          {
+            "title": "E2E fix 1000 Kč/ks",
+            "value_type": "percentage",
+            "value": "100.0",
+            "amount": 2400
+          }
+        ],
+        "final_line_price": 0
+      },
+      "plan": {
+        "components": [
+          {
+            "ruleId": "e2e-shapes-cap-fixed",
+            "method": "automatic",
+            "module": "codes",
+            "amount": 2400
+          }
+        ],
+        "value": {
+          "fixedPerItem": 1200
+        },
+        "amount": 2400,
+        "message": "E2E fix 1000 Kč/ks",
+        "emitted": {
+          "kind": "percentage",
+          "percent": 100
+        }
+      }
+    },
+    {
+      "handle": "won-e2e-simple-a",
+      "quantity": 1,
+      "unitPrice": 1000,
+      "cart": {
+        "allocations": [
+          {
+            "title": "E2E Pro 10 % + E2E Pro 5 %",
+            "value_type": "percentage",
+            "value": "15.0",
+            "amount": 150
+          }
+        ],
+        "final_line_price": 850
+      },
+      "plan": {
+        "components": [
+          {
+            "ruleId": "e2e-shapes-pro-10",
+            "method": "automatic",
+            "module": "codes",
+            "amount": 100
+          },
+          {
+            "ruleId": "e2e-shapes-pro-5",
+            "method": "automatic",
+            "module": "codes",
+            "amount": 50
+          }
+        ],
+        "value": {
+          "fixedTotal": 150
+        },
+        "amount": 150,
+        "message": "E2E Pro 10 % + E2E Pro 5 %",
+        "emitted": {
+          "kind": "percentage",
+          "percent": 15
+        }
+      }
+    }
+  ],
+  "items_subtotal_price": 850,
+  "total_price": 850,
+  "planTotals": {
+    "subtotal": 3400,
+    "productDiscount": 2550,
+    "orderDiscount": 0,
+    "total": 850
+  }
+}

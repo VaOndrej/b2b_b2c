@@ -1,0 +1,1412 @@
+{
+  "checkoutRunsLogged": true,
+  "cartRuns": [
+    {
+      "file": "20261001_214516_569Z_extensions_won-discounts-engine_c94e04.json",
+      "logTimestamp": "2026-10-01T21:45:16.569364Z",
+      "status": "success",
+      "target": "cart.lines.discounts.generate.run",
+      "role": "code",
+      "triggeringDiscountCode": "WONE2EM20",
+      "enteredDiscountCodes": [
+        {
+          "code": "WONE2EM20"
+        }
+      ],
+      "presentmentCurrencyRate": {
+        "raw": "0.0415531865",
+        "jsonType": "string",
+        "value": 0.0415531865,
+        "significantDigits": 9,
+        "decimals": 10
+      },
+      "currency": "EUR",
+      "country": "SK",
+      "configMargin": {
+        "enabled": true,
+        "min": 25,
+        "max": 30,
+        "cur": "CZK",
+        "col": {
+          "492146557169": [
+            null,
+            10
+          ]
+        }
+      },
+      "lines": [
+        {
+          "id": "gid://shopify/CartLine/0",
+          "quantity": 1,
+          "amountPerQuantity": "0.37",
+          "variant": "gid://shopify/ProductVariant/48468679164145",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/1",
+          "quantity": 1,
+          "amountPerQuantity": "0.62",
+          "variant": "gid://shopify/ProductVariant/48468678967537",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 5,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": null
+        },
+        {
+          "id": "gid://shopify/CartLine/2",
+          "quantity": 1,
+          "amountPerQuantity": "0.5",
+          "variant": "gid://shopify/ProductVariant/48468678934769",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {},
+            "marginRefs": [
+              "492146557169"
+            ]
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/3",
+          "quantity": 1,
+          "amountPerQuantity": "0.42",
+          "variant": "gid://shopify/ProductVariant/48468678902001",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 6,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        }
+      ],
+      "output": {
+        "operations": [
+          {
+            "orderDiscountsAdd": {
+              "candidates": [
+                {
+                  "message": "E2E marže kód 20 %",
+                  "targets": [
+                    {
+                      "orderSubtotal": {
+                        "excludedCartLineIds": [
+                          "gid://shopify/CartLine/0",
+                          "gid://shopify/CartLine/2",
+                          "gid://shopify/CartLine/3"
+                        ]
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.12"
+                    }
+                  }
+                }
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "file": "20261001_214516_572Z_extensions_won-discounts-engine_456de2.json",
+      "logTimestamp": "2026-10-01T21:45:16.572466Z",
+      "status": "success",
+      "target": "cart.lines.discounts.generate.run",
+      "role": "automatic",
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [
+        {
+          "code": "WONE2EM20"
+        }
+      ],
+      "presentmentCurrencyRate": {
+        "raw": "0.0415531865",
+        "jsonType": "string",
+        "value": 0.0415531865,
+        "significantDigits": 9,
+        "decimals": 10
+      },
+      "currency": "EUR",
+      "country": "SK",
+      "configMargin": {
+        "enabled": true,
+        "min": 25,
+        "max": 30,
+        "cur": "CZK",
+        "col": {
+          "492146557169": [
+            null,
+            10
+          ]
+        }
+      },
+      "lines": [
+        {
+          "id": "gid://shopify/CartLine/0",
+          "quantity": 1,
+          "amountPerQuantity": "0.37",
+          "variant": "gid://shopify/ProductVariant/48468679164145",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/1",
+          "quantity": 1,
+          "amountPerQuantity": "0.62",
+          "variant": "gid://shopify/ProductVariant/48468678967537",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 5,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": null
+        },
+        {
+          "id": "gid://shopify/CartLine/2",
+          "quantity": 1,
+          "amountPerQuantity": "0.5",
+          "variant": "gid://shopify/ProductVariant/48468678934769",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {},
+            "marginRefs": [
+              "492146557169"
+            ]
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/3",
+          "quantity": 1,
+          "amountPerQuantity": "0.42",
+          "variant": "gid://shopify/ProductVariant/48468678902001",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 6,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        }
+      ],
+      "output": {
+        "operations": [
+          {
+            "productDiscountsAdd": {
+              "candidates": [
+                {
+                  "message": "E2E marže auto 50 %",
+                  "targets": [
+                    {
+                      "cartLine": {
+                        "id": "gid://shopify/CartLine/0"
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.11",
+                      "appliesToEachItem": true
+                    }
+                  }
+                },
+                {
+                  "message": "E2E marže auto 50 %",
+                  "targets": [
+                    {
+                      "cartLine": {
+                        "id": "gid://shopify/CartLine/2"
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.05",
+                      "appliesToEachItem": true
+                    }
+                  }
+                },
+                {
+                  "message": "E2E marže auto 50 %",
+                  "targets": [
+                    {
+                      "cartLine": {
+                        "id": "gid://shopify/CartLine/3"
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.08",
+                      "appliesToEachItem": true
+                    }
+                  }
+                }
+              ],
+              "selectionStrategy": "ALL"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "checkoutRuns": [
+    {
+      "file": "20261001_214530_331Z_extensions_won-discounts-engine_4b74bf.json",
+      "logTimestamp": "2026-10-01T21:45:30.331598Z",
+      "status": "success",
+      "target": "cart.lines.discounts.generate.run",
+      "role": "code",
+      "triggeringDiscountCode": "WONE2EM20",
+      "enteredDiscountCodes": [
+        {
+          "code": "WONE2EM20"
+        }
+      ],
+      "presentmentCurrencyRate": {
+        "raw": "0.0415531865",
+        "jsonType": "string",
+        "value": 0.0415531865,
+        "significantDigits": 9,
+        "decimals": 10
+      },
+      "currency": "EUR",
+      "country": "SK",
+      "configMargin": {
+        "enabled": true,
+        "min": 25,
+        "max": 30,
+        "cur": "CZK",
+        "col": {
+          "492146557169": [
+            null,
+            10
+          ]
+        }
+      },
+      "lines": [
+        {
+          "id": "gid://shopify/CartLine/0",
+          "quantity": 1,
+          "amountPerQuantity": "0.42",
+          "variant": "gid://shopify/ProductVariant/48468678902001",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 6,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/1",
+          "quantity": 1,
+          "amountPerQuantity": "0.5",
+          "variant": "gid://shopify/ProductVariant/48468678934769",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {},
+            "marginRefs": [
+              "492146557169"
+            ]
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/2",
+          "quantity": 1,
+          "amountPerQuantity": "0.62",
+          "variant": "gid://shopify/ProductVariant/48468678967537",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 5,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": null
+        },
+        {
+          "id": "gid://shopify/CartLine/3",
+          "quantity": 1,
+          "amountPerQuantity": "0.37",
+          "variant": "gid://shopify/ProductVariant/48468679164145",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        }
+      ],
+      "output": {
+        "operations": [
+          {
+            "orderDiscountsAdd": {
+              "candidates": [
+                {
+                  "message": "E2E marže kód 20 %",
+                  "targets": [
+                    {
+                      "orderSubtotal": {
+                        "excludedCartLineIds": [
+                          "gid://shopify/CartLine/0",
+                          "gid://shopify/CartLine/1",
+                          "gid://shopify/CartLine/3"
+                        ]
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.12"
+                    }
+                  }
+                }
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "file": "20261001_214530_334Z_extensions_won-discounts-engine_a0e1af.json",
+      "logTimestamp": "2026-10-01T21:45:30.334609Z",
+      "status": "success",
+      "target": "cart.lines.discounts.generate.run",
+      "role": "automatic",
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [
+        {
+          "code": "WONE2EM20"
+        }
+      ],
+      "presentmentCurrencyRate": {
+        "raw": "0.0415531865",
+        "jsonType": "string",
+        "value": 0.0415531865,
+        "significantDigits": 9,
+        "decimals": 10
+      },
+      "currency": "EUR",
+      "country": "SK",
+      "configMargin": {
+        "enabled": true,
+        "min": 25,
+        "max": 30,
+        "cur": "CZK",
+        "col": {
+          "492146557169": [
+            null,
+            10
+          ]
+        }
+      },
+      "lines": [
+        {
+          "id": "gid://shopify/CartLine/0",
+          "quantity": 1,
+          "amountPerQuantity": "0.42",
+          "variant": "gid://shopify/ProductVariant/48468678902001",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 6,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/1",
+          "quantity": 1,
+          "amountPerQuantity": "0.5",
+          "variant": "gid://shopify/ProductVariant/48468678934769",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {},
+            "marginRefs": [
+              "492146557169"
+            ]
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/2",
+          "quantity": 1,
+          "amountPerQuantity": "0.62",
+          "variant": "gid://shopify/ProductVariant/48468678967537",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 5,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": null
+        },
+        {
+          "id": "gid://shopify/CartLine/3",
+          "quantity": 1,
+          "amountPerQuantity": "0.37",
+          "variant": "gid://shopify/ProductVariant/48468679164145",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        }
+      ],
+      "output": {
+        "operations": [
+          {
+            "productDiscountsAdd": {
+              "candidates": [
+                {
+                  "message": "E2E marže auto 50 %",
+                  "targets": [
+                    {
+                      "cartLine": {
+                        "id": "gid://shopify/CartLine/0"
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.08",
+                      "appliesToEachItem": true
+                    }
+                  }
+                },
+                {
+                  "message": "E2E marže auto 50 %",
+                  "targets": [
+                    {
+                      "cartLine": {
+                        "id": "gid://shopify/CartLine/1"
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.05",
+                      "appliesToEachItem": true
+                    }
+                  }
+                },
+                {
+                  "message": "E2E marže auto 50 %",
+                  "targets": [
+                    {
+                      "cartLine": {
+                        "id": "gid://shopify/CartLine/3"
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.11",
+                      "appliesToEachItem": true
+                    }
+                  }
+                }
+              ],
+              "selectionStrategy": "ALL"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "file": "20261001_214531_287Z_extensions_won-discounts-engine_132035.json",
+      "logTimestamp": "2026-10-01T21:45:31.287559Z",
+      "status": "success",
+      "target": "cart.lines.discounts.generate.run",
+      "role": "code",
+      "triggeringDiscountCode": "WONE2EM20",
+      "enteredDiscountCodes": [
+        {
+          "code": "WONE2EM20"
+        }
+      ],
+      "presentmentCurrencyRate": {
+        "raw": "0.0415531865",
+        "jsonType": "string",
+        "value": 0.0415531865,
+        "significantDigits": 9,
+        "decimals": 10
+      },
+      "currency": "EUR",
+      "country": "SK",
+      "configMargin": {
+        "enabled": true,
+        "min": 25,
+        "max": 30,
+        "cur": "CZK",
+        "col": {
+          "492146557169": [
+            null,
+            10
+          ]
+        }
+      },
+      "lines": [
+        {
+          "id": "gid://shopify/CartLine/0",
+          "quantity": 1,
+          "amountPerQuantity": "0.42",
+          "variant": "gid://shopify/ProductVariant/48468678902001",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 6,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/1",
+          "quantity": 1,
+          "amountPerQuantity": "0.5",
+          "variant": "gid://shopify/ProductVariant/48468678934769",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {},
+            "marginRefs": [
+              "492146557169"
+            ]
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/2",
+          "quantity": 1,
+          "amountPerQuantity": "0.62",
+          "variant": "gid://shopify/ProductVariant/48468678967537",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 5,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": null
+        },
+        {
+          "id": "gid://shopify/CartLine/3",
+          "quantity": 1,
+          "amountPerQuantity": "0.37",
+          "variant": "gid://shopify/ProductVariant/48468679164145",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        }
+      ],
+      "output": {
+        "operations": [
+          {
+            "orderDiscountsAdd": {
+              "candidates": [
+                {
+                  "message": "E2E marže kód 20 %",
+                  "targets": [
+                    {
+                      "orderSubtotal": {
+                        "excludedCartLineIds": [
+                          "gid://shopify/CartLine/0",
+                          "gid://shopify/CartLine/1",
+                          "gid://shopify/CartLine/3"
+                        ]
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.12"
+                    }
+                  }
+                }
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "file": "20261001_214531_290Z_extensions_won-discounts-engine_657591.json",
+      "logTimestamp": "2026-10-01T21:45:31.290341Z",
+      "status": "success",
+      "target": "cart.lines.discounts.generate.run",
+      "role": "automatic",
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [
+        {
+          "code": "WONE2EM20"
+        }
+      ],
+      "presentmentCurrencyRate": {
+        "raw": "0.0415531865",
+        "jsonType": "string",
+        "value": 0.0415531865,
+        "significantDigits": 9,
+        "decimals": 10
+      },
+      "currency": "EUR",
+      "country": "SK",
+      "configMargin": {
+        "enabled": true,
+        "min": 25,
+        "max": 30,
+        "cur": "CZK",
+        "col": {
+          "492146557169": [
+            null,
+            10
+          ]
+        }
+      },
+      "lines": [
+        {
+          "id": "gid://shopify/CartLine/0",
+          "quantity": 1,
+          "amountPerQuantity": "0.42",
+          "variant": "gid://shopify/ProductVariant/48468678902001",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 6,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/1",
+          "quantity": 1,
+          "amountPerQuantity": "0.5",
+          "variant": "gid://shopify/ProductVariant/48468678934769",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {},
+            "marginRefs": [
+              "492146557169"
+            ]
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/2",
+          "quantity": 1,
+          "amountPerQuantity": "0.62",
+          "variant": "gid://shopify/ProductVariant/48468678967537",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 5,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": null
+        },
+        {
+          "id": "gid://shopify/CartLine/3",
+          "quantity": 1,
+          "amountPerQuantity": "0.37",
+          "variant": "gid://shopify/ProductVariant/48468679164145",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        }
+      ],
+      "output": {
+        "operations": [
+          {
+            "productDiscountsAdd": {
+              "candidates": [
+                {
+                  "message": "E2E marže auto 50 %",
+                  "targets": [
+                    {
+                      "cartLine": {
+                        "id": "gid://shopify/CartLine/0"
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.08",
+                      "appliesToEachItem": true
+                    }
+                  }
+                },
+                {
+                  "message": "E2E marže auto 50 %",
+                  "targets": [
+                    {
+                      "cartLine": {
+                        "id": "gid://shopify/CartLine/1"
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.05",
+                      "appliesToEachItem": true
+                    }
+                  }
+                },
+                {
+                  "message": "E2E marže auto 50 %",
+                  "targets": [
+                    {
+                      "cartLine": {
+                        "id": "gid://shopify/CartLine/3"
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.11",
+                      "appliesToEachItem": true
+                    }
+                  }
+                }
+              ],
+              "selectionStrategy": "ALL"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "file": "20261001_214532_093Z_extensions_won-discounts-engine_d363da.json",
+      "logTimestamp": "2026-10-01T21:45:32.093920Z",
+      "status": "success",
+      "target": "cart.lines.discounts.generate.run",
+      "role": "code",
+      "triggeringDiscountCode": "WONE2EM20",
+      "enteredDiscountCodes": [
+        {
+          "code": "WONE2EM20"
+        }
+      ],
+      "presentmentCurrencyRate": {
+        "raw": "0.0415531865",
+        "jsonType": "string",
+        "value": 0.0415531865,
+        "significantDigits": 9,
+        "decimals": 10
+      },
+      "currency": "EUR",
+      "country": "SK",
+      "configMargin": {
+        "enabled": true,
+        "min": 25,
+        "max": 30,
+        "cur": "CZK",
+        "col": {
+          "492146557169": [
+            null,
+            10
+          ]
+        }
+      },
+      "lines": [
+        {
+          "id": "gid://shopify/CartLine/0",
+          "quantity": 1,
+          "amountPerQuantity": "0.42",
+          "variant": "gid://shopify/ProductVariant/48468678902001",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 6,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/1",
+          "quantity": 1,
+          "amountPerQuantity": "0.5",
+          "variant": "gid://shopify/ProductVariant/48468678934769",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {},
+            "marginRefs": [
+              "492146557169"
+            ]
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/2",
+          "quantity": 1,
+          "amountPerQuantity": "0.62",
+          "variant": "gid://shopify/ProductVariant/48468678967537",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 5,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": null
+        },
+        {
+          "id": "gid://shopify/CartLine/3",
+          "quantity": 1,
+          "amountPerQuantity": "0.37",
+          "variant": "gid://shopify/ProductVariant/48468679164145",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        }
+      ],
+      "output": {
+        "operations": [
+          {
+            "orderDiscountsAdd": {
+              "candidates": [
+                {
+                  "message": "E2E marže kód 20 %",
+                  "targets": [
+                    {
+                      "orderSubtotal": {
+                        "excludedCartLineIds": [
+                          "gid://shopify/CartLine/0",
+                          "gid://shopify/CartLine/1",
+                          "gid://shopify/CartLine/3"
+                        ]
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.12"
+                    }
+                  }
+                }
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "file": "20261001_214532_096Z_extensions_won-discounts-engine_de615f.json",
+      "logTimestamp": "2026-10-01T21:45:32.096536Z",
+      "status": "success",
+      "target": "cart.lines.discounts.generate.run",
+      "role": "automatic",
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [
+        {
+          "code": "WONE2EM20"
+        }
+      ],
+      "presentmentCurrencyRate": {
+        "raw": "0.0415531865",
+        "jsonType": "string",
+        "value": 0.0415531865,
+        "significantDigits": 9,
+        "decimals": 10
+      },
+      "currency": "EUR",
+      "country": "SK",
+      "configMargin": {
+        "enabled": true,
+        "min": 25,
+        "max": 30,
+        "cur": "CZK",
+        "col": {
+          "492146557169": [
+            null,
+            10
+          ]
+        }
+      },
+      "lines": [
+        {
+          "id": "gid://shopify/CartLine/0",
+          "quantity": 1,
+          "amountPerQuantity": "0.42",
+          "variant": "gid://shopify/ProductVariant/48468678902001",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 6,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/1",
+          "quantity": 1,
+          "amountPerQuantity": "0.5",
+          "variant": "gid://shopify/ProductVariant/48468678934769",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {},
+            "marginRefs": [
+              "492146557169"
+            ]
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/2",
+          "quantity": 1,
+          "amountPerQuantity": "0.62",
+          "variant": "gid://shopify/ProductVariant/48468678967537",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 5,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": null
+        },
+        {
+          "id": "gid://shopify/CartLine/3",
+          "quantity": 1,
+          "amountPerQuantity": "0.37",
+          "variant": "gid://shopify/ProductVariant/48468679164145",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        }
+      ],
+      "output": {
+        "operations": [
+          {
+            "productDiscountsAdd": {
+              "candidates": [
+                {
+                  "message": "E2E marže auto 50 %",
+                  "targets": [
+                    {
+                      "cartLine": {
+                        "id": "gid://shopify/CartLine/0"
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.08",
+                      "appliesToEachItem": true
+                    }
+                  }
+                },
+                {
+                  "message": "E2E marže auto 50 %",
+                  "targets": [
+                    {
+                      "cartLine": {
+                        "id": "gid://shopify/CartLine/1"
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.05",
+                      "appliesToEachItem": true
+                    }
+                  }
+                },
+                {
+                  "message": "E2E marže auto 50 %",
+                  "targets": [
+                    {
+                      "cartLine": {
+                        "id": "gid://shopify/CartLine/3"
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.11",
+                      "appliesToEachItem": true
+                    }
+                  }
+                }
+              ],
+              "selectionStrategy": "ALL"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "file": "20261001_214533_389Z_extensions_won-discounts-engine_9c4fa9.json",
+      "logTimestamp": "2026-10-01T21:45:33.389379Z",
+      "status": "success",
+      "target": "cart.lines.discounts.generate.run",
+      "role": "code",
+      "triggeringDiscountCode": "WONE2EM20",
+      "enteredDiscountCodes": [
+        {
+          "code": "WONE2EM20"
+        }
+      ],
+      "presentmentCurrencyRate": {
+        "raw": "0.0415531865",
+        "jsonType": "string",
+        "value": 0.0415531865,
+        "significantDigits": 9,
+        "decimals": 10
+      },
+      "currency": "EUR",
+      "country": "SK",
+      "configMargin": {
+        "enabled": true,
+        "min": 25,
+        "max": 30,
+        "cur": "CZK",
+        "col": {
+          "492146557169": [
+            null,
+            10
+          ]
+        }
+      },
+      "lines": [
+        {
+          "id": "gid://shopify/CartLine/0",
+          "quantity": 1,
+          "amountPerQuantity": "0.42",
+          "variant": "gid://shopify/ProductVariant/48468678902001",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 6,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/1",
+          "quantity": 1,
+          "amountPerQuantity": "0.5",
+          "variant": "gid://shopify/ProductVariant/48468678934769",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {},
+            "marginRefs": [
+              "492146557169"
+            ]
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/2",
+          "quantity": 1,
+          "amountPerQuantity": "0.62",
+          "variant": "gid://shopify/ProductVariant/48468678967537",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 5,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": null
+        },
+        {
+          "id": "gid://shopify/CartLine/3",
+          "quantity": 1,
+          "amountPerQuantity": "0.37",
+          "variant": "gid://shopify/ProductVariant/48468679164145",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        }
+      ],
+      "output": {
+        "operations": [
+          {
+            "orderDiscountsAdd": {
+              "candidates": [
+                {
+                  "message": "E2E marže kód 20 %",
+                  "targets": [
+                    {
+                      "orderSubtotal": {
+                        "excludedCartLineIds": [
+                          "gid://shopify/CartLine/0",
+                          "gid://shopify/CartLine/1",
+                          "gid://shopify/CartLine/3"
+                        ]
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.12"
+                    }
+                  }
+                }
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "file": "20261001_214533_391Z_extensions_won-discounts-engine_c71b02.json",
+      "logTimestamp": "2026-10-01T21:45:33.391524Z",
+      "status": "success",
+      "target": "cart.lines.discounts.generate.run",
+      "role": "automatic",
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [
+        {
+          "code": "WONE2EM20"
+        }
+      ],
+      "presentmentCurrencyRate": {
+        "raw": "0.0415531865",
+        "jsonType": "string",
+        "value": 0.0415531865,
+        "significantDigits": 9,
+        "decimals": 10
+      },
+      "currency": "EUR",
+      "country": "SK",
+      "configMargin": {
+        "enabled": true,
+        "min": 25,
+        "max": 30,
+        "cur": "CZK",
+        "col": {
+          "492146557169": [
+            null,
+            10
+          ]
+        }
+      },
+      "lines": [
+        {
+          "id": "gid://shopify/CartLine/0",
+          "quantity": 1,
+          "amountPerQuantity": "0.42",
+          "variant": "gid://shopify/ProductVariant/48468678902001",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 6,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/1",
+          "quantity": 1,
+          "amountPerQuantity": "0.5",
+          "variant": "gid://shopify/ProductVariant/48468678934769",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {},
+            "marginRefs": [
+              "492146557169"
+            ]
+          }
+        },
+        {
+          "id": "gid://shopify/CartLine/2",
+          "quantity": 1,
+          "amountPerQuantity": "0.62",
+          "variant": "gid://shopify/ProductVariant/48468678967537",
+          "wonVariant": {
+            "jsonValue": {
+              "cost": 5,
+              "cur": "CZK"
+            }
+          },
+          "wonProduct": null
+        },
+        {
+          "id": "gid://shopify/CartLine/3",
+          "quantity": 1,
+          "amountPerQuantity": "0.37",
+          "variant": "gid://shopify/ProductVariant/48468679164145",
+          "wonVariant": null,
+          "wonProduct": {
+            "ruleIds": [
+              "e2e-margin-auto-50"
+            ],
+            "variantRuleIds": {}
+          }
+        }
+      ],
+      "output": {
+        "operations": [
+          {
+            "productDiscountsAdd": {
+              "candidates": [
+                {
+                  "message": "E2E marže auto 50 %",
+                  "targets": [
+                    {
+                      "cartLine": {
+                        "id": "gid://shopify/CartLine/0"
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.08",
+                      "appliesToEachItem": true
+                    }
+                  }
+                },
+                {
+                  "message": "E2E marže auto 50 %",
+                  "targets": [
+                    {
+                      "cartLine": {
+                        "id": "gid://shopify/CartLine/1"
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.05",
+                      "appliesToEachItem": true
+                    }
+                  }
+                },
+                {
+                  "message": "E2E marže auto 50 %",
+                  "targets": [
+                    {
+                      "cartLine": {
+                        "id": "gid://shopify/CartLine/3"
+                      }
+                    }
+                  ],
+                  "value": {
+                    "fixedAmount": {
+                      "amount": "0.11",
+                      "appliesToEachItem": true
+                    }
+                  }
+                }
+              ],
+              "selectionStrategy": "ALL"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

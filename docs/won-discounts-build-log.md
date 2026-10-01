@@ -12,76 +12,17 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > technická pravidla, zakázané věci). **MVP N+1 nezačíná, dokud MVP N není finální** (brána, živé E2E A+B,
 > vizuální QA, audit s opravenými nálezy, checkpoint, push).
 
-- **Fáze: MVP 4 (Odměny + košík)** — plán [`plans/2026-10-01-won-discounts-mvp4.md`](plans/2026-10-01-won-discounts-mvp4.md).
-  **Hotovo (lokální commity, NEPUSHNUTÉ — push až s uzavřením MVP 4):**
-  - Task 0 Wasm: vlastní `js::number_to_string` (jako JS `String(n)`) místo `core::fmt` → 245 kB / 256 kB.
-  - Task 1 core `9cb012e` (R1–R5, R7, explain, tierHint přeplánováním).
-  - Task 2 Rust `524c818`+`af964a5` (parita odměn 2 400 bez rozdílu, replay 2 173 běhů beze změny, rozpočet +≤ 1,53 b., max 87,37 %).
-  - Task 3 sync `93997cc` (handle dárků do storefront configu, krok `rewards.variant_missing`).
-  - Task 4 app proxy `e56681b` (`/apps/won-discounts/cart-plan`: tip „přidej 1 ks“, živý config + metafieldy, cache 60 s).
-  - Task 5 storefront `965efef`+`d0b496e` (komentáře JS → README extensionu; košík v embedu jen přes
-    `Shopify.actions.updateCart` a jen na akci zákazníka; blok `cart_rewards`; JS 9 912 / 10 240 B gz; testy na falešné
-    stránce + shoda prahů JS = planCart na 1 500 košících).
-  - Task 6 admin (commit „admin“ po tomto zápisu): `/app/rewards` (`RewardsScreen`, `model/rewards.ts`,
-    `rewards.server.ts`), harness `/dev/preview/rewards`, karta na Přehledu, i18n cs/en, integrační testy 5/5.
-  - Task 6 doplněk `a93993f`: Vyzkoušet košík přidá dárkový řádek dosažené úrovně (kandidát = 1. varianta úrovně,
-    čtená v témže dotazu jako košík), harness `/dev/preview/try-cart?state=rewards[&plan=pro]`.
-  - Task 7 docs (commit „docs“): concepts/cart-rewards, tasks set-up-free-shipping / set-up-a-free-gift /
-    add-the-cart-panel-to-the-cart-page, 4× support, plans-free-vs-pro, try-a-cart, what-is; generovaný plan-limits.
-    Opraven kontraktní test extensionu (blok `cart_rewards`) — brána na `d0b496e..a93993f` byla červená (2 testy),
-    nezachyceno, protože jsem po vrstvách pouštěl jen cílené testy. **Poučení: po každé vrstvě celý `test:unit`.**
-  **Nálezy k opravě v Task 9 (zapsané hned, ať se neztratí):**
-  - ✅ N1 (opraveno, test „no longer offers“) storefront: dárkový řádek s variantou, která už není v nabídce úrovně, JS hlásí „dárek je v košíku“, ale
-    pokladna ho účtuje (`plan()` v `won-discounts.js` nekontroluje variantu řádku proti `c`/`f`).
-  - ✅ N3 (opraveno, 2 testy „countOtherDiscounts: Keep/Remove the code“) storefront: s `countOtherDiscounts` volba
-    „Ponechat kód (bez dárku)“ dárek neodebrala (JS bral úroveň jako dosaženou před slevami); nově `due`/`left`.
-  - N2 storefront: R8 říká „Liquid vykreslí výchozí stav serverově (bez CLS)“; blok jen rezervuje `min-height: 3rem`.
-    Buď vykreslit progress v Liquidu, nebo upravit kontrakt (rozhodnout při QA podle naměřeného posunu).
-  - Oprava formátu `b07357b` (prettier z kořene přeformátoval a93993f; repo nemá prettier config — nepouštět).
-  - E2E `7f6d5a3` + `0847ce7`: profily `rewards` / `rewards-other` / `rewards-pro` (`scripts/e2e/rewards-fixture.mjs`,
-    seed s úklidem), overlay bloku `cart_rewards` do `templates/cart.json` obou témat, spec
-    `tests/e2e/storefront.rewards.spec.ts` (SF-1 + CLS ≤ 0,1 pro N2, progress = planCart, F-R1–F-R4, Odmítnout, pod práh,
-    pokladna, SK, kód s volbou, Pro žebřík). Brána `gate-mvp4a`: vše zelené kromě testu overlaye (opraven `0847ce7`).
-  - Wasm z aktuálního `src` přes CLI pipeline = **245 237 B** (README uvádí 244 781 B z měření úkolu 2 → opravit v auditu).
-  - Adversariální rozpočet odměn běží: rodiny MVP 3 (cap 550, `f40f0268…/scratchpad/mvp3-t2/fr1/cap550/fam`) × 3 varianty
-    odměn (nejdražší payload, který se vejde do 9 000 B; dárky na každém 10. / všech / žádném řádku), generátor
-    `scratchpad/rewfam/gen.mjs`. **Stop-pravidlo:** jeden průchod; ≥ 100 % → strop odměn v payloadu (největší ≤ 99,5 %).
-    **Výsledek (Wasm 245 237 B, 0 DIFF vůči TS):** nejdražší payload (místo z `marketCountries`) 9 960 vstupů max 89,15 %
-    (vytlačí dražší trhy); malý payload (1 úroveň, měna košíku) 6 640 vstupů **max 99,32 %**, 0 ≥ 99,5 %; kontrola bez
-    odměn na stejném buildu 3 320 vstupů max 99,21 % (MVP 3 build 98,67 % → engine MVP 4 +~0,5 b. i bez odměn). Strop
-    odměn není potřeba; rezerva k 100 % je malá → do auditu.
-  - Screenshoty adminu `cdad0fc` (`evidence/mvp4/admin/`, 16 PNG, bez přetečení).
-  - Živé E2E fáze A, běh 1 (`rewards`, Horizon): SF-1 ✓ (0 zápisů, progress = planCart, F-R2 ✓ `all_products`,
-    F-R4 ✓ POST přes app proxy, CLS ≤ 0,1) — spadlo na tap targets < 44 px (opraveno CSS, commit „44 × 44“); další testy
-    401 „access token expired“ z theme dev proxy (infrastruktura), Dawn 429.
-  - Živé E2E odhalilo 3 skutečné chyby košíku (všechny opravené s červeným testem na falešné stránce):
-    (1) `/cart.js` čtený z HTTP cache → `cache: "no-store"`; (2) Storefront Events vysílají `shopify:cart:lines-update`
-    na ZAČÁTKU změny s `event.promise` → panel na ni čeká; (3) dotykové cíle `rem` v Dawnu (62,5% root) → `44px`.
-  - **F-R1 částečně:** `Shopify.actions.updateCart` přes `shopify theme dev` (127.0.0.1) nefunguje — proxy neobsluhuje
-    `/api/<verze>/graphql.json` (net::ERR_FAILED; přesměrování → 400). Spec odměn proto běží na **doméně storu
-    s náhledem tématu** (`?preview_theme_id=` nepublikovaného tématu „Horizon“/„Dawn“, do kterého theme dev synchronizuje
-    pracovní kopii s overlayi) — nic se nepublikuje. Tam updateCart přidá dárek s atributy (probe ✓).
-  - Doména storu má rate limit Cloudflaru (429) → opakování 429 v `gotoStorefront`, pauza 20 s mezi testy odměn.
-  - Běh 3 (ladicí, bez evidence): Horizon SF-1 ✓, přidání + Odmítnout ✓, pod práh ✓; Dawn SF-1 ✓, pod práh ✓, přidání
-    a SK ✓ napodruhé; zbytek 429.
-  - **Fáze A (Free) ✓** `8cbca3f`: rewards 5/5, rewards-other, mvp1, shapes, margin, tiers — Horizon i Dawn, 0 opakování;
-    F-R1 drawer (Horizon, openCart) ✓, F-R2 ✓, F-R3 dárek 0 + doprava 0 v pokladně = planCart ✓, F-R4 ✓, SK v EUR ✓.
-  - **Audit** `docs/won-discounts/audits/audit-mvp4.md` (0 P0 / 0 P1 / 7 P2 / 5 P3): opraveno F1/F2 (fronta reakcí, bez
-    selfUntil), P1/P2 (strop cache, limit čtení proxy, 429), L1 (5 dárkových prahů = 20 handle pro `all_products`), A1
-    (amber), R2/D1 docs; F3 vědomě v README. Replay 2 691 běhů: 72 rozdílů = nové běhy odměn (MVP 4 = log), nic nového.
-  - **Brána po opravách ✓** (`gate-mvp4b`): unit 1 164 + cargo 94 + vitest 544, core 811 + testing 50, guard 301,
-    typecheck, lint, build, validate.
-  - Běží: fáze A znovu pro `rewards` + `rewards-other` (opravy košíku/proxy), pak fáze B (`scratchpad/phaseB4.sh`:
-    rewards-pro, tiers-pro, margin-pro, shapes Pro; app dev s `WON_DEV_PLAN=pro`).
-  **Zbývá v MVP 4:**
-  - ~~Screenshoty adminu 390/1440 (Odměny Free/Pro/empty, Vyzkoušet košík rewards, karta Přehledu) — potřebují běžící
-    `shopify app dev` (harness na jeho portu), udělat v Task 8 před restartem pro E2E.
-  - Task 8 živé E2E (profil `rewards` Free + `rewards-pro`; ověřit F-R1 překreslení draweru po `updateCart`, F-R2
-    `all_products` v embedu, F-R3 dárek 0 v pokladně, F-R4 POST přes app proxy) + regresní profily MVP 1–3.
-  - Task 9 brána, vizuální QA košíku (stránka + drawer, obě témata), audit + drift audit (adversariální rozpočet
-    odměn se stop-pravidlem; případně snížit `giftTiers` v payloadu), oprava nálezů, checkpoint, roadmapa, push.
-  MVP 3 uzavřené ✅ (badge `Beta`, `eadc31e` pushnuto).
-- **Poslední commit:** checkpoint MVP 3 (viz `git log`), pushnuto na `origin/main`.
+- **Fáze: MVP 5 (Výprodej, Pro)** — další krok: plán `docs/plans/<datum>-won-discounts-mvp5.md` s kontrakty (kvóta na
+  existující variantě `price` + `compare_at_price`, ceníky trhů vč. pevných cen, storna/vratky, návrat ceny, historie,
+  scheduler; zápisy cen jen skriptem s `--dry-run` + zálohou, po E2E vrátit). **První krok MVP 5: přeměřit konstruované
+  rodiny rozpočtu instrukcí** (rezerva po MVP 4 < 1 bod, audit R1).
+- **MVP 4 uzavřené ✅** (checkpoint níž, audit `audits/audit-mvp4.md`, evidence `evidence/mvp4/`). Poučení z MVP 4:
+  (1) po každé vrstvě celý `test:unit`, ne jen cílené testy; (2) **nepouštět prettier** (repo nemá config);
+  (3) spec, který zapisuje do košíku přes `Shopify.actions`, běží na doméně storu s `?preview_theme_id=` (theme dev
+  neobsluhuje Storefront API); doména storu má rate limit 429 → pauzy; (4) Storefront Events: čekat na `event.promise`,
+  `/cart.js` číst `no-store`, reakce v jedné frontě; (5) Dawn: `html { font-size: 62.5% }` → velikosti v px.
+  Skripty běhu: `scratchpad/profile3.sh <profil> <tag> free|pro`, fáze B `phaseB4.sh` (kolekce fixture).
+- **Poslední commit:** checkpoint MVP 4 (viz `git log`), pushnuto na `origin/main`.
 - `shopify app dev` **neběží**. E2E runbook (MVP 3) a skripty běhu: `profile.sh`-styl průchod = seed dry-run → live →
   (`margin*`/`tiers*`) `margin-costs` dry-run → live → E2E → úklid → `margin-costs --clear` → `verify-clean`.
 - **Dev store (Ondřej 2026-09-30): základní měna obchodu CZK** (dřív USD). `won-e2e-*` 10/12/15/18/20/22 Kč, nákupní
@@ -278,6 +219,51 @@ pro zvednutí stropu 550 B; ve Wasm zbývá ~2,8 kB; formát ceny v bloku vs. t�
 | C6 | kód při přesunu | rozhodnuto: záloha → smazání → vytvoření ve Won | `rozhodnuti.md` |
 
 ## Checkpointy MVP
+
+### MVP 4 — Odměny + košík ✅ (badge zůstává `Beta`)
+
+**Hotové a ověřené**
+- **Engine** (`@won/core/discounts`): odměny v `planCart` (R1 práh = neodárkové řádky před slevami, R2 doprava zdarma
+  `reward:shipping` 100 %, R3 dárek = 1 ks zdarma `fixedTotal`, Pro žebřík, R4 progress + varování, `tierHint` ověřený
+  přeplánováním), kompaktní payload R5, storefront config R7, vysvětlení cs/en; nejvýš 5 dárkových prahů × (3 + záložní).
+- **Funkce (Rust)**: port R1–R3 1:1, 115 fixtures, parita 2 400 náhodných košíků s odměnami 0 rozdílů, replay 2 691
+  zalogovaných běhů bez nového rozdílu (72 nových běhů odměn = log), Wasm 245 237 B (vlastní `String(n)` místo
+  `core::fmt`), realistické košíky max 87,37 %, konstruované rodiny s odměnami max 99,32 % (stop-pravidlo, strop není
+  potřeba).
+- **Sync**: handle dárků do storefront configu, krok `rewards.variant_missing`.
+- **App proxy** `/apps/won-discounts/cart-plan`: tip „přidej N ks“ z enginu, bez nákupních cen; strop cache, limit
+  čtení Shopify na shop (429 bez tipu).
+- **Storefront**: panel košíku v embedu (drawer) + blok `cart_rewards` (stránka košíku): progress dopravy a dárku,
+  dárek s „Odmítnout“, Pro výběr ze 3, pole pro kód s varováním a volbou, „Ušetříte X“, tip; zápis jen
+  `Shopify.actions.updateCart` a jen na akci zákazníka (SF-1), čeká na `event.promise`, `/cart.js` bez cache, reakce
+  v jedné frontě; JS ≤ 10 kB gz celkem; dotykové cíle 44 px.
+- **Admin**: modul Odměny (doprava zdarma a dárek per měna trhu, Pro žebřík a výběr, záložní dárek, počítání prahu,
+  stav košíku na webu + deep link bloku), karta na Přehledu, Vyzkoušet košík s dárkovým řádkem; screenshoty 390/1440
+  `evidence/mvp4/admin/`.
+- **Docs**: concepts/cart-rewards, 3 tasks, 4 support, Free vs Pro, Vyzkoušet košík.
+- **Živé E2E (dev store, Bogus)**, spec odměn na doméně storu s náhledem tématu (theme dev neobsluhuje Storefront API):
+  fáze A (Free): `rewards` 5/5, `rewards-other` (kód s volbou) — na finálním kódu (`c8c9b64`) ✓ Horizon ✓ Dawn bez opakování;
+  regresní `mvp1` 5/5, `shapes` 4/4, `margin` 6/6, `tiers` 7/7 ✓ ✓ (košík JS se bez odměn nenačítá, proxy ani admin je
+  netýkají). Fáze B (Pro): `rewards-pro` (žebřík, výběr ze 3) na finálním kódu ✓ ✓ bez opakování, `tiers-pro` 5/5 ✓ ✓, `margin-pro` 6/6 a `shapes` Pro
+  4/4 ✓ ✓ (v prvním běhu po jednom testu napodruhé — časování seedu / logu funkce; opakovaný běh bez opakování).
+  F-R1 drawer Horizon ✓, F-R2 `all_products` ✓, F-R3 dárek 0 Kč (−199 Kč) a doprava 0 v pokladně = planCart ✓,
+  F-R4 POST přes app proxy ✓, SK prahy v EUR ✓, CLS stránky košíku ≤ 0,033 → `evidence/mvp4/e2e-{A,B}/`.
+- **Audit** `docs/won-discounts/audits/audit-mvp4.md`: 0 P0 / 0 P1 / 9 P2 / 6 P3 (vč. 5 nálezů živého E2E: cache
+  `/cart.js`, `event.promise`, 44 px, varování kódu čeká na volbu, neúspěšný zápis se dořeší přes košík) — opraveno vše
+  kromě F3 (vědomě, README), R1 (rezerva rozpočtu, přeměřit v MVP 5) a V1 (mezera pod „Zaplatit“ na Horizonu, MVP 7).
+
+**Brána MVP 4 final (`gate-mvp4d`, kód `c8c9b64`)**: core 811 + testing 50 ✓ · guard 301 ✓ · `test:unit -w won-discounts` node 1 168 +
+cargo 94 (1 ignored) + vitest 544 ✓ · typecheck ✓ · lint ✓ · build ✓ · validate 0 nálezů ✓.
+
+**Vědomé kompromisy**
+- Odmítnutý zápis `updateCart` (`userErrors`) panel zákazníkovi neříká; košík přečte znovu a dárek nabídne znovu.
+- Vyprodaný / záložní dárek ověřený jen testy (katalog `won-e2e-*` nemá sledovaný sklad — změna by byla zápis do katalogu).
+- Dawn má na dev storu košík typu „notification“ → panel v draweru ověřený na Horizonu, na Dawnu stránka košíku.
+- Rezerva rozpočtu instrukcí u konstruovaných tvarů < 1 bod (99,32 %).
+
+**Neověřeno**
+- Vložení adminu do Shopify adminu (embedded UI, resource picker pro dárek) — ověří Ondřej.
+- Produkční storefront mimo náhled tématu (očekává se totéž: Storefront API je same-origin).
 
 ### MVP 3 — Množstevní slevy + PDP blok + základ storefrontu ✅ (badge → `Beta`)
 
