@@ -235,7 +235,7 @@ test("a gift line whose variant the tier no longer offers is not 'your gift' (ch
   });
   await p.settle(10);
   assert.doesNotMatch(p.panel(), /data-state="in"/, "never 'Váš dárek je v košíku' for a line checkout charges");
-  assert.deepEqual(p.state.updates, [], "SF-1: nothing on load");
+  assert.equal(p.state.updates.length, 0, "SF-1: nothing on load");
   p.emit("shopify:cart:lines-update");
   await p.settle(4000);
   assert.deepEqual(

@@ -41,8 +41,15 @@
 //           scripts/e2e/margin-collection.mjs --fixture tiers --live), counted
 //           across the cart: from 2 items −20 %. Run with NODE_ENV=development
 //           WON_DEV_PLAN=pro (and `shopify app dev` likewise).
-// A seed REPLACES the E2E rules, tier sets and margin settings of the other
-// profile (one backup covers all of them).
+//   rewards  scripts/e2e/rewards-fixture.mjs (MVP 4): free shipping from 40 Kč /
+//           2 €, a gift (won-e2e-spare) from 50 Kč / 3 €; no rule;
+//           tests/e2e/storefront.rewards.spec.ts (WON_E2E_PROFILE=rewards).
+//   rewards-other  the same with countOtherDiscounts on + code WONE2EDAR (50 %
+//           on the order).
+//   rewards-pro  + a second threshold (80 Kč / 4 €) with a choice of 3 gifts and
+//           the spare as fallback. Run with NODE_ENV=development WON_DEV_PLAN=pro.
+// A seed REPLACES the E2E rules, tier sets, margin and reward settings of the
+// other profile (one backup covers all of them).
 //
 //   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs
 //       DRY-RUN (default): reads the store + the stored config, prints the seed
@@ -90,6 +97,7 @@ import {
   marginRules,
 } from "./margin-fixture.mjs";
 import { SHAPES_HANDLES, SHAPES_PRODUCT_B_HANDLE, SHAPES_RULE_IDS, shapesRules } from "./shapes-fixture.mjs";
+import { ALL_REWARDS_TIER_IDS, REWARDS_CODE_RULE_ID, REWARDS_HANDLES, rewardsModule, rewardsRules } from "./rewards-fixture.mjs";
 import { TIERS_COLLECTION_HANDLE, TIERS_COLLECTION_SET_ID, TIERS_GLOBAL_SET_ID, tiersMarginModule, tiersModule } from "./tiers-fixture.mjs";
 
 register();
@@ -197,14 +205,34 @@ const PROFILES = {
     margin: () => tiersMarginModule(),
     label: `quantity tiers + Pro: a set on ${TIERS_COLLECTION_HANDLE} counted across the cart (from 2 items −20 %) before the global set; margin protection on (min margin 30 %, max discount 30 %), no rule`,
   },
+  rewards: {
+    handles: REWARDS_HANDLES,
+    rules: () => [],
+    rewards: (variantIds) => rewardsModule(variantIds),
+    label: "rewards: free shipping from 40 Kč / 2 €, a gift (won-e2e-spare) from 50 Kč / 3 €, no rule",
+  },
+  "rewards-other": {
+    handles: REWARDS_HANDLES,
+    rules: () => rewardsRules(),
+    rewards: (variantIds) => rewardsModule(variantIds, { other: true }),
+    label: "rewards counting other discounts: free shipping from 40 Kč / 2 €, a gift from 50 Kč / 3 €, code WONE2EDAR 50 % on the order",
+  },
+  "rewards-pro": {
+    handles: REWARDS_HANDLES,
+    rules: () => [],
+    rewards: (variantIds) => rewardsModule(variantIds, { pro: true }),
+    label: "rewards + Pro: free shipping from 40 Kč / 2 €, the spare from 50 Kč / 3 €, a choice of 3 gifts from 80 Kč / 4 € (fallback: the spare)",
+  },
 };
 const PROFILE = option("--profile") ?? "mvp1";
 if (!Object.hasOwn(PROFILES, PROFILE)) throw new Error(`unknown --profile ${PROFILE} (${Object.keys(PROFILES).join(", ")})`);
 /** Every E2E rule id of every profile: what a cleanup without a backup removes, and what "the seed is in it" means. */
-const ALL_E2E_RULE_IDS = [...E2E_RULE_IDS, ...SHAPES_RULE_IDS, ...MARGIN_RULE_IDS];
+const ALL_E2E_RULE_IDS = [...E2E_RULE_IDS, ...SHAPES_RULE_IDS, ...MARGIN_RULE_IDS, REWARDS_CODE_RULE_ID];
 /** Every E2E tier set id (MVP 3): a cleanup without a backup removes them, and they mean "the seed is in it" too. */
 const ALL_E2E_TIER_SET_IDS = [TIERS_GLOBAL_SET_ID, TIERS_COLLECTION_SET_ID];
 const tierSetsOf = (config) => (Array.isArray(config?.modules?.tiers?.sets) ? config.modules.tiers.sets : []);
+const giftTiersOf = (config) => (Array.isArray(config?.modules?.rewards?.gifts) ? config.modules.rewards.gifts : []);
+const hasE2eRewards = (config) => giftTiersOf(config).some((tier) => ALL_REWARDS_TIER_IDS.includes(tier.id));
 
 // The app's DB, absolute (never the .env): set before the Prisma client loads.
 process.env.DATABASE_URL = `file:${DEV_DB}`;
@@ -307,6 +335,16 @@ function summarize(config) {
 }
 
 /** "tier set e2e-tiers-global (global, per product): 3+ −10 %, 5+ −15 %" per set — ids and values only. */
+/** "free shipping CZK 4000, EUR 200; gift e2e-gift CZK 5000 → 1 variant(s)" — ids and values only. */
+function rewardsText(config) {
+  const rewards = config?.modules?.rewards ?? {};
+  const money = (m) => Object.entries(m ?? {}).map(([cur, v]) => `${cur} ${v}`).join(", ");
+  const parts = [rewards.freeShipping ? `free shipping ${money(rewards.freeShipping.threshold)}` : "no free shipping"];
+  for (const tier of giftTiersOf(config)) parts.push(`gift ${tier.id} ${money(tier.threshold)} → ${tier.choices.length} variant(s)${tier.fallbackVariantId ? " + fallback" : ""}`);
+  if (rewards.countOtherDiscounts) parts.push("counting other discounts");
+  return parts.join("; ");
+}
+
 function tiersText(config) {
   const sets = tierSetsOf(config);
   if (sets.length === 0) return ["no tier set"];
@@ -357,7 +395,7 @@ async function classifyMargin(margin) {
   return classifyStoredMargin(margin, { isFixtureCollection: (id) => fixtureIds.has(id) });
 }
 
-function seedConfig(previous, productIds, collectionIds) {
+function seedConfig(previous, productIds, collectionIds, variantIds) {
   // Only the profile's E2E rules (no campaigns, default engine switches) so the
   // carts the spec checks are decided by these rules alone; markets are kept.
   const config = createDefaultConfig();
@@ -365,6 +403,7 @@ function seedConfig(previous, productIds, collectionIds) {
   config.modules.codes.rules = PROFILES[PROFILE].rules(productIds);
   if (PROFILES[PROFILE].margin) config.modules.margin = PROFILES[PROFILE].margin(collectionIds);
   if (PROFILES[PROFILE].tiers) config.modules.tiers = PROFILES[PROFILE].tiers(collectionIds);
+  if (PROFILES[PROFILE].rewards) config.modules.rewards = PROFILES[PROFILE].rewards(variantIds);
   if (PRESET !== undefined) {
     if (!PROFILES[PROFILE].tiers) throw new Error(`--preset needs a tiers profile (--profile ${PROFILE} has no tier set)`);
     config.storefront.appearancePreset = PRESET;
@@ -451,13 +490,15 @@ async function main() {
     if (loaded.readOnly) throw new Error("the stored config belongs to a newer schema; refusing to touch it (nothing was sent)");
     const hasSeed =
       loaded.config.modules.codes.rules.some((rule) => ALL_E2E_RULE_IDS.includes(rule.id)) ||
-      tierSetsOf(loaded.config).some((set) => ALL_E2E_TIER_SET_IDS.includes(set.id));
+      tierSetsOf(loaded.config).some((set) => ALL_E2E_TIER_SET_IDS.includes(set.id)) ||
+      hasE2eRewards(loaded.config);
     console.log(
       `# stored config of ${STORE}: ${loaded.exists ? `${loaded.config.modules.codes.rules.length} rule(s)${hasSeed ? " (the E2E seed is in it)" : ""}` : "no row yet"}`,
     );
     for (const rule of summarize(loaded.config)) console.log(`  - ${rule.id} "${rule.name}" ${rule.method} ${rule.enabled ? "enabled" : "disabled"}`);
     console.log(`  ${marginText(loaded.config)}`);
     for (const line of tiersText(loaded.config)) console.log(`  ${line}`);
+    console.log(`  rewards: ${rewardsText(loaded.config)}`);
 
     if (cleanup) {
       const backup = readBackup();
@@ -479,6 +520,8 @@ async function main() {
             ...loaded.config.modules,
             codes: { rules: loaded.config.modules.codes.rules.filter((rule) => !ALL_E2E_RULE_IDS.includes(rule.id)) },
             tiers: { ...loaded.config.modules.tiers, sets: tierSetsOf(loaded.config).filter((set) => !ALL_E2E_TIER_SET_IDS.includes(set.id)) },
+            // A rewards module holding an E2E gift tier is the seed's (free shipping included): back to the defaults.
+            ...(hasE2eRewards(loaded.config) ? { rewards: createDefaultConfig().modules.rewards } : {}),
           },
         };
         console.log(`\n# cleanup: no backup in ${OUT_DIR}; removing only the E2E rules and tier sets from the stored config`);
@@ -490,7 +533,7 @@ async function main() {
           console.log(`  ! margin settings LEFT UNTOUCHED: they are not the E2E fixture's (${margin.reason}). If an E2E run left them, switch margin protection off in the admin (Ochrana marže).`);
         }
       }
-      console.log(`  after the cleanup: ${summarize(target).length} rule(s), ${marginText(target)}, ${tiersText(target).join("; ")}`);
+      console.log(`  after the cleanup: ${summarize(target).length} rule(s), ${marginText(target)}, ${tiersText(target).join("; ")}, rewards: ${rewardsText(target)}`);
       const marginWasOn = loaded.config.modules.margin?.enabled === true && target.modules?.margin?.enabled !== true;
       if (!live) {
         process.exitCode = dryRunPlan(target, "cleanup");
@@ -527,6 +570,7 @@ async function main() {
     }
 
     const productIds = {};
+    const variantIds = {};
     for (const handle of PROFILES[PROFILE].handles) {
       const found = (
         await query(
@@ -534,6 +578,11 @@ async function main() {
   productByIdentifier(identifier: { handle: $handle }) {
     id
     handle
+    variants(first: 1) {
+      nodes {
+        id
+      }
+    }
     metafield(namespace: "$app:won_discounts", key: "product") {
       value
     }
@@ -550,6 +599,7 @@ async function main() {
       ).productByIdentifier;
       if (!found?.id) throw new Error(`product ${handle} not found on ${STORE}`);
       productIds[handle] = found.id;
+      if (found.variants?.nodes?.[0]?.id) variantIds[handle] = found.variants.nodes[0].id;
     }
     const collectionIds = {};
     for (const handle of PROFILES[PROFILE].collections ?? []) {
@@ -573,13 +623,14 @@ async function main() {
     }
     const backup = readBackup();
     const previous = backup ? (backup.exists ? backup.config : createDefaultConfig()) : loaded.config;
-    const config = seedConfig(previous, productIds, collectionIds);
+    const config = seedConfig(previous, productIds, collectionIds, variantIds);
     console.log(
       `\n# seed (profile ${PROFILE}): ${Object.entries(productIds).map(([handle, id]) => `${handle} = ${id}`).join(", ")}; ${PROFILES[PROFILE].label}`,
     );
     for (const rule of summarize(config)) console.log(`  + ${rule.id} "${rule.name}" ${rule.method}`);
     console.log(`  ${marginText(config)}`);
     for (const line of tiersText(config)) console.log(`  ${line}`);
+    console.log(`  rewards: ${rewardsText(config)}`);
 
     if (!live) {
       process.exitCode = dryRunPlan(config, PROFILE === "mvp1" ? "seed" : `seed-${PROFILE}`);

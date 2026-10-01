@@ -171,6 +171,28 @@ export function tiersTemplateOverlays(themeKey, extensionUuid = resolveExtension
   throw new Error(`no template overlay for theme ${themeKey}`);
 }
 
+/** Stable id of the cart rewards block in the theme copies' cart template (MVP 4, R8). */
+export const CART_BLOCK_ID = "won_discounts_cart_rewards";
+export const CART_BLOCK_NAME = "cart_rewards";
+
+/**
+ * The cart rewards block on the cart page (MVP 4): Horizon main-cart renders
+ * section-level @app blocks in its "more blocks" area (end of the section);
+ * Dawn main-cart-footer renders them in the footer's block list, placed
+ * before the subtotal.
+ */
+export function cartTemplateOverlays(themeKey, extensionUuid = resolveExtensionUuid()) {
+  const block = { id: CART_BLOCK_ID, type: appBlockType(CART_BLOCK_NAME, extensionUuid), settings: {} };
+  if (themeKey === "horizon") return [{ template: "templates/cart.json", sectionTypes: ["main-cart"], block, position: "end" }];
+  if (themeKey === "dawn") return [{ template: "templates/cart.json", sectionTypes: ["main-cart-footer"], block, position: { beforeType: "subtotal" } }];
+  throw new Error(`no cart template overlay for theme ${themeKey}`);
+}
+
+/** Every template overlay of a theme copy (e2e.app.config.mjs): the tiers block on the PDP, the rewards block on the cart. */
+export function e2eTemplateOverlays(themeKey, extensionUuid = resolveExtensionUuid()) {
+  return [...tiersTemplateOverlays(themeKey, extensionUuid), ...cartTemplateOverlays(themeKey, extensionUuid)];
+}
+
 // Theme-editor style numeric key, derived from the block handle so it never
 // changes between runs (and never collides with the editor's random keys in
 // practice).
@@ -256,7 +278,7 @@ async function main() {
     try {
       const plans = await planTemplateOverlays({
         workspaceDirectory: themePaths[key],
-        templateOverlays: tiersTemplateOverlays(key, extensionUuid),
+        templateOverlays: e2eTemplateOverlays(key, extensionUuid),
       });
       for (const plan of plans) {
         console.log(
@@ -273,6 +295,7 @@ async function main() {
     `  embed block: ${type} (key ${stableBlockKey(type)}, disabled: false)`,
   );
   console.log(`  tiers block: ${appBlockType(TIERS_BLOCK_NAME, extensionUuid)} (id ${TIERS_BLOCK_ID})`);
+  console.log(`  cart block: ${appBlockType(CART_BLOCK_NAME, extensionUuid)} (id ${CART_BLOCK_ID})`);
   if (stale > 0) {
     console.error("Run `node scripts/make-e2e-overlay.mjs` to regenerate (a template overlay failure needs e2e.app.config.mjs / this script).");
     process.exitCode = 1;

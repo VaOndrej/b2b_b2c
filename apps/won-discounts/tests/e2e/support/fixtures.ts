@@ -57,7 +57,7 @@ export async function guardThemeDevSession(context: BrowserContext, baseURL: str
 }
 
 // Our extension's scripts (the embed + the MVP 3 tiers block and its pure core), served with a JS MIME type through theme dev.
-export const test = createStorefrontTest({ javaScriptProxyPaths: ["won-discounts.js", "won-discounts-tiers.js", "won-discounts-tiers-core.js"] }).extend({
+export const test = createStorefrontTest({ javaScriptProxyPaths: ["won-discounts.js", "won-discounts-tiers.js", "won-discounts-tiers-core.js", "won-discounts-cart.js"] }).extend({
   context: async ({ context, baseURL }, use) => {
     await guardThemeDevSession(context, baseURL);
     await use(context);

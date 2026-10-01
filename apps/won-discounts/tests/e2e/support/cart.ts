@@ -32,6 +32,8 @@ export interface CartItem {
   original_line_price?: number;
   final_line_price: number;
   line_level_discount_allocations: CartAllocation[];
+  /** Line properties (MVP 4: a Won gift line carries `_won_gift` + `_gift_progress`). */
+  properties?: Record<string, unknown> | null;
 }
 
 export interface Cart {
@@ -43,6 +45,8 @@ export interface Cart {
   discount_codes: { code: string; applicable: boolean }[];
   cart_level_discount_applications: { title: string; type: string; value: string; value_type: string; total_allocated_amount: number }[];
   items: CartItem[];
+  /** Cart attributes (MVP 4: `_won_gift_declined`). */
+  attributes?: Record<string, unknown> | null;
 }
 
 let lastRequestAt = 0;

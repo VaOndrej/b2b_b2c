@@ -165,6 +165,8 @@ export function planInputFromCart(cart: Cart, inputs: LiveInputs, country: strin
       ...(refs?.variantRuleIds ? { variantRuleIds: refs.variantRuleIds } : {}),
       // As the metafield carries it (the engine fails closed on junk); absent = the global set.
       ...(refs && "tierRef" in refs ? { tierRef: refs.tierRef } : {}),
+      // MVP 4 (R3): the `_won_gift` line attribute, as the function reads it.
+      ...(typeof item.properties?._won_gift === "string" && item.properties._won_gift !== "" ? { giftTierId: item.properties._won_gift } : {}),
     };
   });
   return {

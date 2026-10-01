@@ -1,4 +1,4 @@
-import { tiersTemplateOverlays } from "./scripts/make-e2e-overlay.mjs";
+import { e2eTemplateOverlays } from "./scripts/make-e2e-overlay.mjs";
 
 export default {
   appName: "won-discounts",
@@ -15,19 +15,20 @@ export default {
   // checked with --check) by `node scripts/make-e2e-overlay.mjs`.
   // templateOverlays (MVP 3) put the quantity tiers app block into each theme
   // copy's product template (Horizon: inside _product-details; Dawn: in
-  // main-product), planned by the same script's --check.
+  // main-product), and (MVP 4) the cart rewards block into the cart template
+  // (Horizon main-cart, Dawn main-cart-footer), planned by the same script's --check.
   themes: {
     horizon: {
       remoteName: "Horizon",
       preferredPort: 9885,
       settingsDataOverlay: "e2e/settings_data.horizon.json",
-      templateOverlays: tiersTemplateOverlays("horizon"),
+      templateOverlays: e2eTemplateOverlays("horizon"),
     },
     dawn: {
       remoteName: "Dawn",
       preferredPort: 9886,
       settingsDataOverlay: "e2e/settings_data.dawn.json",
-      templateOverlays: tiersTemplateOverlays("dawn"),
+      templateOverlays: e2eTemplateOverlays("dawn"),
     },
   },
   appStartHint: "npm run dev -w won-discounts",
