@@ -9,7 +9,7 @@ app_version: MVP2
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-09-30
+updated: 2026-10-01
 keywords: [free, pro, plan, pricing, upgrade, downgrade, difference, pro settings on free, tarif]
 summary: Free limits scope, never quality. What Pro adds today, and what happens to Pro settings on a Free shop (kept, but not applied at checkout).
 ---
@@ -29,6 +29,10 @@ Try a cart and moving Shopify discounts work in full on Free. Free is not a demo
   ([pro-combinations](pro-combinations)).
 - **Margin settings per collection** and the overview of where protection steps in
   ([margin-per-collection](margin-per-collection)).
+- **Quantity discount sets per product or collection** and counting across the
+  whole cart ([quantity-tiers](quantity-tiers)).
+- **A ladder of gift thresholds and a choice of up to 3 gifts** in Cart rewards
+  ([cart-rewards](cart-rewards)).
 
 Later versions add Pro modules such as Clearance and Campaigns.
 
@@ -47,6 +51,9 @@ are always neutralised in the direction that gives customers less:
 - Per-discount combinations are left out; the default combining rules apply.
 - Collection margin settings are merged into the store-wide setting; the strictest
   value wins.
+- Quantity discount sets for chosen products or collections are switched off; a
+  product in one never falls back to the store-wide set.
+- Of the gift thresholds only the first applies, with its first gift.
 
 The plan is checked on the server. Checkout never receives Pro settings the shop's
 plan does not include.

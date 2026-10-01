@@ -5,6 +5,8 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
+import { CART_BLOCK_HANDLE } from "../../app/components/model/embed.ts";
+
 // SPEC-DRIVEN contract for the Won Discounts storefront foundation (MVP0,
 // Task 4). In MVP0 the embed only has to prove it loads: it renders a hidden
 // root marker + a JSON config script tag, and loads storefront JS with
@@ -142,11 +144,14 @@ test("locale files stay valid JSON with identical key sets across en/cs/sk", asy
   }
 });
 
-test("MVP 3: the extension ships the embed and the quantity_tiers app block; every schema asset exists", async () => {
+test("MVP 3 + 4: the extension ships the embed, the quantity_tiers and the cart_rewards app blocks; every schema asset exists", async () => {
   const blocks = (await readdir(path.join(extensionRoot, "blocks"))).filter((f) => f.endsWith(".liquid")).sort();
-  // The handle `quantity_tiers` is the file name: the admin deep link (addAppBlockId) and the
-  // theme template's block type `shopify://apps/won-discounts/blocks/quantity_tiers/<uuid>` use it.
-  assert.deepEqual(blocks, ["quantity_tiers.liquid", "won_discounts_embed.liquid"]);
+  // The handles `quantity_tiers` / `cart_rewards` are the file names: the admin deep links (addAppBlockId,
+  // CART_BLOCK_HANDLE) and the theme template's block type `shopify://apps/won-discounts/blocks/<handle>/<uuid>` use them.
+  assert.deepEqual(blocks, ["cart_rewards.liquid", "quantity_tiers.liquid", "won_discounts_embed.liquid"]);
+  assert.equal(CART_BLOCK_HANDLE, "cart_rewards");
+  const cartSchema = JSON.parse((await readExtension("blocks/cart_rewards.liquid")).match(/\{%\s*schema\s*%\}([\s\S]*?)\{%\s*endschema\s*%\}/)?.[1] ?? "{}");
+  assert.deepEqual(cartSchema.enabled_on, { templates: ["cart"] }, "the cart panel block only on the cart template");
   for (const file of blocks) {
     const liquid = await readExtension(`blocks/${file}`);
     const schema = JSON.parse(liquid.match(/\{%\s*schema\s*%\}([\s\S]*?)\{%\s*endschema\s*%\}/)?.[1] ?? "{}");

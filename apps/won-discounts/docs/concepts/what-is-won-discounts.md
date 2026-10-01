@@ -9,7 +9,7 @@ app_version: MVP2
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-09-30
+updated: 2026-10-01
 keywords: [overview, what is, modules, discounts, codes, margin, try a cart, won discounts]
 summary: Won Discounts runs a store's discounts through one engine so the merchant knows what applies at checkout and why. What is available today and what is not built yet.
 ---
@@ -36,6 +36,8 @@ and it decides how discounts combine instead of leaving that to chance.
   [combining-discounts](combining-discounts).
 - **Try a cart**: build a cart and see which discounts apply and why, exactly as
   checkout will apply them. See [how-won-plans-discounts](how-won-plans-discounts).
+- **Cart rewards** (beta): free shipping and a free gift from an order amount per
+  currency, shown in the cart on your store. See [cart-rewards](cart-rewards).
 - **Overview**: what is running, the sync with Shopify, warnings, and the discounts
   in your store that run outside Won.
 - **Moving Shopify discounts into Won**, with Undo. See
@@ -43,15 +45,15 @@ and it decides how discounts combine instead of leaving that to chance.
 
 ## Not built yet
 
-Cart rewards, Clearance (Pro) and Campaigns (Pro) are
-in the menu but open a "coming in a later version" page. Nothing can be set up there
-yet.
+Clearance (Pro) and Campaigns (Pro) are in the menu but open a "coming in a
+later version" page. Nothing can be set up there yet.
 
 ## Where customers see Won discounts
 
 Shopify's checkout applies Won discounts itself and shows the discount name you
-entered. Checkout discounts do not depend on the theme app embed; the embed is the
-base for showing discounts in the store itself, which later versions build on.
+entered. Checkout discounts do not depend on the theme app embed. The embed shows
+discounts in the store itself: the quantity-tiers table on the product page and
+the cart rewards panel in the cart.
 
 ## Admin language
 

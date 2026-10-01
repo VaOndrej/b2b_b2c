@@ -9,7 +9,7 @@ app_version: MVP2
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-09-30
+updated: 2026-10-01
 keywords: [try a cart, test discount, preview, simulate, check code, what applies, why, checkout may differ, vyzkoušet košík]
 summary: Build a test cart with products, a market, codes and a day, and see which Won discounts apply at checkout and why. Nothing is ordered.
 ---
@@ -35,6 +35,10 @@ ordered.
 - Each discount and code has a sentence saying why it applies or not ("needs 1 more
   item", "another discount is better", "not valid in EUR").
 - Items at the margin floor are marked, with the discount before and after.
+- Cart rewards: free shipping and how much is left to it and to the gift. A
+  reached gift threshold adds the gift line, tagged **Gift**, exactly as the cart
+  on your store would; it is free. With a choice of gifts (Pro) the first one
+  offered is shown. See [../concepts/cart-rewards.md](../concepts/cart-rewards.md).
 
 ## "Checkout may differ"
 

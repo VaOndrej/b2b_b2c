@@ -24,9 +24,20 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
     stránce + shoda prahů JS = planCart na 1 500 košících).
   - Task 6 admin (commit „admin“ po tomto zápisu): `/app/rewards` (`RewardsScreen`, `model/rewards.ts`,
     `rewards.server.ts`), harness `/dev/preview/rewards`, karta na Přehledu, i18n cs/en, integrační testy 5/5.
+  - Task 6 doplněk `a93993f`: Vyzkoušet košík přidá dárkový řádek dosažené úrovně (kandidát = 1. varianta úrovně,
+    čtená v témže dotazu jako košík), harness `/dev/preview/try-cart?state=rewards[&plan=pro]`.
+  - Task 7 docs (commit „docs“): concepts/cart-rewards, tasks set-up-free-shipping / set-up-a-free-gift /
+    add-the-cart-panel-to-the-cart-page, 4× support, plans-free-vs-pro, try-a-cart, what-is; generovaný plan-limits.
+    Opraven kontraktní test extensionu (blok `cart_rewards`) — brána na `d0b496e..a93993f` byla červená (2 testy),
+    nezachyceno, protože jsem po vrstvách pouštěl jen cílené testy. **Poučení: po každé vrstvě celý `test:unit`.**
+  **Nálezy k opravě v Task 9 (zapsané hned, ať se neztratí):**
+  - N1 storefront: dárkový řádek s variantou, která už není v nabídce úrovně, JS hlásí „dárek je v košíku“, ale
+    pokladna ho účtuje (`plan()` v `won-discounts.js` nekontroluje variantu řádku proti `c`/`f`).
+  - N2 storefront: R8 říká „Liquid vykreslí výchozí stav serverově (bez CLS)“; blok jen rezervuje `min-height: 3rem`.
+    Buď vykreslit progress v Liquidu, nebo upravit kontrakt (rozhodnout při QA podle naměřeného posunu).
   **Zbývá v MVP 4:**
-  - Task 6 doplněk: Vyzkoušet košík s dárkovým řádkem (zatím jen věty explainu); screenshoty adminu 390/1440.
-  - Task 7 podpůrné docs (concepts/tasks/support pro odměny).
+  - Screenshoty adminu 390/1440 (Odměny Free/Pro/empty, Vyzkoušet košík rewards, karta Přehledu) — potřebují běžící
+    `shopify app dev` (harness na jeho portu), udělat v Task 8 před restartem pro E2E.
   - Task 8 živé E2E (profil `rewards` Free + `rewards-pro`; ověřit F-R1 překreslení draweru po `updateCart`, F-R2
     `all_products` v embedu, F-R3 dárek 0 v pokladně, F-R4 POST přes app proxy) + regresní profily MVP 1–3.
   - Task 9 brána, vizuální QA košíku (stránka + drawer, obě témata), audit + drift audit (adversariální rozpočet
