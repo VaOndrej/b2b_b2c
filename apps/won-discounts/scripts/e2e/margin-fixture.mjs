@@ -12,22 +12,25 @@
 //   "E2E marže kód 60 %"   code WONE2EM60, 60 % on the order (the lowered order
 //                          discount scenario, fix round 1 / audit OQ1)
 //
+// Prices and costs are in the shop currency, CZK since 2026-09-30 (USD before):
+// in market cesko the rate is 1; market slovensko has no fixed prices, so every
+// EUR price (and cost) is the CZK one converted (simple-a ≈ 0,42 €).
 // Main cart (market cesko, CZK; also bought in market slovensko, EUR), one of each:
-//   won-e2e-simple-a          price 10.00 USD, cost 6.00 USD → the 50 % is cut
+//   won-e2e-simple-a          price 10 Kč, cost 6 Kč → the 50 % is cut
 //                             to its floor ceilTol(cost × rate × 100 / 0.75)
-//   won-e2e-simple-b          price 12.00 USD, no cost → the 50 % is cut to the
+//   won-e2e-simple-b          price 12 Kč, no cost → the 50 % is cut to the
 //                             30 % ceiling (floor = price × 70 %); phase B: its
 //                             collection's 10 %
 //   won-e2e-spare             no cost, NOT in the test collection: the control
 //                             line — 30 % on Free and on Pro alike (a Free fold
 //                             of the collection's 10 % into the global value
 //                             would make it 10 %). In cesko its price is the
-//                             price list's fixed 199 CZK.
-//   won-e2e-two-variants Small price 15.00 USD, cost 5.00 USD, no product rule
+//                             price list's fixed 199 CZK (SK: converted 9 Kč).
+//   won-e2e-two-variants Small price 15 Kč, cost 5 Kč, no product rule
 //                             → carries the whole order discount; the lines at
 //                             their floor are left out of it (excludedCartLineIds)
 // Order-cap cart (WONE2EM60): two-variants Small + won-e2e-multiaxis S / Red
-// (20.00 USD, cost 8.00 USD), no product rule on either: 60 % of the order is
+// (20 Kč, cost 8 Kč), no product rule on either: 60 % of the order is
 // more than their floors allow, so margin protection LOWERS the order discount
 // to an exact amount spread over BOTH lines (none is at its floor).
 //
@@ -44,7 +47,7 @@ export const MARGIN_SMALL_HANDLE = "won-e2e-two-variants";
 /** The two-variants option value the carts buy (it has a cost; "Large" has none). */
 export const MARGIN_SMALL_OPTION = "Small";
 export const MARGIN_MULTIAXIS_HANDLE = "won-e2e-multiaxis";
-/** The multiaxis variant the order-cap cart buys (its title; cost 8.00 USD). */
+/** The multiaxis variant the order-cap cart buys (its title; cost 8 Kč). */
 export const MARGIN_MULTIAXIS_OPTION = "S / Red";
 /** Products the automatic rule targets (the seed looks up their GIDs). */
 export const MARGIN_HANDLES = [MARGIN_PRODUCT_A_HANDLE, MARGIN_PRODUCT_B_HANDLE, MARGIN_SPARE_HANDLE];

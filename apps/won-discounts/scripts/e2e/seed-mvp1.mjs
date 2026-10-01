@@ -29,8 +29,20 @@
 //           `shopify app dev` likewise): on Free the plan gate folds the override
 //           into the global value; tests/e2e/checkout.margin.spec.ts with
 //           WON_E2E_PROFILE=margin-pro.
-// A seed REPLACES the E2E rules (and the margin settings) of the other profile
-// (one backup covers all of them).
+//   tiers   scripts/e2e/tiers-fixture.mjs (MVP 3): a global quantity tier set
+//           "e2e-tiers-global" counted per product (from 3 items −10 %, from 5
+//           items −15 %), margin protection ON (minimum margin 30 %, maximum
+//           discount 30 %), no rule; tests/e2e/storefront.tiers.spec.ts
+//           (WON_E2E_PROFILE=tiers). The sync writes the storefront config (K5);
+//           the variant pdp maximum (K4) comes with the full cost pass:
+//           scripts/e2e/margin-costs.mjs (dry-run, then --live).
+//   tiers-pro  the same + a Pro set on the test collection won-e2e-tiers
+//           (won-e2e-simple-b + won-e2e-spare; create it first with
+//           scripts/e2e/margin-collection.mjs --fixture tiers --live), counted
+//           across the cart: from 2 items −20 %. Run with NODE_ENV=development
+//           WON_DEV_PLAN=pro (and `shopify app dev` likewise).
+// A seed REPLACES the E2E rules, tier sets and margin settings of the other
+// profile (one backup covers all of them).
 //
 //   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs
 //       DRY-RUN (default): reads the store + the stored config, prints the seed
@@ -77,6 +89,7 @@ import {
   marginRules,
 } from "./margin-fixture.mjs";
 import { SHAPES_HANDLES, SHAPES_PRODUCT_B_HANDLE, SHAPES_RULE_IDS, shapesRules } from "./shapes-fixture.mjs";
+import { TIERS_COLLECTION_HANDLE, TIERS_COLLECTION_SET_ID, TIERS_GLOBAL_SET_ID, tiersMarginModule, tiersModule } from "./tiers-fixture.mjs";
 
 register();
 
@@ -168,11 +181,29 @@ const PROFILES = {
     margin: (collectionIds) => marginModule(collectionIds[MARGIN_COLLECTION_HANDLE]),
     label: `margin protection on (min margin 25 %, max discount 30 %) + Pro: collection ${MARGIN_COLLECTION_HANDLE} max discount 10 %, auto 50 % on ${MARGIN_HANDLES.length} products + codes ${MARGIN_CODE}, ${MARGIN_ORDER_CAP_CODE}`,
   },
+  tiers: {
+    handles: [],
+    rules: () => [],
+    tiers: () => tiersModule(),
+    margin: () => tiersMarginModule(),
+    label: "quantity tiers: global set per product (from 3 items −10 %, from 5 items −15 %), margin protection on (min margin 30 %, max discount 30 %), no rule",
+  },
+  "tiers-pro": {
+    handles: [],
+    rules: () => [],
+    collections: [TIERS_COLLECTION_HANDLE],
+    tiers: (collectionIds) => tiersModule(collectionIds[TIERS_COLLECTION_HANDLE]),
+    margin: () => tiersMarginModule(),
+    label: `quantity tiers + Pro: a set on ${TIERS_COLLECTION_HANDLE} counted across the cart (from 2 items −20 %) before the global set; margin protection on (min margin 30 %, max discount 30 %), no rule`,
+  },
 };
 const PROFILE = option("--profile") ?? "mvp1";
 if (!Object.hasOwn(PROFILES, PROFILE)) throw new Error(`unknown --profile ${PROFILE} (${Object.keys(PROFILES).join(", ")})`);
 /** Every E2E rule id of every profile: what a cleanup without a backup removes, and what "the seed is in it" means. */
 const ALL_E2E_RULE_IDS = [...E2E_RULE_IDS, ...SHAPES_RULE_IDS, ...MARGIN_RULE_IDS];
+/** Every E2E tier set id (MVP 3): a cleanup without a backup removes them, and they mean "the seed is in it" too. */
+const ALL_E2E_TIER_SET_IDS = [TIERS_GLOBAL_SET_ID, TIERS_COLLECTION_SET_ID];
+const tierSetsOf = (config) => (Array.isArray(config?.modules?.tiers?.sets) ? config.modules.tiers.sets : []);
 
 // The app's DB, absolute (never the .env): set before the Prisma client loads.
 process.env.DATABASE_URL = `file:${DEV_DB}`;
@@ -270,6 +301,17 @@ function summarize(config) {
   return (config?.modules?.codes?.rules ?? []).map((rule) => ({ id: rule.id, name: rule.name, method: rule.method, enabled: rule.enabled }));
 }
 
+/** "tier set e2e-tiers-global (global, per product): 3+ −10 %, 5+ −15 %" per set — ids and values only. */
+function tiersText(config) {
+  const sets = tierSetsOf(config);
+  if (sets.length === 0) return ["no tier set"];
+  return sets.map((set) => {
+    const scope = set.scope === "global" ? "global" : `scoped ${JSON.stringify(set.scope)}`;
+    const breaks = (set.breaks ?? []).map((b) => `${b.minQty}+ ${b.percent !== undefined ? `−${b.percent} %` : `−${JSON.stringify(b.amountOff)}`}`).join(", ");
+    return `tier set ${set.id} (${scope}, per ${set.countAcross}): ${breaks}`;
+  });
+}
+
 /** "margin off" · "margin ON (min margin 25 %, max discount 30 %, 0 collection(s))" — never the raw module. */
 function marginText(config) {
   const margin = config?.modules?.margin;
@@ -317,6 +359,7 @@ function seedConfig(previous, productIds, collectionIds) {
   config.markets = previous.markets ?? [];
   config.modules.codes.rules = PROFILES[PROFILE].rules(productIds);
   if (PROFILES[PROFILE].margin) config.modules.margin = PROFILES[PROFILE].margin(collectionIds);
+  if (PROFILES[PROFILE].tiers) config.modules.tiers = PROFILES[PROFILE].tiers(collectionIds);
   return config;
 }
 
@@ -397,12 +440,15 @@ async function main() {
     const loaded = await loadConfig(db, STORE);
     if (loaded.unreadable) throw new Error("the stored config cannot be read; refusing to touch it (nothing was sent)");
     if (loaded.readOnly) throw new Error("the stored config belongs to a newer schema; refusing to touch it (nothing was sent)");
-    const hasSeed = loaded.config.modules.codes.rules.some((rule) => ALL_E2E_RULE_IDS.includes(rule.id));
+    const hasSeed =
+      loaded.config.modules.codes.rules.some((rule) => ALL_E2E_RULE_IDS.includes(rule.id)) ||
+      tierSetsOf(loaded.config).some((set) => ALL_E2E_TIER_SET_IDS.includes(set.id));
     console.log(
       `# stored config of ${STORE}: ${loaded.exists ? `${loaded.config.modules.codes.rules.length} rule(s)${hasSeed ? " (the E2E seed is in it)" : ""}` : "no row yet"}`,
     );
     for (const rule of summarize(loaded.config)) console.log(`  - ${rule.id} "${rule.name}" ${rule.method} ${rule.enabled ? "enabled" : "disabled"}`);
     console.log(`  ${marginText(loaded.config)}`);
+    for (const line of tiersText(loaded.config)) console.log(`  ${line}`);
 
     if (cleanup) {
       const backup = readBackup();
@@ -418,8 +464,15 @@ async function main() {
           console.log(`\n# cleanup: no backup in ${OUT_DIR}, no E2E rule stored and ${margin.kind === "foreign" ? `margin settings that are not the fixture's (${margin.reason})` : "default margin settings"} — nothing to do`);
           return;
         }
-        target = { ...loaded.config, modules: { ...loaded.config.modules, codes: { rules: loaded.config.modules.codes.rules.filter((rule) => !ALL_E2E_RULE_IDS.includes(rule.id)) } } };
-        console.log(`\n# cleanup: no backup in ${OUT_DIR}; removing only the E2E rules from the stored config`);
+        target = {
+          ...loaded.config,
+          modules: {
+            ...loaded.config.modules,
+            codes: { rules: loaded.config.modules.codes.rules.filter((rule) => !ALL_E2E_RULE_IDS.includes(rule.id)) },
+            tiers: { ...loaded.config.modules.tiers, sets: tierSetsOf(loaded.config).filter((set) => !ALL_E2E_TIER_SET_IDS.includes(set.id)) },
+          },
+        };
+        console.log(`\n# cleanup: no backup in ${OUT_DIR}; removing only the E2E rules and tier sets from the stored config`);
         if (margin.kind === "fixture") {
           target.modules.margin = createDefaultConfig().modules.margin;
           console.log(`  margin settings = the ${margin.profile} seed's${margin.collectionId ? ` (override of ${margin.collectionId})` : ""} → reset to the defaults (off, no override)`);
@@ -428,7 +481,7 @@ async function main() {
           console.log(`  ! margin settings LEFT UNTOUCHED: they are not the E2E fixture's (${margin.reason}). If an E2E run left them, switch margin protection off in the admin (Ochrana marže).`);
         }
       }
-      console.log(`  after the cleanup: ${summarize(target).length} rule(s), ${marginText(target)}`);
+      console.log(`  after the cleanup: ${summarize(target).length} rule(s), ${marginText(target)}, ${tiersText(target).join("; ")}`);
       const marginWasOn = loaded.config.modules.margin?.enabled === true && target.modules?.margin?.enabled !== true;
       if (!live) {
         process.exitCode = dryRunPlan(target, "cleanup");
@@ -446,6 +499,7 @@ async function main() {
         at: new Date().toISOString(),
         restored: summarize(target),
         margin: marginText(target),
+        tiers: tiersText(target),
         ...(foreignMargin ? { marginLeftUntouched: foreignMargin } : {}),
         result: syncSummary(result),
         syncRun: status,
@@ -516,6 +570,7 @@ async function main() {
     );
     for (const rule of summarize(config)) console.log(`  + ${rule.id} "${rule.name}" ${rule.method}`);
     console.log(`  ${marginText(config)}`);
+    for (const line of tiersText(config)) console.log(`  ${line}`);
 
     if (!live) {
       process.exitCode = dryRunPlan(config, PROFILE === "mvp1" ? "seed" : `seed-${PROFILE}`);
@@ -548,6 +603,7 @@ async function main() {
       products: Object.entries(productIds).map(([handle, id]) => ({ handle, id })),
       rules: summarize(config),
       margin: marginText(config),
+      tiers: tiersText(config),
       ...(PROFILE === "mvp1" ? { autoRule: E2E_AUTO_RULE_ID } : {}),
       result: syncSummary(result),
       syncRun: status,
@@ -556,7 +612,7 @@ async function main() {
     console.log(`\nEvidence: ${writeEvidence(evidenceName, evidence)}`);
     if (printJson) console.log(JSON.stringify(evidence, null, 2));
     if (PROFILES[PROFILE].margin && result.save.ok && result.sync?.ok) {
-      console.log("next: mirror the purchase costs — node apps/won-discounts/scripts/e2e/margin-costs.mjs (dry-run), then --live");
+      console.log("next: mirror the purchase costs (+ the variant pdp maximum) — node apps/won-discounts/scripts/e2e/margin-costs.mjs (dry-run), then --live");
     }
     process.exitCode = result.save.ok && result.sync?.ok ? 0 : 1;
   } finally {

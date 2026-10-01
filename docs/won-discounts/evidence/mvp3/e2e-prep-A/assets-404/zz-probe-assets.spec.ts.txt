@@ -1,0 +1,33 @@
+// TEMPORARY PROBE (Task 7): which extension assets the PDP loads and with what status. Deleted after use.
+import { writeFileSync } from "node:fs";
+
+import { expect, test, THEME_LABEL } from "./support/fixtures.ts";
+
+test("probe: extension assets on the PDP", async ({ page }) => {
+  test.skip(process.env.WON_E2E_PROFILE !== "probe", "probe only");
+  const seen: { status: number; url: string; type: string | undefined }[] = [];
+  const failed: string[] = [];
+  const consoleErrors: string[] = [];
+  page.on("response", (r) => {
+    if (/won-discounts|\/extensions\//u.test(r.url())) seen.push({ status: r.status(), url: r.url(), type: r.headers()["content-type"] });
+  });
+  page.on("requestfailed", (r) => {
+    if (/won-discounts|\/extensions\//u.test(r.url())) failed.push(`${r.url()} ${r.failure()?.errorText}`);
+  });
+  page.on("console", (m) => {
+    if (m.type() === "error") consoleErrors.push(m.text().slice(0, 300));
+  });
+  const res = await page.goto("/products/won-e2e-simple-a", { waitUntil: "load" });
+  await page.waitForTimeout(4000);
+  const state = await page.evaluate(() => ({
+    embed: document.querySelector("[data-won-discounts-embed]")?.outerHTML.slice(0, 300) ?? null,
+    tiers: document.querySelector("[data-won-discounts-tiers]")?.outerHTML.slice(0, 400) ?? null,
+    scripts: [...document.querySelectorAll("script[src]")].map((s) => (s as HTMLScriptElement).src).filter((s) => /won-discounts|extensions/u.test(s)),
+    links: [...document.querySelectorAll("link[href]")].map((s) => (s as HTMLLinkElement).href).filter((s) => /won-discounts|extensions/u.test(s)),
+    wd: typeof (window as unknown as { WonDiscounts?: unknown }).WonDiscounts,
+    wdt: typeof (window as unknown as { WonDiscountsTiers?: unknown }).WonDiscountsTiers,
+  }));
+  const out = { theme: THEME_LABEL, status: res?.status(), seen, failed, consoleErrors, state };
+  writeFileSync(`${process.env.WON_PROBE_OUT ?? "/tmp"}/probe-${THEME_LABEL.toLowerCase()}.json`, JSON.stringify(out, null, 2));
+  expect(res?.status()).toBeLessThan(400);
+});

@@ -109,10 +109,12 @@ test.describe(`Won Discounts in cart and checkout (MVP 1)${THEME_LABEL ? ` — $
       const order = cart.cart_level_discount_applications[0]!;
       // The value the function sends follows output.rs: 15 % as a percentage, unless
       // 15 % of the base lands on half a haléř (a rounding tie) — then its exact
-      // amount, because Shopify may round the tie the other way than the plan. The
-      // base moves: the CZK price is the store price converted at the market's
-      // live rate (won-e2e-simple-a was 218,00 Kč on 2026-09-28, 219,00 Kč on
-      // 2026-09-29, where 15 % of 197,10 Kč = 29,565 Kč is a tie).
+      // amount, because Shopify may round the tie the other way than the plan. A
+      // tie depends on the base: while the shop was in USD the CZK price was
+      // converted at a live rate (won-e2e-simple-a 219,00 Kč on 2026-09-29, where
+      // 15 % of 197,10 Kč = 29,565 Kč is a tie); since 2026-09-30 the shop
+      // currency is CZK and the price is the catalog's 10 Kč (15 % of 9,00 Kč =
+      // 1,35 Kč, no tie). Either way the branch follows the plan's base.
       const orderBase = expected.plan.order?.base ?? expected.subtotalAfterLines;
       if (roundingTiePossible(orderBase, E2E_CODE_PERCENT)) {
         expect(order.value_type, `rounding tie (${orderBase} × ${E2E_CODE_PERCENT} % = ${(orderBase * E2E_CODE_PERCENT) / 100}): sent as its exact amount`).toBe("fixed_amount");

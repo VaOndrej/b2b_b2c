@@ -1,0 +1,180 @@
+{
+  "at": "2026-10-01T05:52:22.366Z",
+  "theme": "Dawn",
+  "profile": "tiers",
+  "cart": {
+    "currency": "CZK",
+    "original_total_price": 11300,
+    "items_subtotal_price": 10080,
+    "total_price": 10080
+  },
+  "plan": {
+    "totals": {
+      "subtotal": 11300,
+      "productDiscount": 1220,
+      "orderDiscount": 0,
+      "total": 10080
+    },
+    "lines": [
+      {
+        "variantId": "gid://shopify/ProductVariant/48468678934769",
+        "quantity": 1,
+        "subtotal": 1200,
+        "product": null,
+        "marginCapped": null
+      },
+      {
+        "variantId": "gid://shopify/ProductVariant/48468679000305",
+        "quantity": 2,
+        "subtotal": 3600,
+        "product": {
+          "components": [
+            {
+              "ruleId": "tier:e2e-tiers-global",
+              "method": "automatic",
+              "module": "tiers",
+              "amount": 360
+            }
+          ],
+          "amount": 360,
+          "ownerRuleId": "tier:e2e-tiers-global",
+          "ownerMethod": "automatic",
+          "value": {
+            "percent": 10
+          },
+          "message": "Od 3 ks −10 %"
+        },
+        "marginCapped": null
+      },
+      {
+        "variantId": "gid://shopify/ProductVariant/48468678967537",
+        "quantity": 1,
+        "subtotal": 1500,
+        "product": {
+          "components": [
+            {
+              "ruleId": "tier:e2e-tiers-global",
+              "method": "automatic",
+              "module": "tiers",
+              "amount": 150
+            }
+          ],
+          "amount": 150,
+          "ownerRuleId": "tier:e2e-tiers-global",
+          "ownerMethod": "automatic",
+          "value": {
+            "percent": 10
+          },
+          "message": "Od 3 ks −10 %"
+        },
+        "marginCapped": null
+      },
+      {
+        "variantId": "gid://shopify/ProductVariant/48468678902001",
+        "quantity": 5,
+        "subtotal": 5000,
+        "product": {
+          "components": [
+            {
+              "ruleId": "tier:e2e-tiers-global",
+              "method": "automatic",
+              "module": "tiers",
+              "amount": 710
+            }
+          ],
+          "amount": 710,
+          "ownerRuleId": "tier:e2e-tiers-global",
+          "ownerMethod": "automatic",
+          "value": {
+            "fixedTotal": 710
+          },
+          "message": "Od 5 ks −15 %"
+        },
+        "marginCapped": {
+          "before": 750,
+          "after": 710,
+          "floorUnit": 858,
+          "basis": "cost",
+          "minMarginPercent": 30,
+          "source": "global"
+        }
+      }
+    ]
+  },
+  "thankYou": {
+    "perLine": [
+      {
+        "title": "Won E2E — Simple B",
+        "quantity": 1,
+        "allocations": [],
+        "originalPrice": null,
+        "finalPrice": 1200
+      },
+      {
+        "title": "Won E2E — Two Variants",
+        "quantity": 2,
+        "allocations": [
+          {
+            "title": "OD 3 KS −10 %",
+            "amount": -360
+          }
+        ],
+        "originalPrice": 3600,
+        "finalPrice": 3240
+      },
+      {
+        "title": "Won E2E — Two Variants",
+        "quantity": 1,
+        "allocations": [
+          {
+            "title": "OD 3 KS −10 %",
+            "amount": -150
+          }
+        ],
+        "originalPrice": 1500,
+        "finalPrice": 1350
+      },
+      {
+        "title": "Won E2E — Simple A",
+        "quantity": 5,
+        "allocations": [
+          {
+            "title": "OD 5 KS −15 %",
+            "amount": -710
+          }
+        ],
+        "originalPrice": 5000,
+        "finalPrice": 4290
+      }
+    ],
+    "rows": [
+      {
+        "label": "Mezisoučet • 9 položek",
+        "value": "100,80 Kč",
+        "amount": 10080
+      },
+      {
+        "label": "Expedice",
+        "value": "646,28 Kč",
+        "amount": 64628
+      },
+      {
+        "label": "Celkem",
+        "value": "747,08 Kč",
+        "amount": 74708
+      },
+      {
+        "label": "CELKOVÁ ÚSPORA12,20 Kč",
+        "value": "",
+        "amount": null
+      }
+    ],
+    "subtotal": 10080,
+    "shipping": 64628,
+    "tax": 0,
+    "includedTaxRows": [],
+    "total": 74708,
+    "charged": 74708,
+    "checkoutPath": "/checkouts/cn/<token>/cs-cz/thank-you"
+  }
+}

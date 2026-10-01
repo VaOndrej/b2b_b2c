@@ -311,3 +311,137 @@ test("applyTemplateOverlays fails loudly and safely rejects paths escaping the w
     await rm(temporaryRoot, { recursive: true, force: true });
   }
 });
+
+// Horizon renders a section-level @app block of product-information AFTER the
+// whole product grid (additional_blocks); its static `_product-details` block
+// accepts nested @app blocks in the buy box. parentBlockTypes targets it.
+function horizonDetailsTemplate() {
+  return {
+    sections: {
+      main: {
+        type: "product-information",
+        blocks: {
+          "media-gallery": { type: "_product-media-gallery", static: true, settings: {}, blocks: {} },
+          "product-details": {
+            type: "_product-details",
+            static: true,
+            settings: {},
+            blocks: {
+              group_header: { type: "group", settings: {}, blocks: {}, block_order: [] },
+              variant_picker_R3rGDr: { type: "variant-picker", settings: {}, blocks: {} },
+              buy_buttons_eYQEYi: { type: "buy-buttons", settings: {}, blocks: {}, block_order: [] },
+              text_desc: { type: "text", settings: {}, blocks: {} },
+            },
+            block_order: ["group_header", "variant_picker_R3rGDr", "buy_buttons_eYQEYi", "text_desc"],
+          },
+        },
+        block_order: [],
+      },
+    },
+  };
+}
+
+test("parentBlockTypes inserts into Horizon's _product-details before the buy buttons, by block type", () => {
+  const original = horizonDetailsTemplate();
+  const before = JSON.stringify(original);
+  const overlay = {
+    template: "templates/product.json",
+    parentBlockTypes: ["_product-details"],
+    block: QUANTITY_TIERS_BLOCK,
+    position: { beforeType: "buy-buttons" },
+  };
+  const plan = planTemplateOverlay(original, overlay);
+  assert.equal(plan.sectionKey, "main");
+  assert.equal(plan.parentBlockKey, "product-details");
+  assert.equal(plan.action, "insert");
+  assert.equal(plan.index, 2);
+
+  const updated = applyTemplateOverlay(original, overlay);
+  assert.equal(JSON.stringify(original), before, "input template must not be mutated");
+  const details = updated.sections.main.blocks["product-details"];
+  assert.deepEqual(details.block_order, [
+    "group_header",
+    "variant_picker_R3rGDr",
+    "won_discounts_quantity_tiers",
+    "buy_buttons_eYQEYi",
+    "text_desc",
+  ]);
+  assert.deepEqual(details.blocks.won_discounts_quantity_tiers, {
+    type: QUANTITY_TIERS_BLOCK.type,
+    settings: {},
+    blocks: {},
+  });
+  assert.deepEqual(updated.sections.main.block_order, [], "the section's own block list is untouched");
+
+  const again = applyTemplateOverlay(updated, overlay);
+  assert.deepEqual(again, updated, "idempotent");
+  assert.equal(planTemplateOverlay(updated, overlay).action, "noop");
+});
+
+test("afterType positions after the first block of that type (Dawn: after the quantity selector)", () => {
+  const template = dawnProductTemplate();
+  template.sections.main.blocks.quantity_selector = { type: "quantity_selector", settings: {} };
+  template.sections.main.block_order.splice(4, 0, "quantity_selector");
+  const updated = applyTemplateOverlay(template, {
+    template: "templates/product.json",
+    block: QUANTITY_TIERS_BLOCK,
+    position: { afterType: "quantity_selector" },
+  });
+  assert.deepEqual(updated.sections.main.block_order, [
+    "vendor",
+    "title",
+    "price",
+    "variant_picker",
+    "quantity_selector",
+    "won_discounts_quantity_tiers",
+    "buy_buttons",
+  ]);
+  assert.equal("blocks" in updated.sections.main.blocks.won_discounts_quantity_tiers, false, "a section-level app block has no child map");
+  assert.throws(
+    () =>
+      planTemplateOverlay(dawnProductTemplate(), {
+        template: "templates/product.json",
+        block: QUANTITY_TIERS_BLOCK,
+        position: { beforeType: "no-such-type" },
+      }),
+    /references no block of type "no-such-type"/u,
+  );
+});
+
+test("parentBlockTypes fails loudly on a missing or ambiguous parent block and validates its shape", () => {
+  assert.throws(
+    () =>
+      planTemplateOverlay(dawnProductTemplate(), {
+        template: "templates/product.json",
+        parentBlockTypes: ["_product-details"],
+        block: QUANTITY_TIERS_BLOCK,
+      }),
+    /No block with type in \[_product-details\] found in section main/u,
+  );
+  const ambiguous = horizonDetailsTemplate();
+  ambiguous.sections.main.blocks["product-details-2"] = { type: "_product-details", static: true, settings: {}, blocks: {}, block_order: [] } as never;
+  assert.throws(
+    () =>
+      planTemplateOverlay(ambiguous, {
+        template: "templates/product.json",
+        parentBlockTypes: ["_product-details"],
+        block: QUANTITY_TIERS_BLOCK,
+      }),
+    /Ambiguous parent block in section main/u,
+  );
+  for (const bad of [[], [""], "._product-details", [1]]) {
+    assert.throws(
+      () =>
+        validateTemplateOverlay({
+          template: "templates/product.json",
+          parentBlockTypes: bad as never,
+          block: QUANTITY_TIERS_BLOCK,
+        }),
+      /parentBlockTypes must be a non-empty array of strings/u,
+    );
+  }
+  assert.equal(
+    validateTemplateOverlay({ template: "templates/product.json", block: QUANTITY_TIERS_BLOCK }).parentBlockTypes,
+    null,
+  );
+});

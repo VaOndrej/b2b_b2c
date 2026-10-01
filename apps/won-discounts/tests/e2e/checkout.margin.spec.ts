@@ -76,9 +76,10 @@ import {
 //
 // Scenarios (every one: planCart on the live config, costs and refs read as the
 // app, with the presentmentCurrencyRate the function logged for THIS cart):
-//   1+2 main cart, market cesko (CZK): simple-a (cost 6 USD), simple-b (no cost),
-//       won-e2e-spare (no cost, the price list's fixed 199 CZK), two-variants
-//       Small (cost 5 USD) + code WONE2EM20:
+//   1+2 main cart, market cesko (CZK = the shop currency since 2026-09-30, rate
+//       1): simple-a (10 Kč, cost 6 Kč), simple-b (12 Kč, no cost),
+//       won-e2e-spare (no cost, the price list's fixed 199 Kč), two-variants
+//       Small (15 Kč, cost 5 Kč) + code WONE2EM20:
 //       - simple-a: the automatic 50 % cut to its cost floor
 //         floorUnit = ceilTol(cost × rate × 100 / (1 − 25 %));
 //       - simple-b and spare: no cost → cut to the 30 % ceiling
@@ -97,14 +98,18 @@ import {
 //   4   the main cart in market slovensko (EUR, audit OQ6): `?country=SK` on a
 //       page render switches the buyer country to SK (support/cart.ts
 //       setStorefrontCountry: the localization form answers 401 through theme
-//       dev); PRECONDITION: every product of the cart is for sale in that
-//       market, else the test is SKIPPED with a "BLOCKED by store setup"
-//       reason (never a pass); the Bogus checkout ships to Bratislava. F-M1 for
-//       EUR (rate, direction, digits) + thank-you = planCart + invariant.
+//       dev). The SK price list has NO fixed price: every line is the shop's
+//       CZK price converted at the market rate (simple-a ≈ 0,42 €), the costs
+//       too (CZK → EUR, presentmentCurrencyRate ≈ 0.04). PRECONDITION: every
+//       product of the cart is for sale in SK — the store ships there since
+//       2026-09-30, so an unavailable product now FAILS the test (it was
+//       skipped as "blocked by store setup" in MVP 2); the Bogus checkout ships
+//       to Bratislava. F-M1 for EUR (rate, direction, digits) + thank-you =
+//       planCart + invariant.
 // Margin protection never blocks: every checkout must complete.
 //
-// The rate converts the costs (shop USD → cart currency); Shopify only hands it
-// the function. The spec reads it from the function runs `shopify app dev` logs
+// The rate converts the costs (shop CZK → cart currency: 1 in cesko, ≈ 0.04 in
+// slovensko); Shopify only hands it the function. The spec reads it from the function runs `shopify app dev` logs
 // (support/margin.ts). The same runs prove F-M1 (the rate: value, direction,
 // digits) and F-M2 (wonVariant {cost, cur} for costed variants, null for the
 // others), and the logged output is re-derived by the function's oracle
@@ -136,10 +141,11 @@ const named = (name: string) => (PRO ? name.replace(/margin/u, "margin-pro") : n
 type Country = "CZ" | "SK";
 const CURRENCY_OF: Record<Country, string> = { CZ: "CZK", SK: "EUR" };
 /**
- * F-M1: how far the rate may be from the CZK/EUR ÷ USD ratio of a product's
- * prices. The markets round converted prices (cesko to whole koruna: 10 USD →
- * 219 Kč at 21.88); a rounding rule of the EUR market (e.g. .95/.99 endings)
- * can move a ~9 € price by up to ~10 %.
+ * F-M1: how far the rate may be from the cart ÷ shop (CZK) price ratio of a
+ * product. In cesko the cart IS the shop currency: the rate must be exactly 1
+ * (checked on its own). In slovensko the CZK prices are converted and rounded
+ * to whole cents: at ~0,42–0,62 € a cent is 1.6–2.4 %, and a rounding rule of
+ * the EUR market could move more.
  */
 const RATE_TOLERANCE: Record<Country, number> = { CZ: 0.05, SK: 0.12 };
 
@@ -429,8 +435,8 @@ function expectLivePayload(inputs: MarginInputs): { collectionId: string | null 
   return { collectionId: collectionGid };
 }
 
-/** The catalog's shop-currency (USD) price of a cart line's variant (the seeds never change prices). */
-function usdPriceOf(handle: string, item: CartItem): number | null {
+/** The catalog's shop-currency (CZK since 2026-09-30) price of a cart line's variant (the seeds never change prices). */
+function shopPriceOf(handle: string, item: CartItem): number | null {
   const product = (WON_E2E_PRODUCT_LIST as readonly { handle: string; variants: { price: string; options?: Record<string, string> }[] }[]).find(
     (p) => p.handle === handle,
   );
@@ -442,19 +448,27 @@ function usdPriceOf(handle: string, item: CartItem): number | null {
 
 /**
  * F-M1 / F-M2 / parity checks on the logged runs of this cart; returns their
- * evidence. F-M1 compares the rate with the cart / USD price ratio of a line
- * that is converted, not priced by a price list (won-e2e-spare has a fixed CZK
- * price in cesko).
+ * evidence. F-M1 compares the rate with the cart / shop-currency price ratio
+ * of a line that is converted, not priced by a price list (won-e2e-spare has a
+ * fixed 199 Kč in cesko); of those the dearest (the least rounding error). In
+ * the shop currency (cesko) the rate is exactly 1 and has no direction to check.
  */
 function checkRuns(runs: readonly FunctionRun[], cart: Cart, inputs: MarginInputs, a: Analysis) {
   const rate = rateOf(runs);
-  expect(inputs.shopCurrency).toBe("USD");
-  const reference = a.lines.find((l) => l.handle !== MARGIN_SPARE_HANDLE && usdPriceOf(l.handle, l.item) !== null)!;
-  const usd = usdPriceOf(reference.handle, reference.item)!;
-  const priceRatio = reference.item.original_price / Math.round(usd * 100);
+  expect(inputs.shopCurrency, "the dev store's base currency (since 2026-09-30)").toBe("CZK");
+  const reference = a.lines
+    .filter((l) => l.handle !== MARGIN_SPARE_HANDLE && shopPriceOf(l.handle, l.item) !== null)
+    .sort((x, y) => shopPriceOf(y.handle, y.item)! - shopPriceOf(x.handle, x.item)!)[0]!;
+  const shopPrice = shopPriceOf(reference.handle, reference.item)!;
+  const priceRatio = reference.item.original_price / Math.round(shopPrice * 100);
   const tolerance = RATE_TOLERANCE[a.country];
-  expect(Math.abs(rate.value! / priceRatio - 1), `F-M1: rate ${rate.raw} ≈ ${reference.handle} ${a.currency}/USD price ratio ${priceRatio}`).toBeLessThan(tolerance);
-  expect(Math.abs(1 / rate.value! / priceRatio - 1), `F-M1 direction: shop USD → ${a.currency}, not the inverse`).toBeGreaterThan(tolerance);
+  if (a.currency === inputs.shopCurrency) {
+    expect(rate.value, `F-M1: the cart is in the shop currency (${a.currency}): rate ${rate.raw} = 1`).toBe(1);
+    expect(priceRatio, `${reference.handle}: the cart price is the shop price`).toBe(1);
+  } else {
+    expect(Math.abs(rate.value! / priceRatio - 1), `F-M1: rate ${rate.raw} ≈ ${reference.handle} ${a.currency}/${inputs.shopCurrency} price ratio ${priceRatio}`).toBeLessThan(tolerance);
+    expect(Math.abs(1 / rate.value! / priceRatio - 1), `F-M1 direction: shop ${inputs.shopCurrency} → ${a.currency}, not the inverse`).toBeGreaterThan(tolerance);
+  }
   for (const run of runs) {
     // F-M2: wonVariant per line = the variant metafield (null where the mirror wrote none).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -484,7 +498,7 @@ function checkRuns(runs: readonly FunctionRun[], cart: Cart, inputs: MarginInput
   return {
     rate,
     currency: a.currency,
-    priceRatio: { handle: reference.handle, usd, cartPrice: reference.item.original_price, ratio: priceRatio },
+    priceRatio: { handle: reference.handle, shopCurrency: inputs.shopCurrency, shopPrice, cartPrice: reference.item.original_price, ratio: priceRatio },
     rateToPriceRatio: rate.value! / priceRatio,
     wonVariantByLine: runSummary(logged).lines.map((l) => ({ variant: l.variant, label: inputs.variantLabel[l.variant ?? ""] ?? null, wonVariant: l.wonVariant })),
     oracleParityRuns: runs.length,
@@ -909,13 +923,11 @@ test.describe(`Won Discounts margin protection in cart and checkout (MVP 2)${PRO
       console.log(`[checkout.margin] ${THEME_LABEL || "theme"}: after ?country=SK: country ${localization.country}, currency ${localization.currency}`);
       expect(localization.country, "the storefront session is in Slovakia after ?country=SK").toBe("SK");
       // PRECONDITION (store setup, not the app): every product of the cart is
-      // for sale in the slovensko market. Observed 2026-09-30 (final gate): the
-      // market sells NOTHING — all 23 catalog products `available: false` in SK
-      // (theme dev and the real storefront), /cart/add.js 422 "… je již
-      // vyprodán", while the admin has their EUR prices (evidence/mvp2/
-      // e2e-final-A/sk-probe). Then the scenario is SKIPPED with this reason
-      // and recorded as blocked — never passed. It runs again as soon as the
-      // store sells in SK (shipping zone / market settings).
+      // for sale in the slovensko market. Observed 2026-09-30 (MVP 2 final
+      // gate): the market sold NOTHING (evidence/mvp2/e2e-final-A/sk-probe) and
+      // the scenario was skipped as blocked. Ondřej added shipping to SK the
+      // same day (MVP 3), so the scenario MUST run: an unavailable product now
+      // fails the test with this reason (never a skip, never a pass).
       const unavailable = await test.step("precondition: every product of the cart is for sale in the slovensko market", async () => {
         const out: string[] = [];
         for (const { handle, option } of MARGIN_CART) {
@@ -926,20 +938,18 @@ test.describe(`Won Discounts margin protection in cart and checkout (MVP 2)${PRO
         return out;
       });
       if (unavailable.length > 0) {
-        const reason = `BLOCKED by store setup: the slovensko market does not sell ${unavailable.join(", ")} (available: false with country SK; /cart/add.js would answer 422 "vyprodán"). Not an app result: enable selling in SK (shipping zone / market) and rerun.`;
-        console.log(`[checkout.margin] ${THEME_LABEL || "theme"}: SK scenario skipped — ${reason}`);
+        const reason = `store setup: the slovensko market does not sell ${unavailable.join(", ")} (available: false with country SK; /cart/add.js would answer 422 "vyprodán"). Enable selling in SK (shipping zone / market) and rerun.`;
         await saveEvidence(testInfo, named("sk-margin-blocked"), {
           at: new Date().toISOString(),
           theme: THEME_LABEL || null,
           profile: E2E_PROFILE,
           localization,
           unavailableInSk: unavailable,
-          status: "blocked (store setup)",
+          status: "failed (store setup)",
           reason,
         });
-        test.skip(true, reason);
-        return;
       }
+      expect(unavailable, "every product of the cart is for sale in the slovensko market (store setup, not the app)").toEqual([]);
 
       const cartAt = Date.now();
       const cart = await freshCartOfVariants(page, MARGIN_CART, [MARGIN_CODE]);

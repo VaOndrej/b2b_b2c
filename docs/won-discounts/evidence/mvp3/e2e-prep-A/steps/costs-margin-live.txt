@@ -1,0 +1,17 @@
+# stored config of b2b-b2c-store-development.myshopify.com: margin protection ON (plan free)
+
+# the app's full cost pass (startCostJob full, restart) on b2b-b2c-store-development.myshopify.com
+[won-sync] costs b2b-b2c-store-development.myshopify.com: full pass done (51 read, 0 written, 0 cleared, 0 pdp, 0 refused) 
+# job: {"outcome":"done","read":51,"written":0,"pdp":0,"cleared":0,"refused":0,"errors":[]}
+
+# read-back 2026-10-01T05:36:11.954Z: 9 won-e2e variant(s), 6 with a Shopify cost, 6 with the variant metafield, 6 with pdp
+  won-e2e-simple-a       Default Title gid://shopify/ProductVariant/48468678902001  price 10.00  cost 6.0 CZK  metafield {"cost":6,"cur":"CZK"}  pdp {"max":20}
+  won-e2e-simple-b       Default Title gid://shopify/ProductVariant/48468678934769  price 12.00  cost —  metafield —  pdp —
+  won-e2e-two-variants   Small        gid://shopify/ProductVariant/48468678967537  price 15.00  cost 5.0 CZK  metafield {"cost":5,"cur":"CZK"}  pdp {"max":55.5}
+  won-e2e-two-variants   Large        gid://shopify/ProductVariant/48468679000305  price 18.00  cost —  metafield —  pdp —
+  won-e2e-multiaxis      S / Red      gid://shopify/ProductVariant/48468679033073  price 20.00  cost 8.0 CZK  metafield {"cost":8,"cur":"CZK"}  pdp {"max":46.6}
+  won-e2e-multiaxis      S / Blue     gid://shopify/ProductVariant/48468679065841  price 20.00  cost 8.0 CZK  metafield {"cost":8,"cur":"CZK"}  pdp {"max":46.6}
+  won-e2e-multiaxis      M / Red      gid://shopify/ProductVariant/48468679098609  price 22.00  cost 8.0 CZK  metafield {"cost":8,"cur":"CZK"}  pdp {"max":51.5}
+  won-e2e-multiaxis      M / Blue     gid://shopify/ProductVariant/48468679131377  price 22.00  cost 8.0 CZK  metafield {"cost":8,"cur":"CZK"}  pdp {"max":51.5}
+  won-e2e-spare          Default Title gid://shopify/ProductVariant/48468679164145  price 9.00  cost —  metafield —  pdp —
+Evidence: /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/t7/phaseA/steps/margin-costs-readback-2026-10-01T05-36-11-955Z.json

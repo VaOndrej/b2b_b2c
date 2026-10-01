@@ -35,15 +35,33 @@
 //
 // and update EMBED_EXTENSION_UUID (or pass --extension-uuid <UUID> once).
 //
+// APP BLOCKS IN TEMPLATES (MVP 3). The quantity tiers app block
+// (blocks/quantity_tiers.liquid) is placed into each theme copy's
+// templates/product.json by @won/testing's templateOverlays (applied by the
+// matrix runner at workspace preparation; nothing is generated on disk). A
+// theme app block's type uses the SAME extension registration UUID as the
+// embed (one extension, one UUID): shopify://apps/won-discounts/blocks/quantity_tiers/<UUID>.
+// Placement (tiersTemplateOverlays), right above the quantity + buy buttons:
+//   Horizon  inside the static `_product-details` block (it accepts @app),
+//            before `buy-buttons` (which holds the quantity). A section-level
+//            @app block of product-information would render AFTER the whole
+//            product grid (additional_blocks), not in the buy box;
+//   Dawn     in main-product, before `quantity_selector` (Dawn renders
+//            section-level app blocks inline in the buy box).
+// --check also plans these overlays against the canonical checkouts and fails
+// when a target (section, parent block, anchor block type) is gone.
+//
 // Usage (from apps/won-discounts):
 //   node scripts/make-e2e-overlay.mjs          # (re)write e2e/settings_data.{horizon,dawn}.json
 //   node scripts/make-e2e-overlay.mjs --check  # exit 1 when a committed overlay is stale
+//                                              # or a template overlay no longer applies
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { planTemplateOverlays } from "@won/testing/template-overlays";
 // Same theme path resolution the runner uses (adjacent b2b_b2c_themes checkout,
 // worktree fallback, SHOPIFY_E2E_THEME_DIR_{HORIZON,DAWN} overrides).
 import { resolveThemePaths } from "@won/testing/theme-paths";
@@ -121,6 +139,38 @@ export function embedBlockType(extensionUuid) {
   return `shopify://apps/${APP_HANDLE}/blocks/${blockName}/${extensionUuid}`;
 }
 
+/** `shopify://apps/won-discounts/blocks/<blockName>/<registration UUID>` of a theme app block of the extension. */
+export function appBlockType(blockName, extensionUuid = resolveExtensionUuid()) {
+  const file = path.join(EXTENSION_DIRECTORY, "blocks", `${blockName}.liquid`);
+  if (!existsSync(file)) {
+    throw new Error(`App block not found: ${file}`);
+  }
+  return `shopify://apps/${APP_HANDLE}/blocks/${blockName}/${extensionUuid}`;
+}
+
+/** Stable id of the quantity tiers block in the theme copies' product template. */
+export const TIERS_BLOCK_ID = "won_discounts_quantity_tiers";
+export const TIERS_BLOCK_NAME = "quantity_tiers";
+
+/** The templateOverlays of e2e.app.config.mjs: the quantity tiers block on the PDP (placement: header). */
+export function tiersTemplateOverlays(themeKey, extensionUuid = resolveExtensionUuid()) {
+  const block = { id: TIERS_BLOCK_ID, type: appBlockType(TIERS_BLOCK_NAME, extensionUuid), settings: {} };
+  if (themeKey === "horizon") {
+    return [
+      {
+        template: "templates/product.json",
+        parentBlockTypes: ["_product-details"],
+        block,
+        position: { beforeType: "buy-buttons" },
+      },
+    ];
+  }
+  if (themeKey === "dawn") {
+    return [{ template: "templates/product.json", block, position: { beforeType: "quantity_selector" } }];
+  }
+  throw new Error(`no template overlay for theme ${themeKey}`);
+}
+
 // Theme-editor style numeric key, derived from the block handle so it never
 // changes between runs (and never collides with the editor's random keys in
 // practice).
@@ -154,11 +204,12 @@ export function buildOverlay(canonicalContent, type) {
   return `${header}${JSON.stringify(data, null, 2)}\n`;
 }
 
-function main() {
+async function main() {
   const check = process.argv.includes("--check");
-  const type = embedBlockType(
-    resolveExtensionUuid(readArgument("extension-uuid") ?? EMBED_EXTENSION_UUID),
+  const extensionUuid = resolveExtensionUuid(
+    readArgument("extension-uuid") ?? EMBED_EXTENSION_UUID,
   );
+  const type = embedBlockType(extensionUuid);
   const themePaths = resolveThemePaths({ repoRoot, env: process.env });
   let stale = 0;
 
@@ -199,11 +250,31 @@ function main() {
       console.log(`✓ ${relativeOverlay} written from ${canonicalPath}`);
     }
   }
+  // Template overlays are applied by the runner, never written here: plan them
+  // (read-only) against the canonical checkout so a moved section or anchor fails now.
+  for (const key of THEME_KEYS) {
+    try {
+      const plans = await planTemplateOverlays({
+        workspaceDirectory: themePaths[key],
+        templateOverlays: tiersTemplateOverlays(key, extensionUuid),
+      });
+      for (const plan of plans) {
+        console.log(
+          `✓ ${key}: ${plan.template}#${plan.sectionKey}${plan.parentBlockKey ? `/${plan.parentBlockKey}` : ""} ` +
+            `(${plan.sectionType}) ${plan.action} ${plan.blockId} at block_order[${plan.index}]`,
+        );
+      }
+    } catch (error) {
+      stale += 1;
+      console.error(`✗ ${key}: template overlay does not apply: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
   console.log(
     `  embed block: ${type} (key ${stableBlockKey(type)}, disabled: false)`,
   );
+  console.log(`  tiers block: ${appBlockType(TIERS_BLOCK_NAME, extensionUuid)} (id ${TIERS_BLOCK_ID})`);
   if (stale > 0) {
-    console.error("Run `node scripts/make-e2e-overlay.mjs` to regenerate.");
+    console.error("Run `node scripts/make-e2e-overlay.mjs` to regenerate (a template overlay failure needs e2e.app.config.mjs / this script).");
     process.exitCode = 1;
   }
 }
@@ -212,10 +283,8 @@ if (
   process.argv[1] &&
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  try {
-    main();
-  } catch (error) {
+  main().catch((error) => {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
-  }
+  });
 }

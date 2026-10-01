@@ -38,6 +38,8 @@ const INPUTS_QUERY = `query WonE2eProduct($handle: String!) {
 export interface ProductRefs {
   ruleIds?: string[];
   variantRuleIds?: Record<string, string[]>;
+  /** MVP 3 (K3): the scoped tier set of the product; absent = the global set. */
+  tierRef?: string | null;
 }
 
 export interface LiveInputs {
@@ -154,11 +156,15 @@ export function planInputFromCart(cart: Cart, inputs: LiveInputs, country: strin
     return {
       id: `gid://shopify/CartLine/${index}`,
       variantId: `gid://shopify/ProductVariant/${item.variant_id}`,
-      productId: "",
+      // The product GID, as the function reads merchandise.product.id: quantity
+      // tiers counted per product (MVP 3, K2) group the lines by it.
+      productId: productGid,
       quantity: item.quantity,
       unitPrice: item.original_price,
       ruleIds: refs?.ruleIds ?? [],
       ...(refs?.variantRuleIds ? { variantRuleIds: refs.variantRuleIds } : {}),
+      // As the metafield carries it (the engine fails closed on junk); absent = the global set.
+      ...(refs && "tierRef" in refs ? { tierRef: refs.tierRef } : {}),
     };
   });
   return {

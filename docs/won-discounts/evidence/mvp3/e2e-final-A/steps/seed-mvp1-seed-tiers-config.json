@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "markets": [],
+  "engine": {
+    "combination": {
+      "outletWithAnything": false,
+      "productWithProduct": "best",
+      "productWithOrder": true,
+      "productWithShipping": true,
+      "orderWithShipping": true
+    }
+  },
+  "modules": {
+    "codes": {
+      "rules": []
+    },
+    "tiers": {
+      "sets": [
+        {
+          "id": "e2e-tiers-global",
+          "scope": "global",
+          "countAcross": "product",
+          "breaks": [
+            {
+              "minQty": 3,
+              "percent": 10
+            },
+            {
+              "minQty": 5,
+              "percent": 15
+            }
+          ]
+        }
+      ]
+    },
+    "rewards": {
+      "gifts": [],
+      "countOtherDiscounts": false,
+      "giftDeclinable": true
+    },
+    "outlet": {
+      "display": "strike_badge",
+      "reopenOnReturnAfterEnd": "ask"
+    },
+    "margin": {
+      "enabled": true,
+      "global": {
+        "minMarginPercent": 30,
+        "maxDiscountPercent": 30
+      },
+      "perCollection": []
+    }
+  },
+  "campaigns": [],
+  "storefront": {
+    "appearancePreset": "default",
+    "cardPricesEnabled": false
+  },
+  "locales": {
+    "cs": {},
+    "sk": {},
+    "en": {}
+  },
+  "onboarding": {
+    "goals": [],
+    "step": 1
+  }
+}

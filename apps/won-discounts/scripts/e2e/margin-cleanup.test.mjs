@@ -11,6 +11,7 @@ import { describe, it } from "node:test";
 
 import { DEFAULT_MAX_DISCOUNT_PERCENT, classifyStoredMargin } from "./margin-cleanup.mjs";
 import { marginModule } from "./margin-fixture.mjs";
+import { tiersMarginModule } from "./tiers-fixture.mjs";
 
 const COLLECTION = "gid://shopify/Collection/491958272241";
 const OTHER_COLLECTION = "gid://shopify/Collection/1";
@@ -31,6 +32,13 @@ describe("classifyStoredMargin", () => {
 
   it("recognises the Pro seed (margin-pro) with the E2E test collection", () => {
     assert.deepEqual(classifyStoredMargin(marginModule(COLLECTION), onlyFixture), { kind: "fixture", profile: "margin-pro", collectionId: COLLECTION });
+  });
+
+  it("recognises the tiers seed (MVP 3): min margin 30 %, max 30 %, no override, on or off", () => {
+    assert.deepEqual(classifyStoredMargin(tiersMarginModule(), none), { kind: "fixture", profile: "tiers" });
+    assert.deepEqual(classifyStoredMargin({ ...tiersMarginModule(), enabled: false }, none), { kind: "fixture", profile: "tiers" });
+    const withOverride = { ...tiersMarginModule(), perCollection: [{ collectionId: COLLECTION, maxDiscountPercent: 10 }] };
+    assert.equal(classifyStoredMargin(withOverride, onlyFixture).kind, "foreign");
   });
 
   it("does not depend on key order (the sanitizer may rebuild the objects)", () => {

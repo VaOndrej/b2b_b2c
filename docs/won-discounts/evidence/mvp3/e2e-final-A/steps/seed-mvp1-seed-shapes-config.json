@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "markets": [],
+  "engine": {
+    "combination": {
+      "outletWithAnything": false,
+      "productWithProduct": "best",
+      "productWithOrder": true,
+      "productWithShipping": true,
+      "orderWithShipping": true
+    }
+  },
+  "modules": {
+    "codes": {
+      "rules": [
+        {
+          "id": "e2e-shapes-cap-fixed",
+          "name": "E2E fix 1000 Kč/ks",
+          "method": "automatic",
+          "enabled": true,
+          "value": {
+            "kind": "fixed",
+            "amount": {
+              "CZK": 100000
+            }
+          },
+          "target": {
+            "kind": "products",
+            "productIds": [
+              "gid://shopify/Product/9692429091057"
+            ],
+            "variantIds": []
+          }
+        },
+        {
+          "id": "e2e-shapes-pro-10",
+          "name": "E2E Pro 10 %",
+          "method": "automatic",
+          "enabled": true,
+          "value": {
+            "kind": "percentage",
+            "percent": 10
+          },
+          "target": {
+            "kind": "products",
+            "productIds": [
+              "gid://shopify/Product/9692429058289"
+            ],
+            "variantIds": []
+          },
+          "combinesWith": {
+            "ruleIds": [
+              "e2e-shapes-pro-5"
+            ]
+          }
+        },
+        {
+          "id": "e2e-shapes-pro-5",
+          "name": "E2E Pro 5 %",
+          "method": "automatic",
+          "enabled": true,
+          "value": {
+            "kind": "percentage",
+            "percent": 5
+          },
+          "target": {
+            "kind": "products",
+            "productIds": [
+              "gid://shopify/Product/9692429058289"
+            ],
+            "variantIds": []
+          },
+          "combinesWith": {
+            "ruleIds": [
+              "e2e-shapes-pro-10"
+            ]
+          }
+        }
+      ]
+    },
+    "tiers": {
+      "sets": []
+    },
+    "rewards": {
+      "gifts": [],
+      "countOtherDiscounts": false,
+      "giftDeclinable": true
+    },
+    "outlet": {
+      "display": "strike_badge",
+      "reopenOnReturnAfterEnd": "ask"
+    },
+    "margin": {
+      "enabled": false,
+      "global": {
+        "maxDiscountPercent": 50
+      },
+      "perCollection": []
+    }
+  },
+  "campaigns": [],
+  "storefront": {
+    "appearancePreset": "default",
+    "cardPricesEnabled": false
+  },
+  "locales": {
+    "cs": {},
+    "sk": {},
+    "en": {}
+  },
+  "onboarding": {
+    "goals": [],
+    "step": 1
+  }
+}

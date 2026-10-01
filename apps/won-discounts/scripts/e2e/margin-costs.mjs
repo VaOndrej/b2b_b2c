@@ -9,12 +9,18 @@
 // metafields the function reads.
 //
 //   node apps/won-discounts/scripts/e2e/margin-costs.mjs
-//       DRY-RUN of the full pass: live-costs.ts without --live (reads every
-//       variant as the app, prints the metafieldsSet/Delete it would send; the
-//       mirror rows go to a throwaway SQLite). Writes nothing.
+//       DRY-RUN of the full pass WITH the variant pdp maximum (MVP 3, K4): the
+//       canonical runCostPass with the pdp context the app's cost lane builds
+//       (margin as checkout runs it — stored config gated for the plan, folded —
+//       the product refs the sync stored, the shop currency), every read as the
+//       app, every metafieldsSet/Delete printed and answered synthetically, the
+//       mirror rows in a throwaway SQLite. Writes nothing.
 //   node apps/won-discounts/scripts/e2e/margin-costs.mjs --live
-//       the full pass for real (live-costs.ts --live on the app's own DB), then
-//       the read-back.
+//       the app's own "Obnovit nákupní ceny" job for real: cost-lane.server.ts
+//       startCostJob(shop, { client, db }, { kind: "full", restart: true }) on the
+//       app's DB (cost AND pdp, like app/lib/integration/margin.server.ts
+//       refreshCostsAction), then the read-back. (Before MVP 3 this was
+//       live-costs.ts --live, which has no pdp context and leaves pdp alone.)
 //   node apps/won-discounts/scripts/e2e/margin-costs.mjs --clear
 //       DRY-RUN of the "protection switched off" clear: the mirror rows that
 //       carry a metafield (app DB, read only) and the value Shopify has for each
@@ -23,7 +29,7 @@
 //       the clear for real (live-costs.ts --clear --live), then the read-back.
 //   node apps/won-discounts/scripts/e2e/margin-costs.mjs --readback
 //       read-only: every variant of every won-e2e-* product with its price, its
-//       Shopify cost and the `$app:won_discounts`/`variant` metafield value.
+//       Shopify cost and the `$app:won_discounts`/`variant` and `pdp` metafield values.
 //
 // Options: --out <dir> (read-back evidence; default $WON_E2E_OUT or
 // <tmp>/won-discounts-e2e) · --json (print the read-back).
@@ -72,6 +78,14 @@ const { createCliAdminClient } = await appModule("app/lib/admin-client-cli.serve
 const { loadConfig } = await appModule("app/lib/config.server.ts");
 const { planOf } = await appModule("app/lib/plan.server.ts");
 const { gateConfigForPlan } = await import("@won/core/discounts/plan-gate");
+const { buildMarginPayload } = await import("@won/core/discounts/margin");
+const { startCostJob } = await appModule("app/lib/sync/cost-lane.server.ts");
+const { runCostPass } = await appModule("app/lib/sync/costs.ts");
+const { foldedForCheckout } = await appModule("app/lib/sync/margin-fold.ts");
+const { Transport } = await appModule("app/lib/sync/transport.ts");
+const { operationName } = await appModule("app/lib/sync/graphql.ts");
+const { operationKind } = await appModule("app/lib/admin-client-cli.server.ts");
+const { consoleSyncLogger } = await appModule("app/lib/sync/wiring.server.ts");
 
 const client = createCliAdminClient({ appDir: APP_DIR, cwd: REPO_ROOT, store: STORE });
 
@@ -102,6 +116,9 @@ const READBACK_QUERY = `query WonE2eVariantCosts($handle: String!) {
         metafield(namespace: "$app:won_discounts", key: "variant") {
           value
         }
+        pdp: metafield(namespace: "$app:won_discounts", key: "pdp") {
+          value
+        }
       }
     }
   }
@@ -125,6 +142,7 @@ async function readback() {
         price: v.price,
         unitCost: v.inventoryItem?.unitCost ? `${v.inventoryItem.unitCost.amount} ${v.inventoryItem.unitCost.currencyCode}` : null,
         wonVariantMetafield: v.metafield?.value ?? null,
+        pdpMetafield: v.pdp?.value ?? null,
       })),
     });
   }
@@ -134,12 +152,17 @@ async function readback() {
     store: STORE,
     products,
     withMetafield: variants.filter((v) => v.wonVariantMetafield !== null).length,
+    withPdp: variants.filter((v) => v.pdpMetafield !== null).length,
     withCost: variants.filter((v) => v.unitCost !== null).length,
   };
-  console.log(`\n# read-back ${result.checkedAt}: ${variants.length} won-e2e variant(s), ${result.withCost} with a Shopify cost, ${result.withMetafield} with the variant metafield`);
+  console.log(
+    `\n# read-back ${result.checkedAt}: ${variants.length} won-e2e variant(s), ${result.withCost} with a Shopify cost, ${result.withMetafield} with the variant metafield, ${result.withPdp} with pdp`,
+  );
   for (const p of products) {
     for (const v of p.variants ?? []) {
-      console.log(`  ${p.handle.padEnd(22)} ${v.title.padEnd(12)} ${v.id}  price ${v.price}  cost ${v.unitCost ?? "—"}  metafield ${v.wonVariantMetafield ?? "—"}`);
+      console.log(
+        `  ${p.handle.padEnd(22)} ${v.title.padEnd(12)} ${v.id}  price ${v.price}  cost ${v.unitCost ?? "—"}  metafield ${v.wonVariantMetafield ?? "—"}  pdp ${v.pdpMetafield ?? "—"}`,
+      );
     }
   }
   fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -157,6 +180,100 @@ async function storedMargin(db) {
   if (!loaded.exists) return { enabled: false, plan: null };
   const plan = await planOf(STORE);
   return { enabled: gateConfigForPlan(loaded.config, plan).config.modules.margin.enabled === true, plan };
+}
+
+/** Margin protection as checkout runs it (cost-lane.server.ts runningMargin): gated for the plan, too-large collections folded. */
+async function runningMargin(db) {
+  const loaded = await loadConfig(db, STORE);
+  const plan = await planOf(STORE);
+  return (await foldedForCheckout(db, STORE, gateConfigForPlan(loaded.config, plan).config)).modules.margin;
+}
+
+/** Product GID → stored marginRefs (cost-lane.server.ts costFloors.marginRefs; app DB read through Prisma only). */
+function storedMarginRefs(db) {
+  return async (productIds) => {
+    const out = new Map();
+    for (let i = 0; i < productIds.length; i += 500) {
+      const rows = await db.productTargetIndex.findMany({ where: { shop: STORE, productId: { in: productIds.slice(i, i + 500) } }, select: { productId: true, value: true } });
+      for (const row of rows) {
+        try {
+          const refs = JSON.parse(row.value ?? "{}").marginRefs;
+          out.set(row.productId, Array.isArray(refs) ? refs : []);
+        } catch {
+          out.set(row.productId, []);
+        }
+      }
+    }
+    return out;
+  };
+}
+
+/** Reads pass through; the metafield mutations are printed and answered synthetically (scripts/sync/live-costs.ts DryRunClient). */
+function dryRunClient(real) {
+  const planned = [];
+  return {
+    planned,
+    async graphql(query, variables) {
+      const op = operationName(query);
+      if (operationKind(query) !== "mutation") return real.graphql(query, variables);
+      const v = variables ?? {};
+      if (op === "WonSyncMetafieldsSet") {
+        const set = v.metafields.map((mf) => ({ ownerId: mf.ownerId, key: mf.key, value: mf.value }));
+        planned.push({ op, set });
+        console.log(`--- would send ${op} (${set.length}) ---\n${set.map((m) => `  ${m.ownerId} ${m.key} = ${m.value}`).join("\n")}`);
+        return { data: { metafieldsSet: { metafields: [], userErrors: [] } } };
+      }
+      if (op === "WonSyncMetafieldsDelete") {
+        const del = v.metafields.map((mf) => ({ ownerId: mf.ownerId, key: mf.key }));
+        planned.push({ op, delete: del });
+        console.log(`--- would send ${op} (${del.length}) ---\n${del.map((m) => `  ${m.ownerId} ${m.key}`).join("\n")}`);
+        return { data: { metafieldsDelete: { deletedMetafields: [], userErrors: [] } } };
+      }
+      throw new Error(`dry-run: no synthetic response for ${op}`);
+    },
+  };
+}
+
+/**
+ * DRY-RUN of the app's full pass with pdp: runCostPass with the lane's pdp
+ * context (margin and refs from the app DB, read only), mutations printed, the
+ * mirror rows in a throwaway SQLite built from the committed migrations.
+ */
+async function dryRunFullPass(appDb) {
+  const margin = await runningMargin(appDb);
+  const marginRefs = storedMarginRefs(appDb);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "won-e2e-costs-dry-run-"));
+  const url = `file:${path.join(dir, "dry-run.sqlite")}`;
+  spawnSync("npx", ["prisma", "migrate", "deploy", "--schema", "prisma/schema.prisma"], { cwd: APP_DIR, env: { ...process.env, DATABASE_URL: url }, stdio: "pipe" });
+  const { PrismaClient } = await appModule("app/generated/prisma/client.ts");
+  const tmpDb = new PrismaClient({ datasourceUrl: url });
+  try {
+    const dry = dryRunClient(client);
+    const transport = new Transport(dry, undefined, undefined, consoleSyncLogger);
+    let currency = null;
+    const pdp = {
+      margin,
+      marginRefs,
+      shopCurrency: () =>
+        (currency ??= transport.call("costShop").then((data) => {
+          const code = typeof data.shop?.currencyCode === "string" ? data.shop.currencyCode.trim().toUpperCase() : "";
+          return /^[A-Z]{3}$/.test(code) ? code : null;
+        })),
+    };
+    const floors = { payload: buildMarginPayload({ ...margin, enabled: true }), marginRefs };
+    console.log(`\n# dry-run of the app's full pass (cost + pdp): margin as checkout runs it = ${JSON.stringify(margin)}`);
+    const result = await runCostPass({ transport, db: tmpDb, shop: STORE, now: () => new Date(), restart: true, floors, pdp });
+    const sets = dry.planned.flatMap((p) => p.set ?? []);
+    console.log(
+      `\n# dry-run result: ${result.outcome} — ${result.read} variant(s) read, ${result.written} cost write(s), ${result.pdp} pdp-only write(s), ${result.cleared} deletion(s); ` +
+        `${sets.filter((m) => m.key === "pdp").length} pdp value(s) in the planned metafieldsSet` +
+        (result.errors.length ? `; errors: ${result.errors.join("; ")}` : ""),
+    );
+    return result.outcome === "done" ? 0 : 1;
+  } finally {
+    await tmpDb.$disconnect();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 function runLiveCosts(args) {
@@ -209,10 +326,28 @@ async function main() {
     margin = await storedMargin(db);
     console.log(`# stored config of ${STORE}: margin protection ${margin.enabled ? "ON" : "off"}${margin.plan ? ` (plan ${margin.plan})` : " (no row)"}`);
     if (clear && margin.enabled) throw new Error("margin protection is still ON in the stored config: the app's clear would be skipped (run seed-mvp1.mjs --cleanup first)");
-    if (!clear && !margin.enabled) throw new Error("margin protection is off in the stored config: the app's full pass would be skipped (run seed-mvp1.mjs --profile margin --live first)");
+    if (!clear && !margin.enabled) throw new Error("margin protection is off in the stored config: the app's full pass would be skipped (run seed-mvp1.mjs --profile margin|tiers --live first)");
     if (clear && !live) {
       await planClear(db);
       console.log("\n(dry-run: nothing written; pass --live)");
+      return;
+    }
+    if (!clear && !live) {
+      process.exitCode = await dryRunFullPass(db);
+      console.log("\n(dry-run: nothing written; pass --live)");
+      return;
+    }
+    if (!clear && live) {
+      // The app's "Obnovit nákupní ceny" (refreshCostsAction): the lane's full pass from the start, cost + pdp.
+      console.log(`\n# the app's full cost pass (startCostJob full, restart) on ${STORE}`);
+      const outcome = await startCostJob(STORE, { client, db, logger: consoleSyncLogger }, { kind: "full", restart: true });
+      const summary = outcome.done === "full" ? { outcome: outcome.result.outcome, read: outcome.result.read, written: outcome.result.written, pdp: outcome.result.pdp, cleared: outcome.result.cleared, refused: outcome.result.refused, errors: outcome.result.errors } : outcome;
+      console.log(`# job: ${JSON.stringify(summary)}`);
+      if (outcome.done !== "full" || outcome.result.outcome !== "done") {
+        process.exitCode = 1;
+        return;
+      }
+      await readback();
       return;
     }
   } finally {

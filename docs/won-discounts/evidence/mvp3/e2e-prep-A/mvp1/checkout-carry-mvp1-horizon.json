@@ -1,0 +1,53 @@
+{
+  "at": "2026-10-01T05:18:16.393Z",
+  "theme": "Horizon",
+  "cartTotal": 765,
+  "expected": {
+    "lineDiscount": 100,
+    "orderDiscount": 135,
+    "total": 765
+  },
+  "observed": {
+    "lineDiscount": -100,
+    "subtotal": 900,
+    "orderDiscount": -135,
+    "total": 765
+  },
+  "rows": [
+    {
+      "label": "Mezisoučet",
+      "value": "9,00 Kč",
+      "amount": 900
+    },
+    {
+      "label": "Sleva na objednávku",
+      "value": "",
+      "amount": null
+    },
+    {
+      "label": "WONE2E15",
+      "value": "− 1,35 Kč",
+      "amount": -135
+    },
+    {
+      "label": "Expedice",
+      "value": "$0.00",
+      "amount": 0
+    },
+    {
+      "label": "Daně",
+      "value": "$0.00",
+      "amount": 0
+    },
+    {
+      "label": "Celkem",
+      "value": "7,65 Kč",
+      "amount": 765
+    },
+    {
+      "label": "CELKOVÁ ÚSPORA2,35 Kč",
+      "value": "",
+      "amount": null
+    }
+  ]
+}

@@ -1,0 +1,161 @@
+{
+  "name": "seed-mvp1",
+  "profile": "mvp1",
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "at": "2026-10-01T06:10:29.698Z",
+  "products": [
+    {
+      "handle": "won-e2e-simple-a",
+      "id": "gid://shopify/Product/9692429058289"
+    }
+  ],
+  "rules": [
+    {
+      "id": "e2e-mvp1-auto-10",
+      "name": "E2E auto 10 %",
+      "method": "automatic",
+      "enabled": true
+    },
+    {
+      "id": "e2e-mvp1-code-15",
+      "name": "E2E kód",
+      "method": "code",
+      "enabled": true
+    }
+  ],
+  "margin": "margin protection off",
+  "tiers": [
+    "no tier set"
+  ],
+  "autoRule": "e2e-mvp1-auto-10",
+  "result": {
+    "save": {
+      "ok": true,
+      "versionId": "cmup4wh7g0000sn29soev4ur2",
+      "functionConfigBytes": 733,
+      "issues": []
+    },
+    "sync": {
+      "ok": true,
+      "steps": [
+        {
+          "step": "shop.read",
+          "ok": true,
+          "detail": "gid://shopify/Shop/78971076849, shop time 2026-10-01T02:09:28 (America/New_York), currency CZK"
+        },
+        {
+          "step": "plan",
+          "ok": true,
+          "detail": "plan free: nothing to gate"
+        },
+        {
+          "step": "node.create:code:e2e-mvp1-code-15",
+          "ok": true,
+          "detail": "created \"E2E kód\" with code WONE2E15"
+        },
+        {
+          "step": "products.scope",
+          "ok": true,
+          "detail": "1 targeted product(s) (0 collection(s), 0 variant target(s)); 0 up to date"
+        },
+        {
+          "step": "shop_config.write",
+          "ok": true,
+          "detail": "733 B written"
+        },
+        {
+          "step": "shop_config.verify",
+          "ok": true,
+          "detail": "read back and verified (733 B)"
+        },
+        {
+          "step": "storefront_config.write",
+          "ok": true,
+          "detail": "148 B written"
+        },
+        {
+          "step": "storefront_config.verify",
+          "ok": true,
+          "detail": "read back and verified (148 B)"
+        },
+        {
+          "step": "products.add",
+          "ok": true,
+          "detail": "1 product(s) got their new rules"
+        }
+      ],
+      "errors": [],
+      "pending": [],
+      "runId": "cmup4xmnf0003sn29tucro9bc"
+    },
+    "warnings": []
+  },
+  "syncRun": {
+    "runId": "cmup4xmnf0003sn29tucro9bc",
+    "ok": true,
+    "startedAt": "2026-10-01T06:09:28.349Z",
+    "finishedAt": "2026-10-01T06:10:22.059Z",
+    "errorCount": 0,
+    "steps": [
+      {
+        "step": "shop.read",
+        "ok": true,
+        "detail": "gid://shopify/Shop/78971076849, shop time 2026-10-01T02:09:28 (America/New_York), currency CZK"
+      },
+      {
+        "step": "plan",
+        "ok": true,
+        "detail": "plan free: nothing to gate"
+      },
+      {
+        "step": "node.create:code:e2e-mvp1-code-15",
+        "ok": true,
+        "detail": "created \"E2E kód\" with code WONE2E15"
+      },
+      {
+        "step": "products.scope",
+        "ok": true,
+        "detail": "1 targeted product(s) (0 collection(s), 0 variant target(s)); 0 up to date"
+      },
+      {
+        "step": "shop_config.write",
+        "ok": true,
+        "detail": "733 B written"
+      },
+      {
+        "step": "shop_config.verify",
+        "ok": true,
+        "detail": "read back and verified (733 B)"
+      },
+      {
+        "step": "storefront_config.write",
+        "ok": true,
+        "detail": "148 B written"
+      },
+      {
+        "step": "storefront_config.verify",
+        "ok": true,
+        "detail": "read back and verified (148 B)"
+      },
+      {
+        "step": "products.add",
+        "ok": true,
+        "detail": "1 product(s) got their new rules"
+      }
+    ],
+    "pending": [],
+    "configVersionId": "cmup4wh7g0000sn29soev4ur2"
+  },
+  "wonNodes": [
+    {
+      "key": "auto",
+      "role": "automatic",
+      "status": "ACTIVE"
+    },
+    {
+      "key": "code:e2e-mvp1-code-15",
+      "role": "code",
+      "status": "ACTIVE"
+    }
+  ]
+}

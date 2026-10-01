@@ -1,0 +1,108 @@
+{
+  "name": "seed-mvp1-cleanup",
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "at": "2026-10-01T06:35:36.828Z",
+  "restored": [],
+  "margin": "margin protection off",
+  "tiers": [
+    "no tier set"
+  ],
+  "result": {
+    "save": {
+      "ok": true,
+      "versionId": "cmup5tiec0000snzhyc88opo6",
+      "functionConfigBytes": 389,
+      "issues": []
+    },
+    "sync": {
+      "ok": true,
+      "steps": [
+        {
+          "step": "shop.read",
+          "ok": true,
+          "detail": "gid://shopify/Shop/78971076849, shop time 2026-10-01T02:35:09 (America/New_York), currency CZK"
+        },
+        {
+          "step": "plan",
+          "ok": true,
+          "detail": "plan free: nothing to gate"
+        },
+        {
+          "step": "products",
+          "ok": true,
+          "detail": "no targeted products and none to clean"
+        },
+        {
+          "step": "shop_config.write",
+          "ok": true,
+          "detail": "389 B written"
+        },
+        {
+          "step": "shop_config.verify",
+          "ok": true,
+          "detail": "read back and verified (389 B)"
+        },
+        {
+          "step": "storefront_config.write",
+          "ok": true,
+          "detail": "148 B written"
+        },
+        {
+          "step": "storefront_config.verify",
+          "ok": true,
+          "detail": "read back and verified (148 B)"
+        }
+      ],
+      "errors": [],
+      "pending": [],
+      "runId": "cmup5u3g90001snzhmbd42ahm"
+    },
+    "warnings": []
+  },
+  "syncRun": {
+    "runId": "cmup5u3g90001snzhmbd42ahm",
+    "ok": true,
+    "startedAt": "2026-10-01T06:35:09.541Z",
+    "finishedAt": "2026-10-01T06:35:36.825Z",
+    "errorCount": 0,
+    "steps": [
+      {
+        "step": "shop.read",
+        "ok": true,
+        "detail": "gid://shopify/Shop/78971076849, shop time 2026-10-01T02:35:09 (America/New_York), currency CZK"
+      },
+      {
+        "step": "plan",
+        "ok": true,
+        "detail": "plan free: nothing to gate"
+      },
+      {
+        "step": "products",
+        "ok": true,
+        "detail": "no targeted products and none to clean"
+      },
+      {
+        "step": "shop_config.write",
+        "ok": true,
+        "detail": "389 B written"
+      },
+      {
+        "step": "shop_config.verify",
+        "ok": true,
+        "detail": "read back and verified (389 B)"
+      },
+      {
+        "step": "storefront_config.write",
+        "ok": true,
+        "detail": "148 B written"
+      },
+      {
+        "step": "storefront_config.verify",
+        "ok": true,
+        "detail": "read back and verified (148 B)"
+      }
+    ],
+    "pending": [],
+    "configVersionId": "cmup5tiec0000snzhyc88opo6"
+  }
+}

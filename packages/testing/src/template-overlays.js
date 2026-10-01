@@ -51,6 +51,20 @@ export function validateTemplateOverlay(overlay) {
     );
   }
 
+  const parentBlockTypes = overlay.parentBlockTypes ?? null;
+  if (
+    parentBlockTypes !== null &&
+    (!Array.isArray(parentBlockTypes) ||
+      parentBlockTypes.length === 0 ||
+      parentBlockTypes.some(
+        (type) => typeof type !== "string" || type.trim() === "",
+      ))
+  ) {
+    throw new Error(
+      "templateOverlay.parentBlockTypes must be a non-empty array of strings when provided.",
+    );
+  }
+
   if (!isPlainObject(overlay.block)) {
     throw new Error("templateOverlay.block must be an object.");
   }
@@ -77,20 +91,29 @@ export function validateTemplateOverlay(overlay) {
     isPlainObject(position) &&
     typeof position.after === "string" &&
     position.after.trim() !== "";
+  // By block TYPE (the first block of that type in block_order): survives the
+  // editor's random block ids (Horizon "buy_buttons_eYQEYi") across theme updates.
+  const isTypePosition =
+    isPlainObject(position) &&
+    ["beforeType", "afterType"].some(
+      (key) => typeof position[key] === "string" && position[key].trim() !== "",
+    );
   if (
     !isKnownKeyword &&
     !isIndexPosition &&
     !isBeforePosition &&
-    !isAfterPosition
+    !isAfterPosition &&
+    !isTypePosition
   ) {
     throw new Error(
-      'templateOverlay.position must be "start", "end", { index }, { before } or { after }.',
+      'templateOverlay.position must be "start", "end", { index }, { before }, { after }, { beforeType } or { afterType }.',
     );
   }
 
   return {
     template: overlay.template,
     sectionTypes,
+    parentBlockTypes,
     block: {
       id: overlay.block.id,
       type: overlay.block.type,
@@ -123,7 +146,38 @@ function findMainSectionEntry(sections, sectionTypes) {
   return matches[0];
 }
 
-function resolveInsertIndex(blockOrder, position) {
+/**
+ * The block list the overlay inserts into: the section itself, or — with
+ * `parentBlockTypes` — the ONE top-level block of the section whose type is
+ * listed (e.g. Horizon's static `_product-details`, which accepts `@app`
+ * blocks next to the price and the buy buttons). Fails loudly on zero or
+ * several matches, like the section lookup.
+ */
+function findContainer(section, sectionKey, parentBlockTypes) {
+  if (!parentBlockTypes) {
+    return { container: section, parentBlockKey: null };
+  }
+  const blocks = isPlainObject(section.blocks) ? section.blocks : {};
+  const matches = Object.entries(blocks).filter(
+    ([, block]) => isPlainObject(block) && parentBlockTypes.includes(block.type),
+  );
+  if (matches.length === 0) {
+    throw new Error(
+      `No block with type in [${parentBlockTypes.join(", ")}] found in section ${sectionKey}; expected the parent block to insert into.`,
+    );
+  }
+  if (matches.length > 1) {
+    throw new Error(
+      `Ambiguous parent block in section ${sectionKey}: multiple blocks match type in [${parentBlockTypes.join(
+        ", ",
+      )}] (${matches.map(([key]) => key).join(", ")}).`,
+    );
+  }
+  const [parentBlockKey, container] = matches[0];
+  return { container, parentBlockKey };
+}
+
+function resolveInsertIndex(blockOrder, position, blocks) {
   if (position === "end") {
     return blockOrder.length;
   }
@@ -151,6 +205,17 @@ function resolveInsertIndex(blockOrder, position) {
     }
     return index + 1;
   }
+  const typeKey = typeof position.beforeType === "string" ? "beforeType" : "afterType";
+  if (typeof position[typeKey] === "string") {
+    const wanted = position[typeKey];
+    const index = blockOrder.findIndex((id) => blocks[id]?.type === wanted);
+    if (index === -1) {
+      throw new Error(
+        `templateOverlay position.${typeKey} references no block of type "${wanted}".`,
+      );
+    }
+    return typeKey === "beforeType" ? index : index + 1;
+  }
   throw new Error("templateOverlay.position is invalid.");
 }
 
@@ -168,9 +233,17 @@ export function planTemplateOverlay(template, overlayInput) {
     template.sections,
     overlay.sectionTypes,
   );
-  const blocks = isPlainObject(section.blocks) ? section.blocks : {};
-  const blockOrder = Array.isArray(section.block_order)
-    ? section.block_order
+  const { container, parentBlockKey } = findContainer(
+    section,
+    sectionKey,
+    overlay.parentBlockTypes,
+  );
+  const where = parentBlockKey
+    ? `${overlay.template}#${sectionKey}/${parentBlockKey}`
+    : `${overlay.template}#${sectionKey}`;
+  const blocks = isPlainObject(container.blocks) ? container.blocks : {};
+  const blockOrder = Array.isArray(container.block_order)
+    ? container.block_order
     : [];
   const alreadyPresent = Object.prototype.hasOwnProperty.call(
     blocks,
@@ -178,17 +251,18 @@ export function planTemplateOverlay(template, overlayInput) {
   );
   if (alreadyPresent && blocks[overlay.block.id]?.type !== overlay.block.type) {
     throw new Error(
-      `templateOverlay block id "${overlay.block.id}" already exists in ${overlay.template}#${sectionKey} with a different type ` +
+      `templateOverlay block id "${overlay.block.id}" already exists in ${where} with a different type ` +
         `(${blocks[overlay.block.id]?.type} !== ${overlay.block.type}).`,
     );
   }
   const index = alreadyPresent
     ? blockOrder.indexOf(overlay.block.id)
-    : resolveInsertIndex(blockOrder, overlay.position);
+    : resolveInsertIndex(blockOrder, overlay.position, blocks);
   return {
     template: overlay.template,
     sectionKey,
     sectionType: section.type,
+    parentBlockKey,
     blockId: overlay.block.id,
     blockType: overlay.block.type,
     action: alreadyPresent ? "noop" : "insert",
@@ -206,20 +280,26 @@ export function applyTemplateOverlay(template, overlayInput) {
   const plan = planTemplateOverlay(template, overlay);
   const result = structuredClone(template);
   const section = result.sections[plan.sectionKey];
-  if (!isPlainObject(section.blocks)) {
-    section.blocks = {};
+  const container = plan.parentBlockKey
+    ? section.blocks[plan.parentBlockKey]
+    : section;
+  if (!isPlainObject(container.blocks)) {
+    container.blocks = {};
   }
-  if (!Array.isArray(section.block_order)) {
-    section.block_order = [];
+  if (!Array.isArray(container.block_order)) {
+    container.block_order = [];
   }
   if (plan.action === "noop") {
     return result;
   }
-  section.blocks[overlay.block.id] = {
+  container.blocks[overlay.block.id] = {
     type: overlay.block.type,
     settings: overlay.block.settings,
+    // Nested theme blocks carry their own (empty) child map, like the
+    // editor writes them; a section-level app block never has one.
+    ...(plan.parentBlockKey ? { blocks: {} } : {}),
   };
-  section.block_order.splice(plan.index, 0, overlay.block.id);
+  container.block_order.splice(plan.index, 0, overlay.block.id);
   return result;
 }
 

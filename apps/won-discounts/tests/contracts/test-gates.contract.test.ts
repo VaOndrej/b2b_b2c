@@ -74,10 +74,28 @@ function overlayCheck(dirs: { horizon: string; dawn: string }) {
   }
 }
 
-function themeWithSettings(name: string, settings: string) {
+// The product template --check plans the quantity tiers block into (MVP 3, scripts/make-e2e-overlay.mjs
+// tiersTemplateOverlays): Horizon's main section with its static _product-details (buy-buttons inside),
+// Dawn's main-product with a quantity selector.
+const PRODUCT_TEMPLATES: Record<string, unknown> = {
+  horizon: {
+    sections: {
+      main: {
+        type: "product-information",
+        blocks: { "product-details": { type: "_product-details", static: true, blocks: { buy: { type: "buy-buttons" } }, block_order: ["buy"] } },
+        block_order: [],
+      },
+    },
+  },
+  dawn: { sections: { main: { type: "main-product", blocks: { qty: { type: "quantity_selector" } }, block_order: ["qty"] } } },
+};
+
+function themeWithSettings(name: string, settings: string, template: unknown = PRODUCT_TEMPLATES[name.includes("dawn") ? "dawn" : "horizon"]) {
   const dir = path.join(scratch, name);
   mkdirSync(path.join(dir, "config"), { recursive: true });
+  mkdirSync(path.join(dir, "templates"), { recursive: true });
   writeFileSync(path.join(dir, "config/settings_data.json"), settings);
+  writeFileSync(path.join(dir, "templates/product.json"), JSON.stringify(template));
   return dir;
 }
 
@@ -90,6 +108,16 @@ test("make-e2e-overlay --check passes when the committed overlays match the cano
   });
   assert.equal(result.code, 0, result.output);
   assert.match(result.output, /up to date/);
+});
+
+test("make-e2e-overlay --check exits non-zero when the tiers block's template anchor is gone (MVP 3)", () => {
+  const committed = (key: string) => readFileSync(path.join(APP_ROOT, `e2e/settings_data.${key}.json`), "utf8");
+  const result = overlayCheck({
+    horizon: themeWithSettings("anchorless-horizon", committed("horizon"), { sections: { main: { type: "product-information", blocks: {}, block_order: [] } } }),
+    dawn: themeWithSettings("fresh-dawn-3", committed("dawn")),
+  });
+  assert.equal(result.code, 1, result.output);
+  assert.match(result.output, /horizon: template overlay does not apply: No block with type in \[_product-details\]/);
 });
 
 test("make-e2e-overlay --check exits non-zero when the canonical theme changed (stale overlay)", () => {

@@ -1,0 +1,50 @@
+# stored config of b2b-b2c-store-development.myshopify.com: 0 rule(s) (the E2E seed is in it)
+  margin protection ON (min margin 30 %, max discount 30 %, 0 collection setting(s))
+  tier set e2e-tiers-global (global, per product): 3+ −10 %, 5+ −15 %
+
+# cleanup: restore the backup of 2026-10-01T06:09:17.087Z (0 rule(s))
+  after the cleanup: 0 rule(s), margin protection off, no tier set
+
+# sync plan (dry-run, apps/won-discounts/scripts/sync/live-sync.ts --config /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/t7/final-A/seed-mvp1-cleanup-config.json)
+# Won Discounts sync — DRY-RUN (reads b2b-b2c-store-development.myshopify.com, writes nothing; pass --live to execute)
+dry-run: seeded 1 tracked node(s) and 0 indexed product(s) from the app database (read-only)
+
+--- would send WonSyncMetafieldsSet ---
+{
+  "metafields": [
+    {
+      "ownerId": "gid://shopify/Shop/78971076849",
+      "namespace": "$app:won_discounts",
+      "key": "function_config",
+      "type": "json",
+      "value": "<389 B> {\"schemaVersion\":1,\"campaignId\":null,\"campaignVarsVersion\":null,\"engine\":{\"combination\":{\"outletWithAnything\":false,\"pro…"
+    }
+  ]
+}
+
+--- would send WonSyncStorefrontConfigSet ---
+{
+  "metafields": [
+    {
+      "ownerId": "gid://shopify/AppInstallation/1052084633841",
+      "namespace": "won_discounts",
+      "key": "storefront_config",
+      "type": "json",
+      "value": "{\"v\":1,\"cv\":\"unsaved:6da81037478825c92867929529bdc035\",\"tiers\":{\"global\":null,\"sets\":{}},\"margin\":{\"on\":false},\"appearance\":{\"preset\":\"default\"},\"texts\":{}}"
+    }
+  ]
+}
+[won-sync] sync b2b-b2c-store-development.myshopify.com: storefront_config.write failed: could not write the storefront config: dry-run: no synthetic response for WonSyncStorefrontConfigSet — the product page keeps the previous storefront config; the next sync retries 
+[won-sync] sync b2b-b2c-store-development.myshopify.com: 1 failed step(s); pending: failed_steps 
+
+# result: FAILED (dry-run: 2 mutation(s) planned)
+✔ shop.read — gid://shopify/Shop/78971076849, shop time 2026-10-01T02:34:43 (America/New_York), currency CZK
+✔ plan — plan free: nothing to gate
+✔ products — no targeted products and none to clean
+✔ shop_config.write — 389 B written
+✔ shop_config.verify — read back and verified (389 B)
+✖ storefront_config.write — could not write the storefront config: dry-run: no synthetic response for WonSyncStorefrontConfigSet — the product page keeps the previous storefront config; the next sync retries
+
+note: margin protection goes off → then clear the cost metafields: node apps/won-discounts/scripts/e2e/margin-costs.mjs --clear [--live]
+
+(dry-run: nothing written; pass --live)

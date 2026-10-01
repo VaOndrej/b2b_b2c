@@ -1,0 +1,88 @@
+# stored config of b2b-b2c-store-development.myshopify.com: 2 rule(s) (the E2E seed is in it)
+  - e2e-mvp1-auto-10 "E2E auto 10 %" automatic enabled
+  - e2e-mvp1-code-15 "E2E kód" code enabled
+  margin protection off
+  no tier set
+
+# seed (profile shapes): won-e2e-simple-a = gid://shopify/Product/9692429058289, won-e2e-simple-b = gid://shopify/Product/9692429091057; capped fixed per item + Pro stack, no code
+  + e2e-shapes-cap-fixed "E2E fix 1000 Kč/ks" automatic
+  + e2e-shapes-pro-10 "E2E Pro 10 %" automatic
+  + e2e-shapes-pro-5 "E2E Pro 5 %" automatic
+  margin protection off
+  no tier set
+
+# sync plan (dry-run, apps/won-discounts/scripts/sync/live-sync.ts --config /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/t7/final-A/seed-mvp1-seed-shapes-config.json)
+# Won Discounts sync — DRY-RUN (reads b2b-b2c-store-development.myshopify.com, writes nothing; pass --live to execute)
+dry-run: seeded 2 tracked node(s) and 1 indexed product(s) from the app database (read-only)
+
+--- would send WonSyncCodeDelete ---
+{
+  "id": "gid://shopify/DiscountCodeNode/2204752347377"
+}
+
+--- would send WonSyncMetafieldsSet ---
+{
+  "metafields": [
+    {
+      "ownerId": "gid://shopify/Product/9692429058289",
+      "namespace": "$app:won_discounts",
+      "key": "product",
+      "type": "json",
+      "value": "{\"ruleIds\":[\"e2e-shapes-pro-10\",\"e2e-shapes-pro-5\"],\"variantRuleIds\":{}}"
+    }
+  ]
+}
+
+--- would send WonSyncMetafieldsSet ---
+{
+  "metafields": [
+    {
+      "ownerId": "gid://shopify/Shop/78971076849",
+      "namespace": "$app:won_discounts",
+      "key": "function_config",
+      "type": "json",
+      "value": "<872 B> {\"schemaVersion\":1,\"campaignId\":null,\"campaignVarsVersion\":null,\"engine\":{\"combination\":{\"outletWithAnything\":false,\"pro…"
+    }
+  ]
+}
+
+--- would send WonSyncStorefrontConfigSet ---
+{
+  "metafields": [
+    {
+      "ownerId": "gid://shopify/AppInstallation/1052084633841",
+      "namespace": "won_discounts",
+      "key": "storefront_config",
+      "type": "json",
+      "value": "{\"v\":1,\"cv\":\"unsaved:cf5f4f3fa491b5c653abcbd8b400ebc0\",\"tiers\":{\"global\":null,\"sets\":{}},\"margin\":{\"on\":false},\"appearance\":{\"preset\":\"default\"},\"texts\":{}}"
+    }
+  ]
+}
+[won-sync] sync b2b-b2c-store-development.myshopify.com: storefront_config.write failed: could not write the storefront config: dry-run: no synthetic response for WonSyncStorefrontConfigSet — the product page keeps the previous storefront config; the next sync retries 
+
+--- would send WonSyncMetafieldsSet ---
+{
+  "metafields": [
+    {
+      "ownerId": "gid://shopify/Product/9692429091057",
+      "namespace": "$app:won_discounts",
+      "key": "product",
+      "type": "json",
+      "value": "{\"ruleIds\":[\"e2e-shapes-cap-fixed\"],\"variantRuleIds\":{}}"
+    }
+  ]
+}
+[won-sync] sync b2b-b2c-store-development.myshopify.com: 1 failed step(s); pending: failed_steps 
+
+# result: FAILED (dry-run: 5 mutation(s) planned)
+✔ shop.read — gid://shopify/Shop/78971076849, shop time 2026-10-01T02:10:50 (America/New_York), currency CZK
+✔ plan — plan free: 2 Pro setting(s) not applied (rule_combinations:e2e-shapes-pro-10, rule_combinations:e2e-shapes-pro-5)
+✔ node.delete:code:e2e-mvp1-code-15 — deleted "E2E kód" (its rule was deleted)
+✔ products.scope — 2 targeted product(s) (0 collection(s), 0 variant target(s)); 0 up to date
+✔ products.set — 1 product(s) updated
+✔ shop_config.write — 872 B written
+✔ shop_config.verify — read back and verified (872 B)
+✖ storefront_config.write — could not write the storefront config: dry-run: no synthetic response for WonSyncStorefrontConfigSet — the product page keeps the previous storefront config; the next sync retries
+✔ products.add — 1 product(s) got their new rules
+
+(dry-run: nothing written; pass --live)

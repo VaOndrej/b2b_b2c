@@ -1,0 +1,56 @@
+{
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "backedUpAt": "2026-10-01T06:09:17.087Z",
+  "exists": true,
+  "config": {
+    "schemaVersion": 1,
+    "markets": [],
+    "engine": {
+      "combination": {
+        "outletWithAnything": false,
+        "productWithProduct": "best",
+        "productWithOrder": true,
+        "productWithShipping": true,
+        "orderWithShipping": true
+      }
+    },
+    "modules": {
+      "codes": {
+        "rules": []
+      },
+      "tiers": {
+        "sets": []
+      },
+      "rewards": {
+        "gifts": [],
+        "countOtherDiscounts": false,
+        "giftDeclinable": true
+      },
+      "outlet": {
+        "display": "strike_badge",
+        "reopenOnReturnAfterEnd": "ask"
+      },
+      "margin": {
+        "enabled": false,
+        "global": {
+          "maxDiscountPercent": 50
+        },
+        "perCollection": []
+      }
+    },
+    "campaigns": [],
+    "storefront": {
+      "appearancePreset": "default",
+      "cardPricesEnabled": false
+    },
+    "locales": {
+      "cs": {},
+      "sk": {},
+      "en": {}
+    },
+    "onboarding": {
+      "goals": [],
+      "step": 1
+    }
+  }
+}

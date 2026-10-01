@@ -1,0 +1,454 @@
+
+── Horizon ─────────────────────────────────────────────
+   canonical:    /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c_themes/Horizon
+   workspace:    /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/e2e-themes/won-discounts/horizon
+   overlay:      e2e/settings_data.horizon.json
+   template:     templates/product.json + won_discounts_quantity_tiers (in _product-details)
+   remote theme: Horizon
+   origin:       http://127.0.0.1:9885
+   theme dev is serving (HTTP 200).
+   configured app proxy responds.
+
+> test:e2e
+> node ./scripts/require-e2e-contract.mjs
+
+(node:45340) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 17 tests using 1 worker
+
+  -   1 tests/e2e/checkout.margin.spec.ts:709:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › cart: simple-a to its cost floor, simple-b to 30 %, spare to 30 %, Small none, WONE2EM20 applicable as an exact amount = planCart with the logged rate
+  -   2 tests/e2e/checkout.margin.spec.ts:764:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › checkout (Bogus): margin never blocks; the thank-you page charges planCart with the checkout's logged rate, no line below its floor
+  -   3 tests/e2e/checkout.margin.spec.ts:834:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › order discount lowered by margin (WONE2EM60): Small + multiaxis, the exact D_max over both lines; cart and Bogus checkout = planCart, no line below its floor
+  -   4 tests/e2e/checkout.margin.spec.ts:912:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › slovensko (EUR): the main cart with WONE2EM20 — F-M1 for EUR, cart and Bogus checkout to Bratislava = planCart, no line below its floor
+  -   5 tests/e2e/checkout.mvp1.spec.ts:67:3 › Won Discounts in cart and checkout (MVP 1) — Horizon › cart: the automatic 10 % and the code WONE2E15 apply exactly as planCart plans
+  -   6 tests/e2e/checkout.mvp1.spec.ts:156:3 › Won Discounts in cart and checkout (MVP 1) — Horizon › checkout (Bogus): the thank-you page shows the discounts and the total planCart predicts
+  -   7 tests/e2e/checkout.mvp1.spec.ts:255:3 › Won Discounts in cart and checkout (MVP 1) — Horizon › one buyer session on the real storefront: the code applied in the cart is carried into checkout
+  -   8 tests/e2e/checkout.shapes.spec.ts:261:3 › Won Discounts output shapes in cart and checkout (MVP 1 gate) — Horizon › cart: a capped fixed per-item amount arrives as 100 %, a Pro stack as one summed percent, both = planCart
+  -   9 tests/e2e/checkout.shapes.spec.ts:396:3 › Won Discounts output shapes in cart and checkout (MVP 1 gate) — Horizon › checkout (Bogus): the thank-you page charges what planCart predicts for both shapes
+(node:45698) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘  10 tests/e2e/storefront.embed.spec.ts:111:3 › Won Discounts app embed (MVP 0) — Horizon › renders the ready marker and boots window.WonDiscounts on the PDP (13.9s)
+(node:67425) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘  11 tests/e2e/storefront.embed.spec.ts:111:3 › Won Discounts app embed (MVP 0) — Horizon › renders the ready marker and boots window.WonDiscounts on the PDP (retry #1) (13.7s)
+(node:93252) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘  12 tests/e2e/storefront.embed.spec.ts:139:3 › Won Discounts app embed (MVP 0) — Horizon › causes no horizontal overflow at 390px (14.1s)
+(node:9084) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘  13 tests/e2e/storefront.embed.spec.ts:139:3 › Won Discounts app embed (MVP 0) — Horizon › causes no horizontal overflow at 390px (retry #1) (14.0s)
+(node:20194) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘  14 tests/e2e/storefront.tiers.spec.ts:273:3 › Won Discounts quantity tiers: PDP, cart and checkout (MVP 3) — Horizon › PDP simple-a: the table from the storefront config + variant pdp (F-T1, F-T2, F-T3), the live price follows the quantity incl. the margin-cut tier (19.8s)
+(node:28928) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘  15 tests/e2e/storefront.tiers.spec.ts:273:3 › Won Discounts quantity tiers: PDP, cart and checkout (MVP 3) — Horizon › PDP simple-a: the table from the storefront config + variant pdp (F-T1, F-T2, F-T3), the live price follows the quantity incl. the margin-cut tier (retry #1) (19.8s)
+(node:37369) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘  16 tests/e2e/storefront.tiers.spec.ts:375:3 › Won Discounts quantity tiers: PDP, cart and checkout (MVP 3) — Horizon › PDP two-variants: switching Small → Large re-prices the table and the live price (= planCart) (23.2s)
+(node:55870) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘  17 tests/e2e/storefront.tiers.spec.ts:375:3 › Won Discounts quantity tiers: PDP, cart and checkout (MVP 3) — Horizon › PDP two-variants: switching Small → Large re-prices the table and the live price (= planCart) (retry #1) (24.6s)
+(node:76886) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘  18 tests/e2e/storefront.tiers.spec.ts:426:3 › Won Discounts quantity tiers: PDP, cart and checkout (MVP 3) — Horizon › cart: tiers per product (simple-a × 5 cut by margin, Small × 1 + Large × 2 counted together, simple-b none) = planCart; the cut tier on the PDP = in the cart (25.7s)
+(node:94393) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘  19 tests/e2e/storefront.tiers.spec.ts:426:3 › Won Discounts quantity tiers: PDP, cart and checkout (MVP 3) — Horizon › cart: tiers per product (simple-a × 5 cut by margin, Small × 1 + Large × 2 counted together, simple-b none) = planCart; the cut tier on the PDP = in the cart (retry #1) (19.3s)
+(node:9068) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✓  20 tests/e2e/storefront.tiers.spec.ts:480:3 › Won Discounts quantity tiers: PDP, cart and checkout (MVP 3) — Horizon › checkout (Bogus): the tiers cart's thank-you page = planCart (30.9s)
+  -  21 tests/e2e/storefront.tiers.spec.ts:503:3 › Won Discounts quantity tiers: PDP, cart and checkout (MVP 3) — Horizon › Pro: a set on the collection, counted across the cart — the PDP names it and counts the cart (F-T1 tierRef), /cart.js and the Bogus checkout = planCart
+  -  22 tests/e2e/zz-probe-assets.spec.ts:6:1 › probe: extension assets on the PDP
+
+
+  1) tests/e2e/storefront.embed.spec.ts:111:3 › Won Discounts app embed (MVP 0) — Horizon › renders the ready marker and boots window.WonDiscounts on the PDP 
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator:  locator('[data-won-discounts-embed]')
+    Expected: "ready"
+    Received: "loading"
+    Timeout:  12000ms
+
+    Call log:
+      - Expect "toHaveAttribute" with timeout 12000ms
+      - waiting for locator('[data-won-discounts-embed]')
+        16 × locator resolved to <div hidden="" id="won-discounts-root" data-won-discounts-embed="" data-won-discounts-currency="CZK" data-won-discounts-status="loading"></div>
+           - unexpected value "loading"
+
+
+      74 |   // Liquid renders "loading"; only assets/won-discounts.js sets "ready" (after
+      75 |   // window.WonDiscounts exists), so this proves the storefront JS actually ran.
+    > 76 |   await expect(embed).toHaveAttribute("data-won-discounts-status", "ready");
+         |                       ^
+      77 |   await page.waitForFunction(() => window.WonDiscounts?.ready === true);
+      78 |   return embed;
+      79 | }
+        at openReadyPdp (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.embed.spec.ts:76:23)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.embed.spec.ts:117:5
+
+    Test timeout of 45000ms exceeded.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/storefront.embed-Won-Disco-c3763-dow-WonDiscounts-on-the-PDP/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/storefront.embed-Won-Disco-c3763-dow-WonDiscounts-on-the-PDP/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/storefront.embed-Won-Disco-c3763-dow-WonDiscounts-on-the-PDP/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator:  locator('[data-won-discounts-embed]')
+    Expected: "ready"
+    Received: "loading"
+    Timeout:  12000ms
+
+    Call log:
+      - Expect "toHaveAttribute" with timeout 12000ms
+      - waiting for locator('[data-won-discounts-embed]')
+        16 × locator resolved to <div hidden="" id="won-discounts-root" data-won-discounts-embed="" data-won-discounts-currency="CZK" data-won-discounts-status="loading"></div>
+           - unexpected value "loading"
+
+
+      74 |   // Liquid renders "loading"; only assets/won-discounts.js sets "ready" (after
+      75 |   // window.WonDiscounts exists), so this proves the storefront JS actually ran.
+    > 76 |   await expect(embed).toHaveAttribute("data-won-discounts-status", "ready");
+         |                       ^
+      77 |   await page.waitForFunction(() => window.WonDiscounts?.ready === true);
+      78 |   return embed;
+      79 | }
+        at openReadyPdp (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.embed.spec.ts:76:23)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.embed.spec.ts:117:5
+
+    Test timeout of 45000ms exceeded.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/storefront.embed-Won-Disco-c3763-dow-WonDiscounts-on-the-PDP-retry1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/storefront.embed-Won-Disco-c3763-dow-WonDiscounts-on-the-PDP-retry1/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/storefront.embed-Won-Disco-c3763-dow-WonDiscounts-on-the-PDP-retry1/error-context.md
+
+  2) tests/e2e/storefront.embed.spec.ts:139:3 › Won Discounts app embed (MVP 0) — Horizon › causes no horizontal overflow at 390px 
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator:  locator('[data-won-discounts-embed]')
+    Expected: "ready"
+    Received: "loading"
+    Timeout:  12000ms
+
+    Call log:
+      - Expect "toHaveAttribute" with timeout 12000ms
+      - waiting for locator('[data-won-discounts-embed]')
+        16 × locator resolved to <div hidden="" id="won-discounts-root" data-won-discounts-embed="" data-won-discounts-currency="CZK" data-won-discounts-status="loading"></div>
+           - unexpected value "loading"
+
+
+      74 |   // Liquid renders "loading"; only assets/won-discounts.js sets "ready" (after
+      75 |   // window.WonDiscounts exists), so this proves the storefront JS actually ran.
+    > 76 |   await expect(embed).toHaveAttribute("data-won-discounts-status", "ready");
+         |                       ^
+      77 |   await page.waitForFunction(() => window.WonDiscounts?.ready === true);
+      78 |   return embed;
+      79 | }
+        at openReadyPdp (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.embed.spec.ts:76:23)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.embed.spec.ts:143:5
+
+    Test timeout of 45000ms exceeded.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/storefront.embed-Won-Disco-f9133-orizontal-overflow-at-390px/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/storefront.embed-Won-Disco-f9133-orizontal-overflow-at-390px/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/storefront.embed-Won-Disco-f9133-orizontal-overflow-at-390px/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator:  locator('[data-won-discounts-embed]')
+    Expected: "ready"
+    Received: "loading"
+    Timeout:  12000ms
+
+    Call log:
+      - Expect "toHaveAttribute" with timeout 12000ms
+      - waiting for locator('[data-won-discounts-embed]')
+        16 × locator resolved to <div hidden="" id="won-discounts-root" data-won-discounts-embed="" data-won-discounts-currency="CZK" data-won-discounts-status="loading"></div>
+           - unexpected value "loading"
+
+
+      74 |   // Liquid renders "loading"; only assets/won-discounts.js sets "ready" (after
+      75 |   // window.WonDiscounts exists), so this proves the storefront JS actually ran.
+    > 76 |   await expect(embed).toHaveAttribute("data-won-discounts-status", "ready");
+         |                       ^
+      77 |   await page.waitForFunction(() => window.WonDiscounts?.ready === true);
+      78 |   return embed;
+      79 | }
+        at openReadyPdp (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.embed.spec.ts:76:23)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.embed.spec.ts:143:5
+
+    Test timeout of 45000ms exceeded.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/storefront.embed-Won-Disco-f9133-orizontal-overflow-at-390px-retry1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/storefront.embed-Won-Disco-f9133-orizontal-overflow-at-390px-retry1/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/storefront.embed-Won-Disco-f9133-orizontal-overflow-at-390px-retry1/error-context.md
+
+  3) tests/e2e/storefront.tiers.spec.ts:273:3 › Won Discounts quantity tiers: PDP, cart and checkout (MVP 3) — Horizon › PDP simple-a: the table from the storefront config + variant pdp (F-T1, F-T2, F-T3), the live price follows the quantity incl. the margin-cut tier › (b) the live price follows the quantity = planCart's line discount per item (floored) 
+
+    Error: live price for 3 item(s)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 900
+    Received: 1000
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at support/tiers.ts:345
+
+      343 |   await input.fill(String(quantity));
+      344 |   await input.dispatchEvent("change");
+    > 345 |   await expect
+          |   ^
+      346 |     .poll(async () => (await readBlock(page)).liveUnitCents, { message: `live price for ${quantity} item(s)`, timeout: 10_000 })
+      347 |     .toBe(unitCents);
+      348 | }
+        at setQuantity (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/support/tiers.ts:345:3)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.tiers.spec.ts:316:9
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.tiers.spec.ts:312:19
+
+    Test timeout of 45000ms exceeded.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/storefront.tiers-Won-Disco-2edf7-ty-incl-the-margin-cut-tier/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/storefront.tiers-Won-Disco-2edf7-ty-incl-the-margin-cut-tier/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/storefront.tiers-Won-Disco-2edf7-ty-incl-the-margin-cut-tier/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: live price for 3 item(s)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 900
+    Received: 1000
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at support/tiers.ts:345
+
+      343 |   await input.fill(String(quantity));
+      344 |   await input.dispatchEvent("change");
+    > 345 |   await expect
+          |   ^
+      346 |     .poll(async () => (await readBlock(page)).liveUnitCents, { message: `live price for ${quantity} item(s)`, timeout: 10_000 })
+      347 |     .toBe(unitCents);
+      348 | }
+        at setQuantity (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/support/tiers.ts:345:3)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.tiers.spec.ts:316:9
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.tiers.spec.ts:312:19
+
+    Test timeout of 45000ms exceeded.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/storefront.tiers-Won-Disco-2edf7-ty-incl-the-margin-cut-tier-retry1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/storefront.tiers-Won-Disco-2edf7-ty-incl-the-margin-cut-tier-retry1/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/storefront.tiers-Won-Disco-2edf7-ty-incl-the-margin-cut-tier-retry1/error-context.md
+
+  4) tests/e2e/storefront.tiers.spec.ts:375:3 › Won Discounts quantity tiers: PDP, cart and checkout (MVP 3) — Horizon › PDP two-variants: switching Small → Large re-prices the table and the live price (= planCart) 
+
+    Error: live price for 3 item(s)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1350
+    Received: 1500
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at support/tiers.ts:345
+
+      343 |   await input.fill(String(quantity));
+      344 |   await input.dispatchEvent("change");
+    > 345 |   await expect
+          |   ^
+      346 |     .poll(async () => (await readBlock(page)).liveUnitCents, { message: `live price for ${quantity} item(s)`, timeout: 10_000 })
+      347 |     .toBe(unitCents);
+      348 | }
+        at setQuantity (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/support/tiers.ts:345:3)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.tiers.spec.ts:395:5
+
+    Test timeout of 45000ms exceeded.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/storefront.tiers-Won-Disco-9bf89-nd-the-live-price-planCart-/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/storefront.tiers-Won-Disco-9bf89-nd-the-live-price-planCart-/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/storefront.tiers-Won-Disco-9bf89-nd-the-live-price-planCart-/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: live price for 3 item(s)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1350
+    Received: 1500
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at support/tiers.ts:345
+
+      343 |   await input.fill(String(quantity));
+      344 |   await input.dispatchEvent("change");
+    > 345 |   await expect
+          |   ^
+      346 |     .poll(async () => (await readBlock(page)).liveUnitCents, { message: `live price for ${quantity} item(s)`, timeout: 10_000 })
+      347 |     .toBe(unitCents);
+      348 | }
+        at setQuantity (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/support/tiers.ts:345:3)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.tiers.spec.ts:395:5
+
+    Test timeout of 45000ms exceeded.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/storefront.tiers-Won-Disco-9bf89-nd-the-live-price-planCart--retry1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/storefront.tiers-Won-Disco-9bf89-nd-the-live-price-planCart--retry1/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/storefront.tiers-Won-Disco-9bf89-nd-the-live-price-planCart--retry1/error-context.md
+
+  5) tests/e2e/storefront.tiers.spec.ts:426:3 › Won Discounts quantity tiers: PDP, cart and checkout (MVP 3) — Horizon › cart: tiers per product (simple-a × 5 cut by margin, Small × 1 + Large × 2 counted together, simple-b none) = planCart; the cut tier on the PDP = in the cart 
+
+    Error: live price for 5 item(s)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 858
+    Received: 1000
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at support/tiers.ts:345
+
+      343 |   await input.fill(String(quantity));
+      344 |   await input.dispatchEvent("change");
+    > 345 |   await expect
+          |   ^
+      346 |     .poll(async () => (await readBlock(page)).liveUnitCents, { message: `live price for ${quantity} item(s)`, timeout: 10_000 })
+      347 |     .toBe(unitCents);
+      348 | }
+        at setQuantity (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/support/tiers.ts:345:3)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.tiers.spec.ts:437:5
+
+    Test timeout of 45000ms exceeded.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/storefront.tiers-Won-Disco-6e3ad-tier-on-the-PDP-in-the-cart/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/storefront.tiers-Won-Disco-6e3ad-tier-on-the-PDP-in-the-cart/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/storefront.tiers-Won-Disco-6e3ad-tier-on-the-PDP-in-the-cart/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: live price for 5 item(s)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 858
+    Received: 1000
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at support/tiers.ts:345
+
+      343 |   await input.fill(String(quantity));
+      344 |   await input.dispatchEvent("change");
+    > 345 |   await expect
+          |   ^
+      346 |     .poll(async () => (await readBlock(page)).liveUnitCents, { message: `live price for ${quantity} item(s)`, timeout: 10_000 })
+      347 |     .toBe(unitCents);
+      348 | }
+        at setQuantity (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/support/tiers.ts:345:3)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.tiers.spec.ts:437:5
+
+    Test timeout of 45000ms exceeded.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/storefront.tiers-Won-Disco-6e3ad-tier-on-the-PDP-in-the-cart-retry1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/storefront.tiers-Won-Disco-6e3ad-tier-on-the-PDP-in-the-cart-retry1/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/storefront.tiers-Won-Disco-6e3ad-tier-on-the-PDP-in-the-cart-retry1/error-context.md
+
+  5 failed
+    tests/e2e/storefront.embed.spec.ts:111:3 › Won Discounts app embed (MVP 0) — Horizon › renders the ready marker and boots window.WonDiscounts on the PDP 
+    tests/e2e/storefront.embed.spec.ts:139:3 › Won Discounts app embed (MVP 0) — Horizon › causes no horizontal overflow at 390px 
+    tests/e2e/storefront.tiers.spec.ts:273:3 › Won Discounts quantity tiers: PDP, cart and checkout (MVP 3) — Horizon › PDP simple-a: the table from the storefront config + variant pdp (F-T1, F-T2, F-T3), the live price follows the quantity incl. the margin-cut tier 
+    tests/e2e/storefront.tiers.spec.ts:375:3 › Won Discounts quantity tiers: PDP, cart and checkout (MVP 3) — Horizon › PDP two-variants: switching Small → Large re-prices the table and the live price (= planCart) 
+    tests/e2e/storefront.tiers.spec.ts:426:3 › Won Discounts quantity tiers: PDP, cart and checkout (MVP 3) — Horizon › cart: tiers per product (simple-a × 5 cut by margin, Small × 1 + Large × 2 counted together, simple-b none) = planCart; the cut tier on the PDP = in the cart 
+  11 skipped
+  1 passed (11.6m)
+npm error Lifecycle script `test:e2e` failed with error:
+npm error code 1
+npm error path /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts
+npm error workspace won-discounts
+npm error location /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts
+npm error command failed
+npm error command sh -c node ./scripts/require-e2e-contract.mjs
+
+── summary ────────────────────────────────────────────────
+   ✗ Horizon
+exit 1

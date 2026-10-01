@@ -7,9 +7,11 @@
 //   classifyStoredMargin(margin, { isFixtureCollection })
 //     → { kind: "default" }            protection off and nothing set beyond the
 //                                       defaults: nothing to do;
-//     → { kind: "fixture", profile }   exactly the margin seed ("margin") or the
+//     → { kind: "fixture", profile }   exactly the margin seed ("margin"), the
 //                                       Pro seed ("margin-pro": the one
-//                                       collection override of won-e2e-margin),
+//                                       collection override of won-e2e-margin)
+//                                       or the tiers seed ("tiers": min margin
+//                                       30 %, max 30 %, no override — MVP 3),
 //                                       on or off: reset to the defaults;
 //     → { kind: "foreign", reason }    anything else: leave it as it is.
 //
@@ -24,6 +26,7 @@ import {
   MARGIN_MAX_DISCOUNT_PERCENT,
   MARGIN_MIN_MARGIN_PERCENT,
 } from "./margin-fixture.mjs";
+import { TIERS_MAX_DISCOUNT_PERCENT, TIERS_MIN_MARGIN_PERCENT } from "./tiers-fixture.mjs";
 
 /** The app's default margin module (config defaults): off, maximum discount 50 %, nothing else. */
 export const DEFAULT_MAX_DISCOUNT_PERCENT = 50;
@@ -32,13 +35,12 @@ const isRecord = (v) => typeof v === "object" && v !== null && !Array.isArray(v)
 const keysOf = (o) => Object.keys(o).filter((k) => o[k] !== undefined).sort();
 const sameKeys = (o, keys) => JSON.stringify(keysOf(o)) === JSON.stringify([...keys].sort());
 
+function isGlobal(global, min, max) {
+  return isRecord(global) && sameKeys(global, ["minMarginPercent", "maxDiscountPercent"]) && global.minMarginPercent === min && global.maxDiscountPercent === max;
+}
+
 function isFixtureGlobal(global) {
-  return (
-    isRecord(global) &&
-    sameKeys(global, ["minMarginPercent", "maxDiscountPercent"]) &&
-    global.minMarginPercent === MARGIN_MIN_MARGIN_PERCENT &&
-    global.maxDiscountPercent === MARGIN_MAX_DISCOUNT_PERCENT
-  );
+  return isGlobal(global, MARGIN_MIN_MARGIN_PERCENT, MARGIN_MAX_DISCOUNT_PERCENT);
 }
 
 function isDefault(margin) {
@@ -55,7 +57,7 @@ function isDefault(margin) {
 /**
  * @param {unknown} margin  the stored config's modules.margin
  * @param {{ isFixtureCollection: (collectionId: string) => boolean }} opts
- * @returns {{ kind: "default" } | { kind: "fixture", profile: "margin" | "margin-pro", collectionId?: string } | { kind: "foreign", reason: string }}
+ * @returns {{ kind: "default" } | { kind: "fixture", profile: "margin" | "margin-pro" | "tiers", collectionId?: string } | { kind: "foreign", reason: string }}
  */
 export function classifyStoredMargin(margin, { isFixtureCollection }) {
   if (margin === undefined || margin === null) return { kind: "default" };
@@ -63,6 +65,9 @@ export function classifyStoredMargin(margin, { isFixtureCollection }) {
   if (isDefault(margin)) return { kind: "default" };
   if (!sameKeys(margin, ["enabled", "global", "perCollection"])) return { kind: "foreign", reason: `unexpected fields ${JSON.stringify(keysOf(margin))}` };
   if (typeof margin.enabled !== "boolean") return { kind: "foreign", reason: "enabled is not a boolean" };
+  if (isGlobal(margin.global, TIERS_MIN_MARGIN_PERCENT, TIERS_MAX_DISCOUNT_PERCENT) && Array.isArray(margin.perCollection) && margin.perCollection.length === 0) {
+    return { kind: "fixture", profile: "tiers" };
+  }
   if (!isFixtureGlobal(margin.global)) {
     return { kind: "foreign", reason: `global settings ${JSON.stringify(margin.global)} are not the fixture's (min ${MARGIN_MIN_MARGIN_PERCENT} %, max ${MARGIN_MAX_DISCOUNT_PERCENT} %)` };
   }

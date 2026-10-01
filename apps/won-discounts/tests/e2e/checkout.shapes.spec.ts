@@ -156,9 +156,10 @@ function exactAmount(total: number, line: PlanLine): Emitted {
 /**
  * output.rs percent_on_line: a percent as is, unless its amount on the line is
  * a rounding tie (half a haléř: Shopify rounds S × P / 100 itself and may round
- * it the other way than the plan) → its exact amount. CZK prices are the store
- * price converted at the market's live rate, so whether a line hits a tie moves
- * from day to day (checkout.mvp1.spec.ts hit one on 2026-09-29).
+ * it the other way than the plan) → its exact amount. Whether a line hits a
+ * tie depends on its CZK price: converted at a live rate while the shop was in
+ * USD (checkout.mvp1.spec.ts hit one on 2026-09-29), the catalog's own Kč price
+ * since the shop currency became CZK (2026-09-30).
  */
 function percentOnLine(percent: number, amount: number, line: PlanLine): Emitted {
   return roundingTiePossible(line.subtotal, percent) ? exactAmount(amount, line) : percentage(percent);

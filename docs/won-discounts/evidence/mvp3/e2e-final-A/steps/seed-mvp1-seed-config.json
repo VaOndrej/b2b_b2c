@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "markets": [],
+  "engine": {
+    "combination": {
+      "outletWithAnything": false,
+      "productWithProduct": "best",
+      "productWithOrder": true,
+      "productWithShipping": true,
+      "orderWithShipping": true
+    }
+  },
+  "modules": {
+    "codes": {
+      "rules": [
+        {
+          "id": "e2e-mvp1-auto-10",
+          "name": "E2E auto 10 %",
+          "method": "automatic",
+          "enabled": true,
+          "value": {
+            "kind": "percentage",
+            "percent": 10
+          },
+          "target": {
+            "kind": "products",
+            "productIds": [
+              "gid://shopify/Product/9692429058289"
+            ],
+            "variantIds": []
+          }
+        },
+        {
+          "id": "e2e-mvp1-code-15",
+          "name": "E2E kód",
+          "method": "code",
+          "enabled": true,
+          "codes": [
+            "WONE2E15"
+          ],
+          "value": {
+            "kind": "percentage",
+            "percent": 15
+          },
+          "target": {
+            "kind": "order"
+          }
+        }
+      ]
+    },
+    "tiers": {
+      "sets": []
+    },
+    "rewards": {
+      "gifts": [],
+      "countOtherDiscounts": false,
+      "giftDeclinable": true
+    },
+    "outlet": {
+      "display": "strike_badge",
+      "reopenOnReturnAfterEnd": "ask"
+    },
+    "margin": {
+      "enabled": false,
+      "global": {
+        "maxDiscountPercent": 50
+      },
+      "perCollection": []
+    }
+  },
+  "campaigns": [],
+  "storefront": {
+    "appearancePreset": "default",
+    "cardPricesEnabled": false
+  },
+  "locales": {
+    "cs": {},
+    "sk": {},
+    "en": {}
+  },
+  "onboarding": {
+    "goals": [],
+    "step": 1
+  }
+}

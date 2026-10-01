@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "markets": [],
+  "engine": {
+    "combination": {
+      "outletWithAnything": false,
+      "productWithProduct": "best",
+      "productWithOrder": true,
+      "productWithShipping": true,
+      "orderWithShipping": true
+    }
+  },
+  "modules": {
+    "codes": {
+      "rules": [
+        {
+          "id": "e2e-margin-auto-50",
+          "name": "E2E marže auto 50 %",
+          "method": "automatic",
+          "enabled": true,
+          "value": {
+            "kind": "percentage",
+            "percent": 50
+          },
+          "target": {
+            "kind": "products",
+            "productIds": [
+              "gid://shopify/Product/9692429058289",
+              "gid://shopify/Product/9692429091057",
+              "gid://shopify/Product/9692429189361"
+            ],
+            "variantIds": []
+          }
+        },
+        {
+          "id": "e2e-margin-code-20",
+          "name": "E2E marže kód 20 %",
+          "method": "code",
+          "enabled": true,
+          "codes": [
+            "WONE2EM20"
+          ],
+          "value": {
+            "kind": "percentage",
+            "percent": 20
+          },
+          "target": {
+            "kind": "order"
+          }
+        },
+        {
+          "id": "e2e-margin-code-60",
+          "name": "E2E marže kód 60 %",
+          "method": "code",
+          "enabled": true,
+          "codes": [
+            "WONE2EM60"
+          ],
+          "value": {
+            "kind": "percentage",
+            "percent": 60
+          },
+          "target": {
+            "kind": "order"
+          }
+        }
+      ]
+    },
+    "tiers": {
+      "sets": []
+    },
+    "rewards": {
+      "gifts": [],
+      "countOtherDiscounts": false,
+      "giftDeclinable": true
+    },
+    "outlet": {
+      "display": "strike_badge",
+      "reopenOnReturnAfterEnd": "ask"
+    },
+    "margin": {
+      "enabled": true,
+      "global": {
+        "minMarginPercent": 25,
+        "maxDiscountPercent": 30
+      },
+      "perCollection": []
+    }
+  },
+  "campaigns": [],
+  "storefront": {
+    "appearancePreset": "default",
+    "cardPricesEnabled": false
+  },
+  "locales": {
+    "cs": {},
+    "sk": {},
+    "en": {}
+  },
+  "onboarding": {
+    "goals": [],
+    "step": 1
+  }
+}

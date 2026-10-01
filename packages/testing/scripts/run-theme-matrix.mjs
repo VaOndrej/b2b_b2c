@@ -114,6 +114,7 @@ function createThemeDefinitions(config, appRoot) {
         themeKey: key,
       }),
       settingsDataOverlay: config.themes[key].settingsDataOverlay,
+      templateOverlays: config.themes[key].templateOverlays ?? [],
       appRoot,
       directoryEnvironmentKey: `SHOPIFY_E2E_THEME_DIR_${upperKey}`,
       nameEnvironmentKey: `SHOPIFY_E2E_THEME_NAME_${upperKey}`,
@@ -363,6 +364,7 @@ async function runTheme({
     themeKey: theme.key,
     sourceDirectory: theme.canonicalDirectory,
     settingsDataOverlay: theme.settingsDataOverlay,
+    templateOverlays: theme.templateOverlays,
   });
   const remoteName = resolveThemeName(theme);
   const { port, fellBack, preferred } = await reserveRunPort(theme);
@@ -376,6 +378,13 @@ async function runTheme({
   console.log(
     `   overlay:      ${theme.settingsDataOverlay ?? "none (canonical settings_data)"}`,
   );
+  for (const overlay of theme.templateOverlays) {
+    console.log(
+      `   template:     ${overlay.template} + ${overlay.block.id}${
+        overlay.parentBlockTypes ? ` (in ${overlay.parentBlockTypes.join("|")})` : ""
+      }`,
+    );
+  }
   console.log(`   remote theme: ${remoteName}`);
   console.log(`   origin:       ${baseUrl}`);
   if (fellBack) {
@@ -481,6 +490,7 @@ async function main() {
         themeKey: theme.key,
         sourceDirectory: theme.canonicalDirectory,
         settingsDataOverlay: theme.settingsDataOverlay,
+        templateOverlays: theme.templateOverlays,
       });
       const preferredPort = resolvePreferredPort(theme);
       console.log(`  ${theme.label}`);
@@ -489,6 +499,13 @@ async function main() {
       console.log(
         `    overlay:      ${inspection.overlayPath ?? "none (canonical settings_data)"}`,
       );
+      for (const plan of inspection.templateOverlayPlans) {
+        console.log(
+          `    template:     ${plan.template}#${plan.sectionKey}${
+            plan.parentBlockKey ? `/${plan.parentBlockKey}` : ""
+          } ${plan.action} ${plan.blockId} at ${plan.index}`,
+        );
+      }
       console.log(`    remote theme: ${resolveThemeName(theme)}`);
       console.log(`    port:         :${preferredPort} (preferred)`);
     }

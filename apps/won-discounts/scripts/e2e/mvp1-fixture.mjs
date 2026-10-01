@@ -5,7 +5,8 @@
 //   "E2E kód"        code WONE2E15, 15 % on the order
 //
 // Both values are percentages: they hold in every currency the markets use
-// (cesko CZK, slovensko EUR, base USD) with no per-currency amount to convert.
+// (cesko CZK = the shop's base currency since 2026-09-30, slovensko EUR) with
+// no per-currency amount to convert.
 // Neither rule has a fixed amount or a minimum, the only config fields that are
 // per currency (MoneyByCurrency) and that the engine gates on (`currency_missing`).
 

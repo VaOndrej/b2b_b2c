@@ -1,6 +1,8 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
+import { validateTemplateOverlay } from "./template-overlays.js";
+
 export const THEME_KEYS = ["horizon", "dawn"];
 const DEFAULT_THEME_DEV_TIMEOUT_MS = 240_000;
 
@@ -66,6 +68,22 @@ export function validateRunnerConfig(value) {
         entry.settingsDataOverlay,
         `themes.${key}.settingsDataOverlay`,
       );
+    }
+    if (entry.templateOverlays !== undefined) {
+      if (!Array.isArray(entry.templateOverlays)) {
+        throw new Error(`themes.${key}.templateOverlays must be an array.`);
+      }
+      entry.templateOverlays.forEach((overlay, index) => {
+        try {
+          validateTemplateOverlay(overlay);
+        } catch (error) {
+          throw new Error(
+            `themes.${key}.templateOverlays[${index}]: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }
+      });
     }
     if (
       !Number.isInteger(entry.preferredPort) ||

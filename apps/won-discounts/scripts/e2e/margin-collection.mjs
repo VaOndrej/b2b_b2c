@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 /* eslint-env node */
-// The Pro margin E2E's test collection (MVP 2, Task 5b phase B):
-// `won-e2e-margin`, a MANUAL collection holding won-e2e-simple-b only (see
-// scripts/e2e/margin-fixture.mjs). The seed profile `margin-pro` gives it its
-// own margin setting; this script only creates and deletes the collection.
+// The Pro E2E test collections (manual collections of won-e2e-* products):
+//   --fixture margin (default)  `won-e2e-margin`, won-e2e-simple-b only (MVP 2,
+//                               scripts/e2e/margin-fixture.mjs): the seed profile
+//                               `margin-pro` gives it its own margin setting;
+//   --fixture tiers             `won-e2e-tiers`, won-e2e-simple-b + won-e2e-spare
+//                               (MVP 3, scripts/e2e/tiers-fixture.mjs): the seed
+//                               profile `tiers-pro` scopes a tier set to it.
+// This script only creates and deletes the collection.
 //
 //   node apps/won-discounts/scripts/e2e/margin-collection.mjs
 //       DRY-RUN: reads the store, prints the collectionCreate it would send.
@@ -32,6 +36,7 @@ import { register } from "tsx/esm/api";
 import { WON_E2E_PRODUCT_LIST } from "@won/testing/e2e-products";
 
 import { MARGIN_COLLECTION_HANDLE, MARGIN_COLLECTION_MEMBER_HANDLE, MARGIN_COLLECTION_TITLE } from "./margin-fixture.mjs";
+import { TIERS_COLLECTION_HANDLE, TIERS_COLLECTION_MEMBER_HANDLES, TIERS_COLLECTION_TITLE } from "./tiers-fixture.mjs";
 
 register();
 
@@ -45,9 +50,16 @@ const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(name);
 const option = (name) => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : undefined);
 for (const [i, arg] of argv.entries()) {
-  if (argv[i - 1] === "--out") continue;
-  if (!["--live", "--delete", "--state", "--out"].includes(arg)) throw new Error(`unknown argument ${arg}`);
+  if (argv[i - 1] === "--out" || argv[i - 1] === "--fixture") continue;
+  if (!["--live", "--delete", "--state", "--out", "--fixture"].includes(arg)) throw new Error(`unknown argument ${arg}`);
 }
+const FIXTURES = {
+  margin: { handle: MARGIN_COLLECTION_HANDLE, title: MARGIN_COLLECTION_TITLE, members: [MARGIN_COLLECTION_MEMBER_HANDLE] },
+  tiers: { handle: TIERS_COLLECTION_HANDLE, title: TIERS_COLLECTION_TITLE, members: TIERS_COLLECTION_MEMBER_HANDLES },
+};
+const FIXTURE_NAME = option("--fixture") ?? "margin";
+if (!Object.hasOwn(FIXTURES, FIXTURE_NAME)) throw new Error(`unknown --fixture ${FIXTURE_NAME} (${Object.keys(FIXTURES).join(", ")})`);
+const { handle: COLLECTION_HANDLE, title: COLLECTION_TITLE, members: MEMBER_HANDLES } = FIXTURES[FIXTURE_NAME];
 const live = flag("--live");
 const remove = flag("--delete");
 const stateOnly = flag("--state");
@@ -124,7 +136,9 @@ const DELETE = `mutation WonE2eMarginCollectionDelete($input: CollectionDeleteIn
 }`;
 
 async function readState() {
-  const data = await call(STATE_QUERY, { handle: MARGIN_COLLECTION_HANDLE, productHandle: MARGIN_COLLECTION_MEMBER_HANDLE });
+  const reads = [];
+  for (const productHandle of MEMBER_HANDLES) reads.push(await call(STATE_QUERY, { handle: COLLECTION_HANDLE, productHandle }));
+  const data = reads[0];
   const c = data.collectionByIdentifier;
   return {
     checkedAt: new Date().toISOString(),
@@ -138,15 +152,15 @@ async function readState() {
           products: c.products.nodes.map((p) => p.handle),
         }
       : null,
-    member: data.product ? { id: data.product.id, handle: data.product.handle, collections: data.product.collections.nodes.map((n) => n.handle) } : null,
+    members: reads.map((r, i) => (r.product ? { id: r.product.id, handle: r.product.handle, collections: r.product.collections.nodes.map((n) => n.handle) } : { handle: MEMBER_HANDLES[i], missing: true })),
   };
 }
 
 function print(state, label) {
   const c = state.collection;
   console.log(
-    `# ${label}: collection ${MARGIN_COLLECTION_HANDLE} ${c ? `= ${c.id} "${c.title}" (${c.smart ? "smart" : "manual"}), products [${c.products.join(", ")}]` : "does not exist"}; ` +
-      `${MARGIN_COLLECTION_MEMBER_HANDLE} is in [${state.member?.collections.join(", ") ?? "—"}]`,
+    `# ${label}: collection ${COLLECTION_HANDLE} ${c ? `= ${c.id} "${c.title}" (${c.smart ? "smart" : "manual"}), products [${c.products.join(", ")}]` : "does not exist"}; ` +
+      state.members.map((m) => `${m.handle} is in [${m.collections?.join(", ") ?? "—"}]`).join("; "),
   );
 }
 
@@ -167,7 +181,9 @@ async function readUntil(done) {
   return state;
 }
 
-const onlyMember = (c) => c !== null && !c.smart && c.products.length === 1 && c.products[0] === MARGIN_COLLECTION_MEMBER_HANDLE;
+const onlyMember = (c) => c !== null && !c.smart && c.products.length === MEMBER_HANDLES.length && [...c.products].sort().join(",") === [...MEMBER_HANDLES].sort().join(",");
+const allMembersIn = (s) => s.members.every((m) => (m.collections ?? []).includes(COLLECTION_HANDLE));
+const noMemberIn = (s) => s.members.every((m) => !(m.collections ?? []).includes(COLLECTION_HANDLE));
 
 async function main() {
   const before = await readState();
@@ -176,7 +192,8 @@ async function main() {
     console.log(JSON.stringify(before, null, 2));
     return;
   }
-  if (!before.member) throw new Error(`product ${MARGIN_COLLECTION_MEMBER_HANDLE} not found on ${STORE}`);
+  const missing = before.members.filter((m) => m.missing).map((m) => m.handle);
+  if (missing.length > 0) throw new Error(`product(s) ${missing.join(", ")} not found on ${STORE}`);
 
   if (remove) {
     const c = before.collection;
@@ -185,7 +202,7 @@ async function main() {
       return;
     }
     const foreign = c.products.filter((handle) => !E2E_HANDLES.has(handle));
-    if (c.title !== MARGIN_COLLECTION_TITLE || foreign.length > 0) {
+    if (c.title !== COLLECTION_TITLE || foreign.length > 0) {
       throw new Error(`refusing to delete ${c.id}: title "${c.title}" / products outside the E2E catalog [${foreign.join(", ")}] — not the fixture's collection`);
     }
     console.log(`\n--- ${live ? "sending" : "would send"} WonE2eMarginCollectionDelete ---\n${JSON.stringify({ input: { id: c.id } }, null, 2)}`);
@@ -196,21 +213,21 @@ async function main() {
     const data = await call(DELETE, { input: { id: c.id } });
     const errors = data.collectionDelete.userErrors;
     if (errors.length) throw new Error(`collectionDelete: ${errors.map((e) => `${e.field?.join(".")}: ${e.message}`).join("; ")}`);
-    const after = await readUntil((s) => s.collection === null && !(s.member?.collections ?? []).includes(MARGIN_COLLECTION_HANDLE));
+    const after = await readUntil((s) => s.collection === null && noMemberIn(s));
     print(after, "read-back");
-    evidence("margin-collection-delete", { store: STORE, deleted: data.collectionDelete.deletedCollectionId, before, after });
+    evidence(`${FIXTURE_NAME}-collection-delete`, { store: STORE, deleted: data.collectionDelete.deletedCollectionId, before, after });
     process.exitCode = after.collection === null ? 0 : 1;
     return;
   }
 
   if (before.collection) {
-    if (onlyMember(before.collection) && before.collection.title === MARGIN_COLLECTION_TITLE) {
-      console.log("\n# create: nothing to do (the collection exists with exactly its member)");
+    if (onlyMember(before.collection) && before.collection.title === COLLECTION_TITLE) {
+      console.log("\n# create: nothing to do (the collection exists with exactly its members)");
       return;
     }
-    throw new Error(`the collection ${MARGIN_COLLECTION_HANDLE} exists but is not the fixture's (${JSON.stringify(before.collection)}); fix it by hand`);
+    throw new Error(`the collection ${COLLECTION_HANDLE} exists but is not the fixture's (${JSON.stringify(before.collection)}); fix it by hand`);
   }
-  const input = { title: MARGIN_COLLECTION_TITLE, handle: MARGIN_COLLECTION_HANDLE, products: [before.member.id] };
+  const input = { title: COLLECTION_TITLE, handle: COLLECTION_HANDLE, products: before.members.map((m) => m.id) };
   console.log(`\n--- ${live ? "sending" : "would send"} WonE2eMarginCollectionCreate ---\n${JSON.stringify({ input }, null, 2)}`);
   if (!live) {
     console.log("\n(dry-run: nothing written; pass --live)");
@@ -219,9 +236,9 @@ async function main() {
   const data = await call(CREATE, { input });
   const errors = data.collectionCreate.userErrors;
   if (errors.length) throw new Error(`collectionCreate: ${errors.map((e) => `${e.field?.join(".")}: ${e.message}`).join("; ")}`);
-  const after = await readUntil((s) => onlyMember(s.collection) && (s.member?.collections ?? []).includes(MARGIN_COLLECTION_HANDLE));
+  const after = await readUntil((s) => onlyMember(s.collection) && allMembersIn(s));
   print(after, "read-back");
-  evidence("margin-collection-create", { store: STORE, created: data.collectionCreate.collection, before, after });
+  evidence(`${FIXTURE_NAME}-collection-create`, { store: STORE, created: data.collectionCreate.collection, before, after });
   process.exitCode = onlyMember(after.collection) ? 0 : 1;
 }
 

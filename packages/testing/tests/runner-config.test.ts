@@ -146,6 +146,24 @@ test("runner config validates isolated workspaces, overlays and app-owned ports"
   );
 });
 
+test("runner config validates per-theme templateOverlays (optional, each a valid overlay)", () => {
+  const block = { id: "won_tiers", type: "shopify://apps/x/blocks/tiers/11111111-1111-1111-1111-111111111111" };
+  const withOverlays = (horizon: unknown) => ({
+    ...VALID_CONFIG,
+    themes: { ...VALID_CONFIG.themes, horizon: { ...VALID_CONFIG.themes.horizon, templateOverlays: horizon } },
+  });
+  assert.doesNotThrow(() =>
+    validateRunnerConfig(
+      withOverlays([{ template: "templates/product.json", parentBlockTypes: ["_product-details"], block, position: { beforeType: "buy-buttons" } }]),
+    ),
+  );
+  assert.throws(() => validateRunnerConfig(withOverlays({})), /themes\.horizon\.templateOverlays must be an array/u);
+  assert.throws(
+    () => validateRunnerConfig(withOverlays([{ template: "templates/product.json", block: { id: "x" } }])),
+    /themes\.horizon\.templateOverlays\[0\]: templateOverlay\.block\.type must be a non-empty string/u,
+  );
+});
+
 test("--only accepts configured themes and rejects unknown values", () => {
   assert.equal(parseRunnerArgs(["--only", "dawn"]).only, "dawn");
   assert.equal(parseRunnerArgs(["--only=horizon"]).only, "horizon");

@@ -1,0 +1,72 @@
+{
+  "checkedAt": "2026-10-01T06:37:03.889Z",
+  "protoNodes": [],
+  "foreignProtoNodes": [],
+  "allDiscountNodes": [
+    {
+      "id": "gid://shopify/DiscountAutomaticNode/2179405644017",
+      "title": "Test_Code_discount",
+      "status": "EXPIRED",
+      "type": "DiscountAutomaticApp"
+    },
+    {
+      "id": "gid://shopify/DiscountAutomaticNode/2179409412337",
+      "title": "Dárek zdarma",
+      "status": "EXPIRED",
+      "type": "DiscountAutomaticBxgy"
+    },
+    {
+      "id": "gid://shopify/DiscountAutomaticNode/2179582558449",
+      "title": "Free gift",
+      "status": "EXPIRED",
+      "type": "DiscountAutomaticApp"
+    },
+    {
+      "id": "gid://shopify/DiscountAutomaticNode/2204315517169",
+      "title": "Won Discounts",
+      "status": "ACTIVE",
+      "type": "DiscountAutomaticApp"
+    }
+  ],
+  "products": [
+    {
+      "handle": "won-e2e-simple-a",
+      "id": "gid://shopify/Product/9692429058289",
+      "wonProductMetafield": null
+    },
+    {
+      "handle": "won-e2e-simple-b",
+      "id": "gid://shopify/Product/9692429091057",
+      "wonProductMetafield": null
+    },
+    {
+      "handle": "won-e2e-two-variants",
+      "id": "gid://shopify/Product/9692429123825",
+      "wonProductMetafield": null
+    },
+    {
+      "handle": "won-e2e-multiaxis",
+      "id": "gid://shopify/Product/9692429156593",
+      "wonProductMetafield": null
+    },
+    {
+      "handle": "won-e2e-spare",
+      "id": "gid://shopify/Product/9692429189361",
+      "wonProductMetafield": null
+    }
+  ],
+  "shop": {
+    "id": "gid://shopify/Shop/78971076849",
+    "functionConfigMetafield": {
+      "id": "gid://shopify/Metafield/191567895494897",
+      "namespace": "app--428983222273--won_discounts",
+      "key": "function_config",
+      "type": "json",
+      "value": "{\"schemaVersion\":1,\"campaignId\":null,\"campaignVarsVersion\":null,\"engine\":{\"combination\":{\"outletWithAnything\":false,\"productWithProduct\":\"best\",\"productWithOrder\":true,\"productWithShipping\":true,\"orderWithShipping\":true}},\"marketCountries\":{},\"modules\":{\"codes\":{\"rules\":[]},\"tiers\":{\"sets\":[]},\"rewards\":{\"gifts\":[],\"countOtherDiscounts\":false},\"margin\":{\"enabled\":false}},\"campaigns\":[]}",
+      "updatedAt": "2026-10-01T06:35:20Z"
+    }
+  },
+  "clean": false
+}
+
+Evidence: /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/t7/final-A/verify-after/cleanup-final.json
