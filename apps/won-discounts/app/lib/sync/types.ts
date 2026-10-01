@@ -112,7 +112,10 @@ export interface SyncDeps {
    * `shopCurrency` gives its margin the K4 v2 key `k` and `cur` (the same
    * string the cost mirror's pdp keys are built with).
    */
-  buildStorefrontConfig: (config: ConfigView, options: { configVersion: string; shopCurrency?: string }) => StorefrontConfigV1;
+  buildStorefrontConfig: (
+    config: ConfigView,
+    options: { configVersion: string; shopCurrency?: string; variantHandles?: Readonly<Record<string, string>> },
+  ) => StorefrontConfigV1;
   now: () => Date;
   logger: SyncLogger;
   /** Injectable for tests (default: setTimeout). */

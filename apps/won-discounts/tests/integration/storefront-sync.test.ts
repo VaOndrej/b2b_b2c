@@ -329,3 +329,67 @@ test("a storefront config over Shopify's 128 KB json limit is not written (faile
   assert.equal(store.ops.filter((op) => op === "WonSyncStorefrontConfig" || op === "WonSyncStorefrontConfigSet").length, 0, "not even read");
   assert.ok(result.sync!.steps.some((s) => s.step === "shop_config.write" && s.ok));
 });
+
+// --- MVP 4 (contract R7): rewards in the storefront config ------------------------------------------
+
+test("R7: the gift variants' product handles are read as the app and shipped with the rewards; BILL-1 gates the ladder on Free", async () => {
+  const store = new FakeStore();
+  const gift = store.sync.addProduct(7, 2);
+  gift.handle = "darek";
+  const second = store.sync.addProduct(8);
+  const plan = { current: "pro" as Plan };
+  const rewards = {
+    freeShipping: { threshold: { CZK: 1000_00, EUR: 40_00 } },
+    gifts: [
+      { id: "gift-1", threshold: { CZK: 1500_00 }, choices: [gift.variantIds[0], gift.variantIds[1]], fallbackVariantId: second.variantIds[0] },
+      { id: "gift-2", threshold: { CZK: 3000_00 }, choices: [second.variantIds[0]] },
+    ],
+    countOtherDiscounts: false,
+  };
+  const result = await save(store, plan, { ...input(), modules: { ...input().modules, rewards } });
+  assert.equal(result.sync?.ok, true, JSON.stringify(result.sync?.errors));
+  const sf = store.sync.storefrontConfig() as { rewards: unknown };
+  const n = (gid: string) => Number(gid.split("/").pop());
+  assert.deepEqual(sf.rewards, {
+    ship: { CZK: 1000_00, EUR: 40_00 },
+    gifts: [
+      { id: "gift-1", t: { CZK: 1500_00 }, c: [{ v: n(gift.variantIds[0]!), h: "darek" }, { v: n(gift.variantIds[1]!), h: "darek" }], f: { v: n(second.variantIds[0]!), h: "product-8" } },
+      { id: "gift-2", t: { CZK: 3000_00 }, c: [{ v: n(second.variantIds[0]!), h: "product-8" }] },
+    ],
+    other: false,
+  });
+  // The shop config ships the compact rewards (R5).
+  const payload = JSON.parse(store.sync.shopMetafieldValue("function_config")!) as { modules: { rewards: unknown } };
+  assert.deepEqual(payload.modules.rewards, {
+    s: { CZK: 1000_00, EUR: 40_00 },
+    g: [
+      ["gift-1", { CZK: 1500_00 }, [n(gift.variantIds[0]!), n(gift.variantIds[1]!), n(second.variantIds[0]!)]],
+      ["gift-2", { CZK: 3000_00 }, [n(second.variantIds[0]!)]],
+    ],
+  });
+
+  plan.current = "free";
+  await resyncShop({ client: store, db: db.prisma, shop, createSync: syncFor(plan), logger: quiet });
+  const free = store.sync.storefrontConfig() as { rewards: { gifts: { id: string; c: unknown[] }[] } };
+  assert.deepEqual(
+    free.rewards.gifts.map((g) => [g.id, g.c.length]),
+    [["gift-1", 1]],
+    "Free: the first tier and its first gift (the fallback stays)",
+  );
+});
+
+test("R7: a deleted gift variant is a failed step and is left out of the storefront config; the sync goes on", async () => {
+  const store = new FakeStore();
+  const gift = store.sync.addProduct(9);
+  const plan = { current: "pro" as Plan };
+  const rewards = { gifts: [{ id: "gift-1", threshold: { CZK: 500_00 }, choices: ["gid://shopify/ProductVariant/424242", gift.variantIds[0]] }] };
+  const result = await save(store, plan, { ...input(), modules: { ...input().modules, rewards } });
+  const missing = result.sync!.steps.filter((s) => s.step.startsWith("rewards.variant_missing"));
+  assert.deepEqual(
+    missing.map((s) => [s.step, s.ok]),
+    [["rewards.variant_missing:gid://shopify/ProductVariant/424242", false]],
+  );
+  const sf = store.sync.storefrontConfig() as { rewards: { gifts: { c: { v: number }[] }[] } };
+  assert.deepEqual(sf.rewards.gifts[0]!.c.map((c) => c.v), [Number(gift.variantIds[0]!.split("/").pop())]);
+  assert.ok(result.sync!.steps.some((s) => s.step === "storefront_config.write" && s.ok));
+});

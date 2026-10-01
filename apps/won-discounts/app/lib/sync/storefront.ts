@@ -79,16 +79,58 @@ export interface StorefrontWriteArgs {
 
 type InstallationRead = { currentAppInstallation: { id: string; metafield: { value: string } | null } | null };
 
+/** Step of a gift variant Shopify no longer has (MVP 4, R7): `rewards.variant_missing:<variant GID>`. */
+export const GIFT_VARIANT_MISSING_STEP = "rewards.variant_missing";
+
+/** The gift variants of the gated config: every tier's choices and fallback, config order, once each. */
+export function giftVariantIds(config: ConfigView): string[] {
+  const out: string[] = [];
+  for (const tier of config.modules.rewards.gifts) {
+    for (const id of [...tier.choices, ...(tier.fallbackVariantId ? [tier.fallbackVariantId] : [])]) if (!out.includes(id)) out.push(id);
+  }
+  return out;
+}
+
+type GiftVariantsRead = { nodes: ({ id?: string; product?: { handle?: string | null } | null } | null)[] };
+
+/**
+ * The product handle of every gift variant (R7), read as the app. A variant
+ * Shopify does not return (deleted, or not a variant) is a failed step: the
+ * storefront cannot show that gift (the function still makes it free), and the
+ * admin says which. A failed read leaves every gift out of the storefront
+ * config for this run (a failed step; the next sync retries) — never fatal.
+ */
+async function giftVariantHandles(transport: Transport, ids: readonly string[], record: (step: SyncStep) => void): Promise<Record<string, string>> {
+  const handles: Record<string, string> = {};
+  if (ids.length === 0) return handles;
+  let data: GiftVariantsRead;
+  try {
+    data = await transport.call("giftVariants", { ids });
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    record({ step: GIFT_VARIANT_MISSING_STEP, ok: false, detail: `could not read the gift variants: ${errorText(error)} — the cart shows no gift until the next sync` });
+    return handles;
+  }
+  ids.forEach((id, i) => {
+    const handle = data.nodes?.[i]?.id === id ? data.nodes[i]?.product?.handle : null;
+    if (typeof handle === "string" && handle !== "") handles[id] = handle;
+    else record({ step: `${GIFT_VARIANT_MISSING_STEP}:${id}`, ok: false, detail: `gift variant ${id} was not found — the cart cannot show it` });
+  });
+  return handles;
+}
+
 /** Write the storefront config (see the header). Never throws, except a re-auth Response. */
 export async function writeStorefrontConfig(args: StorefrontWriteArgs): Promise<void> {
   const { transport, record } = args;
   const fail = (step: string, detail: string) => record({ step, ok: false, detail: `${detail} — the product page keeps the previous storefront config; the next sync retries` });
+  const variantHandles = await giftVariantHandles(transport, giftVariantIds(args.config), record);
   let json: string;
   try {
     const configVersion = await storefrontConfigVersion(args.deps.db, args.shop, args.configVersionId, args.stored);
     const value: StorefrontConfigV1 = args.deps.buildStorefrontConfig(args.config, {
       configVersion,
       ...(args.shopCurrency ? { shopCurrency: args.shopCurrency } : {}),
+      variantHandles,
     });
     json = JSON.stringify(value);
   } catch (error) {

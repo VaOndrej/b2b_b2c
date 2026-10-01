@@ -48,6 +48,8 @@ export interface FakeProduct {
   variantIds: string[];
   metafields: Map<string, FakeMetafield>;
   title?: string;
+  /** Default `product-<numeric id>`. */
+  handle?: string;
 }
 
 /** A variant with its inventory item (cost mirror, MVP 2). */
@@ -424,6 +426,14 @@ export class FakeShopify implements AdminClient {
         return { shop: { id: this.shopId, metafield: this.shopMetafields.get(mfKey("$app:won_discounts", "function_config")) ?? null } };
       case "WonSyncFunctions":
         return { shopifyFunctions: { nodes: this.functions } };
+      case "WonSyncGiftVariants":
+        return {
+          nodes: (v.ids as string[]).map((id) => {
+            const variant = this.variants.get(id);
+            const product = variant ? this.products.get(variant.productId) : undefined;
+            return variant && product ? { id, product: { handle: product.handle ?? `product-${product.id.split("/").pop()}` } } : null;
+          }),
+        };
       case "WonSyncNodes":
         return { nodes: (v.ids as string[]).map((id) => (this.nodes.has(id) ? this.nodeView(this.nodes.get(id)!) : null)) };
       case "WonSyncAutomaticCreate": {

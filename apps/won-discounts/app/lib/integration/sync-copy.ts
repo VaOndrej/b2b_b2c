@@ -90,6 +90,10 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
       ? { key: "sync.problem.tiersTooLargeMany", params: { collection, n: count - 1, limit } }
       : { key: "sync.problem.tiersTooLarge", params: { collection, limit } };
   }
+  if (step.step.startsWith("rewards.variant_missing")) {
+    // MVP 4 (R7): a gift variant Shopify no longer has (or the variants could not be read): never the GID.
+    return { key: step.step.includes(":") ? "sync.problem.giftMissing" : "sync.problem.giftUnread", params: {} };
+  }
   if (step.step === "margin.too_large") {
     // The collection's title and size (products.ts collectionLimits): the stricter value applies to the whole store.
     // An exact count is ≤ 10 000 (Shopify counts exactly only up to it): the margin collections read first used the budget.

@@ -13,7 +13,9 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > vizuální QA, audit s opravenými nálezy, checkpoint, push).
 
 - **Fáze: MVP 4 (Odměny + košík) — plán a kontrakty R1–R9 hotové** ([`plans/2026-10-01-won-discounts-mvp4.md`](plans/2026-10-01-won-discounts-mvp4.md)),
-  Task 0 (rozpočet Wasm) změřen, další krok **Task 1 core** (testy červené první). MVP 3 uzavřené ✅ (badge `Beta`).
+  Task 0 (rozpočet Wasm) změřen, **Task 1 core hotový** (`9cb012e`: R1–R5, R7, explain, tierHint přeplánováním; core 809 ✓).
+  Další krok **Task 2 Rust** (port R1–R3 + payload `modules.rewards`, fixtures, parita, replay, rozpočet, velikost Wasm).
+  MVP 3 uzavřené ✅ (badge `Beta`).
   Checkpoint MVP 3 níž v „Checkpointy MVP“; „Předávka MVP 3“ zůstává jako historie.
 - **Poslední commit:** checkpoint MVP 3 (viz `git log`), pushnuto na `origin/main`.
 - `shopify app dev` **neběží**. E2E runbook (MVP 3) a skripty běhu: `profile.sh`-styl průchod = seed dry-run → live →

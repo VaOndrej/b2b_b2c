@@ -82,6 +82,19 @@ export const GQL = {
   }
 }`,
 
+  // The gift variants' product handles (MVP 4, contract R7): Liquid renders a gift through
+  // `all_products[handle]`. A deleted variant answers null.
+  giftVariants: `query WonSyncGiftVariants($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    ... on ProductVariant {
+      id
+      product {
+        handle
+      }
+    }
+  }
+}`,
+
   // metafieldsSet under its own operation name: the storefront write is told apart from the shop /
   // product / variant writes (logs, tests).
   storefrontConfigSet: `mutation WonSyncStorefrontConfigSet($metafields: [MetafieldsSetInput!]!) {
