@@ -38,6 +38,21 @@ pub struct LineInput<'a> {
     pub margin_ref_count: usize,
 }
 
+/// What quantity tiers read of a cart line (MVP 3; CartLineInput `tierRef` and
+/// `productId`), kept beside the lines: a cart without tier sets carries none,
+/// and the lines the plan walks stay as small as before (instruction budget).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct LineTier<'a> {
+    /// The product metafield's `tierRef` (K1/K3): none = absent or null (the
+    /// payload's global set); a text = the set with exactly that id, else no
+    /// tier ("" for any other JSON value: no set has that id).
+    pub tier_ref: Option<&'a str>,
+    /// The product's GID (`merchandise.product.id`): the lines of one product
+    /// count together in a set counted per product. Read only when the line's
+    /// set counts so; "" otherwise (and for a CustomProduct).
+    pub product_id: &'a str,
+}
+
 /// The node's campaign variables (C4/C7): `id` + `varsVersion` from its
 /// `function_vars`, `active` = `shop.localTime.dateTimeBetween(start, end)`.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -53,6 +68,9 @@ pub struct CartInput<'a> {
     pub currency: String,
     pub country_code: Option<&'a str>,
     pub lines: Vec<LineInput<'a>>,
+    /// Per line (`lines` order) what quantity tiers read; empty = none read (no
+    /// tier set, or every line: no `tierRef`, no product id).
+    pub tiers: Vec<LineTier<'a>>,
     /// The entered codes, raw, one per entry (an entry without a code string is "").
     pub entered_codes: Vec<&'a str>,
     pub campaign: CampaignInput<'a>,
@@ -100,6 +118,8 @@ pub struct NormalizedCart<'a> {
     /// Upper-case ISO 3166-1 alpha-2, or none.
     pub country_code: Option<String>,
     pub lines: Vec<NormalizedLine<'a>>,
+    /// Per line what quantity tiers read (`CartInput::tiers`; empty = none).
+    pub tiers: Vec<LineTier<'a>>,
     /// The entered codes as given, one per entry (the reader reads the first 25
     /// entries; one without a code string is ""): plan.rs `match_codes` matches
     /// those of the first MAX_ENTERED_CODES that can be a Won code.
@@ -148,6 +168,7 @@ pub fn normalize_cart(input: CartInput<'_>) -> NormalizedCart<'_> {
         currency: js::upper(&input.currency),
         country_code: country.filter(|c| is_country(c)),
         lines,
+        tiers: input.tiers,
         entered_codes,
         campaign: input.campaign,
         today: input.today.filter(|d| js::is_local_date(d)),

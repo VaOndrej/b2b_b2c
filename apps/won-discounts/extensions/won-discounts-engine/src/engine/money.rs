@@ -166,43 +166,80 @@ pub fn format_money(minor: f64, currency: &str, cs: bool) -> String {
     let code = js::upper(currency);
     let digits = currency_exponent(&code);
     let n = js::round(minor.abs());
-    let scale = 10f64.powi(digits as i32);
-    let major = (n / scale).floor();
-    let fraction = n % scale;
-    let sign = if minor < 0.0 { "-" } else { "" };
-    let mut number = group_thousands(&js::number_to_string(major), if cs { NBSP } else { "," });
-    if fraction > 0.0 {
+    // Below 10^15 minor units (every amount the engine phrases: the cap is
+    // 10^12) the integer division is the float one exactly; built without the
+    // formatting machinery (a tier break's message, MVP 3: instruction budget).
+    let (major, fraction) = if n < 1e15 {
+        let scale = 10u64.pow(digits as u32);
+        let (n, mut major, mut fraction) = (n as u64, String::new(), String::new());
+        js::push_digits(&mut major, n / scale);
+        if n % scale > 0 {
+            js::push_digits(&mut fraction, n % scale);
+        }
+        (major, fraction)
+    } else {
+        let scale = 10f64.powi(digits as i32);
+        let fraction = n % scale;
+        (js::number_to_string((n / scale).floor()), if fraction > 0.0 { js::number_to_string(fraction) } else { String::new() })
+    };
+    let mut number = group_thousands(&major, if cs { NBSP } else { "," });
+    if !fraction.is_empty() {
         number.push_str(if cs { "," } else { "." });
-        number.push_str(&js::pad_start_zeros(&js::number_to_string(fraction), digits));
+        number.push_str(&js::pad_start_zeros(&fraction, digits));
+    }
+    let mut out = String::with_capacity(number.len() + code.len() + 4);
+    if minor < 0.0 {
+        out.push('-');
     }
     if cs {
-        let symbol = match code.as_str() {
+        out.push_str(&number);
+        out.push_str(NBSP);
+        out.push_str(match code.as_str() {
             "CZK" => "Kč",
             "EUR" => "€",
             other => other,
-        };
-        return format!("{sign}{number}{NBSP}{symbol}");
+        });
+        return out;
     }
-    let prefix = match code.as_str() {
-        "EUR" => Some("€"),
-        "USD" => Some("$"),
-        "GBP" => Some("£"),
-        _ => None,
-    };
-    match prefix {
-        Some(symbol) => format!("{sign}{symbol}{number}"),
-        None => format!("{sign}{code} {number}"),
+    match code.as_str() {
+        "EUR" => out.push('€'),
+        "USD" => out.push('$'),
+        "GBP" => out.push('£'),
+        other => {
+            out.push_str(other);
+            out.push(' ');
+        }
     }
+    out.push_str(&number);
+    out
 }
 
 /// `formatPercent` (describe.ts): 12.5 → "12,5 %" (cs) / "12.5%" (en).
 pub fn format_percent(percent: f64, cs: bool) -> String {
-    let text = js::number_to_string(js::round(percent * 100.0) / 100.0);
-    if cs {
-        format!("{}{NBSP}%", text.replacen('.', ",", 1))
+    let hundredths = js::round(percent * 100.0);
+    let mut out = String::with_capacity(12);
+    if (0.0..1e13).contains(&hundredths) {
+        // hundredths / 100 has at most two decimals, which is its shortest text
+        // (any shorter decimal is ≥ 0,01 away, far over its float's rounding).
+        let n = hundredths as u64;
+        js::push_digits(&mut out, n / 100);
+        let cents = n % 100;
+        if cents > 0 {
+            out.push(if cs { ',' } else { '.' });
+            if cents < 10 {
+                out.push('0');
+            }
+            js::push_digits(&mut out, if cents % 10 == 0 { cents / 10 } else { cents });
+        }
     } else {
-        format!("{text}%")
+        let text = js::number_to_string(hundredths / 100.0);
+        out.push_str(&if cs { text.replacen('.', ",", 1) } else { text });
     }
+    if cs {
+        out.push_str(NBSP);
+    }
+    out.push('%');
+    out
 }
 
 #[cfg(test)]
@@ -239,6 +276,73 @@ mod tests {
             for digit in 0..=9u64 {
                 assert_eq!(push_digit(value, digit), value.checked_mul(10).and_then(|v| v.checked_add(digit)), "{value} {digit}");
             }
+        }
+    }
+
+    /// The formatters as written before their fast paths (the float formatter throughout).
+    fn money_by_floats(minor: f64, currency: &str, cs: bool) -> String {
+        let code = js::upper(currency);
+        let digits = currency_exponent(&code);
+        let n = js::round(minor.abs());
+        let scale = 10f64.powi(digits as i32);
+        let major = (n / scale).floor();
+        let fraction = n % scale;
+        let sign = if minor < 0.0 { "-" } else { "" };
+        let mut number = group_thousands(&format!("{major}"), if cs { NBSP } else { "," });
+        if fraction > 0.0 {
+            number.push_str(if cs { "," } else { "." });
+            number.push_str(&js::pad_start_zeros(&format!("{fraction}"), digits));
+        }
+        if cs {
+            let symbol = match code.as_str() {
+                "CZK" => "Kč",
+                "EUR" => "€",
+                other => other,
+            };
+            return format!("{sign}{number}{NBSP}{symbol}");
+        }
+        match code.as_str() {
+            "EUR" => format!("{sign}€{number}"),
+            "USD" => format!("{sign}${number}"),
+            "GBP" => format!("{sign}£{number}"),
+            _ => format!("{sign}{code} {number}"),
+        }
+    }
+
+    #[test]
+    fn the_fast_formatters_write_what_the_float_formatter_writes() {
+        let percent_by_floats = |p: f64, cs: bool| {
+            let text = format!("{}", js::round(p * 100.0) / 100.0);
+            if cs { format!("{}{NBSP}%", text.replacen('.', ",", 1)) } else { format!("{text}%") }
+        };
+        let mut x: u64 = 0x2026_1001;
+        let mut next = || {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            x
+        };
+        for hundredths in 0..=10_000u64 {
+            for p in [hundredths as f64 / 100.0, hundredths as f64 / 100.0 + 0.004, hundredths as f64 / 100.0 - 0.005] {
+                for cs in [true, false] {
+                    assert_eq!(format_percent(p, cs), percent_by_floats(p, cs), "{p}");
+                }
+            }
+        }
+        for k in 0..200_000 {
+            let minor = match k % 4 {
+                0 => (next() % 100_000) as f64,
+                1 => (next() % 1_000_000_000_000) as f64,
+                2 => (next() % 1_000_000_000_000_000) as f64 + 0.5,
+                _ => (next() % 10_000) as f64 / 7.0,
+            };
+            let currency = ["CZK", "EUR", "JPY", "KWD", "USD", "GBP", "HUF", "bhd", ""][k % 9];
+            for cs in [true, false] {
+                assert_eq!(format_money(minor, currency, cs), money_by_floats(minor, currency, cs), "{minor} {currency}");
+                assert_eq!(format_money(-minor, currency, cs), money_by_floats(-minor, currency, cs), "-{minor} {currency}");
+            }
+            let n = (next() % (1 << 53)) as f64 * if k % 2 == 0 { 1.0 } else { -1.0 };
+            assert_eq!(js::number_to_string(n), if n == 0.0 { "0".to_string() } else { format!("{n}") });
         }
     }
 

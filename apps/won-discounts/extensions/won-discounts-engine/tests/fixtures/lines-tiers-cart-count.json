@@ -1,0 +1,255 @@
+{
+  "scenario": "A Pro set counted across the cart (4 items −20 %, 6 items −30 %): lines 1–3 of three products count 4. The gift line (5 items) and the outlet line (3 items) are no part of it: counted, they would make 12 and reach −30 %; neither gets a tier.",
+  "payload": {
+    "export": "cart-lines-discounts-generate-run",
+    "target": "cart.lines.discounts.generate.run",
+    "input": {
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [],
+      "discount": {
+        "discountClasses": [
+          "PRODUCT",
+          "ORDER",
+          "SHIPPING"
+        ],
+        "vars": {
+          "jsonValue": {
+            "role": "automatic",
+            "campaignId": null,
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "varsVersion": null
+          }
+        }
+      },
+      "shop": {
+        "config": {
+          "jsonValue": {
+            "schemaVersion": 1,
+            "campaignId": null,
+            "campaignVarsVersion": null,
+            "engine": {
+              "combination": {
+                "outletWithAnything": false,
+                "productWithProduct": "best",
+                "productWithOrder": true,
+                "productWithShipping": true,
+                "orderWithShipping": true
+              }
+            },
+            "marketCountries": {},
+            "modules": {
+              "codes": {
+                "rules": []
+              },
+              "tiers": {
+                "global": "kosik",
+                "sets": [
+                  [
+                    "kosik",
+                    "cart",
+                    [],
+                    [
+                      [
+                        4,
+                        20
+                      ],
+                      [
+                        6,
+                        30
+                      ]
+                    ]
+                  ]
+                ]
+              },
+              "rewards": {
+                "gifts": [],
+                "countOtherDiscounts": false
+              },
+              "margin": {
+                "enabled": false
+              }
+            },
+            "campaigns": []
+          }
+        },
+        "localTime": {
+          "date": "2026-10-01",
+          "campaignActive": false
+        }
+      },
+      "localization": {
+        "country": {
+          "isoCode": "CZ"
+        },
+        "language": {
+          "isoCode": "CS"
+        }
+      },
+      "presentmentCurrencyRate": "1.0",
+      "cart": {
+        "cost": {
+          "subtotalAmount": {
+            "currencyCode": "CZK"
+          }
+        },
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "100.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1001",
+              "wonVariant": null,
+              "product": {
+                "id": "gid://shopify/Product/1",
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": []
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/2",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "100.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1002",
+              "wonVariant": null,
+              "product": {
+                "id": "gid://shopify/Product/2",
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": []
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/3",
+            "quantity": 2,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "100.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1003",
+              "wonVariant": null,
+              "product": {
+                "id": "gid://shopify/Product/3",
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": []
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/4",
+            "quantity": 5,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "100.0"
+              }
+            },
+            "gift": {
+              "value": "tier-1"
+            },
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1004",
+              "wonVariant": null,
+              "product": {
+                "id": "gid://shopify/Product/4",
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": []
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/5",
+            "quantity": 3,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "100.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1005",
+              "wonVariant": null,
+              "product": {
+                "id": "gid://shopify/Product/5",
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": [],
+                    "outlet": true
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "operations": [
+        {
+          "productDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "Od 4 ks −20 %",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/1"
+                    }
+                  },
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/2"
+                    }
+                  },
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/3"
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 20
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "ALL"
+          }
+        }
+      ]
+    }
+  }
+}

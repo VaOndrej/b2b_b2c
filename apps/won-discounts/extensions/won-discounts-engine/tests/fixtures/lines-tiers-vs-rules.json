@@ -1,0 +1,351 @@
+{
+  "scenario": "A1: the tier (2 items −12 %) competes with the line's product rules, the better one wins, never a sum. Line 1: 12 % beats Letní sleva 10 %. Line 2: VIP 15 % beats the tier. Line 3 (1 item): no tier, Letní sleva. Lines 4 and 5: a rule of 12 % ties the tier, the id decides (dvanact < tier:mnozstvi < zz12).",
+  "payload": {
+    "export": "cart-lines-discounts-generate-run",
+    "target": "cart.lines.discounts.generate.run",
+    "input": {
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [],
+      "discount": {
+        "discountClasses": [
+          "PRODUCT",
+          "ORDER",
+          "SHIPPING"
+        ],
+        "vars": {
+          "jsonValue": {
+            "role": "automatic",
+            "campaignId": null,
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "varsVersion": null
+          }
+        }
+      },
+      "shop": {
+        "config": {
+          "jsonValue": {
+            "schemaVersion": 1,
+            "campaignId": null,
+            "campaignVarsVersion": null,
+            "engine": {
+              "combination": {
+                "outletWithAnything": false,
+                "productWithProduct": "best",
+                "productWithOrder": true,
+                "productWithShipping": true,
+                "orderWithShipping": true
+              }
+            },
+            "marketCountries": {},
+            "modules": {
+              "codes": {
+                "rules": [
+                  {
+                    "id": "summer",
+                    "enabled": true,
+                    "name": "Letní sleva",
+                    "method": "automatic",
+                    "value": {
+                      "kind": "percentage",
+                      "percent": 10
+                    },
+                    "target": {
+                      "kind": "products"
+                    }
+                  },
+                  {
+                    "id": "vip",
+                    "enabled": true,
+                    "name": "VIP",
+                    "method": "automatic",
+                    "value": {
+                      "kind": "percentage",
+                      "percent": 15
+                    },
+                    "target": {
+                      "kind": "products"
+                    }
+                  },
+                  {
+                    "id": "dvanact",
+                    "enabled": true,
+                    "name": "Dvanáct",
+                    "method": "automatic",
+                    "value": {
+                      "kind": "percentage",
+                      "percent": 12
+                    },
+                    "target": {
+                      "kind": "products"
+                    }
+                  },
+                  {
+                    "id": "zz12",
+                    "enabled": true,
+                    "name": "Také dvanáct",
+                    "method": "automatic",
+                    "value": {
+                      "kind": "percentage",
+                      "percent": 12
+                    },
+                    "target": {
+                      "kind": "products"
+                    }
+                  }
+                ]
+              },
+              "tiers": {
+                "global": "mnozstvi",
+                "sets": [
+                  [
+                    "mnozstvi",
+                    "line",
+                    [],
+                    [
+                      [
+                        2,
+                        12
+                      ]
+                    ]
+                  ]
+                ]
+              },
+              "rewards": {
+                "gifts": [],
+                "countOtherDiscounts": false
+              },
+              "margin": {
+                "enabled": false
+              }
+            },
+            "campaigns": []
+          }
+        },
+        "localTime": {
+          "date": "2026-10-01",
+          "campaignActive": false
+        }
+      },
+      "localization": {
+        "country": {
+          "isoCode": "CZ"
+        },
+        "language": {
+          "isoCode": "CS"
+        }
+      },
+      "presentmentCurrencyRate": "1.0",
+      "cart": {
+        "cost": {
+          "subtotalAmount": {
+            "currencyCode": "CZK"
+          }
+        },
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 2,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "100.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1001",
+              "wonVariant": null,
+              "product": {
+                "id": "gid://shopify/Product/1",
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": [
+                      "summer"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/2",
+            "quantity": 2,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "100.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1002",
+              "wonVariant": null,
+              "product": {
+                "id": "gid://shopify/Product/2",
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": [
+                      "vip"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/3",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "100.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1003",
+              "wonVariant": null,
+              "product": {
+                "id": "gid://shopify/Product/3",
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": [
+                      "summer"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/4",
+            "quantity": 2,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "100.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1004",
+              "wonVariant": null,
+              "product": {
+                "id": "gid://shopify/Product/4",
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": [
+                      "dvanact"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/5",
+            "quantity": 2,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "100.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1005",
+              "wonVariant": null,
+              "product": {
+                "id": "gid://shopify/Product/5",
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": [
+                      "zz12"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "operations": [
+        {
+          "productDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "Od 2 ks −12 %",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/1"
+                    }
+                  },
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/5"
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 12
+                  }
+                }
+              },
+              {
+                "message": "VIP",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/2"
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 15
+                  }
+                }
+              },
+              {
+                "message": "Letní sleva",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/3"
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 10
+                  }
+                }
+              },
+              {
+                "message": "Dvanáct",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/4"
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 12
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "ALL"
+          }
+        }
+      ]
+    }
+  }
+}

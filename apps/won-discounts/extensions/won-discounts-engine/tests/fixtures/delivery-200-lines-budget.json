@@ -701,6 +701,7 @@
               "id": "gid://shopify/ProductVariant/48468678900001",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500001",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -728,6 +729,7 @@
               "id": "gid://shopify/ProductVariant/48468678900002",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500002",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -755,6 +757,7 @@
               "id": "gid://shopify/ProductVariant/48468678900003",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500003",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -781,6 +784,7 @@
               "id": "gid://shopify/ProductVariant/48468678900004",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500004",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -807,6 +811,7 @@
               "id": "gid://shopify/ProductVariant/48468678900005",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500005",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -834,6 +839,7 @@
               "id": "gid://shopify/ProductVariant/48468678900006",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500006",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -861,6 +867,7 @@
               "id": "gid://shopify/ProductVariant/48468678900007",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500007",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -888,6 +895,7 @@
               "id": "gid://shopify/ProductVariant/48468678900008",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500008",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -914,6 +922,7 @@
               "id": "gid://shopify/ProductVariant/48468678900009",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500009",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -942,6 +951,7 @@
               "id": "gid://shopify/ProductVariant/48468678900010",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500010",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -970,6 +980,7 @@
               "id": "gid://shopify/ProductVariant/48468678900011",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500011",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -996,6 +1007,7 @@
               "id": "gid://shopify/ProductVariant/48468678900012",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500012",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1022,6 +1034,7 @@
               "id": "gid://shopify/ProductVariant/48468678900013",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500013",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1049,6 +1062,7 @@
               "id": "gid://shopify/ProductVariant/48468678900014",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500014",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1077,6 +1091,7 @@
               "id": "gid://shopify/ProductVariant/48468678900015",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500015",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1103,6 +1118,7 @@
               "id": "gid://shopify/ProductVariant/48468678900016",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500016",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1129,6 +1145,7 @@
               "id": "gid://shopify/ProductVariant/48468678900017",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500017",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1156,6 +1173,7 @@
               "id": "gid://shopify/ProductVariant/48468678900018",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500018",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1184,6 +1202,7 @@
               "id": "gid://shopify/ProductVariant/48468678900019",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500019",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1210,6 +1229,7 @@
               "id": "gid://shopify/ProductVariant/48468678900020",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500020",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1237,6 +1257,7 @@
               "id": "gid://shopify/ProductVariant/48468678900021",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500021",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1265,6 +1286,7 @@
               "id": "gid://shopify/ProductVariant/48468678900022",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500022",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1292,6 +1314,7 @@
               "id": "gid://shopify/ProductVariant/48468678900023",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500023",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1318,6 +1341,7 @@
               "id": "gid://shopify/ProductVariant/48468678900024",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500024",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1344,6 +1368,7 @@
               "id": "gid://shopify/ProductVariant/48468678900025",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500025",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1371,6 +1396,7 @@
               "id": "gid://shopify/ProductVariant/48468678900026",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500026",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1398,6 +1424,7 @@
               "id": "gid://shopify/ProductVariant/48468678900027",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500027",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1425,6 +1452,7 @@
               "id": "gid://shopify/ProductVariant/48468678900028",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500028",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1452,6 +1480,7 @@
               "id": "gid://shopify/ProductVariant/48468678900029",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500029",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1479,6 +1508,7 @@
               "id": "gid://shopify/ProductVariant/48468678900030",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500030",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1507,6 +1537,7 @@
               "id": "gid://shopify/ProductVariant/48468678900031",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500031",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1533,6 +1564,7 @@
               "id": "gid://shopify/ProductVariant/48468678900032",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500032",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1559,6 +1591,7 @@
               "id": "gid://shopify/ProductVariant/48468678900033",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500033",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1586,6 +1619,7 @@
               "id": "gid://shopify/ProductVariant/48468678900034",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500034",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1613,6 +1647,7 @@
               "id": "gid://shopify/ProductVariant/48468678900035",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500035",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1640,6 +1675,7 @@
               "id": "gid://shopify/ProductVariant/48468678900036",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500036",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1667,6 +1703,7 @@
               "id": "gid://shopify/ProductVariant/48468678900037",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500037",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1694,6 +1731,7 @@
               "id": "gid://shopify/ProductVariant/48468678900038",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500038",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1721,6 +1759,7 @@
               "id": "gid://shopify/ProductVariant/48468678900039",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500039",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1747,6 +1786,7 @@
               "id": "gid://shopify/ProductVariant/48468678900040",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500040",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1774,6 +1814,7 @@
               "id": "gid://shopify/ProductVariant/48468678900041",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500041",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1801,6 +1842,7 @@
               "id": "gid://shopify/ProductVariant/48468678900042",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500042",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1829,6 +1871,7 @@
               "id": "gid://shopify/ProductVariant/48468678900043",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500043",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1855,6 +1898,7 @@
               "id": "gid://shopify/ProductVariant/48468678900044",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500044",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1881,6 +1925,7 @@
               "id": "gid://shopify/ProductVariant/48468678900045",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500045",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1909,6 +1954,7 @@
               "id": "gid://shopify/ProductVariant/48468678900046",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500046",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1936,6 +1982,7 @@
               "id": "gid://shopify/ProductVariant/48468678900047",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500047",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1962,6 +2009,7 @@
               "id": "gid://shopify/ProductVariant/48468678900048",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500048",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1988,6 +2036,7 @@
               "id": "gid://shopify/ProductVariant/48468678900049",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500049",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2016,6 +2065,7 @@
               "id": "gid://shopify/ProductVariant/48468678900050",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500050",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2045,6 +2095,7 @@
               "id": "gid://shopify/ProductVariant/48468678900051",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500051",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2071,6 +2122,7 @@
               "id": "gid://shopify/ProductVariant/48468678900052",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500052",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2097,6 +2149,7 @@
               "id": "gid://shopify/ProductVariant/48468678900053",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500053",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2124,6 +2177,7 @@
               "id": "gid://shopify/ProductVariant/48468678900054",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500054",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2152,6 +2206,7 @@
               "id": "gid://shopify/ProductVariant/48468678900055",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500055",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2178,6 +2233,7 @@
               "id": "gid://shopify/ProductVariant/48468678900056",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500056",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2205,6 +2261,7 @@
               "id": "gid://shopify/ProductVariant/48468678900057",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500057",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2232,6 +2289,7 @@
               "id": "gid://shopify/ProductVariant/48468678900058",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500058",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2259,6 +2317,7 @@
               "id": "gid://shopify/ProductVariant/48468678900059",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500059",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2285,6 +2344,7 @@
               "id": "gid://shopify/ProductVariant/48468678900060",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500060",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2312,6 +2372,7 @@
               "id": "gid://shopify/ProductVariant/48468678900061",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500061",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2339,6 +2400,7 @@
               "id": "gid://shopify/ProductVariant/48468678900062",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500062",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2366,6 +2428,7 @@
               "id": "gid://shopify/ProductVariant/48468678900063",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500063",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2394,6 +2457,7 @@
               "id": "gid://shopify/ProductVariant/48468678900064",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500064",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2420,6 +2484,7 @@
               "id": "gid://shopify/ProductVariant/48468678900065",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500065",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2447,6 +2512,7 @@
               "id": "gid://shopify/ProductVariant/48468678900066",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500066",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2474,6 +2540,7 @@
               "id": "gid://shopify/ProductVariant/48468678900067",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500067",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2500,6 +2567,7 @@
               "id": "gid://shopify/ProductVariant/48468678900068",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500068",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2526,6 +2594,7 @@
               "id": "gid://shopify/ProductVariant/48468678900069",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500069",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2553,6 +2622,7 @@
               "id": "gid://shopify/ProductVariant/48468678900070",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500070",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2582,6 +2652,7 @@
               "id": "gid://shopify/ProductVariant/48468678900071",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500071",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2608,6 +2679,7 @@
               "id": "gid://shopify/ProductVariant/48468678900072",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500072",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2635,6 +2707,7 @@
               "id": "gid://shopify/ProductVariant/48468678900073",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500073",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2662,6 +2735,7 @@
               "id": "gid://shopify/ProductVariant/48468678900074",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500074",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2689,6 +2763,7 @@
               "id": "gid://shopify/ProductVariant/48468678900075",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500075",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2715,6 +2790,7 @@
               "id": "gid://shopify/ProductVariant/48468678900076",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500076",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2741,6 +2817,7 @@
               "id": "gid://shopify/ProductVariant/48468678900077",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500077",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2769,6 +2846,7 @@
               "id": "gid://shopify/ProductVariant/48468678900078",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500078",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2796,6 +2874,7 @@
               "id": "gid://shopify/ProductVariant/48468678900079",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500079",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2822,6 +2901,7 @@
               "id": "gid://shopify/ProductVariant/48468678900080",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500080",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2849,6 +2929,7 @@
               "id": "gid://shopify/ProductVariant/48468678900081",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500081",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2877,6 +2958,7 @@
               "id": "gid://shopify/ProductVariant/48468678900082",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500082",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2904,6 +2986,7 @@
               "id": "gid://shopify/ProductVariant/48468678900083",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500083",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2930,6 +3013,7 @@
               "id": "gid://shopify/ProductVariant/48468678900084",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500084",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2957,6 +3041,7 @@
               "id": "gid://shopify/ProductVariant/48468678900085",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500085",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2984,6 +3069,7 @@
               "id": "gid://shopify/ProductVariant/48468678900086",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500086",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3011,6 +3097,7 @@
               "id": "gid://shopify/ProductVariant/48468678900087",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500087",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3037,6 +3124,7 @@
               "id": "gid://shopify/ProductVariant/48468678900088",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500088",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3063,6 +3151,7 @@
               "id": "gid://shopify/ProductVariant/48468678900089",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500089",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3090,6 +3179,7 @@
               "id": "gid://shopify/ProductVariant/48468678900090",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500090",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3119,6 +3209,7 @@
               "id": "gid://shopify/ProductVariant/48468678900091",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500091",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3146,6 +3237,7 @@
               "id": "gid://shopify/ProductVariant/48468678900092",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500092",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3172,6 +3264,7 @@
               "id": "gid://shopify/ProductVariant/48468678900093",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500093",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3199,6 +3292,7 @@
               "id": "gid://shopify/ProductVariant/48468678900094",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500094",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3226,6 +3320,7 @@
               "id": "gid://shopify/ProductVariant/48468678900095",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500095",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3252,6 +3347,7 @@
               "id": "gid://shopify/ProductVariant/48468678900096",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500096",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3278,6 +3374,7 @@
               "id": "gid://shopify/ProductVariant/48468678900097",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500097",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3305,6 +3402,7 @@
               "id": "gid://shopify/ProductVariant/48468678900098",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500098",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3333,6 +3431,7 @@
               "id": "gid://shopify/ProductVariant/48468678900099",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500099",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3360,6 +3459,7 @@
               "id": "gid://shopify/ProductVariant/48468678900100",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500100",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3388,6 +3488,7 @@
               "id": "gid://shopify/ProductVariant/48468678900101",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500101",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3415,6 +3516,7 @@
               "id": "gid://shopify/ProductVariant/48468678900102",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500102",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3442,6 +3544,7 @@
               "id": "gid://shopify/ProductVariant/48468678900103",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500103",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3468,6 +3571,7 @@
               "id": "gid://shopify/ProductVariant/48468678900104",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500104",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3494,6 +3598,7 @@
               "id": "gid://shopify/ProductVariant/48468678900105",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500105",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3522,6 +3627,7 @@
               "id": "gid://shopify/ProductVariant/48468678900106",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500106",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3549,6 +3655,7 @@
               "id": "gid://shopify/ProductVariant/48468678900107",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500107",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3575,6 +3682,7 @@
               "id": "gid://shopify/ProductVariant/48468678900108",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500108",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3602,6 +3710,7 @@
               "id": "gid://shopify/ProductVariant/48468678900109",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500109",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3629,6 +3738,7 @@
               "id": "gid://shopify/ProductVariant/48468678900110",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500110",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3657,6 +3767,7 @@
               "id": "gid://shopify/ProductVariant/48468678900111",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500111",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3683,6 +3794,7 @@
               "id": "gid://shopify/ProductVariant/48468678900112",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500112",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3710,6 +3822,7 @@
               "id": "gid://shopify/ProductVariant/48468678900113",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500113",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3737,6 +3850,7 @@
               "id": "gid://shopify/ProductVariant/48468678900114",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500114",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3764,6 +3878,7 @@
               "id": "gid://shopify/ProductVariant/48468678900115",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500115",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3790,6 +3905,7 @@
               "id": "gid://shopify/ProductVariant/48468678900116",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500116",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3816,6 +3932,7 @@
               "id": "gid://shopify/ProductVariant/48468678900117",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500117",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3844,6 +3961,7 @@
               "id": "gid://shopify/ProductVariant/48468678900118",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500118",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3871,6 +3989,7 @@
               "id": "gid://shopify/ProductVariant/48468678900119",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500119",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3898,6 +4017,7 @@
               "id": "gid://shopify/ProductVariant/48468678900120",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500120",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3925,6 +4045,7 @@
               "id": "gid://shopify/ProductVariant/48468678900121",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500121",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3952,6 +4073,7 @@
               "id": "gid://shopify/ProductVariant/48468678900122",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500122",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3979,6 +4101,7 @@
               "id": "gid://shopify/ProductVariant/48468678900123",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500123",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4005,6 +4128,7 @@
               "id": "gid://shopify/ProductVariant/48468678900124",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500124",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4031,6 +4155,7 @@
               "id": "gid://shopify/ProductVariant/48468678900125",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500125",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4058,6 +4183,7 @@
               "id": "gid://shopify/ProductVariant/48468678900126",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500126",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4087,6 +4213,7 @@
               "id": "gid://shopify/ProductVariant/48468678900127",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500127",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4113,6 +4240,7 @@
               "id": "gid://shopify/ProductVariant/48468678900128",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500128",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4139,6 +4267,7 @@
               "id": "gid://shopify/ProductVariant/48468678900129",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500129",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4166,6 +4295,7 @@
               "id": "gid://shopify/ProductVariant/48468678900130",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500130",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4194,6 +4324,7 @@
               "id": "gid://shopify/ProductVariant/48468678900131",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500131",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4220,6 +4351,7 @@
               "id": "gid://shopify/ProductVariant/48468678900132",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500132",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4246,6 +4378,7 @@
               "id": "gid://shopify/ProductVariant/48468678900133",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500133",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4274,6 +4407,7 @@
               "id": "gid://shopify/ProductVariant/48468678900134",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500134",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4301,6 +4435,7 @@
               "id": "gid://shopify/ProductVariant/48468678900135",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500135",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4328,6 +4463,7 @@
               "id": "gid://shopify/ProductVariant/48468678900136",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500136",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4354,6 +4490,7 @@
               "id": "gid://shopify/ProductVariant/48468678900137",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500137",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4381,6 +4518,7 @@
               "id": "gid://shopify/ProductVariant/48468678900138",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500138",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4408,6 +4546,7 @@
               "id": "gid://shopify/ProductVariant/48468678900139",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500139",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4434,6 +4573,7 @@
               "id": "gid://shopify/ProductVariant/48468678900140",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500140",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4462,6 +4602,7 @@
               "id": "gid://shopify/ProductVariant/48468678900141",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500141",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4489,6 +4630,7 @@
               "id": "gid://shopify/ProductVariant/48468678900142",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500142",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4516,6 +4658,7 @@
               "id": "gid://shopify/ProductVariant/48468678900143",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500143",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4542,6 +4685,7 @@
               "id": "gid://shopify/ProductVariant/48468678900144",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500144",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4569,6 +4713,7 @@
               "id": "gid://shopify/ProductVariant/48468678900145",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500145",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4596,6 +4741,7 @@
               "id": "gid://shopify/ProductVariant/48468678900146",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500146",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4623,6 +4769,7 @@
               "id": "gid://shopify/ProductVariant/48468678900147",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500147",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4650,6 +4797,7 @@
               "id": "gid://shopify/ProductVariant/48468678900148",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500148",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4676,6 +4824,7 @@
               "id": "gid://shopify/ProductVariant/48468678900149",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500149",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4703,6 +4852,7 @@
               "id": "gid://shopify/ProductVariant/48468678900150",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500150",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4732,6 +4882,7 @@
               "id": "gid://shopify/ProductVariant/48468678900151",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500151",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4758,6 +4909,7 @@
               "id": "gid://shopify/ProductVariant/48468678900152",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500152",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4784,6 +4936,7 @@
               "id": "gid://shopify/ProductVariant/48468678900153",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500153",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4812,6 +4965,7 @@
               "id": "gid://shopify/ProductVariant/48468678900154",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500154",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4840,6 +4994,7 @@
               "id": "gid://shopify/ProductVariant/48468678900155",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500155",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4866,6 +5021,7 @@
               "id": "gid://shopify/ProductVariant/48468678900156",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500156",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4892,6 +5048,7 @@
               "id": "gid://shopify/ProductVariant/48468678900157",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500157",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4919,6 +5076,7 @@
               "id": "gid://shopify/ProductVariant/48468678900158",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500158",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4946,6 +5104,7 @@
               "id": "gid://shopify/ProductVariant/48468678900159",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500159",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4972,6 +5131,7 @@
               "id": "gid://shopify/ProductVariant/48468678900160",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500160",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4999,6 +5159,7 @@
               "id": "gid://shopify/ProductVariant/48468678900161",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500161",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5027,6 +5188,7 @@
               "id": "gid://shopify/ProductVariant/48468678900162",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500162",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5055,6 +5217,7 @@
               "id": "gid://shopify/ProductVariant/48468678900163",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500163",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5081,6 +5244,7 @@
               "id": "gid://shopify/ProductVariant/48468678900164",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500164",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5107,6 +5271,7 @@
               "id": "gid://shopify/ProductVariant/48468678900165",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500165",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5134,6 +5299,7 @@
               "id": "gid://shopify/ProductVariant/48468678900166",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500166",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5161,6 +5327,7 @@
               "id": "gid://shopify/ProductVariant/48468678900167",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500167",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5187,6 +5354,7 @@
               "id": "gid://shopify/ProductVariant/48468678900168",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500168",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5214,6 +5382,7 @@
               "id": "gid://shopify/ProductVariant/48468678900169",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500169",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5241,6 +5410,7 @@
               "id": "gid://shopify/ProductVariant/48468678900170",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500170",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5269,6 +5439,7 @@
               "id": "gid://shopify/ProductVariant/48468678900171",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500171",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5296,6 +5467,7 @@
               "id": "gid://shopify/ProductVariant/48468678900172",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500172",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5322,6 +5494,7 @@
               "id": "gid://shopify/ProductVariant/48468678900173",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500173",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5349,6 +5522,7 @@
               "id": "gid://shopify/ProductVariant/48468678900174",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500174",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5376,6 +5550,7 @@
               "id": "gid://shopify/ProductVariant/48468678900175",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500175",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5403,6 +5578,7 @@
               "id": "gid://shopify/ProductVariant/48468678900176",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500176",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5429,6 +5605,7 @@
               "id": "gid://shopify/ProductVariant/48468678900177",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500177",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5456,6 +5633,7 @@
               "id": "gid://shopify/ProductVariant/48468678900178",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500178",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5483,6 +5661,7 @@
               "id": "gid://shopify/ProductVariant/48468678900179",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500179",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5509,6 +5688,7 @@
               "id": "gid://shopify/ProductVariant/48468678900180",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500180",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5537,6 +5717,7 @@
               "id": "gid://shopify/ProductVariant/48468678900181",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500181",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5564,6 +5745,7 @@
               "id": "gid://shopify/ProductVariant/48468678900182",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500182",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5592,6 +5774,7 @@
               "id": "gid://shopify/ProductVariant/48468678900183",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500183",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5618,6 +5801,7 @@
               "id": "gid://shopify/ProductVariant/48468678900184",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500184",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5644,6 +5828,7 @@
               "id": "gid://shopify/ProductVariant/48468678900185",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500185",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5671,6 +5856,7 @@
               "id": "gid://shopify/ProductVariant/48468678900186",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500186",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5698,6 +5884,7 @@
               "id": "gid://shopify/ProductVariant/48468678900187",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500187",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5724,6 +5911,7 @@
               "id": "gid://shopify/ProductVariant/48468678900188",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500188",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5750,6 +5938,7 @@
               "id": "gid://shopify/ProductVariant/48468678900189",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500189",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5779,6 +5968,7 @@
               "id": "gid://shopify/ProductVariant/48468678900190",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500190",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5807,6 +5997,7 @@
               "id": "gid://shopify/ProductVariant/48468678900191",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500191",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5833,6 +6024,7 @@
               "id": "gid://shopify/ProductVariant/48468678900192",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500192",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5859,6 +6051,7 @@
               "id": "gid://shopify/ProductVariant/48468678900193",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500193",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5886,6 +6079,7 @@
               "id": "gid://shopify/ProductVariant/48468678900194",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500194",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5913,6 +6107,7 @@
               "id": "gid://shopify/ProductVariant/48468678900195",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500195",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5939,6 +6134,7 @@
               "id": "gid://shopify/ProductVariant/48468678900196",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500196",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5966,6 +6162,7 @@
               "id": "gid://shopify/ProductVariant/48468678900197",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500197",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5993,6 +6190,7 @@
               "id": "gid://shopify/ProductVariant/48468678900198",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500198",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6021,6 +6219,7 @@
               "id": "gid://shopify/ProductVariant/48468678900199",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500199",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6047,6 +6246,7 @@
               "id": "gid://shopify/ProductVariant/48468678900200",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/8841234500200",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [

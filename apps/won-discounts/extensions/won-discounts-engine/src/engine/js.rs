@@ -241,10 +241,36 @@ pub fn number_to_string(n: f64) -> String {
     if n == 0.0 {
         return "0".to_string();
     }
+    // A whole number below 2^53 (a quantity, a whole percent, an amount): its
+    // digits, the text `Display` writes too, without the float formatter
+    // (~1.5 k Wasm instructions a number).
+    if n.fract() == 0.0 && n.abs() < 9_007_199_254_740_992.0 {
+        let mut out = String::with_capacity(17);
+        if n < 0.0 {
+            out.push('-');
+        }
+        push_digits(&mut out, n.abs() as u64);
+        return out;
+    }
     let mut out = String::new();
     use std::fmt::Write;
     let _ = write!(out, "{}", n);
     out
+}
+
+/// The decimal digits of `n`, appended.
+pub fn push_digits(out: &mut String, mut n: u64) {
+    let mut buf = [0u8; 20];
+    let mut at = buf.len();
+    loop {
+        at -= 1;
+        buf[at] = b'0' + (n % 10) as u8;
+        n /= 10;
+        if n == 0 {
+            break;
+        }
+    }
+    out.push_str(std::str::from_utf8(&buf[at..]).unwrap_or_default());
 }
 
 /// `"x".padStart(width, "0")`.

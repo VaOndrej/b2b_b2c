@@ -81,6 +81,7 @@ keys! {
     VariantRuleIds = "variantRuleIds",
     Outlet = "outlet",
     MarginRefs = "marginRefs",
+    TierRef = "tierRef",
     Cur = "cur",
     // The shared config.
     Modules = "modules",
@@ -96,6 +97,9 @@ keys! {
     ProductWithShipping = "productWithShipping",
     OrderWithShipping = "orderWithShipping",
     Margin = "margin",
+    Tiers = "tiers",
+    Sets = "sets",
+    Global = "global",
     Method = "method",
     Schedule = "schedule",
     StartsOn = "startsOn",
@@ -346,24 +350,28 @@ pub struct WonProduct {
     outlet: Outlet,
     /// `marginRefs` when an array, with its length.
     margin_refs: Option<(Value, usize)>,
+    /// `tierRef` (MVP 3) as normalizeCart keeps it: none when absent or null;
+    /// a string as given; "" for any other value (no set has that id).
+    tier_ref: Option<String>,
 }
 
 impl Deserialize for WonProduct {
     fn deserialize(value: &Value) -> Result<Self, Error> {
-        Ok(Self::read(value, true))
+        Ok(Self::read(value, true, true))
     }
 }
 
 impl WonProduct {
-    /// The metafield value (`marginRefs` looked up only when `with_margin_refs`).
+    /// The metafield value (`marginRefs` looked up only when `with_margin_refs`,
+    /// `tierRef` only when `with_tier_ref`: the shop config has tier sets).
     /// Keys are looked up by name, each costing a read of the input; once as many
     /// keys held something as the object has, the rest are known to be absent
     /// (a key that holds null reads like an absent one, so it never ends the
     /// search early). The common values — `{ruleIds}`, with margin protection
-    /// `{ruleIds, marginRefs}`, and either with `variantRuleIds` — are read with
-    /// no lookup of a key they do not have.
-    pub fn read(value: &Value, with_margin_refs: bool) -> Self {
-        let mut out = Self { rule_ids: None, variant_rule_ids: None, outlet: Outlet::None, margin_refs: None };
+    /// `{ruleIds, marginRefs}`, either with `variantRuleIds`, and any of them
+    /// with `tierRef` — are read with no lookup of a key they do not have.
+    pub fn read(value: &Value, with_margin_refs: bool, with_tier_ref: bool) -> Self {
+        let mut out = Self { rule_ids: None, variant_rule_ids: None, outlet: Outlet::None, margin_refs: None, tier_ref: None };
         // `typeof won === "object"` also admits arrays, whose `.ruleIds` etc. are undefined.
         let Some(keys) = value.obj_len() else { return out };
         // An array or a record is a key that held something; anything else is
@@ -402,6 +410,13 @@ impl WonProduct {
         } else {
             found += held(&by_variant);
         }
+        if with_tier_ref && found < keys {
+            let tier_ref = prop(value, Key::TierRef);
+            if !tier_ref.is_null() {
+                found += 1;
+                out.tier_ref = Some(tier_ref.as_string().unwrap_or_default());
+            }
+        }
         if found >= keys {
             return out;
         }
@@ -417,6 +432,12 @@ impl WonProduct {
     /// Product-wide refs (`strings(won.ruleIds)`).
     pub fn rule_ids(&self) -> &[String] {
         self.rule_ids.as_deref().unwrap_or(&[])
+    }
+
+    /// `tierRef` (MVP 3), moved out: none = absent or null (the global set); a
+    /// string as given; "" for any other value (no tier).
+    pub fn take_tier_ref(&mut self) -> Option<String> {
+        self.tier_ref.take()
     }
 
     /// The product-wide refs, moved out.
@@ -724,6 +745,22 @@ mod tests {
         assert_eq!(line_refs(r#"[["a"]]"#), (vec![], false));
         assert_eq!(line_refs(r#"{"ruleIds": ["a", 1, null, "b"]}"#), (refs(&["a", "b"]), false));
         assert_eq!(line_refs("null"), (vec![], false));
+    }
+
+    #[test]
+    fn the_tier_ref_reads_like_the_ts_adapter_and_normalize_cart() {
+        // normalizeCart `tierRef`: null when absent or null (the global set), a string as given, "" for any other value (no tier).
+        let tier_ref = |won: &str| run_function_with_input(|mut w: WonProduct| Ok(w.take_tier_ref()), won).unwrap();
+        assert_eq!(tier_ref(r#"{"ruleIds": ["a"], "variantRuleIds": {}, "tierRef": "t_1"}"#), Some("t_1".to_string()));
+        assert_eq!(tier_ref(r#"{"ruleIds": ["a"], "variantRuleIds": {}}"#), None);
+        assert_eq!(tier_ref(r#"{"ruleIds": ["a"], "tierRef": null}"#), None);
+        assert_eq!(tier_ref(r#"{"tierRef": ""}"#), Some(String::new()));
+        for junk in ["5", "true", r#"["t_1"]"#, r#"{"id": "t_1"}"#] {
+            assert_eq!(tier_ref(&format!(r#"{{"tierRef": {junk}}}"#)), Some(String::new()), "{junk}");
+        }
+        assert_eq!(tier_ref(r#"{"ruleIds": ["a"], "marginRefs": ["1"], "outlet": true, "tierRef": "t_2"}"#), Some("t_2".to_string()));
+        assert_eq!(tier_ref(r#"[["a"]]"#), None);
+        assert_eq!(tier_ref("null"), None);
     }
 
     #[test]

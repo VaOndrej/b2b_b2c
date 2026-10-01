@@ -1,5 +1,5 @@
 {
-  "scenario": "Instruction budget, the Pro worst case with margin protection (drift audit P1/P2): 200 lines, each with 4 rule refs, the Pro stack VIP + S_x, a cost price, 2 marginRefs of 29 collections with a margin setting and 0–1 variant-level refs of other variants of its product: the input filled to Shopify's limit of 128 kB of MessagePack; 37 rules, a 10 % order discount. The exact output is over the budget: every stack goes to its top rule. Rule ids at the sanitizer's maximum of 64 characters (the config keeps 29 collections within its 9 000 B). With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.",
+  "scenario": "Instruction budget, the Pro worst case with margin protection (drift audit P1/P2): 200 lines, each with 4 rule refs, the Pro stack VIP + S_x, a cost price, 2 marginRefs of 29 collections with a margin setting and 0 variant-level refs of other variants of its product: the input filled to Shopify's limit of 128 kB of MessagePack; 37 rules, a 10 % order discount. The exact output is over the budget: every stack goes to its top rule. Rule ids at the sanitizer's maximum of 64 characters (the config keeps 29 collections within its 9 000 B). With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.",
   "payload": {
     "export": "cart-lines-discounts-generate-run",
     "target": "cart.lines.discounts.generate.run",
@@ -718,6 +718,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500001",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -729,12 +730,7 @@
                     "marginRefs": [
                       "4829302252662",
                       "4829303718868"
-                    ],
-                    "variantRuleIds": {
-                      "48468679000100": [
-                        "r_cdfd48f1940214cbadc30454e70fb4da1810a36863673958b65029125890f1"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -759,6 +755,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500002",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -770,12 +767,7 @@
                     "marginRefs": [
                       "4829302566849",
                       "4829304033055"
-                    ],
-                    "variantRuleIds": {
-                      "48468679000200": [
-                        "r_9350563c171917851a49dd5e33bba0a18888a3824108970d37863e43366729"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -800,6 +792,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500003",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -811,12 +804,7 @@
                     "marginRefs": [
                       "4829302881036",
                       "4829304347242"
-                    ],
-                    "variantRuleIds": {
-                      "48468679000300": [
-                        "r_6eff3b66bc1efa99f7773999fc5104172ed32071da295d09f9a80bf4459282"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -841,6 +829,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500004",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -852,12 +841,7 @@
                     "marginRefs": [
                       "4829303195223",
                       "4829304661429"
-                    ],
-                    "variantRuleIds": {
-                      "48468679000400": [
-                        "r_f3a31531621de872158585c3997caff9f503c5167996ffc738871f02f42422"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -882,6 +866,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500005",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -893,12 +878,7 @@
                     "marginRefs": [
                       "4829301938475",
                       "4829303509410"
-                    ],
-                    "variantRuleIds": {
-                      "48468679000500": [
-                        "r_330d200efa0de8e63c88fb26ab99bd182e849004b9a47202c2223edbea9f6a"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -923,6 +903,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500006",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -934,12 +915,7 @@
                     "marginRefs": [
                       "4829302252662",
                       "4829303823597"
-                    ],
-                    "variantRuleIds": {
-                      "48468679000600": [
-                        "r_59db893986720f6aafa2803b5716b97bd722a30f8dcd095da6fa0723aa29b7"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -964,6 +940,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500007",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -975,12 +952,7 @@
                     "marginRefs": [
                       "4829302566849",
                       "4829304137784"
-                    ],
-                    "variantRuleIds": {
-                      "48468679000700": [
-                        "r_1574d2084183cc915ce0ab964c86827e7e3be9cec325c742454ad3e9fd4051"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1005,6 +977,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500008",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1016,12 +989,7 @@
                     "marginRefs": [
                       "4829302881036",
                       "4829304451971"
-                    ],
-                    "variantRuleIds": {
-                      "48468679000800": [
-                        "r_c138ef0a711cfdc3bc29f09b83fe8b389385de4e7168bab6962dcc969939f3"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1046,6 +1014,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500009",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1057,12 +1026,7 @@
                     "marginRefs": [
                       "4829303195223",
                       "4829304766158"
-                    ],
-                    "variantRuleIds": {
-                      "48468679000900": [
-                        "r_32e323ea191cbe62b3b4c35c1c217f6c6cbc7c0fdab1aa31601d6e50015e6a"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1087,6 +1051,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500010",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1098,12 +1063,7 @@
                     "marginRefs": [
                       "4829302043204",
                       "4829303509410"
-                    ],
-                    "variantRuleIds": {
-                      "48468679001000": [
-                        "r_725a0bffb1182b209bb8f20de1f166238c56e57c8910a5f982ff4fae63140a"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1128,6 +1088,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500011",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1139,12 +1100,7 @@
                     "marginRefs": [
                       "4829302357391",
                       "4829303823597"
-                    ],
-                    "variantRuleIds": {
-                      "48468679001100": [
-                        "r_e72b62455eab3688db1f1d4cab0b8d6f0b48db2ecdcaae5853eda0a939fb8b"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1169,6 +1125,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500012",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1180,12 +1137,7 @@
                     "marginRefs": [
                       "4829302671578",
                       "4829304137784"
-                    ],
-                    "variantRuleIds": {
-                      "48468679001200": [
-                        "r_039b127f577c8be8b081043b46a42740a8e8d4e5cf24cd27663204d01b96fa"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1210,6 +1162,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500013",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1221,12 +1174,7 @@
                     "marginRefs": [
                       "4829302985765",
                       "4829304451971"
-                    ],
-                    "variantRuleIds": {
-                      "48468679001300": [
-                        "r_fca3e73ac29ab30cad03c50393e0811a0af4e94f6f0e674f23c3e797777f7b"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1251,6 +1199,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500014",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1262,12 +1211,7 @@
                     "marginRefs": [
                       "4829303299952",
                       "4829304766158"
-                    ],
-                    "variantRuleIds": {
-                      "48468679001400": [
-                        "r_865c46abee6906c4a5e4a4875263d17f11f46f22cc013011b8ff26c5af89ff"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1292,6 +1236,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500015",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1303,12 +1248,7 @@
                     "marginRefs": [
                       "4829302043204",
                       "4829303614139"
-                    ],
-                    "variantRuleIds": {
-                      "48468679001500": [
-                        "r_35ffb6d4ec30f83cf76b66deef3d919e7724708a8caa5255a82b738412ab38"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1333,6 +1273,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500016",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1344,12 +1285,7 @@
                     "marginRefs": [
                       "4829302357391",
                       "4829303928326"
-                    ],
-                    "variantRuleIds": {
-                      "48468679001600": [
-                        "r_7ec9f530f8b14e813d6a5747493e4fa9e74eb1f2b2dea51a4f39fc54338a85"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1374,6 +1310,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500017",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1385,12 +1322,7 @@
                     "marginRefs": [
                       "4829302671578",
                       "4829304242513"
-                    ],
-                    "variantRuleIds": {
-                      "48468679001700": [
-                        "r_ef1d7c15cc23abe93784bcbdb8cbf0d1bdd768f9c3f56ea8a0d44e2abb183a"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1415,6 +1347,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500018",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1426,12 +1359,7 @@
                     "marginRefs": [
                       "4829302985765",
                       "4829304556700"
-                    ],
-                    "variantRuleIds": {
-                      "48468679001800": [
-                        "r_e53b192958f01ee3611861e33ff6249c473d94f00337d257fa05c523ce03fd"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1456,6 +1384,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500019",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1467,12 +1396,7 @@
                     "marginRefs": [
                       "4829303299952",
                       "4829304870887"
-                    ],
-                    "variantRuleIds": {
-                      "48468679001900": [
-                        "r_8ec81a4c7974046b6a8c884738e619c1f48e16141e83e2f415421c623b2bd8"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1497,6 +1421,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500020",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1508,12 +1433,7 @@
                     "marginRefs": [
                       "4829302147933",
                       "4829303614139"
-                    ],
-                    "variantRuleIds": {
-                      "48468679002000": [
-                        "r_2c0edde62aab12945ed5c185af49356453e25e8aa5ad5b11c81d40c18b8c2f"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1538,6 +1458,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500021",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1549,12 +1470,7 @@
                     "marginRefs": [
                       "4829302462120",
                       "4829303928326"
-                    ],
-                    "variantRuleIds": {
-                      "48468679002100": [
-                        "r_f76e4fad2caa92940742504c49ffdb44f137fd0eaef7abd3569fc2b8bf8be4"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1579,6 +1495,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500022",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1590,12 +1507,7 @@
                     "marginRefs": [
                       "4829302776307",
                       "4829304242513"
-                    ],
-                    "variantRuleIds": {
-                      "48468679002200": [
-                        "r_e0d32550c671a04d2504685ed4918a5d99182758b464e79c03f958ea972fe1"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1620,6 +1532,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500023",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1631,12 +1544,7 @@
                     "marginRefs": [
                       "4829303090494",
                       "4829304556700"
-                    ],
-                    "variantRuleIds": {
-                      "48468679002300": [
-                        "r_b4fff9d9747191e7127595064438125b93f3868df101c768928aab75a61d83"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1661,6 +1569,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500024",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1672,12 +1581,7 @@
                     "marginRefs": [
                       "4829303404681",
                       "4829304870887"
-                    ],
-                    "variantRuleIds": {
-                      "48468679002400": [
-                        "r_f07e8cdcfd298af1e399c7ef67f3c73a442ba4ac7e658394209529440f3d84"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1702,6 +1606,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500025",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1713,12 +1618,7 @@
                     "marginRefs": [
                       "4829302147933",
                       "4829303718868"
-                    ],
-                    "variantRuleIds": {
-                      "48468679002500": [
-                        "r_97990b42c2dab84a25bec8769b6a18fb14eb55077021d45f878c61298d9ea6"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1743,6 +1643,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500026",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1754,12 +1655,7 @@
                     "marginRefs": [
                       "4829302462120",
                       "4829304033055"
-                    ],
-                    "variantRuleIds": {
-                      "48468679002600": [
-                        "r_cdfd48f1940214cbadc30454e70fb4da1810a36863673958b65029125890f1"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1784,6 +1680,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500027",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1795,12 +1692,7 @@
                     "marginRefs": [
                       "4829302776307",
                       "4829304347242"
-                    ],
-                    "variantRuleIds": {
-                      "48468679002700": [
-                        "r_9350563c171917851a49dd5e33bba0a18888a3824108970d37863e43366729"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1825,6 +1717,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500028",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1836,12 +1729,7 @@
                     "marginRefs": [
                       "4829303090494",
                       "4829304661429"
-                    ],
-                    "variantRuleIds": {
-                      "48468679002800": [
-                        "r_6eff3b66bc1efa99f7773999fc5104172ed32071da295d09f9a80bf4459282"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1866,6 +1754,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500029",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1877,12 +1766,7 @@
                     "marginRefs": [
                       "4829301938475",
                       "4829303404681"
-                    ],
-                    "variantRuleIds": {
-                      "48468679002900": [
-                        "r_f3a31531621de872158585c3997caff9f503c5167996ffc738871f02f42422"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1907,6 +1791,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500030",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1918,12 +1803,7 @@
                     "marginRefs": [
                       "4829302252662",
                       "4829303718868"
-                    ],
-                    "variantRuleIds": {
-                      "48468679003000": [
-                        "r_330d200efa0de8e63c88fb26ab99bd182e849004b9a47202c2223edbea9f6a"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1948,6 +1828,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500031",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -1959,12 +1840,7 @@
                     "marginRefs": [
                       "4829302566849",
                       "4829304033055"
-                    ],
-                    "variantRuleIds": {
-                      "48468679003100": [
-                        "r_59db893986720f6aafa2803b5716b97bd722a30f8dcd095da6fa0723aa29b7"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1989,6 +1865,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500032",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2000,12 +1877,7 @@
                     "marginRefs": [
                       "4829302881036",
                       "4829304347242"
-                    ],
-                    "variantRuleIds": {
-                      "48468679003200": [
-                        "r_1574d2084183cc915ce0ab964c86827e7e3be9cec325c742454ad3e9fd4051"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2030,6 +1902,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500033",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2041,12 +1914,7 @@
                     "marginRefs": [
                       "4829303195223",
                       "4829304661429"
-                    ],
-                    "variantRuleIds": {
-                      "48468679003300": [
-                        "r_c138ef0a711cfdc3bc29f09b83fe8b389385de4e7168bab6962dcc969939f3"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2071,6 +1939,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500034",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2082,12 +1951,7 @@
                     "marginRefs": [
                       "4829301938475",
                       "4829303509410"
-                    ],
-                    "variantRuleIds": {
-                      "48468679003400": [
-                        "r_32e323ea191cbe62b3b4c35c1c217f6c6cbc7c0fdab1aa31601d6e50015e6a"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2112,6 +1976,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500035",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2123,12 +1988,7 @@
                     "marginRefs": [
                       "4829302252662",
                       "4829303823597"
-                    ],
-                    "variantRuleIds": {
-                      "48468679003500": [
-                        "r_725a0bffb1182b209bb8f20de1f166238c56e57c8910a5f982ff4fae63140a"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2153,6 +2013,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500036",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2164,12 +2025,7 @@
                     "marginRefs": [
                       "4829302566849",
                       "4829304137784"
-                    ],
-                    "variantRuleIds": {
-                      "48468679003600": [
-                        "r_e72b62455eab3688db1f1d4cab0b8d6f0b48db2ecdcaae5853eda0a939fb8b"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2194,6 +2050,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500037",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2205,12 +2062,7 @@
                     "marginRefs": [
                       "4829302881036",
                       "4829304451971"
-                    ],
-                    "variantRuleIds": {
-                      "48468679003700": [
-                        "r_039b127f577c8be8b081043b46a42740a8e8d4e5cf24cd27663204d01b96fa"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2235,6 +2087,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500038",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2246,12 +2099,7 @@
                     "marginRefs": [
                       "4829303195223",
                       "4829304766158"
-                    ],
-                    "variantRuleIds": {
-                      "48468679003800": [
-                        "r_fca3e73ac29ab30cad03c50393e0811a0af4e94f6f0e674f23c3e797777f7b"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2276,6 +2124,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500039",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2287,12 +2136,7 @@
                     "marginRefs": [
                       "4829302043204",
                       "4829303509410"
-                    ],
-                    "variantRuleIds": {
-                      "48468679003900": [
-                        "r_865c46abee6906c4a5e4a4875263d17f11f46f22cc013011b8ff26c5af89ff"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2317,6 +2161,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500040",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2328,12 +2173,7 @@
                     "marginRefs": [
                       "4829302357391",
                       "4829303823597"
-                    ],
-                    "variantRuleIds": {
-                      "48468679004000": [
-                        "r_35ffb6d4ec30f83cf76b66deef3d919e7724708a8caa5255a82b738412ab38"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2358,6 +2198,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500041",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2369,12 +2210,7 @@
                     "marginRefs": [
                       "4829302671578",
                       "4829304137784"
-                    ],
-                    "variantRuleIds": {
-                      "48468679004100": [
-                        "r_7ec9f530f8b14e813d6a5747493e4fa9e74eb1f2b2dea51a4f39fc54338a85"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2399,6 +2235,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500042",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2410,12 +2247,7 @@
                     "marginRefs": [
                       "4829302985765",
                       "4829304451971"
-                    ],
-                    "variantRuleIds": {
-                      "48468679004200": [
-                        "r_ef1d7c15cc23abe93784bcbdb8cbf0d1bdd768f9c3f56ea8a0d44e2abb183a"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2440,6 +2272,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500043",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2451,12 +2284,7 @@
                     "marginRefs": [
                       "4829303299952",
                       "4829304766158"
-                    ],
-                    "variantRuleIds": {
-                      "48468679004300": [
-                        "r_e53b192958f01ee3611861e33ff6249c473d94f00337d257fa05c523ce03fd"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2481,6 +2309,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500044",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2492,12 +2321,7 @@
                     "marginRefs": [
                       "4829302043204",
                       "4829303614139"
-                    ],
-                    "variantRuleIds": {
-                      "48468679004400": [
-                        "r_8ec81a4c7974046b6a8c884738e619c1f48e16141e83e2f415421c623b2bd8"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2522,6 +2346,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500045",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2533,12 +2358,7 @@
                     "marginRefs": [
                       "4829302357391",
                       "4829303928326"
-                    ],
-                    "variantRuleIds": {
-                      "48468679004500": [
-                        "r_2c0edde62aab12945ed5c185af49356453e25e8aa5ad5b11c81d40c18b8c2f"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2563,6 +2383,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500046",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2574,12 +2395,7 @@
                     "marginRefs": [
                       "4829302671578",
                       "4829304242513"
-                    ],
-                    "variantRuleIds": {
-                      "48468679004600": [
-                        "r_f76e4fad2caa92940742504c49ffdb44f137fd0eaef7abd3569fc2b8bf8be4"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2604,6 +2420,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500047",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2615,12 +2432,7 @@
                     "marginRefs": [
                       "4829302985765",
                       "4829304556700"
-                    ],
-                    "variantRuleIds": {
-                      "48468679004700": [
-                        "r_e0d32550c671a04d2504685ed4918a5d99182758b464e79c03f958ea972fe1"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2645,6 +2457,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500048",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2656,12 +2469,7 @@
                     "marginRefs": [
                       "4829303299952",
                       "4829304870887"
-                    ],
-                    "variantRuleIds": {
-                      "48468679004800": [
-                        "r_b4fff9d9747191e7127595064438125b93f3868df101c768928aab75a61d83"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2686,6 +2494,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500049",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2697,12 +2506,7 @@
                     "marginRefs": [
                       "4829302147933",
                       "4829303614139"
-                    ],
-                    "variantRuleIds": {
-                      "48468679004900": [
-                        "r_f07e8cdcfd298af1e399c7ef67f3c73a442ba4ac7e658394209529440f3d84"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2727,6 +2531,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500050",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2738,12 +2543,7 @@
                     "marginRefs": [
                       "4829302462120",
                       "4829303928326"
-                    ],
-                    "variantRuleIds": {
-                      "48468679005000": [
-                        "r_97990b42c2dab84a25bec8769b6a18fb14eb55077021d45f878c61298d9ea6"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2768,6 +2568,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500051",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2779,12 +2580,7 @@
                     "marginRefs": [
                       "4829302776307",
                       "4829304242513"
-                    ],
-                    "variantRuleIds": {
-                      "48468679005100": [
-                        "r_cdfd48f1940214cbadc30454e70fb4da1810a36863673958b65029125890f1"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2809,6 +2605,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500052",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2820,12 +2617,7 @@
                     "marginRefs": [
                       "4829303090494",
                       "4829304556700"
-                    ],
-                    "variantRuleIds": {
-                      "48468679005200": [
-                        "r_9350563c171917851a49dd5e33bba0a18888a3824108970d37863e43366729"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2850,6 +2642,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500053",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2861,12 +2654,7 @@
                     "marginRefs": [
                       "4829303404681",
                       "4829304870887"
-                    ],
-                    "variantRuleIds": {
-                      "48468679005300": [
-                        "r_6eff3b66bc1efa99f7773999fc5104172ed32071da295d09f9a80bf4459282"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2891,6 +2679,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500054",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2902,12 +2691,7 @@
                     "marginRefs": [
                       "4829302147933",
                       "4829303718868"
-                    ],
-                    "variantRuleIds": {
-                      "48468679005400": [
-                        "r_f3a31531621de872158585c3997caff9f503c5167996ffc738871f02f42422"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2932,6 +2716,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500055",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2943,12 +2728,7 @@
                     "marginRefs": [
                       "4829302462120",
                       "4829304033055"
-                    ],
-                    "variantRuleIds": {
-                      "48468679005500": [
-                        "r_330d200efa0de8e63c88fb26ab99bd182e849004b9a47202c2223edbea9f6a"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -2973,6 +2753,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500056",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -2984,12 +2765,7 @@
                     "marginRefs": [
                       "4829302776307",
                       "4829304347242"
-                    ],
-                    "variantRuleIds": {
-                      "48468679005600": [
-                        "r_59db893986720f6aafa2803b5716b97bd722a30f8dcd095da6fa0723aa29b7"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3014,6 +2790,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500057",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3025,12 +2802,7 @@
                     "marginRefs": [
                       "4829303090494",
                       "4829304661429"
-                    ],
-                    "variantRuleIds": {
-                      "48468679005700": [
-                        "r_1574d2084183cc915ce0ab964c86827e7e3be9cec325c742454ad3e9fd4051"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3055,6 +2827,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500058",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3066,12 +2839,7 @@
                     "marginRefs": [
                       "4829301938475",
                       "4829303404681"
-                    ],
-                    "variantRuleIds": {
-                      "48468679005800": [
-                        "r_c138ef0a711cfdc3bc29f09b83fe8b389385de4e7168bab6962dcc969939f3"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3096,6 +2864,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500059",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3107,12 +2876,7 @@
                     "marginRefs": [
                       "4829302252662",
                       "4829303718868"
-                    ],
-                    "variantRuleIds": {
-                      "48468679005900": [
-                        "r_32e323ea191cbe62b3b4c35c1c217f6c6cbc7c0fdab1aa31601d6e50015e6a"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3137,6 +2901,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500060",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3148,12 +2913,7 @@
                     "marginRefs": [
                       "4829302566849",
                       "4829304033055"
-                    ],
-                    "variantRuleIds": {
-                      "48468679006000": [
-                        "r_725a0bffb1182b209bb8f20de1f166238c56e57c8910a5f982ff4fae63140a"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3178,6 +2938,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500061",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3189,12 +2950,7 @@
                     "marginRefs": [
                       "4829302881036",
                       "4829304347242"
-                    ],
-                    "variantRuleIds": {
-                      "48468679006100": [
-                        "r_e72b62455eab3688db1f1d4cab0b8d6f0b48db2ecdcaae5853eda0a939fb8b"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3219,6 +2975,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500062",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3230,12 +2987,7 @@
                     "marginRefs": [
                       "4829303195223",
                       "4829304661429"
-                    ],
-                    "variantRuleIds": {
-                      "48468679006200": [
-                        "r_039b127f577c8be8b081043b46a42740a8e8d4e5cf24cd27663204d01b96fa"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3260,6 +3012,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500063",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3271,12 +3024,7 @@
                     "marginRefs": [
                       "4829301938475",
                       "4829303509410"
-                    ],
-                    "variantRuleIds": {
-                      "48468679006300": [
-                        "r_fca3e73ac29ab30cad03c50393e0811a0af4e94f6f0e674f23c3e797777f7b"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3301,6 +3049,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500064",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3312,12 +3061,7 @@
                     "marginRefs": [
                       "4829302252662",
                       "4829303823597"
-                    ],
-                    "variantRuleIds": {
-                      "48468679006400": [
-                        "r_865c46abee6906c4a5e4a4875263d17f11f46f22cc013011b8ff26c5af89ff"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3342,6 +3086,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500065",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3353,12 +3098,7 @@
                     "marginRefs": [
                       "4829302566849",
                       "4829304137784"
-                    ],
-                    "variantRuleIds": {
-                      "48468679006500": [
-                        "r_35ffb6d4ec30f83cf76b66deef3d919e7724708a8caa5255a82b738412ab38"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3383,6 +3123,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500066",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3394,12 +3135,7 @@
                     "marginRefs": [
                       "4829302881036",
                       "4829304451971"
-                    ],
-                    "variantRuleIds": {
-                      "48468679006600": [
-                        "r_7ec9f530f8b14e813d6a5747493e4fa9e74eb1f2b2dea51a4f39fc54338a85"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3424,6 +3160,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500067",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3435,12 +3172,7 @@
                     "marginRefs": [
                       "4829303195223",
                       "4829304766158"
-                    ],
-                    "variantRuleIds": {
-                      "48468679006700": [
-                        "r_ef1d7c15cc23abe93784bcbdb8cbf0d1bdd768f9c3f56ea8a0d44e2abb183a"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3465,6 +3197,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500068",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3476,12 +3209,7 @@
                     "marginRefs": [
                       "4829302043204",
                       "4829303509410"
-                    ],
-                    "variantRuleIds": {
-                      "48468679006800": [
-                        "r_e53b192958f01ee3611861e33ff6249c473d94f00337d257fa05c523ce03fd"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3506,6 +3234,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500069",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3517,12 +3246,7 @@
                     "marginRefs": [
                       "4829302357391",
                       "4829303823597"
-                    ],
-                    "variantRuleIds": {
-                      "48468679006900": [
-                        "r_8ec81a4c7974046b6a8c884738e619c1f48e16141e83e2f415421c623b2bd8"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3547,6 +3271,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500070",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3558,12 +3283,7 @@
                     "marginRefs": [
                       "4829302671578",
                       "4829304137784"
-                    ],
-                    "variantRuleIds": {
-                      "48468679007000": [
-                        "r_2c0edde62aab12945ed5c185af49356453e25e8aa5ad5b11c81d40c18b8c2f"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3588,6 +3308,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500071",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3599,12 +3320,7 @@
                     "marginRefs": [
                       "4829302985765",
                       "4829304451971"
-                    ],
-                    "variantRuleIds": {
-                      "48468679007100": [
-                        "r_f76e4fad2caa92940742504c49ffdb44f137fd0eaef7abd3569fc2b8bf8be4"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3629,6 +3345,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500072",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3640,12 +3357,7 @@
                     "marginRefs": [
                       "4829303299952",
                       "4829304766158"
-                    ],
-                    "variantRuleIds": {
-                      "48468679007200": [
-                        "r_e0d32550c671a04d2504685ed4918a5d99182758b464e79c03f958ea972fe1"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3670,6 +3382,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500073",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3681,12 +3394,7 @@
                     "marginRefs": [
                       "4829302043204",
                       "4829303614139"
-                    ],
-                    "variantRuleIds": {
-                      "48468679007300": [
-                        "r_b4fff9d9747191e7127595064438125b93f3868df101c768928aab75a61d83"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3711,6 +3419,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500074",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3722,12 +3431,7 @@
                     "marginRefs": [
                       "4829302357391",
                       "4829303928326"
-                    ],
-                    "variantRuleIds": {
-                      "48468679007400": [
-                        "r_f07e8cdcfd298af1e399c7ef67f3c73a442ba4ac7e658394209529440f3d84"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3752,6 +3456,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500075",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3763,12 +3468,7 @@
                     "marginRefs": [
                       "4829302671578",
                       "4829304242513"
-                    ],
-                    "variantRuleIds": {
-                      "48468679007500": [
-                        "r_97990b42c2dab84a25bec8769b6a18fb14eb55077021d45f878c61298d9ea6"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3793,6 +3493,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500076",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3804,12 +3505,7 @@
                     "marginRefs": [
                       "4829302985765",
                       "4829304556700"
-                    ],
-                    "variantRuleIds": {
-                      "48468679007600": [
-                        "r_cdfd48f1940214cbadc30454e70fb4da1810a36863673958b65029125890f1"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3834,6 +3530,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500077",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3845,12 +3542,7 @@
                     "marginRefs": [
                       "4829303299952",
                       "4829304870887"
-                    ],
-                    "variantRuleIds": {
-                      "48468679007700": [
-                        "r_9350563c171917851a49dd5e33bba0a18888a3824108970d37863e43366729"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3875,6 +3567,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500078",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3886,12 +3579,7 @@
                     "marginRefs": [
                       "4829302147933",
                       "4829303614139"
-                    ],
-                    "variantRuleIds": {
-                      "48468679007800": [
-                        "r_6eff3b66bc1efa99f7773999fc5104172ed32071da295d09f9a80bf4459282"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3916,6 +3604,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500079",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3927,12 +3616,7 @@
                     "marginRefs": [
                       "4829302462120",
                       "4829303928326"
-                    ],
-                    "variantRuleIds": {
-                      "48468679007900": [
-                        "r_f3a31531621de872158585c3997caff9f503c5167996ffc738871f02f42422"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3957,6 +3641,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500080",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -3968,12 +3653,7 @@
                     "marginRefs": [
                       "4829302776307",
                       "4829304242513"
-                    ],
-                    "variantRuleIds": {
-                      "48468679008000": [
-                        "r_330d200efa0de8e63c88fb26ab99bd182e849004b9a47202c2223edbea9f6a"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -3998,6 +3678,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500081",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4009,12 +3690,7 @@
                     "marginRefs": [
                       "4829303090494",
                       "4829304556700"
-                    ],
-                    "variantRuleIds": {
-                      "48468679008100": [
-                        "r_59db893986720f6aafa2803b5716b97bd722a30f8dcd095da6fa0723aa29b7"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -4039,6 +3715,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500082",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4050,12 +3727,7 @@
                     "marginRefs": [
                       "4829303404681",
                       "4829304870887"
-                    ],
-                    "variantRuleIds": {
-                      "48468679008200": [
-                        "r_1574d2084183cc915ce0ab964c86827e7e3be9cec325c742454ad3e9fd4051"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -4080,6 +3752,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500083",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4116,6 +3789,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500084",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4152,6 +3826,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500085",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4188,6 +3863,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500086",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4224,6 +3900,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500087",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4260,6 +3937,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500088",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4296,6 +3974,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500089",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4332,6 +4011,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500090",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4368,6 +4048,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500091",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4404,6 +4085,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500092",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4440,6 +4122,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500093",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4476,6 +4159,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500094",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4512,6 +4196,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500095",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4548,6 +4233,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500096",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4584,6 +4270,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500097",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4620,6 +4307,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500098",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4656,6 +4344,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500099",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4692,6 +4381,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500100",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4728,6 +4418,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500101",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4764,6 +4455,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500102",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4800,6 +4492,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500103",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4836,6 +4529,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500104",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4872,6 +4566,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500105",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4908,6 +4603,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500106",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4944,6 +4640,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500107",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -4980,6 +4677,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500108",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5016,6 +4714,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500109",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5052,6 +4751,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500110",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5088,6 +4788,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500111",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5124,6 +4825,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500112",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5160,6 +4862,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500113",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5196,6 +4899,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500114",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5232,6 +4936,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500115",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5268,6 +4973,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500116",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5304,6 +5010,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500117",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5340,6 +5047,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500118",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5376,6 +5084,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500119",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5412,6 +5121,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500120",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5448,6 +5158,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500121",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5484,6 +5195,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500122",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5520,6 +5232,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500123",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5556,6 +5269,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500124",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5592,6 +5306,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500125",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5628,6 +5343,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500126",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5664,6 +5380,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500127",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5700,6 +5417,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500128",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5736,6 +5454,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500129",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5772,6 +5491,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500130",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5808,6 +5528,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500131",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5844,6 +5565,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500132",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5880,6 +5602,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500133",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5916,6 +5639,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500134",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5952,6 +5676,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500135",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -5988,6 +5713,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500136",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6024,6 +5750,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500137",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6060,6 +5787,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500138",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6096,6 +5824,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500139",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6132,6 +5861,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500140",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6168,6 +5898,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500141",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6204,6 +5935,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500142",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6240,6 +5972,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500143",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6276,6 +6009,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500144",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6312,6 +6046,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500145",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6348,6 +6083,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500146",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6384,6 +6120,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500147",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6420,6 +6157,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500148",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6456,6 +6194,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500149",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6492,6 +6231,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500150",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6528,6 +6268,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500151",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6564,6 +6305,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500152",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6600,6 +6342,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500153",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6636,6 +6379,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500154",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6672,6 +6416,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500155",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6708,6 +6453,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500156",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6744,6 +6490,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500157",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6780,6 +6527,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500158",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6816,6 +6564,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500159",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6852,6 +6601,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500160",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6888,6 +6638,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500161",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6924,6 +6675,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500162",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6960,6 +6712,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500163",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -6996,6 +6749,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500164",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7032,6 +6786,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500165",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7068,6 +6823,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500166",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7104,6 +6860,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500167",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7140,6 +6897,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500168",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7176,6 +6934,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500169",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7212,6 +6971,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500170",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7248,6 +7008,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500171",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7284,6 +7045,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500172",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7320,6 +7082,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500173",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7356,6 +7119,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500174",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7392,6 +7156,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500175",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7428,6 +7193,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500176",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7464,6 +7230,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500177",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7500,6 +7267,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500178",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7536,6 +7304,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500179",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7572,6 +7341,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500180",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7608,6 +7378,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500181",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7644,6 +7415,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500182",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7680,6 +7452,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500183",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7716,6 +7489,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500184",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7752,6 +7526,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500185",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7788,6 +7563,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500186",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7824,6 +7600,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500187",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7860,6 +7637,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500188",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7896,6 +7674,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500189",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7932,6 +7711,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500190",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -7968,6 +7748,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500191",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -8004,6 +7785,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500192",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -8040,6 +7822,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500193",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -8076,6 +7859,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500194",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -8112,6 +7896,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500195",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -8148,6 +7933,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500196",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -8184,6 +7970,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500197",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -8220,6 +8007,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500198",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -8256,6 +8044,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500199",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -8292,6 +8081,7 @@
                 }
               },
               "product": {
+                "id": "gid://shopify/Product/8841234500200",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [

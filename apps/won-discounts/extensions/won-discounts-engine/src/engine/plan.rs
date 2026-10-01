@@ -1,10 +1,15 @@
 // planCart (plan.ts): the one discount brain, the part of it a node's emission
 // depends on. Same stages, same order, same ties:
 //   resolveRules → matchCodes → prepareLines → gateRules (minimum: the whole
-//   cart, or the rule's own lines when its scope is "entitled") → planProducts →
-//   margin protection (MVP 2, only while `modules.margin` is on: computeFloors +
+//   cart, or the rule's own lines when its scope is "entitled") → prepareTiers
+//   (MVP 3, engine/tiers.rs: each line's quantity-tier candidate) →
+//   planProducts (a tier competes like a rule, never in a Pro stack) → margin
+//   protection (MVP 2, only while `modules.margin` is on: computeFloors +
 //   applyMarginProtection) → planOrderStage (margin on: protectOrder) →
 //   planShipping.
+// A tier set is a pseudo-rule of the plan (`tier:<setId>`, automatic, priority
+// 0), after the rules in `CartPlan::rules`: it ranks, owns and is emitted like
+// an automatic rule; its value and message are its line's own.
 // Left out on purpose (explain/admin only, never emitted): rule outcomes and
 // their states beyond "eligible or not" (margin_floor included), `betterRuleIds`,
 // `combinedInto`, `missing`, the margin caps' reasons, totals and
@@ -20,7 +25,7 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 
 use super::cart::{normalize_cart, CartInput, NormalizedCart, NormalizedLine};
-use super::config::{Config, EngineFlags, FieldsRef, RawCampaign, RawRule, TargetKind, ValueSpec};
+use super::config::{Config, EngineFlags, FieldsRef, RawCampaign, RawRule, TargetKind, TierSet, ValueSpec};
 use super::describe::{describe_short, DescribedValue};
 use super::table::{bytes_eq, Message, Table, Text};
 use super::hash::{hash_value, normalized_hash_within, parse_hash, MAX_ENTERED_CODES};
@@ -28,6 +33,7 @@ use super::js;
 use super::margin::{resolve_margin, strictest_margin, CostContext, FloorRule, MarginPayload, MarginRef, MAX_MARGIN_REFS};
 use super::money::mul_sat;
 use super::order_search::{order_set_limit, search_order_sets, OrderSetLine, EXACT_LINES, SAFE_BELOW};
+use super::tiers::{prepare_tiers, TierCandidate};
 
 // --- Plan shape -------------------------------------------------------------------------------
 
@@ -710,13 +716,22 @@ fn best_ranked<'l>(rules: &[Rule], list: &'l mut [Component], k: usize) -> &'l [
     &list[..k]
 }
 
+/// One candidate capped at `cap`.
+fn single(best: Component, cap: i64) -> Picked {
+    let amount = best.amount.min(cap);
+    let components = if amount > 0 { vec![Component { rule: best.rule, amount }] } else { Vec::new() };
+    Picked { components, total: amount.max(0) }
+}
+
 /// The best stack for one target (a line, or the order): the single best
 /// candidate, or — when Pro combinesWith links candidates — the combinable set
 /// that saves the customer the most (greedy from every linked seed not already
 /// covered; ties keep the earlier-ranked seed), searched among the
 /// `MAX_STACK_CANDIDATES` best-ranked candidates only. Amounts are then capped
-/// at `cap` in rank order.
-fn pick(ctx: &StackContext, positive: &mut [Component], cap: i64) -> Picked {
+/// at `cap` in rank order. `tier`: the line's quantity tier (MVP 3), a single
+/// candidate only — it takes no place in the stack pool (`positive` are the
+/// rule candidates), and a stack beats it only with a larger total.
+fn pick(ctx: &StackContext, positive: &mut [Component], tier: Option<Component>, cap: i64) -> Picked {
     let (rules, partners) = (ctx.rules, ctx.partners);
     // No candidate here has a Pro partner: the search below would keep the single
     // best candidate too.
@@ -725,19 +740,25 @@ fn pick(ctx: &StackContext, positive: &mut [Component], cap: i64) -> Picked {
         // The single best candidate (no Pro stacking possible), capped at `cap`:
         // the first in rank order, found without sorting (ranks never tie: a
         // line lists a rule once and rule orders are unique).
-        let mut best = positive[0];
-        for c in &positive[1..] {
-            if ranks_after(rules, &best, c) {
-                best = *c;
+        let mut candidates = positive.iter().copied().chain(tier);
+        let Some(mut best) = candidates.next() else { return Picked { components: Vec::new(), total: 0 } };
+        for c in candidates {
+            if ranks_after(rules, &best, &c) {
+                best = c;
             }
         }
-        let amount = best.amount.min(cap);
-        let components = if amount > 0 { vec![Component { rule: best.rule, amount }] } else { Vec::new() };
-        return Picked { components, total: amount.max(0) };
+        return single(best, cap);
     }
-    // The stack cap: only the best-ranked candidates can be part of a stack.
+    // The stack cap: only the best-ranked rule candidates can be part of a stack.
     let pool = best_ranked(rules, positive, MAX_STACK_CANDIDATES);
-    let mut chosen = if partners.words == 1 { stack_search_rules(pool, cap, &partners.bits) } else { stack_search(pool, cap, partners) };
+    // The search starts from the line's best single candidate, the tier included.
+    let best = match tier {
+        Some(t) if ranks_after(rules, &pool[0], &t) => t,
+        _ => pool[0],
+    };
+    let best_total = cap.min(best.amount);
+    let found = if partners.words == 1 { stack_search_rules(pool, best_total, cap, &partners.bits) } else { stack_search(pool, best_total, cap, partners) };
+    let Some(mut chosen) = found else { return single(best, cap) };
     // The chosen candidates in rank order, each capped at what is left of `cap`.
     let mut remaining = cap;
     let mut components = Vec::with_capacity(chosen.count_ones() as usize);
@@ -759,14 +780,14 @@ fn pick(ctx: &StackContext, positive: &mut [Component], cap: i64) -> Picked {
 /// (`adjacency`). From every seed in rank order that has a partner here and is
 /// not already in a set: the seed plus every other candidate, in rank order,
 /// that stacks with all the set's members taken so far. The set that saves the
-/// most (its amounts summed, then capped at `cap`) wins, a tie keeping the
-/// earlier seed's; else the single best candidate (bit 0). The chosen set.
-fn stack_search(pool: &[Component], cap: i64, partners: &Partners) -> u64 {
+/// most (its amounts summed, then capped at `cap`) wins when it saves more than
+/// `best_total` (the best single candidate's), a tie keeping the earlier
+/// seed's. The chosen set; none = the single best candidate.
+fn stack_search(pool: &[Component], mut best_total: i64, cap: i64, partners: &Partners) -> Option<u64> {
     let n = pool.len();
     let mut adjacent = [0u64; MAX_STACK_CANDIDATES];
     partners.adjacency(pool, &mut adjacent[..n]);
-    let mut chosen: u64 = 1;
-    let mut best_total = cap.min(pool[0].amount);
+    let mut chosen: Option<u64> = None;
     let mut covered: u64 = 0;
     for si in 0..n {
         // No partner here (none at all, or none among these candidates): its set would be itself.
@@ -794,7 +815,7 @@ fn stack_search(pool: &[Component], cap: i64, partners: &Partners) -> u64 {
         let total = cap.min(total);
         if total > best_total {
             best_total = total;
-            chosen = set;
+            chosen = Some(set);
         }
     }
     chosen
@@ -804,12 +825,12 @@ fn stack_search(pool: &[Component], cap: i64, partners: &Partners) -> u64 {
 /// same seeds, sets and choice, over the rules' own partner bits (bit r = rule
 /// r; a target lists a rule once, so a rule is one position of `pool`) instead
 /// of an adjacency built for the target: a seed's set is one pass over the pool
-/// that stops after its last partner. The chosen set, as a mask over `pool`.
-fn stack_search_rules(pool: &[Component], cap: i64, bits: &[u64]) -> u64 {
+/// that stops after its last partner. The chosen set, as a mask over `pool`;
+/// none = the single best candidate.
+fn stack_search_rules(pool: &[Component], mut best_total: i64, cap: i64, bits: &[u64]) -> Option<u64> {
     let rule_bit = |c: &Component| 1u64 << c.rule;
     let here = pool.iter().fold(0u64, |m, c| m | rule_bit(c));
-    let mut chosen: u64 = 1;
-    let mut best_total = cap.min(pool[0].amount);
+    let mut chosen: Option<u64> = None;
     // Rules already in a set.
     let mut covered: u64 = 0;
     for (si, seed) in pool.iter().enumerate() {
@@ -842,7 +863,7 @@ fn stack_search_rules(pool: &[Component], cap: i64, bits: &[u64]) -> u64 {
         let total = cap.min(total);
         if total > best_total {
             best_total = total;
-            chosen = set;
+            chosen = Some(set);
         }
     }
     chosen
@@ -979,6 +1000,8 @@ fn order_amount(rule: &Rule, base: i64) -> i64 {
 
 struct StackContext<'c, 'a> {
     rules: &'c [Rule<'a>],
+    /// `rules[first_tier..]` are the tier sets' pseudo-rules (MVP 3), payload order.
+    first_tier: usize,
     partners: &'c Partners,
     any_partners: bool,
     cart: &'c NormalizedCart<'a>,
@@ -987,12 +1010,24 @@ struct StackContext<'c, 'a> {
 
 // --- Stage: product discounts --------------------------------------------------------------------
 
-fn plan_products<'a>(work: &mut [WorkLine<'a>], ctx: &StackContext<'_, 'a>) {
+/// `tiers`: each line's quantity-tier candidate (`w.tier`, engine/tiers.rs), empty without tier sets.
+fn plan_products<'a>(work: &mut [WorkLine<'a>], tiers: &[Option<TierCandidate>], ctx: &StackContext<'_, 'a>) {
     let rules = ctx.rules;
-    let values: Vec<ProductValue> = rules.iter().map(ProductValue::of).collect();
+    let mut values: Vec<ProductValue> = rules[..ctx.first_tier].iter().map(ProductValue::of).collect();
+    // plan.ts looks a line's rules up in a map where a tier set's `tier:<setId>`
+    // replaces a rule of that id (none the sanitizer lets through: `:` is not an
+    // id character), so such a rule is never a product candidate.
+    if ctx.first_tier < rules.len() {
+        for (i, rule) in rules[..ctx.first_tier].iter().enumerate() {
+            if rule.id.starts_with("tier:") && rules[ctx.first_tier..].iter().any(|t| t.id == rule.id) {
+                values[i] = ProductValue::Out;
+            }
+        }
+    }
     let mut positive: Vec<Component> = Vec::new();
-    for (w, line) in work.iter_mut().zip(&ctx.cart.lines) {
-        if w.excluded.is_some() || w.rule_set.is_empty() {
+    for (at, (w, line)) in work.iter_mut().zip(&ctx.cart.lines).enumerate() {
+        let tier = tiers.get(at).and_then(Option::as_ref);
+        if w.excluded.is_some() || (w.rule_set.is_empty() && tier.is_none()) {
             continue;
         }
         positive.clear();
@@ -1003,16 +1038,21 @@ fn plan_products<'a>(work: &mut [WorkLine<'a>], ctx: &StackContext<'_, 'a>) {
                 }
             }
         }
-        if positive.is_empty() {
+        // The line's quantity tier: one more candidate, with its own value and message.
+        let tier = tier.map(|t| (Component { rule: ctx.first_tier + t.set, amount: t.amount }, t));
+        if positive.is_empty() && tier.is_none() {
             continue;
         }
         let unit_price = line.unit_price;
-        let picked = pick(ctx, &mut positive, line.subtotal);
+        let picked = pick(ctx, &mut positive, tier.map(|(c, _)| c), line.subtotal);
         w.product = build_stack(
             rules,
             &ctx.labels,
             picked,
             |single| {
+                if let Some((_, t)) = tier.filter(|(c, _)| c.rule == single.rule) {
+                    return t.value.clone();
+                }
                 let rule = &rules[single.rule];
                 if rule.value_kind == ValueKind::Percentage {
                     EmittedValue::Percent(rule.percent)
@@ -1021,6 +1061,12 @@ fn plan_products<'a>(work: &mut [WorkLine<'a>], ctx: &StackContext<'_, 'a>) {
                 }
             },
         );
+        // A tier's message is the break it reached on this line.
+        if let (Some(stack), Some((c, t))) = (w.product.as_mut(), tier) {
+            if stack.components.len() == 1 && stack.owner == c.rule {
+                stack.message = Cow::Borrowed(t.message);
+            }
+        }
     }
 }
 
@@ -1309,7 +1355,7 @@ fn plan_order_stage<'a>(
         if positive.is_empty() {
             return None;
         }
-        let picked = pick(ctx, &mut positive, base);
+        let picked = pick(ctx, &mut positive, None, base);
         let stack = build_stack(
             rules,
             &ctx.labels,
@@ -1445,17 +1491,53 @@ fn failed_plan<'a>(cart: &NormalizedCart<'a>, reason: PlanFailure) -> CartPlan<'
     }
 }
 
+/// A tier set's pseudo-rule (plan-tiers.ts `tierRule`): `tier:<setId>`,
+/// automatic, priority 0, never in a Pro stack; named as a rule would be where
+/// a stack lists its rules (a tier's own message is its break's).
+fn tier_rule<'a>(set: &'a TierSet, en: bool) -> Rule<'a> {
+    Rule {
+        id: &set.rule_id,
+        label: Cow::Borrowed(if en { "Quantity discount" } else { "Množstevní sleva" }),
+        method_code: false,
+        enabled: true,
+        cls: DiscountClass::Product,
+        value_kind: ValueKind::Percentage,
+        percent: 0.0,
+        fixed: None,
+        priority: 0,
+        code_hashes: &[],
+        min_subtotal: None,
+        min_subtotal_missing: false,
+        min_quantity: 0,
+        min_entitled: false,
+        scheduled: false,
+        schedule_invalid: false,
+        starts_on: None,
+        ends_on: None,
+        markets: None,
+        segment_targeted: false,
+        combines: &[],
+        state: None,
+        order: 0,
+    }
+}
+
 fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> {
     let engine = config.engine;
     let Resolved { campaign_id, mut rules, retargeted } = resolve_rules(config, &cart);
+    // The tier sets' pseudo-rules after the rules (campaign overrides never reach
+    // them): they rank with the rules (priority desc, id asc).
+    let first_tier = rules.len();
+    rules.extend(config.tiers.sets.iter().map(|set| tier_rule(set, cart.locale_en)));
     rank_ids(&mut rules);
     let entered_by_rule = match_codes(&rules, &cart, config.max_code_length);
 
-    let mut by_id: IdMap = Table::with_capacity(rules.len());
-    for (i, r) in rules.iter().enumerate() {
+    // Refs and combinesWith name rules only (plan.ts `rulesById`, `partnersOf`).
+    let mut by_id: IdMap = Table::with_capacity(first_tier);
+    for (i, r) in rules[..first_tier].iter().enumerate() {
         by_id.insert(Text(r.id), i);
     }
-    let id_has_at: Vec<bool> = rules.iter().map(|r| r.id.contains('@')).collect();
+    let id_has_at: Vec<bool> = rules[..first_tier].iter().map(|r| r.id.contains('@')).collect();
     let refs = RuleRefs {
         by_id: &by_id,
         campaign_id,
@@ -1488,20 +1570,31 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
                 rule_scopes[i].add(line, discountable);
             }
         }
-        work.push(WorkLine { excluded, rule_set, product: None, floor: None, margin_capped: false, order_left: false, margin_tight: false });
+        work.push(WorkLine {
+            excluded,
+            rule_set,
+            product: None,
+            floor: None,
+            margin_capped: false,
+            order_left: false,
+            margin_tight: false,
+        });
     }
     let partners = partners_of(&rules, &by_id);
     drop(by_id);
 
     let markets_here = markets_here(&cart, &config.market_countries);
-    for (i, rule) in rules.iter_mut().enumerate() {
+    for (i, rule) in rules[..first_tier].iter_mut().enumerate() {
         let target_scope = if rule.cls == DiscountClass::Product { rule_scopes[i] } else { cart_scope };
         rule.state = gate(rule, &cart, &markets_here, &cart_scope, &target_scope, !entered_by_rule[i].is_empty());
     }
 
+    // Quantity tiers (MVP 3): each line's candidate, from the sets as shipped.
+    let tiers = prepare_tiers(&config.tiers, &cart.lines, &cart.tiers, |i| work[i].excluded.is_none(), &cart.currency, !cart.locale_en);
+
     let any_partners = !partners.bits.is_empty();
-    let ctx = StackContext { rules: &rules, partners: &partners, any_partners, cart: &cart, labels: RefCell::default() };
-    plan_products(&mut work, &ctx);
+    let ctx = StackContext { rules: &rules, first_tier, partners: &partners, any_partners, cart: &cart, labels: RefCell::default() };
+    plan_products(&mut work, &tiers, &ctx);
     // Margin protection (MVP 2, A1.7): off by default, then the plan is MVP 1's.
     if let Some(margin) = config.margin.as_ref() {
         compute_floors(&mut work, margin, &cart);
@@ -1657,9 +1750,9 @@ mod search_tests {
                 .collect();
             let sum: i64 = positive.iter().map(|c| c.amount).sum();
             let cap = [sum / 3, sum / 2, sum, sum * 2, 1, i64::MAX][rng.below(6) as usize].max(1);
-            let ctx = StackContext { rules: &rules, partners: &p, any_partners: !links.is_empty(), cart: &cart, labels: RefCell::default() };
+            let ctx = StackContext { rules: &rules, first_tier: rules.len(), partners: &p, any_partners: !links.is_empty(), cart: &cart, labels: RefCell::default() };
             let mut got = positive.clone();
-            let picked = pick(&ctx, &mut got, cap);
+            let picked = pick(&ctx, &mut got, None, cap);
             let (expected, total) = reference_pick(&rules, &positive, cap, &p);
             assert_eq!((&picked.components, picked.total), (&expected, total), "case {case}");
             stacked += usize::from(expected.len() > 1);

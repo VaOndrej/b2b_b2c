@@ -8,6 +8,9 @@
 //   country         localization.country.isoCode (Pro market targeting)
 //   per line        ruleIds ∪ variantRuleIds[variant] + outlet from the product
 //                   metafield; the gift from the `_won_gift` line attribute
+//   tiers (MVP 3)   only while the shared config has tier sets: the product
+//                   metafield's `tierRef`, and the product's id when the line's
+//                   set counts per product (the only use of it)
 //   margin (MVP 2)  only while the shared config has margin protection on: the
 //                   variant's `{cost, cur}` (variant metafield) and
 //                   `presentmentCurrencyRate`; the product's `marginRefs` only
@@ -27,13 +30,14 @@
 
 use shopify_function::wasm_api::Value;
 
-use crate::engine::cart::{is_country, CampaignInput, CartInput, LineInput};
-use crate::engine::config::Config;
+use crate::engine::cart::{is_country, CampaignInput, CartInput, LineInput, LineTier};
+use crate::engine::config::{Config, TierCount};
 use crate::engine::emit::NodeRole;
 use crate::engine::hash::{parse_hash, MAX_ENTERED_CODES};
 use crate::engine::js;
 use crate::engine::margin::MarginRef;
 use crate::engine::money::{currency_exponent, to_minor_units_with};
+use crate::engine::tiers::SetIndex;
 use crate::json::{is_true, non_empty, number, prop, string, DecimalNumber, DecimalText, Key, NodeVars, OutletLists, WonProduct, WonVariant};
 
 /// The node's role from its `function_vars`. A code node MUST have a rule id; an
@@ -65,11 +69,10 @@ fn field(value: &Value, key: Key) -> Option<Value> {
 }
 
 /// `obj[key]` of an object whose one field in the input query is `key` (a
-/// metafield's `jsonValue`, `product { wonProduct }`, `cost { amountPerQuantity
-/// { amount } }`, the gift attribute's `value`, an `isoCode`, a `code`, an
-/// `id`), read by position: the provider finds a key by comparing it with the
+/// metafield's `jsonValue`, `cost { amountPerQuantity { amount } }`, the gift
+/// attribute's `value`, an `isoCode`, a `code`, an `id`), read by position: the provider finds a key by comparing it with the
 /// object's keys (~580 instructions for `wonProduct`), by position it only
-/// indexes (~270). Five such reads a cart line. An object of another size (not
+/// indexes (~270). Four such reads a cart line. An object of another size (not
 /// the query's shape) is read by name. Not an object → none, like `field`.
 fn sole(value: &Value, key: Key) -> Option<Value> {
     match value.obj_len()? {
@@ -81,7 +84,8 @@ fn sole(value: &Value, key: Key) -> Option<Value> {
 /// A query object with more than one field, read by position (audit round 6): a
 /// read by name makes the input provider compare the key with the object's
 /// keys, ~1.5 k instructions a cart line more for its 8 such fields (3 % of
-/// the limit on a 200-line cart). The
+/// the limit on a 200-line cart; `product { id wonProduct }` is a third shape
+/// since MVP 3). The
 /// provider's key order need not be the query's (function-runner sorts the
 /// keys), so the positions are learned from the first object of the query's
 /// size (its keys read once a run) and used for every later one of that size:
@@ -91,12 +95,15 @@ fn sole(value: &Value, key: Key) -> Option<Value> {
 /// the query's keys (README "Accepted edge differences", schema-invalid input).
 struct Shape<const N: usize> {
     keys: [Key; N],
-    at: Positions<N>,
+    at: Positions,
 }
 
-enum Positions<const N: usize> {
+/// The most fields a query object read by position has (a cart line's 5).
+const MAX_FIELDS: usize = 5;
+
+enum Positions {
     Unknown,
-    Learned([usize; N]),
+    Learned([usize; MAX_FIELDS]),
     ByName,
 }
 
@@ -107,29 +114,36 @@ impl<const N: usize> Shape<N> {
 
     /// `value[self.keys[field]]`.
     fn get(&mut self, value: &Value, field: usize) -> Value {
-        if value.obj_len() != Some(N) {
+        self.get_sized(value, value.obj_len(), field)
+    }
+
+    /// `get` of a value whose `obj_len()` is `len` (read once by the caller).
+    fn get_sized(&mut self, value: &Value, len: Option<usize>, field: usize) -> Value {
+        if len != Some(N) {
             return prop(value, self.keys[field]);
         }
         if let Positions::Unknown = self.at {
-            self.at = self.learn(value);
+            self.at = learn(&self.keys, value);
         }
         match &self.at {
             Positions::Learned(at) => value.get_at_index(at[field]),
             _ => prop(value, self.keys[field]),
         }
     }
+}
 
-    fn learn(&self, value: &Value) -> Positions<N> {
-        let mut at = [usize::MAX; N];
-        for i in 0..N {
-            let Some(name) = value.get_obj_key_at_index(i) else { return Positions::ByName };
-            match self.keys.iter().position(|key| key.text() == name) {
-                Some(field) if at[field] == usize::MAX => at[field] = i,
-                _ => return Positions::ByName,
-            }
+/// The positions of `keys` in `value` (an object of `keys.len()` keys), one
+/// copy for every shape (Wasm size).
+fn learn(keys: &[Key], value: &Value) -> Positions {
+    let mut at = [usize::MAX; MAX_FIELDS];
+    for i in 0..keys.len() {
+        let Some(name) = value.get_obj_key_at_index(i) else { return Positions::ByName };
+        match keys.iter().position(|key| key.text() == name) {
+            Some(field) if at[field] == usize::MAX => at[field] = i,
+            _ => return Positions::ByName,
         }
-        Positions::Learned(at)
     }
+    Positions::Learned(at)
 }
 
 /// The node's discount classes (`discount.discountClasses`, strings).
@@ -186,6 +200,13 @@ struct ReadLine {
     margin_ref_count: usize,
 }
 
+/// What quantity tiers read of a line (`LineTier`), owned.
+#[derive(Default)]
+struct ReadTier {
+    tier_ref: Option<String>,
+    product_id: String,
+}
+
 /// Everything a run reads from its input (`adaptInput`), owned: the plan borrows from it.
 pub struct RunInput {
     pub role: NodeRole,
@@ -201,6 +222,8 @@ pub struct RunInput {
     entered_codes: Vec<String>,
     shop_to_cart_rate: Option<f64>,
     lines: Vec<ReadLine>,
+    /// Per line what quantity tiers read; empty without tier sets.
+    tiers: Vec<ReadTier>,
     /// `cart.lines.length`: Shopify's output limit counts every line.
     pub line_count: usize,
 }
@@ -242,6 +265,14 @@ impl RunInput {
         // `cart.lines[]` and its `merchandise` (a ProductVariant), in the query's field order.
         let mut line_shape = Shape::new([Key::Id, Key::Quantity, Key::Cost, Key::Gift, Key::Merchandise]);
         let mut variant_shape = Shape::new([Key::Typename, Key::Id, Key::WonVariant, Key::Product]);
+        let mut product_shape = Shape::new([Key::Id, Key::WonProduct]);
+        // Tier sets (MVP 3): a line's `tierRef` matters only when the config has
+        // some; its product's id only when its set counts per product (K2), a
+        // set found by id in a table built once (plan-tiers.ts step 1).
+        let tiers = &config.tiers;
+        let tiers_on = !tiers.sets.is_empty();
+        let per_product: Option<SetIndex> = tiers.any_per_product().then(|| SetIndex::of(&tiers.sets));
+        let mut read_tiers: Vec<ReadTier> = Vec::with_capacity(if tiers_on { line_count } else { 0 });
         for line in lines_value.iter().flat_map(|l| (0..line_count).map(|i| l.get_at_index(i))) {
             // (A line, its merchandise, product and cost are objects in any input
             // built from the query; `prop` of anything else is an undefined value.)
@@ -259,10 +290,19 @@ impl RunInput {
                 margin_refs: Vec::new(),
                 margin_ref_count: 0,
             };
+            let mut tier = ReadTier::default();
             let merchandise = line_shape.get(&line, 4);
-            let won = sole(&variant_shape.get(&merchandise, 3), Key::WonProduct).and_then(|metafield| sole(&metafield, Key::JsonValue));
+            let product = variant_shape.get(&merchandise, 3);
+            // `product { id wonProduct }`; a product of one key (an input of the
+            // MVP 2 query, a hand-made one) is read by position like `sole`.
+            let product_keys = product.obj_len();
+            let won = match product_keys {
+                Some(1) => Some(product.get_at_index(0)),
+                _ => Some(product_shape.get_sized(&product, product_keys, 1)),
+            }
+            .and_then(|metafield| sole(&metafield, Key::JsonValue));
             if let Some(won) = won {
-                let mut won = WonProduct::read(&won, margin_refs_on);
+                let mut won = WonProduct::read(&won, margin_refs_on, tiers_on);
                 // The variant id is read only when the metafield needs it.
                 let variant_id = if won.needs_variant_id() { string(&variant_shape.get(&merchandise, 1)).unwrap_or_default() } else { String::new() };
                 read.variant_rule_ids = won.variant_refs(&variant_id);
@@ -272,6 +312,7 @@ impl RunInput {
                     read.margin_refs = won.margin_refs();
                 }
                 read.rule_ids = won.take_rule_ids();
+                tier.tier_ref = won.take_tier_ref();
             }
             if margin_on {
                 if let Some(cost) = sole(&variant_shape.get(&merchandise, 2), Key::JsonValue) {
@@ -286,7 +327,19 @@ impl RunInput {
             read.unit_price =
                 amount.and_then(|amount| DecimalText::read(&amount).text().and_then(|text| to_minor_units_with(text, exponent))).unwrap_or(0);
             read.gift = sole(&line_shape.get(&line, 3), Key::Value).and_then(|value| non_empty(&value)).is_some();
+            if let Some(by_id) = per_product.as_ref().filter(|_| !read.gift) {
+                let set = match tier.tier_ref.as_deref() {
+                    None => tiers.global,
+                    Some(id) => by_id.get(&tiers.sets, id),
+                };
+                if set.is_some_and(|s| tiers.sets[s].count == TierCount::Product) {
+                    tier.product_id = string(&product_shape.get(&product, 0)).unwrap_or_default();
+                }
+            }
             lines.push(read);
+            if tiers_on {
+                read_tiers.push(tier);
+            }
         }
 
         // The entered codes matter only to a code rule with a hash an entered code
@@ -317,6 +370,7 @@ impl RunInput {
             entered_codes,
             shop_to_cart_rate: if margin_on { DecimalNumber::read(&prop(root, Key::PresentmentCurrencyRate)).0 } else { None },
             lines,
+            tiers: read_tiers,
             line_count,
         })
     }
@@ -343,6 +397,7 @@ impl RunInput {
                     margin_ref_count: l.margin_ref_count,
                 })
                 .collect(),
+            tiers: self.tiers.iter().map(|t| LineTier { tier_ref: t.tier_ref.as_deref(), product_id: &t.product_id }).collect(),
             entered_codes: self.entered_codes.iter().map(String::as_str).collect(),
             campaign: CampaignInput {
                 id: self.campaign_id.as_deref(),

@@ -25,7 +25,10 @@
 //     variant metafield `$app:won_discounts`/`variant` (cost in MAJOR units of the
 //     shop currency), the product's `marginRefs` from the product metafield, and
 //     `presentmentCurrencyRate` (shop currency → cart currency, a Decimal). They
-//     are passed on as read; the engine decides what is usable (margin.ts).
+//     are passed on as read; the engine decides what is usable (margin.ts);
+//   - quantity tiers (MVP 3): the product metafield's `tierRef` (passed on as
+//     read: normalizeCart decides) and the product's id `merchandise.product.id`
+//     (a set counted per product counts a product's variants together).
 //
 // Never throws: the run wrappers turn any error into `{ operations: [] }`.
 // Used by tests/parity.test.js and apps/won-discounts/tests/contracts/function.contract.test.ts.
@@ -168,7 +171,10 @@ export function decimalNumber(v) {
  *   - `outlet`: `true` (every variant) or a list of variant GIDs;
  *   - gift: the `_won_gift` line attribute (a property of the line, not the product);
  *   - margin (MVP 2): `marginRefs` from the product metafield, `cost` / `cur` from the
- *     variant metafield — as read (normalizeCart keeps a number / a string / strings).
+ *     variant metafield — as read (normalizeCart keeps a number / a string / strings);
+ *   - tiers (MVP 3): `tierRef` from the product metafield, as read (normalizeCart:
+ *     absent/null = the global set, a string = that set, anything else = none), and
+ *     the product's id.
  * @param {any} line
  * @param {string} currency
  * @returns {CartLineInput | null}
@@ -180,13 +186,14 @@ function readLine(line, currency) {
   const isVariant = merchandise?.__typename === "ProductVariant";
   const variantId = isVariant && typeof merchandise.id === "string" ? merchandise.id : "";
   const won = isVariant ? merchandise.product?.wonProduct?.jsonValue : null;
+  const productId = isVariant ? merchandise.product?.id : undefined;
   const amount = line.cost?.amountPerQuantity?.amount;
   /** @type {CartLineInput} */
   const out = {
     id,
     variantId,
-    // Not selected (input query cost and size): the engine targets by refs.
-    productId: "",
+    // Tiers counted per product (MVP 3); the engine targets rules by refs.
+    productId: typeof productId === "string" ? productId : "",
     quantity: typeof line.quantity === "number" ? line.quantity : 0,
     unitPrice: typeof amount === "string" || typeof amount === "number" ? (toMinorUnits(amount, currency) ?? 0) : 0,
     ruleIds: NO_REFS,
@@ -198,6 +205,7 @@ function readLine(line, currency) {
     const outlet = won.outlet;
     if (outlet === true || (Array.isArray(outlet) && variantId !== "" && outlet.includes(variantId))) out.outlet = true;
     if (won.marginRefs !== undefined) out.marginRefs = won.marginRefs;
+    if (won.tierRef !== undefined) out.tierRef = won.tierRef;
   }
   const cost = isVariant ? merchandise.wonVariant?.jsonValue : null;
   if (typeof cost === "object" && cost !== null) {

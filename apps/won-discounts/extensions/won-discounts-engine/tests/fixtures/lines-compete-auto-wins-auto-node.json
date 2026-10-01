@@ -126,6 +126,7 @@
               "id": "gid://shopify/ProductVariant/1001",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/1",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [
@@ -151,6 +152,7 @@
               "id": "gid://shopify/ProductVariant/1002",
               "wonVariant": null,
               "product": {
+                "id": "gid://shopify/Product/2",
                 "wonProduct": {
                   "jsonValue": {
                     "ruleIds": [

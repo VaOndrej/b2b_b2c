@@ -106,9 +106,11 @@ const BUDGET_PREFIX = /-\d+-lines-budget\.json$/;
  * The budget carts filled to Shopify's input limit: only these get the 90 %
  * gate (each is checked to be ≥ 99 % of the limit). Every other budget cart —
  * 55–75 kB of input, 44–58 % of the limit — keeps the ordinary 70 % gate, so the
- * 90 % allowance never hides a regression on them.
+ * 90 % allowance never hides a regression on them. MVP 3: the Pro carts carry
+ * quantity tiers on every line, and `lines-tiers-pro-*` is the tier worst case
+ * (tiers winning every line, 22 sets of 10 breaks, amounts in 8 currencies).
  */
-const AT_INPUT_LIMIT = /^lines-(margin-(pro|near-min)|markets|codes)-/;
+const AT_INPUT_LIMIT = /^lines-(margin-(pro|near-min)|markets|codes|tiers)-/;
 /** The instruction gate of a budget cart. */
 function budgetOf(file: string, lines: number) {
   return AT_INPUT_LIMIT.test(file) ? worstCaseBudget(lines) : instructionBudget(lines);
@@ -226,6 +228,8 @@ for (const [target, file] of Object.entries(QUERIES)) {
     assert.match(body, /discount \{[^}]*vars: metafield\(namespace: "\$app:won_discounts", key: "function_vars"\)/);
     assert.match(body, /shop \{\s*config: metafield\(namespace: "\$app:won_discounts", key: "function_config"\)/);
     assert.match(body, /wonProduct: metafield\(namespace: "\$app:won_discounts", key: "product"\)/);
+    // MVP 3: the product's id (a tier set counted per product counts its variants together).
+    assert.match(body, /product \{\s*id\s*\n\s*wonProduct: metafield/);
     // Required, and no defaults: the platform does not apply query defaults (C4).
     assert.match(body, /\$campaignStart: DateTimeWithoutTimezone!\s*\n/);
     assert.match(body, /\$campaignEnd: DateTimeWithoutTimezone!\s*\n/);
@@ -297,6 +301,16 @@ test("fixtures cover every A1 scenario across roles", () => {
     "delivery-config-null",
     "lines-campaign-version-mismatch",
     "lines-200-lines-budget",
+    // MVP 3 quantity tiers (plan-tiers.ts port spec).
+    "lines-tiers-line-count",
+    "lines-tiers-product-count",
+    "lines-tiers-cart-count",
+    "lines-tiers-scoped-ref",
+    "lines-tiers-amount-eur-break-not-offered",
+    "lines-tiers-vs-pro-stack",
+    "lines-tiers-margin-capped",
+    "lines-tiers-free-gated",
+    "lines-tiers-pro-200-lines-budget",
   ]) {
     assert.match(names, new RegExp(`${needle}\\.json`), `missing fixture ${needle}`);
   }

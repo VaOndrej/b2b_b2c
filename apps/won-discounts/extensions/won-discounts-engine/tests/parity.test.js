@@ -44,7 +44,10 @@ import { beforeAll, describe, expect, test } from "vitest";
 
 import { normalizeCart } from "@won/core/discounts/cart";
 import { roundingTiePossible } from "@won/core/discounts/function-output";
+import { sanitizeConfig } from "@won/core/discounts/config";
 import { costMinorUnits, MAX_MARGIN_REFS, marginFloorUnit, readMarginPayload, resolveProductMargin } from "@won/core/discounts/margin";
+import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
+import { buildTiersPayload, readTiersPayload } from "@won/core/discounts/tiers";
 import { ENTERED_CODE_PADDING, readMaxCodeLength } from "@won/core/discounts/plan";
 import { orderSetLimit, searchOrderSets } from "@won/core/discounts/plan-margin";
 
@@ -155,7 +158,7 @@ const vid = (n) => `gid://shopify/ProductVariant/${n}`;
 
 /**
  * @param {number} seed
- * @param {boolean | "mesh" | "tied" | "many" | "long"} [onlySearch] true: only margin order-search carts (searchCase); "mesh": only Pro mesh carts (meshCase); "tied": only order-search carts with many tied lines (tiedCase); "many": many markets and entered codes (manyCase); "long": entered codes of any length against the longest Won code (longCase)
+ * @param {boolean | "mesh" | "tied" | "many" | "long" | "tiers"} [onlySearch] true: only margin order-search carts (searchCase); "mesh": only Pro mesh carts (meshCase); "tied": only order-search carts with many tied lines (tiedCase); "many": many markets and entered codes (manyCase); "long": entered codes of any length against the longest Won code (longCase); "tiers": quantity tiers (tierCase)
  */
 function generator(seed, onlySearch = false) {
   const rnd = prng(seed);
@@ -398,7 +401,7 @@ function generator(seed, onlySearch = false) {
       },
       gift: chance(0.07) ? { value: pick(["tier-1", "", null]) } : null,
       merchandise: chance(0.93)
-        ? { __typename: "ProductVariant", id: vid(variant), wonVariant: variantCost(), product: { wonProduct: product.won } }
+        ? { __typename: "ProductVariant", id: vid(variant), wonVariant: variantCost(), product: { id: `gid://shopify/Product/${product.p}`, wonProduct: product.won } }
         : { __typename: "CustomProduct" },
     };
   }
@@ -944,7 +947,154 @@ function generator(seed, onlySearch = false) {
     };
   }
 
+  // --- Quantity tiers (MVP 3) ---
+  const TIER_CURRENCIES = ["CZK", "EUR", "JPY", "KWD", "USD", "HUF", "BHD"];
+  /** A merchant tier set: one kind, ascending breaks, values that never fall (config/tiers.ts). */
+  function merchantTierSet(id, scope) {
+    const count = pick(["line", "line", "product", "product", "cart"]);
+    const percentKind = chance(0.6);
+    const n = 1 + int(chance(0.15) ? 10 : 4);
+    const qtys = [...new Set(Array.from({ length: n }, () => 1 + int(chance(0.1) ? 40 : 8)))].sort((a, b) => a - b);
+    let p = 0;
+    const tops = new Map();
+    const breaks = qtys.map((minQty) => {
+      if (percentKind) {
+        p = Math.min(100, p + pick([0, 2.5, 5, 5, 7, 10, 12.5, 33.333, 50]));
+        return { minQty, percent: p };
+      }
+      const amountOff = {};
+      for (const c of TIER_CURRENCIES) {
+        if (!chance(c === "CZK" ? 0.9 : 0.5)) continue;
+        const step = c === "JPY" ? pick([0, 50, 100]) : c === "HUF" ? pick([0, 5000, 20000]) : c === "KWD" || c === "BHD" ? pick([0, 250, 1500]) : pick([0, 500, 1000, 2500, 99999]);
+        const v = (tops.get(c) ?? 0) + step;
+        tops.set(c, v);
+        amountOff[c] = chance(0.03) ? 1e12 : v;
+      }
+      if (Object.keys(amountOff).length === 0) amountOff.CZK = (tops.get("CZK") ?? 0) + 1000;
+      return { minQty, amountOff };
+    });
+    return { id, scope, countAcross: count, breaks };
+  }
+  /** `modules.tiers` in the shop config: built from a merchant config (Pro, or gated for Free), or hand-made junk. */
+  function tierPayload(scopedIds, productGids) {
+    const sets = [];
+    if (chance(0.85)) sets.push(merchantTierSet(pick(["mnozstvi", "g", "zaklad"]), "global"));
+    for (const id of scopedIds) sets.push(merchantTierSet(id, { productIds: some(productGids, 0.4).concat(productGids.slice(0, 1)) }));
+    if (chance(0.1)) sets.push(merchantTierSet("druha", "global"));
+    const { config } = sanitizeConfig({ modules: { codes: { rules: [] }, tiers: { sets } } });
+    const free = chance(0.25);
+    const gated = free ? gateConfigForPlan(config, "free").config : config;
+    const payload = JSON.parse(JSON.stringify(buildTiersPayload(gated.modules.tiers)));
+    if (chance(0.15)) {
+      // Hand-made junk, read tolerantly: unsorted and duplicate breaks, junk values, junk entries.
+      for (const set of payload.sets) {
+        if (chance(0.5)) set[3].reverse();
+        if (chance(0.4)) set[3].push(pick([[set[3][0]?.[0] ?? 1, 99], [0.5, 10], ["3", 10], [4], [2.7, pick([15, [100, null], "x", null])]]));
+        if (chance(0.3)) set[2] = pick([[...set[2], set[2][0] ?? "CZK"], ["czk", ...set[2]], "CZK", [5, ...set[2]]]);
+      }
+      if (chance(0.4)) payload.sets.push(pick([["mnozstvi", "cart", [], [[1, 90]]], ["x", "all", [], [[1, 90]]], [7, "line", [], []], "junk", ["y", "line"]]));
+      if (chance(0.3)) payload.global = pick(["gone", 5, "akce"]);
+    }
+    return { payload, free };
+  }
+
+  /**
+   * Quantity tiers next to everything else: tier sets as the sync ships them
+   * (Pro, or the config gated for Free: scoped sets inert, `cart` counted per
+   * product) or hand-made junk; every count mode, percent and amount breaks in
+   * the cart currency or not (MKT-1), up to 10 breaks; products of several
+   * variants (counted together per product), `tierRef` absent, a scoped set,
+   * a set the payload lacks, junk or null; product rules (Pro stacks), order
+   * and shipping rules, a code rule and its node; margin protection on or off;
+   * outlet and gift lines; the Free switches; CS / EN; lines and delivery.
+   */
+  function tierCase() {
+    const currency = pick(["CZK", "CZK", "CZK", "EUR", "EUR", "JPY", "KWD", "USD", "HUF", "BHD"]);
+    const scopedIds = some(["akce", "vyprodej", "t_9"], 0.35);
+    const productCount = 1 + int(8);
+    const productGids = Array.from({ length: productCount }, (_, k) => `gid://shopify/Product/${k + 1}`);
+    const { payload, free } = tierPayload(scopedIds, productGids);
+    const ids = ["r0", "r1", "r2", "zz"];
+    const rules = [
+      { id: "r0", enabled: true, name: pick(["Sleva r0", ""]), method: "automatic", value: { kind: "percentage", percent: pick([5, 10, 15, 20, 30]) }, target: { kind: "products" }, ...(chance(0.6) ? { combinesWith: { ruleIds: ["r1"] } } : {}) },
+      { id: "r1", enabled: true, name: "Sleva r1", method: "automatic", value: chance(0.5) ? { kind: "percentage", percent: pick([5, 10, 12.5]) } : { kind: "fixed", amount: { CZK: 3000, EUR: 150, USD: 200, JPY: 300 } }, target: { kind: "products" } },
+      { id: "r2", enabled: true, name: "Kód r2", method: "code", codeHashes: [codeHash("SAVE10")], value: { kind: "percentage", percent: pick([10, 25]) }, target: { kind: "products" } },
+      { id: "zz", enabled: true, name: "Sleva zz", method: "automatic", value: { kind: "percentage", percent: pick([10, 20]) }, target: { kind: "products" }, ...(chance(0.3) ? { priority: pick([1, 5]) } : {}) },
+    ];
+    if (chance(0.5)) rules.push({ id: "o", enabled: true, name: "Objednávka", method: "automatic", value: chance(0.7) ? { kind: "percentage", percent: pick([5, 10, 30]) } : { kind: "fixed", amount: { CZK: 20000, EUR: 800, USD: 900 } }, target: { kind: "order" } });
+    if (chance(0.4)) rules.push({ id: "ship", enabled: true, name: "Doprava", method: "automatic", value: { kind: "freeShipping" }, target: { kind: "shipping" } });
+    const margin = chance(0.4) ? { enabled: true, max: pick([10, 20, 35, 50, 100]), min: pick([0, 10, 30]), cur: "CZK", ...(chance(0.3) ? { col: { 11: [40, 15] } } : {}) } : null;
+    const products = productGids.map((gid, k) => {
+      if (chance(0.06)) return { gid, won: null };
+      const won = { ruleIds: some(ids, 0.35), variantRuleIds: {} };
+      const r = rnd();
+      if (r < 0.15 && scopedIds.length > 0) won.tierRef = pick(scopedIds);
+      else if (r < 0.2) won.tierRef = pick(["smazana", "", 7, null, ["akce"], true]);
+      if (chance(0.08)) won.outlet = true;
+      if (margin && chance(0.3)) won.marginRefs = ["11"];
+      return { gid, won, k };
+    });
+    const lineCount = chance(0.85) ? 1 + int(25) : 60 + int(160);
+    const lines = Array.from({ length: lineCount }, (_, i) => {
+      const product = pick(products);
+      const k = productGids.indexOf(product.gid) + 1;
+      return {
+        id: `gid://shopify/CartLine/${i}`,
+        quantity: pick([1, 1, 2, 2, 3, 4, 5, 6, 8, 0]),
+        cost: { amountPerQuantity: { amount: pick(["100.0", "249.9", "30.0", "10.05", "1000", "12.345", "0.5", "59.0", "3.35"]) } },
+        gift: chance(0.05) ? { value: "tier-1" } : null,
+        merchandise: chance(0.97)
+          ? {
+              __typename: "ProductVariant",
+              id: vid(k * 100 + 1 + int(3)),
+              wonVariant: margin && chance(0.6) ? { jsonValue: { cost: pick([1, 5, 20, 45.5, 300, 700]), cur: "CZK" } } : null,
+              product: { id: product.gid, wonProduct: product.won ? { jsonValue: product.won } : null },
+            }
+          : { __typename: "CustomProduct" },
+      };
+    });
+    const exportName = chance(0.75) ? LINES : DELIVERY;
+    const codeNode = chance(0.2);
+    const entered = chance(0.4) ? ["SAVE10"] : [];
+    const config = {
+      schemaVersion: 1,
+      campaignId: null,
+      campaignVarsVersion: null,
+      engine: {
+        combination: { outletWithAnything: chance(0.3), productWithOrder: chance(0.7), productWithShipping: chance(0.8), orderWithShipping: chance(0.9) },
+      },
+      marketCountries: {},
+      modules: { codes: { rules }, tiers: payload, ...(margin ? { margin } : {}) },
+      campaigns: [],
+    };
+    return {
+      exportName,
+      free,
+      input: {
+        triggeringDiscountCode: codeNode && entered.length > 0 ? "save10" : null,
+        enteredDiscountCodes: entered.map((code) => ({ code })),
+        discount: {
+          discountClasses: ["PRODUCT", "ORDER", "SHIPPING"],
+          vars: { jsonValue: { role: codeNode ? "code" : "automatic", ...(codeNode ? { ruleId: "r2" } : {}), campaignId: null, campaignStart: "1970-01-01T00:00:00", campaignEnd: "1970-01-01T00:00:00", varsVersion: null } },
+        },
+        shop: { config: { jsonValue: config }, localTime: { date: "2026-10-01", campaignActive: false } },
+        localization: { country: { isoCode: "CZ" }, language: { isoCode: pick(["CS", "CS", "EN", "SK"]) } },
+        presentmentCurrencyRate: currency === "CZK" ? "1.0" : pick(["0.04", "6.5", "0.0405"]),
+        cart: {
+          cost: { subtotalAmount: { currencyCode: currency } },
+          ...(exportName === DELIVERY ? { deliveryGroups: [{ id: "gid://shopify/CartDeliveryGroup/1" }] } : {}),
+          lines,
+        },
+      },
+    };
+  }
+
   return function nextCase() {
+    if (onlySearch === "tiers") {
+      hostile = false;
+      large = false;
+      return tierCase();
+    }
     if (onlySearch === "mesh") {
       hostile = false;
       large = false;
@@ -1125,6 +1275,56 @@ function stackCapBranches(input) {
     if (plan.lines[i].marginCapped) hits.add("stack cap: margin cuts a capped stack");
   });
   if ((plan.order?.components.length ?? 0) === 6) hits.add("stack cap: an order stack of the 6 best");
+  return hits;
+}
+
+/** The quantity-tier branches one case hit (from the TS plan and the payload as read). */
+function tierBranches(c, output) {
+  const hits = new Set();
+  const ops = output.operations;
+  const adapted = adaptInput(c.input);
+  const { plan, emission } = emissionFor(adapted);
+  if (!plan || plan.reason) return hits;
+  const read = readTiersPayload(c.input.shop.config.jsonValue.modules.tiers, plan.currency);
+  const tierLines = plan.lines.filter((l) => l.product?.ownerRuleId.startsWith("tier:"));
+  const emitted = new Set(emission.productCandidates.filter((x) => x.ruleId.startsWith("tier:")).map((x) => x.lineId));
+  if (emitted.size > 0) hits.add("tier emitted");
+  for (const t of plan.tiers) {
+    const applied = t.state === "applied";
+    if (applied && t.countAcross === "line") hits.add("tier applied, counted per line");
+    if (applied && t.countAcross === "product" && t.groups.some((g) => g.reached && g.lineIds.length > 1)) hits.add("tier applied, 2+ lines of a product counted together");
+    if (applied && t.countAcross === "cart" && t.groups.some((g) => g.reached && g.lineIds.length > 1)) hits.add("tier applied, counted across the cart");
+    if (t.state === "outranked") hits.add("a rule or a Pro stack beats a tier");
+    if (t.state === "not_combinable") hits.add("the exclusive switch drops a tier");
+    if (t.state === "currency_missing") hits.add("a set not offered in the cart currency");
+    if (t.state === "disabled" && t.lineIds.length === 0 && c.free) hits.add("Free: an inert scoped set gives its products nothing");
+    const set = read.sets.get(t.setId);
+    for (const g of t.groups) {
+      if (!g.reached || !set) continue;
+      if (set.breaks.some((b) => !b.offered && b.minQty > g.reached.minQty && b.minQty <= g.count)) hits.add("MKT-1: a break not offered in the cart currency passed over");
+    }
+  }
+  if (plan.rules.some((r) => r.state === "outranked" && (r.betterRuleIds ?? []).some((id) => id.startsWith("tier:")))) hits.add("a tier beats a rule");
+  if (plan.lines.some((l) => l.product && l.product.components.length > 1 && plan.tiers.some((t) => t.state === "outranked" && t.groups.some((g) => g.reached && g.lineIds.includes(l.lineId))))) {
+    hits.add("a Pro stack beats a tier");
+  }
+  if (tierLines.some((l) => l.product.value.fixedPerItem !== undefined)) hits.add("amount tier applied");
+  if (tierLines.some((l) => l.product.value.fixedPerItem !== undefined && l.product.value.fixedPerItem === l.unitPrice)) hits.add("amount tier capped at the item price");
+  if (tierLines.some((l) => l.marginCapped)) hits.add("margin protection caps a tier");
+  if (tierLines.some((l) => l.product.value.percent !== undefined && roundingTiePossible(l.subtotal, l.product.value.percent))) hits.add("tier percent on a rounding tie");
+  if (c.free && emitted.size > 0) hits.add("Free-gated config emits a tier");
+  const lines = normalizeCart(adapted.cart).lines;
+  const unusable = lines.some((l) => !l.gift && l.tierRef !== null && !read.sets.has(l.tierRef));
+  if (unusable && read.global !== null) hits.add("a tierRef to no set (missing, junk) gives no tier");
+  if (lines.some((l) => !l.gift && l.tierRef !== null && read.sets.has(l.tierRef)) && emitted.size > 0) hits.add("a scoped set by tierRef");
+  if (ops.some((op) => op.productDiscountsAdd?.candidates.some((x) => x.message.startsWith("From ")))) hits.add("English tier message");
+  if (adapted.role?.kind === "code" && read.sets.size > 0 && ops.length > 0) hits.add("code node emits with tiers configured");
+  if (c.exportName === DELIVERY && plan.rules.some((r) => r.discountClass === "shipping" && r.state === "not_combinable") && tierLines.length > 0) hits.add("a tier blocks shipping (Free switch)");
+  if (c.input.cart.lines.length > 50 && emitted.size > 0) hits.add("50+ line cart with tiers");
+  const raw = c.input.shop.config.jsonValue.modules.tiers;
+  if (raw.sets.some((x) => !Array.isArray(x) || typeof x[0] !== "string" || !Array.isArray(x[2]) || x[3]?.some((b, i, all) => i > 0 && (!Array.isArray(b) || !Array.isArray(all[i - 1]) || b[0] <= all[i - 1][0])))) {
+    hits.add("hand-made junk tier payload");
+  }
   return hits;
 }
 
@@ -1415,6 +1615,71 @@ describe("Wasm (function-runner)", () => {
     const thin = BRANCHES.filter((b) => (hits.get(b) ?? 0) < MIN_HITS);
     expect(thin, `branches hit fewer than ${MIN_HITS} times:\n${table}`).toEqual([]);
     expect(overBudget).toEqual([]);
+    expect(maxMemory).toBeLessThanOrEqual(MEMORY_BOUND_KB);
+  }, 900_000);
+
+  // Quantity tiers (MVP 3, plan-tiers.ts port spec; src/engine/tiers.rs + plan.rs):
+  // carts with tier sets as the sync ships them (Pro, or gated for Free) and
+  // hand-made junk, every count mode, percent and amount breaks in 7 currencies
+  // (MKT-1), tierRefs of every kind, rules and Pro stacks competing, margin on
+  // and off, the Free switches, both targets: Wasm = TS reference, every tier
+  // branch ≥ MIN_HITS times.
+  const TIER_CASES = Number(process.env.PARITY_TIER_CASES ?? 2400);
+  test(`quantity tiers, seed 20261007 × ${TIER_CASES}: Wasm = TS reference, every tier branch hit`, async () => {
+    const next = generator(20261007, "tiers");
+    const cases = Array.from({ length: TIER_CASES }, next);
+    const failures = [];
+    /** @type {Map<string, number>} */
+    const hits = new Map();
+    let maxMemory = 0;
+    let nonEmpty = 0;
+    for (let i = 0; i < cases.length; i += 8) {
+      const batch = cases.slice(i, i + 8);
+      const results = await Promise.all(batch.map((c) => runWasm(runnerPath, wasmPath, c.exportName, c.input)));
+      results.forEach((result, j) => {
+        const c = batch[j];
+        const expected = referenceOutput(c.exportName, c.input);
+        if (expected.operations.length > 0) nonEmpty += 1;
+        for (const branch of tierBranches(c, expected)) hits.set(branch, (hits.get(branch) ?? 0) + 1);
+        if (!result.success || !isDeepStrictEqual(result.output, expected)) failures.push({ index: i + j, exportName: c.exportName, got: result.output, logs: result.logs, expected, input: c.input });
+        maxMemory = Math.max(maxMemory, result.memory_usage ?? Number.POSITIVE_INFINITY);
+      });
+    }
+    if (failures.length > 0) {
+      const first = failures[0];
+      throw new Error(
+        `${failures.length}/${TIER_CASES} tier cases differ; first #${first.index} ${first.exportName}\ngot      ${JSON.stringify(first.got)}\nexpected ${JSON.stringify(first.expected)}\nlogs ${first.logs}\ninput    ${JSON.stringify(first.input)}`,
+      );
+    }
+    const table = [...hits].sort((a, b) => a[1] - b[1]).map(([b, n]) => `${n}\t${b}`).join("\n");
+    console.info(`tier parity: ${TIER_CASES} cases, ${nonEmpty} with operations, 0 differ, largest memory ${maxMemory} KB\n${table}`);
+    const BRANCHES = [
+      "tier emitted",
+      "tier applied, counted per line",
+      "tier applied, 2+ lines of a product counted together",
+      "tier applied, counted across the cart",
+      "a rule or a Pro stack beats a tier",
+      "a tier beats a rule",
+      "a Pro stack beats a tier",
+      "the exclusive switch drops a tier",
+      "a set not offered in the cart currency",
+      "MKT-1: a break not offered in the cart currency passed over",
+      "Free: an inert scoped set gives its products nothing",
+      "Free-gated config emits a tier",
+      "amount tier applied",
+      "amount tier capped at the item price",
+      "margin protection caps a tier",
+      "tier percent on a rounding tie",
+      "a tierRef to no set (missing, junk) gives no tier",
+      "a scoped set by tierRef",
+      "English tier message",
+      "code node emits with tiers configured",
+      "a tier blocks shipping (Free switch)",
+      "50+ line cart with tiers",
+      "hand-made junk tier payload",
+    ];
+    const thin = BRANCHES.filter((b) => (hits.get(b) ?? 0) < MIN_HITS);
+    expect(thin, `branches hit fewer than ${MIN_HITS} times:\n${table}`).toEqual([]);
     expect(maxMemory).toBeLessThanOrEqual(MEMORY_BOUND_KB);
   }, 900_000);
 

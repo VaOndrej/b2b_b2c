@@ -14,6 +14,8 @@ use shopify_function::wasm_api::Value;
 use super::hash::MAX_CODE_LENGTH;
 use super::js;
 use super::margin::{read_margin_payload, MarginPayload};
+
+use super::tiers::SetIndex;
 use crate::json::{entries, has_string, is_true, non_empty, number, prop, string, string_list, Fields, Key};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -213,6 +215,79 @@ impl Default for EngineFlags {
     }
 }
 
+// --- Quantity tiers (MVP 3, tiers.ts: the shop-config form and its tolerant reader) ---------------
+
+/// What counts toward a set's `minQty` (K2, `TIER_COUNT_ACROSS_MODES`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TierCount {
+    /// The line's quantity.
+    Line,
+    /// The quantities of the lines of one product (its variants together).
+    Product,
+    /// The quantities of every eligible line of the set.
+    Cart,
+}
+
+/// A break's value (`readBreaks`).
+#[derive(Debug, Clone, PartialEq)]
+pub enum TierValue {
+    /// Percent off each item, clamped to 0–100.
+    Percent(f64),
+    /// Amount off each item, one entry per currency of `TierSet::currencies`:
+    /// minor units (floored, at most MAX_MONEY_MINOR); none = not offered there (MKT-1).
+    Amount(Vec<Option<i64>>),
+}
+
+/// One break of a set as read (`TierBreakRead` before the cart currency picks its amount).
+#[derive(Debug, Clone, PartialEq)]
+pub struct TierBreak {
+    /// The payload's number floored, ≥ 1 (a JS number: compared with a count as one).
+    pub min_qty: f64,
+    pub value: TierValue,
+}
+
+/// One tier set of the shop config (`TierSetRead`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct TierSet {
+    pub id: String,
+    /// `tier:<id>` (TIER_CANDIDATE_PREFIX): the id its candidates carry.
+    pub rule_id: String,
+    pub count: TierCount,
+    /// The currencies an amount break is read in, aligned with `TierValue::Amount`:
+    /// every entry of the payload's list (`None` = not a string); read for the
+    /// cart currency (the function run), only its first exact match, or none.
+    pub currencies: Vec<Option<String>>,
+    /// Ascending `min_qty`, unique.
+    pub breaks: Vec<TierBreak>,
+}
+
+impl TierSet {
+    /// The index of `currency` among the set's currencies (`indexOf`, the first
+    /// exact match; an empty currency matches none).
+    pub fn currency_index(&self, currency: &str) -> Option<usize> {
+        if currency.is_empty() {
+            return None;
+        }
+        self.currencies.iter().position(|c| c.as_deref() == Some(currency))
+    }
+}
+
+/// `modules.tiers` as `readTiersPayload` reads it.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Tiers {
+    /// Every set read, payload order (the first of an id).
+    pub sets: Vec<TierSet>,
+    /// The global set (K1 step 3): an index into `sets`.
+    pub global: Option<usize>,
+}
+
+impl Tiers {
+    /// Some set counts per product (only then is a line's product id read).
+    pub fn any_per_product(&self) -> bool {
+        self.sets.iter().any(|s| s.count == TierCount::Product)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Config {
     /// `config.campaignId` when a string (compared with `===` to the node's campaign).
@@ -230,6 +305,8 @@ pub struct Config {
     /// Won code, UTF-16 units; an entered code longer than it after trimming is
     /// never upper-cased or matched (it cannot be a Won code).
     pub max_code_length: usize,
+    /// `modules.tiers` (MVP 3): the quantity tier sets.
+    pub tiers: Tiers,
 }
 
 /// `readMaxCodeLength` (plan.ts): a whole number ≥ 0, at most MAX_CODE_LENGTH;
@@ -465,6 +542,133 @@ fn read_engine(config: &Value) -> EngineFlags {
     }
 }
 
+/// `value[i]` of an array of `len` elements; none past its end (`undefined`).
+fn element(value: &Value, len: usize, i: usize) -> Option<Value> {
+    (i < len).then(|| value.get_at_index(i))
+}
+
+/// A set's currency list (`[2]`), and the positions of its entries an amount
+/// break is read at, aligned with the result: with the cart currency `cur`
+/// (the function run) only its first exact match (`indexOf`; an empty
+/// currency matches none), so the strings after it are never read; without
+/// one, every entry (`None` for an entry that is not a string).
+fn read_tier_currencies(list: Option<Value>, cur: Option<&str>) -> (Vec<Option<String>>, Vec<usize>) {
+    let Some((list, len)) = list.and_then(|l| Some((l, l.array_len()?))) else { return (Vec::new(), Vec::new()) };
+    match cur {
+        Some(cur) => {
+            if !cur.is_empty() {
+                for i in 0..len {
+                    if list.get_at_index(i).as_string().as_deref() == Some(cur) {
+                        return (vec![Some(cur.to_string())], vec![i]);
+                    }
+                }
+            }
+            (Vec::new(), Vec::new())
+        }
+        None => ((0..len).map(|i| list.get_at_index(i).as_string()).collect(), (0..len).collect()),
+    }
+}
+
+/// An amount break's value in one currency: a number ≥ 0, floored, at most
+/// MAX_MONEY_MINOR (offered); anything else none (not offered).
+fn tier_amount(value: &Value) -> Option<i64> {
+    number(value).filter(|v| *v >= 0.0).map(|v| js::floor_to_i64(v.min(MAX_MONEY_MINOR)))
+}
+
+/// `readBreaks` (tiers.ts): an entry is used when it is an array of ≥ 2 whose
+/// [0] is a finite number with floor ≥ 1 not taken by an earlier USED break
+/// (the first one wins) and whose [1] is a finite number (a percent, clamped
+/// to 0–100) or an array (amounts, read at `at`); then ascending.
+fn read_tier_breaks(list: Option<Value>, at: &[usize]) -> Vec<TierBreak> {
+    let Some((list, len)) = list.and_then(|l| Some((l, l.array_len()?))) else { return Vec::new() };
+    let mut out: Vec<TierBreak> = Vec::with_capacity(len.min(16));
+    // The sync writes the breaks ascending and unique: then every used break is
+    // above the ones before it, and they are already the result.
+    let mut ascending = true;
+    let mut top = 0.0f64;
+    for i in 0..len {
+        let item = list.get_at_index(i);
+        if !item.array_len().is_some_and(|n| n >= 2) {
+            continue;
+        }
+        let Some(qty) = number(&item.get_at_index(0)) else { continue };
+        let min_qty = qty.floor();
+        if min_qty < 1.0 {
+            continue;
+        }
+        let raw = item.get_at_index(1);
+        let value = if let Some(p) = number(&raw) {
+            // Math.min(100, Math.max(0, p)); Math.max(0, -0) is +0.
+            let p = p.clamp(0.0, 100.0);
+            TierValue::Percent(if p == 0.0 { 0.0 } else { p })
+        } else if let Some(amounts) = raw.array_len() {
+            TierValue::Amount(at.iter().map(|&k| element(&raw, amounts, k).and_then(|v| tier_amount(&v))).collect())
+        } else {
+            continue;
+        };
+        ascending &= min_qty > top;
+        top = top.max(min_qty);
+        out.push(TierBreak { min_qty, value });
+    }
+    if ascending {
+        return out;
+    }
+    // Any other order (not what the sync writes): ascending, and of the breaks of
+    // one minQty the first used one — the first with a usable value (readBreaks
+    // skips a later one before its value; one with a junk value takes nothing).
+    // A minQty ≥ 1 orders like its bits; (bits, position) sorts into exactly that.
+    let mut order: Vec<(u64, u32)> = out.iter().enumerate().map(|(i, b)| (b.min_qty.to_bits(), i as u32)).collect();
+    order.sort_unstable();
+    let mut sorted: Vec<TierBreak> = Vec::with_capacity(order.len());
+    for (bits, i) in order {
+        if sorted.last().is_some_and(|b| b.min_qty.to_bits() == bits) {
+            continue;
+        }
+        sorted.push(std::mem::replace(&mut out[i as usize], TierBreak { min_qty: 0.0, value: TierValue::Percent(0.0) }));
+    }
+    sorted
+}
+
+/// One entry of `sets` (`[id, count, currencies, breaks]`): used only when it is
+/// an array whose [0] is a non-empty string and [1] exactly "line", "product" or
+/// "cart"; any other entry is skipped whole.
+fn read_tier_set(entry: &Value, cur: Option<&str>) -> Option<TierSet> {
+    let len = entry.array_len()?;
+    let id = element(entry, len, 0).and_then(|v| non_empty(&v))?;
+    let count = match element(entry, len, 1).and_then(|v| string(&v)).as_deref() {
+        Some("line") => TierCount::Line,
+        Some("product") => TierCount::Product,
+        Some("cart") => TierCount::Cart,
+        _ => return None,
+    };
+    let (currencies, at) = read_tier_currencies(element(entry, len, 2), cur);
+    let breaks = read_tier_breaks(element(entry, len, 3), &at);
+    Some(TierSet { rule_id: ["tier:", id.as_str()].concat(), id, count, currencies, breaks })
+}
+
+/// `readTiersPayload` (tiers.ts): `modules.tiers` not a record or `sets` not an
+/// array → no sets; the first set of an id wins; `global` counts only when it
+/// is a string naming a set that was read. With the cart currency (`cur`, the
+/// function run) an amount break is read in it only.
+fn read_tiers(value: &Value, cur: Option<&str>) -> Tiers {
+    if !value.is_obj() {
+        return Tiers::default();
+    }
+    let list = prop(value, Key::Sets);
+    let Some(len) = list.array_len() else { return Tiers::default() };
+    let mut sets: Vec<TierSet> = (0..len).filter_map(|i| read_tier_set(&list.get_at_index(i), cur)).collect();
+    if sets.len() > 1 {
+        let keep: Vec<bool> = {
+            let mut seen = SetIndex::new(&sets);
+            (0..sets.len()).map(|i| seen.add(&sets, i)).collect()
+        };
+        let mut keep = keep.into_iter();
+        sets.retain(|_| keep.next().unwrap_or(false));
+    }
+    let global = string(&prop(value, Key::Global)).and_then(|g| sets.iter().position(|s| s.id == g));
+    Tiers { sets, global }
+}
+
 impl Config {
     /// `isFunctionConfigPayload(value) ? <the config> : null` — the shape planCart
     /// accepts (a record with `modules.codes.rules` an array); everything inside
@@ -528,6 +732,7 @@ impl Config {
             campaigns,
             margin: read_margin_payload(&prop(&modules, Key::Margin)),
             max_code_length: read_max_code_length(&prop(&codes, Key::MaxCodeLength)),
+            tiers: read_tiers(&prop(&modules, Key::Tiers), cur),
         })
     }
 }

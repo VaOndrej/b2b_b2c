@@ -17,6 +17,7 @@ import { mapToFunctionOutput, roundingTiePossible } from "@won/core/discounts/fu
 import { ceilTol, costMinorUnits, MARGIN_TOLERANCE, MAX_MARGIN_REFS, marginFloorUnit, readMarginPayload, resolveMargin, strictestMargin } from "@won/core/discounts/margin";
 import { ENTERED_CODE_PADDING, MAX_ENTERED_CODES, planCart } from "@won/core/discounts/plan";
 import { ORDER_SEARCH_EXACT_LINES, ORDER_SEARCH_NEAR, orderSetLimit, searchOrderSets } from "@won/core/discounts/plan-margin";
+import { readTiersPayload } from "@won/core/discounts/tiers";
 import { describe, expect, test } from "vitest";
 
 import { adaptInput, decimalNumber } from "./reference-adapter.js";
@@ -55,7 +56,12 @@ const order = (id, value, more = {}) => ({ id, enabled: true, name: id, method: 
 /** A config with `modules.margin` = the compact payload (margin_rules in tests.rs). */
 const mcfg = (rules, margin, extra = {}) => ({ modules: { codes: { rules }, margin }, ...extra });
 /** A line with a cost price in CZK (cost_line in tests.rs). */
-const costLine = (id, quantity, unitPrice, cost, ruleIds) => line(id, quantity, unitPrice, ruleIds, { unitCost: cost, unitCostCurrency: "CZK" });
+const costLine = (id, quantity, unitPrice, cost, ruleIds, more = {}) => line(id, quantity, unitPrice, ruleIds, { unitCost: cost, unitCostCurrency: "CZK", ...more });
+/** A config with `modules.tiers` = the shop-config form of tiers.ts (tier_rules in tests.rs). */
+const tcfg = (rules, tiers, extra = {}) => ({ modules: { codes: { rules }, tiers }, ...extra });
+/** A line of product `productId` whose metafield has `tierRef` (undefined: none; tier_line in tests.rs). */
+const tline = (id, quantity, unitPrice, productId, tierRef, more = {}) =>
+  line(id, quantity, unitPrice, [], { productId, ...(tierRef === undefined ? {} : { tierRef }), ...more });
 /** mulberry32, `below(n)` = next % n (`Mulberry` in tests.rs draws the same numbers). */
 const mulberry = (seed) => {
   let a = seed >>> 0;
@@ -1025,6 +1031,206 @@ const TWINS = {
     expect(read({ ruleIds: ["a", 1, null, "b"] })).toEqual([["a", "b"], false]);
     expect(read(null)).toEqual([[], false]);
   },
+
+  // --- Quantity tiers (MVP 3) ---
+
+  a_line_takes_the_highest_offered_break_its_count_reaches() {
+    const c = tcfg([], { global: "g", sets: [["g", "line", [], [[3, 10], [5, 15]]]] });
+    const lines = [tline("l2", 2, 10000, "P1"), tline("l3", 3, 10000, "P2"), tline("l4", 4, 10000, "P3"), tline("l5", 5, 10000, "P4")];
+    const plan = planCart(cart(lines), c);
+    expect(productOf(plan, "l2")).toBeNull();
+    expect(productOf(plan, "l3")).toEqual(["tier:g", { percent: 10 }, 3000]);
+    expect(productOf(plan, "l4")).toEqual(["tier:g", { percent: 10 }, 4000]);
+    expect(productOf(plan, "l5")).toEqual(["tier:g", { percent: 15 }, 7500]);
+    expect(plan.lines[1].product.message).toBe("Od 3 ks \u2212" + "10\u00a0%");
+    expect(JSON.stringify(autoLines(plan, lines.length).lines)).toBe(
+      [
+        '{"operations":[{"productDiscountsAdd":{"candidates":[',
+        '{"message":"Od 3 ks \u221210\u00a0%","targets":[{"cartLine":{"id":"l3"}},{"cartLine":{"id":"l4"}}],"value":{"percentage":{"value":10}}},',
+        '{"message":"Od 5 ks \u221215\u00a0%","targets":[{"cartLine":{"id":"l5"}}],"value":{"percentage":{"value":15}}}',
+        '],"selectionStrategy":"ALL"}}]}',
+      ].join(""),
+    );
+    const en = planCart(cart(lines, [], { locale: "en" }), c);
+    expect(en.lines.filter((l) => l.product).map((l) => l.product.message)).toEqual(["From 3 items \u221210%", "From 3 items \u221210%", "From 5 items \u221215%"]);
+  },
+
+  tiers_count_per_line_per_product_or_across_the_cart() {
+    const c = tcfg([], {
+      sets: [
+        ["line_s", "line", [], [[3, 10]]],
+        ["prod_s", "product", [], [[3, 10]]],
+        ["cart_s", "cart", [], [[5, 20]]],
+      ],
+    });
+    const plan = planCart(
+      cart([
+        tline("a1", 2, 10000, "P1", "prod_s"),
+        tline("a2", 1, 10000, "P1", "prod_s"),
+        tline("b1", 2, 10000, "P2", "prod_s"),
+        tline("c1", 2, 10000, "P3", "line_s"),
+        tline("c2", 1, 10000, "P3", "line_s"),
+        tline("d1", 2, 10000, "P4", "cart_s"),
+        tline("d2", 3, 10000, "P5", "cart_s"),
+      ]),
+      c,
+    );
+    expect(productOf(plan, "a1")).toEqual(["tier:prod_s", { percent: 10 }, 2000]);
+    expect(productOf(plan, "a2")).toEqual(["tier:prod_s", { percent: 10 }, 1000]);
+    expect(productOf(plan, "b1")).toBeNull();
+    expect(productOf(plan, "c1")).toBeNull();
+    expect(productOf(plan, "c2")).toBeNull();
+    expect(productOf(plan, "d1")).toEqual(["tier:cart_s", { percent: 20 }, 4000]);
+    expect(productOf(plan, "d2")).toEqual(["tier:cart_s", { percent: 20 }, 6000]);
+  },
+
+  a_lines_set_is_its_tier_ref_else_the_global_one_and_gifts_and_outlets_count_no_tier() {
+    const tiers = { global: "g", sets: [["g", "cart", [], [[3, 10]]], ["s", "line", [], [[1, 5]]]] };
+    const lines = [
+      tline("l1", 1, 10000, "P1"),
+      tline("l2", 1, 10000, "P2", "s"),
+      tline("l3", 1, 10000, "P3", "missing"),
+      tline("l4", 1, 10000, "P4", ""),
+      tline("l5", 1, 10000, "P5", undefined, { giftTierId: "t1" }),
+      tline("l6", 1, 10000, "P6", undefined, { outlet: true }),
+      tline("l7", 1, 10000, "P7"),
+    ];
+    const plan = planCart(cart(lines), tcfg([], tiers));
+    expect(productOf(plan, "l1")).toBeNull();
+    expect(productOf(plan, "l7")).toBeNull();
+    expect(productOf(plan, "l2")).toEqual(["tier:s", { percent: 5 }, 500]);
+    expect(productOf(plan, "l3")).toBeNull();
+    expect(productOf(plan, "l4")).toBeNull();
+    expect(productOf(plan, "l5")).toBeNull();
+    const outlets = planCart(cart(lines), tcfg([], tiers, { engine: { combination: { outletWithAnything: true } } }));
+    for (const id of ["l1", "l6", "l7"]) expect(productOf(outlets, id)).toEqual(["tier:g", { percent: 10 }, 1000]);
+    expect(productOf(outlets, "l5")).toBeNull();
+  },
+
+  an_amount_tier_is_per_item_in_the_cart_currency_and_capped_at_the_price() {
+    const c = tcfg([], { global: "m", sets: [["m", "line", ["CZK", "EUR"], [[2, [5000, 200]], [5, [8000, null]]]]] });
+    const lines = [tline("l1", 2, 10000, "P1"), tline("l2", 5, 6000, "P2")];
+    const plan = planCart(cart(lines), c);
+    expect(productOf(plan, "l1")).toEqual(["tier:m", { fixedPerItem: 5000 }, 10000]);
+    expect(productOf(plan, "l2")).toEqual(["tier:m", { fixedPerItem: 6000 }, 30000]);
+    expect(JSON.stringify(autoLines(plan, lines.length).lines)).toBe(
+      [
+        '{"operations":[{"productDiscountsAdd":{"candidates":[',
+        '{"message":"Od 2 ks \u221250\u00a0Kč za kus","targets":[{"cartLine":{"id":"l1"}}],"value":{"fixedAmount":{"amount":"50.00","appliesToEachItem":true}}},',
+        '{"message":"Od 5 ks \u221280\u00a0Kč za kus","targets":[{"cartLine":{"id":"l2"}}],"value":{"percentage":{"value":100}}}',
+        '],"selectionStrategy":"ALL"}}]}',
+      ].join(""),
+    );
+    const eur = planCart(cart([tline("l3", 5, 1000, "P3")], [], { currency: "EUR" }), c);
+    expect(productOf(eur, "l3")).toEqual(["tier:m", { fixedPerItem: 200 }, 1000]);
+    expect(eur.lines[0].product.message).toBe("Od 2 ks \u22122\u00a0€ za kus");
+    expect(productOf(planCart(cart([tline("l3", 5, 1000, "P3")], [], { currency: "USD" }), c), "l3")).toBeNull();
+  },
+
+  a_tier_competes_with_rules_never_stacks_and_takes_no_place_in_the_stack_pool() {
+    const tiers = (p) => ({ global: "g", sets: [["g", "line", [], [[1, p]]]] });
+    const lines = [tline("l1", 1, 10000, "P1", undefined, { ruleIds: ["a"] }), tline("l2", 1, 10000, "P2", undefined, { ruleIds: ["z"] })];
+    const plan = planCart(cart(lines), tcfg([pct("a", 10), pct("z", 10)], tiers(10)));
+    expect(productOf(plan, "l1")[0]).toBe("a");
+    expect(productOf(plan, "l2")[0]).toBe("tier:g");
+    expect(productOf(planCart(cart(lines), tcfg([pct("a", 10), pct("z", 10, { priority: 1 })], tiers(10))), "l2")[0]).toBe("z");
+    const stack = [pct("p", 15, { combinesWith: { ruleIds: ["q"] } }), pct("q", 10)];
+    for (const [tier, owner, amount] of [[20, "p", 2500], [25, "tier:g", 2500], [30, "tier:g", 3000]]) {
+      const got = productOf(planCart(cart([tline("l1", 1, 10000, "P1", undefined, { ruleIds: ["p", "q"] })]), tcfg(stack, tiers(tier))), "l1");
+      expect([got[0], got[2]]).toEqual([owner, amount]);
+    }
+    const ids = ["a", "b", "c", "d", "e", "f", "g", "h"];
+    const meshLink = (list, k) => ({ combinesWith: { ruleIds: list.slice(k + 1) } });
+    const mesh = planCart(cart([tline("l1", 1, 100000, "P1", undefined, { ruleIds: ids })]), tcfg(ids.map((id, k) => pct(id, 10 - k, meshLink(ids, k))), tiers(11)));
+    const s = mesh.lines[0].product;
+    expect(s.components.map((c2) => c2.ruleId)).toEqual(["a", "b", "c", "d", "e", "f"]);
+    expect([s.amount, s.message]).toEqual([45000, "a + b + c + d + e + f"]);
+    const listed = planCart(cart([tline("l1", 1, 10000, "P1", undefined, { ruleIds: ["x"] })]), tcfg([pct("x", 5, { combinesWith: { ruleIds: ["tier:g", "g"] } })], tiers(10)));
+    expect(productOf(listed, "l1")).toEqual(["tier:g", { percent: 10 }, 1000]);
+  },
+
+  margin_protection_caps_a_tier_and_only_the_automatic_node_emits_it() {
+    const c = { modules: { codes: { rules: [code("c", 5, W)] }, margin: { enabled: true, min: 20, max: 50, cur: "CZK" }, tiers: { global: "g", sets: [["g", "line", [], [[1, 30]]]] } } };
+    const lines = [costLine("l1", 1, 100_000, 700, [], { productId: "P1" }), tline("l2", 2, 20_000, "P2")];
+    const plan = planCart(cart(lines, ["WELCOME15"]), c);
+    expect(productOf(plan, "l1")).toEqual(["tier:g", { fixedTotal: 12_500 }, 12_500]);
+    expect(Boolean(plan.lines[0].marginCapped)).toBe(true);
+    expect(plan.lines[0].product.message).toBe("Od 1 ks \u221230\u00a0%");
+    expect(productOf(plan, "l2")).toEqual(["tier:g", { percent: 30 }, 12_000]);
+    expect(lineIds(emitForNode(plan, { kind: "automatic" }, null))).toEqual(["l1", "l2"]);
+    expect(emitForNode(plan, { kind: "code", ruleId: "c" }, "WELCOME15").productCandidates).toEqual([]);
+    expect(emitForNode(plan, { kind: "code", ruleId: "tier:g" }, "WELCOME15").productCandidates).toEqual([]);
+    expect(JSON.stringify(autoLines(plan, lines.length).lines)).toBe(
+      [
+        '{"operations":[{"productDiscountsAdd":{"candidates":[',
+        '{"message":"Od 1 ks \u221230\u00a0%","targets":[{"cartLine":{"id":"l1"}}],"value":{"fixedAmount":{"amount":"125.00","appliesToEachItem":true}}},',
+        '{"message":"Od 1 ks \u221230\u00a0%","targets":[{"cartLine":{"id":"l2"}}],"value":{"percentage":{"value":30}}}',
+        '],"selectionStrategy":"ALL"}}]}',
+      ].join(""),
+    );
+  },
+
+  the_exclusive_switch_drops_a_tier_like_a_product_discount() {
+    const tiers = { global: "g", sets: [["g", "cart", [], [[2, 10]]]] };
+    const off = { engine: { combination: { productWithOrder: false } } };
+    const lines = [tline("l1", 1, 10000, "P1"), tline("l2", 1, 10000, "P2")];
+    const orderWins = planCart(cart(lines), tcfg([order("o", { kind: "percentage", percent: 20 })], tiers, off));
+    expect(orderWins.lines.every((l) => l.product === null)).toBe(true);
+    expect(orderWins.order.amount).toBe(4000);
+    const tie = planCart(cart(lines), tcfg([order("o", { kind: "percentage", percent: 10 })], tiers, off));
+    expect(tie.order).toBeNull();
+    expect(productOf(tie, "l2")).toEqual(["tier:g", { percent: 10 }, 1000]);
+  },
+
+  the_tier_payload_is_read_tolerantly() {
+    const tiers = {
+      global: "g",
+      sets: [
+        ["g", "line", ["EUR", 5, "CZK", "EUR"], [[5, [1, 700, 800]], [2, 12.5], "x", [3], [2.9, 40], [0.5, 5], [7, "5"], [4, [-1, null, 300.7]], [9, [1e13, 1, 2e13, 5]], [3, 150], [6, -20]]],
+        ["g", "cart", [], [[1, 50]]],
+        ["h", "total", [], [[1, 50]]],
+        [7, "line", [], []],
+        ["", "line", [], []],
+        "junk",
+        ["p", "product"],
+        ["c", "cart", "CZK", [[1, [100]]]],
+      ],
+    };
+    const read = (raw, currency) => {
+      const r = readTiersPayload(raw, currency);
+      return [r.global, [...r.sets.values()].map((s) => [s.id, s.count, s.breaks.map((b) => [b.minQty, b.percent, b.amount, b.offered])])];
+    };
+    const expected = (g) => ["g", [["g", "line", g], ["p", "product", []], ["c", "cart", [[1, null, null, false]]]]];
+    expect(read(tiers, "CZK")).toEqual(expected([[2, 12.5, null, true], [3, 100, null, true], [4, null, 300, true], [5, null, 800, true], [6, 0, null, true], [9, null, 1e12, true]]));
+    expect(read(tiers, "EUR")).toEqual(expected([[2, 12.5, null, true], [3, 100, null, true], [4, null, null, false], [5, null, 1, true], [6, 0, null, true], [9, null, 1e12, true]]));
+    const none = [[2, 12.5, null, true], [3, 100, null, true], [4, null, null, false], [5, null, null, false], [6, 0, null, true], [9, null, null, false]];
+    expect(read(tiers, "USD")).toEqual(expected(none));
+    expect(read(tiers, "")).toEqual(expected(none));
+    expect(read({ global: "zzz", sets: [["a", "line", [], [[1, 5]]]] }, "CZK")[0]).toBeNull();
+    for (const junk of [[], null, { sets: {} }, { global: "a" }, 7]) expect(read(junk, "CZK")).toEqual([null, []]);
+  },
+
+  the_tier_ref_reads_like_the_ts_adapter_and_normalize_cart() {
+    const read = (jsonValue) => {
+      const input = {
+        discount: { discountClasses: ["PRODUCT"], vars: { jsonValue: { role: "automatic" } } },
+        shop: { config: null, localTime: { date: "2026-10-01", campaignActive: false } },
+        cart: {
+          cost: { subtotalAmount: { currencyCode: "CZK" } },
+          lines: [{ id: "l1", quantity: 1, cost: { amountPerQuantity: { amount: "1.0" } }, gift: null, merchandise: { __typename: "ProductVariant", id: "gid://shopify/ProductVariant/42", product: { id: "gid://shopify/Product/7", wonProduct: { jsonValue } } } }],
+        },
+      };
+      return normalizeCart(adaptInput(input).cart).lines[0].tierRef;
+    };
+    expect(read({ ruleIds: ["a"], variantRuleIds: {}, tierRef: "t_1" })).toBe("t_1");
+    expect(read({ ruleIds: ["a"], variantRuleIds: {} })).toBeNull();
+    expect(read({ ruleIds: ["a"], tierRef: null })).toBeNull();
+    expect(read({ tierRef: "" })).toBe("");
+    for (const junk of [5, true, ["t_1"], { id: "t_1" }]) expect(read({ tierRef: junk })).toBe("");
+    expect(read({ ruleIds: ["a"], marginRefs: ["1"], outlet: true, tierRef: "t_2" })).toBe("t_2");
+    expect(read([["a"]])).toBeNull();
+    expect(read(null)).toBeNull();
+  },
 };
 
 /** `#[test] fn name()` in a Rust source file. */
@@ -1035,7 +1241,11 @@ function rustTests(file) {
 
 describe("TS twins of the Rust unit tests", () => {
   test("every Rust engine test has a twin here, and every twin a Rust test", () => {
-    const fromJson = ["product_metafield_reads_like_the_ts_adapter_and_normalize_cart", "the_variant_cost_the_margin_refs_and_the_rate_read_like_the_ts_adapter"];
+    const fromJson = [
+      "product_metafield_reads_like_the_ts_adapter_and_normalize_cart",
+      "the_variant_cost_the_margin_refs_and_the_rate_read_like_the_ts_adapter",
+      "the_tier_ref_reads_like_the_ts_adapter_and_normalize_cart",
+    ];
     const rust = [...rustTests("src/engine/tests.rs"), ...fromJson];
     for (const name of fromJson) expect(rustTests("src/json.rs")).toContain(name);
     expect(Object.keys(TWINS).sort()).toEqual([...rust].sort());

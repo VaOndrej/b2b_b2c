@@ -4,7 +4,7 @@
 # (CONTRACT, README.md "Input query"). Shopify counts EVERY character of this
 # file, comments included, against its 3000-character limit.
 #
-# Cost (shopify.dev input query cost table): 27 of 30.
+# Cost (shopify.dev input query cost table): 28 of 30.
 query Input(
   $campaignStart: DateTimeWithoutTimezone!
   $campaignEnd: DateTimeWithoutTimezone!
@@ -68,6 +68,7 @@ query Input(
             jsonValue
           }
           product {
+            id
             wonProduct: metafield(namespace: "$app:won_discounts", key: "product") {
               jsonValue
             }

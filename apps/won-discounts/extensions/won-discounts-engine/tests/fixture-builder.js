@@ -11,6 +11,7 @@
 
 import { sanitizeConfig } from "@won/core/discounts/config";
 import { buildNodeVars, buildShopFunctionConfig } from "@won/core/discounts/function-payload";
+import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
 
 export const TARGETS = {
   lines: { export: "cart-lines-discounts-generate-run", target: "cart.lines.discounts.generate.run" },
@@ -43,6 +44,9 @@ export const SHOP_CURRENCY = "CZK";
  * @property {number} [variant]           variant number (default 1000 + n)
  * @property {string} [gid]              cart line id (default lineId(n))
  * @property {string} [variantGid]       variant id (default variantId(variant ?? 1000 + n))
+ * @property {number} [product]          product number: `merchandise.product.id` = productId(product ?? n)
+ *                                        (lines of one product: the same number; MVP 3 tiers count per product)
+ * @property {string} [productGid]       product id (default productId(product ?? n))
  * @property {unknown} [variantMeta]      variant metafield `$app:won_discounts`/`variant` jsonValue
  *                                        (MVP 2 margin: `{cost, cur}`, cost in MAJOR units of the shop currency)
  *
@@ -56,6 +60,9 @@ export const SHOP_CURRENCY = "CZK";
  * @property {number} [ruleIdLength]    with `realisticIds`: rule ids of this length (the sanitizer's
  *                                        maximum is 64) instead of the app's 22 characters
  * @property {Record<string, unknown>} [margin]   modules.margin of the merchant config (MVP 2)
+ * @property {Record<string, unknown>} [tiers]    modules.tiers of the merchant config (MVP 3: `{ sets: [...] }`)
+ * @property {"free"} [plan]              the shop's plan: "free" ships the config gated for Free
+ *                                        (plan-gate.ts gateConfigForPlan, as the sync does); default Pro
  * @property {string} [shopCurrency]      the shop currency (margin `cur`), default SHOP_CURRENCY
  * @property {unknown} [rate]             `presentmentCurrencyRate` (shop → cart), default "1.0";
  *                                        `rate: undefined` leaves the field out
@@ -108,6 +115,7 @@ export function withCodes(codes, rule) {
 
 export const lineId = (/** @type {number} */ n) => `gid://shopify/CartLine/${n}`;
 export const variantId = (/** @type {number} */ n) => `gid://shopify/ProductVariant/${n}`;
+export const productId = (/** @type {number} */ n) => `gid://shopify/Product/${n}`;
 
 /**
  * A rule id in the app's format (rule-form.ts `newRuleId`: `r_` + 20 lower-case
@@ -140,7 +148,7 @@ export function appRuleId(logical) {
  * (config, combinesWith, the product metafields' refs); cart line and delivery
  * group ids as Shopify numbers them in a function input — `gid://shopify/CartLine/0`,
  * `/1`, … (every line of the 640 dev-store runs logged in apps/won-discounts/
- * .shopify/logs, 2026-09-29) — and 14-digit variant ids. The hand-written
+ * .shopify/logs, 2026-09-29) — 14-digit variant ids and 13-digit product ids. The hand-written
  * expected output gets the same id mapping and nothing else.
  * @param {Scenario} s
  * @returns {Scenario}
@@ -170,6 +178,7 @@ export function withRealisticIds(s) {
     ...l,
     gid: `gid://shopify/CartLine/${l.n - 1}`,
     variantGid: `gid://shopify/ProductVariant/${48468678900000 + (l.variant ?? l.n)}`,
+    productGid: `gid://shopify/Product/${8841234500000 + (l.product ?? l.n)}`,
     ...(l.won
       ? {
           won: {
@@ -205,12 +214,13 @@ export function withRealisticIds(s) {
  * @param {Scenario} s
  */
 export function merchantConfig(s) {
-  const modules = { codes: { rules: s.rules }, ...(s.margin ? { margin: s.margin } : {}) };
+  const modules = { codes: { rules: s.rules }, ...(s.margin ? { margin: s.margin } : {}), ...(s.tiers ? { tiers: s.tiers } : {}) };
   const { config, issues } = sanitizeConfig({ ...(s.configExtra ?? {}), modules });
   if (issues.length > 0) {
     throw new Error(`${s.name}: sanitizer issues ${JSON.stringify(issues.map((i) => `${i.path} ${i.code}`))}`);
   }
-  return config;
+  // A Free shop runs its config gated (the sync writes the gated one, BILL-1).
+  return s.plan === "free" ? gateConfigForPlan(config, "free").config : config;
 }
 
 /**
@@ -223,7 +233,7 @@ function cartLine(l) {
         __typename: "ProductVariant",
         id: l.variantGid ?? variantId(l.variant ?? 1000 + l.n),
         wonVariant: l.variantMeta === undefined ? null : { jsonValue: l.variantMeta },
-        product: { wonProduct: l.won ? { jsonValue: l.won } : null },
+        product: { id: l.productGid ?? productId(l.product ?? l.n), wonProduct: l.won ? { jsonValue: l.won } : null },
       };
   return {
     id: l.gid ?? lineId(l.n),
