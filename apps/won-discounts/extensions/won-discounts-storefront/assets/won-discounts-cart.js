@@ -5,7 +5,7 @@
   const DRAWERS = ["cart-drawer-component .cart-drawer__summary", "#CartDrawer .drawer__footer"];
   const PAGES = [".cart-page__summary", "#main-cart-footer .cart__footer"];
   const GAP_MS = 1500;
-  let wd, data, tx, cart, view, hint, warn;
+  let wd, data, tx, cart, view, hint, warn, coding;
   let shown = "";
   let lastWrite = 0;
   let queue = Promise.resolve();
@@ -71,9 +71,11 @@
   const applyCode = (code) => {
     const kept = view.tiers.filter((x) => x.reached && !x.lost).map((x) => x.id);
     const valid = (cart.discount_codes || []).filter((c) => c.applicable).map((c) => c.code);
+    coding = true;
     return write({ discountCodes: [...valid, code] }).then(() => {
       const entry = (cart.discount_codes || []).find((c) => c.code.toUpperCase() === code.toUpperCase());
       warn = !entry?.applicable ? { invalid: code } : kept.some((id) => tierOf(id)?.lost) ? { loses: code } : null;
+      coding = false;
       render();
     });
   };
@@ -83,6 +85,7 @@
   };
 
   const react = (before) => {
+    if (coding || warn?.loses) return;
     const removed = (before?.tiers || []).find((x) => x.line && view.tiers.some((y) => y.id === x.id && y.due && !y.line && !y.declined));
     if (removed) return decline({ id: removed.id, line: null });
     if (view.remove.length) return write({ lines: view.remove.map((id) => ({ id, quantity: 0 })) }).then(() => view.add && addGift(view.add.tier, view.add.variant));

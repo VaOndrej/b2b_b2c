@@ -371,6 +371,32 @@ test("countOtherDiscounts: 'Keep the code' removes the gift (the threshold count
   assert.equal(p.state.updates.length, 2, "below the threshold after discounts: not added back");
 });
 
+test("countOtherDiscounts: while the code warning waits for the customer, a theme's own cart event does not take the gift (live E2E, Dawn)", async (t) => {
+  const discounted = () =>
+    cartOf([{ ...item("a", 1, 160000), final_line_price: 128000 }, giftLine()], { discount_codes: [{ code: "SLEVA20", applicable: true }] });
+  let cart = cartOf([item("a", 1, 160000), giftLine()]);
+  const p = page(t, {
+    cart,
+    rewards: { ...REWARDS, other: true },
+    onUpdate: (payload) => {
+      const codes = payload.discountCodes as string[] | undefined;
+      if (codes) cart = codes.includes("SLEVA20") ? discounted() : cartOf([item("a", 1, 160000), giftLine()]);
+      return cart;
+    },
+  });
+  await p.settle(10);
+  p.submit("SLEVA20");
+  await p.settle(2000);
+  assert.match(p.panel(), /data-won-discounts-code-warning/);
+  p.emit("cart-update"); // the theme's event after the discount change, without detail.won
+  p.emit("shopify:cart:discount-update");
+  await p.settle(3000);
+  assert.equal(p.state.updates.length, 1, `the choice is the customer's: ${JSON.stringify(p.state.updates.map((u) => u.payload))}`);
+  p.click("data-won-drop", "SLEVA20");
+  await p.settle(2000);
+  assert.match(p.panel(), /data-state="in"/, "Remove the code: the gift stays");
+});
+
 test("countOtherDiscounts: 'Remove the code' removes only the code; the gift stays", async (t) => {
   const discounted = () =>
     cartOf([{ ...item("a", 1, 160000), final_line_price: 128000 }, giftLine()], { discount_codes: [{ code: "SLEVA20", applicable: true }] });

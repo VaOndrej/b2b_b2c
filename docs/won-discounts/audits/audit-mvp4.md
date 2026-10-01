@@ -16,6 +16,7 @@ jsou uvedené níž, protože bez živého běhu by prošly všemi testy na fale
 | E1 | P2 | Panel po přidání zboží četl `/cart.js` z HTTP cache (starý košík) → dárek se nepřidal | diagnostika E2E „zbývá 10 Kč“ při 5 ks | `cache: "no-store"` (`ca56ea4`), test s modelem cache |
 | E2 | P2 | `shopify:cart:lines-update` se vysílá na **začátku** změny (Storefront Events) → panel četl košík před dokončením | doc Storefront Events „Waiting for the result“ | čekání na `event.promise` (`7e194cf`), test |
 | E3 | P2 | Dotykové cíle panelu < 44 px (390 px); v Dawnu `rem` = 10 px | `assertResponsiveSane`, evidence `*-controls-*.json` (min-height 27,5 px) | `44px` (`ca56ea4`) |
+| E4 | P2 | (po odstranění `selfUntil`, F2) S počítáním ostatních slev vlastní událost tématu po změně kódu (Dawn) odebrala dárek dřív, než si zákazník vybral „Ponechat / Zrušit kód“ (flaky v E2E) | E2E `rewards-other` Dawn, „the gift stays“ | během zadávání kódu a čekajícího varování panel nic neodebírá (commit „varování čeká“), test |
 
 ### Audit
 
