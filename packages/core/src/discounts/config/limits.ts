@@ -36,6 +36,8 @@ export const CONFIG_LIMITS = Object.freeze({
    */
   tierPayloadBytes: 550,
   giftTiers: 10,
+  /** Gifts a tier offers to choose from (Pro: up to 3, rozhodnuti.md "výběr ze 3"); the fallback comes on top. */
+  giftChoices: 3,
   campaigns: 50,
   overridesPerCampaign: 200,
   localeStringLength: 500,

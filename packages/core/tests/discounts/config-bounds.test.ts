@@ -322,7 +322,8 @@ test("reference lists are capped in count (250) and item length (100) everywhere
   assert.equal(target.productIds.length, 250);
   assert.deepEqual(target.variantIds, ["ok"]);
   assert.equal((config.modules.tiers.sets[0].scope as { collectionIds: string[] }).collectionIds.length, 250);
-  assert.equal(config.modules.rewards.gifts[0].choices.length, 250);
+  // MVP 4: a tier offers at most CONFIG_LIMITS.giftChoices (3) gifts, below the generic list cap.
+  assert.equal(config.modules.rewards.gifts[0].choices.length, 3);
   assert.equal("fallbackVariantId" in config.modules.rewards.gifts[0], false);
   assert.ok(hasIssue(issues, "too_many_items", "modules.codes.rules[0].target.productIds"));
   assert.ok(hasIssue(issues, "reference_too_long", "modules.codes.rules[0].target.variantIds"));

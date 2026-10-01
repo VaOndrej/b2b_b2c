@@ -41,6 +41,7 @@ import {
   type TierOutcome,
   tierStepBreak,
 } from "./plan.ts";
+import { GIFT_CANDIDATE_PREFIX, SHIPPING_REWARD_ID, SHIPPING_REWARD_LABEL } from "./plan-rewards.ts";
 
 /**
  * One explanation line. `text` (and `code`) can contain what a shopper typed or
@@ -154,6 +155,7 @@ function applied(rule: RuleOutcome, plan: CartPlan, locale: UiLocale): string {
 function betterName(outcome: { betterRuleIds?: string[] }, plan: CartPlan, locale: UiLocale): string | null {
   const id = outcome.betterRuleIds?.[0];
   if (id?.startsWith(TIER_CANDIDATE_PREFIX)) return q(TIER_LABEL[locale], locale);
+  if (id === SHIPPING_REWARD_ID) return q(SHIPPING_REWARD_LABEL[locale], locale);
   const better = id ? plan.rules.find((r) => r.ruleId === id) : undefined;
   return better ? q(labelOf(better, plan, locale), locale) : null;
 }
@@ -227,9 +229,86 @@ function tierHintSentence(plan: CartPlan, locale: UiLocale): ExplainItem[] {
   const hint = plan.progress.tierHint;
   if (!hint) return [];
   const n = hint.missing;
-  const value = describeTierValue(tierStepBreak(hint.next, plan.currency), { locale, currency: plan.currency });
-  const text = locale === "cs" ? `Přidej ${n} ks a dostaneš ${value}.` : `Add ${n} more ${enPlural(n, "item", "items")} to get ${value}.`;
+  // Margin protection lowers the next tier there (MVP 4): promise a lower price, never a value.
+  const text = hint.marginCapped
+    ? locale === "cs"
+      ? `Přidej ${n} ks a dostaneš nižší cenu.`
+      : `Add ${n} more ${enPlural(n, "item", "items")} for a lower price.`
+    : (() => {
+        const value = describeTierValue(tierStepBreak(hint.next, plan.currency), { locale, currency: plan.currency });
+        return locale === "cs" ? `Přidej ${n} ks a dostaneš ${value}.` : `Add ${n} more ${enPlural(n, "item", "items")} to get ${value}.`;
+      })();
   return [item("info", text, { tierSetId: hint.setId, lineIds: hint.lineIds })];
+}
+
+// --- Rewards (MVP 4) -------------------------------------------------------------------------------
+
+/** Free shipping and gifts: what the cart gets, what is missing, and what the plan warns about. */
+function rewardSentences(plan: CartPlan, locale: UiLocale): ExplainItem[] {
+  const cs = locale === "cs";
+  const money = (minor: number) => formatMoney(minor, plan.currency, locale);
+  const out: ExplainItem[] = [];
+  const warned = (code: string, ruleId: string) => plan.warnings.some((w) => w.code === code && w.ruleId === ruleId);
+  const ship = plan.progress.freeShipping;
+  if (plan.shipping?.ruleId === SHIPPING_REWARD_ID && ship) {
+    out.push(item("success", cs ? `Doprava zdarma: nákup od ${money(ship.threshold)}.` : `Free shipping: orders from ${money(ship.threshold)}.`, { ruleId: SHIPPING_REWARD_ID }));
+  } else if (ship && !ship.reached) {
+    out.push(item("info", cs ? `Do dopravy zdarma zbývá ${money(ship.remaining)}.` : `${money(ship.remaining)} more for free shipping.`, { ruleId: SHIPPING_REWARD_ID }));
+  } else if (warned("reward_not_combinable", SHIPPING_REWARD_ID)) {
+    out.push(
+      item(
+        "info",
+        cs
+          ? "Doprava zdarma se tu nesčítá s ostatními slevami (přepínače kombinování v Nastavení)."
+          : "Free shipping does not combine with the other discounts here (the combination switches in Settings).",
+        { ruleId: SHIPPING_REWARD_ID },
+      ),
+    );
+  }
+  if (warned("market_missing_threshold", SHIPPING_REWARD_ID)) {
+    out.push(item("info", cs ? `Doprava zdarma nemá práh v ${plan.currency}, v tomto trhu se nenabízí.` : `Free shipping has no threshold in ${plan.currency}; it is not offered in this market.`, { ruleId: SHIPPING_REWARD_ID }));
+  }
+  const progressOf = (tierId: string) => plan.progress.gifts?.find((g) => g.tierId === tierId);
+  for (const gift of plan.gifts) {
+    const id = `${GIFT_CANDIDATE_PREFIX}${gift.tierId}`;
+    const p = progressOf(gift.tierId);
+    const lineIds = gift.lineId ? [gift.lineId] : undefined;
+    if (gift.state === "earned") {
+      out.push(item("success", cs ? `Dárek zdarma${p ? `: nákup od ${money(p.threshold)}` : ""}.` : `Free gift${p ? `: orders from ${money(p.threshold)}` : ""}.`, { ruleId: id, lineIds }));
+    } else if (gift.state === "missing") {
+      out.push(item("info", cs ? "Nákup má nárok na dárek zdarma, v košíku ale dárek není." : "The order qualifies for a free gift, but the gift is not in the cart.", { ruleId: id }));
+    } else if (gift.state === "below" && p) {
+      out.push(item("info", cs ? `Do dárku zdarma zbývá ${money(p.remaining)}.` : `${money(p.remaining)} more for the free gift.`, { ruleId: id }));
+    } else if (gift.state === "not_offered") {
+      out.push(item("info", cs ? `Dárek nemá práh v ${plan.currency}, v tomto trhu se nenabízí.` : `The gift has no threshold in ${plan.currency}; it is not offered in this market.`, { ruleId: id }));
+    }
+    if (warned("gift_not_earned", id)) {
+      out.push(
+        item(
+          "warning",
+          cs
+            ? "Dárek v košíku se zaplatí: nákup nedosáhl prahu, nebo to není nabízený dárek."
+            : "The gift in the cart will be paid: the order is below the threshold, or it is not a gift offered.",
+          { ruleId: id, lineIds },
+        ),
+      );
+    }
+    if (warned("gift_extra_paid", id)) {
+      out.push(item("info", cs ? "Zdarma je jen 1 kus dárku, další kusy se platí." : "Only 1 gift item is free; the others are paid.", { ruleId: id, lineIds }));
+    }
+    if (warned("code_loses_gift", id)) {
+      out.push(
+        item(
+          "warning",
+          cs
+            ? "Se slevami klesne nákup pod práh dárku: košík zákazníka varuje, v pokladně by dárek zůstal zdarma."
+            : "With the discounts the order drops below the gift threshold: the cart warns the customer; at checkout the gift would stay free.",
+          { ruleId: id },
+        ),
+      );
+    }
+  }
+  return out;
 }
 
 /** Why an entered Won code does nothing (warning), or a note when it counts only inside another stack. */
@@ -516,6 +595,7 @@ export function explainPlan(plan: CartPlan, locale: UiLocale, opts: ExplainOptio
   }
   for (const tier of tiers) if (tier.state === "applied") out.push(...tierSentences(tier, plan, locale));
   out.push(...tierHintSentence(plan, locale));
+  out.push(...rewardSentences(plan, locale));
   for (const code of plan.codes) out.push(...codeSentences(code, plan, locale));
   out.push(...overLimitSentence(plan, locale));
   for (const rule of plan.rules) {

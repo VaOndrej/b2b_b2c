@@ -65,19 +65,23 @@ prahu v měně). Stav `declined`/`out_of_stock` určuje storefront (R7), engine 
 plán s přidanými `missing` kusy dá zákazníkovi víc (respektuje výlučný přepínač produkt/objednávka a marži) — počítá se
 přeplánováním, ne odhadem.
 
-**R5 — Payload funkce (shop config).** Nový klíč `r` (vynechán, když odměny nic nenabízejí):
+**R5 — Payload funkce (shop config).** `modules.rewards` v kompaktním tvaru (`rewards.ts`, nahrazuje dosavadní plný tvar,
+který funkce nečetla; tolerantní čtečka bere starý tvar jako „nic nenabízí“):
 ```jsonc
-"r": {
+"rewards": {
   "s": { "CZK": 100000, "EUR": 4000 },             // doprava zdarma: práh v minor units per měna (chybí = žádná)
   "g": [ ["gift-1", { "CZK": 150000 }, [48468678902001, 48468679000305]] ]
   //      id úrovně, práh per měna,     numerická id variant (nabídka + záložní), pořadí = pořadí configu
+  "o": 1                                             // countOtherDiscounts (jen TS varování); chybí = vypnuto
 }
 ```
 Velikost: Pro max `CONFIG_LIMITS.giftTiers` (10) × 4 varianty, 2 měny → započítat do worst case 9 000 B; když se nevejde,
 admin uložení odmítne (stejně jako jiné části) a strop odměn v payloadu se zapíše do specu.
 
-**R6 — Výstup funkce.** Dárek: `productDiscountsAdd` kandidát s cílem `cartLine { id, quantity: 1 }`, `percentage: 100`,
-zpráva R3; jede v tomtéž výstupu jako ostatní produktové kandidáty (na dárkovém řádku nikdy jiný). Doprava: existující
+**R6 — Výstup funkce (upřesněno při Task 1).** Dárek = produktový kandidát na dárkovém řádku s hodnotou `fixedTotal =
+cena 1 ks` (mapování: 1 ks → 100 %, víc kusů → přesná částka 1 ks; žádný cíl s `quantity` — výstup funkce ho už umí),
+zpráva R3; na dárkovém řádku nikdy jiný kandidát. Free switch „produkt/objednávka + doprava“ shodí i odměnu dopravy
+(warning `reward_not_combinable`). Doprava: existující
 cesta dopravy (100 % na všechny skupiny), zpráva „Doprava zdarma“ / „Free shipping“. Emituje automatický uzel.
 
 **R7 — Storefront config (K5 v1, aditivně).**

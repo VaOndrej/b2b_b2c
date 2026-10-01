@@ -28,12 +28,14 @@ import {
   type LocaleCode,
   type MarginModule,
   type ReadonlyDeep,
+  type RewardsModule,
   type TierCountAcross,
   type WonDiscountsConfig,
 } from "./config.ts";
 import { buildMarginPayload, costMinorUnits, marginFloorUnit, resolveMargin } from "./margin.ts";
 import { fnv1a32Hex } from "./code-hash.ts";
 import { currencyExponent, moneyFor } from "./money.ts";
+import { variantNumber } from "./rewards.ts";
 import { globalTierSet, reachableTierSets } from "./tiers.ts";
 
 /** App-data metafield (AppInstallation) the storefront reads. */
@@ -91,6 +93,23 @@ export interface StorefrontConfigV1 {
   appearance: { preset: AppearancePreset };
   /** Texts the merchant changed, per locale; the extension's own locales are the fallback. */
   texts: Partial<Record<LocaleCode, Record<string, string>>>;
+  /** MVP 4 (contract R7): the cart rewards; absent when nothing is offered (the embed shows no panel). */
+  rewards?: StorefrontRewards;
+}
+
+/** A gift variant with its product's handle (Liquid renders it through `all_products[h]`). */
+export interface StorefrontGiftVariant {
+  v: number;
+  h: string;
+}
+
+export interface StorefrontRewards {
+  /** Free-shipping threshold per currency, Liquid units (major × 100); null = none. */
+  ship: Record<string, number> | null;
+  /** Gift tiers in config order: `t` threshold per currency (Liquid units), `c` the gifts offered, `f` the fallback (A4). */
+  gifts: { id: string; t: Record<string, number>; c: StorefrontGiftVariant[]; f?: StorefrontGiftVariant }[];
+  /** countOtherDiscounts: the cart compares the threshold with the total after discounts and warns. */
+  other: boolean;
 }
 
 /**
@@ -109,6 +128,12 @@ export interface PdpMetafieldValue {
 export interface StorefrontConfigOptions {
   /** The ShopConfig version the config was read from (`cv`). */
   configVersion: string;
+  /**
+   * MVP 4 (R7): product handle per gift variant GID, read by the sync from the
+   * Admin API. A variant without one is left out of the storefront config
+   * (Liquid could not render it); the function still makes it free.
+   */
+  variantHandles?: Readonly<Record<string, string>>;
   /**
    * The shop currency (Admin `shop.currencyCode`): K4 v2's `margin.cur`, and
    * part of `margin.k`. Required by K4 v2 — optional only while the sync has
@@ -208,7 +233,41 @@ export function buildStorefrontConfig(gated: ReadonlyDeep<WonDiscountsConfig>, o
     margin: storefrontMargin(gated.modules.margin, opts.shopCurrency),
     appearance: { preset: (APPEARANCE_PRESETS as readonly string[]).includes(preset) ? preset : "default" },
     texts: storefrontTexts(gated.locales),
+    ...rewardsPart(gated.modules.rewards, opts.variantHandles ?? {}),
   };
+}
+
+/** Threshold per currency in Liquid units, own entries only; empty map → null. */
+function liquidThreshold(money: ReadonlyDeep<Record<string, number>> | undefined): Record<string, number> | null {
+  const out: Record<string, number> = {};
+  let any = false;
+  for (const currency of Object.keys(money ?? {}).sort()) {
+    const minor = moneyFor(money, currency);
+    if (minor === null || minor <= 0) continue;
+    setOwn(out, currency, liquidUnits(minor, currency));
+    any = true;
+  }
+  return any ? out : null;
+}
+
+function rewardsPart(rewards: ReadonlyDeep<RewardsModule>, handles: Readonly<Record<string, string>>): { rewards?: StorefrontRewards } {
+  const variant = (id: string): StorefrontGiftVariant | null => {
+    const v = variantNumber(id);
+    const h = Object.prototype.hasOwnProperty.call(handles, id) ? handles[id] : undefined;
+    return v !== null && typeof h === "string" && h !== "" ? { v, h } : null;
+  };
+  const gifts: StorefrontRewards["gifts"] = [];
+  for (const tier of rewards.gifts) {
+    const t = liquidThreshold(tier.threshold);
+    if (!t) continue;
+    const c = tier.choices.map(variant).filter((x): x is StorefrontGiftVariant => x !== null);
+    const f = tier.fallbackVariantId ? variant(tier.fallbackVariantId) : null;
+    if (c.length === 0 && !f) continue;
+    gifts.push(f ? { id: tier.id, t, c, f } : { id: tier.id, t, c });
+  }
+  const ship = liquidThreshold(rewards.freeShipping?.threshold);
+  if (!ship && gifts.length === 0) return {};
+  return { rewards: { ship, gifts, other: rewards.countOtherDiscounts } };
 }
 
 // --- K4 v2: the variant `pdp` metafield ------------------------------------------------------------

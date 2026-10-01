@@ -72,7 +72,6 @@ import {
   type DiscountRuleValue,
   type DiscountTargetKind,
   type EngineSettings,
-  type GiftTier,
   type ReadonlyDeep,
   type WonDiscountsConfig,
 } from "./config.ts";
@@ -83,6 +82,7 @@ import { gateConfigForPlan } from "./plan-gate.ts";
 import { buildMarginPayload, type FunctionMarginPayload, type MarginCollectionTuple } from "./margin.ts";
 import type { MoneyByCurrency } from "./money.ts";
 import { isFunctionConfigPayload } from "./plan.ts";
+import { buildRewardsPayload, type FunctionRewardsPayload } from "./rewards.ts";
 import { buildTiersPayload, type FunctionTierBreak, type FunctionTierSet, type FunctionTiersPayload } from "./tiers.ts";
 
 export { isFunctionConfigPayload };
@@ -146,7 +146,8 @@ export interface FunctionConfigPayload {
     codes: { rules: FunctionRule[]; maxCodeLength?: number };
     /** Compact (tiers.ts FunctionTiersPayload): the reachable sets, no scope lists. */
     tiers: FunctionTiersPayload;
-    rewards: { freeShipping?: { threshold: MoneyByCurrency }; gifts: GiftTier[]; countOtherDiscounts: boolean };
+    /** Compact (rewards.ts FunctionRewardsPayload, MVP 4 R5): thresholds per currency, numeric gift variant ids. */
+    rewards: FunctionRewardsPayload;
     margin: FunctionMarginPayload;
   };
   /** At most one: the selected campaign. */
@@ -482,11 +483,7 @@ function build(config: ConfigInput, selected: CampaignInput | null, shopTimezone
     modules: {
       codes: shipCodes(codes.rules, shopTimezone),
       tiers: buildTiersPayload(tiers),
-      rewards: {
-        ...(rewards.freeShipping ? { freeShipping: copy<{ threshold: MoneyByCurrency }>(rewards.freeShipping) } : {}),
-        gifts: copy<GiftTier[]>(rewards.gifts),
-        countOtherDiscounts: rewards.countOtherDiscounts,
-      },
+      rewards: buildRewardsPayload(rewards),
       margin: buildMarginPayload(margin, shopCurrency),
     },
     campaigns: selected

@@ -126,6 +126,8 @@ export interface NormalizedLine {
   subtotal: number;
   outlet: boolean;
   gift: boolean;
+  /** The `_won_gift` attribute (the gift tier id, MVP 4 R3); null when not a gift line. */
+  giftTierId: string | null;
   /** Product-wide refs + this variant's refs. */
   ruleIds: readonly string[];
   /** As given (validated by margin.ts costMinorUnits); null = none. */
@@ -286,6 +288,7 @@ export function normalizeCart(input: CartPlanInput): NormalizedCart {
       subtotal: quantity * unitPrice,
       outlet: raw.outlet === true,
       gift: typeof raw.giftTierId === "string" && raw.giftTierId !== "",
+      giftTierId: typeof raw.giftTierId === "string" && raw.giftTierId !== "" ? raw.giftTierId : null,
       ruleIds: variantRefs.length > 0 ? [...strings(raw.ruleIds), ...variantRefs] : strings(raw.ruleIds),
       unitCost: typeof raw.unitCost === "number" ? raw.unitCost : null,
       unitCostCurrency: typeof raw.unitCostCurrency === "string" ? raw.unitCostCurrency : null,

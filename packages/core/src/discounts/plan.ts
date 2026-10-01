@@ -90,6 +90,8 @@ import {
   type WorkLine,
 } from "./plan-internal.ts";
 import { applyMarginProtection, computeFloors, markTightLines, protectOrder } from "./plan-margin.ts";
+import { planGifts, rewardBase, rewardsProgress, SHIPPING_REWARD_ID, SHIPPING_REWARD_LABEL, shippingReward } from "./plan-rewards.ts";
+import { readRewardsPayload } from "./rewards.ts";
 import { prepareTiers, TIER_CANDIDATE_PREFIX, tierCandidateId, TIER_LABEL, tierHint, tierOutcomes, tierStepBreak } from "./plan-tiers.ts";
 import { lineRuleIds } from "./targeting.ts";
 
@@ -98,8 +100,8 @@ export { TIER_CANDIDATE_PREFIX, tierCandidateId, TIER_LABEL, tierStepBreak };
 // --- Public plan shape ------------------------------------------------------------------
 
 export type DiscountClass = "product" | "order" | "shipping";
-/** Which module produced an allocation: a discount rule, or a quantity tier set (MVP 3). MVP 4 adds "rewards". */
-export type PlanModule = "codes" | "tiers";
+/** Which module produced an allocation: a discount rule, a quantity tier set (MVP 3) or a reward (MVP 4: gift, free shipping). */
+export type PlanModule = "codes" | "tiers" | "rewards";
 
 export type RuleState =
   | "applied" // its node emits (part of) the plan
@@ -274,14 +276,37 @@ export interface CodeOutcome {
   state: CodeState;
 }
 
-/** MVP 4 slot (rewards). */
+/**
+ * One per gift tier of the payload, config order (MVP 4, R3). `earned`: its gift
+ * line is free (`lineId`); `missing`: reached, no valid gift line in the cart;
+ * `below`: not reached; `not_offered`: no threshold in the cart currency.
+ * `lineId` names the tier's first valid gift line when there is one. Whether the
+ * customer declined it or it is out of stock only the storefront knows.
+ */
 export interface PlanGift {
   tierId: string;
   lineId?: string;
-  state: "earned" | "missing" | "declined" | "out_of_stock" | "not_offered";
+  state: "earned" | "missing" | "below" | "not_offered";
 }
 
-/** Later-MVP slot (e.g. code_loses_gift, market_missing_threshold). */
+/** A gift tier's progress in the cart currency (R4), minor units. */
+export interface PlanGiftProgress {
+  tierId: string;
+  threshold: number;
+  remaining: number;
+  reached: boolean;
+  /** countOtherDiscounts on: the same after the discounts the plan gives the non-gift lines. */
+  afterDiscounts?: { remaining: number; reached: boolean };
+}
+
+/**
+ * What the storefront/admin should say (R2–R4): `market_missing_threshold`
+ * (a reward without a threshold in the cart currency), `gift_not_earned` (a gift
+ * line that is paid), `gift_extra_paid` (more than one gift item of a tier),
+ * `code_loses_gift` (countOtherDiscounts: reached only before discounts),
+ * `reward_not_combinable` (a Free switch dropped the shipping reward).
+ * `ruleId` = `reward:shipping` or `gift:<tierId>`.
+ */
 export interface PlanWarning {
   code: string;
   ruleId?: string;
@@ -349,11 +374,17 @@ export interface TierHint {
   /** Items to add. */
   missing: number;
   next: TierStep;
+  /**
+   * MVP 4: margin protection lowers the next tier on the first hinted line, so
+   * the hint must not promise its value ("přidej 1 ks → nižší cena").
+   */
+  marginCapped?: true;
 }
 
-/** MVP 4 slot (free shipping / gift progress); MVP 3 fills `tierHint`. */
+/** Progress toward the rewards (MVP 4, R4) and the quantity tier hint (MVP 3, checked by re-planning in MVP 4). */
 export interface PlanProgress {
-  freeShipping?: { remaining: number; reached: boolean };
+  freeShipping?: { threshold: number; remaining: number; reached: boolean };
+  gifts?: PlanGiftProgress[];
   tierHint?: TierHint;
 }
 
@@ -1008,29 +1039,46 @@ function planShipping(
   order: PlanOrder | null,
   engine: EngineFlags,
   cart: NormalizedCart,
+  reward: { value: ShippingValue } | null,
+  warnings: PlanWarning[],
 ): PlanShipping | null {
-  const candidates = rules
+  // The shipping reward (MVP 4, R2) ranks like a rule: automatic, priority 0, id `reward:shipping`.
+  type ShipCandidate = { id: string; priority: number; rule: Rule | null; value: ShippingValue; key: number[] };
+  const candidates: ShipCandidate[] = rules
     .filter((r) => r.cls === "shipping" && r.state === null)
-    .map((rule) => {
+    .map((rule): ShipCandidate | null => {
       const percent = rule.valueKind === "freeShipping" ? 100 : rule.valueKind === "percentage" ? rule.percent : null;
       const fixed = rule.valueKind === "fixed" ? (rule.fixed ?? 0) : null;
       const value: ShippingValue = percent !== null ? { percent } : { fixedTotal: fixed ?? 0 };
       const worth = percent !== null ? percent > 0 : (fixed ?? 0) > 0;
       const key = percent !== null ? [1, percent] : [0, fixed ?? 0];
-      return { rule, value, worth, key };
+      return worth ? { id: rule.id, priority: rule.priority, rule, value, key } : null;
     })
-    .filter((c) => c.worth)
-    .sort((a, b) => b.key[0] - a.key[0] || b.key[1] - a.key[1] || b.rule.priority - a.rule.priority || byId(a.rule, b.rule));
+    .filter((c): c is ShipCandidate => c !== null);
+  if (reward) candidates.push({ id: SHIPPING_REWARD_ID, priority: 0, rule: null, value: reward.value, key: [1, 100] });
+  candidates.sort((a, b) => b.key[0] - a.key[0] || b.key[1] - a.key[1] || b.priority - a.priority || byId(a, b));
   if (candidates.length === 0) return null;
 
-  for (const c of candidates) c.rule.hadCandidate = true;
+  for (const c of candidates) if (c.rule) c.rule.hadCandidate = true;
   const blocked = (!engine.productWithShipping && work.some((w) => w.product)) || (!engine.orderWithShipping && order !== null);
   if (blocked) {
-    for (const c of candidates) c.rule.dropped = true;
+    for (const c of candidates) if (c.rule) c.rule.dropped = true;
+    if (reward) warnings.push({ code: "reward_not_combinable", ruleId: SHIPPING_REWARD_ID });
     return null;
   }
   const [winner, ...losers] = candidates;
-  for (const c of losers) if (c.rule.lostTo.length < MAX_BETTER_RULES) c.rule.lostTo.push(winner.rule.id);
+  for (const c of losers) if (c.rule && c.rule.lostTo.length < MAX_BETTER_RULES) c.rule.lostTo.push(winner.id);
+  if (!winner.rule) {
+    return {
+      ruleId: SHIPPING_REWARD_ID,
+      method: "automatic",
+      ownerRuleId: SHIPPING_REWARD_ID,
+      ownerMethod: "automatic",
+      value: winner.value,
+      amount: null,
+      message: SHIPPING_REWARD_LABEL[cart.locale],
+    };
+  }
   return {
     ruleId: winner.rule.id,
     method: winner.rule.method,
@@ -1120,7 +1168,7 @@ function buildOutcomes(
 
 // --- The plan -------------------------------------------------------------------------------
 
-function buildPlan(cart: NormalizedCart, config: Rec): CartPlan {
+function buildPlan(cart: NormalizedCart, config: Rec, opts: { hint: boolean } = { hint: true }): CartPlan {
   const { currency, locale } = cart;
   const engine = readEngine(config);
   const { campaign, rules, retargeted, byId: rulesById } = resolveRules(config, cart);
@@ -1144,9 +1192,20 @@ function buildPlan(cart: NormalizedCart, config: Rec): CartPlan {
     if (order) order.marginProtected = true;
     markTightLines(work, order);
   }
-  const shipping = planShipping(rules, work, order, engine, cart);
+  // Rewards (MVP 4): the base before every discount (R1); the gift goes on after margin and the
+  // order stage, which never see a gift line (R3).
+  const rewards = readRewardsPayload((config.modules as Rec).rewards);
+  const base = rewardBase(work);
+  const warnings: PlanWarning[] = [];
+  const shipping = planShipping(rules, work, order, engine, cart, shippingReward(rewards, base, currency), warnings);
+  const giftStage = planGifts(work, rewards, base, currency, locale);
   const { outcomes, codeOutcomes } = buildOutcomes(rules, work, order, shipping, cart, codes);
-  const hint = tierHint(tiers, work);
+  const afterBase =
+    base - work.reduce((sum, w) => sum + (w.line.gift ? 0 : (w.product?.amount ?? 0)), 0) - (order?.amount ?? 0);
+  const progress = rewardsProgress(rewards, base, afterBase, currency);
+  if (!rewards.shipping?.[currency] && rewards.shipping) warnings.unshift({ code: "market_missing_threshold", ruleId: SHIPPING_REWARD_ID });
+  warnings.push(...giftStage.warnings, ...progress.warnings);
+  const hint = opts.hint ? checkedTierHint(tierHint(tiers, work), cart, config) : null;
 
   const lines: PlanLine[] = work.map((w) => ({
     lineId: w.line.id,
@@ -1175,11 +1234,35 @@ function buildPlan(cart: NormalizedCart, config: Rec): CartPlan {
     rules: outcomes,
     tiers: tierOutcomes(tiers, work),
     codes: codeOutcomes,
-    gifts: [],
-    warnings: [],
-    progress: hint ? { tierHint: hint } : {},
+    gifts: giftStage.gifts,
+    warnings,
+    progress: {
+      ...(progress.freeShipping ? { freeShipping: progress.freeShipping } : {}),
+      ...(progress.gifts ? { gifts: progress.gifts } : {}),
+      ...(hint ? { tierHint: hint } : {}),
+    },
     totals: { subtotal, productDiscount, orderDiscount, total: subtotal - productDiscount - orderDiscount },
   };
+}
+
+/**
+ * MVP 3 debt (R4): the tier hint is kept only when the cart with the missing
+ * items really gives the hinted line its set's tier — not when an exclusive
+ * order discount, a better rule or the Free switches would win there. When
+ * margin protection lowers it, the hint says so (`marginCapped`): the
+ * storefront then promises a lower price, never a value.
+ */
+function checkedTierHint(hint: TierHint | null, cart: NormalizedCart, config: Rec): TierHint | null {
+  if (!hint) return null;
+  const target = hint.lineIds[0];
+  const lines = cart.lines.map((l) =>
+    l.id === target ? { ...l, quantity: l.quantity + hint.missing, subtotal: l.unitPrice * (l.quantity + hint.missing) } : l,
+  );
+  const plan = buildPlan({ ...cart, lines }, config, { hint: false });
+  const line = plan.lines.find((l) => l.lineId === target);
+  const tierId = tierCandidateId(hint.setId);
+  if (!line?.product?.components.some((c) => c.ruleId === tierId)) return null;
+  return line.marginCapped ? { ...hint, marginCapped: true } : hint;
 }
 
 function failedPlan(cart: NormalizedCart | null, reason: PlanFailure, error?: string): CartPlan {
