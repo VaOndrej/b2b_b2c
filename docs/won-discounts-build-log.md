@@ -7,22 +7,96 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
-- **Fáze:** MVP 3 (Množstevní slevy + PDP blok + základ storefrontu) **běží** — zelená od Ondřeje 2026-09-30.
-  Plán `docs/plans/2026-09-30-won-discounts-mvp3.md` (kontrakty K1–K9 commit `46a09e2`), SDD ledger
-  `.superpowers/sdd/2026-09-30-won-discounts-mvp3/progress.md` (po kompakci číst ho první). Vlna A paralelně:
-  T1a core ‖ T4 storefront ‖ T5 admin ‖ T6 docs ‖ T7a overlay šablon; pak T1b ‖ T3 sync, T2 Rust, T7 E2E, T8.
-- **Rozhodnutí controlleru (K1):** na produkt platí právě jedna sada úrovní — sada vybraná pro produkt, jinak pro
-  kolekci (první v pořadí), jinak globální; Free sady s rozsahem zneškodní (bez úrovní), nikdy nespadnou do globální.
-- **Dev store 2026-09-30 (změna Ondřejem): základní měna obchodu je CZK** (dřív USD). `won-e2e-*` ceny
-  10/12/15/18/20/22 Kč, nákupní ceny 6/5/8 Kč (simple-a 6 Kč → marže 40 %); ceník česko má pevnou jen
-  `won-e2e-spare` = 199 Kč; ceník Slovensko **nemá pevné ceny** (převod kurzem: simple-a 0,42 €). Kurz CZK→CZK = 1.
-  Ověřeno `shopify store execute` (jen čtení). E2E očekávání z MVP 1–2 přepočítat na nové ceny, kde jsou natvrdo.
-- `shopify app dev` běží **bez** `WON_DEV_PLAN` (Free) od 2026-09-30.
-- **Způsob práce (Ondřej 2026-09-30):** paralelní implementace, audit a opravy v dávkách; orchestrátor prompt platí.
+- **Fáze: MVP 3 (Množstevní slevy + PDP blok + základ storefrontu) — implementace a opravy z auditu hotové, MVP
+  NEUZAVŘENÉ.** Předávka 2026-10-01: Ondřej převezme práci a předá ji další AI s promptem
+  [`won-discounts/prompt-pokracovani-inline.md`](won-discounts/prompt-pokracovani-inline.md) (pokračování MVP 3 → 7,
+  práce **inline bez subagentů**). Přesný stav a zbývající kroky: sekce **„Předávka MVP 3“** níž.
+- **Poslední commit:** `ec6af4b` + commit předávky (lokálně na `main`, **nepushnuto** — poslední push `8bf6e15`).
+  Pushnout: `git push origin main`.
+- `shopify app dev` **neběží** (zastaven před bránou). Před E2E spustit znovu (viz runbook).
+- **Dev store (Ondřej 2026-09-30): základní měna obchodu CZK** (dřív USD). `won-e2e-*` 10/12/15/18/20/22 Kč, nákupní
+  ceny simple-a 6, two-variants Small 5, multiaxis 8 Kč; ceník česko má pevnou jen `won-e2e-spare` = 199 Kč; ceník
+  Slovensko **bez pevných cen** (převod kurzem, simple-a ≈ 0,42 €). Kurz funkce CZ `1.0`, SK `0.0415531865` (F-M1).
 - **Ondřej 2026-09-29: funkce zůstává v Rustu** (JS nestačí na limit instrukcí; TS engine = reference).
-- **Poslední push:** `8bf6e15` (MVP 2 uzavřené); lokální commity MVP 3 viz ledger.
 - **Pro Ondřeje (mimo rozsah, neřeším):** v gitu je sledovaný `apps/won-toasts/prisma/prisma/dev.sqlite`
-  → doporučuju `git rm --cached` + gitignore; CI job s Rustem pro `npm run test:unit -w won-discounts`.
+  → doporučuju `git rm --cached` + gitignore; CI job s Rustem pro `npm run test:unit -w won-discounts`;
+  tokenizační test Liquidu (`theme-extension.contract.test.ts`) zkopírovat do `apps/_template` (mimo povolené cesty).
+
+## Předávka MVP 3 (2026-10-01)
+
+**Hotové (commity `46a09e2..ec6af4b`, plán `docs/plans/2026-09-30-won-discounts-mvp3.md` vč. kontraktů K1–K9 a K4 v2)**
+- **Core** (`@won/core/discounts`): úrovně v `planCart` (K2: počítání řádek / produkt / košík, měna per úroveň,
+  marže ořízne úroveň, emise automatickým uzlem, vysvětlení cs/en, `progress.tierHint`), K1 jedna sada na produkt
+  (`tierRef`), Free sady s rozsahem neaktivní (nikdy nespadnou do globální), sada jednoho druhu s neklesajícími
+  hodnotami, `buildStorefrontConfig`, K4 v2 `pdpFloor` + `marginKey`, strop úrovní v configu funkce **550 B**,
+  `describeTierSet`, kolekce marže nad 50 se skládají do globálu.
+- **Funkce (Rust)**: port úrovní 1:1 (`product { id }`, dotaz 27/28), parita 0 rozdílů (fixtures 105+, náhodné
+  2 400 + 2 400 s úrovněmi), replay beze změny hodnot, Wasm 253 170 B; rozpočet: realistické max 88,89 % (brána 90 %),
+  zkonstruované rodiny s úrovněmi max 98,67 %, běžné fixtures ≤ 57 %.
+- **Sync**: storefront config v app-data metafieldu (`won_discounts/storefront_config`, gated, `cv`, zpětné čtení,
+  opakování na pozadí), `tierRef` (zástupný `"~"` před přepnutím, finální po něm — fail closed), variantní `pdp`
+  `{f, k}` ze zrcadla nákupních cen, velká kolekce sady nemaže staré přiřazení.
+- **Storefront**: app blok `quantity_tiers` (tabulka + živá cena, K6 počet vč. košíku, marže K4 v2 — v cizí měně přes
+  `Shopify.currency.rate`, fail closed bez `pdp`), 4 vzhledy (`default`/`highlight`/`chips`/`tiles`), embed čte K5,
+  JS 8 773 + 8 141 B raw / 7 339 B gz; property test „PDP ≤ planCart“ (1 500 případů).
+- **Admin**: Množstevní slevy (globální sada, Pro sady s rozsahem a počítáním přes košík, strop s využitím %,
+  kontrola velikosti kolekcí), Vzhled se 4 vzhledy a věrným náhledem (tokeny tématu, stejné CSS, test shody s JS
+  storefrontu), Free přepínače kombinování v Nastavení (dluh MVP 1 splacen), karta na Přehledu, úrovně ve
+  Vyzkoušet košík, deep link „Přidat tabulku na stránku produktu“ (`addAppBlockId`), screenshoty 390/1440
+  v `docs/won-discounts/evidence/mvp3/admin/`.
+- **Docs**: concepts/tasks/support pro úrovně, vzhledy a kombinování, generované limity (550 B).
+- **Audity**: hlavní (0 P0 / 1 P1 / 4 P2 / 8 P3) a drift Rust↔TS (0 / 0 / 0 / 2; 89 904 vstupů, 0 logických
+  rozdílů) → [`won-discounts/audits/`](won-discounts/audits/). **Opraveno vše kromě drift P3-2** (16–17místné číslo
+  `minQty` v *neplatném* payloadu se v Rustu čte jinak; sync zapisuje jen celá čísla ≤ 10 000; oprava by chtěla
+  přesně zaokrouhlující parser čísel v Rustu — zdokumentováno v README funkce, rozhodnout).
+
+**Brána na `3f1e761` (2026-10-01) ✓**: core 776 + testing 50 · guard 301 · `test:unit -w won-discounts` node
+1 111/1 111 + cargo 92 (1 ignored) + vitest 503 · typecheck · lint · build · validate 0 nálezů · `_template` a
+Toasts typecheck.
+
+**Živé E2E — předběžný běh fáze A (Free) na enginu `173fe47`** (před opravami z auditu): 4 matice (`mvp1`, `shapes`,
+`margin` vč. SK/EUR, `tiers`) **✓ Horizon ✓ Dawn**, 21/21, bez opakování → `docs/won-discounts/evidence/mvp3/e2e-final-A/`.
+Fakta: F-T2 ✓ (`app.metafields` čte storefront config), F-T3 ✓ (typ bloku = registrační UUID embedu, i pro blok),
+F-T1 ✓ pro variantní metafield; F-T1 pro produktový `tierRef` čeká na fázi B.
+
+**Zbývá do uzavření MVP 3**
+1. Kontrola poslední opravné dávky proti `audits/audit-mvp3*.md` (commity `ba6f5d7..ec6af4b`: core, docs, admin,
+   storefront, sync, Rust) — nebyla už nezávisle zkontrolovaná.
+2. **Finální živé E2E** fáze A (Free) **i B (Pro)** na aktuálním kódu (runbook níž) + živě v SK: `Shopify.currency.rate`
+   = kurz funkce, ceny tabulky v EUR.
+3. Vizuální QA storefront PDP 390/1440 (obě témata, všechny 4 vzhledy) + porovnání náhledu v adminu se živým PDP.
+4. Self-audit, roadmapa (MVP 3 hotové, badge `Beta`), checkpoint MVP 3 v build logu (formát MVP 1–2), commit + push.
+
+**E2E runbook MVP 3** (z rootu repa; dev store; heslo jen přes loader z `apps/won-discounts/.env`)
+- `shopify app dev` čerstvě (Free: bez `WON_DEV_PLAN`), log do scratchpadu; **od restartu do konce běhu neměnit nic
+  v `apps/won-discounts/extensions/`** (každé přestavění funkce → dev assety storefrontu 404 do dalšího restartu).
+  Nejdřív ověřit 200 na `won-discounts.js` a `won-discounts-tiers*.js`.
+- Kontrola: `node apps/won-discounts/scripts/make-e2e-overlay.mjs --check`,
+  `node packages/testing/scripts/run-theme-matrix.mjs --config apps/won-discounts/e2e.app.config.mjs --dry-run`.
+- Profil (např. `tiers`; stejně `mvp1`, `shapes`, `margin`): `O=/tmp/won-e2e-A; E=$PWD/docs/won-discounts/evidence/mvp3/e2e-final-A`
+  `node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --profile tiers --out $O` (dry-run) → `… --live --out $O` →
+  `node apps/won-discounts/scripts/e2e/margin-costs.mjs --out $O && … --live --out $O` (plný průchod nákupních cen
+  + `pdp`) → `WON_E2E_PROFILE=tiers WON_DISCOUNTS_E2E_EVIDENCE_DIR=$E/tiers WON_DISCOUNTS_E2E_SCREENSHOT_DIR=$E/tiers/screenshots npm run test:e2e:local:all -w won-discounts`
+  → úklid `seed-mvp1.mjs --cleanup --live --out $O`, `margin-costs.mjs --clear --live --out $O`,
+  `WON_PROTO_OUT=$O/verify node apps/won-discounts/scripts/prototypes/verify-clean.mjs --live`.
+- Fáze B: restart `shopify app dev` s `WON_DEV_PLAN=pro`; `margin-collection.mjs --fixture tiers [--live]`;
+  `NODE_ENV=development WON_DEV_PLAN=pro seed-mvp1.mjs --profile tiers-pro [--live]`; `margin-costs.mjs [--live]`;
+  `WON_E2E_PROFILE=tiers-pro npm run test:e2e:local:all -w won-discounts`; dále `margin-pro` a `shapes` Pro.
+- Dawn při změně varianty vrací počet kusů na 1, Horizon ne (blok funguje v obou).
+
+**Rozhodnutí MVP 3 (controller)**: K1 jedna sada na produkt (produkt > kolekce > globální, pořadí configu); Free sady
+s rozsahem neaktivní; úroveň bez částky v měně košíku se v tom trhu nenabízí (per úroveň); sada jednoho druhu,
+hodnoty neklesají; strop úrovní 550 B (vejde se 6–8 % sad nebo 3–5 částkových CZK+EUR); limit kolekcí marže 100 → 50
+(přebytek se skládá do globálu); K4 v2 (`pdp {f,k}`, kurz Shopify na stránce, fail closed); `tierRef` přes zástupný
+`"~"`; oříznutá úroveň má v pokladně text bez hodnoty („Množstevní sleva od 5 ks“); výprodejové řádky dostanou úroveň
+jen se zapnutým kombinováním výprodeje; počítání `line` = řádek, do kterého se přidání sloučí; anglicky „Quantity
+discounts“.
+
+**Odložené drobnosti MVP 3** (neblokují): `tierHint` ignoruje výlučný přepínač produkt/objednávka (MVP 4 ho použije);
+název bloku v editoru tématu jen anglicky („Quantity tiers“); `pickForm` remízy podle pořadí v DOM; `hasTierRef`
+v náhledu bere `tierRef: null` jako Pro ref; overlay šablon zahodí hlavičkový komentář (jen kopie v E2E workspace);
+kontrola 128 kB storefront configu při uložení až s editorem textů (MVP 7); hustší payload úrovní / krátký `tierRef`
+pro zvednutí stropu 550 B; ve Wasm zbývá ~2,8 kB.
 
 ## Ověřená fakta API (schema.graphql Discount Function, API 2026-04)
 
@@ -50,6 +124,14 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 | P5 | Porty | `24678` (výchozí Vite HMR) už poslouchá jiný `node` proces → při `app dev` hlídat kolizi HMR. `9885/9886` volné pro E2E témata. | `lsof -iTCP -sTCP:LISTEN` |
 
 ## Poučení (platí pro další appky)
+
+- **Shopify Liquid tokenizer ukončí `{{ … }}` na prvním `}`** — `{{ x | replace: '{min}', … }}` rozbije bundle theme
+  extension (`shopify app dev`: „Variable … was not properly terminated“), přestože theme check, MCP validátor i
+  liquidjs projdou. Nahrazení dělat v `{% liquid %}`; hlídá tokenizační contract test (MVP 3).
+- **Každé přestavění funkce pod `shopify app dev` (i úspěšné) rozbije dev assety theme extension** (JS/CSS 404 na CDN)
+  do dalšího restartu `app dev`. Živé E2E jen s „zmraženou“ funkcí po čerstvém restartu (MVP 3).
+- **Rozpočet instrukcí roste i z velikosti configu**: čtení payloadu úrovní ~235 instrukcí/B → nové části configu
+  potřebují vlastní bajtový strop měřený na nejhorších zkonstruovaných tvarech (MVP 3: 550 B).
 
 - **Limit dotazu funkce 3000 znaků počítá i komentáře** (`shopify app dev`: „Query can be at most 3000
   characters“). Dokumentaci vstupu drž v README, v `.graphql` jen krátká hlavička; test měří celý soubor.
