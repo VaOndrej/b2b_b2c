@@ -10,7 +10,7 @@ import type { AdminClient } from "../../app/lib/admin-client.server.ts";
 import { configVersionToken, loadConfig } from "../../app/lib/config.server.ts";
 import { syncProblems } from "../../app/lib/integration/sync-copy.ts";
 import { resyncIfPending, resyncShop, saveAndSync } from "../../app/lib/sync/save-and-sync.server.ts";
-import { tierProductCounts } from "../../app/lib/sync/storefront.ts";
+import { STOREFRONT_CONFIG_MAX_BYTES, tierProductCounts } from "../../app/lib/sync/storefront.ts";
 import { createSync, syncIdle } from "../../app/lib/sync/sync.server.ts";
 import { productionSyncDeps } from "../../app/lib/sync/wiring.server.ts";
 import { createTestDatabase, type TestDatabase } from "../lib/test-db.ts";
@@ -270,4 +270,59 @@ test("tierProductCounts: products carrying a Pro set, in all and per set (from t
   const calls = store.calls.length;
   assert.deepEqual(await tierProductCounts(db.prisma, shop), { total: 3, bySet: { t1: 1, t2: 2 } });
   assert.equal(store.calls.length, calls);
+});
+
+test("a storefront write that keeps failing is retried at most once per interval — also after a later successful run", async () => {
+  const store = new FakeStore();
+  const plan = { current: "pro" as Plan };
+  store.sync.fail("WonSyncStorefrontConfigSet", { userErrors: [{ message: "Value is invalid" }] }, 1_000);
+  const saved = await save(store, plan, input());
+  assert.equal(saved.sync?.ok, false);
+  // A later run succeeds without applying the shop config (a products-only refresh): the latest run is ok.
+  const refreshed = await syncFor(plan)(store, db.prisma).refreshProducts(shop, (await loadConfig(db.prisma, shop)).config);
+  assert.equal(refreshed.ok, true, JSON.stringify(refreshed.errors));
+  const writesBefore = storefrontWrites(store).length;
+  const soon = await resyncIfPending({ client: store, db: db.prisma, shop, createSync: syncFor(plan), logger: quiet });
+  assert.deepEqual(soon, { resynced: false, reason: "too_soon" }, "no full resync on every Přehled load");
+  assert.equal(storefrontWrites(store).length, writesBefore);
+  const later = new Date(Date.now() + 6 * 60_000);
+  const retry = await resyncIfPending({ client: store, db: db.prisma, shop, createSync: syncFor(plan), logger: quiet, now: () => later });
+  assert.equal(retry.resynced && retry.why, "storefront");
+  assert.equal(storefrontWrites(store).length, writesBefore + 1);
+});
+
+test("Shopify returns no app installation: a failed storefront step, nothing written, the discount sync goes on", async () => {
+  const store = new FakeStore();
+  const product = store.sync.addProduct(1);
+  const plan = { current: "pro" as Plan };
+  store.overrides.set("WonSyncStorefrontConfig", () => ({ data: { currentAppInstallation: null } }));
+  const result = await save(store, plan, input({ sets: [globalSet, { id: "t1", scope: { productIds: [product.id] }, countAcross: "product", breaks: [{ minQty: 2, percent: 5 }] }] }));
+  const failed = result.sync!.steps.filter((s) => !s.ok);
+  assert.deepEqual(failed.map((s) => s.step), ["storefront_config.write"]);
+  assert.match(failed[0]!.detail, /app installation/);
+  assert.equal(storefrontWrites(store).length, 0);
+  assert.ok(result.sync!.steps.some((s) => s.step === "shop_config.write" && s.ok));
+  assert.deepEqual(store.sync.productMetafield(product.id), { ruleIds: [], variantRuleIds: {}, tierRef: "t1" }, "the AFTER lane still ran");
+});
+
+test("a storefront config over Shopify's 128 KB json limit is not written (failed step); everything else is synced", async () => {
+  const store = new FakeStore();
+  const plan = { current: "pro" as Plan };
+  const huge = (client: AdminClient, prisma: PrismaClient) =>
+    createSync({
+      ...productionSyncDeps(client, prisma, quiet),
+      sleep: async () => {},
+      plan: async () => plan.current,
+      buildStorefrontConfig: (config, options) => {
+        const built = buildStorefrontConfig(config, options);
+        return { ...built, texts: { cs: { huge: "x".repeat(STOREFRONT_CONFIG_MAX_BYTES) } } };
+      },
+    });
+  const result = await saveAndSync({ client: store, db: db.prisma, shop, input: input(), createSync: huge, logger: quiet });
+  await syncIdle(shop);
+  const step = result.sync!.steps.find((s) => s.step === "storefront_config.write");
+  assert.equal(step?.ok, false, JSON.stringify(result.sync!.steps));
+  assert.match(step!.detail, /over Shopify's 128000 B json metafield limit/);
+  assert.equal(store.ops.filter((op) => op === "WonSyncStorefrontConfig" || op === "WonSyncStorefrontConfigSet").length, 0, "not even read");
+  assert.ok(result.sync!.steps.some((s) => s.step === "shop_config.write" && s.ok));
 });

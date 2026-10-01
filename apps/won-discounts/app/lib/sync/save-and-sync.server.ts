@@ -42,7 +42,7 @@ import { loadConfig, saveConfig, type SaveConfigResult } from "../config.server"
 import { withinDeadline } from "../integration/deadline";
 import { loadShopMarkets, targetsMarkets, withMarketCountries, type ShopMarket } from "./markets";
 import { appliedPlanMismatch, appliedRun, storedConfigNotApplied } from "./runs";
-import { storefrontApplied } from "./storefront";
+import { storefrontOutcome } from "./storefront";
 import { loadShopSyncFacts, recordMarketsChecked } from "./sync-state.server";
 import { shopLocalDateTime, type Sync } from "./sync.server";
 import { errorText, Transport } from "./transport";
@@ -310,7 +310,9 @@ export interface ResyncIfPendingArgs extends Common {
  *   - the live config was built for another plan than the shop has now
  *     (BILL-1, F2 re-review I-2: Pro may still run for a Free shop);
  *   - the run that applied the live config did not leave the storefront
- *     config in place (MVP 3: a config applied before it existed);
+ *     config in place (MVP 3): at once when it predates the storefront
+ *     config (no storefront step), at most once per `minIntervalMs` when its
+ *     write failed (a later run — a products-only refresh — may be ok);
  *   - the shop's time zone changed since the last sync (rule days move);
  *   - Shopify's market countries changed (market-targeted configs).
  */
@@ -332,10 +334,17 @@ export async function resyncIfPending(args: ResyncIfPendingArgs): Promise<Resync
   // I-2: the live config was built for another plan (written before the sync gated for plans, or a downgrade / upgrade since).
   const sync = (args.createSync ?? createProductionSync)(args.client, args.db);
   if (await appliedPlanMismatch(args.db, args.shop, await sync.plan(args.shop))) return resync("plan");
-  // MVP 3: the live config was applied by a run that did not leave the storefront config in place (a run from
-  // before the storefront config existed — a failed write is a failed run, retried above).
+  // MVP 3: the live config was applied by a run that did not leave the storefront config in place. A run from before
+  // the storefront config existed: resynced once. A failed write: throttled like a retry (fix round 1) — a later ok run
+  // (a products-only refresh) must not turn every Přehled load into a full resync while the write keeps failing.
   const applied = await appliedRun(args.db, args.shop);
-  if (applied && !storefrontApplied(applied.steps)) return resync("storefront");
+  const storefront = applied ? storefrontOutcome(applied.steps) : "written";
+  if (storefront === "none") return resync("storefront");
+  if (storefront === "failed") {
+    const last = (status.finishedAt ?? status.startedAt).getTime();
+    if (now.getTime() - last < (args.minIntervalMs ?? RESYNC_MIN_INTERVAL_MS)) return { resynced: false, reason: "too_soon" };
+    return resync("storefront");
+  }
   const facts = await loadShopSyncFacts(args.db, args.shop);
   if (args.timezone && facts.timezone && args.timezone !== facts.timezone) return resync("timezone");
   if (args.checkMarkets && canReadMarkets(args.grantedScopes)) {

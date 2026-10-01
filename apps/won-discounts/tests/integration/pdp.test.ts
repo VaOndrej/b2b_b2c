@@ -7,9 +7,10 @@ import { pdpMaxDiscountPercent } from "@won/core/discounts/storefront-config";
 import type { PrismaClient } from "../../app/generated/prisma/client.ts";
 import type { AdminClient } from "../../app/lib/admin-client.server.ts";
 import { loadConfig } from "../../app/lib/config.server.ts";
-import { costIdle, startCostJob } from "../../app/lib/sync/cost-lane.server.ts";
+import { costIdle, costJobKind, fullPassCovers, startCostJob } from "../../app/lib/sync/cost-lane.server.ts";
+import { pdpMarginKey } from "../../app/lib/sync/costs.ts";
 import { saveAndSync } from "../../app/lib/sync/save-and-sync.server.ts";
-import { createSync, syncIdle } from "../../app/lib/sync/sync.server.ts";
+import { createSync, PDP_ITEMS_MAX, syncIdle } from "../../app/lib/sync/sync.server.ts";
 import { productionSyncDeps } from "../../app/lib/sync/wiring.server.ts";
 import { createTestDatabase, type TestDatabase } from "../lib/test-db.ts";
 import { FakeStore, quiet } from "./helpers.ts";
@@ -284,4 +285,133 @@ test("a pdp write Shopify refuses is recorded on the variant and backed off (not
   await startCostJob(shop, laneDeps(store, plan), { kind: "items", productIds: [p1.id] });
   assert.equal(store.sync.mutations().length, 0, "backed off");
   assert.deepEqual(store.sync.variantPdpMetafield(v1), { max: 20 }, "the old value stays until the retry");
+});
+
+const COST_OPS = ["WonSyncCostShop", "WonSyncCostVariantsCount", "WonSyncCostVariants", "WonSyncCostVariantNodes", "WonSyncCostInventoryItems", "WonSyncCostProductVariants"];
+const costOps = (store: FakeStore) => store.ops.filter((op) => COST_OPS.includes(op));
+
+test("a rules-only change (margin and marginRefs unchanged) queues no cost job", async () => {
+  const { store } = catalogue();
+  const plan = { current: "pro" as Plan };
+  await save(store, plan, marginInput());
+  await startCostJob(shop, laneDeps(store, plan), { kind: "full", restart: true });
+  await settle();
+  store.ops = [];
+  const withRule = marginInput();
+  (withRule.modules.codes as { rules: unknown[] }).rules = [{ id: "r", name: "R", method: "automatic", value: { kind: "percentage", percent: 10 }, target: { kind: "order" } }];
+  const result = await saveAndSync({ client: store, db: db.prisma, shop, input: withRule, createSync: syncFor(plan), logger: quiet });
+  assert.equal(result.sync?.ok, true, JSON.stringify(result.sync?.errors));
+  assert.equal(costJobKind(shop), null, "nothing queued");
+  await settle();
+  assert.deepEqual(costOps(store), []);
+});
+
+test("more than PDP_ITEMS_MAX products whose margin collections changed → one full pass (not a read per product)", async () => {
+  const store = new FakeStore();
+  const ids: string[] = [];
+  for (let i = 1; i <= PDP_ITEMS_MAX + 1; i += 1) {
+    const product = store.sync.addProduct(1000 + i, 1);
+    store.sync.setCost(product.variantIds[0]!, "6.00");
+    ids.push(product.id);
+  }
+  store.sync.addCollection(5, []);
+  const plan = { current: "pro" as Plan };
+  await save(store, plan, marginInput({ perCollection: [{ collectionId: COLLECTION, minMarginPercent: 50 }] }));
+  await startCostJob(shop, laneDeps(store, plan), { kind: "full", restart: true });
+  await settle();
+  const first = store.sync.products.get(ids[0]!)!.variantIds[0]!;
+  assert.deepEqual(store.sync.variantPdpMetafield(first), { max: 20 });
+  store.sync.collections.get(COLLECTION)!.push(...ids);
+  store.ops = [];
+  await syncFor(plan)(store, db.prisma).refreshProducts(shop, (await loadConfig(db.prisma, shop)).config);
+  await settle();
+  assert.ok(costOps(store).includes("WonSyncCostVariants"), "a full pass ran");
+  assert.equal(costOps(store).filter((op) => op === "WonSyncCostProductVariants").length, 0, "no per-product reads");
+  assert.deepEqual(store.sync.variantPdpMetafield(first), { max: 0 });
+});
+
+test("a margin change while a full pass for the SAME margin already runs starts no second pass (coalesced)", async () => {
+  const { store } = catalogue();
+  const plan = { current: "pro" as Plan };
+  await save(store, plan, marginInput());
+  // A full pass that blocks on its first Shopify read (the shop currency) until released.
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  let entered!: () => void;
+  const running = new Promise<void>((resolve) => (entered = resolve));
+  store.overrides.set("WonSyncCostShop", async (variables) => {
+    entered();
+    await gate;
+    store.overrides.delete("WonSyncCostShop");
+    return store.sync.graphql("query WonSyncCostShop { x }", variables);
+  });
+  await settle();
+  store.ops = [];
+  const pass = startCostJob(shop, laneDeps(store, plan), { kind: "full", restart: true });
+  const key = pdpMarginKey(gateConfigForPlan((await loadConfig(db.prisma, shop)).config, "pro").config.modules.margin);
+  assert.equal(fullPassCovers(shop, key), true, "queued: it reads the stored config when it starts");
+  await running;
+  assert.equal(fullPassCovers(shop, key), true, "running for this margin");
+  assert.equal(fullPassCovers(shop, "another margin"), false);
+  // The live shop config is gone (e.g. a reinstall): the sync sees a margin change, but the running pass already covers it.
+  store.sync.shopMetafields.clear();
+  const result = await saveAndSync({ client: store, db: db.prisma, shop, input: marginInput(), createSync: syncFor(plan), logger: quiet });
+  assert.equal(result.sync?.ok, true, JSON.stringify(result.sync?.errors));
+  release();
+  const outcome = await pass;
+  assert.equal(outcome.done === "full" && outcome.result.outcome, "done", "not superseded");
+  await settle();
+  assert.equal(store.ops.filter((op) => op === "WonSyncCostVariantsCount").length, 1, "one pass");
+});
+
+test("a pass cut short under another margin is not resumed: the next pass starts over (every pdp is recomputed)", async () => {
+  const { store } = catalogue();
+  const plan = { current: "pro" as Plan };
+  await save(store, plan, marginInput());
+  await settle();
+  const since = new Date().toISOString();
+  const cutShort = (margin: string) =>
+    db.prisma.shopSyncState.upsert({
+      where: { shop },
+      create: { shop, costsCursor: "1", costsPending: JSON.stringify({ token: "t-old", since, done: 1, total: 3, margin }) },
+      update: { costsCursor: "1", costsPending: JSON.stringify({ token: "t-old", since, done: 1, total: 3, margin }) },
+    });
+  await cutShort("another margin");
+  const fresh = await startCostJob(shop, laneDeps(store, plan), { kind: "full" });
+  assert.equal(fresh.done === "full" && fresh.result.resumed, false);
+  const key = pdpMarginKey(gateConfigForPlan((await loadConfig(db.prisma, shop)).config, "pro").config.modules.margin);
+  await cutShort(key);
+  const resumed = await startCostJob(shop, laneDeps(store, plan), { kind: "full" });
+  assert.equal(resumed.done === "full" && resumed.result.resumed, true, "the same margin: resumed where it stopped");
+});
+
+test("the margin-change pass keeps the refusal back-off (it does not re-send writes Shopify just refused)", async () => {
+  const { store, v1 } = catalogue();
+  const plan = { current: "pro" as Plan };
+  store.sync.refusedOwners.add(v1);
+  await save(store, plan, marginInput()); // its sync queues the first pass: v1's cost + pdp write is refused
+  const refused = await db.prisma.variantCost.findUnique({ where: { shop_variantId: { shop, variantId: v1 } } });
+  assert.ok(refused?.writeError, "refused once");
+  store.sync.calls = [];
+  await save(store, plan, marginInput({ min: 10 }));
+  const resent = store.sync
+    .callsOf("WonSyncMetafieldsSet")
+    .some((call) => (call.variables as { metafields: { ownerId: string }[] }).metafields.some((mf) => mf.ownerId === v1));
+  assert.equal(resent, false, "still backed off");
+});
+
+test("the shop config is written although the product plan did not finish: a margin change still recomputes every pdp", async () => {
+  const { store, v1 } = catalogue();
+  const plan = { current: "pro" as Plan };
+  // The only product target is a collection that cannot be read: the plan fails, but nothing is indexed and no margin
+  // collection is in force, so nothing is at risk — the shop config (with the new margin) is written all the same.
+  store.sync.fail("WonSyncCollectionProducts", { graphqlError: "Internal error" }, 100);
+  const input = marginInput();
+  (input.modules.codes as { rules: unknown[] }).rules = [
+    { id: "r", name: "R", method: "automatic", value: { kind: "percentage", percent: 10 }, target: { kind: "collections", ids: [COLLECTION] } },
+  ];
+  const result = await save(store, plan, input);
+  assert.ok(result.sync?.steps.some((s) => s.step === "products" && !s.ok), JSON.stringify(result.sync?.steps));
+  assert.ok(result.sync?.steps.some((s) => s.step === "shop_config.write" && s.ok));
+  assert.deepEqual(store.sync.variantPdpMetafield(v1), { max: 20 });
 });

@@ -77,7 +77,7 @@ import { pdpMaxDiscountPercent } from "@won/core/discounts/storefront-config";
 import { Prisma, type PrismaClient } from "../../generated/prisma/client";
 import { VARIANT_COST_KEY, VARIANT_PDP_KEY, WON_NAMESPACE } from "./graphql";
 import { errorText, userErrorText, type Transport, type UserErrorLike } from "./transport";
-import { chunks, METAFIELDS_DELETE_BATCH, METAFIELDS_SET_BATCH, NODES_BATCH, sameJson } from "./util";
+import { canonicalJson, chunks, METAFIELDS_DELETE_BATCH, METAFIELDS_SET_BATCH, NODES_BATCH, sameJson } from "./util";
 
 /** A cursor older than this is not resumed (the pass starts over). */
 export const COST_RESUME_MAX_AGE_MS = 24 * 60 * 60_000;
@@ -173,6 +173,18 @@ export interface CostPending {
   /** Set when the pass ended with errors. */
   failedAt?: string;
   error?: string;
+  /**
+   * The margin the pass computes the pdp maximum with (pdpMarginKey; MVP 3):
+   * a pass cut short is resumed only under the same margin — after a margin
+   * change the variants before its cursor have stale pdp values, so the next
+   * pass starts over.
+   */
+  margin?: string;
+}
+
+/** A stable key of the margin a pdp maximum is computed with (gated, folded: what checkout runs). */
+export function pdpMarginKey(margin: ReadonlyDeep<MarginModule>): string {
+  return canonicalJson(buildMarginPayload(margin));
 }
 
 export function parseCostPending(text: string | null | undefined): CostPending | null {
@@ -187,6 +199,7 @@ export function parseCostPending(text: string | null | undefined): CostPending |
       total: typeof v.total === "number" ? v.total : null,
       ...(typeof v.failedAt === "string" ? { failedAt: v.failedAt } : {}),
       ...(typeof v.error === "string" ? { error: v.error } : {}),
+      ...(typeof v.margin === "string" ? { margin: v.margin } : {}),
     };
   } catch {
     return null;
@@ -851,8 +864,9 @@ async function recheckUnseen(ctx: CostCtx, token: string, out: CostPassResult): 
 export async function runCostPass(opts: CostPassOptions): Promise<CostPassResult> {
   const { db, shop } = opts;
   const now = opts.now();
-  // "Obnovit nákupní ceny" (restart) re-sends refused writes too.
-  if (opts.restart) opts = { ...opts, retryRefused: true };
+  // "Obnovit nákupní ceny" (restart) re-sends refused writes too — unless the caller says otherwise (a margin change).
+  if (opts.restart && opts.retryRefused === undefined) opts = { ...opts, retryRefused: true };
+  const marginKey = opts.pdp ? pdpMarginKey(opts.pdp.margin) : undefined;
   const state = await loadCostState(db, shop);
   const previous = state.pending;
   const resumable =
@@ -861,11 +875,16 @@ export async function runCostPass(opts: CostPassOptions): Promise<CostPassResult
     previous !== null &&
     // A pass that failed for want of a session never ran: its cursor is resumed like one cut short.
     (previous.failedAt === undefined || previous.error === COST_NO_SESSION) &&
-    now.getTime() - Date.parse(previous.since) < COST_RESUME_MAX_AGE_MS;
+    now.getTime() - Date.parse(previous.since) < COST_RESUME_MAX_AGE_MS &&
+    // MVP 3: only under the margin it computed the pdp maximum with (its earlier pages are stale otherwise).
+    previous.margin === marginKey;
   const out: CostPassResult = { outcome: "done", read: 0, written: 0, cleared: 0, pdp: 0, removed: 0, refused: 0, errors: [], resumed: resumable };
-  const pending: CostPending = resumable
-    ? { token: previous!.token, since: previous!.since, done: previous!.done, total: previous!.total }
-    : { token: randomUUID(), since: now.toISOString(), done: 0, total: null };
+  const pending: CostPending = {
+    ...(resumable
+      ? { token: previous!.token, since: previous!.since, done: previous!.done, total: previous!.total }
+      : { token: randomUUID(), since: now.toISOString(), done: 0, total: null }),
+    ...(marginKey !== undefined ? { margin: marginKey } : {}),
+  };
   let cursor: string | null = resumable ? state.cursor : null;
   try {
     checkCancelled(opts);

@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 
-import { saveConfig } from "../../../app/lib/config.server.ts";
+import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
+
+import { loadConfig, saveConfig } from "../../../app/lib/config.server.ts";
 import { costIdle, costJobKind, costPassProgress, startCostJob, type CostLaneDeps } from "../../../app/lib/sync/cost-lane.server.ts";
-import { loadCostState } from "../../../app/lib/sync/costs.ts";
+import { loadCostState, pdpMarginKey } from "../../../app/lib/sync/costs.ts";
 import type { AdminClient } from "../../../app/lib/admin-client.server.ts";
 import { createTestDatabase, type TestDatabase } from "../test-db.ts";
 import { FakeShopify } from "./fake-shopify.ts";
@@ -207,8 +209,9 @@ test("no offline session is recorded without clobbering: the resume cursor stays
   fake.pageSize = 2;
   catalogue(fake, 5);
   await saveMargin(true);
-  // A pass cut short (a restart): its cursor and progress are stored.
-  const cut = { token: "t-cut", since: new Date().toISOString(), done: 2, total: 5 };
+  // A pass cut short (a restart): its cursor and progress are stored — and (MVP 3) the margin it computed pdp with.
+  const margin = pdpMarginKey(gateConfigForPlan((await loadConfig(db.prisma, shop)).config, "free").config.modules.margin); // deps(): Free
+  const cut = { token: "t-cut", since: new Date().toISOString(), done: 2, total: 5, margin };
   await db.prisma.shopSyncState.create({ data: { shop, costsCursor: "2", costsPending: JSON.stringify(cut) } });
   assert.equal(await recordNoSession(db.prisma, shop, new Date()), true);
   const recorded = await loadCostState(db.prisma, shop);
@@ -217,6 +220,10 @@ test("no offline session is recorded without clobbering: the resume cursor stays
   assert.equal(recorded.pending?.error, "no_offline_session");
   const outcome = await startCostJob(shop, deps(fake), { kind: "full" });
   assert.equal(outcome.done === "full" && outcome.result.resumed, true, "the next pass (a load with a session) resumes where the cut one stopped");
+  // A cut pass from before MVP 3 (no margin recorded: its earlier pages wrote no pdp) is not resumed: it starts over.
+  await db.prisma.shopSyncState.update({ where: { shop }, data: { costsCursor: "2", costsPending: JSON.stringify({ ...cut, margin: undefined }) } });
+  const older = await startCostJob(shop, deps(fake), { kind: "full" });
+  assert.equal(older.done === "full" && older.result.resumed, false);
 
   // A pass running here: nothing is recorded over it.
   const running = startCostJob(shop, deps(fake), { kind: "full", restart: true });

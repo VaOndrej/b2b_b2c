@@ -51,6 +51,7 @@ import {
   type PdpContext,
   type CostPending,
   type MirrorResult,
+  pdpMarginKey,
 } from "./costs";
 import { foldedForCheckout } from "./margin-fold";
 import { errorText, Transport } from "./transport";
@@ -58,7 +59,13 @@ import type { RetryOptions, SyncLogger } from "./types";
 import { chunks } from "./util";
 
 export type CostJob =
-  | { kind: "full"; restart?: boolean }
+  | {
+      kind: "full";
+      /** Start over (the cursor dropped); also re-sends refused writes unless `retryRefused` is false. */
+      restart?: boolean;
+      /** False: keep the refusal back-off even on a restart (the sync's pdp recompute, MVP 3). */
+      retryRefused?: boolean;
+    }
   | { kind: "clear" }
   | {
       kind: "items";
@@ -89,6 +96,8 @@ export type CostJobOutcome =
 interface Lane {
   kind: "full" | "clear";
   cancelled: boolean;
+  /** A full pass, once it runs: the margin it computes the pdp maximum with (costs.ts pdpMarginKey). */
+  marginKey?: string;
 }
 
 const queues = new Map<string, Promise<unknown>>();
@@ -210,6 +219,7 @@ export function startCostJob(shop: string, deps: CostLaneDeps, job: CostJob): Pr
       const enabled = margin.enabled === true;
       if (job.kind === "clear" && enabled) return { done: "skipped", reason: "margin_on" };
       if (job.kind !== "clear" && !enabled) return { done: "skipped", reason: "margin_off" };
+      if (lane && job.kind === "full") lane.marginKey = pdpMarginKey(margin);
       const transport = new Transport(deps.client, deps.retry, deps.sleep, logger);
       const isCancelled = () => lane?.cancelled === true;
       const floors = costFloors(deps, shop, margin);
@@ -229,6 +239,7 @@ export function startCostJob(shop: string, deps: CostLaneDeps, job: CostJob): Pr
           ...ctx,
           now: deps.now ?? (() => new Date()),
           restart: job.restart,
+          ...(job.retryRefused !== undefined ? { retryRefused: job.retryRefused } : {}),
           onProgress: (pending) => progress.set(shop, pending),
         });
         if (result.outcome === "failed") logger.warn(`costs ${shop}: full pass failed: ${result.errors.join("; ")}`);
@@ -274,6 +285,18 @@ export function startCostJob(shop: string, deps: CostLaneDeps, job: CostJob): Pr
       }
     }
   });
+}
+
+/**
+ * Does a full pass of `shop` already cover every variant's pdp maximum for the
+ * margin `marginKey` (MVP 3)? One queued and not started yet does (it reads the
+ * stored config when it starts, and resumes a cursor only under the same
+ * margin); one running does when it runs with that margin.
+ */
+export function fullPassCovers(shop: string, marginKey: string): boolean {
+  const lane = lanes.get(shop);
+  if (!lane || lane.cancelled || lane.kind !== "full") return false;
+  return lane.marginKey === undefined || lane.marginKey === marginKey;
 }
 
 /** The full pass or clear of `shop` queued or running here (null = none). */

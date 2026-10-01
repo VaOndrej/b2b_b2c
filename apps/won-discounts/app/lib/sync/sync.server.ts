@@ -57,9 +57,11 @@
 //      running lane at its next batch (it redoes the work). Held config →
 //      the lane is skipped (nothing runs ahead of the config).
 //   Steady state (campaign version unchanged) = steps 1–5, one shop write.
-//   After the run (MVP 3, contract K4): when the margin part of the shop config
-//   changed, the cost mirror recomputes every variant's `pdp` maximum (a full
-//   pass); else the variants of products whose marginRefs changed (recomputePdp).
+//   After the run (MVP 3, contract K4), whenever the shop config was written:
+//   when its margin part changed, the cost mirror recomputes every variant's
+//   `pdp` maximum (a full pass, coalesced with one already queued or running
+//   for that margin); else the variants of products whose marginRefs changed
+//   (recomputePdp).
 //
 // BILL-1 (audit P1-1): before step 0's payload, the config is gated for the
 // shop's plan (deps.plan → gateConfigForPlan): a Free shop's payload, nodes
@@ -96,7 +98,8 @@ import { FUNCTION_CONFIG_BUDGET_BYTES } from "@won/core/discounts/function-confi
 import { readMarginPayload, type FunctionMarginPayload } from "@won/core/discounts/margin";
 import { gateConfigForPlan, type ShopPlan, type StrippedCapability } from "@won/core/discounts/plan-gate";
 
-import { startCostJob, type CostJob } from "./cost-lane.server";
+import { fullPassCovers, startCostJob, type CostJob } from "./cost-lane.server";
+import { pdpMarginKey } from "./costs";
 import { SHOP_CONFIG_KEY, WON_NAMESPACE } from "./graphql";
 import { desiredNodes, SYNC_RUNS_KEPT, type DesiredNode } from "./nodes";
 import { NodeSync } from "./node-sync";
@@ -296,16 +299,27 @@ export const PDP_ITEMS_MAX = 250;
 /**
  * MVP 3 (contract K4): the variant `pdp` maximum follows the margin checkout
  * runs and each product's marginRefs, so the cost mirror recomputes it when
- * they change — "all" (the margin the shop config ships changed: a full pass
- * from the start) or the products whose marginRefs changed (their variants;
- * a full pass past PDP_ITEMS_MAX). Queued in the shop's cost lane (it re-reads
- * the stored config and skips while protection is off); never awaited, never
- * fails the sync. Until it ran, a variant's pdp says what the previous settings
- * allowed (checkout is authoritative).
+ * they change, in the shop's cost lane (it re-reads the stored config and
+ * skips while protection is off; never awaited, never fails the sync):
+ *   { margin }  the margin the shop config ships changed: a full pass — none
+ *               when one for that margin is already queued or running
+ *               (fullPassCovers: coalesced); else one that resumes a cursor
+ *               only under the same margin (costs.ts runCostPass), so a pass
+ *               cut short under the old margin starts over, and that keeps the
+ *               refusal back-off;
+ *   products    those whose marginRefs changed: their variants ("items"); past
+ *               PDP_ITEMS_MAX one full pass from the start (refs changed, so
+ *               pages already passed are stale), back-off kept.
+ * Until it ran, a variant's pdp says what the previous settings allowed
+ * (checkout is authoritative).
  */
-function recomputePdp(deps: SyncDeps, shop: string, what: "all" | readonly string[]): void {
-  if (what !== "all" && what.length === 0) return;
-  const job: CostJob = what === "all" || what.length > PDP_ITEMS_MAX ? { kind: "full", restart: true } : { kind: "items", productIds: [...what] };
+function recomputePdp(deps: SyncDeps, shop: string, what: { margin: string } | readonly string[]): void {
+  let job: CostJob;
+  if ("margin" in what) {
+    if (fullPassCovers(shop, what.margin)) return;
+    job = { kind: "full" };
+  } else if (what.length === 0) return;
+  else job = what.length > PDP_ITEMS_MAX ? { kind: "full", restart: true, retryRefused: false } : { kind: "items", productIds: [...what] };
   const lane = { client: deps.client, db: deps.db, plan: deps.plan, now: deps.now, logger: deps.logger, ...(deps.sleep ? { sleep: deps.sleep } : {}), ...(deps.retry ? { retry: deps.retry } : {}) };
   void startCostJob(shop, lane, job);
 }
@@ -335,14 +349,15 @@ async function runSync(deps: SyncDeps, shop: string, config: ConfigView, options
   };
   const transport = new Transport(deps.client, deps.retry, deps.sleep, deps.logger);
   let rethrow: unknown = null;
-  let after: AfterLane | null = null;
+  let outcome: StepsOutcome | null = null;
   try {
-    after = await syncSteps({ deps, transport, shop, config, configVersionId, now: startedAt, record, pending });
+    outcome = await syncSteps({ deps, transport, shop, config, configVersionId, now: startedAt, record, pending });
   } catch (error) {
     // A thrown Response is a re-auth redirect for the embedded admin: record, then let it reach the route.
     if (error instanceof Response) rethrow = error;
     record({ step: "sync", ok: false, detail: `stopped: ${errorText(error)}` });
   }
+  const after = outcome?.after ?? null;
   let background: SyncResult["background"];
   if (after && after.additions.length + after.prunes.length + after.tierWrites.length > 0 && options.productWrites === "background" && !rethrow) {
     pending.add("products_in_progress");
@@ -363,9 +378,9 @@ async function runSync(deps: SyncDeps, shop: string, config: ConfigView, options
   const result = await persist(deps, shop, startedAt, steps, [...pending], configVersionId);
   if (after?.productsComplete && !background && result.ok) await bookkeeping(deps, shop, () => recordProductsSynced(deps.db, shop, startedAt));
   if (!background) clearSyncProgress(shop);
-  // MVP 3 (pdp): the margin the payload ships changed → every variant's pdp maximum; else the products whose
-  // marginRefs changed (all written in the BEFORE lane, so they are in place now).
-  if (after && !rethrow) recomputePdp(deps, shop, after.marginChanged ? "all" : after.pdpProducts);
+  // MVP 3 (pdp), whenever the shop config was written: the margin it ships changed → every variant's pdp maximum;
+  // else the products whose marginRefs changed (all written in the BEFORE lane, so they are in place now).
+  if (outcome && !rethrow) recomputePdp(deps, shop, outcome.marginKey !== null ? { margin: outcome.marginKey } : (after?.pdpProducts ?? []));
   if (background && after) {
     // Superseded already when a newer request came in while this run was going.
     const lane: BackgroundLane = { cancelled: generations.get(shop) !== generation, kind: "additions" };
@@ -524,11 +539,17 @@ interface StepsArgs {
   pending: Set<PendingWork>;
 }
 
+/** A run whose shop config is in place (written, or already equal): its AFTER lane and what the pdp maximum needs. */
+interface StepsOutcome {
+  /** Null when the product plan did not finish (nothing for the AFTER lane). */
+  after: AfterLane | null;
+  /** The margin part of the shop config changed and protection is on: its key (MVP 3, every pdp recomputed); else null. */
+  marginKey: string | null;
+}
+
 /** What is left for the AFTER lane once the shop config is written. */
 interface AfterLane {
   args: ProductSyncArgs;
-  /** The margin part of the shop config changed and protection is on (MVP 3: every pdp maximum is recomputed). */
-  marginChanged: boolean;
   /** Products whose marginRefs this run changed (MVP 3: their variants' pdp maximum is recomputed). */
   pdpProducts: readonly string[];
   additions: Parameters<typeof applyAfterLane>[1]["additions"];
@@ -540,7 +561,7 @@ interface AfterLane {
   productsComplete: boolean;
 }
 
-async function syncSteps({ deps, transport, shop, config: stored, configVersionId, now, record, pending }: StepsArgs): Promise<AfterLane | null> {
+async function syncSteps({ deps, transport, shop, config: stored, configVersionId, now, record, pending }: StepsArgs): Promise<StepsOutcome | null> {
   // 0. Shop + payload.
   let shopState: ShopState;
   try {
@@ -675,7 +696,6 @@ async function syncSteps({ deps, transport, shop, config: stored, configVersionI
       holdReason = changes.holdReason ?? holdReason;
       after = {
         args: productArgs,
-        marginChanged: false,
         pdpProducts: plan.marginRefsChanged,
         additions: plan.additions,
         prunes: plan.prunes,
@@ -710,11 +730,11 @@ async function syncSteps({ deps, transport, shop, config: stored, configVersionI
   await bookkeeping(deps, shop, () => recordAppliedPlan(deps.db, shop, plan));
   // 4b. The storefront config (MVP 3, K5) from the SAME gated config as the payload, behind it; never fatal.
   await writeStorefrontConfig({ deps, transport, shop, config: payloadConfig, stored, configVersionId, record });
-  // 5. The AFTER lane (runSync runs it inline or queues it) — only behind a config that is in place.
-  if (!after) return null;
+  // The pdp maximum (MVP 3): did the margin the shop config ships change (also when the product plan did not finish)?
   const nextMargin = liveMarginOf(payload.json);
   const marginChanged = nextMargin.enabled && (shopState.functionConfig === null || canonicalJson(liveMarginOf(shopState.functionConfig)) !== canonicalJson(nextMargin));
-  return { ...after, marginChanged };
+  // 5. The AFTER lane (runSync runs it inline or queues it) — only behind a config that is in place.
+  return { after, marginKey: marginChanged ? pdpMarginKey(payloadConfig.modules.margin) : null };
 }
 
 /** The held shop config, one line for support per reason (the admin words it from `params.held`: sync-copy.ts). */

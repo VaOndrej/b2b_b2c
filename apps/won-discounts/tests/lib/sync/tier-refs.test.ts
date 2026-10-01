@@ -225,18 +225,28 @@ test("products-only refresh: a product that joined a tier set's collection gets 
   assert.deepEqual(fake.productMetafield(p2.id), { ruleIds: [], variantRuleIds: {}, tierRef: "t1" });
 });
 
-test("a tier set's collection over the read limit is not read; the step names the set (its products keep the store-wide set)", async () => {
+test("a tier set's collection over the read limit is not read; the step names the set (its products get the store-wide set)", async () => {
   const fake = new FakeShopify();
   const p = fake.addProduct(1);
   const huge = fake.addCollection(7, [p.id]);
+  const sync = createSync(realDeps(fake));
+  const rule = autoRule("r", { target: { kind: "products", productIds: [p.id], variantIds: [] } });
+  const sets = [globalSet, scopedSet("t1", { collectionIds: [huge] })];
+  // While the collection fits, its product carries the set.
+  assert.equal((await sync.syncShop(shop, tierConfig([rule], sets))).ok, true);
+  assert.deepEqual(fake.productMetafield(p.id), { ruleIds: ["r"], variantRuleIds: {}, tierRef: "t1" });
   fake.collectionCounts.set(huge, 20_000);
   fake.collectionTitles.set(huge, "Vše");
-  const result = await createSync(realDeps(fake)).syncShop(shop, tierConfig([autoRule("s")], [globalSet, scopedSet("t1", { collectionIds: [huge] })]));
+  fake.calls = [];
+  const result = await sync.syncShop(shop, tierConfig([rule, autoRule("s")], sets));
   const step = result.steps.find((s) => s.step === "tiers.too_large:t1");
   assert.ok(step && !step.ok, JSON.stringify(result.steps));
   assert.deepEqual(step.params, { collection: "Vše", count: 1 });
+  assert.doesNotMatch(step.detail, /gid:\/\//, "titles, never GIDs");
   assert.equal(fake.callsOf("WonSyncCollectionProducts").length, 0, "the too-large collection is not paged");
   assert.ok(result.steps.some((s) => s.step === "shop_config.write" && s.ok), "everything else is synced");
+  // The global-set outcome: it no longer carries the set's tierRef (written after the flip), its rule ref stays.
+  assert.deepEqual(fake.productMetafield(p.id), { ruleIds: ["r"], variantRuleIds: {} });
 });
 
 test("steady state: an unchanged tier targeting writes nothing on the next sync", async () => {

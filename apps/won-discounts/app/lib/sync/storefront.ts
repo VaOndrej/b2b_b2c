@@ -143,9 +143,16 @@ export async function writeStorefrontConfig(args: StorefrontWriteArgs): Promise<
   }
 }
 
-/** Did a run that applied the shop config also leave the storefront config in place (written, or equal)? */
-export function storefrontApplied(steps: readonly SyncStep[]): boolean {
-  return steps.some((step) => step.step === STOREFRONT_WRITE_STEP && step.ok) && !steps.some((step) => step.step === STOREFRONT_VERIFY_STEP && !step.ok);
+/**
+ * What a run that applied the shop config did with the storefront config:
+ * "written" (written and verified, or already equal), "failed" (a write or
+ * verify step failed), "none" (no storefront step at all: a run from before
+ * MVP 3).
+ */
+export function storefrontOutcome(steps: readonly SyncStep[]): "written" | "failed" | "none" {
+  const own = steps.filter((step) => step.step === STOREFRONT_WRITE_STEP || step.step === STOREFRONT_VERIFY_STEP);
+  if (own.length === 0) return "none";
+  return own.every((step) => step.ok) ? "written" : "failed";
 }
 
 /** Index rows read per query (paged by id). */
