@@ -95,7 +95,7 @@ clicks a button); opening a page never changes it.
 | | Free | Pro |
 |---|---|---|
 | Free shipping | From one amount per currency | Same |
-| Gift thresholds | 1 | A ladder of up to 10 |
+| Gift thresholds | 1 | A ladder of up to 5 |
 | Gifts per threshold | 1 | A choice of up to 3 |
 | Fallback gift | Yes | Yes |
 

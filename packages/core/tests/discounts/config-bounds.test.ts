@@ -437,3 +437,7 @@ test("issues under the cap are returned unchanged, with no summary issue", () =>
   assert.equal(issues.length, 5);
   assert.ok(!hasIssue(issues, "issues_truncated"));
 });
+
+test("gift tiers × (choices + fallback) ≤ 20: the storefront embed reads each gift through all_products, at most 20 handles a page (MVP 4 audit L1)", () => {
+  assert.ok(CONFIG_LIMITS.giftTiers * (CONFIG_LIMITS.giftChoices + 1) <= 20, `${CONFIG_LIMITS.giftTiers} × (${CONFIG_LIMITS.giftChoices} + 1)`);
+});

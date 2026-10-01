@@ -35,7 +35,11 @@ export const CONFIG_LIMITS = Object.freeze({
    * CZK + EUR amount sets of 3 breaks.
    */
   tierPayloadBytes: 550,
-  giftTiers: 10,
+  /**
+   * Gift thresholds (Pro ladder). 5 × (3 choices + 1 fallback) = 20 gift products at most: the storefront
+   * embed reads each through Liquid `all_products`, which serves 20 handles a page (MVP 4 audit L1).
+   */
+  giftTiers: 5,
   /** Gifts a tier offers to choose from (Pro: up to 3, rozhodnuti.md "výběr ze 3"); the fallback comes on top. */
   giftChoices: 3,
   campaigns: 50,
