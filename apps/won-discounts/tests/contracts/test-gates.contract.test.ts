@@ -90,12 +90,20 @@ const PRODUCT_TEMPLATES: Record<string, unknown> = {
   dawn: { sections: { main: { type: "main-product", blocks: { qty: { type: "quantity_selector" } }, block_order: ["qty"] } } },
 };
 
+// The cart template --check plans the cart rewards block into (MVP 4, cartTemplateOverlays): Horizon's
+// main-cart (app blocks at the end), Dawn's main-cart-footer with its subtotal block.
+const CART_TEMPLATES: Record<string, unknown> = {
+  horizon: { sections: { "cart-section": { type: "main-cart", blocks: { title: { type: "_cart-title", static: true } } } } },
+  dawn: { sections: { "cart-footer": { type: "main-cart-footer", blocks: { subtotal: { type: "subtotal" } }, block_order: ["subtotal"] } } },
+};
+
 function themeWithSettings(name: string, settings: string, template: unknown = PRODUCT_TEMPLATES[name.includes("dawn") ? "dawn" : "horizon"]) {
   const dir = path.join(scratch, name);
   mkdirSync(path.join(dir, "config"), { recursive: true });
   mkdirSync(path.join(dir, "templates"), { recursive: true });
   writeFileSync(path.join(dir, "config/settings_data.json"), settings);
   writeFileSync(path.join(dir, "templates/product.json"), JSON.stringify(template));
+  writeFileSync(path.join(dir, "templates/cart.json"), JSON.stringify(CART_TEMPLATES[name.includes("dawn") ? "dawn" : "horizon"]));
   return dir;
 }
 
@@ -108,6 +116,15 @@ test("make-e2e-overlay --check passes when the committed overlays match the cano
   });
   assert.equal(result.code, 0, result.output);
   assert.match(result.output, /up to date/);
+});
+
+test("make-e2e-overlay --check exits non-zero when the cart block's anchor is gone (MVP 4: Dawn's cart footer without a subtotal)", () => {
+  const committed = (key: string) => readFileSync(path.join(APP_ROOT, `e2e/settings_data.${key}.json`), "utf8");
+  const dawn = themeWithSettings("cartless-dawn", committed("dawn"));
+  writeFileSync(path.join(dawn, "templates/cart.json"), JSON.stringify({ sections: { "cart-footer": { type: "main-cart-footer", blocks: {}, block_order: [] } } }));
+  const result = overlayCheck({ horizon: themeWithSettings("fresh-horizon-4", committed("horizon")), dawn });
+  assert.notEqual(result.code, 0, result.output);
+  assert.match(result.output, /dawn: template overlay does not apply/);
 });
 
 test("make-e2e-overlay --check exits non-zero when the tiers block's template anchor is gone (MVP 3)", () => {
