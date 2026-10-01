@@ -2,11 +2,11 @@
   Won Discounts — quantity tiers table (MVP 3). App block, product template only.
   Contracts (docs/plans/2026-09-30-won-discounts-mvp3.md):
   - K5 config: app-data metafield, plain namespace (app-data never uses $app).
-  - K1/K3 set: the product metafield's tierRef, else the global set; a tierRef
-    the config does not have = no tiers (fail closed).
-  - K4/K6 max % per variant (margin on): pdp.max, else the product's collection
-    ceiling (marginRefs; more than 4 refs = the strictest), else the global max;
-    margin off = 100. Only this resolved % reaches the page (K4).
+  - K1/K3 set: the product metafield's tierRef, else (absent) the global set; a
+    tierRef the config does not have ("", "~" included) = no tiers (fail closed).
+  - K4 v2 margin ceiling per variant (see "K4 v2" below): the floor `f` of `pdp`,
+    a percent ceiling for a variant without a cost, or no table (fail closed).
+    A cost is never printed.
   - K6 count: the chosen quantity + cart items counted toward the same tier
     (see the cart pass below); per item the page floors, per line it rounds
     like the engine, so it never shows more than checkout gives.
@@ -28,12 +28,14 @@
     assign preset = 'default'
   endunless
 
+  # P3-8, like the engine: no tierRef (nil) = the global set; any string, "" and
+  # the sync's "~" included, = exactly that set id, or no table.
   assign set_id = pmf.tierRef
-  if set_id == blank
+  if set_id == nil
     assign set_id = cfg.tiers.global
   endif
   assign tier_set = cfg.tiers.sets[set_id]
-  if cfg.v != 1 or set_id == blank
+  if cfg.v != 1 or set_id == nil
     assign tier_set = false
   endif
   assign mode = tier_set.count | default: 'line'
@@ -61,7 +63,7 @@
   assign t_next = 'tiers.next' | t
   assign t_next = tx['tiers.next'] | default: t_next
 
-  # K5/K6 margin ceiling of the product (variants without pdp.max).
+  # K5/K6 percent ceiling of the product (its variants without a cost).
   assign margin_on = false
   assign cap = 100
   if cfg.margin.on == true
@@ -87,14 +89,53 @@
     endif
   endif
 
-  assign m = cap
+  assign m = cap | at_least: 0 | at_most: 100
+
+  # K4 v2 (audit P1-1), margin on, per variant:
+  #  - pdp {f, k} with k == margin.k: the ceiling per item = price - floor, the floor
+  #    = f (minor units of the shop currency margin.cur). In another currency only
+  #    the script knows Shopify's rate: nothing margin-dependent is printed here
+  #    (path "defer"; the script fills it in, without a rate it promises nothing);
+  #  - a cost (the cost mirror metafield `variant`, never printed) but no such pdp
+  #    (none yet, or an older k): no table for the variant (path "none", fail closed);
+  #  - no cost: the percent ceiling m (path "m"). Margin off: m = 100.
+  assign exp0 = 'BIF,CLP,DJF,GNF,ISK,JPY,KMF,KRW,PYG,RWF,UGX,VND,VUV,XAF,XOF,XPF' | split: ','
+  assign exp3 = 'BHD,IQD,JOD,KWD,LYD,OMR,TND' | split: ','
+  # g = Liquid units per minor unit: 100 for a currency without decimals (Liquid
+  # counts yen x 100), so every amount below rounds in whole minor units like checkout.
+  assign g = 1
+  if exp0 contains cur
+    assign g = 100
+  endif
+  assign price = variant.price
+  assign ceiling = price | times: m | divided_by: 100.0 | divided_by: g | floor | times: g
+  assign path = 'm'
   if margin_on
-    assign pdp_max = variant.metafields['$app:won_discounts'].pdp.value.max
-    if pdp_max != nil
-      assign m = pdp_max
+    assign v_mf = variant.metafields['$app:won_discounts']
+    assign v_pdp = v_mf.pdp.value
+    if v_pdp.f != nil and v_pdp.k != nil and v_pdp.k == cfg.margin.k
+      assign path = 'f'
+    elsif v_mf.variant != nil
+      assign path = 'none'
     endif
   endif
-  assign m = m | at_least: 0 | at_most: 100
+  if path == 'f'
+    if cur == cfg.margin.cur
+      assign floor_l = v_pdp.f
+      if exp0 contains cur
+        assign floor_l = v_pdp.f | times: 100
+      elsif exp3 contains cur
+        assign floor_l = v_pdp.f | divided_by: 10.0 | ceil
+      endif
+      assign ceiling = price | minus: floor_l | at_least: 0
+    else
+      assign path = 'defer'
+    endif
+  endif
+  assign print_values = false
+  if path == 'm' or path == 'f'
+    assign print_values = true
+  endif
 
   # K6 (amended): items already in the cart, read at render. The script never
   # loads the cart; on the theme's cart-change signal it zeroes these counts.
@@ -122,7 +163,10 @@
         if item.properties['_won_gift']
           continue
         endif
-        assign item_set = item.product.metafields['$app:won_discounts'].product.value.tierRef | default: cfg.tiers.global
+        assign item_set = item.product.metafields['$app:won_discounts'].product.value.tierRef
+        if item_set == nil
+          assign item_set = cfg.tiers.global
+        endif
         if item_set == set_id
           assign in_set = in_set | plus: item.quantity
         endif
@@ -145,9 +189,8 @@
 
   # Pass 1: offered breaks (MKT-1: an amount needs the cart currency), the active
   # one, and the breaks JSON for the script (only the cart currency's amounts).
-  # Per item a percent is floored (never more than checkout at any quantity).
-  assign price = variant.price
-  assign ceiling = price | times: m | divided_by: 100.0 | floor
+  # Per item a percent is floored (never more than checkout at any quantity) and
+  # capped by the variant's ceiling.
   assign cur_json = cur | json
   assign breaks_json = ''
   assign offered = 0
@@ -160,7 +203,7 @@
       continue
     endunless
     if b.pct != nil
-      assign d = b.pct | at_most: m | times: price | divided_by: 100.0 | floor
+      assign d = b.pct | times: price | divided_by: 100.0 | divided_by: g | floor | times: g
       assign brk = ',"pct":' | append: b.pct
     else
       assign d = b.off[cur]
@@ -184,20 +227,21 @@
       assign act_d = d
     endif
   endfor
-  # The live line like the engine: a percent rounds per line (capped by the
-  # margin), an amount is per item x quantity; the per-item figure is floored.
+  # The live line like the engine: a percent rounds once per line; the margin
+  # allows quantity x the per-item ceiling (P2-1: the engine's floor is per item);
+  # an amount is per item x quantity. The per-item figure is floored.
   assign line_d = act_d | times: qty
   if act_pct != nil
-    assign pct_eff = act_pct | at_most: m
-    assign line_d = price | times: qty | times: pct_eff | divided_by: 100.0 | round
-    assign line_cap = price | times: qty | times: m | divided_by: 100.0 | floor
-    assign line_d = line_d | at_most: line_cap
+    assign line_full = price | times: qty
+    assign line_cap = ceiling | times: qty
+    assign line_d = price | times: qty | times: act_pct | divided_by: 100.0 | divided_by: g | round | times: g
+    assign line_d = line_d | at_most: line_cap | at_most: line_full
   endif
   assign total = price | times: qty | minus: line_d
-  assign unit_d = line_d | divided_by: qty
+  assign unit_d = line_d | divided_by: qty | divided_by: g | floor | times: g
   assign unit = price | minus: unit_d
   assign state = 'empty'
-  if any_save
+  if any_save and print_values
     assign state = 'ready'
   endif
 -%}
@@ -209,6 +253,11 @@
     assign next_unit = 0
     assign unit_money = unit | money | strip_html
     assign total_money = total | money | strip_html
+    # `nil | json` is not guaranteed to print `null`: the JSON must stay valid without margin.cur.
+    assign sc_json = 'null'
+    if cfg.margin.cur != nil
+      assign sc_json = cfg.margin.cur | json
+    endif
     assign in_cart = count | minus: qty
     assign t_live_now = t_live
     if in_cart > 0
@@ -238,8 +287,16 @@
           endunless
           assign pct = nil
           if b.pct != nil
-            assign pct = b.pct | at_most: m
-            assign d = pct | times: price | divided_by: 100.0 | floor
+            assign full = b.pct | times: price | divided_by: 100.0 | divided_by: g | floor | times: g
+            assign d = full | at_most: ceiling | at_most: price | at_least: 0
+            if d >= full
+              assign pct = b.pct
+            elsif path == 'm'
+              assign pct = b.pct | at_most: m
+            else
+              # A floor-capped row says the percent it really gives, floored to 0.1.
+              assign pct = d | times: 1000 | divided_by: price | floor | divided_by: 10.0
+            endif
           else
             assign d = b.off[cur]
             if d == nil
@@ -270,12 +327,21 @@
           assign row_unit_money = row_unit | money | strip_html
           assign qty_text = t_row_qty | replace: '{min}', b.min
           assign unit_text = t_unit | replace: '{price}', row_unit_money
+          unless print_values
+            assign save_text = ''
+            assign unit_text = ''
+          endunless
         -%}
-        <li class="won-tiers__row" data-won-discounts-tier-row data-min="{{ b.min }}" data-active="{% if b.min == act_min %}true{% else %}false{% endif %}"{% if d <= 0 %} hidden{% endif %}>
+        <li class="won-tiers__row" data-won-discounts-tier-row data-min="{{ b.min }}" data-active="{% if b.min == act_min %}true{% else %}false{% endif %}"{% if b.min == act_min %} aria-current="true"{% endif %}{% if d <= 0 %} hidden{% endif %}>
           <span class="won-tiers__qty">{{ qty_text | escape }}</span><span class="won-tiers__save">{{ save_text | escape }}</span><span class="won-tiers__unit">{{ unit_text | escape }}</span>
         </li>
       {%- endfor -%}
     </ol>
+    {%- unless print_values -%}
+      {%- assign unit = '' -%}
+      {%- assign live_text = '' -%}
+      {%- assign next_min = 0 -%}
+    {%- endunless -%}
     <p class="won-tiers__live" data-won-discounts-live-price data-unit-cents="{{ unit }}" aria-live="polite">
       {{- live_text | escape -}}
     </p>
@@ -292,24 +358,27 @@
       <p class="won-tiers__next" data-won-discounts-tier-next hidden></p>
     {%- endif -%}
     {%- capture data_json -%}
-      {"v":1,"product":{{ product.id | json }},"set":{{ set_id | json }},"count":{{ mode | json }},"cur":{{ cur | json }},"fmt":{{ shop.money_format | strip_html | json }},"lang":{{ lang | json }},"sel":{{ variant.id | json }},"breaks":[{{ breaks_json }}],"cart":{"p":{{ in_product }},"s":{{ in_set }}},"variants":[
+      {"v":1,"product":{{ product.id | json }},"set":{{ set_id | json }},"count":{{ mode | json }},"cur":{{ cur | json }},"sc":{{ sc_json }},"ms":{{ 123456789 | money | strip_html | json }},"fmt":{{ shop.money_format | strip_html | json }},"lang":{{ lang | json }},"sel":{{ variant.id | json }},"breaks":[{{ breaks_json }}],"cart":{"p":{{ in_product }},"s":{{ in_set }}},"variants":[
       {%- for v in product.variants -%}
         {%- liquid
-          assign vm = cap
+          # K4 v2 per variant: "f" (floor), "m" (percent ceiling), or neither = no table.
+          assign v_cap = ',"m":' | append: m
           if margin_on
-            assign v_pdp = v.metafields['$app:won_discounts'].pdp.value.max
-            if v_pdp != nil
-              assign vm = v_pdp
+            assign vv_mf = v.metafields['$app:won_discounts']
+            assign vv_pdp = vv_mf.pdp.value
+            if vv_pdp.f != nil and vv_pdp.k != nil and vv_pdp.k == cfg.margin.k
+              assign v_cap = ',"f":' | append: vv_pdp.f
+            elsif vv_mf.variant != nil
+              assign v_cap = ''
             endif
           endif
-          assign vm = vm | at_least: 0 | at_most: 100
           assign merge_key = ',' | append: v.id | append: ':'
           assign vc = 0
           if merge contains merge_key
             assign vc = merge | split: merge_key | last | split: ',' | first | plus: 0
           endif
         -%}
-        {"id":{{ v.id }},"p":{{ v.price }},"m":{{ vm }},"c":{{ vc }}}{% unless forloop.last %},{% endunless %}
+        {"id":{{ v.id }},"p":{{ v.price }},"c":{{ vc }}{{ v_cap }}}{% unless forloop.last %},{% endunless %}
       {%- endfor -%}
       ],"t":{"save_pct":{{ t_save_pct | json }},"save_off":{{ t_save_off | json }},"unit":{{ t_unit | json }},"live":{{ t_live | json }},"live_cart":{{ t_live_cart | json }},"next":{{ t_next | json }}}}
     {%- endcapture -%}

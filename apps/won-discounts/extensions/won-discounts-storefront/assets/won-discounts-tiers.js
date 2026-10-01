@@ -81,7 +81,8 @@
     el.hidden = empty;
     if (empty) return;
     var t = data.t || {};
-    var fmt = data.fmt;
+    // Open question 1: format in the ACTIVE currency, read from Liquid's own `money` sample.
+    var fmt = core.sampleFormat(data.ms) || data.fmt;
     var byMin = {};
     st.rows.forEach(function (r) { byMin[r.min] = r; });
     var rows = el.querySelectorAll("[data-won-discounts-tier-row]");
@@ -91,6 +92,8 @@
       if (!r) continue;
       li.hidden = r.d <= 0;
       li.setAttribute("data-active", r === st.active ? "true" : "false");
+      if (r === st.active) li.setAttribute("aria-current", "true");
+      else li.removeAttribute("aria-current");
       setText(li.querySelector(".won-tiers__save"), r.pct != null
         ? core.fill(t.save_pct, { pct: core.pctText(r.pct, data.lang) })
         : core.fill(t.save_off, { amount: core.money(r.d, fmt) }));
@@ -120,10 +123,13 @@
     var id = loc && loc.id ? loc.id.value : data.sel;
     var qty = loc && loc.qty ? parseInt(loc.qty.value, 10) : 1;
     if (!(qty > 0)) qty = 1;
-    var key = id + "|" + qty;
+    // K4 v2: a floor in another currency converts with the storefront's rate (shop -> active currency).
+    var sc = w.Shopify && w.Shopify.currency;
+    var rate = sc && sc.active === data.cur ? Number(sc.rate) : null;
+    var key = id + "|" + qty + "|" + rate;
     if (key === el.__wonKey) return;
     el.__wonKey = key;
-    var st = core.compute(data, id, qty);
+    var st = core.compute(data, id, qty, rate);
     render(el, data, st);
     doc.dispatchEvent(new CustomEvent("won-discounts:tiers:update", {
       detail: {
@@ -204,6 +210,9 @@
 
     w.WonDiscountsTiers = {
       version: "0.3.1-mvp3",
+      exp: core.exp,
+      floorUnits: core.floorUnits,
+      sampleFormat: core.sampleFormat,
       offered: core.offered,
       discount: core.discount,
       lineDiscount: core.lineDiscount,

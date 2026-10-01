@@ -5,9 +5,13 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
-import { sanitizeConfig } from "@won/core/discounts/config";
+import { sanitizeConfig, type WonDiscountsConfig } from "@won/core/discounts/config";
+import { buildShopFunctionConfig } from "@won/core/discounts/function-payload";
+import { currencyExponent } from "@won/core/discounts/money";
+import { planCart } from "@won/core/discounts/plan";
 import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
-import { buildStorefrontConfig, type StorefrontConfigV1 } from "@won/core/discounts/storefront-config";
+import { buildStorefrontConfig, marginKey, pdpFloor, type StorefrontConfigV1 } from "@won/core/discounts/storefront-config";
+import { productMetafieldValue, productRuleIndex } from "@won/core/discounts/targeting";
 
 // SPEC-DRIVEN contract for the quantity-tiers app block (MVP 3, Task 4),
 // docs/plans/2026-09-30-won-discounts-mvp3.md contracts K3–K8:
@@ -166,6 +170,9 @@ class FakeElement {
   hasAttribute(name: string): boolean {
     return this.attributes.has(name);
   }
+  removeAttribute(name: string): void {
+    this.attributes.delete(name);
+  }
   get isConnected(): boolean {
     return rootOf(this).tagName === "HTML";
   }
@@ -296,13 +303,18 @@ type Timer = { fn: () => void; delay: number };
 type TiersApi = {
   version: string;
   offered(breaks: unknown, currency: string): Array<{ min: number; pct?: number; off?: number }>;
-  discount(brk: { pct?: number; off?: number }, price: number, max: number): number;
-  lineDiscount(brk: { pct?: number; off?: number }, price: number, max: number, qty: number): number;
+  /** Per item; `cap` = the variant's per-item ceiling in Liquid money units (K4 v2 / K6). */
+  discount(brk: { pct?: number; off?: number }, price: number, cap: number): number;
+  lineDiscount(brk: { pct?: number; off?: number }, price: number, cap: number, qty: number, g?: number): number;
+  exp(currency: string): number;
+  floorUnits(f: number, shopCurrency: string | null, cartCurrency: string, rate: number | null): number | null;
+  sampleFormat(sample: string): string | null;
   countOf(mode: string, qty: number, inCart: { v?: number; p?: number; s?: number }): number;
   compute(
     data: BlockData,
     variantId: number | string,
     qty: number,
+    rate?: number | null,
   ): null | {
     variantId: number;
     qty: number;
@@ -466,7 +478,7 @@ test("quantity_tiers is an app block on the product template with the tiers JS/C
   assert.ok(!("default" in settings[0]), "accent defaults to blank: the theme's own color");
 });
 
-test("the block reads the K5 app-data config (plain namespace), K3 tierRef and K4 pdp.max", async () => {
+test("the block reads the K5 app-data config (plain namespace), K3 tierRef and K4 v2 pdp {f, k}", async () => {
   const liquid = await read(BLOCK);
   assert.match(liquid, /app\.metafields\.won_discounts\.storefront_config\.value/);
   assert.doesNotMatch(liquid, /app\.metafields\[['"]\$app/, "app-data metafields do not use $app (K5)");
@@ -474,11 +486,16 @@ test("the block reads the K5 app-data config (plain namespace), K3 tierRef and K
   assert.match(liquid, /\.tierRef\b/);
   assert.match(liquid, /cfg\.tiers\.global/, "no tierRef = the global set (K1 step 3)");
   assert.match(liquid, /cfg\.v\s*!=\s*1/, "an unknown config version renders nothing");
-  assert.match(liquid, /\.metafields\[['"]\$app:won_discounts['"]\]\.pdp\.value\.max/);
+  assert.doesNotMatch(liquid, /pdp\.value\.max/, "K4 v1 (a percent per variant) is gone");
+  assert.match(liquid, /v_pdp\.f != nil and v_pdp\.k != nil and v_pdp\.k == cfg\.margin\.k/, "K4 v2: the floor only with the current margin key");
   assert.match(liquid, /cfg\.margin\.on/);
   assert.match(liquid, /marginRefs\.size\s*>\s*4/, "> 4 refs = the strictest ceiling (margin.ts MAX_MARGIN_REFS)");
   assert.match(liquid, /cfg\.margin\.col\[/);
-  assert.doesNotMatch(liquid, /cost/i, "a purchase cost never reaches the page");
+  // The cost mirror (variant metafield `variant`) is only ever tested for existence, never printed (K4 v2).
+  const costUses = [...liquid.matchAll(/(\w+)\.variant\b[^\n]*/g)].map((m) => m[0].trim());
+  assert.ok(costUses.length >= 2, "the block checks the cost mirror (selected variant + the variants loop)");
+  for (const use of costUses) assert.match(use, /^\w*mf\.variant != nil$/, `the cost mirror is only compared with nil: ${use}`);
+  assert.doesNotMatch(liquid, /\{\{[^}]*mf\.variant/, "never output");
 });
 
 test("K6: cart quantities come from Liquid at render time (line_items_for), never from a cart request", async () => {
@@ -631,29 +648,32 @@ test("offered(): percent breaks stay; an amount is resolved for the cart currenc
   assert.deepEqual(plain(api.offered(undefined, "CZK")), []);
 });
 
-test("K6 discount per item (table): min(pct, max) %, rounded DOWN; min(off, price × max / 100); never above the price", async () => {
+test("K6 discount per item (table): the percent rounded DOWN, or the amount; never above the per-item ceiling or the price", async () => {
   const { api } = await boot(new FakeDocument());
-  assert.equal(api.discount({ pct: 10 }, 1000, 100), 100);
-  assert.equal(api.discount({ pct: 15 }, 2000, 12.5), 250, "margin lowers 15 % to 12.5 %");
-  assert.equal(api.discount({ pct: 10 }, 1235, 100), 123, "per item floored: never more than checkout at any quantity");
-  assert.equal(api.discount({ pct: 10 }, 1235, 10), 123);
-  assert.equal(api.discount({ off: 500 }, 1000, 30), 300, "amount capped at price × max / 100");
-  assert.equal(api.discount({ off: 5000 }, 1000, 100), 1000, "an amount never exceeds the item price");
-  assert.equal(api.discount({ pct: 10 }, 1000, 0), 0, "max 0 = no discount");
+  assert.equal(api.discount({ pct: 10 }, 1000, 1000), 100);
+  assert.equal(api.discount({ pct: 15 }, 2000, 250), 250, "the ceiling (12.5 % of 2000) lowers 15 %");
+  assert.equal(api.discount({ pct: 10 }, 1235, 1235), 123, "per item floored: never more than checkout at any quantity");
+  assert.equal(api.discount({ pct: 10 }, 1235, 123), 123);
+  assert.equal(api.discount({ off: 500 }, 1000, 300), 300, "an amount capped by the ceiling");
+  assert.equal(api.discount({ off: 5000 }, 1000, 1000), 1000, "an amount never exceeds the item price");
+  assert.equal(api.discount({ pct: 10 }, 1000, 0), 0, "ceiling 0 = no discount");
 });
 
-test("K6 discount per line like the engine: a percent rounds once per line (margin-capped); an amount is per item × qty", async () => {
+test("K6 discount per line like the engine: a percent rounds once per line, capped by qty × the per-item ceiling; an amount is per item × qty", async () => {
   const { api } = await boot(new FakeDocument());
-  assert.equal(api.lineDiscount({ pct: 10 }, 1235, 100, 1), 124, "Math.round per line");
-  assert.equal(api.lineDiscount({ pct: 15 }, 333, 100, 3), 150, "round(999 × 15 %) = 150, not 3 × 49");
-  assert.equal(api.lineDiscount({ pct: 10 }, 1235, 10, 1), 123, "capped by floor(line × max / 100)");
-  assert.equal(api.lineDiscount({ pct: 15 }, 2000, 12.5, 5), 1250);
-  assert.equal(api.lineDiscount({ off: 500 }, 1000, 30, 3), 900, "an amount: the per-item value × qty");
-  assert.equal(api.lineDiscount({ off: 5000 }, 1000, 100, 2), 2000);
+  assert.equal(api.lineDiscount({ pct: 10 }, 1235, 1235, 1), 124, "Math.round per line");
+  assert.equal(api.lineDiscount({ pct: 15 }, 333, 333, 3), 150, "round(999 × 15 %) = 150, not 3 × 49");
+  assert.equal(api.lineDiscount({ pct: 10 }, 1235, 123, 1), 123, "capped by the per-item ceiling");
+  assert.equal(api.lineDiscount({ pct: 15 }, 2000, 250, 5), 1250);
+  // P2-1: the engine's floor is per item, so the line ceiling is qty × floor(price × max / 100).
+  assert.equal(api.lineDiscount({ pct: 20 }, 999, Math.floor((999 * 15) / 100), 3), 447, "9,99 × 3 at max 15 %: 4,47 like checkout, not 4,49");
+  assert.equal(api.lineDiscount({ pct: 30 }, 1999, Math.floor((1999 * 12.5) / 100), 7), 1743, "19,99 × 7 at max 12,5 %: 17,43");
+  assert.equal(api.lineDiscount({ off: 500 }, 1000, 300, 3), 900, "an amount: the per-item value × qty");
+  assert.equal(api.lineDiscount({ off: 5000 }, 1000, 1000, 2), 2000);
   // The per-item figure never promises more than the line gives.
   for (const [price, pct, qty] of [[333, 15, 3], [1235, 10, 7], [999, 12.5, 11], [101, 33, 2]] as const) {
-    const line = api.lineDiscount({ pct }, price, 100, qty);
-    assert.ok(api.discount({ pct }, price, 100) * qty <= line, `${price} × ${qty} at ${pct} %`);
+    const line = api.lineDiscount({ pct }, price, price, qty);
+    assert.ok(api.discount({ pct }, price, price) * qty <= line, `${price} × ${qty} at ${pct} %`);
   }
 });
 
@@ -1050,4 +1070,260 @@ test("the two block scripts work whichever loads first (both are deferred)", asy
   }
   const liquid = await read(BLOCK);
   assert.match(liquid, /<script src="\{\{ 'won-discounts-tiers-core\.js' \| asset_url \}\}" defer><\/script>/);
+});
+
+// ================================================================================================
+// Audit fix (audit-mvp3.md P1-1, P2-1, P3-7, P3-8, Open question 1; contract K4 v2)
+// ================================================================================================
+
+test("K4 v2: the script's currency exponents are core's (money.ts currencyExponent)", async () => {
+  const { api } = await boot(new FakeDocument());
+  const codes = "BIF CLP DJF GNF ISK JPY KMF KRW PYG RWF UGX VND VUV XAF XOF XPF BHD IQD JOD KWD LYD OMR TND CZK EUR USD HUF PLN GBP CHF SEK".split(" ");
+  for (const code of codes) assert.equal(api.exp(code), currencyExponent(code), code);
+  assert.equal(api.exp("jpy"), 0);
+});
+
+test("K4 v2: floorUnits — f as is in the shop currency; another currency: ceil(f × rate × 10^exp / 10^exp_shop) + 1 minor unit; no rate = nothing", async () => {
+  const { api } = await boot(new FakeDocument());
+  assert.equal(api.floorUnits(75000, "CZK", "CZK", null), 75000);
+  assert.equal(api.floorUnits(875, "JPY", "JPY", null), 87500, "Liquid counts yen × 100");
+  assert.equal(api.floorUnits(75000, "CZK", "EUR", 0.0415531865), Math.ceil(75000 * 0.0415531865) + 1);
+  assert.equal(api.floorUnits(75000, "CZK", "JPY", 6.2), (Math.ceil((75000 * 6.2) / 100) + 1) * 100);
+  assert.equal(api.floorUnits(75000, "CZK", "EUR", null), null, "no usable rate: nothing is promised");
+  assert.equal(api.floorUnits(75000, "CZK", "EUR", 0), null);
+  assert.equal(api.floorUnits(75000, "CZK", "EUR", Number.NaN), null);
+  assert.equal(api.floorUnits(75000, null, "CZK", null), null, "a storefront config without margin.cur: nothing");
+});
+
+test("K4 v2: compute — floor path (price − floor), foreign currency with/without the rate, a cost without a usable pdp = no table", async () => {
+  const { api } = await boot(new FakeDocument());
+  const base = globalSetData({ sc: "CZK", variants: [{ id: 901, p: 1000, c: 0, f: 950 } as unknown as Variant] } as Partial<BlockData>);
+  // Ceiling 50 per item: 10 % (100) is capped to 50 → the row says the 5 % it really gives.
+  const st = api.compute(base, 901, 3);
+  assert.deepEqual(plain(st?.rows.map((r) => [r.min, r.d, r.pct])), [[3, 50, 5], [5, 50, 5]]);
+  assert.equal(st?.total, 3000 - 150, "line ceiling = qty × (price − floor)");
+  // EUR market: the floor converts with Shopify's rate (here 1 CZK = 0.04 EUR): 950 × 0.04 → 38 + 1 = 39.
+  const eur = { ...base, cur: "EUR", variants: [{ id: 901, p: 42, c: 0, f: 950 }] } as unknown as BlockData;
+  assert.equal(api.compute(eur, 901, 3, 0.04)?.rows[0].d, 3, "42 − 39 = 3 per item");
+  assert.equal(api.compute(eur, 901, 3, null), null, "no rate: nothing is promised");
+  // A cost but no pdp of the current margin key: the Liquid gives the variant neither f nor m.
+  const none = { ...base, variants: [{ id: 901, p: 1000, c: 0 }] } as unknown as BlockData;
+  assert.equal(api.compute(none, 901, 3), null);
+});
+
+test("P2-1: the percent ceiling per LINE is qty × floor(price × max / 100) (the engine's floor is per item)", async () => {
+  const { api } = await boot(new FakeDocument());
+  const data = globalSetData({ breaks: [{ min: 3, pct: 20 }], variants: [{ id: 901, p: 999, m: 15, c: 0 }] });
+  assert.equal(api.compute(data, 901, 3)?.total, 2997 - 447, "9,99 × 3 at max 15 %: 4,47 off like checkout (was 4,49)");
+});
+
+test("K4 v2 in the page: the script reads Shopify.currency for a floor in another currency; without it the block stays hidden", async () => {
+  const data = globalSetData({ cur: "EUR", sc: "CZK", fmt: "€{{amount_with_comma_separator}}", variants: [{ id: 901, p: 4200, c: 0, f: 95000 }] } as unknown as Partial<BlockData>);
+  const page = horizonPage(data);
+  await boot(page.document, { window: { Shopify: { currency: { active: "EUR", rate: "0.04" } } } });
+  assert.equal(page.block.getAttribute("data-state"), "ready");
+  // Floor 95000 × 0.04 = 3800 + 1 = 3801 → ceiling 399 per item.
+  assert.deepEqual(rowsOf(page.block).map((r) => r.querySelector(".won-tiers__save")?.textContent), ["−9,5 %", "−9,5 %"]);
+  const noRate = horizonPage(data);
+  await boot(noRate.document, { window: { Shopify: { currency: { active: "CZK", rate: "1.0" } } } });
+  assert.equal(noRate.block.getAttribute("data-state"), "empty", "the active currency is not the cart's: no usable rate");
+  assert.equal(noRate.block.hidden, true);
+});
+
+test("P3-7: the active row carries aria-current=\"true\" (Liquid and script), and only it", async () => {
+  const liquid = await read(BLOCK);
+  assert.match(liquid, /\{% if b\.min == act_min %\} aria-current="true"\{% endif %\}/);
+  const page = horizonPage(globalSetData());
+  const { flush } = await boot(page.document);
+  page.qty.value = "3";
+  page.document.fire("input", { target: page.qty });
+  flush();
+  assert.deepEqual(rowsOf(page.block).map((r) => r.getAttribute("aria-current")), ["true", null]);
+  page.qty.value = "5";
+  page.document.fire("input", { target: page.qty });
+  flush();
+  assert.deepEqual(rowsOf(page.block).map((r) => r.getAttribute("aria-current")), [null, "true"]);
+});
+
+test("P3-8: tierRef like the engine — absent = the global set; any string (\"\", \"~\") = that exact set or no table", async () => {
+  const liquid = await read(BLOCK);
+  assert.match(liquid, /assign set_id = pmf\.tierRef\s+if set_id == nil\s+assign set_id = cfg\.tiers\.global/);
+  assert.match(liquid, /if cfg\.v != 1 or set_id == nil/);
+  assert.doesNotMatch(liquid, /set_id == blank|tierRef\s*\|\s*default/, "never `blank` / `default` (they turn \"\" into the global set)");
+  assert.match(liquid, /assign item_set = item\.product\.metafields\['\$app:won_discounts'\]\.product\.value\.tierRef\s+if item_set == nil/);
+});
+
+test("K4 v2 Liquid: in another currency nothing margin-dependent is printed; the data carries sc + the floor; the cost mirror is never printed", async () => {
+  const liquid = await read(BLOCK);
+  assert.match(liquid, /if cur == cfg\.margin\.cur[\s\S]*?else\s+assign path = 'defer'/);
+  assert.match(liquid, /unless print_values\s+assign save_text = ''\s+assign unit_text = ''/);
+  assert.match(liquid, /\{%- unless print_values -%\}[\s\S]*?assign live_text = ''/);
+  assert.match(liquid, /if any_save and print_values/);
+  assert.match(liquid, /assign sc_json = 'null'\s+if cfg\.margin\.cur != nil\s+assign sc_json = cfg\.margin\.cur \| json/);
+  assert.match(liquid, /"sc":\{\{ sc_json \}\}/, "valid JSON even without margin.cur (an older config, margin off)");
+  assert.match(liquid, /assign v_cap = ',"f":' \| append: vv_pdp\.f/);
+  assert.match(liquid, /elsif vv_mf\.variant != nil\s+assign v_cap = ''/, "a cost without a usable pdp: neither f nor m");
+});
+
+test("Open question 1: money is formatted in the ACTIVE currency, read from Liquid's own `money` sample", async () => {
+  const { api } = await boot(new FakeDocument());
+  const cases: Array<[string, string, number, string]> = [
+    ["1 234 567,89 Kč", "{{amount_with_space_separator}} Kč", 123450, "1 234,50 Kč"],
+    ["€1.234.567,89", "€{{amount_with_comma_separator}}", 4200, "€42,00"],
+    ["$1,234,567.89", "${{amount}}", 99, "$0.99"],
+    ["¥1,234,568", "¥{{amount_no_decimals}}", 100000, "¥1,000"],
+    ["1.234.568 Kč", "{{amount_no_decimals_with_comma_separator}} Kč", 123456700, "1.234.567 Kč"],
+    ["1 234 568 Ft", "{{amount_no_decimals_with_space_separator}} Ft", 500000, "5 000 Ft"],
+    ["CHF 1'234'567.89", "CHF {{amount_with_apostrophe_separator}}", 123450, "CHF 1'234.50"],
+    ["1 234 567,89 Kč", "{{amount_with_space_separator}} Kč", 50, "0,50 Kč"],
+  ];
+  for (const [sample, format, cents, shown] of cases) {
+    assert.equal(api.sampleFormat(sample), format, sample);
+    assert.equal(api.money(cents, format), shown, sample);
+  }
+  for (const odd of ["", "free", "1234567,89 Kč", "12,34 €"]) assert.equal(api.sampleFormat(odd), null, `unusual sample: ${odd}`);
+  // In the page: the EUR sample wins over a shop.money_format that is the shop currency's (CZK).
+  const page = horizonPage(globalSetData({ cur: "EUR", ms: "€1.234.567,89", fmt: "{{amount_with_comma_separator}} Kč" } as unknown as Partial<BlockData>));
+  await boot(page.document);
+  assert.equal(liveOf(page.block).textContent, "1 ks za €10,00 (€10,00/ks)");
+  const fallback = horizonPage(globalSetData({ ms: "" } as unknown as Partial<BlockData>));
+  await boot(fallback.document);
+  assert.equal(liveOf(fallback.block).textContent, "1 ks za 10,00 Kč (10,00 Kč/ks)", "no usable sample: shop.money_format");
+  const liquid = await read(BLOCK);
+  assert.match(liquid, /"ms":\{\{ 123456789 \| money \| strip_html \| json \}\}/);
+});
+
+test("drift guard (K4 v2): the builder's margin carries k + cur; a pdp of that key is the floor path, another key is not", async () => {
+  const config = sanitizeConfig(SHOP_CONFIG).config;
+  const sf = buildStorefrontConfig(gateConfigForPlan(config, "pro").config, { configVersion: CONFIG.cv, shopCurrency: "CZK" });
+  assert.ok(sf.margin.on);
+  assert.equal(sf.margin.cur, "CZK");
+  assert.equal(sf.margin.k, marginKey(config.modules.margin, "CZK"));
+  const pdp = pdpFloor({ unitCost: 6, costCurrency: "CZK", shopCurrency: "CZK", margin: config.modules.margin, collectionIds: [] });
+  assert.ok(pdp && pdp.k === sf.margin.k, "the pdp the sync writes matches the storefront config's key");
+});
+
+// --- Property: PDP ≤ checkout (planCart) -------------------------------------------------------------
+
+function rng(seed: number) {
+  let a = seed >>> 0;
+  const next = () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const int = (min: number, max: number) => min + Math.floor(next() * (max - min + 1));
+  const pick = <T,>(xs: readonly T[]): T => xs[int(0, xs.length - 1)];
+  const chance = (p: number) => next() < p;
+  return { next, int, pick, chance };
+}
+
+const PROP_COLLECTIONS = ["gid://shopify/Collection/1", "gid://shopify/Collection/2", "gid://shopify/Collection/3"];
+
+/** The block's per-variant ceiling exactly as quantity_tiers.liquid resolves it (K4 v2 + the margin percent ceiling). */
+function liquidVariant(sf: StorefrontConfigV1, pdp: { f: number; k: string } | null, hasCost: boolean, marginRefs: readonly string[], p: number) {
+  if (!sf.margin.on) return { id: 1, p, c: 0, m: 100 };
+  if (pdp && pdp.k === sf.margin.k) return { id: 1, p, c: 0, f: pdp.f };
+  if (hasCost) return { id: 1, p, c: 0 }; // fail closed
+  let cap = sf.margin.max;
+  const col = sf.margin.col ?? {};
+  if (marginRefs.length > 4) for (const v of Object.values(col)) cap = Math.min(cap, v);
+  else {
+    const hits = marginRefs.filter((r) => r in col).map((r) => col[r]);
+    if (hits.length > 0) cap = Math.min(...hits);
+  }
+  return { id: 1, p, c: 0, m: Math.max(0, Math.min(100, cap)) };
+}
+
+test("property: the PDP line discount (won-discounts-tiers-core.js) ≤ planCart's tier on the same line — equal when nothing is capped", async () => {
+  const { api } = await boot(new FakeDocument());
+  const r = rng(20261001);
+  const CURRENCIES = ["CZK", "EUR", "HUF", "JPY"];
+  let capped = 0, foreign = 0, costPath = 0, equal = 0;
+  for (let n = 0; n < 1500; n++) {
+    const shop = r.pick(CURRENCIES);
+    const cart = r.chance(0.35) ? shop : r.pick(CURRENCIES);
+    const rate = cart === shop ? 1 : Math.exp((r.next() - 0.5) * 10) * (1 + r.next());
+    const qty = r.int(1, 9);
+    const percent = r.chance(0.6);
+    const breaks = percent
+      ? [{ minQty: 1, percent: r.pick([5, 10, 12.5, 14.95, 20, 33.3, 50, 90]) }]
+      : [{ minQty: 1, amountOff: { [cart]: r.int(1, 200_000) } }];
+    const marginOn = r.chance(0.8);
+    const margin = {
+      enabled: marginOn,
+      global: { ...(r.chance(0.7) ? { minMarginPercent: r.pick([0, 5, 12.5, 20, 33.3, 60]) } : {}), maxDiscountPercent: r.pick([0, 9.9, 12.5, 15, 37.5, 50, 100]) },
+      perCollection: PROP_COLLECTIONS.filter(() => r.chance(0.3)).map((collectionId) => ({
+        collectionId,
+        ...(r.chance(0.6) ? { minMarginPercent: r.pick([0, 15, 25, 50]) } : {}),
+        ...(r.chance(0.6) ? { maxDiscountPercent: r.pick([5, 12.5, 30, 90]) } : {}),
+      })),
+    };
+    const config: WonDiscountsConfig = sanitizeConfig({
+      modules: { margin, tiers: { sets: [{ id: "g", scope: "global", countAcross: "line", breaks }] } },
+    }).config;
+    const collectionIds = PROP_COLLECTIONS.filter(() => r.chance(0.4));
+    const hasCost = marginOn && r.chance(0.6);
+    const unitCost = hasCost ? r.int(1, 2_000_000) / 10 ** currencyExponent(shop) : undefined;
+    const price = r.int(1, 3_000_000); // minor units of the cart currency: a market's own price (price list)
+    const entry = productMetafieldValue(productRuleIndex(config, [{ productId: "gid://shopify/Product/1", variantIds: [], collectionIds }]).get("gid://shopify/Product/1")!);
+
+    const plan = planCart(
+      {
+        currency: cart,
+        shopToCartRate: rate,
+        enteredCodes: [],
+        today: "2026-10-01",
+        lines: [
+          {
+            id: "L1",
+            variantId: "gid://shopify/ProductVariant/1",
+            productId: "gid://shopify/Product/1",
+            quantity: qty,
+            unitPrice: price,
+            ruleIds: [],
+            ...(entry.marginRefs ? { marginRefs: entry.marginRefs } : {}),
+            ...(unitCost !== undefined ? { unitCost, unitCostCurrency: shop } : {}),
+          },
+        ],
+      },
+      buildShopFunctionConfig(config, { now: "2026-10-01T12:00:00", shopTimezone: "Europe/Prague", shopCurrency: shop }).payload,
+    );
+    const checkout = plan.lines[0].product?.amount ?? 0;
+    if (plan.lines[0].marginCapped) capped++;
+
+    // The PDP: the storefront config + the variant's pdp as the sync writes them, the block's data, the script.
+    const sf = buildStorefrontConfig(config, { configVersion: "v", shopCurrency: shop });
+    const pdp = hasCost ? pdpFloor({ unitCost, costCurrency: shop, shopCurrency: shop, margin: config.modules.margin, collectionIds }) : null;
+    const toLiquid = (minor: number) => (minor * 100) / 10 ** currencyExponent(cart);
+    const p = toLiquid(price);
+    const variant = liquidVariant(sf, pdp, hasCost, entry.marginRefs ?? [], p);
+    if ("f" in variant) costPath++;
+    if (cart !== shop) foreign++;
+    const data = {
+      count: "line",
+      cur: cart,
+      sc: sf.margin.on ? sf.margin.cur : null,
+      breaks: sf.tiers.sets.g.breaks,
+      cart: { p: 0, s: 0 },
+      variants: [variant],
+    } as unknown as BlockData;
+    const st = api.compute(data, 1, qty, cart === shop ? null : rate);
+    const promisedL = st ? p * qty - st.total : 0;
+    const promised = (promisedL * 10 ** currencyExponent(cart)) / 100;
+    const label = `case ${n}: ${shop}→${cart} ×${rate.toFixed(4)} price ${price} qty ${qty} ${JSON.stringify(breaks[0])} margin ${JSON.stringify(margin.global)} cost ${unitCost} f ${pdp?.f}`;
+    assert.ok(promised <= checkout + 1e-9, `${label}: PDP ${promised} > checkout ${checkout}`);
+    // Equal when nothing is capped on either side.
+    if (st && !plan.lines[0].marginCapped) {
+      const b0 = (sf.tiers.sets.g.breaks[0] ?? {}) as { pct?: number; off?: Record<string, number> };
+      const uncapped = api.lineDiscount(b0.pct != null ? { pct: b0.pct } : { off: b0.off?.[cart] }, p, p, qty, currencyExponent(cart) === 0 ? 100 : 1);
+      if (uncapped === promisedL) {
+        assert.equal(promised, checkout, `${label}: uncapped, PDP ${promised} ≠ checkout ${checkout}`);
+        equal++;
+      }
+    }
+  }
+  assert.ok(capped > 200 && foreign > 600 && costPath > 300 && equal > 300, `capped ${capped}, foreign ${foreign}, cost path ${costPath}, equal ${equal}`);
 });
