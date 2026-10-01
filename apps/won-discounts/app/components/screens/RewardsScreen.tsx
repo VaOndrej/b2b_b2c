@@ -23,6 +23,7 @@ import type { GiftTierView, GiftVariantView, RewardsScreenData, UiResult } from 
 import { boolAttr } from "../shell/attrs";
 import { GateNotes } from "../shell/GateNotes";
 import { Notice } from "../shell/Notice";
+import { ProFrame } from "../shell/ProFrame";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 
 const F = REWARDS_FIELD;
@@ -201,11 +202,12 @@ export function RewardsScreen(props: RewardsScreenProps) {
                 </s-box>
               ))}
               {kept.map((tier) => (
-                <div key={tier.id}>
+                // A stored Pro threshold the Free plan does not run: the plan signal is amber only (doctrine §16b).
+                <ProFrame key={tier.id} locked>
                   <input type="hidden" name={F.tier} value={tier.id} />
                   <input type="hidden" name={F.kept} value={tier.id} />
-                  <RowNote tone="attention">{t("rewards.gift.kept", { gifts: tier.choices.map((c) => c.title || t("rewards.gift.unknown")).join(", ") })}</RowNote>
-                </div>
+                  <RowNote>{t("rewards.gift.kept", { gifts: tier.choices.map((c) => c.title || t("rewards.gift.unknown")).join(", ") })}</RowNote>
+                </ProFrame>
               ))}
               {pickError ? <RowNote tone="attention">{t("rewards.picker.unavailable")}</RowNote> : null}
               {tiers.length === 0 || pro ? (

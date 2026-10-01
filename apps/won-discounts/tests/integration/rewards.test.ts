@@ -180,6 +180,13 @@ test("screen: Free shows the first gift editable and the Pro threshold as stored
   assert.match(free, /Doprava zdarma/);
   assert.match(free, /Ponožky Won — M/);
   assert.match(free, /Uložený další práh \(Kšiltovka Won, Plátěná taška Won, Hrnek Won\) ve Free neplatí/);
+  // The plan signal is amber only (doctrine §16b): the stored Pro threshold sits in the Pro frame, never in the attention red.
+  const freeHtml = await renderPage(createElement(RewardsScreen, devRewardsScreen({ plan: "free", state: null, locale: "cs" })));
+  const keptAt = freeHtml.indexOf("Uložený další práh");
+  const { WON_AMBER, WON_ATTENTION } = await import("../../app/components/shell/tokens.ts");
+  const around = freeHtml.slice(Math.max(0, keptAt - 600), keptAt);
+  assert.ok(around.includes(WON_AMBER), "inside the amber Pro frame");
+  assert.ok(!around.slice(around.lastIndexOf("<div")).includes(WON_ATTENTION), "not the attention colour");
   assert.match(free, /V měně EUR \(.*\) není částka, v tomto trhu se odměna nenabízí/);
   assert.match(free, /Víc prahů a výběr ze 3 dárků je v tarifu Pro/);
   const pro = text(await renderPage(createElement(RewardsScreen, devRewardsScreen({ plan: "pro", state: null, locale: "cs" }))));
