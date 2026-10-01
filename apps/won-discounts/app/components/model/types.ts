@@ -186,6 +186,8 @@ export interface AdminSignals {
   margin?: MarginOverviewView;
   /** Množstevní slevy card on Přehled (MVP 3). Absent = not known. Additive (T5). */
   tiers?: TiersOverviewView;
+  /** Odměny card on Přehled (MVP 4). Absent = not known. */
+  rewards?: RewardsOverviewView;
 }
 
 // --- Ochrana marže (MVP 2) ------------------------------------------------------------------
@@ -634,4 +636,49 @@ export interface SettingsScreenData {
   configVersion: string | null;
   currencies: CurrencyView[];
   combination: CombinationView;
+}
+
+// --- MVP 4: Odměny (contracts R1–R9, plan docs/plans/2026-10-01-won-discounts-mvp4.md) ----------------------------
+
+/** A gift variant with its Shopify name ("Mikina — M"); an unknown one (deleted) has an empty title. */
+export interface GiftVariantView {
+  id: string;
+  title: string;
+}
+
+/** One gift threshold as the screen edits it. */
+export interface GiftTierView {
+  id: string;
+  /** Minor units per currency; a currency without a value offers nothing there (MKT-1). */
+  threshold: Record<string, number>;
+  /** Free: 1, Pro: up to 3 (CONFIG_LIMITS.giftChoices). */
+  choices: GiftVariantView[];
+  /** The fallback gift (A4), offered when every choice is sold out. */
+  fallback: GiftVariantView | null;
+}
+
+export interface RewardsScreenData {
+  plan: "free" | "pro";
+  configVersion: string | null;
+  currencies: CurrencyView[];
+  /** Free shipping threshold per currency (minor units); null = not offered. */
+  shipping: Record<string, number> | null;
+  /** Config order. On Free only the first applies (gateNotes say so); the others are kept as stored. */
+  gifts: GiftTierView[];
+  /** countOtherDiscounts: the threshold counts after the other discounts (the cart warns; checkout never takes the gift). */
+  countOther: boolean;
+  gateNotes: GateNoteView[];
+  /** The app embed: the cart panel needs it. */
+  embed: EmbedView;
+  /** "Přidat blok košíku": the theme editor on the cart template (null when the shop / API key is unknown). */
+  cartBlockAddUrl: string | null;
+}
+
+/** Přehled card. */
+export interface RewardsOverviewView {
+  /** Free shipping threshold in the shop currency (minor units), null = none. */
+  shipping: number | null;
+  /** Gift thresholds the PLAN runs, in the shop currency (minor units, config order); null = none in that currency. */
+  gifts: (number | null)[];
+  currency: string;
 }

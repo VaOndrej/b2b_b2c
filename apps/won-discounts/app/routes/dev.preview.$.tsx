@@ -18,6 +18,7 @@ import { buildRuleEditorProps, RuleEditorScreen, type RuleEditorScreenProps } fr
 import { SettingsScreen, type SettingsScreenProps } from "../components/screens/SettingsScreen";
 import { AppearanceScreen, type AppearanceScreenProps } from "../components/screens/AppearanceScreen";
 import { TiersScreen, type TiersScreenProps } from "../components/screens/TiersScreen";
+import { RewardsScreen, type RewardsScreenProps } from "../components/screens/RewardsScreen";
 import { MarginScreen, type MarginScreenProps } from "../components/screens/MarginScreen";
 import { buildTryCartProps, TryCartScreen, type TryCartScreenProps } from "../components/screens/TryCartScreen";
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
@@ -43,6 +44,8 @@ import {
   DEV_TIMEZONE,
   DEV_TRY_CART_LINES,
   devEditorResult,
+  devRewardsResult,
+  devRewardsScreen,
   devMovedResult,
   devNative,
   devNativeMoved,
@@ -132,6 +135,7 @@ export const HARNESS_SCREENS = [
   "settings",
   "margin",
   "tiers",
+  "rewards",
   "appearance",
 ] as const;
 export type HarnessScreen = (typeof HARNESS_SCREENS)[number];
@@ -301,6 +305,8 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
         ...devTiersScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, theme: q.get("theme") }),
         result: devTiersResult(q.get("result")),
       };
+    case "rewards":
+      return { ...devRewardsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale }), result: devRewardsResult(q.get("result")) };
     case "appearance":
       return devAppearanceScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, theme: q.get("theme") });
     case "margin":
@@ -380,6 +386,9 @@ export default function DevPreview() {
       break;
     case "tiers":
       content = <TiersScreen {...(data as TiersScreenProps)} result={submitted ?? (data as TiersScreenProps).result} />;
+      break;
+    case "rewards":
+      content = <RewardsScreen {...(data as RewardsScreenProps)} result={submitted ?? (data as RewardsScreenProps).result} />;
       break;
     case "appearance":
       content = <AppearanceScreen {...(data as AppearanceScreenProps)} result={submitted} />;

@@ -13,10 +13,10 @@ export const ADMIN_MODULES = ["tiers", "rewards", "outlet", "margin", "campaigns
 export type AdminModule = (typeof ADMIN_MODULES)[number];
 
 /** Modules with their own screen (a static route, e.g. app.margin.tsx, wins over app.$module.tsx). */
-export const BUILT_MODULES = ["margin", "tiers", "appearance"] as const satisfies readonly AdminModule[];
+export const BUILT_MODULES = ["margin", "tiers", "rewards", "appearance"] as const satisfies readonly AdminModule[];
 
 /** Modules that are visible but not built yet (app.$module.tsx → ComingSoonScreen). */
-export const UPCOMING_MODULES = ["rewards", "outlet", "campaigns"] as const satisfies readonly AdminModule[];
+export const UPCOMING_MODULES = ["outlet", "campaigns"] as const satisfies readonly AdminModule[];
 export type UpcomingModule = (typeof UPCOMING_MODULES)[number];
 
 export interface ModuleMeta {
@@ -38,7 +38,6 @@ export const MODULE_META: Readonly<Record<AdminModule, ModuleMeta>> = {
 
 /** The not-yet-built modules' meta (ComingSoonScreen, Přehled "Další moduly"). */
 export const UPCOMING_MODULE_META: Readonly<Record<UpcomingModule, ModuleMeta>> = {
-  rewards: MODULE_META.rewards,
   outlet: MODULE_META.outlet,
   campaigns: MODULE_META.campaigns,
 };

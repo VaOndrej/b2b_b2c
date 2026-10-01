@@ -24,6 +24,7 @@ import type { Translator } from "../../i18n";
 import { NativeDiscountsPanel, nativeSummary } from "../NativeDiscounts";
 import { MarginOverviewCard } from "../margin/MarginOverviewCard";
 import { TiersOverviewCard } from "../tiers/TiersOverviewCard";
+import { RewardsOverviewCard } from "../rewards/RewardsOverviewCard";
 import { RecipeGrid } from "../RecipeGrid";
 import { RuleRow } from "../RuleRow";
 import { collectWarnings, type RuleWarning } from "../model/describe";
@@ -284,6 +285,8 @@ export function OverviewScreen({
         {status.margin ? <MarginOverviewCard margin={status.margin} sync={status.sync} /> : null}
 
         {status.tiers ? <TiersOverviewCard tiers={status.tiers} /> : null}
+
+        {status.rewards ? <RewardsOverviewCard rewards={status.rewards} /> : null}
 
         <WonSection title={t("overview.native.title")} glyph="move" summary={nativeSummary(status.native, tr)} anchor="native">
           <NativeDiscountsPanel native={status.native} mode="each" result={nativeResult} />

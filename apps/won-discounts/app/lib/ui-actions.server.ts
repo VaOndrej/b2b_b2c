@@ -67,6 +67,7 @@ import {
   undoNativeDiscount,
 } from "./integration/native.server";
 import { loadMarginOverview } from "./integration/margin.server";
+import { loadRewardsOverview } from "./integration/rewards.server";
 import { loadTiersOverview } from "./integration/tiers.server";
 import { uiFailureFromSave } from "./integration/results";
 import { overviewSync, refreshTargetingNow, resyncNow as resyncStored } from "./integration/sync-status.server";
@@ -230,7 +231,7 @@ export async function loadStoreSignals(
     nativeDeadlineMs?: number;
   },
 ): Promise<AdminSignals> {
-  const [base, sync, native, margin, tiers] = await Promise.all([
+  const [base, sync, native, margin, tiers, rewards] = await Promise.all([
     loadAdminSignals({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql: opts.graphql, fresh: opts.fresh }),
     opts.sync ? overviewSync(ctx, loaded, { timezone: opts.timezone, deadlineMs: opts.syncDeadlineMs }) : Promise.resolve(NOT_WIRED_SIGNALS.sync),
     // `fresh` re-reads the theme only (onboarding's focus re-check); detection keeps its 60 s cache.
@@ -242,8 +243,10 @@ export async function loadStoreSignals(
       : Promise.resolve(undefined),
     // Množstevní slevy card (MVP 3, Přehled only): the set in force + the table on the product page.
     opts.sync ? loadTiersOverview(ctx, loaded, { scopes: opts.scopes }).catch(() => undefined) : Promise.resolve(undefined),
+    // Odměny card (MVP 4, Přehled only): free shipping and the gift thresholds the plan runs.
+    opts.sync ? loadRewardsOverview(ctx, loaded, { shopCurrency: opts.shopCurrency }).catch(() => undefined) : Promise.resolve(undefined),
   ]);
-  return { ...base, sync, native, ...(margin ? { margin } : {}), ...(tiers ? { tiers } : {}) };
+  return { ...base, sync, native, ...(margin ? { margin } : {}), ...(tiers ? { tiers } : {}), ...(rewards ? { rewards } : {}) };
 }
 
 // --- One call per loader ------------------------------------------------------------------

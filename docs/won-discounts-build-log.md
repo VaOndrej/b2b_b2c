@@ -13,12 +13,25 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > vizuální QA, audit s opravenými nálezy, checkpoint, push).
 
 - **Fáze: MVP 4 (Odměny + košík)** — plán [`plans/2026-10-01-won-discounts-mvp4.md`](plans/2026-10-01-won-discounts-mvp4.md).
-  Hotovo: Task 0 (Wasm: vlastní `String(n)` místo `core::fmt`, 245 kB), Task 1 core (`9cb012e`), Task 2 Rust
-  (`524c818`: parita odměn 2 400 bez rozdílu, replay 2 173 běhů beze změny, rozpočet +≤ 1,53 b., max 87,37 %),
-  Task 3 sync (`93997cc`: handle dárků, `rewards.variant_missing`), Task 4 app proxy `cart-plan` (tip v košíku,
-  živý config + metafieldy, cache 60 s). **Další: Task 5 storefront** (košík v embedu; rozpočet JS: próza komentářů
-  tiers JS → README extensionu), pak Task 6 admin, 7 docs, 8 E2E, 9 brána/QA/audit. Lokální commity nepushnuté
-  (push s uzavřením MVP 4). MVP 3 uzavřené ✅ (badge `Beta`).
+  **Hotovo (lokální commity, NEPUSHNUTÉ — push až s uzavřením MVP 4):**
+  - Task 0 Wasm: vlastní `js::number_to_string` (jako JS `String(n)`) místo `core::fmt` → 245 kB / 256 kB.
+  - Task 1 core `9cb012e` (R1–R5, R7, explain, tierHint přeplánováním).
+  - Task 2 Rust `524c818`+`af964a5` (parita odměn 2 400 bez rozdílu, replay 2 173 běhů beze změny, rozpočet +≤ 1,53 b., max 87,37 %).
+  - Task 3 sync `93997cc` (handle dárků do storefront configu, krok `rewards.variant_missing`).
+  - Task 4 app proxy `e56681b` (`/apps/won-discounts/cart-plan`: tip „přidej 1 ks“, živý config + metafieldy, cache 60 s).
+  - Task 5 storefront `965efef`+`d0b496e` (komentáře JS → README extensionu; košík v embedu jen přes
+    `Shopify.actions.updateCart` a jen na akci zákazníka; blok `cart_rewards`; JS 9 912 / 10 240 B gz; testy na falešné
+    stránce + shoda prahů JS = planCart na 1 500 košících).
+  - Task 6 admin (commit „admin“ po tomto zápisu): `/app/rewards` (`RewardsScreen`, `model/rewards.ts`,
+    `rewards.server.ts`), harness `/dev/preview/rewards`, karta na Přehledu, i18n cs/en, integrační testy 5/5.
+  **Zbývá v MVP 4:**
+  - Task 6 doplněk: Vyzkoušet košík s dárkovým řádkem (zatím jen věty explainu); screenshoty adminu 390/1440.
+  - Task 7 podpůrné docs (concepts/tasks/support pro odměny).
+  - Task 8 živé E2E (profil `rewards` Free + `rewards-pro`; ověřit F-R1 překreslení draweru po `updateCart`, F-R2
+    `all_products` v embedu, F-R3 dárek 0 v pokladně, F-R4 POST přes app proxy) + regresní profily MVP 1–3.
+  - Task 9 brána, vizuální QA košíku (stránka + drawer, obě témata), audit + drift audit (adversariální rozpočet
+    odměn se stop-pravidlem; případně snížit `giftTiers` v payloadu), oprava nálezů, checkpoint, roadmapa, push.
+  MVP 3 uzavřené ✅ (badge `Beta`, `eadc31e` pushnuto).
 - **Poslední commit:** checkpoint MVP 3 (viz `git log`), pushnuto na `origin/main`.
 - `shopify app dev` **neběží**. E2E runbook (MVP 3) a skripty běhu: `profile.sh`-styl průchod = seed dry-run → live →
   (`margin*`/`tiers*`) `margin-costs` dry-run → live → E2E → úklid → `margin-costs --clear` → `verify-clean`.

@@ -24,3 +24,12 @@ export function tiersBlockAddUrl(shop: string, apiKey: string): string | null {
   if (!SHOP_DOMAIN.test(shop) || !apiKey) return null;
   return `https://${shop}/admin/themes/current/editor?template=product&addAppBlockId=${encodeURIComponent(apiKey)}/${TIERS_BLOCK_HANDLE}&target=mainSection`;
 }
+
+/** The cart page block (extensions/won-discounts-storefront/blocks/cart_rewards.liquid, MVP 4). */
+export const CART_BLOCK_HANDLE = "cart_rewards";
+
+/** "Přidat blok do stránky košíku": the theme editor on the cart template with the block added to its main section. */
+export function cartBlockAddUrl(shop: string, apiKey: string): string | null {
+  if (!SHOP_DOMAIN.test(shop) || !apiKey) return null;
+  return `https://${shop}/admin/themes/current/editor?template=cart&addAppBlockId=${encodeURIComponent(apiKey)}/${CART_BLOCK_HANDLE}&target=mainSection`;
+}

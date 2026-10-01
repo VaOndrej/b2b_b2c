@@ -44,10 +44,13 @@ import type {
   TiersOverviewView,
   TiersScreenData,
   TryCartLineView,
+  RewardsScreenData,
   UiResult,
 } from "../components/model/types";
 import { presetOf } from "../components/model/appearance";
-import { tiersBlockAddUrl } from "../components/model/embed";
+import { cartBlockAddUrl, tiersBlockAddUrl } from "../components/model/embed";
+import { REWARDS_FIELD } from "../components/model/rewards";
+import { rewardsScreenFacts } from "./integration/rewards.server";
 import { currencyViews } from "../components/model/markets";
 import { TIERS_FIELD } from "../components/model/tiers";
 import { sampleSet } from "./integration/appearance.server";
@@ -1083,4 +1086,73 @@ export function devTryCartPlanTiers(locale: "cs" | "en", plan: "free" | "pro" = 
     market: DEV_MARKET_NAMES.cz,
     shopCurrency: "CZK",
   });
+}
+
+// --- Odměny (MVP 4) ---------------------------------------------------------------------------------------------
+
+const DEV_GIFT_SOCKS = "gid://shopify/ProductVariant/49000000000001";
+const DEV_GIFT_CAP = "gid://shopify/ProductVariant/49000000000002";
+const DEV_GIFT_BAG = "gid://shopify/ProductVariant/49000000000003";
+const DEV_GIFT_MUG = "gid://shopify/ProductVariant/49000000000004";
+
+/** Shopify names of the gift variants (rewards.server.ts giftTitles). */
+const DEV_GIFT_TITLES: ReadonlyMap<string, string> = new Map([
+  [DEV_GIFT_SOCKS, "Ponožky Won — M"],
+  [DEV_GIFT_CAP, "Kšiltovka Won"],
+  [DEV_GIFT_BAG, "Plátěná taška Won"],
+  [DEV_GIFT_MUG, "Hrnek Won"],
+]);
+
+/**
+ * The rewards fixture: free shipping from 1 000 Kč / 40 € and a ladder — socks
+ * from 1 500 Kč (EUR missing: MKT-1 note), and on Pro a choice of 3 from
+ * 3 000 Kč with a fallback — run through the real reader.
+ */
+export const DEV_REWARDS_FIXTURE: WonDiscountsConfig = readStoredConfig({
+  ...DEV_F2_FIXTURE,
+  modules: {
+    ...DEV_F2_FIXTURE.modules,
+    rewards: {
+      freeShipping: { threshold: { CZK: 1000_00, EUR: 40_00 } },
+      gifts: [
+        { id: "gift-socks", threshold: { CZK: 1500_00 }, choices: [DEV_GIFT_SOCKS] },
+        { id: "gift-choice", threshold: { CZK: 3000_00, EUR: 120_00 }, choices: [DEV_GIFT_CAP, DEV_GIFT_BAG, DEV_GIFT_MUG], fallbackVariantId: DEV_GIFT_SOCKS },
+      ],
+      countOtherDiscounts: false,
+    },
+  },
+});
+
+/**
+ * Odměny as loadRewardsScreen hands it over (the same pure rewardsScreenFacts):
+ *   default     Free: free shipping, the first gift; the Pro threshold stored (gate note);
+ *   plan=pro    the ladder and the choice of 3 editable;
+ *   empty       a new shop: nothing set, the app embed off.
+ */
+export function devRewardsScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en" }): RewardsScreenData {
+  const config = opts.state === "empty" ? DEV_EMPTY_FIXTURE : DEV_REWARDS_FIXTURE;
+  return {
+    plan: opts.plan,
+    configVersion: "dev-config-version",
+    currencies: currencyViews(config.markets, { marketNames: DEV_MARKET_NAMES }),
+    ...rewardsScreenFacts(config, { plan: opts.plan, locale: opts.locale, titles: DEV_GIFT_TITLES }),
+    embed: opts.state === "empty" ? DEV_EMBED_OFF : DEV_EMBED_ON,
+    cartBlockAddUrl: cartBlockAddUrl(DEV_SHOP, "dev-api-key"),
+  };
+}
+
+/** Odměny action results (harness `?result=`). */
+export function devRewardsResult(kind: string | null): UiResult | null {
+  if (kind === "saved") return { ok: true, message: "saved", sync: { ok: true, problems: [], warnings: [] } };
+  if (kind === "invalid") {
+    return {
+      ok: false,
+      reason: "invalid",
+      errors: [
+        { field: REWARDS_FIELD.tierAmount("gift-socks", "EUR"), key: "rewards.error.amount" },
+        { field: REWARDS_FIELD.choice("gift-socks"), key: "rewards.error.giftChoice" },
+      ],
+    };
+  }
+  return null;
 }
