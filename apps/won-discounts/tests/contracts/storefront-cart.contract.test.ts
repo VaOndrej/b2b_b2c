@@ -151,14 +151,18 @@ function page(t: TestContext, opts: { cart: Cart; rewards?: unknown; onUpdate?: 
   for (const src of SOURCES) vm.runInContext(src, context);
   const emit = (name: string, detail?: unknown, promise?: Promise<unknown>) =>
     (listeners.get(name) ?? []).forEach((fn) => fn({ type: name, detail, promise, target: { closest: () => null } }));
+  // Advances the fake clock in 100 ms steps, draining the promise chains between steps and after the last one.
+  const flush = async (n: number) => {
+    for (let i = 0; i < n; i++) await Promise.resolve();
+  };
   const settle = async (ms = 0) => {
-    for (let i = 0; i < 40; i++) {
-      await Promise.resolve();
-      if (ms > 0) {
-        t.mock.timers.tick(Math.min(ms, 100));
-        ms -= Math.min(ms, 100);
-      }
+    await flush(40);
+    while (ms > 0) {
+      t.mock.timers.tick(Math.min(ms, 100));
+      ms -= Math.min(ms, 100);
+      await flush(20);
     }
+    await flush(40);
   };
   const click = (attr: string, value: string) =>
     (listeners.get("click") ?? []).forEach((fn) =>
@@ -211,6 +215,36 @@ test("a cart event fires as the change STARTS (Storefront Events): the panel wai
   await p.settle(3000);
   assert.equal(p.state.updates.length, 1, "after the theme's change settled, the reached tier gets its gift");
   assert.match(p.panel(), /data-state="in"/);
+});
+
+test("one customer action, two cart events (Dawn's pubsub + the standard event): the gift is added once", async (t) => {
+  const p = page(t, { cart: cartOf([item("a", 1, 160000)]), onUpdate: (_payload, cart) => cartOf([...cart.items, giftLine()]) });
+  await p.settle(10);
+  p.emit("shopify:cart:lines-update");
+  p.emit("cart:update");
+  await p.settle(5000);
+  assert.equal(p.state.updates.length, 1, JSON.stringify(p.state.updates.map((u) => u.payload)));
+});
+
+test("a customer's change right after the panel's own write is not swallowed (no time window, only detail.won)", async (t) => {
+  let cart = cartOf([item("a", 1, 160000)]);
+  const p = page(t, {
+    cart,
+    onUpdate: (payload) => {
+      const lines = (payload.lines as { id?: string; quantity: number }[] | undefined) ?? [];
+      cart = lines.some((l) => l.id === "g1" && l.quantity === 0) ? cartOf(cart.items.filter((i) => i.key !== "g1")) : cartOf([...cart.items, giftLine()]);
+      return cart;
+    },
+  });
+  await p.settle(10);
+  p.emit("shopify:cart:lines-update");
+  await p.settle(2000);
+  assert.equal(p.state.updates.length, 1, "the gift is added");
+  // 1 s later the customer removes the product: below the threshold, the gift must go.
+  p.state.cart = cart = cartOf([giftLine()]);
+  p.emit("shopify:cart:lines-update");
+  await p.settle(3000);
+  assert.deepEqual(p.state.updates[1]?.payload, { lines: [{ id: "g1", quantity: 0 }] });
 });
 
 test("a customer's change below the threshold removes the gift", async (t) => {

@@ -64,7 +64,9 @@ Won Discounts quantity tiers block (MVP 3, contracts K6 + K8). Liquid renders th
 
 ## `won-discounts-cart.js`
 
-- `const write = (payload) => {` — Every write goes through Shopify's updateCart (the theme refreshes itself), one at a time and GAP_MS apart (Cloudflare); the events it emits are ours and trigger nothing.
+- `const write = (payload) => {` — Every write goes through Shopify's updateCart (the theme refreshes itself), one at a time and GAP_MS apart (Cloudflare); the events it emits carry `detail.won` and trigger nothing. A rejected change (`userErrors`, e.g. the gift sold out a moment ago) is not reported: the panel re-reads the cart and offers the gift again. updateCart posts to the storefront's own `/api/<version>/graphql.json`, which `shopify theme dev` does not serve — the E2E runs on the store domain previewing the theme.
+- `const refresh = () =>` — `/cart.js` with `cache: "no-store"`: a cached read showed the cart before the customer's change (live E2E, MVP 4).
+- `const onChange = (e) => {` — Storefront cart events fire as a change STARTS and carry `event.promise`: the panel waits for it, then 300 ms, then reads the cart. Reactions run one after another (one queue) and each reads a fresh cart: one action that fires two events (Dawn's pubsub + the standard event) adds the gift once, and no time window swallows the customer's own next change.
 - `const withDeclined = (list) => {` — Cart attributes are replaced as a whole: keep the others, set the declined tiers.
 - `const react = (before) => {` — A cart change the customer made: the gift follows the threshold (SF-1: never on load); a gift the customer removed by hand counts as declined (it never comes back).
 - `const askHint = () => {` — R9: the quantity hint comes from the app proxy (the engine); nothing on failure.

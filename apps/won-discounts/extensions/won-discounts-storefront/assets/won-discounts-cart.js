@@ -8,8 +8,8 @@
   let wd, data, tx, cart, view, hint, warn;
   let shown = "";
   let lastWrite = 0;
-  let selfUntil = 0;
   let queue = Promise.resolve();
+  let reacting = Promise.resolve();
 
   const t = (key, values = {}) => wd.esc(wd.fill(tx[key] || key, values));
   const m = (cents) => wd.money(cents, cart.currency);
@@ -33,7 +33,6 @@
     queue = queue
       .then(() => new Promise((ok) => setTimeout(ok, Math.max(0, lastWrite + GAP_MS - Date.now()))))
       .then(() => {
-        selfUntil = Date.now() + 4000;
         lastWrite = Date.now();
         return actions.updateCart(payload, { event: { detail: { won: true } } }).catch(() => null);
       })
@@ -156,13 +155,15 @@
   };
 
   const onChange = (e) => {
-    if (e?.detail?.won || Date.now() < selfUntil) return;
+    if (e?.detail?.won) return;
     const before = view;
-    Promise.resolve(e?.promise)
-      .catch(() => {})
+    const settled = Promise.resolve(e?.promise).catch(() => {});
+    reacting = reacting
+      .then(() => settled)
       .then(() => new Promise((ok) => setTimeout(ok, 300)))
       .then(refresh)
-      .then(() => (askHint(), react(before)));
+      .then(() => (askHint(), react(before)))
+      .catch(() => {});
   };
 
   const onClick = (e) => {
