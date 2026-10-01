@@ -33,34 +33,14 @@
 // read from Shopify by try-cart.server.ts), so the harness renders a real plan.
 
 import type { WonDiscountsConfig } from "@won/core/discounts/config";
-import {
-  describeMarginReason,
-  formatMoney,
-  formatPercent,
-} from "@won/core/discounts/describe";
+import { describeMarginReason, formatMoney, formatPercent } from "@won/core/discounts/describe";
 import { costMinorUnits } from "@won/core/discounts/margin";
 import { explainPlan } from "@won/core/discounts/explain";
-import {
-  checkoutPreview,
-  roundingTiePossible,
-  type CheckoutPreview,
-} from "@won/core/discounts/function-output";
-import {
-  buildNodeVars,
-  buildShopFunctionConfig,
-  campaignInputFromVars,
-} from "@won/core/discounts/function-payload";
-import {
-  planCart,
-  type CartPlan,
-  type PlanConfig,
-} from "@won/core/discounts/plan";
+import { checkoutPreview, roundingTiePossible, type CheckoutPreview } from "@won/core/discounts/function-output";
+import { buildNodeVars, buildShopFunctionConfig, campaignInputFromVars } from "@won/core/discounts/function-payload";
+import { planCart, type CartPlan, type PlanConfig } from "@won/core/discounts/plan";
 import type { CartLineInput, CartPlanInput } from "@won/core/discounts/cart";
-import {
-  productRuleIndex,
-  ruleRef,
-  variantKey,
-} from "@won/core/discounts/targeting";
+import { productRuleIndex, ruleRef, variantKey } from "@won/core/discounts/targeting";
 
 import { t } from "../../i18n";
 import { refTargetsCollections } from "../sync/products";
@@ -159,31 +139,18 @@ export interface TryCartPlanInput {
 const lineId = (index: number) => `L${index + 1}`;
 
 /** Collection targets that write refs: each rule's own, and every not-killed campaign re-target (`rule@campaign`). */
-function collectionTargets(
-  config: WonDiscountsConfig,
-): { ref: string; ids: ReadonlySet<string> }[] {
+function collectionTargets(config: WonDiscountsConfig): { ref: string; ids: ReadonlySet<string> }[] {
   const out: { ref: string; ids: ReadonlySet<string> }[] = [];
   const ruleIds = new Set(config.modules.codes.rules.map((r) => r.id));
   for (const rule of config.modules.codes.rules) {
-    if (rule.target.kind === "collections")
-      out.push({ ref: ruleRef(rule.id), ids: new Set(rule.target.ids) });
+    if (rule.target.kind === "collections") out.push({ ref: ruleRef(rule.id), ids: new Set(rule.target.ids) });
   }
   for (const campaign of config.campaigns) {
     if (campaign.killed) continue;
     for (const override of campaign.overrides) {
-      const target = (
-        override.patch as { target?: { kind?: unknown; ids?: unknown } }
-      ).target;
-      if (
-        !ruleIds.has(override.ruleId) ||
-        target?.kind !== "collections" ||
-        !Array.isArray(target.ids)
-      )
-        continue;
-      out.push({
-        ref: ruleRef(override.ruleId, { campaignId: campaign.id }),
-        ids: new Set(target.ids as string[]),
-      });
+      const target = (override.patch as { target?: { kind?: unknown; ids?: unknown } }).target;
+      if (!ruleIds.has(override.ruleId) || target?.kind !== "collections" || !Array.isArray(target.ids)) continue;
+      out.push({ ref: ruleRef(override.ruleId, { campaignId: campaign.id }), ids: new Set(target.ids as string[]) });
     }
   }
   return out;
@@ -194,67 +161,36 @@ function collectionTargets(
  * targeted collection but without that target's ref (a fresh joiner), or with
  * the ref but in none of the target's collections any more (a leaver).
  */
-export function membershipMismatches(
-  config: WonDiscountsConfig,
-  priced: readonly PricedLine[],
-  lines: readonly CartLineInput[],
-): string[] {
+export function membershipMismatches(config: WonDiscountsConfig, priced: readonly PricedLine[], lines: readonly CartLineInput[]): string[] {
   const targets = collectionTargets(config);
   if (targets.length === 0) return [];
   const out: string[] = [];
   lines.forEach((line, i) => {
     const live = new Set(priced[i]?.collectionIds ?? []);
-    const refs = new Set([
-      ...line.ruleIds,
-      ...(line.variantRuleIds?.[variantKey(line.variantId)] ?? []),
-    ]);
-    const differs = targets.some(
-      ({ ref, ids }) => [...ids].some((id) => live.has(id)) !== refs.has(ref),
-    );
+    const refs = new Set([...line.ruleIds, ...(line.variantRuleIds?.[variantKey(line.variantId)] ?? [])]);
+    const differs = targets.some(({ ref, ids }) => [...ids].some((id) => live.has(id)) !== refs.has(ref));
     if (differs) out.push(line.id);
   });
   return out;
 }
 
 /** Does some line carry a ref from a collection target (the rule's own, or a campaign re-target)? */
-export function cartInvolvesCollectionRules(
-  config: WonDiscountsConfig,
-  lines: readonly CartLineInput[],
-): boolean {
+export function cartInvolvesCollectionRules(config: WonDiscountsConfig, lines: readonly CartLineInput[]): boolean {
   return lines.some((line) => {
-    const refs = [
-      ...line.ruleIds,
-      ...(line.variantRuleIds?.[variantKey(line.variantId)] ?? []),
-    ];
+    const refs = [...line.ruleIds, ...(line.variantRuleIds?.[variantKey(line.variantId)] ?? [])];
     return refs.some((ref) => refTargetsCollections(config, ref));
   });
 }
 
 /** A product metafield value → its refs (junk → no refs, like the function). */
-export function parseProductRefs(
-  value: string | null | undefined,
-): ProductRefs {
+export function parseProductRefs(value: string | null | undefined): ProductRefs {
   if (!value) return { ruleIds: [], variantRuleIds: {} };
   try {
-    const parsed = JSON.parse(value) as {
-      ruleIds?: unknown;
-      variantRuleIds?: unknown;
-      marginRefs?: unknown;
-      tierRef?: unknown;
-    };
-    const strings = (v: unknown) =>
-      Array.isArray(v)
-        ? v.filter((x): x is string => typeof x === "string")
-        : [];
+    const parsed = JSON.parse(value) as { ruleIds?: unknown; variantRuleIds?: unknown; marginRefs?: unknown; tierRef?: unknown };
+    const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
     const variantRuleIds: Record<string, string[]> = {};
-    if (
-      parsed.variantRuleIds &&
-      typeof parsed.variantRuleIds === "object" &&
-      !Array.isArray(parsed.variantRuleIds)
-    ) {
-      for (const [variant, refs] of Object.entries(
-        parsed.variantRuleIds as Record<string, unknown>,
-      )) {
+    if (parsed.variantRuleIds && typeof parsed.variantRuleIds === "object" && !Array.isArray(parsed.variantRuleIds)) {
+      for (const [variant, refs] of Object.entries(parsed.variantRuleIds as Record<string, unknown>)) {
         const list = strings(refs);
         if (list.length > 0) variantRuleIds[variant] = list;
       }
@@ -264,39 +200,24 @@ export function parseProductRefs(
       ruleIds: strings(parsed.ruleIds),
       variantRuleIds,
       ...(marginRefs.length > 0 ? { marginRefs } : {}),
-      ...(Object.prototype.hasOwnProperty.call(parsed, "tierRef")
-        ? { tierRef: parsed.tierRef }
-        : {}),
+      ...(Object.prototype.hasOwnProperty.call(parsed, "tierRef") ? { tierRef: parsed.tierRef } : {}),
     };
   } catch {
     return { ruleIds: [], variantRuleIds: {} };
   }
 }
 
-function recomputedRefs(
-  config: WonDiscountsConfig,
-  lines: readonly PricedLine[],
-): Map<string, ProductRefs> {
-  const byProduct = new Map<
-    string,
-    { variantIds: Set<string>; collectionIds: Set<string> }
-  >();
+function recomputedRefs(config: WonDiscountsConfig, lines: readonly PricedLine[]): Map<string, ProductRefs> {
+  const byProduct = new Map<string, { variantIds: Set<string>; collectionIds: Set<string> }>();
   for (const line of lines) {
-    const entry = byProduct.get(line.productId) ?? {
-      variantIds: new Set<string>(),
-      collectionIds: new Set<string>(),
-    };
+    const entry = byProduct.get(line.productId) ?? { variantIds: new Set<string>(), collectionIds: new Set<string>() };
     entry.variantIds.add(line.variantId);
     for (const id of line.collectionIds) entry.collectionIds.add(id);
     byProduct.set(line.productId, entry);
   }
   const index = productRuleIndex(
     config,
-    [...byProduct].map(([productId, e]) => ({
-      productId,
-      variantIds: [...e.variantIds],
-      collectionIds: [...e.collectionIds],
-    })),
+    [...byProduct].map(([productId, e]) => ({ productId, variantIds: [...e.variantIds], collectionIds: [...e.collectionIds] })),
   );
   return new Map(
     [...index].map(([productId, entry]) => [
@@ -312,21 +233,12 @@ function recomputedRefs(
 }
 
 /** Where the checkout output differs, or may differ, from the plan (item 8). */
-function previewWarnings(
-  plan: CartPlan,
-  preview: CheckoutPreview,
-  locale: "cs" | "en",
-  titles: ReadonlyMap<string, string>,
-): UiText[] {
+function previewWarnings(plan: CartPlan, preview: CheckoutPreview, locale: "cs" | "en", titles: ReadonlyMap<string, string>): UiText[] {
   const out: UiText[] = [];
   const name = (id: string) => titles.get(id) ?? id;
-  const list = (ids: Iterable<string>) =>
-    [...new Set([...ids].map(name))].join(", ");
+  const list = (ids: Iterable<string>) => [...new Set([...ids].map(name))].join(", ");
   if (preview.degraded && preview.shortfall > 0) {
-    out.push({
-      key: "tryCart.warning.degraded",
-      params: { amount: formatMoney(preview.shortfall, plan.currency, locale) },
-    });
+    out.push({ key: "tryCart.warning.degraded", params: { amount: formatMoney(preview.shortfall, plan.currency, locale) } });
   }
   const tieLines = new Set<string>(preview.relaxedTies.map((t) => t.lineId));
   let orderTie = false;
@@ -338,29 +250,19 @@ function previewWarnings(
           if (!("percentage" in c.value)) continue;
           for (const t of c.targets) {
             const line = byId.get(t.cartLine.id);
-            if (
-              line &&
-              roundingTiePossible(line.subtotal, c.value.percentage.value)
-            )
-              tieLines.add(line.lineId);
+            if (line && roundingTiePossible(line.subtotal, c.value.percentage.value)) tieLines.add(line.lineId);
           }
         }
       } else {
         for (const c of op.orderDiscountsAdd.candidates) {
-          if (
-            "percentage" in c.value &&
-            roundingTiePossible(preview.order.base, c.value.percentage.value)
-          )
-            orderTie = true;
+          if ("percentage" in c.value && roundingTiePossible(preview.order.base, c.value.percentage.value)) orderTie = true;
         }
       }
     }
   }
-  if (tieLines.size > 0)
-    out.push({ key: "tryCart.warning.tie", params: { lines: list(tieLines) } });
+  if (tieLines.size > 0) out.push({ key: "tryCart.warning.tie", params: { lines: list(tieLines) } });
   if (orderTie) out.push({ key: "tryCart.warning.orderTie" });
-  if (preview.shippingFirstGroupOnly)
-    out.push({ key: "tryCart.warning.shippingFirstGroup" });
+  if (preview.shippingFirstGroupOnly) out.push({ key: "tryCart.warning.shippingFirstGroup" });
   return out;
 }
 
@@ -378,43 +280,21 @@ function notConvertedText(
   notConverted: ReadonlySet<string>,
   input: Pick<TryCartPlanInput, "locale" | "currency">,
 ): string | null {
-  if (
-    !item.lineIds ||
-    item.lineIds.length !== 1 ||
-    !notConverted.has(item.lineIds[0]!)
-  )
-    return null;
+  if (!item.lineIds || item.lineIds.length !== 1 || !notConverted.has(item.lineIds[0]!)) return null;
   const line = plan.lines.find((l) => l.lineId === item.lineIds![0]);
   const cap = line?.marginCapped;
-  if (
-    !cap ||
-    cap.basis !== "max_percent" ||
-    !item.text.includes(describeMarginReason(cap, input.locale))
-  )
-    return null;
+  if (!cap || cap.basis !== "max_percent" || !item.text.includes(describeMarginReason(cap, input.locale))) return null;
   const params = {
     before: formatMoney(cap.before, plan.currency, input.locale),
     after: formatMoney(cap.after, plan.currency, input.locale),
     currency: input.currency,
     percent: formatPercent(cap.maxDiscountPercent ?? 0, input.locale),
-    source:
-      cap.source === "collection"
-        ? ` (${t(input.locale, "margin.impact.source.collection")})`
-        : "",
+    source: cap.source === "collection" ? ` (${t(input.locale, "margin.impact.source.collection")})` : "",
   };
-  return t(
-    input.locale,
-    cap.after > 0
-      ? "tryCart.margin.noRate.lowered"
-      : "tryCart.margin.noRate.dropped",
-    params,
-  );
+  return t(input.locale, cap.after > 0 ? "tryCart.margin.noRate.lowered" : "tryCart.margin.noRate.dropped", params);
 }
 
-export function planTryCart(
-  config: WonDiscountsConfig,
-  input: TryCartPlanInput,
-): CartPlanView {
+export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput): CartPlanView {
   const now = `${input.date}T${input.time}`;
   const encoded = buildShopFunctionConfig(config, {
     now,
@@ -424,140 +304,84 @@ export function planTryCart(
   // Exactly what the function reads: the JSON as written, or null over the budget (C7).
   const shared = encoded.fits ? (JSON.parse(encoded.json) as PlanConfig) : null;
   const refs = input.productRefs ?? recomputedRefs(config, input.lines);
-  const toLines = (priced: readonly PricedLine[]): CartLineInput[] =>
-    priced.map((line, i) => {
-      const entry = refs.get(line.productId);
-      return {
-        id: lineId(i),
-        variantId: line.variantId,
-        productId: line.productId,
-        quantity: line.quantity,
-        unitPrice: line.unitPrice,
-        ruleIds: entry ? [...entry.ruleIds] : [],
-        ...(entry && Object.keys(entry.variantRuleIds).length > 0
-          ? { variantRuleIds: entry.variantRuleIds }
-          : {}),
-        ...(entry?.marginRefs && entry.marginRefs.length > 0
-          ? { marginRefs: entry.marginRefs }
-          : {}),
-        // MVP 3 (K1/K3): the product's Pro tier set exactly as the metafield holds it (absent = the global set;
-        // core reads a non-string or "" as NO tier, like the function — never normalised here).
-        ...(entry && entry.tierRef !== undefined
-          ? { tierRef: entry.tierRef as CartLineInput["tierRef"] }
-          : {}),
-        ...(line.unitCost !== undefined ? { unitCost: line.unitCost } : {}),
-        ...(line.unitCostCurrency !== undefined
-          ? { unitCostCurrency: line.unitCostCurrency }
-          : {}),
-        ...(line.outlet ? { outlet: true } : {}),
-        ...(line.giftTierId ? { giftTierId: line.giftTierId } : {}),
-      };
-    });
+  const toLines = (priced: readonly PricedLine[]): CartLineInput[] => priced.map((line, i) => {
+    const entry = refs.get(line.productId);
+    return {
+      id: lineId(i),
+      variantId: line.variantId,
+      productId: line.productId,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+      ruleIds: entry ? [...entry.ruleIds] : [],
+      ...(entry && Object.keys(entry.variantRuleIds).length > 0 ? { variantRuleIds: entry.variantRuleIds } : {}),
+      ...(entry?.marginRefs && entry.marginRefs.length > 0 ? { marginRefs: entry.marginRefs } : {}),
+      // MVP 3 (K1/K3): the product's Pro tier set exactly as the metafield holds it (absent = the global set;
+      // core reads a non-string or "" as NO tier, like the function — never normalised here).
+      ...(entry && entry.tierRef !== undefined ? { tierRef: entry.tierRef as CartLineInput["tierRef"] } : {}),
+      ...(line.unitCost !== undefined ? { unitCost: line.unitCost } : {}),
+      ...(line.unitCostCurrency !== undefined ? { unitCostCurrency: line.unitCostCurrency } : {}),
+      ...(line.outlet ? { outlet: true } : {}),
+      ...(line.giftTierId ? { giftTierId: line.giftTierId } : {}),
+    };
+  });
 
   const cartOf = (lines: CartLineInput[]): CartPlanInput => ({
     currency: input.currency,
     ...(input.countryCode ? { countryCode: input.countryCode } : {}),
     lines,
     enteredCodes: [...input.codes],
-    campaign: campaignInputFromVars(
-      buildNodeVars({ kind: "automatic" }, config, now),
-      now,
-    ),
+    campaign: campaignInputFromVars(buildNodeVars({ kind: "automatic" }, config, now), now),
     today: input.date,
     now,
     locale: input.locale,
-    ...(typeof input.shopToCartRate === "number"
-      ? { shopToCartRate: input.shopToCartRate }
-      : {}),
+    ...(typeof input.shopToCartRate === "number" ? { shopToCartRate: input.shopToCartRate } : {}),
   });
   let priced: readonly PricedLine[] = input.lines;
   let lines = toLines(priced);
   let plan = planCart(cartOf(lines), shared);
   // The gift lines the cart on the website would add (R8), then the cart as checkout would see it.
   const added = plan.gifts.flatMap((gift) => {
-    const candidate =
-      gift.state === "missing"
-        ? input.giftCandidates?.get(gift.tierId)
-        : undefined;
-    return candidate
-      ? [{ ...candidate, quantity: 1, giftTierId: gift.tierId }]
-      : [];
+    const candidate = gift.state === "missing" ? input.giftCandidates?.get(gift.tierId) : undefined;
+    return candidate ? [{ ...candidate, quantity: 1, giftTierId: gift.tierId }] : [];
   });
   if (added.length > 0) {
     priced = [...priced, ...added];
     lines = toLines(priced);
     plan = planCart(cartOf(lines), shared);
   }
-  const giftChoices = new Map(
-    added.map((line, i) => [lineId(input.lines.length + i), line.choices]),
-  );
+  const giftChoices = new Map(added.map((line, i) => [lineId(input.lines.length + i), line.choices]));
   const preview = checkoutPreview(plan, { lineCount: plan.lines.length });
   const applied = new Map(preview.lines.map((l) => [l.lineId, l.applied]));
   const titles = new Map(priced.map((line, i) => [lineId(i), line.title]));
-  const productDiscount = plan.lines.reduce(
-    (sum, line) => sum + (applied.get(line.lineId) ?? 0),
-    0,
-  );
+  const productDiscount = plan.lines.reduce((sum, line) => sum + (applied.get(line.lineId) ?? 0), 0);
   const orderDiscount = preview.order.applied;
-  const mismatched =
-    input.targetingStale && input.liveCollections
-      ? membershipMismatches(config, priced, lines)
-      : [];
+  const mismatched = input.targetingStale && input.liveCollections ? membershipMismatches(config, priced, lines) : [];
   const membership: UiText[] =
-    mismatched.length > 0
-      ? [
-          {
-            key: "tryCart.warning.membership",
-            params: {
-              lines: [
-                ...new Set(mismatched.map((id) => titles.get(id) ?? id)),
-              ].join(", "),
-            },
-          },
-        ]
-      : [];
+    mismatched.length > 0 ? [{ key: "tryCart.warning.membership", params: { lines: [...new Set(mismatched.map((id) => titles.get(id) ?? id))].join(", ") } }] : [];
   const warnings = [
     ...previewWarnings(plan, preview, input.locale, titles),
     ...(input.warnings ?? []),
     ...membership,
-    ...(membership.length === 0 &&
-    input.targetingStale &&
-    cartInvolvesCollectionRules(config, lines)
-      ? [{ key: "tryCart.warning.targeting" as const }]
-      : []),
+    ...(membership.length === 0 && input.targetingStale && cartInvolvesCollectionRules(config, lines) ? [{ key: "tryCart.warning.targeting" as const }] : []),
   ];
   // Margin protection (MVP 2): a line is capped when its product discount was lowered or the
   // order discount left it out at its floor; the explanation (admin audience) says why.
   const marginOn = config.modules.margin.enabled === true;
   const orderExcluded = new Set(plan.order?.marginExcludedLineIds ?? []);
-  const capped = (line: (typeof plan.lines)[number]) =>
-    line.marginCapped !== undefined || orderExcluded.has(line.lineId);
+  const capped = (line: (typeof plan.lines)[number]) => line.marginCapped !== undefined || orderExcluded.has(line.lineId);
   // Lines margin applies to whose cost is unknown in the cart currency: none at all, or one that
   // could not be converted (audit P2-1c: never said as "no purchase cost").
   const inputOf = new Map(lines.map((l) => [l.id, l]));
   const costUnknown = (lineId: string) => {
     const line = inputOf.get(lineId);
-    return (
-      !line ||
-      costMinorUnits(
-        line.unitCost,
-        line.unitCostCurrency,
-        input.shopToCartRate ?? undefined,
-        input.currency,
-        input.shopCurrency ?? undefined,
-      ) === null
-    );
+    return !line || costMinorUnits(line.unitCost, line.unitCostCurrency, input.shopToCartRate ?? undefined, input.currency, input.shopCurrency ?? undefined) === null;
   };
   const hasCost = (lineId: string) => {
     const cost = inputOf.get(lineId)?.unitCost;
     return typeof cost === "number" && Number.isFinite(cost) && cost > 0;
   };
-  const marginLines = plan.lines.filter(
-    (planLine) => planLine.excluded === null && costUnknown(planLine.lineId),
-  );
-  const notConverted = new Set(
-    marginLines.filter((l) => hasCost(l.lineId)).map((l) => l.lineId),
-  );
+  const marginLines = plan.lines.filter((planLine) => planLine.excluded === null && costUnknown(planLine.lineId));
+  const notConverted = new Set(marginLines.filter((l) => hasCost(l.lineId)).map((l) => l.lineId));
   return {
     currency: input.currency,
     date: input.date,
@@ -566,22 +390,16 @@ export function planTryCart(
       const discount = applied.get(line.lineId) ?? 0;
       return {
         lineId: line.lineId,
-        title:
-          titles.get(line.lineId) || t(input.locale, "common.untitledProduct"),
+        title: titles.get(line.lineId) || t(input.locale, "common.untitledProduct"),
         quantity: line.quantity,
         subtotal: line.subtotal,
         discount,
         total: line.subtotal - discount,
         ...(marginOn && capped(line) ? { marginCapped: true } : {}),
         // MVP 3: the line's product discount is (or includes) a quantity tier — tagged, never its id.
-        ...(discount > 0 &&
-        (line.product?.components ?? []).some((c) => c.module === "tiers")
-          ? { tier: true }
-          : {}),
+        ...(discount > 0 && (line.product?.components ?? []).some((c) => c.module === "tiers") ? { tier: true } : {}),
         // MVP 4: the gift line the cart on the website adds (not one the merchant put in).
-        ...(giftChoices.has(line.lineId)
-          ? { gift: true, giftChoices: giftChoices.get(line.lineId) }
-          : {}),
+        ...(giftChoices.has(line.lineId) ? { gift: true, giftChoices: giftChoices.get(line.lineId) } : {}),
       };
     }),
     ...(marginOn
@@ -594,15 +412,11 @@ export function planTryCart(
           },
         }
       : {}),
-    explain: explainPlan(plan, input.locale, { audience: "admin" }).map(
-      (item) => ({
-        tone: item.tone,
-        text: notConvertedText(item, plan, notConverted, input) ?? item.text,
-        ...(item.lineIds && item.lineIds.length > 0
-          ? { lineIds: [...item.lineIds] }
-          : {}),
-      }),
-    ),
+    explain: explainPlan(plan, input.locale, { audience: "admin" }).map((item) => ({
+      tone: item.tone,
+      text: notConvertedText(item, plan, notConverted, input) ?? item.text,
+      ...(item.lineIds && item.lineIds.length > 0 ? { lineIds: [...item.lineIds] } : {}),
+    })),
     totals: {
       subtotal: plan.totals.subtotal,
       productDiscount,

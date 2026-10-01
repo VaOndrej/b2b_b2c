@@ -17,12 +17,7 @@
 // authenticates.
 
 import { codeHash } from "@won/core/discounts/code-hash";
-import {
-  DEFAULT_CONFIG,
-  readStoredConfig,
-  sanitizeConfig,
-  type WonDiscountsConfig,
-} from "@won/core/discounts/config";
+import { DEFAULT_CONFIG, readStoredConfig, sanitizeConfig, type WonDiscountsConfig } from "@won/core/discounts/config";
 import type { MarginVariant } from "@won/core/discounts/margin";
 import { explainGate, gateConfigForPlan } from "@won/core/discounts/plan-gate";
 import { productRuleIndex, variantKey } from "@won/core/discounts/targeting";
@@ -69,10 +64,7 @@ import { planTryCart } from "./integration/try-cart-plan";
 
 export function isDevHarnessEnabled(): boolean {
   // eslint-disable-next-line no-undef
-  return (
-    isDevHarnessEnvironment(process.env.NODE_ENV) &&
-    process.env.WON_DEV_HARNESS !== "0"
-  );
+  return isDevHarnessEnvironment(process.env.NODE_ENV) && process.env.WON_DEV_HARNESS !== "0";
 }
 
 export const DEV_SHOP = "won-dev.myshopify.com";
@@ -88,11 +80,7 @@ const DEV_MARKETS = [
 ];
 
 /** Shopify market names (read_markets) for the fixture handles. */
-export const DEV_MARKET_NAMES: Readonly<Record<string, string>> = {
-  cz: "Česko",
-  sk: "Slovensko",
-  hu: "Maďarsko",
-};
+export const DEV_MARKET_NAMES: Readonly<Record<string, string>> = { cz: "Česko", sk: "Slovensko", hu: "Maďarsko" };
 
 /**
  * Přehled fixture: the real defaults, two enabled markets (CZK, EUR) plus a
@@ -133,10 +121,7 @@ export const DEV_OVERVIEW_FIXTURE: WonDiscountsConfig = readStoredConfig({
           enabled: true,
           name: "Sleva 200 Kč / 8 €",
           method: "automatic",
-          value: {
-            kind: "fixed",
-            amount: { CZK: 200_00, EUR: 8_00, HUF: 3000_00 },
-          },
+          value: { kind: "fixed", amount: { CZK: 200_00, EUR: 8_00, HUF: 3000_00 } },
           target: { kind: "order" },
           minimum: { subtotal: { CZK: 1500_00, EUR: 60_00 } },
         },
@@ -147,10 +132,7 @@ export const DEV_OVERVIEW_FIXTURE: WonDiscountsConfig = readStoredConfig({
           method: "automatic",
           value: { kind: "fixed", amount: { CZK: 300_00 } },
           target: { kind: "order" },
-          schedule: {
-            startsAt: "2026-11-27T00:00:00+01:00",
-            endsAt: "2026-12-01T00:00:00+01:00",
-          },
+          schedule: { startsAt: "2026-11-27T00:00:00+01:00", endsAt: "2026-12-01T00:00:00+01:00" },
         },
         {
           id: "dev-fixture-5",
@@ -176,10 +158,7 @@ export const DEV_OVERVIEW_FIXTURE: WonDiscountsConfig = readStoredConfig({
 });
 
 /** A brand-new shop: markets known, no rules yet, onboarding at step 1. */
-export const DEV_EMPTY_FIXTURE: WonDiscountsConfig = readStoredConfig({
-  ...DEFAULT_CONFIG,
-  markets: DEV_MARKETS,
-});
+export const DEV_EMPTY_FIXTURE: WonDiscountsConfig = readStoredConfig({ ...DEFAULT_CONFIG, markets: DEV_MARKETS });
 
 /** Onboarding in progress: goals picked. */
 export const DEV_ONBOARDING_FIXTURE: WonDiscountsConfig = readStoredConfig({
@@ -191,9 +170,7 @@ export const DEV_ONBOARDING_FIXTURE: WonDiscountsConfig = readStoredConfig({
 const DEV_ACTIVATE_URL = `https://${DEV_SHOP}/admin/themes/current/editor?context=apps&activateAppId=dev-api-key/won_discounts_embed`;
 
 /** Native discounts as the detector + planMove word them (app/lib/native/copy.ts sentences). */
-export function devNative(
-  locale: "cs" | "en" = "cs",
-): Extract<NativeView, { state: "ok" }> {
+export function devNative(locale: "cs" | "en" = "cs"): Extract<NativeView, { state: "ok" }> {
   return {
     state: "ok",
     discounts: [
@@ -204,38 +181,17 @@ export function devNative(
         code: "LETO15",
         summary: locale === "cs" ? "15 % z objednávky" : "15% off the order",
         movable: true,
-        losses: [
-          lossText({ code: "usage_history", used: 42 }, locale),
-          lossText({ code: "once_per_customer" }, locale),
-        ],
-        warnings: [
-          warningText(
-            {
-              code: "usage_limit_remaining",
-              used: 42,
-              limit: 100,
-              remaining: 58,
-            },
-            locale,
-          ),
-        ],
+        losses: [lossText({ code: "usage_history", used: 42 }, locale), lossText({ code: "once_per_customer" }, locale)],
+        warnings: [warningText({ code: "usage_limit_remaining", used: 42, limit: 100, remaining: 58 }, locale)],
       },
       {
         id: "gid://shopify/DiscountAutomaticNode/1002",
         title: "Doprava zdarma nad 2 000 Kč",
         method: "automatic",
-        summary:
-          locale === "cs"
-            ? "Doprava zdarma · od 2 000 Kč"
-            : "Free shipping · from CZK 2,000",
+        summary: locale === "cs" ? "Doprava zdarma · od 2 000 Kč" : "Free shipping · from CZK 2,000",
         movable: true,
         losses: [lossText({ code: "usage_history", used: 0 }, locale)],
-        warnings: [
-          warningText(
-            { code: "other_currencies", shopCurrency: "CZK", missing: ["EUR"] },
-            locale,
-          ),
-        ],
+        warnings: [warningText({ code: "other_currencies", shopCurrency: "CZK", missing: ["EUR"] }, locale)],
       },
       {
         id: "gid://shopify/DiscountAutomaticNode/1003",
@@ -253,16 +209,8 @@ export function devNative(
         movedAt: "2026-09-20T10:00:00",
         state: "moved",
         // What its undo changes (shown before the confirmation) and how it stacks now (F4, F11).
-        undoCosts: undoCostTexts(
-          { method: "code", usageLimit: 100, oncePerCustomer: true },
-          locale,
-        ),
-        stacking: [
-          warningText(
-            { code: "stacks_with_native", titles: ["Kup 2, třetí zdarma"] },
-            locale,
-          ),
-        ],
+        undoCosts: undoCostTexts({ method: "code", usageLimit: 100, oncePerCustomer: true }, locale),
+        stacking: [warningText({ code: "stacks_with_native", titles: ["Kup 2, třetí zdarma"] }, locale)],
       },
     ],
     conflicts: [],
@@ -276,19 +224,14 @@ export function devNativeMoved(locale: "cs" | "en" = "cs"): NativeView {
   const base = devNative(locale);
   return {
     ...base,
-    discounts: base.discounts.filter(
-      (d) => d.id !== "gid://shopify/DiscountCodeNode/1001",
-    ),
+    discounts: base.discounts.filter((d) => d.id !== "gid://shopify/DiscountCodeNode/1001"),
     moved: [
       {
         backupId: "bk_dev_2",
         title: "LETO15",
         movedAt: "2026-09-28T14:05:00",
         state: "moved",
-        undoCosts: undoCostTexts(
-          { method: "code", usageLimit: 100, oncePerCustomer: true },
-          locale,
-        ),
+        undoCosts: undoCostTexts({ method: "code", usageLimit: 100, oncePerCustomer: true }, locale),
       },
       {
         backupId: "bk_dev_3",
@@ -311,12 +254,7 @@ export function devMovedResult(locale: "cs" | "en" = "cs"): UiResult {
     ok: true,
     message: "moved",
     count: 1,
-    notes: [
-      warningText(
-        { code: "usage_limit_remaining", used: 42, limit: 100, remaining: 58 },
-        locale,
-      ),
-    ],
+    notes: [warningText({ code: "usage_limit_remaining", used: 42, limit: 100, remaining: 58 }, locale)],
   };
 }
 
@@ -330,17 +268,11 @@ export const DEV_SIGNALS: AdminSignals = {
 
 /** Every fixture rule in Shopify as it is now (the per-rule facts after a clean sync). */
 export const DEV_RULE_SYNC_OK: RuleSyncMap = Object.fromEntries(
-  DEV_OVERVIEW_FIXTURE.modules.codes.rules.map((rule) => [
-    rule.id,
-    "synced" as const,
-  ]),
+  DEV_OVERVIEW_FIXTURE.modules.codes.rules.map((rule) => [rule.id, "synced" as const]),
 );
 
 /** The last sync failed on the VIP10 code rule (its code is taken by another Shopify discount). */
-export const DEV_RULE_SYNC_FAILED: RuleSyncMap = {
-  ...DEV_RULE_SYNC_OK,
-  "dev-fixture-2": "failed",
-};
+export const DEV_RULE_SYNC_FAILED: RuleSyncMap = { ...DEV_RULE_SYNC_OK, "dev-fixture-2": "failed" };
 
 export const DEV_SIGNALS_SYNC_FAILED: AdminSignals = {
   ...DEV_SIGNALS,
@@ -351,11 +283,7 @@ export const DEV_SIGNALS_SYNC_FAILED: AdminSignals = {
     problems: [
       {
         key: "sync.problem.codeTaken",
-        params: {
-          rule: "VIP10",
-          detail:
-            '"VIP10": could not create "VIP10": Code must be unique. Please try a different code.',
-        },
+        params: { rule: "VIP10", detail: "\"VIP10\": could not create \"VIP10\": Code must be unique. Please try a different code." },
       },
     ],
   },
@@ -378,67 +306,34 @@ export function devEditorResult(kind: string | null): UiResult | null {
     case "unreadable":
       return { ok: false, reason: "unreadable_config" };
     case "too-many":
-      return {
-        ok: false,
-        reason: "too_many_code_rules",
-        count: 21,
-        limit: 20,
-        shopifyLimit: 25,
-      };
+      return { ok: false, reason: "too_many_code_rules", count: 21, limit: 20, shopifyLimit: 25 };
     case "collision":
-      return {
-        ok: false,
-        reason: "code_hash_collision",
-        codes: [collidingCodes()],
-      };
+      return { ok: false, reason: "code_hash_collision", codes: [collidingCodes()] };
     case "sync-failed":
       return {
         ok: true,
         message: "saved",
         sync: {
           ok: false,
-          problems: [
-            {
-              key: "sync.problem.rule",
-              params: {
-                rule: "Černý pátek",
-                detail: '"Černý pátek": Throttled (3 attempts)',
-              },
-            },
-          ],
+          problems: [{ key: "sync.problem.rule", params: { rule: "Černý pátek", detail: "\"Černý pátek\": Throttled (3 attempts)" } }],
           warnings: [],
         },
       };
     case "saved":
-      return {
-        ok: true,
-        message: "saved",
-        sync: { ok: true, problems: [], warnings: [] },
-      };
+      return { ok: true, message: "saved", sync: { ok: true, problems: [], warnings: [] } };
     case "base-changed":
       return { ok: false, reason: "base_changed" };
     case "busy":
       return { ok: false, reason: "busy" };
     case "syncing":
-      return {
-        ok: true,
-        message: "saved",
-        sync: { ok: true, problems: [], warnings: [] },
-        syncing: { products: 1240 },
-      };
+      return { ok: true, message: "saved", sync: { ok: true, problems: [], warnings: [] }, syncing: { products: 1240 } };
     default:
       return null;
   }
 }
 
-export const DEV_EMBED_OFF = {
-  state: "off" as const,
-  activateUrl: DEV_ACTIVATE_URL,
-};
-export const DEV_EMBED_ON = {
-  state: "on" as const,
-  activateUrl: DEV_ACTIVATE_URL,
-};
+export const DEV_EMBED_OFF = { state: "off" as const, activateUrl: DEV_ACTIVATE_URL };
+export const DEV_EMBED_ON = { state: "on" as const, activateUrl: DEV_ACTIVATE_URL };
 
 export const DEV_TRY_CART_LINES: TryCartLineView[] = [
   {
@@ -468,9 +363,7 @@ export function devTryCartPlan(locale: "cs" | "en"): CartPlanView {
     lines: DEV_TRY_CART_LINES.map((line) => ({
       variantId: line.variantId,
       productId: line.productId,
-      title: line.variantTitle
-        ? `${line.title} (${line.variantTitle})`
-        : line.title,
+      title: line.variantTitle ? `${line.title} (${line.variantTitle})` : line.title,
       quantity: line.quantity,
       unitPrice: line.unitPrice.CZK ?? 0,
       collectionIds: [],
@@ -508,10 +401,7 @@ export const DEV_F2_FIXTURE: WonDiscountsConfig = readStoredConfig({
           method: "automatic",
           value: { kind: "percentage", percent: 20 },
           target: { kind: "collections", ids: ["gid://shopify/Collection/7"] },
-          minimum: {
-            subtotal: { CZK: 2000_00, EUR: 80_00 },
-            scope: "entitled",
-          },
+          minimum: { subtotal: { CZK: 2000_00, EUR: 80_00 }, scope: "entitled" },
         },
         {
           id: "dev-f2-market",
@@ -529,32 +419,17 @@ export const DEV_F2_FIXTURE: WonDiscountsConfig = readStoredConfig({
 });
 
 /** What the Free plan does not run of DEV_F2_FIXTURE (the real gate + its sentences). */
-export function devGate(locale: "cs" | "en"): {
-  gate: GateNoteView[];
-  gateOff: string[];
-} {
-  const { stripped } = gateConfigForPlan(DEV_F2_FIXTURE, "free", {
-    now: "2026-09-28T14:00:00",
-  });
+export function devGate(locale: "cs" | "en"): { gate: GateNoteView[]; gateOff: string[] } {
+  const { stripped } = gateConfigForPlan(DEV_F2_FIXTURE, "free", { now: "2026-09-28T14:00:00" });
   return {
-    gate: explainGate(stripped, locale).map((e) => ({
-      text: e.text,
-      ...(e.ruleId !== undefined ? { ruleId: e.ruleId } : {}),
-    })),
-    gateOff: stripped
-      .filter((x) => x.reason === "rule_off" && x.ruleId)
-      .map((x) => x.ruleId as string),
+    gate: explainGate(stripped, locale).map((e) => ({ text: e.text, ...(e.ruleId !== undefined ? { ruleId: e.ruleId } : {}) })),
+    gateOff: stripped.filter((x) => x.reason === "rule_off" && x.ruleId).map((x) => x.ruleId as string),
   };
 }
 
 /** Per-rule facts right after a collection changed in Shopify: the collection rule is being refreshed. */
 export const DEV_RULE_SYNC_F2: RuleSyncMap = {
-  ...Object.fromEntries(
-    DEV_F2_FIXTURE.modules.codes.rules.map((rule) => [
-      rule.id,
-      "synced" as const,
-    ]),
-  ),
+  ...Object.fromEntries(DEV_F2_FIXTURE.modules.codes.rules.map((rule) => [rule.id, "synced" as const])),
   "dev-f2-collection": "refreshing",
 };
 
@@ -562,11 +437,7 @@ export const DEV_RULE_SYNC_F2: RuleSyncMap = {
 export const DEV_SIGNALS_F2: AdminSignals = {
   ...DEV_SIGNALS,
   embed: { state: "on", activateUrl: DEV_ACTIVATE_URL },
-  sync: {
-    state: "ok",
-    at: "2026-09-28T16:20:00",
-    attention: [{ key: "sync.problem.autoInactive" }],
-  },
+  sync: { state: "ok", at: "2026-09-28T16:20:00", attention: [{ key: "sync.problem.autoInactive" }] },
   targeting: { state: "refreshing", since: "2026-09-28T16:24:00" },
 };
 
@@ -630,72 +501,16 @@ interface DevCostVariant {
 
 /** A small catalogue as the cost mirror knows it (prices, costs, collections). */
 const DEV_COST_VARIANTS: DevCostVariant[] = [
-  {
-    productId: "gid://shopify/Product/1",
-    variantId: "gid://shopify/ProductVariant/101",
-    title: "Mikina Won — M / černá",
-    price: 1290_00,
-    eur: 52_00,
-    cost: 900,
-    collectionIds: [DEV_C7],
-  },
-  {
-    productId: "gid://shopify/Product/1",
-    variantId: "gid://shopify/ProductVariant/103",
-    title: "Mikina Won — L / černá",
-    price: 1290_00,
-    eur: 52_00,
-    cost: 900,
-    collectionIds: [DEV_C7],
-  },
-  {
-    productId: "gid://shopify/Product/2",
-    variantId: "gid://shopify/ProductVariant/102",
-    title: "Čepice",
-    price: 390_00,
-    eur: 16_00,
-    cost: 300,
-    collectionIds: [DEV_C7],
-  },
-  {
-    productId: "gid://shopify/Product/3",
-    variantId: "gid://shopify/ProductVariant/104",
-    title: "Ponožky Won",
-    price: 149_00,
-    eur: 6_00,
-    cost: null,
-    collectionIds: [DEV_C7, DEV_C9],
-  },
-  {
-    productId: "gid://shopify/Product/4",
-    variantId: "gid://shopify/ProductVariant/105",
-    title: "Batoh",
-    price: 1990_00,
-    cost: 1100,
-    collectionIds: [],
-  },
-  {
-    productId: "gid://shopify/Product/5",
-    variantId: "gid://shopify/ProductVariant/106",
-    title: "Nákrčník",
-    price: 290_00,
-    cost: 250,
-    collectionIds: [],
-  },
-  {
-    productId: "gid://shopify/Product/6",
-    variantId: "gid://shopify/ProductVariant/107",
-    title: "Samolepky Won",
-    price: 59_00,
-    cost: null,
-    collectionIds: [],
-  },
+  { productId: "gid://shopify/Product/1", variantId: "gid://shopify/ProductVariant/101", title: "Mikina Won — M / černá", price: 1290_00, eur: 52_00, cost: 900, collectionIds: [DEV_C7] },
+  { productId: "gid://shopify/Product/1", variantId: "gid://shopify/ProductVariant/103", title: "Mikina Won — L / černá", price: 1290_00, eur: 52_00, cost: 900, collectionIds: [DEV_C7] },
+  { productId: "gid://shopify/Product/2", variantId: "gid://shopify/ProductVariant/102", title: "Čepice", price: 390_00, eur: 16_00, cost: 300, collectionIds: [DEV_C7] },
+  { productId: "gid://shopify/Product/3", variantId: "gid://shopify/ProductVariant/104", title: "Ponožky Won", price: 149_00, eur: 6_00, cost: null, collectionIds: [DEV_C7, DEV_C9] },
+  { productId: "gid://shopify/Product/4", variantId: "gid://shopify/ProductVariant/105", title: "Batoh", price: 1990_00, cost: 1100, collectionIds: [] },
+  { productId: "gid://shopify/Product/5", variantId: "gid://shopify/ProductVariant/106", title: "Nákrčník", price: 290_00, cost: 250, collectionIds: [] },
+  { productId: "gid://shopify/Product/6", variantId: "gid://shopify/ProductVariant/107", title: "Samolepky Won", price: 59_00, cost: null, collectionIds: [] },
 ];
 
-function marginSettingsView(
-  config: WonDiscountsConfig,
-  opts: { collections: boolean },
-): MarginSettingsView {
+function marginSettingsView(config: WonDiscountsConfig, opts: { collections: boolean }): MarginSettingsView {
   const m = config.modules.margin;
   return {
     enabled: m.enabled,
@@ -718,30 +533,17 @@ function marginSettingsView(
  * cost mirror in the background), per rule, through the same view the server
  * sends (margin-impact-view.ts; `focusRuleId` = `?rule=`, filtered there).
  */
-function devImpactRules(
-  config: WonDiscountsConfig,
-  variants: readonly DevCostVariant[] = DEV_COST_VARIANTS,
-) {
-  const byProduct = new Map<
-    string,
-    { variantIds: string[]; collectionIds: Set<string> }
-  >();
+function devImpactRules(config: WonDiscountsConfig, variants: readonly DevCostVariant[] = DEV_COST_VARIANTS) {
+  const byProduct = new Map<string, { variantIds: string[]; collectionIds: Set<string> }>();
   for (const v of variants) {
-    const entry = byProduct.get(v.productId) ?? {
-      variantIds: [],
-      collectionIds: new Set<string>(),
-    };
+    const entry = byProduct.get(v.productId) ?? { variantIds: [], collectionIds: new Set<string>() };
     entry.variantIds.push(v.variantId);
     for (const c of v.collectionIds) entry.collectionIds.add(c);
     byProduct.set(v.productId, entry);
   }
   const index = productRuleIndex(
     config,
-    [...byProduct].map(([productId, e]) => ({
-      productId,
-      variantIds: e.variantIds,
-      collectionIds: [...e.collectionIds],
-    })),
+    [...byProduct].map(([productId, e]) => ({ productId, variantIds: e.variantIds, collectionIds: [...e.collectionIds] })),
   );
   const measured: MarginVariant[] = variants.map((v) => {
     const entry = index.get(v.productId);
@@ -751,10 +553,7 @@ function devImpactRules(
       title: v.title,
       price: v.price,
       cost: v.cost === null ? null : v.cost * 100,
-      ruleRefs: [
-        ...(entry?.ruleIds ?? []),
-        ...(entry?.variantRuleIds?.[variantKey(v.variantId)] ?? []),
-      ],
+      ruleRefs: [...(entry?.ruleIds ?? []), ...(entry?.variantRuleIds?.[variantKey(v.variantId)] ?? [])],
       marginRefs: entry?.marginRefs ?? [],
     };
   });
@@ -763,15 +562,10 @@ function devImpactRules(
 
 export function devMarginImpact(
   config: WonDiscountsConfig,
-  opts: {
-    variants?: readonly DevCostVariant[];
-    focusRuleId?: string | null;
-    status?: MarginImpactView["status"];
-  } = {},
+  opts: { variants?: readonly DevCostVariant[]; focusRuleId?: string | null; status?: MarginImpactView["status"] } = {},
 ): MarginImpactView {
   const status = opts.status ?? "ready";
-  const impact =
-    status === "computing" ? null : devImpactRules(config, opts.variants);
+  const impact = status === "computing" ? null : devImpactRules(config, opts.variants);
   return impactView({ impact, status }, config, opts.focusRuleId);
 }
 
@@ -779,74 +573,28 @@ export function devMarginImpact(
  * The rule editor's note (ruleMarginImpact on the fixture): `pro` = the count
  * of variants (Pro), else no number (Free); `computing` = nothing computed yet.
  */
-export function devRuleMarginImpact(
-  ruleId: string,
-  opts: { pro?: boolean; computing?: boolean } = {},
-): MarginRuleImpactView | null {
+export function devRuleMarginImpact(ruleId: string, opts: { pro?: boolean; computing?: boolean } = {}): MarginRuleImpactView | null {
   if (opts.computing) return { state: "computing" };
-  const rule = devImpactRules(DEV_MARGIN_FIXTURE).rules.find(
-    (r) => r.ruleId === ruleId,
-  );
+  const rule = devImpactRules(DEV_MARGIN_FIXTURE).rules.find((r) => r.ruleId === ruleId);
   if (!rule || rule.variants === 0) return null;
-  return opts.pro
-    ? {
-        state: "ready",
-        discountClass: rule.discountClass,
-        variants: rule.variants,
-      }
-    : { state: "ready", discountClass: rule.discountClass };
+  return opts.pro ? { state: "ready", discountClass: rule.discountClass, variants: rule.variants } : { state: "ready", discountClass: rule.discountClass };
 }
 
-const DEV_MIRROR_FRESH: CostMirrorView = {
-  state: "fresh",
-  at: "2026-09-28T06:10:00",
-};
+const DEV_MIRROR_FRESH: CostMirrorView = { state: "fresh", at: "2026-09-28T06:10:00" };
 
 const DEV_COVERAGE: CostCoverageView = {
   variants: 1240,
   variantsWithCost: 1226,
   productsWithoutCost: 8,
   sample: [
-    {
-      productId: "gid://shopify/Product/3",
-      title: "Ponožky Won",
-      variantsWithoutCost: 4,
-    },
-    {
-      productId: "gid://shopify/Product/6",
-      title: "Samolepky Won",
-      variantsWithoutCost: 3,
-    },
-    {
-      productId: "gid://shopify/Product/21",
-      title: "Dárková krabička",
-      variantsWithoutCost: 2,
-    },
-    {
-      productId: "gid://shopify/Product/22",
-      title: "Plakát Won 50 × 70 cm",
-      variantsWithoutCost: 1,
-    },
-    {
-      productId: "gid://shopify/Product/23",
-      title: "Taška přes rameno",
-      variantsWithoutCost: 1,
-    },
-    {
-      productId: "gid://shopify/Product/24",
-      title: "Placka",
-      variantsWithoutCost: 1,
-    },
-    {
-      productId: "gid://shopify/Product/25",
-      title: "Dárkový poukaz",
-      variantsWithoutCost: 1,
-    },
-    {
-      productId: "gid://shopify/Product/26",
-      title: "Klíčenka",
-      variantsWithoutCost: 1,
-    },
+    { productId: "gid://shopify/Product/3", title: "Ponožky Won", variantsWithoutCost: 4 },
+    { productId: "gid://shopify/Product/6", title: "Samolepky Won", variantsWithoutCost: 3 },
+    { productId: "gid://shopify/Product/21", title: "Dárková krabička", variantsWithoutCost: 2 },
+    { productId: "gid://shopify/Product/22", title: "Plakát Won 50 × 70 cm", variantsWithoutCost: 1 },
+    { productId: "gid://shopify/Product/23", title: "Taška přes rameno", variantsWithoutCost: 1 },
+    { productId: "gid://shopify/Product/24", title: "Placka", variantsWithoutCost: 1 },
+    { productId: "gid://shopify/Product/25", title: "Dárkový poukaz", variantsWithoutCost: 1 },
+    { productId: "gid://shopify/Product/26", title: "Klíčenka", variantsWithoutCost: 1 },
   ],
 };
 
@@ -884,22 +632,11 @@ const DEV_MANY_VARIANTS: DevCostVariant[] = [
  * Pro (`plan`) gets the collection settings and Přehled zásahů (core marginImpact,
  * `focusRuleId` = `?rule=`, narrowed like the server does); Free gets `impact: null` (BILL-1).
  */
-export function devMarginScreen(opts: {
-  plan: "free" | "pro";
-  state: string | null;
-  locale: "cs" | "en";
-  focusRuleId?: string | null;
-}): MarginScreenData {
+export function devMarginScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; focusRuleId?: string | null }): MarginScreenData {
   const { plan, state } = opts;
   const pro = plan === "pro";
   const collections = pro || state === "gate";
-  const impact = (o: Parameters<typeof devMarginImpact>[1] = {}) =>
-    pro
-      ? devMarginImpact(DEV_MARGIN_FIXTURE, {
-          focusRuleId: opts.focusRuleId,
-          ...o,
-        })
-      : null;
+  const impact = (o: Parameters<typeof devMarginImpact>[1] = {}) => (pro ? devMarginImpact(DEV_MARGIN_FIXTURE, { focusRuleId: opts.focusRuleId, ...o }) : null);
   const base: MarginScreenData = {
     plan,
     shopCurrency: "CZK",
@@ -912,9 +649,7 @@ export function devMarginScreen(opts: {
     tooLarge: [],
   };
   if (state === "gate" && !pro) {
-    const { stripped } = gateConfigForPlan(DEV_MARGIN_FIXTURE, "free", {
-      now: "2026-09-28T14:00:00",
-    });
+    const { stripped } = gateConfigForPlan(DEV_MARGIN_FIXTURE, "free", { now: "2026-09-28T14:00:00" });
     base.gateNotes = explainGate(
       stripped.filter((x) => x.capability === "margin_per_collection"),
       opts.locale,
@@ -922,56 +657,25 @@ export function devMarginScreen(opts: {
   }
   switch (state) {
     case "running":
-      return {
-        ...base,
-        mirror: {
-          state: "running",
-          done: 340,
-          total: 1240,
-          since: "2026-09-28T13:55:00",
-        },
-        coverage: null,
-        impact: impact({ status: "computing" }),
-      };
+      return { ...base, mirror: { state: "running", done: 340, total: 1240, since: "2026-09-28T13:55:00" }, coverage: null, impact: impact({ status: "computing" }) };
     case "failed-first":
       return {
         ...base,
         mirror: {
           state: "failed",
           at: "2026-09-28T06:10:00",
-          problems: [
-            { key: "margin.mirror.readFailed" },
-            {
-              key: "margin.mirror.detail",
-              params: { detail: "costs.read: Throttled (3 attempts)" },
-            },
-          ],
+          problems: [{ key: "margin.mirror.readFailed" }, { key: "margin.mirror.detail", params: { detail: "costs.read: Throttled (3 attempts)" } }],
         },
         coverage: null,
         impact: impact({ status: "computing" }),
       };
     case "reauth":
-      return {
-        ...base,
-        mirror: {
-          state: "failed",
-          at: "2026-09-28T06:10:00",
-          problems: [{ key: "margin.mirror.reauth" }],
-        },
-      };
+      return { ...base, mirror: { state: "failed", at: "2026-09-28T06:10:00", problems: [{ key: "margin.mirror.reauth" }] } };
     case "zero": {
-      const withCosts = DEV_COST_VARIANTS.map((v) => ({
-        ...v,
-        cost: v.cost ?? Math.round(v.price / 200),
-      }));
+      const withCosts = DEV_COST_VARIANTS.map((v) => ({ ...v, cost: v.cost ?? Math.round(v.price / 200) }));
       return {
         ...base,
-        coverage: {
-          variants: 1240,
-          variantsWithCost: 1240,
-          productsWithoutCost: 0,
-          sample: [],
-        },
+        coverage: { variants: 1240, variantsWithCost: 1240, productsWithoutCost: 0, sample: [] },
         impact: impact({ variants: withCosts }),
       };
     }
@@ -991,31 +695,15 @@ export function devMarginScreen(opts: {
         mirror: {
           state: "failed",
           at: "2026-09-28T06:10:00",
-          problems: [
-            { key: "margin.mirror.readFailed" },
-            {
-              key: "margin.mirror.detail",
-              params: { detail: "costs.read: Throttled (3 attempts)" },
-            },
-          ],
+          problems: [{ key: "margin.mirror.readFailed" }, { key: "margin.mirror.detail", params: { detail: "costs.read: Throttled (3 attempts)" } }],
         },
       };
     case "too-large":
       // What checkout runs: the collection's values folded into the whole store's (the server counts the impact the same way).
       return {
         ...base,
-        tooLarge: pro
-          ? [{ collectionId: DEV_C7, title: "Podzimní kolekce", count: null }]
-          : [],
-        impact: pro
-          ? devMarginImpact(
-              foldMarginCollections(
-                DEV_MARGIN_FIXTURE,
-                new Set([DEV_C7]),
-              ) as WonDiscountsConfig,
-              { focusRuleId: opts.focusRuleId },
-            )
-          : null,
+        tooLarge: pro ? [{ collectionId: DEV_C7, title: "Podzimní kolekce", count: null }] : [],
+        impact: pro ? devMarginImpact(foldMarginCollections(DEV_MARGIN_FIXTURE, new Set([DEV_C7])) as WonDiscountsConfig, { focusRuleId: opts.focusRuleId }) : null,
       };
     case "many":
       return { ...base, impact: impact({ variants: DEV_MANY_VARIANTS }) };
@@ -1029,35 +717,19 @@ export function devMarginScreen(opts: {
 }
 
 /** Margin page action results (harness `?result=`). */
-export function devMarginResult(
-  kind: string | null,
-  locale: "cs" | "en" = "cs",
-): UiResult | null {
+export function devMarginResult(kind: string | null, locale: "cs" | "en" = "cs"): UiResult | null {
   switch (kind) {
     case "refreshed":
       return { ok: true, message: "synced", syncing: { costs: true } };
     case "saved":
-      return {
-        ok: true,
-        message: "saved",
-        sync: { ok: true, problems: [], warnings: [] },
-        syncing: { costs: true },
-      };
+      return { ok: true, message: "saved", sync: { ok: true, problems: [], warnings: [] }, syncing: { costs: true } };
     case "invalid":
       return {
         ok: false,
         reason: "invalid",
         errors: [
-          {
-            field: "minMarginPercent",
-            key: "margin.error.percent",
-            params: { max: 95 },
-          },
-          {
-            field: "collectionMax[1]",
-            key: "margin.error.percent",
-            params: { max: 100 },
-          },
+          { field: "minMarginPercent", key: "margin.error.percent", params: { max: 95 } },
+          { field: "collectionMax[1]", key: "margin.error.percent", params: { max: 100 } },
         ],
       };
     case "unreadable":
@@ -1068,23 +740,13 @@ export function devMarginResult(
       // code + params in the admin language exactly as the server's savedResult words them.
       const { issues } = sanitizeConfig({
         ...DEV_MARGIN_FIXTURE,
-        modules: {
-          ...DEV_MARGIN_FIXTURE.modules,
-          margin: {
-            ...DEV_MARGIN_FIXTURE.modules.margin,
-            global: { minMarginPercent: 12.55, maxDiscountPercent: 40 },
-          },
-        },
+        modules: { ...DEV_MARGIN_FIXTURE.modules, margin: { ...DEV_MARGIN_FIXTURE.modules.margin, global: { minMarginPercent: 12.55, maxDiscountPercent: 40 } } },
       });
       return {
         ok: true,
         message: "saved",
         fixes: wordIssues(
-          issues.filter(
-            (i) =>
-              i.path === "modules.margin" ||
-              i.path.startsWith("modules.margin."),
-          ),
+          issues.filter((i) => i.path === "modules.margin" || i.path.startsWith("modules.margin.")),
           locale,
         ),
         sync: { ok: true, problems: [], warnings: [] },
@@ -1100,30 +762,10 @@ export function devMarginResult(
  * first read of the costs (no green "Běží", the ceiling-only line), `reauth` = the
  * background has no session (OQ4), `too-large` = a Pro collection over the limit.
  */
-export function devMarginOverview(
-  state: "fresh" | "stale" | "off" | "running" | "reauth" | "too-large",
-): MarginOverviewView {
-  if (state === "off")
-    return {
-      enabled: false,
-      minMarginPercent: null,
-      maxDiscountPercent: 50,
-      productsWithoutCost: null,
-      mirror: { state: "off" },
-    };
+export function devMarginOverview(state: "fresh" | "stale" | "off" | "running" | "reauth" | "too-large"): MarginOverviewView {
+  if (state === "off") return { enabled: false, minMarginPercent: null, maxDiscountPercent: 50, productsWithoutCost: null, mirror: { state: "off" } };
   if (state === "running") {
-    return {
-      enabled: true,
-      minMarginPercent: 20,
-      maxDiscountPercent: 40,
-      productsWithoutCost: null,
-      mirror: {
-        state: "running",
-        done: 340,
-        total: 1240,
-        since: "2026-09-28T13:55:00",
-      },
-    };
+    return { enabled: true, minMarginPercent: 20, maxDiscountPercent: 40, productsWithoutCost: null, mirror: { state: "running", done: 340, total: 1240, since: "2026-09-28T13:55:00" } };
   }
   if (state === "reauth") {
     return {
@@ -1131,11 +773,7 @@ export function devMarginOverview(
       minMarginPercent: 20,
       maxDiscountPercent: 40,
       productsWithoutCost: DEV_COVERAGE.productsWithoutCost,
-      mirror: {
-        state: "failed",
-        at: "2026-09-28T06:10:00",
-        problems: [{ key: "margin.mirror.reauth" }],
-      },
+      mirror: { state: "failed", at: "2026-09-28T06:10:00", problems: [{ key: "margin.mirror.reauth" }] },
     };
   }
   if (state === "too-large") {
@@ -1145,9 +783,7 @@ export function devMarginOverview(
       maxDiscountPercent: 40,
       productsWithoutCost: DEV_COVERAGE.productsWithoutCost,
       mirror: DEV_MIRROR_FRESH,
-      tooLarge: [
-        { collectionId: DEV_C7, title: "Podzimní kolekce", count: null },
-      ],
+      tooLarge: [{ collectionId: DEV_C7, title: "Podzimní kolekce", count: null }],
     };
   }
   return {
@@ -1155,10 +791,7 @@ export function devMarginOverview(
     minMarginPercent: 20,
     maxDiscountPercent: 40,
     productsWithoutCost: DEV_COVERAGE.productsWithoutCost,
-    mirror:
-      state === "stale"
-        ? { state: "stale", at: "2026-09-26T06:10:00" }
-        : DEV_MIRROR_FRESH,
+    mirror: state === "stale" ? { state: "stale", at: "2026-09-26T06:10:00" } : DEV_MIRROR_FRESH,
   };
 }
 
@@ -1230,11 +863,7 @@ export const DEV_TIERS_FIXTURE: WonDiscountsConfig = readStoredConfig({
   ...DEV_F2_FIXTURE,
   modules: {
     ...DEV_F2_FIXTURE.modules,
-    margin: {
-      enabled: true,
-      global: { minMarginPercent: 20, maxDiscountPercent: 40 },
-      perCollection: [],
-    },
+    margin: { enabled: true, global: { minMarginPercent: 20, maxDiscountPercent: 40 }, perCollection: [] },
     tiers: {
       sets: [
         {
@@ -1291,10 +920,7 @@ export const DEV_TOKENS_DAWN: ThemeTokensView = {
 };
 
 /** The accent is the block's own setting (readThemeLook): no block on the product page → none. */
-function devTokens(
-  theme: string | null | undefined,
-  block: TiersBlockView,
-): ThemeTokensView {
+function devTokens(theme: string | null | undefined, block: TiersBlockView): ThemeTokensView {
   const tokens = theme === "dawn" ? DEV_TOKENS_DAWN : DEV_TOKENS_HORIZON;
   return block.state === "on" ? tokens : { ...tokens, colorAccent: null };
 }
@@ -1312,17 +938,10 @@ export const DEV_PREVIEW_PRODUCT: PreviewProductView = {
 const DEV_ADD_BLOCK_URL = tiersBlockAddUrl(DEV_SHOP, "dev-api-key");
 
 function devBlock(state: string | null): TiersBlockView {
-  if (state === "empty" || state === "block-off")
-    return { state: "off", addUrl: DEV_ADD_BLOCK_URL };
-  if (state === "block-unknown")
-    return { state: "unknown", addUrl: DEV_ADD_BLOCK_URL };
+  if (state === "empty" || state === "block-off") return { state: "off", addUrl: DEV_ADD_BLOCK_URL };
+  if (state === "block-unknown") return { state: "unknown", addUrl: DEV_ADD_BLOCK_URL };
   // Audit P3-8: the block only in an alternate product template (most products do not use it).
-  if (state === "alternate")
-    return {
-      state: "off",
-      addUrl: DEV_ADD_BLOCK_URL,
-      alternates: ["product.bundle"],
-    };
+  if (state === "alternate") return { state: "off", addUrl: DEV_ADD_BLOCK_URL, alternates: ["product.bundle"] };
   if (state === "no-scope") return { state: "no_scope" };
   return { state: "on", themeName: "Horizon" };
 }
@@ -1334,12 +953,7 @@ function devStorefront(state: string | null): StorefrontSyncView {
     return {
       state: "failed",
       at: "2026-09-28T16:20:00",
-      problems: [
-        {
-          key: "sync.problem.storefrontConfig",
-          params: { detail: "metafieldsSet: Throttled (3 attempts)" },
-        },
-      ],
+      problems: [{ key: "sync.problem.storefrontConfig", params: { detail: "metafieldsSet: Throttled (3 attempts)" } }],
       // failed-first: never written before — no previous table on the site (review fix 7).
       previous: state === "failed",
     };
@@ -1359,41 +973,23 @@ function devStorefront(state: string | null): StorefrontSyncView {
  *   dawn           Dawn's tokens + a block accent; failed / pending — the
  *                  storefront config; block-unknown / no-scope — the block check.
  */
-export function devTiersScreen(opts: {
-  plan: "free" | "pro";
-  state: string | null;
-  locale: "cs" | "en";
-  theme?: string | null;
-}): TiersScreenData {
+export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; theme?: string | null }): TiersScreenData {
   const config = opts.state === "empty" ? DEV_EMPTY_FIXTURE : DEV_TIERS_FIXTURE;
   return {
     plan: opts.plan,
     shopCurrency: "CZK",
     configVersion: "dev-config-version",
-    currencies: currencyViews(config.markets, {
-      marketNames: DEV_MARKET_NAMES,
-    }),
-    ...tiersScreenFacts(config, {
-      plan: opts.plan,
-      locale: opts.locale,
-      titles: DEV_TIER_TITLES,
-      syncable: true,
-    }),
+    currencies: currencyViews(config.markets, { marketNames: DEV_MARKET_NAMES }),
+    ...tiersScreenFacts(config, { plan: opts.plan, locale: opts.locale, titles: DEV_TIER_TITLES, syncable: true }),
     block: devBlock(opts.state),
     storefront: devStorefront(opts.state),
     preview: {
-      tokens: devTokens(
-        opts.theme === "dawn" || opts.state === "dawn" ? "dawn" : opts.theme,
-        devBlock(opts.state),
-      ),
+      tokens: devTokens(opts.theme === "dawn" || opts.state === "dawn" ? "dawn" : opts.theme, devBlock(opts.state)),
       preset: presetOf(config.storefront.appearancePreset),
       product: DEV_PREVIEW_PRODUCT,
     },
     // Pro only (BILL-1): products per Pro set as the last sync wrote them (tierProductCounts).
-    productsWithSets:
-      opts.plan === "pro" && opts.state !== "empty"
-        ? { t_devautumn: 14 }
-        : null,
+    productsWithSets: opts.plan === "pro" && opts.state !== "empty" ? { t_devautumn: 14 } : null,
     outletWithAnything: opts.state === "outlet",
   };
 }
@@ -1402,26 +998,14 @@ export function devTiersScreen(opts: {
 export function devTiersResult(kind: string | null): UiResult | null {
   switch (kind) {
     case "saved":
-      return {
-        ok: true,
-        message: "saved",
-        sync: { ok: true, problems: [], warnings: [] },
-      };
+      return { ok: true, message: "saved", sync: { ok: true, problems: [], warnings: [] } };
     case "invalid":
       return {
         ok: false,
         reason: "invalid",
         errors: [
-          {
-            field: TIERS_FIELD.percent("global", "r1"),
-            key: "tiers.error.notAscending",
-            params: { min: 3 },
-          },
-          {
-            field: TIERS_FIELD.min("global", "r2"),
-            key: "tiers.error.minTaken",
-            params: { min: 5 },
-          },
+          { field: TIERS_FIELD.percent("global", "r1"), key: "tiers.error.notAscending", params: { min: 3 } },
+          { field: TIERS_FIELD.min("global", "r2"), key: "tiers.error.minTaken", params: { min: 5 } },
         ],
       };
     case "unreadable":
@@ -1432,11 +1016,7 @@ export function devTiersResult(kind: string | null): UiResult | null {
 }
 
 /** Vzhled as loadAppearanceScreen hands it over; `empty` = no set yet (the looks show an example). */
-export function devAppearanceScreen(opts: {
-  plan: "free" | "pro";
-  state: string | null;
-  theme?: string | null;
-}): AppearanceScreenData {
+export function devAppearanceScreen(opts: { plan: "free" | "pro"; state: string | null; theme?: string | null }): AppearanceScreenData {
   const config = opts.state === "empty" ? DEV_EMPTY_FIXTURE : DEV_TIERS_FIXTURE;
   return {
     plan: opts.plan,
@@ -1451,10 +1031,7 @@ export function devAppearanceScreen(opts: {
 }
 
 /** Nastavení: the switches as stored (`changed` = two switched off, as a shop may have them). */
-export function devSettingsScreen(opts: {
-  plan: "free" | "pro";
-  state: string | null;
-}): SettingsScreenData {
+export function devSettingsScreen(opts: { plan: "free" | "pro"; state: string | null }): SettingsScreenData {
   const c = DEFAULT_CONFIG.engine.combination;
   const combination = {
     outletWithAnything: c.outletWithAnything,
@@ -1465,30 +1042,14 @@ export function devSettingsScreen(opts: {
   return {
     plan: opts.plan,
     configVersion: "dev-config-version",
-    currencies: currencyViews(DEV_OVERVIEW_FIXTURE.markets, {
-      marketNames: DEV_MARKET_NAMES,
-    }),
-    combination:
-      opts.state === "changed"
-        ? {
-            ...combination,
-            productWithOrder: false,
-            productWithShipping: false,
-          }
-        : combination,
+    currencies: currencyViews(DEV_OVERVIEW_FIXTURE.markets, { marketNames: DEV_MARKET_NAMES }),
+    combination: opts.state === "changed" ? { ...combination, productWithOrder: false, productWithShipping: false } : combination,
   };
 }
 
 /** The Přehled card (AdminSignals.tiers): the whole-store set in force, the table not on the product page yet. */
-export function devTiersOverview(
-  state: "on" | "off" | "empty",
-  plan: "free" | "pro" = "free",
-): TiersOverviewView {
-  return tiersOverviewOf(
-    state === "empty" ? DEV_EMPTY_FIXTURE : DEV_TIERS_FIXTURE,
-    plan,
-    state === "on" ? devBlock(null) : devBlock("block-off"),
-  );
+export function devTiersOverview(state: "on" | "off" | "empty", plan: "free" | "pro" = "free"): TiersOverviewView {
+  return tiersOverviewOf(state === "empty" ? DEV_EMPTY_FIXTURE : DEV_TIERS_FIXTURE, plan, state === "on" ? devBlock(null) : devBlock("block-off"));
 }
 
 /** The cart of devTryCartPlanTiers: 4 caps reach the whole-store "od 3 ks −10 %", 2 hoodies are in the Pro set. */
@@ -1504,20 +1065,13 @@ export const DEV_TRY_CART_TIER_LINES: TryCartLineView[] = [
  * the caps get the whole-store set. Margin protection is on, no cost is known
  * (the percent ceiling of 40 % does not lower a tier here).
  */
-export function devTryCartPlanTiers(
-  locale: "cs" | "en",
-  plan: "free" | "pro" = "free",
-): CartPlanView {
-  const gated = gateConfigForPlan(DEV_TIERS_FIXTURE, plan, {
-    now: "2026-09-28T14:00:00",
-  }).config;
+export function devTryCartPlanTiers(locale: "cs" | "en", plan: "free" | "pro" = "free"): CartPlanView {
+  const gated = gateConfigForPlan(DEV_TIERS_FIXTURE, plan, { now: "2026-09-28T14:00:00" }).config;
   return planTryCart(gated, {
     lines: DEV_TRY_CART_TIER_LINES.map((line) => ({
       variantId: line.variantId,
       productId: line.productId,
-      title: line.variantTitle
-        ? `${line.title} (${line.variantTitle})`
-        : line.title,
+      title: line.variantTitle ? `${line.title} (${line.variantTitle})` : line.title,
       quantity: line.quantity,
       unitPrice: line.unitPrice.CZK ?? 0,
       collectionIds: [],
@@ -1561,17 +1115,8 @@ export const DEV_REWARDS_FIXTURE: WonDiscountsConfig = readStoredConfig({
     rewards: {
       freeShipping: { threshold: { CZK: 1000_00, EUR: 40_00 } },
       gifts: [
-        {
-          id: "gift-socks",
-          threshold: { CZK: 1500_00 },
-          choices: [DEV_GIFT_SOCKS],
-        },
-        {
-          id: "gift-choice",
-          threshold: { CZK: 3000_00, EUR: 120_00 },
-          choices: [DEV_GIFT_CAP, DEV_GIFT_BAG, DEV_GIFT_MUG],
-          fallbackVariantId: DEV_GIFT_SOCKS,
-        },
+        { id: "gift-socks", threshold: { CZK: 1500_00 }, choices: [DEV_GIFT_SOCKS] },
+        { id: "gift-choice", threshold: { CZK: 3000_00, EUR: 120_00 }, choices: [DEV_GIFT_CAP, DEV_GIFT_BAG, DEV_GIFT_MUG], fallbackVariantId: DEV_GIFT_SOCKS },
       ],
       countOtherDiscounts: false,
     },
@@ -1584,24 +1129,13 @@ export const DEV_REWARDS_FIXTURE: WonDiscountsConfig = readStoredConfig({
  *   plan=pro    the ladder and the choice of 3 editable;
  *   empty       a new shop: nothing set, the app embed off.
  */
-export function devRewardsScreen(opts: {
-  plan: "free" | "pro";
-  state: string | null;
-  locale: "cs" | "en";
-}): RewardsScreenData {
-  const config =
-    opts.state === "empty" ? DEV_EMPTY_FIXTURE : DEV_REWARDS_FIXTURE;
+export function devRewardsScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en" }): RewardsScreenData {
+  const config = opts.state === "empty" ? DEV_EMPTY_FIXTURE : DEV_REWARDS_FIXTURE;
   return {
     plan: opts.plan,
     configVersion: "dev-config-version",
-    currencies: currencyViews(config.markets, {
-      marketNames: DEV_MARKET_NAMES,
-    }),
-    ...rewardsScreenFacts(config, {
-      plan: opts.plan,
-      locale: opts.locale,
-      titles: DEV_GIFT_TITLES,
-    }),
+    currencies: currencyViews(config.markets, { marketNames: DEV_MARKET_NAMES }),
+    ...rewardsScreenFacts(config, { plan: opts.plan, locale: opts.locale, titles: DEV_GIFT_TITLES }),
     embed: opts.state === "empty" ? DEV_EMBED_OFF : DEV_EMBED_ON,
     cartBlockAddUrl: cartBlockAddUrl(DEV_SHOP, "dev-api-key"),
   };
@@ -1609,25 +1143,14 @@ export function devRewardsScreen(opts: {
 
 /** Odměny action results (harness `?result=`). */
 export function devRewardsResult(kind: string | null): UiResult | null {
-  if (kind === "saved")
-    return {
-      ok: true,
-      message: "saved",
-      sync: { ok: true, problems: [], warnings: [] },
-    };
+  if (kind === "saved") return { ok: true, message: "saved", sync: { ok: true, problems: [], warnings: [] } };
   if (kind === "invalid") {
     return {
       ok: false,
       reason: "invalid",
       errors: [
-        {
-          field: REWARDS_FIELD.tierAmount("gift-socks", "EUR"),
-          key: "rewards.error.amount",
-        },
-        {
-          field: REWARDS_FIELD.choice("gift-socks"),
-          key: "rewards.error.giftChoice",
-        },
+        { field: REWARDS_FIELD.tierAmount("gift-socks", "EUR"), key: "rewards.error.amount" },
+        { field: REWARDS_FIELD.choice("gift-socks"), key: "rewards.error.giftChoice" },
       ],
     };
   }
@@ -1641,17 +1164,9 @@ export function devRewardsResult(kind: string | null): UiResult | null {
  * (2 970 Kč) reach free shipping and the socks; the second threshold is Pro.
  * Pro: 3 hoodies + a cap (4 260 Kč) reach both — the second offers a choice of 3.
  */
-export function devTryCartPlanRewards(
-  locale: "cs" | "en",
-  plan: "free" | "pro" = "free",
-): CartPlanView {
-  const gated = gateConfigForPlan(DEV_REWARDS_FIXTURE, plan, {
-    now: "2026-09-28T14:00:00",
-  }).config;
-  const prices: Readonly<Record<string, number>> = {
-    [DEV_GIFT_SOCKS]: 99_00,
-    [DEV_GIFT_CAP]: 249_00,
-  };
+export function devTryCartPlanRewards(locale: "cs" | "en", plan: "free" | "pro" = "free"): CartPlanView {
+  const gated = gateConfigForPlan(DEV_REWARDS_FIXTURE, plan, { now: "2026-09-28T14:00:00" }).config;
+  const prices: Readonly<Record<string, number>> = { [DEV_GIFT_SOCKS]: 99_00, [DEV_GIFT_CAP]: 249_00 };
   const giftCandidates = new Map(
     gated.modules.rewards.gifts.map((tier) => {
       const variantId = tier.choices[0]!;
@@ -1672,9 +1187,7 @@ export function devTryCartPlanRewards(
     lines: devTryCartRewardLines(plan).map((line) => ({
       variantId: line.variantId,
       productId: line.productId,
-      title: line.variantTitle
-        ? `${line.title} (${line.variantTitle})`
-        : line.title,
+      title: line.variantTitle ? `${line.title} (${line.variantTitle})` : line.title,
       quantity: line.quantity,
       unitPrice: line.unitPrice.CZK ?? 0,
       collectionIds: [],
@@ -1694,8 +1207,5 @@ export function devTryCartPlanRewards(
 
 /** The cart of devTryCartPlanRewards. */
 export function devTryCartRewardLines(plan: "free" | "pro"): TryCartLineView[] {
-  return [
-    { ...DEV_TRY_CART_LINES[0]!, quantity: plan === "pro" ? 3 : 2 },
-    DEV_TRY_CART_LINES[1]!,
-  ];
+  return [{ ...DEV_TRY_CART_LINES[0]!, quantity: plan === "pro" ? 3 : 2 }, DEV_TRY_CART_LINES[1]!];
 }

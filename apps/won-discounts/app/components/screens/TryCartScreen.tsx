@@ -25,24 +25,11 @@ import { currencyViews, type MarketNames } from "../model/markets";
 import { TRY_CART_LIMITS } from "../model/try-cart-form";
 import { shopToday } from "../model/rule-form";
 import { uiText } from "../model/result-copy";
-import type {
-  CartPlanView,
-  CurrencyView,
-  ExplainView,
-  FieldError,
-  TryCartLineView,
-  UiResult,
-} from "../model/types";
+import type { CartPlanView, CurrencyView, ExplainView, FieldError, TryCartLineView, UiResult } from "../model/types";
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
 import { RowNote, WonBlock, WonRow, WonSection } from "../shell/WonSection";
-import {
-  WON_FONT,
-  WON_INK,
-  WON_LINE,
-  WON_MUTED,
-  WON_WASH,
-} from "../shell/tokens";
+import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
 
 export interface TryCartScreenProps {
   currencies: CurrencyView[];
@@ -60,12 +47,7 @@ export interface TryCartScreenProps {
 
 export function buildTryCartProps(
   config: WonDiscountsConfig,
-  opts: {
-    timezone: string | null;
-    shopCurrency?: string | null;
-    marketNames?: MarketNames;
-    now?: Date;
-  },
+  opts: { timezone: string | null; shopCurrency?: string | null; marketNames?: MarketNames; now?: Date },
 ): TryCartScreenProps {
   return {
     currencies: currencyViews(config.markets, {
@@ -82,29 +64,16 @@ export function buildTryCartProps(
 }
 
 /** One select option per enabled market (`CZK:cz` "CZK · Česko"), or per currency when it has none. */
-export function marketOptions(
-  currencies: readonly CurrencyView[],
-): { value: string; label: string; currency: string }[] {
+export function marketOptions(currencies: readonly CurrencyView[]): { value: string; label: string; currency: string }[] {
   return currencies.flatMap((c) =>
     c.markets.length > 0
-      ? c.markets.map((m) => ({
-          value: `${c.code}:${m.handle}`,
-          label: `${c.code} · ${m.name}`,
-          currency: c.code,
-        }))
+      ? c.markets.map((m) => ({ value: `${c.code}:${m.handle}`, label: `${c.code} · ${m.name}`, currency: c.code }))
       : [{ value: c.code, label: c.code, currency: c.code }],
   );
 }
 
-function explainFor(
-  explain: readonly ExplainView[],
-  lineId: string | null,
-): ExplainView[] {
-  return explain.filter((e) =>
-    lineId === null
-      ? !e.lineIds || e.lineIds.length === 0
-      : e.lineIds?.includes(lineId),
-  );
+function explainFor(explain: readonly ExplainView[], lineId: string | null): ExplainView[] {
+  return explain.filter((e) => (lineId === null ? !e.lineIds || e.lineIds.length === 0 : e.lineIds?.includes(lineId)));
 }
 
 /**
@@ -115,39 +84,11 @@ function explainFor(
 function ExplainList({ items }: { items: ExplainView[] }) {
   if (items.length === 0) return null;
   return (
-    <ul
-      style={{
-        margin: "6px 0 0",
-        padding: 0,
-        listStyle: "none",
-        fontFamily: WON_FONT,
-      }}
-    >
+    <ul style={{ margin: "6px 0 0", padding: 0, listStyle: "none", fontFamily: WON_FONT }}>
       {items.map((item, i) => (
-        <li
-          key={i}
-          style={{
-            display: "flex",
-            gap: 8,
-            fontSize: 12.5,
-            lineHeight: 1.45,
-            color: item.tone === "info" ? WON_MUTED : WON_INK,
-          }}
-        >
-          <span
-            aria-hidden="true"
-            style={{
-              flex: "0 0 auto",
-              width: 10,
-              color: WON_INK,
-              fontWeight: 700,
-            }}
-          >
-            {item.tone === "success"
-              ? "✓"
-              : item.tone === "warning"
-                ? "!"
-                : "·"}
+        <li key={i} style={{ display: "flex", gap: 8, fontSize: 12.5, lineHeight: 1.45, color: item.tone === "info" ? WON_MUTED : WON_INK }}>
+          <span aria-hidden="true" style={{ flex: "0 0 auto", width: 10, color: WON_INK, fontWeight: 700 }}>
+            {item.tone === "success" ? "✓" : item.tone === "warning" ? "!" : "·"}
           </span>
           <span>{item.text}</span>
         </li>
@@ -191,9 +132,7 @@ export function TryCartScreen(props: TryCartScreenProps) {
     const form = formRef.current;
     if (!form) return;
     const fd = new FormData(form);
-    const quantity = fd
-      .getAll("quantity")
-      .reduce<number>((s, v) => s + (Number(v) > 0 ? Number(v) : 0), 0);
+    const quantity = fd.getAll("quantity").reduce<number>((s, v) => s + (Number(v) > 0 ? Number(v) : 0), 0);
     setLive({
       currency: String(fd.get("currency") ?? ""),
       codes: String(fd.get("codes") ?? ""),
@@ -228,24 +167,17 @@ export function TryCartScreen(props: TryCartScreenProps) {
           variantId: variant.id,
           productId: product.id,
           title: product.title,
-          variantTitle:
-            variant.title && variant.title !== "Default Title"
-              ? variant.title
-              : undefined,
+          variantTitle: variant.title && variant.title !== "Default Title" ? variant.title : undefined,
           quantity: 1,
           unitPrice: {},
         });
       }
     }
     setLines(next);
-    setLive((s) => ({
-      ...s,
-      quantity: next.reduce((sum, l) => sum + l.quantity, 0),
-    }));
+    setLive((s) => ({ ...s, quantity: next.reduce((sum, l) => sum + l.quantity, 0) }));
   };
 
-  const errors: FieldError[] =
-    result && !result.ok && result.reason === "invalid" ? result.errors : [];
+  const errors: FieldError[] = result && !result.ok && result.reason === "invalid" ? result.errors : [];
   const errorFor = (field: string) => {
     const e = errors.find((x) => x.field === field);
     return e ? t(e.key, e.params) : undefined;
@@ -269,11 +201,7 @@ export function TryCartScreen(props: TryCartScreenProps) {
         <Form method="post" ref={formRef}>
           <input type="hidden" name="intent" value="run" />
           <input type="hidden" name="locale" value={tr.locale} />
-          <WonSection
-            title={t("tryCart.cart.title")}
-            glyph="cart"
-            summary={cartSummary}
-          >
+          <WonSection title={t("tryCart.cart.title")} glyph="cart" summary={cartSummary}>
             <s-stack direction="block" gap="base">
               {/* §7c calm: the per-line controls sit in one collapsed block; the
                   summary names what is in the cart. Hidden ≠ unmounted: every
@@ -298,13 +226,7 @@ export function TryCartScreen(props: TryCartScreenProps) {
                         <WonRow
                           key={line.variantId}
                           action={
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "flex-end",
-                                gap: 8,
-                              }}
-                            >
+                            <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
                               <div style={{ width: 96 }}>
                                 <s-number-field
                                   name="quantity"
@@ -318,17 +240,9 @@ export function TryCartScreen(props: TryCartScreenProps) {
                               <s-button
                                 variant="tertiary"
                                 onClick={() => {
-                                  const next = lines.filter(
-                                    (l) => l.variantId !== line.variantId,
-                                  );
+                                  const next = lines.filter((l) => l.variantId !== line.variantId);
                                   setLines(next);
-                                  setLive((s) => ({
-                                    ...s,
-                                    quantity: next.reduce(
-                                      (sum, l) => sum + l.quantity,
-                                      0,
-                                    ),
-                                  }));
+                                  setLive((s) => ({ ...s, quantity: next.reduce((sum, l) => sum + l.quantity, 0) }));
                                 }}
                               >
                                 {t("tryCart.remove")}
@@ -336,16 +250,8 @@ export function TryCartScreen(props: TryCartScreenProps) {
                             </div>
                           }
                         >
-                          <input
-                            type="hidden"
-                            name="variantId"
-                            value={line.variantId}
-                          />
-                          <input
-                            type="hidden"
-                            name="productId"
-                            value={line.productId}
-                          />
+                          <input type="hidden" name="variantId" value={line.variantId} />
+                          <input type="hidden" name="productId" value={line.productId} />
                           <s-text type="strong">{line.title}</s-text>
                           <RowNote>
                             {[
@@ -353,9 +259,7 @@ export function TryCartScreen(props: TryCartScreenProps) {
                               typeof price === "number"
                                 ? formatMoney(price, liveCurrency, tr.locale)
                                 : liveCurrency
-                                  ? t("tryCart.noPrice", {
-                                      currency: liveCurrency,
-                                    })
+                                  ? t("tryCart.noPrice", { currency: liveCurrency })
                                   : "",
                             ]
                               .filter(Boolean)
@@ -368,40 +272,18 @@ export function TryCartScreen(props: TryCartScreenProps) {
                 )}
               </WonBlock>
               <div>
-                <s-button onClick={() => void addProducts()}>
-                  {t("tryCart.add")}
-                </s-button>
+                <s-button onClick={() => void addProducts()}>{t("tryCart.add")}</s-button>
                 {unavailable ? (
                   <div style={{ marginTop: 6 }}>
-                    <s-text color="subdued">
-                      {t("editor.pick.unavailable")}
-                    </s-text>
+                    <s-text color="subdued">{t("editor.pick.unavailable")}</s-text>
                   </div>
                 ) : null}
               </div>
-              {errorFor("lines") ? (
-                <RowNote tone="attention">{errorFor("lines")}</RowNote>
-              ) : null}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    "repeat(auto-fill, minmax(min(100%, 200px), 1fr))",
-                  gap: 12,
-                }}
-              >
-                <s-select
-                  name="currency"
-                  label={t("tryCart.market")}
-                  value={live.currency}
-                  error={errorFor("currency")}
-                >
+              {errorFor("lines") ? <RowNote tone="attention">{errorFor("lines")}</RowNote> : null}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 200px), 1fr))", gap: 12 }}>
+                <s-select name="currency" label={t("tryCart.market")} value={live.currency} error={errorFor("currency")}>
                   {options.map((o) => (
-                    <s-option
-                      key={o.value}
-                      value={o.value}
-                      selected={boolAttr(o.value === live.currency)}
-                    >
+                    <s-option key={o.value} value={o.value} selected={boolAttr(o.value === live.currency)}>
                       {o.label}
                     </s-option>
                   ))}
@@ -416,11 +298,7 @@ export function TryCartScreen(props: TryCartScreenProps) {
                   name="date"
                   label={t("tryCart.date")}
                   value={props.date ?? today}
-                  details={
-                    timezone
-                      ? t("tryCart.dateDetails", { tz: timezone })
-                      : t("tryCart.dateDetailsUtc")
-                  }
+                  details={timezone ? t("tryCart.dateDetails", { tz: timezone }) : t("tryCart.dateDetailsUtc")}
                   error={errorFor("date")}
                 />
               </div>
@@ -433,82 +311,38 @@ export function TryCartScreen(props: TryCartScreenProps) {
           </WonSection>
         </Form>
 
-        <WonSection
-          title={t("tryCart.result.title")}
-          glyph="receipt"
-          summary={resultSummary(plan, tr)}
-        >
+        <WonSection title={t("tryCart.result.title")} glyph="receipt" summary={resultSummary(plan, tr)}>
           <s-stack direction="block" gap="base">
-            {result && !(result.ok === false && result.reason === "invalid") ? (
-              <Notice result={result} />
-            ) : null}
+            {result && !(result.ok === false && result.reason === "invalid") ? <Notice result={result} /> : null}
             {plan?.warnings && plan.warnings.length > 0 ? (
               // Item 8: where checkout gives (or may give) something else than the plan, before the numbers.
               <s-banner tone="warning" heading={t("tryCart.warning.heading")}>
                 <s-unordered-list>
                   {plan.warnings.map((w, i) => (
-                    <s-list-item key={`${i}-${w.key}`}>
-                      {uiText(w, tr)}
-                    </s-list-item>
+                    <s-list-item key={`${i}-${w.key}`}>{uiText(w, tr)}</s-list-item>
                   ))}
                 </s-unordered-list>
               </s-banner>
             ) : null}
             {plan ? (
               <div>
-                {plan.market ? (
-                  <s-text color="subdued">
-                    {t("tryCart.result.market", { market: plan.market })}
-                  </s-text>
-                ) : null}
+                {plan.market ? <s-text color="subdued">{t("tryCart.result.market", { market: plan.market })}</s-text> : null}
                 {plan.lines.map((line) => (
                   <WonRow key={line.lineId}>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 10,
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 8,
-                          flexWrap: "wrap",
-                        }}
-                      >
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <s-text type="strong">
                           {line.title} × {line.quantity}
                         </s-text>
-                        {line.tier ? (
-                          <LineChip label={t("tryCart.tier")} />
-                        ) : null}
-                        {line.marginCapped ? (
-                          <LineChip label={t("tryCart.margin.capped")} />
-                        ) : null}
-                        {line.gift ? (
-                          <LineChip label={t("tryCart.gift")} />
-                        ) : null}
+                        {line.tier ? <LineChip label={t("tryCart.tier")} /> : null}
+                        {line.marginCapped ? <LineChip label={t("tryCart.margin.capped")} /> : null}
+                        {line.gift ? <LineChip label={t("tryCart.gift")} /> : null}
                       </span>
                       <span style={{ fontFamily: WON_FONT, fontSize: 13 }}>
                         {line.discount > 0 ? (
                           <>
-                            <s-text type="redundant">
-                              {formatMoney(
-                                line.subtotal,
-                                plan.currency,
-                                tr.locale,
-                              )}
-                            </s-text>{" "}
-                            <strong>
-                              {formatMoney(
-                                line.total,
-                                plan.currency,
-                                tr.locale,
-                              )}
-                            </strong>
+                            <s-text type="redundant">{formatMoney(line.subtotal, plan.currency, tr.locale)}</s-text>{" "}
+                            <strong>{formatMoney(line.total, plan.currency, tr.locale)}</strong>
                           </>
                         ) : (
                           formatMoney(line.total, plan.currency, tr.locale)
@@ -516,17 +350,9 @@ export function TryCartScreen(props: TryCartScreenProps) {
                       </span>
                     </div>
                     {line.gift ? (
-                      <RowNote>
-                        {(line.giftChoices ?? 1) > 1
-                          ? t("tryCart.giftChoice", {
-                              count: line.giftChoices ?? 1,
-                            })
-                          : t("tryCart.giftAdded")}
-                      </RowNote>
+                      <RowNote>{(line.giftChoices ?? 1) > 1 ? t("tryCart.giftChoice", { count: line.giftChoices ?? 1 }) : t("tryCart.giftAdded")}</RowNote>
                     ) : null}
-                    <ExplainList
-                      items={explainFor(plan.explain, line.lineId)}
-                    />
+                    <ExplainList items={explainFor(plan.explain, line.lineId)} />
                   </WonRow>
                 ))}
                 {explainFor(plan.explain, null).length > 0 ? (
@@ -535,46 +361,16 @@ export function TryCartScreen(props: TryCartScreenProps) {
                     <ExplainList items={explainFor(plan.explain, null)} />
                   </WonRow>
                 ) : null}
-                {plan.margin ? (
-                  <MarginNotes margin={plan.margin} currency={plan.currency} />
-                ) : null}
-                <div
-                  style={{
-                    borderTop: `1px solid ${WON_LINE}`,
-                    paddingTop: 10,
-                    fontFamily: WON_FONT,
-                    fontSize: 13,
-                  }}
-                >
-                  <TotalRow
-                    label={t("tryCart.totals.subtotal")}
-                    value={formatMoney(
-                      plan.totals.subtotal,
-                      plan.currency,
-                      tr.locale,
-                    )}
-                  />
+                {plan.margin ? <MarginNotes margin={plan.margin} currency={plan.currency} /> : null}
+                <div style={{ borderTop: `1px solid ${WON_LINE}`, paddingTop: 10, fontFamily: WON_FONT, fontSize: 13 }}>
+                  <TotalRow label={t("tryCart.totals.subtotal")} value={formatMoney(plan.totals.subtotal, plan.currency, tr.locale)} />
                   {plan.totals.productDiscount > 0 ? (
-                    <TotalRow
-                      label={t("tryCart.totals.products")}
-                      value={`−${formatMoney(plan.totals.productDiscount, plan.currency, tr.locale)}`}
-                    />
+                    <TotalRow label={t("tryCart.totals.products")} value={`−${formatMoney(plan.totals.productDiscount, plan.currency, tr.locale)}`} />
                   ) : null}
                   {plan.totals.orderDiscount > 0 ? (
-                    <TotalRow
-                      label={t("tryCart.totals.order")}
-                      value={`−${formatMoney(plan.totals.orderDiscount, plan.currency, tr.locale)}`}
-                    />
+                    <TotalRow label={t("tryCart.totals.order")} value={`−${formatMoney(plan.totals.orderDiscount, plan.currency, tr.locale)}`} />
                   ) : null}
-                  <TotalRow
-                    strong
-                    label={t("tryCart.totals.total")}
-                    value={formatMoney(
-                      plan.totals.total,
-                      plan.currency,
-                      tr.locale,
-                    )}
-                  />
+                  <TotalRow strong label={t("tryCart.totals.total")} value={formatMoney(plan.totals.total, plan.currency, tr.locale)} />
                 </div>
               </div>
             ) : null}
@@ -621,65 +417,23 @@ function LineChip({ label }: { label: string }) {
  * currency (never called "no cost price", audit P2-1c) — with the way to the
  * settings (§13).
  */
-function MarginNotes({
-  margin,
-  currency,
-}: {
-  margin: NonNullable<CartPlanView["margin"]>;
-  currency: string;
-}) {
+function MarginNotes({ margin, currency }: { margin: NonNullable<CartPlanView["margin"]>; currency: string }) {
   const tr = useT();
   const { t } = tr;
   const notConverted = margin.linesCostNotConverted ?? 0;
-  if (
-    !margin.rateEstimated &&
-    margin.linesWithoutCost === 0 &&
-    notConverted === 0
-  )
-    return null;
+  if (!margin.rateEstimated && margin.linesWithoutCost === 0 && notConverted === 0) return null;
   return (
-    <WonRow
-      action={
-        <s-link href="/app/margin">{t("tryCart.margin.settings")}</s-link>
-      }
-    >
-      {margin.rateEstimated ? (
-        <RowNote>{t("tryCart.margin.rateEstimated", { currency })}</RowNote>
-      ) : null}
-      {margin.linesWithoutCost > 0 ? (
-        <RowNote>
-          {tr.tp("tryCart.margin.withoutCost", margin.linesWithoutCost)}
-        </RowNote>
-      ) : null}
-      {notConverted > 0 ? (
-        <RowNote>
-          {tr.tp("tryCart.margin.notConverted", notConverted, { currency })}
-        </RowNote>
-      ) : null}
+    <WonRow action={<s-link href="/app/margin">{t("tryCart.margin.settings")}</s-link>}>
+      {margin.rateEstimated ? <RowNote>{t("tryCart.margin.rateEstimated", { currency })}</RowNote> : null}
+      {margin.linesWithoutCost > 0 ? <RowNote>{tr.tp("tryCart.margin.withoutCost", margin.linesWithoutCost)}</RowNote> : null}
+      {notConverted > 0 ? <RowNote>{tr.tp("tryCart.margin.notConverted", notConverted, { currency })}</RowNote> : null}
     </WonRow>
   );
 }
 
-function TotalRow({
-  label,
-  value,
-  strong = false,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-}) {
+function TotalRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 12,
-        padding: "3px 0",
-        fontWeight: strong ? 700 : 400,
-        color: WON_INK,
-      }}
-    >
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "3px 0", fontWeight: strong ? 700 : 400, color: WON_INK }}>
       <span>{label}</span>
       <span>{value}</span>
     </div>
