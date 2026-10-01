@@ -161,8 +161,19 @@ async function openThemePreview(page: Page): Promise<void> {
   const theme = data.themes.nodes.find((t) => t.name === THEME_LABEL);
   expect(theme, `the matrix's remote theme "${THEME_LABEL}" exists`).toBeDefined();
   expect(theme!.role, "previewed, never published").not.toBe("MAIN");
+  // The store domain shows Shopify's preview bar and cookie banner over the bottom of the page: hide the bar (screenshots
+  // only), decline the banner once (it then stays away for the session). Neither touches the cart.
+  await page.addInitScript(() => {
+    document.addEventListener("DOMContentLoaded", () => {
+      const style = document.createElement("style");
+      style.textContent = "#preview-bar-iframe, #PBarNextFrameWrapper { display: none !important; }";
+      document.head.append(style);
+    });
+  });
   await unlockRealStorefront(page);
   await gotoStorefront(page, `${STORE_ORIGIN}/?preview_theme_id=${theme!.id.split("/").pop()}`);
+  const decline = page.locator("#shopify-pc__banner__btn-decline");
+  if (await decline.isVisible({ timeout: 5_000 }).catch(() => false)) await decline.click();
   const shown = await page.evaluate(() => (window as unknown as { Shopify?: { theme?: { name?: string } } }).Shopify?.theme?.name ?? null);
   expect(shown, "the store renders the previewed theme").toBe(THEME_LABEL);
 }
