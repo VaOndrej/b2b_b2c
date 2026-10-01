@@ -149,7 +149,8 @@ function page(t: TestContext, opts: { cart: Cart; rewards?: unknown; onUpdate?: 
     },
   });
   for (const src of SOURCES) vm.runInContext(src, context);
-  const emit = (name: string, detail?: unknown) => (listeners.get(name) ?? []).forEach((fn) => fn({ type: name, detail, target: { closest: () => null } }));
+  const emit = (name: string, detail?: unknown, promise?: Promise<unknown>) =>
+    (listeners.get(name) ?? []).forEach((fn) => fn({ type: name, detail, promise, target: { closest: () => null } }));
   const settle = async (ms = 0) => {
     for (let i = 0; i < 40; i++) {
       await Promise.resolve();
@@ -194,6 +195,21 @@ test("a customer's change that reaches the threshold adds the gift (both attribu
   p.emit("shopify:cart:lines-update", { won: true });
   await p.settle(2000);
   assert.equal(p.state.updates.length, 1, "our own write's event changes nothing");
+  assert.match(p.panel(), /data-state="in"/);
+});
+
+test("a cart event fires as the change STARTS (Storefront Events): the panel waits for event.promise before it reads the cart", async (t) => {
+  const p = page(t, { cart: cartOf([item("a", 1, 100000)]), onUpdate: (_payload, cart) => cartOf([...cart.items, giftLine()]) });
+  await p.settle(10);
+  let done!: () => void;
+  const promise = new Promise<void>((ok) => (done = ok));
+  p.emit("shopify:cart:lines-update", undefined, promise);
+  await p.settle(2000);
+  assert.equal(p.state.updates.length, 0, "the change is not in the cart yet: nothing to react to");
+  p.state.cart = cartOf([item("a", 1, 160000)]);
+  done();
+  await p.settle(3000);
+  assert.equal(p.state.updates.length, 1, "after the theme's change settled, the reached tier gets its gift");
   assert.match(p.panel(), /data-state="in"/);
 });
 

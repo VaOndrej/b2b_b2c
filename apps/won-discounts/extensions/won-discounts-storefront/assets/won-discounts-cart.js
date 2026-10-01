@@ -158,7 +158,11 @@
   const onChange = (e) => {
     if (e?.detail?.won || Date.now() < selfUntil) return;
     const before = view;
-    setTimeout(() => refresh().then(() => (askHint(), react(before))), 300);
+    Promise.resolve(e?.promise)
+      .catch(() => {})
+      .then(() => new Promise((ok) => setTimeout(ok, 300)))
+      .then(refresh)
+      .then(() => (askHint(), react(before)));
   };
 
   const onClick = (e) => {
