@@ -59,6 +59,8 @@ export interface Candidate {
    */
   value?: EmittedValue;
   label?: string;
+  /** A tier candidate's message when margin protection lowers it (describeCappedTierBreak: no value). */
+  cappedLabel?: string;
 }
 
 export interface WorkLine {

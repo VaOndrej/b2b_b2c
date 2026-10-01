@@ -65,6 +65,7 @@
 import { codeHash } from "./code-hash.ts";
 import { normalizeCode, type CartCampaignInput } from "./cart.ts";
 import {
+  CONFIG_LIMITS,
   isShopLocalDateTime,
   type DiscountMethod,
   type DiscountRule,
@@ -156,7 +157,24 @@ export interface EncodedShopFunctionConfig {
   payload: FunctionConfigPayload;
   json: string;
   bytes: number;
-  /** bytes <= FUNCTION_CONFIG_BUDGET_BYTES (9 000 B, ~10 % under the platform limit). */
+  /**
+   * bytes <= FUNCTION_CONFIG_BUDGET_BYTES (9 000 B, ~10 % under the platform
+   * limit) AND the tiers fit their own cap (`tiers.fits`, MVP 3 audit): a
+   * config that does not fit is never saved nor shipped.
+   */
+  fits: boolean;
+  /**
+   * The quantity tiers' part: UTF-8 bytes of `modules.tiers`, against
+   * CONFIG_LIMITS.tierPayloadBytes (550 B) — so the admin can say WHY a config
+   * does not fit. The worst case reports the largest of its measured states.
+   */
+  tiers: TierPayloadFit;
+}
+
+/** The tier part of a shop config against its cap. */
+export interface TierPayloadFit {
+  bytes: number;
+  budget: number;
   fits: boolean;
 }
 
@@ -441,10 +459,15 @@ function shipMarketCountries(config: ConfigInput, selected: CampaignInput | null
   return out;
 }
 
+function tierFit(bytes: number): TierPayloadFit {
+  return { bytes, budget: CONFIG_LIMITS.tierPayloadBytes, fits: bytes <= CONFIG_LIMITS.tierPayloadBytes };
+}
+
 function encode(payload: FunctionConfigPayload): EncodedShopFunctionConfig {
   const json = JSON.stringify(payload);
   const bytes = utf8Bytes(json);
-  return { payload, json, bytes, fits: bytes <= FUNCTION_CONFIG_BUDGET_BYTES };
+  const tiers = tierFit(utf8Bytes(JSON.stringify(payload.modules.tiers)));
+  return { payload, json, bytes, fits: bytes <= FUNCTION_CONFIG_BUDGET_BYTES && tiers.fits, tiers };
 }
 
 function build(config: ConfigInput, selected: CampaignInput | null, shopTimezone: string, shopCurrency?: string): EncodedShopFunctionConfig {
@@ -523,7 +546,9 @@ export function buildShopFunctionConfigWorstCase(
   }
   const free = build(gateConfigForPlan(config, "free").config, null, zone, currency);
   if (free.bytes > worst.bytes) worst = { ...free, campaignId: null };
-  return worst;
+  // The tiers' cap holds for every state on its own (the largest tier part need not be the largest config).
+  const tiers = tierFit(Math.max(worst.tiers.bytes, free.tiers.bytes));
+  return { ...worst, tiers, fits: worst.bytes <= FUNCTION_CONFIG_BUDGET_BYTES && tiers.fits };
 }
 
 /**

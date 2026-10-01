@@ -403,6 +403,17 @@ function tierBreakPhrase(b: DescribableTierBreak, opts: DescribeTierOptions): st
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 /**
+ * A tier break margin protection lowered (MVP 3 audit, E2E): its name without
+ * a value, so a checkout message never states more than the line gets —
+ * "Množstevní sleva od 5 ks" / "Quantity discount from 5 items".
+ */
+export function describeCappedTierBreak(b: { minQty: number }, opts: { locale: UiLocale }): string {
+  return opts.locale === "cs"
+    ? `Množstevní sleva od ${b.minQty} ks`
+    : `Quantity discount from ${b.minQty} ${enPlural(b.minQty, "item", "items")}`;
+}
+
+/**
  * One quantity break in words: "Od 3 ks −10 %" · "From 3 items −10%" ·
  * "Od 2 ks −50 Kč za kus" · "From 5 items (not offered in EUR)" (MKT-1).
  */

@@ -182,7 +182,7 @@ test("the battery reaches every code whose message names a value (the check abov
     "too_many_gift_tiers",
     "too_many_items",
     "too_many_locale_keys",
-    "too_many_margin_overrides",
+    "margin_overrides_folded",
     "too_many_markets",
     "too_many_overrides",
     "too_many_rules",

@@ -341,14 +341,15 @@ test("money maps are capped at 50 currencies with an issue", () => {
   assert.ok(hasIssue(issues, "too_many_currencies", "modules.codes.rules[0].value.amount"));
 });
 
-test("margin overrides per collection are capped with an issue", () => {
+test("margin overrides per collection are capped: the rest fold into the global setting, with an issue (audit P3-5)", () => {
   const perCollection = Array.from({ length: CONFIG_LIMITS.marginOverrides + 5 }, (_, i) => ({
     collectionId: `gid://shopify/Collection/${i}`,
     maxDiscountPercent: 20,
   }));
   const { config, issues } = sanitizeConfig({ modules: { margin: { perCollection } } });
   assert.equal(config.modules.margin.perCollection.length, CONFIG_LIMITS.marginOverrides);
-  assert.ok(hasIssue(issues, "too_many_margin_overrides"));
+  assert.ok(hasIssue(issues, "margin_overrides_folded"));
+  assert.equal(config.modules.margin.global.maxDiscountPercent, 20, "folded, never dropped");
 });
 
 test("storedConfigBytes is the documented 256 KiB backstop", () => {

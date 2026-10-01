@@ -160,12 +160,18 @@ function betterName(outcome: { betterRuleIds?: string[] }, plan: CartPlan, local
 
 // --- Quantity tiers (MVP 3) -----------------------------------------------------------------------
 
-/** The break every contributing line reached ("od 3 ks −10 %"), or null when they differ. */
+/**
+ * The break every contributing line reached ("od 3 ks −10 %"), or null when
+ * they differ; without its value ("od 3 ks") when margin protection lowered it
+ * on some line — never a value a line does not get.
+ */
 function uniformBreak(tier: TierOutcome, plan: CartPlan, locale: UiLocale): string | null {
   const contributing = new Set(tier.lineIds);
   const reached = tier.groups.filter((g) => g.lineIds.some((id) => contributing.has(id))).map((g) => g.reached);
   const first = reached[0];
   if (!first || reached.some((r) => r?.minQty !== first.minQty)) return null;
+  const capped = plan.lines.some((l) => contributing.has(l.lineId) && l.marginCapped);
+  if (capped) return locale === "cs" ? `od ${first.minQty} ks` : `from ${first.minQty} ${enPlural(first.minQty, "item", "items")}`;
   const text = describeTierBreak(tierStepBreak(first, plan.currency), { locale, currency: plan.currency });
   return text.charAt(0).toLowerCase() + text.slice(1);
 }

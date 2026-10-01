@@ -8,8 +8,17 @@
 // Per product the block reads the product metafield's `tierRef` (targeting.ts)
 // and per variant the `pdp` metafield (`PdpMetafieldValue`).
 //
-// buildStorefrontConfig builds it (sync, T3); pdpMaxDiscountPercent computes the
-// variant `pdp` metafield (K4) with the SAME floor math as checkout (margin.ts).
+// buildStorefrontConfig builds it (sync, T3); pdpFloor computes the variant
+// `pdp` metafield (contract K4 v2, audit MVP 3 P1-1/P2-4): the item's FLOOR in
+// the shop currency — exactly the engine's `floorUnit` (margin.ts) — and the
+// margin key `k` it was computed under. The storefront config's `margin`
+// carries the same `k` and the shop currency `cur`; the PDP uses a `pdp` only
+// when its `k` is the config's, converts the floor into a foreign currency as
+// ceil(f × rate × 10^exp / 10^exp_shop) + 1 minor unit, and otherwise promises
+// nothing for a variant with a purchase cost (fail closed). A floor does not
+// depend on the price, so a price change (or a market's own price list) never
+// makes it stale; any change of the margin settings or the shop currency
+// changes `k`. pdpMaxDiscountPercent (K4 v1) stays until the sync switches.
 
 import { variantKey } from "./cart.ts";
 import {
@@ -23,6 +32,7 @@ import {
   type WonDiscountsConfig,
 } from "./config.ts";
 import { buildMarginPayload, costMinorUnits, marginFloorUnit, resolveMargin } from "./margin.ts";
+import { fnv1a32Hex } from "./code-hash.ts";
 import { currencyExponent, moneyFor } from "./money.ts";
 import { globalTierSet, reachableTierSets } from "./tiers.ts";
 
@@ -57,6 +67,14 @@ export type StorefrontMargin =
       max: number;
       /** Numeric collection id → that collection's maximum discount % (a product with several of its `marginRefs` takes the lowest). */
       col?: Record<string, number>;
+      /**
+       * K4 v2: marginKey of the gated margin + shop currency; a variant's `pdp`
+       * counts only when its `k` is this one. Present when the builder was given
+       * the shop currency (StorefrontConfigOptions.shopCurrency).
+       */
+      k?: string;
+      /** K4 v2: the shop currency (the currency of `pdp.f`), with `k`. */
+      cur?: string;
     };
 
 export interface StorefrontConfigV1 {
@@ -76,20 +94,28 @@ export interface StorefrontConfigV1 {
 }
 
 /**
- * Variant metafield `$app:won_discounts`/`pdp`: the largest discount % margin
- * protection allows on the variant at its price in the shop currency, one
- * decimal, rounded DOWN. Written only for variants with a known purchase cost
- * while margin protection is on (absent otherwise). The function never reads it.
+ * Variant metafield `$app:won_discounts`/`pdp` (contract K4 v2): `f` = the
+ * lowest price of one item in minor units of the SHOP currency — exactly the
+ * engine's `floorUnit` for a cart in the shop currency — and `k` = the
+ * marginKey it was computed under. Written only for variants with a known
+ * purchase cost while margin protection is on (absent otherwise). The function
+ * never reads it; the purchase cost itself never reaches a page.
  */
 export interface PdpMetafieldValue {
-  max: number;
+  f: number;
+  k: string;
 }
-
-// --- Builder (K5) -----------------------------------------------------------------------------
 
 export interface StorefrontConfigOptions {
   /** The ShopConfig version the config was read from (`cv`). */
   configVersion: string;
+  /**
+   * The shop currency (Admin `shop.currencyCode`): K4 v2's `margin.cur`, and
+   * part of `margin.k`. Required by K4 v2 — optional only while the sync has
+   * not switched to it (without it `k` and `cur` are left out, and a PDP
+   * reading K4 v2 promises nothing for variants with a purchase cost).
+   */
+  shopCurrency?: string;
 }
 
 /** A value under a key that may be an Object.prototype name ("__proto__"): always an own, enumerable entry. */
@@ -130,16 +156,20 @@ function storefrontSet(set: SetLike): StorefrontTierSet {
   return { count: set.countAcross, breaks };
 }
 
-function storefrontMargin(margin: ReadonlyDeep<MarginModule>): StorefrontMargin {
+function storefrontMargin(margin: ReadonlyDeep<MarginModule>, shopCurrency: string | undefined): StorefrontMargin {
   const payload = buildMarginPayload(margin);
   if (!payload.enabled) return { on: false };
-  const out: StorefrontMargin = { on: true, max: payload.max };
+  const out: Extract<StorefrontMargin, { on: true }> = { on: true, max: payload.max };
   if (payload.col) {
     const col: Record<string, number> = {};
     // Every margin collection with its EFFECTIVE maximum (empty = the global
     // value): the lowest over a product's refs is then exactly resolveMargin's.
     for (const key of Object.keys(payload.col)) setOwn(col, key, payload.col[key][1] ?? payload.max);
     out.col = col;
+  }
+  if (shopCurrency !== undefined) {
+    out.k = marginKey(margin, shopCurrency);
+    out.cur = shopCurrency;
   }
   return out;
 }
@@ -175,13 +205,72 @@ export function buildStorefrontConfig(gated: ReadonlyDeep<WonDiscountsConfig>, o
     v: STOREFRONT_CONFIG_VERSION,
     cv: opts.configVersion,
     tiers: { global: globalTierSet(reachable)?.id ?? null, sets },
-    margin: storefrontMargin(gated.modules.margin),
+    margin: storefrontMargin(gated.modules.margin, opts.shopCurrency),
     appearance: { preset: (APPEARANCE_PRESETS as readonly string[]).includes(preset) ? preset : "default" },
     texts: storefrontTexts(gated.locales),
   };
 }
 
-// --- K4: the variant `pdp` metafield ------------------------------------------------------------
+// --- K4 v2: the variant `pdp` metafield ------------------------------------------------------------
+
+/**
+ * A short, stable key of everything an item's floor depends on besides its
+ * cost and collections: whether protection is on, the global minimum margin
+ * and maximum discount, every collection's [minimum, maximum] (in collection
+ * id order, so reordering changes nothing), and the shop currency (the
+ * currency of `pdp.f`). Any change that could move a floor changes the key.
+ * FNV-1a 32 bit as 8 hex digits (code-hash.ts) of a canonical text.
+ */
+export function marginKey(margin: ReadonlyDeep<MarginModule>, shopCurrency: string): string {
+  const payload = buildMarginPayload(margin);
+  const text = !payload.enabled
+    ? `off|${shopCurrency}`
+    : [
+        "on",
+        String(payload.min ?? 0),
+        String(payload.max),
+        shopCurrency,
+        ...Object.keys(payload.col ?? {})
+          .sort((a, b) => a.length - b.length || (a < b ? -1 : a > b ? 1 : 0))
+          .map((key) => `${key}:${payload.col![key][0] ?? "-"},${payload.col![key][1] ?? "-"}`),
+      ].join("|");
+  return fnv1a32Hex(text);
+}
+
+export interface PdpFloorInput {
+  /** The variant's cost as the cost mirror has it (variant metafield `cost`: MAJOR units); absent = unknown. */
+  unitCost?: number | null;
+  /** The cost's currency (metafield `cur`); must equal `shopCurrency` exactly. */
+  costCurrency?: string | null;
+  /** The shop currency (Admin `shop.currencyCode`). */
+  shopCurrency: string;
+  /** The GATED config's margin module. */
+  margin: ReadonlyDeep<MarginModule>;
+  /** The product's collections (GIDs or numeric ids); those with a margin setting decide, as at checkout. */
+  collectionIds: readonly string[];
+}
+
+/**
+ * K4 v2: the variant `pdp` value — `f` = exactly the engine's floorUnit of one
+ * item for a cart in the shop currency (margin.ts costMinorUnits at rate 1,
+ * resolveMargin over the product's collections, marginFloorUnit; with a known
+ * cost the floor does not depend on the price), `k` = marginKey. null when
+ * protection is off or the cost is unusable (none, ≤ 0, another currency): the
+ * metafield is then not written.
+ */
+export function pdpFloor(input: PdpFloorInput): PdpMetafieldValue | null {
+  const shopCurrency = input.shopCurrency;
+  const payload = buildMarginPayload(input.margin, shopCurrency);
+  if (!payload.enabled) return null;
+  const costMinor = costMinorUnits(input.unitCost ?? undefined, input.costCurrency ?? undefined, 1, shopCurrency, shopCurrency);
+  if (costMinor === null) return null;
+  const settings = resolveMargin(payload, input.collectionIds.map(variantKey));
+  if (!settings) return null;
+  const { floorUnit } = marginFloorUnit({ unitPrice: 0, costMinor, ...settings });
+  return { f: floorUnit, k: marginKey(input.margin, shopCurrency) };
+}
+
+// --- K4 v1 (deprecated): the largest discount % ------------------------------------------------------
 
 export interface PdpMaxDiscountInput {
   /** Price of one item, minor units of the SHOP currency. */
@@ -199,6 +288,10 @@ export interface PdpMaxDiscountInput {
 }
 
 /**
+ * @deprecated K4 v1 — replaced by pdpFloor (K4 v2, audit MVP 3 P1-1: a percent
+ * of the shop-currency price over-promises in a market with its own price
+ * list). Kept only until the sync writes `pdp` = pdpFloor; then removed.
+ *
  * The largest discount % margin protection allows on the variant at its price
  * in the shop currency (K4): (price − floor) / price, in tenths of a percent
  * ROUNDED DOWN, where the floor is margin.ts marginFloorUnit with the cost

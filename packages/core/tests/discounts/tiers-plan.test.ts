@@ -362,7 +362,15 @@ test("margin protection lowers a tier like any product discount (exact amount, s
   const l1 = lineOf(plan, "L1");
   assert.equal(l1.product?.amount, 45_00);
   assert.deepEqual(l1.product?.value, { fixedTotal: 45_00 });
-  assert.equal(l1.product?.message, `Od 3 ks −20${NBSP}%`);
+  // Audit (E2E): a capped tier never names a value the line does not get — the break without its value.
+  assert.equal(l1.product?.message, "Množstevní sleva od 3 ks");
+  const en = planCart(cartOf([pline("L1", 1, 100_00, 3, { unitCost: 85, unitCostCurrency: "CZK" })], { locale: "en" }), payload);
+  assert.equal(lineOf(en, "L1").product?.message, "Quantity discount from 3 items");
+  assert.deepEqual(emitForNode(plan, { kind: "automatic" }, null).productCandidates.map((c) => c.message), ["Množstevní sleva od 3 ks"]);
+  // Uncapped (cost 50 Kč: room for 20 %): the break with its value.
+  const free = planCart(cartOf([pline("L1", 1, 100_00, 3, { unitCost: 50, unitCostCurrency: "CZK" })]), payload);
+  assert.equal(lineOf(free, "L1").product?.message, `Od 3 ks −20${NBSP}%`);
+  assert.ok(explainPlan(plan, "cs").some((i) => i.text === `Množstevní sleva (od 3 ks) ušetří 45${NBSP}Kč na 1 položce.`), JSON.stringify(explainPlan(plan, "cs")));
   assert.deepEqual(l1.product?.components, [{ ruleId: "tier:g", method: "automatic", module: "tiers", amount: 45_00 }]);
   assert.deepEqual([l1.marginCapped?.before, l1.marginCapped?.after], [60_00, 45_00]);
   assert.equal(tier(plan, "g").state, "applied");

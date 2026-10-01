@@ -114,12 +114,24 @@ export function sanitizeMargin(v: unknown, issues: ConfigIssue[]): MarginModule 
         .filter((x): x is MarginCollectionOverride => x !== null)
     : [];
   if (perCollection.length > CONFIG_LIMITS.marginOverrides) {
+    // Audit P3-5: the collections over the limit are FOLDED into the global setting, the strictest value wins
+    // (exactly as plan-gate.ts folds them on Free) — dropping them would give their products the looser global floor.
+    const extra = perCollection.slice(CONFIG_LIMITS.marginOverrides);
+    for (const o of extra) {
+      if (o.maxDiscountPercent !== undefined) global.maxDiscountPercent = Math.min(global.maxDiscountPercent, o.maxDiscountPercent);
+      if (o.minMarginPercent !== undefined) global.minMarginPercent = Math.max(global.minMarginPercent ?? 0, o.minMarginPercent);
+    }
     pushIssue(
       issues,
       "modules.margin.perCollection",
-      "too_many_margin_overrides",
-      `At most ${CONFIG_LIMITS.marginOverrides} collections can have their own margin setting (the discount function reads them from a size-limited config); the first ${CONFIG_LIMITS.marginOverrides} are kept, ${perCollection.length - CONFIG_LIMITS.marginOverrides} more were dropped.`,
-      { max: CONFIG_LIMITS.marginOverrides, count: perCollection.length - CONFIG_LIMITS.marginOverrides },
+      "margin_overrides_folded",
+      `At most ${CONFIG_LIMITS.marginOverrides} collections can have their own margin setting (the discount function reads them from a size-limited config); the first ${CONFIG_LIMITS.marginOverrides} are kept, ${extra.length} more were merged into the store-wide setting (the strictest value wins).`,
+      {
+        max: CONFIG_LIMITS.marginOverrides,
+        count: extra.length,
+        maxDiscountPercent: global.maxDiscountPercent,
+        minMarginPercent: global.minMarginPercent ?? 0,
+      },
     );
     perCollection = perCollection.slice(0, CONFIG_LIMITS.marginOverrides);
   }

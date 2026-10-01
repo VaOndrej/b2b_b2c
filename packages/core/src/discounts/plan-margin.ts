@@ -100,7 +100,10 @@ export function applyMarginProtection(work: WorkLine[], ctx: StackContext): void
       headroom,
     );
     const sameComponents = kept.length === stack.components.length;
-    w.product = kept.length > 0 ? restack(kept, { fixedTotal: headroom }, ctx, sameComponents ? stack.message : undefined) : null;
+    // A lowered tier names its break without a value (describeCappedTierBreak): never more than the line gets.
+    const tierMessage = stack.components.length === 1 && stack.components[0].module === "tiers" ? w.tier?.cappedLabel : undefined;
+    const message = tierMessage ?? (sameComponents ? stack.message : undefined);
+    w.product = kept.length > 0 ? restack(kept, { fixedTotal: headroom }, ctx, message) : null;
     w.marginCapped = {
       before: stack.amount,
       after: headroom,

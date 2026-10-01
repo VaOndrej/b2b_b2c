@@ -53,19 +53,24 @@
 //    pool is the MAX_STACK_CANDIDATES best-ranked RULE candidates of the line,
 //    as without tiers; the search's starting total is the best single
 //    candidate of the line, the tier included, so a Pro stack of rules beats
-//    the tier only with a larger total (plan.ts pick). It then goes through
-//    margin protection like any product stack (a capped tier is {fixedTotal:
-//    headroom} with the same message), the Free product/order switch (the
-//    losing category's candidates are dropped) and
-//    the output (function-output.ts) unchanged. Its owner is the tier itself,
-//    method automatic: ONLY the automatic node emits it.
+//    the tier only with a larger total (plan.ts pick). Then, unchanged from
+//    any product stack: margin protection, the Free product/order switch (the
+//    losing category's candidates are dropped) and the output
+//    (function-output.ts). Its owner is the tier itself, method automatic:
+//    ONLY the automatic node emits it.
+// 7. Margin protection lowering a tier (MVP 3 audit, E2E: a checkout message
+//    never names more than the line gets): the stack becomes {fixedTotal:
+//    headroom} as any capped stack, and its message is the reached break
+//    WITHOUT a value — describe.ts describeCappedTierBreak: cs "Množstevní
+//    sleva od <minQty> ks"; en "Quantity discount from <minQty> item" when
+//    minQty is 1, "… items" otherwise. An uncapped tier keeps step 5's message.
 // Campaign overrides never touch a tier (MVP 3; overrides of tier sets come
 // in MVP 6). Outcomes, groups and the hint below are TS-only (admin,
-// storefront): the function needs steps 1–6 alone.
+// storefront): the function needs steps 1–7 alone.
 // ===========================================================================================
 
 import type { NormalizedLine, PlanLocale } from "./cart.ts";
-import { type DescribableTierBreak, describeTierBreak } from "./describe.ts";
+import { type DescribableTierBreak, describeCappedTierBreak, describeTierBreak } from "./describe.ts";
 import type { EmittedValue, TierHint, TierOutcome, TierState, TierStep } from "./plan.ts";
 import type { Candidate, Rule, WorkLine } from "./plan-internal.ts";
 import { readTiersPayload, type TierBreakRead, type TierSetRead } from "./tiers.ts";
@@ -204,9 +209,10 @@ export function prepareTiers(work: WorkLine[], raw: unknown, locale: PlanLocale,
       sw.reachedAny = true;
       let text = labels.get(reached.minQty);
       if (text === undefined) labels.set(reached.minQty, (text = describeTierBreak(tierStepBreak(reached, currency), { locale, currency })));
+      const cappedText = describeCappedTierBreak(reached, { locale });
       for (const w of lines) {
         const { amount, value } = amountOn(reached, w.line);
-        w.tier = amount > 0 ? { rule: sw.rule, amount, value, label: text } : null;
+        w.tier = amount > 0 ? { rule: sw.rule, amount, value, label: text, cappedLabel: cappedText } : null;
       }
     }
   }

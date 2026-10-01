@@ -35,7 +35,9 @@ import type { ConfigIssue, TierBreak, TierSet, TierSetScope } from "./types.ts";
 //   duplicate_tier_break         a minQty already given → the later break is dropped {minQty};
 //   tier_break_other_kind        not the kind of the set's lowest break → dropped {minQty};
 //   tier_break_lower_value       worth less than a lower break (in some currency) → dropped {minQty};
-//   duplicate_tier_set_id        an id already used → the later set is dropped {id}.
+//   duplicate_tier_set_id        an id already used → the later set is dropped {id};
+//   invalid_tier_scope           `scope` neither "global" nor an object → an INERT scoped set
+//                                (`{}`: no product, no collection; never the global set, audit P3-2).
 // A percent outside 0–100 is clamped (clamped_percent); `percent: null` is no
 // percent; a percent that is not a number is invalid_percent: next to a usable
 // amount the amount is kept {…, fallback: "amount", minQty} (it is no second
@@ -113,7 +115,10 @@ function sanitizeTierSetScope(v: unknown, issues: ConfigIssue[], path: string): 
     }
     return out;
   }
-  return "global";
+  // Fail closed (audit P3-2): an unreadable scope selects nothing — read as "global" it would wake up as the
+  // store-wide set (a later global set takes over when the first one is emptied).
+  pushIssue(issues, path, "invalid_tier_scope", "A tier set's scope was neither the whole store nor a selection; it now selects nothing.");
+  return {};
 }
 
 type PathedBreak = { b: TierBreak; path: string };

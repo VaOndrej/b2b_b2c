@@ -23,6 +23,18 @@ export const CONFIG_LIMITS = Object.freeze({
   breaksPerTierSet: 10,
   /** Largest `minQty` of a quantity break, whole items (MVP 3): larger is lowered to it, with an issue. */
   tierMinQty: 10_000,
+  /**
+   * Most UTF-8 bytes of the quantity tiers in the shop config (`modules.tiers`
+   * as tiers.ts buildTiersPayload writes it), for the stored config AND the
+   * config gated for Free (MVP 3 audit, controller ruling on the measured
+   * function budget, task-2-report "Cap measurement": every constructed
+   * family ≤ 99.16 %, the realistic Pro carts ≤ 89.72 % of Shopify's
+   * instruction limit). Over it the config does not fit (function-payload.ts
+   * `fits`, its own figures in `tiers`): saving refuses it, the sync never
+   * ships it. Holds a global set and 7 scoped percent sets of 3 breaks, or 4
+   * CZK + EUR amount sets of 3 breaks.
+   */
+  tierPayloadBytes: 550,
   giftTiers: 10,
   campaigns: 50,
   overridesPerCampaign: 200,

@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { type DescribableTierBreak, describeTierBreak, describeTierSet, describeTierValue } from "../../src/discounts/describe.ts";
+import { type DescribableTierBreak, describeCappedTierBreak, describeTierBreak, describeTierSet, describeTierValue } from "../../src/discounts/describe.ts";
 
 const NBSP = " ";
 const PERCENT_SET = { breaks: [{ minQty: 3, percent: 10 }, { minQty: 5, percent: 15 }] };
@@ -67,4 +67,10 @@ test("describeTierValue: what a break takes off each item, as describeTierBreak 
   assert.equal(describeTierValue(AMOUNT_SET.breaks[0], { locale: "cs", currency: "CZK" }), `−50${NBSP}Kč za kus`);
   assert.equal(describeTierValue(AMOUNT_SET.breaks[0], { locale: "en" }), "−CZK 50 / €2 per item");
   assert.equal(describeTierValue(AMOUNT_SET.breaks[1], { locale: "en", currency: "EUR" }), "");
+});
+
+test("describeCappedTierBreak: a tier margin protection lowered — the break without its value", () => {
+  assert.equal(describeCappedTierBreak({ minQty: 5 }, { locale: "cs" }), "Množstevní sleva od 5 ks");
+  assert.equal(describeCappedTierBreak({ minQty: 5 }, { locale: "en" }), "Quantity discount from 5 items");
+  assert.equal(describeCappedTierBreak({ minQty: 1 }, { locale: "en" }), "Quantity discount from 1 item");
 });

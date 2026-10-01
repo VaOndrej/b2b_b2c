@@ -13,7 +13,11 @@
 import { normalizeCode } from "./cart.ts";
 
 export function codeHash(code: string): string {
-  const text = normalizeCode(code);
+  return fnv1a32Hex(normalizeCode(code));
+}
+
+/** FNV-1a, 32 bit, over the UTF-16 units of `text`, as 8 lowercase hex digits. */
+export function fnv1a32Hex(text: string): string {
   let hash = 0x811c9dc5;
   for (let i = 0; i < text.length; i++) {
     hash ^= text.charCodeAt(i);

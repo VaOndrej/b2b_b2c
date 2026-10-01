@@ -113,22 +113,22 @@ test("shop config: margin ships compact (tuples keyed by numeric collection id) 
 });
 
 /**
- * A realistic Pro quantity-tier setup (MVP 3): 10 sets (one global, 9 on 20
- * collections and a product each; admin-style 22-character ids), 5 breaks
- * each, every break an amount per item in CZK and EUR (the largest form: a
- * percent break is shorter).
+ * Pro quantity tiers at their cap (MVP 3 audit: CONFIG_LIMITS.tierPayloadBytes,
+ * 550 B): 5 sets (one global, 4 on 20 collections and a product each;
+ * admin-style 22-character ids), counted per product, 3 breaks each, every
+ * break an amount per item in CZK and EUR (the largest form per break).
  */
-const PRO_TIERS = Array.from({ length: 10 }, (_, i) => ({
+const PRO_TIERS = Array.from({ length: 5 }, (_, i) => ({
   id: `t_${(0xabcdef0123 + i * 7919).toString(16).padStart(20, "0")}`,
   scope: i === 0 ? "global" : { collectionIds: Array.from({ length: 20 }, (_, k) => C(400_000_000_000 + i * 100 + k)), productIds: [P(8_000_000_000_000 + i)] },
-  countAcross: (["line", "product", "cart"] as const)[i % 3],
-  breaks: [2, 3, 5, 10, 20].map((minQty, k) => ({
+  countAcross: "product",
+  breaks: [2, 5, 10].map((minQty, k) => ({
     minQty,
-    amountOff: { CZK: [25_00, 50_00, 100_00, 250_00, 500_00][k], EUR: [1_00, 2_00, 4_00, 10_00, 20_00][k] },
+    amountOff: { CZK: [20_00, 50_00, 90_00][k], EUR: [1_00, 2_00, 4_00][k] },
   })),
 }));
 
-test("shop config budget: 500 codes, the worst-case margin (the most collections, 13-digit ids, two-decimal min and max) AND realistic Pro tiers fit 9 000 B", () => {
+test("shop config budget: 500 codes, the worst-case margin (the most collections, 13-digit ids, two-decimal min and max) AND Pro tiers at their cap fit 9 000 B", (t) => {
   // The limits guarantee the margin part: at most CONFIG_LIMITS.marginOverrides collections (50 since
   // MVP 3: at 100, 500 codes and the margin alone took 8 890 B), and margin percents keep one decimal
   // (the sanitizer rounds 33.33 → 33.4 and 66.67 → 66.6), so no entry is longer than
@@ -148,7 +148,9 @@ test("shop config budget: 500 codes, the worst-case margin (the most collections
   });
   assert.deepEqual(sanitizeConfig(config).issues, []);
   const encoded = buildShopFunctionConfig(config, { now: FIXTURE_NOW, shopTimezone: FIXTURE_TZ, shopCurrency: "CZK" });
-  assert.equal(encoded.payload.modules.tiers.sets.length, 10);
+  assert.equal(encoded.payload.modules.tiers.sets.length, 5);
+  assert.ok(encoded.tiers.bytes > 450 && encoded.tiers.bytes <= CONFIG_LIMITS.tierPayloadBytes, String(encoded.tiers.bytes));
+  t.diagnostic(`whole config ${encoded.bytes} B, tiers ${encoded.tiers.bytes} B`);
   const col = (encoded.payload.modules.margin as { col: Record<string, unknown> }).col;
   assert.equal(Object.keys(col).length, 50);
   assert.deepEqual(col["9000000000000"], [33.4, 66.6]);
