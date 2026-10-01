@@ -37,6 +37,12 @@
   font: inherit;
   color: inherit;
   cursor: pointer;
+  /* Tap targets at least 44 × 44 px (WCAG 2.5.5), the text-link buttons included. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
 }
 .won-cart__row button,
 .won-cart__applied button {
@@ -66,6 +72,8 @@
 }
 .won-cart__code input {
   font: inherit;
+  box-sizing: border-box;
+  min-height: 2.75rem;
   padding: 0.5rem;
   border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
   border-radius: 0.25rem;
