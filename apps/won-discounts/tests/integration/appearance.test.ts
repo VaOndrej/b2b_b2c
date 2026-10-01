@@ -131,3 +131,27 @@ test("F12: the look changed in another tab meanwhile → base_changed, nothing o
   assert.deepEqual(await saveAppearance(ctx, "chips", { configVersion: version }), { ok: false, reason: "base_changed" });
   assert.equal((await loadConfig(db.prisma, shop)).config.storefront.appearancePreset, "tiles");
 });
+
+test("BILL-1 (review fix 2): a downgraded Free shop's inert Pro set is never the looks' sample; the product shown gets the set shown", async () => {
+  const store = storeWithTheme();
+  // Two recent products: the first carries a Pro tierRef (its own set / no tier) → never the whole-store preview product.
+  store.overrides.set("WonTiersPreviewProduct", () => ({
+    data: {
+      shop: { currencyCode: "CZK", currencyFormats: { moneyFormat: "{{amount}} Kč" } },
+      products: {
+        nodes: [
+          { id: "gid://shopify/Product/8", title: "Mikina v Pro sadě", onlineStoreUrl: "https://won.example/products/a", variants: { nodes: [{ price: "500.00" }] }, wonRefs: { value: '{"ruleIds":[],"tierRef":"t_pro"}' } },
+          { id: "gid://shopify/Product/9", title: "Čepice", onlineStoreUrl: "https://won.example/products/b", variants: { nodes: [{ price: "300.00" }] }, wonRefs: { value: '{"ruleIds":["r1"]}' } },
+        ],
+      },
+    },
+  }));
+  const base = (await loadConfig(db.prisma, shop)).config;
+  await saveConfig(db.prisma, shop, {
+    ...base,
+    modules: { ...base.modules, tiers: { sets: [{ id: "t_pro", scope: { productIds: ["gid://shopify/Product/8"] }, countAcross: "line", breaks: [{ minQty: 2, percent: 30 }] }] } },
+  });
+  const free = await loadAppearanceScreen(ctxFor(store), { scopes: "read_themes" });
+  assert.equal(free.sample, null, "on Free the Pro set is inert: the looks show the labelled example");
+  assert.equal(free.product?.title, "Čepice", "a product without a Pro tierRef — it would get the whole-store set");
+});

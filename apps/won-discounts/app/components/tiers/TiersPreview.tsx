@@ -4,12 +4,19 @@
 // (assets/won-discounts-tiers.css, imported as text — the same file the theme
 // loads) confined to the preview container (scope-css.ts), its OWN texts (the
 // extension's locales, cs or en by the admin language) and its arithmetic
-// (model/tiers.ts previewTiers, step for step the block's), on the live theme's
+// (model/tiers.ts previewTiers, a port of won-discounts-tiers-core.js `compute`
+// pinned by a parity test), on the live theme's
 // tokens (fonts, colors, the input radius the CSS reads, the block's accent —
 // integration/themes.server.ts). Prices are written with the shop's money format
 // like the storefront. What it cannot know is said under it (§12): the font
 // shows only if the device has it; margin protection may lower a tier; an
 // example set / product is labelled "Ukázka".
+//
+// By design it renders the K8 markup WITHOUT the block's
+// `<script type="application/json" data-won-discounts-tiers-data>` (the admin
+// never runs the storefront script; the preview is computed here), and like the
+// block it renders `data-state="empty"` + `hidden` when nothing is offered in
+// the currency (MKT-1) — the note under it then says why.
 //
 // One component for every preview surface (A1): the Množstevní slevy screen,
 // the four looks on Vzhled and the dev harness. The admin controls around it
@@ -22,11 +29,12 @@ import csStorefront from "../../../extensions/won-discounts-storefront/locales/c
 import enStorefront from "../../../extensions/won-discounts-storefront/locales/en.default.json?raw";
 import tiersCss from "../../../extensions/won-discounts-storefront/assets/won-discounts-tiers.css?raw";
 import { APPEARANCE_PRESETS } from "@won/core/discounts/config";
+import { currencyExponent } from "@won/core/discounts/money";
 
 import { useT } from "../../i18n/context";
 import type { Locale } from "../../i18n";
 import { presetLabel } from "../model/appearance";
-import { formatShopMoney, previewTiers, TIERS_SAMPLE_SET, TIER_MIN_QTY_MAX } from "../model/tiers";
+import { formatLiquidMoney, previewTiersLiquid, TIERS_SAMPLE_SET, TIER_MIN_QTY_MAX } from "../model/tiers";
 import type { AppearancePresetView, PreviewProductView, ThemeTokensView, TierSetView } from "../model/types";
 import { selectionRing, WON_AMBER_TEXT, WON_FAINT, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SURFACE } from "../shell/tokens";
 import { scopeCss } from "./scope-css";
@@ -139,8 +147,10 @@ export function TiersPreview({
   const [quantity, setQuantity] = useState<number>(Math.max(1, initialQuantity ?? firstMin));
   const shopCurrency = product?.currency ?? (currency && /^[A-Z]{3}$/.test(currency) ? currency : "CZK");
   const unitPrice = product?.unitPrice ?? SAMPLE_PRICE;
-  const money = (minor: number) => formatShopMoney(minor, shopCurrency, product?.moneyFormat ?? null, locale);
-  const model = useMemo(() => previewTiers(shown, { unitPrice, currency: shopCurrency, quantity }), [shown, unitPrice, shopCurrency, quantity]);
+  // The block computes and writes money in Liquid money units (major × 100) — so does the preview.
+  const money = (cents: number) => formatLiquidMoney(cents, shopCurrency, product?.moneyFormat ?? null, locale);
+  const model = useMemo(() => previewTiersLiquid(shown, { unitPrice, currency: shopCurrency, quantity }), [shown, unitPrice, shopCurrency, quantity]);
+  const priceCents = Math.round(unitPrice * 10 ** (2 - currencyExponent(shopCurrency)));
   const activePreset = controls ? look : preset;
   const accent = tokens?.colorAccent ?? null;
 
@@ -179,7 +189,7 @@ export function TiersPreview({
         ))}
       </ol>
       <p className="won-tiers__live" data-won-discounts-live-price="" data-unit-cents={model.unitPrice} aria-live="polite">
-        {storefrontText(locale, "live", { qty: quantity, total: money(model.unitPrice * quantity), price: money(model.unitPrice) })}
+        {storefrontText(locale, "live", { qty: quantity, total: money(model.total), price: money(model.unitPrice) })}
       </p>
       {model.next ? (
         <p className="won-tiers__next" data-won-discounts-tier-next="">
@@ -204,7 +214,7 @@ export function TiersPreview({
       {bare ? null : (
         <div style={{ fontSize: 13, fontWeight: 700, color: WON_INK }}>
           {t("tiers.preview.title")}
-          {sample ? <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 700, color: WON_AMBER_TEXT }}>{t("margin.collections.sample")}</span> : null}
+          {sample ? <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 700, color: WON_AMBER_TEXT }}>{t("tiers.sample")}</span> : null}
         </div>
       )}
       {controls ? (
@@ -244,7 +254,7 @@ export function TiersPreview({
             <div style={{ fontFamily: fontStack(tokens?.fontHeading ?? tokens?.fontBody ?? null), fontWeight: 600, fontSize: "1.15em" }}>
               {product?.title?.trim() || (product ? t("common.untitledProduct") : t("tiers.preview.sampleProduct"))}
             </div>
-            <div style={{ opacity: 0.85 }}>{money(unitPrice)}</div>
+            <div style={{ opacity: 0.85 }}>{money(priceCents)}</div>
           </div>
           {block}
           {model.empty ? <div style={{ fontSize: 13, opacity: 0.8 }}>{t("tiers.preview.notOffered", { currency: shopCurrency })}</div> : null}

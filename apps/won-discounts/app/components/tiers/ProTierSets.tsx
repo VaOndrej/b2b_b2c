@@ -47,6 +47,8 @@ export function ProTierSets({
   onPick,
   pickUnavailable,
   onRowsChange,
+  productsWithSets = null,
+  storedIds,
 }: {
   pro: boolean;
   /** The Pro sets as the page holds them (stored ones + added ones, with picked scopes). */
@@ -62,6 +64,10 @@ export function ProTierSets({
   onPick: (id: string, kind: "products" | "collections") => void;
   pickUnavailable: boolean;
   onRowsChange: () => void;
+  /** Pro: products per stored set as the last sync wrote them (null = Free or unknown — nothing is said). */
+  productsWithSets?: Readonly<Record<string, number>> | null;
+  /** Ids of the sets as stored (a set added on this page has no count yet). */
+  storedIds?: ReadonlySet<string>;
 }) {
   const tr = useT();
   const { t } = tr;
@@ -85,6 +91,9 @@ export function ProTierSets({
                   <input type="hidden" name={F.set} value={sid} />
                   <s-stack direction="block" gap="base">
                     {set.scope.kind === "global" ? <RowNote tone="attention">{t("tiers.pro.extraGlobal")}</RowNote> : null}
+                    {productsWithSets && storedIds?.has(sid) && set.scope.kind === "selection" ? (
+                      <RowNote>{tr.tp("tiers.pro.products", productsWithSets[sid] ?? 0)}</RowNote>
+                    ) : null}
                     {pro ? (
                       <>
                         {set.scope.kind === "global" ? (
@@ -131,7 +140,7 @@ export function ProTierSets({
             })}
             {sets.length === 0 && !pro ? (
               <WonRow>
-                <span style={{ fontSize: 12, fontWeight: 700, color: WON_AMBER_TEXT }}>{t("margin.collections.sample")} · </span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: WON_AMBER_TEXT }}>{t("tiers.sample")} · </span>
                 <s-text type="strong">{t("tiers.pro.sampleName")}</s-text>
                 <RowNote>{tierSummary({ id: "sample", scope: { kind: "global" }, countAcross: "product", breaks: [{ minQty: 2, kind: "percent", percent: 5, amount: {} }, { minQty: 6, kind: "percent", percent: 8, amount: {} }] }, tr)}</RowNote>
               </WonRow>

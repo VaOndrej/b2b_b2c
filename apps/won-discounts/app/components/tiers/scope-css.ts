@@ -3,11 +3,16 @@
 // the admin preview only inside the preview container: every rule is nested
 // under the scope selector (native CSS nesting — a nested selector without `&`
 // is a descendant of the scope), so it can never style anything else in the
-// admin. At-rules that cannot be nested (@keyframes, @font-face, @property,
-// @import, @layer statements) stay top-level. Comments and strings are skipped
-// while splitting, so a "}" inside them never breaks a rule. Pure.
+// admin. Conditional group rules (@media, @supports, @container, and a
+// `@layer name { … }` BLOCK) nest with their rules, so their rules are scoped
+// too. Only what cannot be nested and styles no element stays top-level:
+// @keyframes, @font-face, @property, @import, @charset, @namespace and a
+// `@layer a, b;` STATEMENT. Comments and strings are skipped while splitting,
+// so a "}" inside them never breaks a rule. Pure.
 
-const TOP_LEVEL_AT = /^@(?:-webkit-)?(?:keyframes|font-face|property|import|layer|charset|namespace)\b/i;
+const TOP_LEVEL_AT = /^@(?:-webkit-)?(?:keyframes|font-face|property|import|charset|namespace)\b/i;
+/** `@layer a, b;` (an order statement, no block): top-level only. A `@layer x { … }` block is nested like @media. */
+const LAYER_STATEMENT = /^@layer\b[^{]*;$/i;
 
 /** Top-level CSS blocks (a rule, an at-rule with its body, or a `;` statement), comments dropped. */
 function topLevelBlocks(css: string): string[] {
@@ -54,7 +59,7 @@ function topLevelBlocks(css: string): string[] {
 export function scopeCss(css: string, scope: string): string {
   const hoisted: string[] = [];
   const nested: string[] = [];
-  for (const block of topLevelBlocks(css)) (TOP_LEVEL_AT.test(block) ? hoisted : nested).push(block);
+  for (const block of topLevelBlocks(css)) (TOP_LEVEL_AT.test(block) || LAYER_STATEMENT.test(block) ? hoisted : nested).push(block);
   const inner = nested.length > 0 ? `${scope} {\n${nested.join("\n")}\n}` : "";
   return [...hoisted, inner].filter(Boolean).join("\n");
 }

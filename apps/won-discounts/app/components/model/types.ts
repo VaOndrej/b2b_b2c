@@ -522,7 +522,8 @@ export type TiersBlockView =
 export type StorefrontSyncView =
   | { state: "synced"; at: string }
   | { state: "pending" }
-  | { state: "failed"; at: string; problems: UiText[] }
+  /** `previous` = an older storefront config is still on the site (absent = none was ever written). */
+  | { state: "failed"; at: string; problems: UiText[]; previous?: boolean }
   | { state: "missing" }
   | { state: "unknown" };
 
@@ -583,6 +584,17 @@ export interface TiersScreenData {
   block: TiersBlockView;
   storefront: StorefrontSyncView;
   preview: TiersPreviewView;
+  /**
+   * Pro: how many products carry each Pro set (`tierRef`), by set id, as the
+   * last sync wrote them (app/lib/sync/storefront.ts tierProductCounts); null
+   * on Free or when unknown. Additive (T5 fix round 1).
+   */
+  productsWithSets?: Record<string, number> | null;
+  /**
+   * engine.combination.outletWithAnything: clearance items can get a tier too
+   * (the honest sentence says so). Additive (T5 fix round 1).
+   */
+  outletWithAnything?: boolean;
 }
 
 /** Přehled card. */

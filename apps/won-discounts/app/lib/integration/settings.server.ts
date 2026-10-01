@@ -1,7 +1,7 @@
 // Nastavení (MVP 3; the MVP 1 debt: the Free per-category combination switches,
-// engine.combination, decision A1) — and the one save path every MVP 3 screen
-// (Množstevní slevy, Vzhled, Nastavení) shares, exactly like the margin screen
-// saves (integration/margin.server.ts): the shop's config lock with a bounded
+// engine.combination, decision A1) — and the one save path the module screens
+// share (Ochrana marže, Množstevní slevy, Vzhled, Nastavení): the shop's config
+// lock with a bounded
 // wait (`busy`), the stored config re-read, the F12 version token the page
 // loaded (`base_changed` ONLY when the part this page edits was changed
 // meanwhile — another tab's change elsewhere is kept and this one applied on
@@ -15,7 +15,7 @@ import { COMBINATION_FIELD, COMBINATION_INTENT, readCombinationForm } from "../.
 import { currencyViews } from "../../components/model/markets";
 import type { FormDataLike } from "../../components/model/rule-form";
 import type { CombinationView, SettingsScreenData, UiResult } from "../../components/model/types";
-import { configVersionToken, loadConfig } from "../config.server";
+import { configVersionToken, loadConfig, type LoadedConfig } from "../config.server";
 import { canonicalJson } from "../sync/util";
 import { lockedWrite, SAVE_ATTEMPTS, savedResult, writeAndSync } from "./config-write.server";
 import { graphqlOf, type ShopCtx } from "./context.server";
@@ -76,6 +76,12 @@ export async function saveConfigSection(
     pick: (config: WonDiscountsConfig) => unknown;
     apply: (config: WonDiscountsConfig) => WonDiscountsConfig;
     path: string;
+    /**
+     * After a save went through, still under the config lock: what the page's
+     * part needs next (the margin screen starts or clears its cost mirror) —
+     * gets the config as it was and as it is now, may amend the result.
+     */
+    after?: (saved: { before: LoadedConfig; config: WonDiscountsConfig; result: UiResult }) => Promise<UiResult> | UiResult;
   },
 ): Promise<UiResult> {
   return lockedWrite<UiResult>(ctx, { ok: false, reason: "busy" }, async () => {
@@ -91,7 +97,8 @@ export async function saveConfigSection(
       const res = await writeAndSync(ctx, opts.apply(loaded.config), { replaceUnreadable, expectedVersion: loaded.version });
       if (!res.save.ok && res.save.reason === "base_changed") continue;
       if (!res.save.ok) return uiFailureFromSave(res.save);
-      return savedResult({ ...res, save: res.save }, "saved", opts.path, ctx.locale);
+      const result = savedResult({ ...res, save: res.save }, "saved", opts.path, ctx.locale);
+      return opts.after ? opts.after({ before: loaded, config: res.save.config, result }) : result;
     }
     return { ok: false, reason: "base_changed" };
   });

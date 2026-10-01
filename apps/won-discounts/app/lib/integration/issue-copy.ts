@@ -63,10 +63,13 @@ const COPY: Readonly<Record<string, IssueCopy | ((issue: ConfigIssue) => IssueCo
   invalid_id: { key: "fix.invalid_id" },
   invalid_origin: { key: "fix.invalid_origin" },
   // A collection's field falls back to the store-wide setting (params.fallback "global"); a store-wide field to its default.
+  // A tier break with junk for a percent keeps its amount (params.fallback "amount", minQty — MVP 3).
   invalid_percent: (issue): IssueCopy =>
     issue.params?.fallback === "global"
       ? { key: "fix.invalid_percent_global", params: { max: percent("max") } }
-      : { key: "fix.invalid_percent", params: { max: percent("max"), fallback: percent("fallback") } },
+      : issue.params?.fallback === "amount"
+        ? { key: "fix.invalid_percent_amount", params: { min: "minQty" } }
+        : { key: "fix.invalid_percent", params: { max: percent("max"), fallback: percent("fallback") } },
   invalid_priority: { key: "fix.invalid_priority" },
   invalid_schedule: { key: "fix.invalid_schedule" },
   invalid_target: { key: "fix.invalid_target" },

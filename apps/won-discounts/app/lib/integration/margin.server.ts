@@ -2,7 +2,8 @@
 // §4.5, A2). Task 4's routes call exactly these:
 //   loadMarginScreen(ctx)             the module page (MarginScreenData);
 //   readMarginForm(form)              the form, validated on the server (SEC-1);
-//   saveMarginSettings(ctx, s, opts)  the rule-save path (config lock → `busy`,
+//   saveMarginSettings(ctx, s, opts)  the admin save path (settings.server.ts
+//                                     saveConfigSection: config lock → `busy`,
 //                                     F12 version token → `base_changed`,
 //                                     unreadable guard, saveAndSync) and then
 //                                     the cost mirror: switched on → a full
@@ -24,7 +25,7 @@
 // (ProductTargetIndex.value) with the core marginImpact — not from orders
 // (that needs read_orders; MVP 7). Loaders only read the stored result.
 
-import { createDefaultConfig, CONFIG_LIMITS, type MarginModule, type WonDiscountsConfig } from "@won/core/discounts/config";
+import { CONFIG_LIMITS, type MarginModule } from "@won/core/discounts/config";
 import { explainGate, gateConfigForPlan } from "@won/core/discounts/plan-gate";
 
 import type { MessageKey } from "../../i18n";
@@ -39,10 +40,9 @@ import type {
   MarginSettingsView,
   UiResult,
 } from "../../components/model/types";
-import { configVersionToken, loadConfig, type LoadedConfig } from "../config.server";
+import { loadConfig, type LoadedConfig } from "../config.server";
 import { costJobKind, ensureCostsFresh, startCostJob, type CostLaneDeps } from "../sync/cost-lane.server";
-import { canonicalJson } from "../sync/util";
-import { lockedWrite, SAVE_ATTEMPTS, savedResult, writeAndSync } from "./config-write.server";
+import { saveConfigSection } from "./settings.server";
 import type { ShopCtx } from "./context.server";
 import { ensureCostReconcileJob } from "../jobs/cost-reconcile.server";
 import { costCoverage, costMirrorView, offlineClient } from "./costs.server";
@@ -51,7 +51,6 @@ import { impactConfigOf, impactView, readMarginImpact } from "./margin-impact.se
 
 export { clearMarginImpactCache, marginCatalogueReads, marginImpactIdle } from "./margin-impact.server";
 export { marginTooLargeOf as marginTooLarge } from "../sync/margin-fold";
-import { uiFailureFromSave } from "./results";
 import { ctxPlan } from "./sync-status.server";
 
 /**
@@ -164,33 +163,6 @@ function toSettings(margin: MarginModule, titles: ReadonlyMap<string, string>): 
   };
 }
 
-const marginKey = (margin: MarginModule | undefined) => canonicalJson(margin ?? createDefaultConfig().modules.margin);
-
-/**
- * The margin settings of the config version the form was loaded from (F12
- * token = the hash of the stored row; ConfigVersion keeps every saved row).
- * null token = no config was stored; undefined = the version is unknown.
- */
-async function marginAtVersion(ctx: Pick<ShopCtx, "db" | "shop">, token: string | null): Promise<MarginModule | undefined> {
-  if (token === null) return createDefaultConfig().modules.margin;
-  const versions = await ctx.db.configVersion.findMany({
-    where: { shop: ctx.shop },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: 50,
-    select: { data: true },
-  });
-  for (const version of versions) {
-    if (configVersionToken(version.data) !== token) continue;
-    try {
-      const parsed = JSON.parse(version.data) as { modules?: { margin?: MarginModule } };
-      return parsed.modules?.margin ?? createDefaultConfig().modules.margin;
-    } catch {
-      return undefined;
-    }
-  }
-  return undefined;
-}
-
 /** The cost lane with the request's Admin API client (background jobs outlive the request, like the product lane). */
 function laneDeps(ctx: ShopCtx): CostLaneDeps {
   return { client: ctx.client, db: ctx.db, plan: () => ctxPlan(ctx), now: ctx.now, logger: ctx.logger };
@@ -199,34 +171,26 @@ function laneDeps(ctx: ShopCtx): CostLaneDeps {
 // --- Save ------------------------------------------------------------------------------------------
 
 /**
- * Save the margin settings the same way a rule is saved (see the header) and
- * start what the cost mirror needs. `configVersion` = the token the page
- * loaded (MarginScreenData.configVersion): another writer's save in between is
- * applied on top only when it left the margin settings as the page saw them.
+ * Save the margin settings through the admin's one save path
+ * (settings.server.ts saveConfigSection: the config lock → `busy`, the F12
+ * version token → `base_changed` only when ANOTHER writer changed the margin
+ * settings meanwhile — a change elsewhere is applied on top —, the unreadable
+ * guard, saveAndSync) and start what the cost mirror needs. `configVersion` =
+ * the token the page loaded (MarginScreenData.configVersion).
  */
 export async function saveMarginSettings(
   ctx: ShopCtx,
   settings: MarginSettingsView,
   opts: { configVersion: string | null; replaceUnreadable?: boolean },
 ): Promise<UiResult> {
-  return lockedWrite<UiResult>(ctx, { ok: false, reason: "busy" }, async () => {
-    const replaceUnreadable = opts.replaceUnreadable === true;
-    for (let attempt = 1; attempt <= SAVE_ATTEMPTS; attempt += 1) {
-      const loaded = await loadConfig(ctx.db, ctx.shop);
-      if (loaded.readOnly) return { ok: false, reason: "newer_schema" };
-      if (loaded.unreadable && !replaceUnreadable) return { ok: false, reason: "unreadable_config" };
-      if (!loaded.unreadable && loaded.version !== opts.configVersion) {
-        // F12: saved meanwhile — fine only when the margin settings are still the ones the page showed.
-        const base = await marginAtVersion(ctx, opts.configVersion);
-        if (base === undefined || marginKey(base) !== marginKey(loaded.config.modules.margin)) return { ok: false, reason: "base_changed" };
-      }
-      const wasEnabled = !loaded.unreadable && loaded.config.modules.margin.enabled === true;
-      const next: WonDiscountsConfig = { ...loaded.config, modules: { ...loaded.config.modules, margin: toModule(settings) } };
-      const res = await writeAndSync(ctx, next, { replaceUnreadable, expectedVersion: loaded.version });
-      if (!res.save.ok && res.save.reason === "base_changed") continue;
-      if (!res.save.ok) return uiFailureFromSave(res.save);
-      const result = savedResult({ ...res, save: res.save }, "saved", "modules.margin", ctx.locale);
-      const enabled = res.save.config.modules.margin.enabled === true;
+  return saveConfigSection(ctx, {
+    ...opts,
+    path: "modules.margin",
+    pick: (config) => config.modules.margin,
+    apply: (config) => ({ ...config, modules: { ...config.modules, margin: toModule(settings) } }),
+    after: async ({ before, config, result }) => {
+      const wasEnabled = !before.unreadable && before.config.modules.margin.enabled === true;
+      const enabled = config.modules.margin.enabled === true;
       let costs = false;
       if (enabled && !wasEnabled) {
         // Switched on: every variant's cost from the start. Until it is written, checkout applies the percent
@@ -241,8 +205,7 @@ export async function saveMarginSettings(
       }
       if (costs && result.ok) return { ...result, syncing: { ...(result.syncing ?? {}), costs: true } };
       return result;
-    }
-    return { ok: false, reason: "base_changed" };
+    },
   });
 }
 

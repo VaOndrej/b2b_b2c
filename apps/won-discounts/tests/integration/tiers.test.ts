@@ -344,7 +344,9 @@ test("Vyzkoušet košík: the tier on the line (tagged, no raw id), the engine's
   const { parseProductRefs, planTryCart } = await import("../../app/lib/integration/try-cart-plan.ts");
   const { readStoredConfig } = await import("@won/core/discounts/config");
   assert.deepEqual(parseProductRefs(JSON.stringify({ ruleIds: [], tierRef: "t_scoped" })).tierRef, "t_scoped");
-  assert.equal(parseProductRefs(JSON.stringify({ ruleIds: [], tierRef: 7 })).tierRef, undefined);
+  // Passed through UNCHANGED (review fix 16): the engine decides — junk is no tier, like checkout.
+  assert.equal(parseProductRefs(JSON.stringify({ ruleIds: [], tierRef: 7 })).tierRef, 7);
+  assert.equal(parseProductRefs(JSON.stringify({ ruleIds: [] })).tierRef, undefined);
   const config = readStoredConfig({
     modules: {
       tiers: {
@@ -378,8 +380,88 @@ test("Vyzkoušet košík: the tier on the line (tagged, no raw id), the engine's
   assert.equal(hoodie.tier, true);
   assert.equal(cap.discount, Math.round(4 * 200_00 * 0.1), "the global set: 4 items reach 'od 3 ks −10 %'");
   assert.equal(cap.tier, true);
+  // A junk or empty tierRef gives NO tier (never the global set) — what the function does.
+  for (const junk of [7, ""]) {
+    const junkPlan = planTryCart(config, {
+      lines: [{ variantId: "gid://shopify/ProductVariant/31", productId: "gid://shopify/Product/3", title: "Šála", quantity: 6, unitPrice: 300_00, collectionIds: [] }],
+      currency: "CZK",
+      countryCode: "CZ",
+      codes: [],
+      date: "2026-09-30",
+      time: "12:00:00",
+      shopTimezone: "Europe/Prague",
+      locale: "cs",
+      productRefs: new Map([["gid://shopify/Product/3", { ruleIds: [], variantRuleIds: {}, tierRef: junk }]]),
+    });
+    assert.equal(junkPlan.lines[0]!.discount, 0, `tierRef ${JSON.stringify(junk)}`);
+  }
   const text = plan.explain.map((e) => e.text).join(" | ");
   assert.match(text, /Množstevní sleva \(od 3 ks −10\u00a0%\)/, text);
   assert.match(text, /Přidej 1 ks a dostaneš −15\u00a0%/, text);
   assert.doesNotMatch(text, /tier:|t_scoped|\bglobal\b/, "never an id");
+});
+
+// --- The sync's MVP 3 steps in words (review fix 17) ---------------------------------------------------------
+
+test("sync steps of MVP 3 are worded (cs + en) — never a product GID or a set id", async () => {
+  const { stepProblem } = await import("../../app/lib/integration/sync-copy.ts");
+  const { t } = await import("../../app/i18n/index.ts");
+  const names = new Map<string, string>();
+  const say = (step: Parameters<typeof stepProblem>[0], locale: "cs" | "en" = "cs") => {
+    const text = stepProblem(step, names);
+    return { key: text.key, text: t(locale, text.key, text.params) };
+  };
+  const write = say({ step: "storefront_config.write", ok: false, detail: "metafieldsSet: Throttled" });
+  assert.equal(write.key, "sync.problem.storefrontConfig");
+  assert.match(write.text, /Nastavení tabulky na stránce produktu se na web nepropsalo \(metafieldsSet: Throttled\)\. Pokladny se to netýká/);
+  assert.equal(say({ step: "storefront_config.verify", ok: false, detail: "differs" }).key, "sync.problem.storefrontConfig");
+  const refused = say({ step: "products.tiers", ok: false, detail: "gid://shopify/Product/9 refused", params: { refused: 3 } });
+  assert.equal(refused.key, "sync.problem.productsTiersRefused");
+  assert.doesNotMatch(refused.text, /gid:\/\//);
+  const tiersFailed = say({ step: "products.tiers", ok: false, detail: "gid://shopify/Product/9: boom" }, "en");
+  assert.equal(tiersFailed.key, "sync.problem.productsTiers");
+  assert.doesNotMatch(tiersFailed.text, /gid:\/\/|boom/);
+  const tooLarge = say({ step: "tiers.too_large:t_devautumn", ok: false, detail: "…", params: { collection: "Podzimní kolekce", count: 1 } });
+  assert.match(tooLarge.text, /Sada množstevních slev nedosáhne na produkty kolekce „Podzimní kolekce“: vybrané kolekce mají dohromady víc než 10\u00a0000 produktů/);
+  assert.doesNotMatch(tooLarge.text, /t_devautumn/);
+  assert.equal(say({ step: "tiers.too_large:t_x", ok: false, detail: "", params: { collection: "Zimní", count: 3 } }).key, "sync.problem.tiersTooLargeMany");
+  assert.equal(say({ step: "tiers.too_large:t_x", ok: false, detail: "", params: { collection: "", count: 1 } }).key, "sync.problem.tiersTooLargeUntitled");
+});
+
+test("Pro (review fix 18): how many products each Pro set reaches, from the index the sync wrote; Free: nothing (BILL-1)", async () => {
+  const st = storeFor();
+  await store((c) => ({
+    ...c,
+    modules: { ...c.modules, tiers: { sets: [{ id: "t_scoped", scope: { collectionIds: [C5] }, countAcross: "line", breaks: [{ minQty: 2, percent: 5 }] }] } },
+  }));
+  for (const [i, value] of [
+    '{"ruleIds":[],"tierRef":"t_scoped"}',
+    '{"ruleIds":[],"tierRef":"t_scoped"}',
+    '{"ruleIds":[],"tierRef":"t_other"}',
+    '{"ruleIds":["r1"]}',
+  ].entries()) {
+    await db.prisma.productTargetIndex.create({ data: { shop, productId: `gid://shopify/Product/${100 + i}`, value } });
+  }
+  const pro = await loadTiersScreen(ctxFor(st, "pro"), { scopes: SCOPES });
+  assert.deepEqual(pro.productsWithSets, { t_scoped: 2, t_other: 1 });
+  clearSignalCache();
+  assert.equal((await loadTiersScreen(ctxFor(st, "free"), { scopes: SCOPES })).productsWithSets, null);
+});
+
+test("the preview product is one the whole-store set applies to (review fix 2): products with a Pro tierRef are skipped; none → the labelled sample", async () => {
+  const st = storeFor();
+  st.overrides.set("WonTiersPreviewProduct", () => ({
+    data: {
+      shop: { currencyCode: "CZK", currencyFormats: { moneyFormat: null } },
+      products: {
+        nodes: [
+          { id: P1, title: "V Pro sadě", onlineStoreUrl: null, variants: { nodes: [{ price: "100.00" }] }, wonRefs: { value: '{"tierRef":"t_scoped"}' } },
+          { id: "gid://shopify/Product/2", title: "Junk ref", onlineStoreUrl: null, variants: { nodes: [{ price: "100.00" }] }, wonRefs: { value: '{"tierRef":7}' } },
+        ],
+      },
+    },
+  }));
+  const data = await loadTiersScreen(ctxFor(st), { scopes: SCOPES });
+  assert.equal(data.preview.product, null, "every product has a tierRef: no real product to show");
+  assert.equal(data.outletWithAnything, false);
 });

@@ -47,7 +47,7 @@ test("combination: the four Free switches, in the engine's own names; unchecked 
 
 test("combination: a sentence per switch and position, and a state line of what adds up (§17)", () => {
   assert.equal(combinationSentence("productWithOrder", false, cs), "Platí buď slevy na produkty, nebo sleva z objednávky: podle toho, co dá zákazníkovi víc.");
-  assert.equal(combinationSentence("productWithShipping", false, en), "When the cart has a product discount (volume included), no shipping discount applies.");
+  assert.equal(combinationSentence("productWithShipping", false, en), "When the cart has a product discount (a quantity discount included), no shipping discount applies.");
   for (const key of COMBINATION_KEYS) {
     for (const on of [true, false]) {
       assert.notEqual(combinationSentence(key, on, cs), combinationSentence(key, !on, cs), `${key}: on and off differ`);

@@ -58,7 +58,7 @@ function snapshotOf(form: HTMLFormElement): Map<string, string> {
   return out;
 }
 
-function HonestNotes({ marginOn, competingRules }: { marginOn: boolean; competingRules: number }) {
+function HonestNotes({ marginOn, competingRules, outletWithAnything }: { marginOn: boolean; competingRules: number; outletWithAnything: boolean }) {
   const tr = useT();
   const { t } = tr;
   return (
@@ -75,7 +75,8 @@ function HonestNotes({ marginOn, competingRules }: { marginOn: boolean; competin
           {t("tiers.honest.margin")} <s-link href="/app/margin">{t("module.margin")}</s-link>
         </s-text>
       ) : null}
-      <s-text color="subdued">{t("tiers.honest.excluded")}</s-text>
+      {/* Clearance lines are left out unless the Nastavení switch lets them combine (engine.combination); gifts always (K2). */}
+      <s-text color="subdued">{t(outletWithAnything ? "tiers.honest.excludedOutlet" : "tiers.honest.excluded")}</s-text>
     </s-stack>
   );
 }
@@ -99,6 +100,7 @@ export function TiersScreen(props: TiersScreenProps) {
       },
   );
   const [proSets, setProSets] = useState<TierSetView[]>(() => sets.filter((s) => s.id !== globalSet.id));
+  const storedIds = useMemo(() => new Set(sets.map((s) => s.id)), [sets]);
 
   // §2/§17b: the live draft, re-read from the whole form on native events.
   const formRef = useRef<HTMLFormElement>(null);
@@ -234,7 +236,7 @@ export function TiersScreen(props: TiersScreenProps) {
           >
             <s-stack direction="block" gap="base">
               <TierSetEditor set={globalSet} currencies={currencies} kept={kept} pro={pro} live={live} errorFor={errorFor} onChange={reread} />
-              <HonestNotes marginOn={marginOn} competingRules={competingRules} />
+              <HonestNotes marginOn={marginOn} competingRules={competingRules} outletWithAnything={props.outletWithAnything === true} />
             </s-stack>
           </WonSection>
           <TiersBlockSection block={block} storefront={storefront} product={preview.product} />
@@ -251,6 +253,8 @@ export function TiersScreen(props: TiersScreenProps) {
             onPick={(id, kind) => void pick(id, kind)}
             pickUnavailable={pickUnavailable}
             onRowsChange={reread}
+            productsWithSets={pro ? (props.productsWithSets ?? null) : null}
+            storedIds={storedIds}
           />
           {/* One save for the whole form, last on the page (plus the App Bridge save bar). */}
           <div>

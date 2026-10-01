@@ -362,7 +362,7 @@ export function storefrontSyncViewOf(input: {
     const at = metafield.updatedAt ? new Date(metafield.updatedAt) : null;
     return { state: "synced", at: at && !Number.isNaN(at.getTime()) ? shopLocalDateTime(at, input.timezone ?? "UTC") : "" };
   }
-  if (sync.state === "error") return { state: "failed", at: sync.at, problems: sync.problems ?? [] };
+  if (sync.state === "error") return { state: "failed", at: sync.at, problems: sync.problems ?? [], previous: metafield !== null };
   return metafield === null ? { state: "missing" } : { state: "pending" };
 }
 
@@ -408,13 +408,21 @@ const SHOP_FIELDS = `shop {
     }
   }`;
 
-/** Validated against Admin 2026-04 (Shopify dev MCP); needs read_products. */
+/**
+ * Validated against Admin 2026-04 (Shopify dev MCP); needs read_products. Up to
+ * 10 recent active products with the product metafield the sync writes: the
+ * whole-store set's preview takes one WITHOUT a Pro `tierRef` (a product with
+ * one gets its own set, or — an inert set on Free, or junk — no tier at all).
+ */
 export const PREVIEW_PRODUCT_DOCUMENT = `#graphql
 query WonTiersPreviewProduct($query: String) {
   ${SHOP_FIELDS}
-  products(first: 1, query: $query, sortKey: UPDATED_AT, reverse: true) {
+  products(first: 10, query: $query, sortKey: UPDATED_AT, reverse: true) {
     nodes {
       ${PREVIEW_FIELDS}
+      wonRefs: metafield(namespace: "$app:won_discounts", key: "product") {
+        value
+      }
     }
   }
 }`;
@@ -444,6 +452,15 @@ interface RawProduct {
   title?: string;
   onlineStoreUrl?: string | null;
   variants?: { nodes?: { price?: string }[] };
+  wonRefs?: { value?: string | null } | null;
+}
+
+/** The product metafield names a Pro tier set (any `tierRef` key: a set of its own, or no tier at all). */
+function hasTierRef(product: RawProduct): boolean {
+  const value = product.wonRefs?.value;
+  if (typeof value !== "string" || value === "") return false;
+  const parsed = parseThemeJson(value);
+  return isRec(parsed) && Object.prototype.hasOwnProperty.call(parsed, "tierRef");
 }
 interface RawShop {
   currencyCode?: string;
@@ -462,10 +479,13 @@ function previewProductOf(shop: RawShop | undefined, product: RawProduct | null 
 }
 
 /**
- * A real product for the preview and "Zobrazit na mém webu": for a Pro set the
- * first of its products (else a product of its first collection), otherwise the
- * most recently updated active product. `url` = its Online Store URL (null when
- * it is not published there). null when the shop has none or the read failed.
+ * A real product the SHOWN set applies to, for the preview and "Zobrazit na
+ * mém webu" (review fix 2): for a Pro set the first of its products (else a
+ * product of its first collection); for the whole-store set one of the 10 most
+ * recently updated active products that has no Pro `tierRef` (K1: a product
+ * with one never gets the whole-store set). `url` = its Online Store URL (null
+ * when it is not published there). null when there is none to show or the read
+ * failed — the preview then shows its labelled sample product.
  */
 export async function readPreviewProduct(ctx: { client: Pick<AdminClient, "graphql"> }, scope?: TierScopeView | null): Promise<PreviewProductView | null> {
   try {
@@ -481,8 +501,14 @@ export async function readPreviewProduct(ctx: { client: Pick<AdminClient, "graph
       const found = previewProductOf(r.data?.shop, r.data?.collection?.products?.nodes?.[0]);
       if (found) return found;
     }
+    if (scope?.kind === "selection") return null;
     const r = await ctx.client.graphql<{ shop?: RawShop; products?: { nodes?: RawProduct[] } }>(PREVIEW_PRODUCT_DOCUMENT, { query: "status:active" });
-    return previewProductOf(r.data?.shop, r.data?.products?.nodes?.[0]);
+    for (const node of r.data?.products?.nodes ?? []) {
+      if (hasTierRef(node)) continue;
+      const found = previewProductOf(r.data?.shop, node);
+      if (found) return found;
+    }
+    return null;
   } catch (error) {
     if (error instanceof Response) throw error;
     return null;

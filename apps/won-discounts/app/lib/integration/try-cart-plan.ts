@@ -74,8 +74,13 @@ export interface ProductRefs {
   variantRuleIds: Readonly<Record<string, readonly string[]>>;
   /** Numeric ids of its collections with a margin setting (MVP 2; absent = none). */
   marginRefs?: readonly string[];
-  /** The id of its Pro tier set (MVP 3, K1/K3; absent = the global set). */
-  tierRef?: string;
+  /**
+   * The metafield's `tierRef` AS STORED (MVP 3, K1/K3; review fix 16): absent =
+   * the global set; anything else goes to the engine unchanged — core
+   * normalises it exactly as the function does (junk or "" = no tier at all),
+   * so Vyzkoušet košík and checkout cannot differ.
+   */
+  tierRef?: unknown;
 }
 
 export interface TryCartPlanInput {
@@ -182,12 +187,11 @@ export function parseProductRefs(value: string | null | undefined): ProductRefs 
       }
     }
     const marginRefs = strings(parsed.marginRefs);
-    const tierRef = typeof parsed.tierRef === "string" && parsed.tierRef !== "" ? parsed.tierRef : null;
     return {
       ruleIds: strings(parsed.ruleIds),
       variantRuleIds,
       ...(marginRefs.length > 0 ? { marginRefs } : {}),
-      ...(tierRef ? { tierRef } : {}),
+      ...(Object.prototype.hasOwnProperty.call(parsed, "tierRef") ? { tierRef: parsed.tierRef } : {}),
     };
   } catch {
     return { ruleIds: [], variantRuleIds: {} };
@@ -213,7 +217,7 @@ function recomputedRefs(config: WonDiscountsConfig, lines: readonly PricedLine[]
         ruleIds: entry.ruleIds,
         variantRuleIds: entry.variantRuleIds,
         ...(entry.marginRefs ? { marginRefs: entry.marginRefs } : {}),
-        ...(entry.tierRef ? { tierRef: entry.tierRef } : {}),
+        ...(entry.tierRef !== undefined ? { tierRef: entry.tierRef } : {}),
       },
     ]),
   );
@@ -303,8 +307,9 @@ export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput)
       ruleIds: entry ? [...entry.ruleIds] : [],
       ...(entry && Object.keys(entry.variantRuleIds).length > 0 ? { variantRuleIds: entry.variantRuleIds } : {}),
       ...(entry?.marginRefs && entry.marginRefs.length > 0 ? { marginRefs: entry.marginRefs } : {}),
-      // MVP 3 (K1/K3): the product's Pro tier set as the sync wrote it (absent = the global set).
-      ...(entry?.tierRef ? { tierRef: entry.tierRef } : {}),
+      // MVP 3 (K1/K3): the product's Pro tier set exactly as the metafield holds it (absent = the global set;
+      // core reads a non-string or "" as NO tier, like the function — never normalised here).
+      ...(entry && entry.tierRef !== undefined ? { tierRef: entry.tierRef as CartLineInput["tierRef"] } : {}),
       ...(line.unitCost !== undefined ? { unitCost: line.unitCost } : {}),
       ...(line.unitCostCurrency !== undefined ? { unitCostCurrency: line.unitCostCurrency } : {}),
       ...(line.outlet ? { outlet: true } : {}),

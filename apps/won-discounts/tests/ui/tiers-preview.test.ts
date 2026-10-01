@@ -96,3 +96,65 @@ test("the look switcher and the stepper are plain buttons: nothing in the previe
   assert.doesNotMatch(html, /<(input|select|textarea)\b/);
   assert.equal((html.match(/<button type="button"/g) ?? []).length, 6, "4 looks + − and +");
 });
+
+test("'Celý košík' on Free: the note says what the plan does instead only where the stored set counts the whole cart (review fix 6)", async () => {
+  const { TierSetEditor } = await import("../../app/components/tiers/TierSetEditor.tsx");
+  const { LocaleProvider } = await import("../../app/i18n/context.tsx");
+  const render = (countAcross: "line" | "product" | "cart", pro: boolean) =>
+    renderToStaticMarkup(
+      createElement(
+        LocaleProvider,
+        { locale: "cs" } as ComponentProps<typeof LocaleProvider>,
+        createElement(TierSetEditor, {
+          set: { ...SET, countAcross },
+          currencies: [{ code: "CZK", markets: [] }],
+          kept: [],
+          pro,
+          live: () => null,
+          errorFor: () => undefined,
+        }),
+      ),
+    );
+  assert.match(render("cart", false), /Na Free se místo celého košíku počítá po produktech\./);
+  assert.doesNotMatch(render("product", false), /Na Free se místo celého košíku/);
+  assert.doesNotMatch(render("cart", true), /Na Free se místo celého košíku/);
+  // The Pro option stays visible and marked (§16a), not pickable on Free unless stored.
+  assert.match(render("product", false), /Pro · odemknout/);
+  assert.match(render("product", false), /disabled=""[^>]*value="cart"/);
+  assert.doesNotMatch(render("cart", false), /disabled=""[^>]*value="cart"/);
+});
+
+test("the look cards: each radio is named by its look only and described by its detail (review fix 12)", async () => {
+  const { AppearanceScreen } = await import("../../app/components/screens/AppearanceScreen.tsx");
+  const { LocaleProvider } = await import("../../app/i18n/context.tsx");
+  const { createStaticHandler, createStaticRouter, StaticRouterProvider } = await import("react-router");
+  const { renderToString } = await import("react-dom/server");
+  const element = createElement(
+    LocaleProvider,
+    { locale: "cs" } as ComponentProps<typeof LocaleProvider>,
+    createElement(AppearanceScreen, {
+      plan: "free",
+      configVersion: null,
+      preset: "chips",
+      tokens: null,
+      sample: null,
+      product: null,
+      block: { state: "no_scope" },
+      embed: { state: "on", activateUrl: null },
+    }),
+  );
+  const handler = createStaticHandler([{ path: "/", Component: () => element }]);
+  const context = await handler.query(new Request("http://localhost/"));
+  if (context instanceof Response) throw new Error("render");
+  const html = renderToString(createElement(StaticRouterProvider, { router: createStaticRouter(handler.dataRoutes, context), context }));
+  const radios = [...html.matchAll(/<input type="radio"[^>]*>/g)].map((m) => m[0]);
+  assert.equal(radios.length, 4);
+  for (const radio of radios) {
+    const labelledby = /aria-labelledby="([^"]+)"/.exec(radio)?.[1];
+    const describedby = /aria-describedby="([^"]+)"/.exec(radio)?.[1];
+    assert.ok(labelledby && describedby, radio);
+    const name = new RegExp(`id="${labelledby}"[^>]*>([^<]+)<`).exec(html)?.[1];
+    assert.ok(name && ["Tabulka", "Zvýrazněná úroveň", "Štítky", "Dlaždice"].includes(name), `the name is the look's: ${name}`);
+  }
+  assert.match(html, /aria-hidden="true"[^>]*><div/, "the preview is decoration for the radio");
+});

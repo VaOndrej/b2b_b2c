@@ -2,12 +2,15 @@
 // block (config.storefront.appearancePreset — the storefront config carries it,
 // the sync writes it, K5). The page shows every look on the shop's own theme
 // (integration/themes.server.ts readThemeLook: the MAIN theme's tokens, the same
-// CSS the storefront loads), with the shop's set (the global one, else the first
-// with tiers; none → an example the screen labels) and a real product. Saved
+// CSS the storefront loads), with the set the shop's PLAN runs (BILL-1: the
+// global one, else the first with tiers; an inert Pro set on Free is not one —
+// none → an example the screen labels) and a real product that set applies to
+// (themes.server.ts readPreviewProduct). Saved
 // like every admin change (settings.server.ts saveConfigSection: lock, F12,
 // unreadable guard, saveAndSync). A custom look is Pro, MVP 7.
 
 import type { WonDiscountsConfig } from "@won/core/discounts/config";
+import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
 
 import { APPEARANCE_FIELD, APPEARANCE_INTENT, presetOf, readAppearanceForm } from "../../components/model/appearance";
 import type { FormDataLike } from "../../components/model/rule-form";
@@ -28,10 +31,10 @@ export function sampleSet(config: WonDiscountsConfig): TierSetView | null {
 }
 
 export async function loadAppearanceScreen(ctx: ShopCtx, opts: { scopes: string; fresh?: boolean }): Promise<AppearanceScreenData> {
-  const loaded = await loadConfig(ctx.db, ctx.shop);
-  const sample = sampleSet(loaded.config);
-  const [plan, look, product, signals] = await Promise.all([
-    ctxPlan(ctx),
+  const [loaded, plan] = await Promise.all([loadConfig(ctx.db, ctx.shop), ctxPlan(ctx)]);
+  // BILL-1 (review fix 2): the set the PLAN runs — an inert Pro set on Free is never shown as the shop's table.
+  const sample = sampleSet(gateConfigForPlan(loaded.config, plan).config);
+  const [look, product, signals] = await Promise.all([
     readThemeLook(ctx, { scopes: opts.scopes, fresh: opts.fresh }),
     readPreviewProduct(ctx, sample?.scope ?? null),
     loadAdminSignals({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql: graphqlOf(ctx), fresh: opts.fresh }),

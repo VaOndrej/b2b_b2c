@@ -74,6 +74,16 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
       ? { key: "sync.problem.collectionTooLargeMany", params: { rule, collection, n: count - 1, limit: MAX_COLLECTION_PRODUCTS } }
       : { key: "sync.problem.collectionTooLarge", params: { rule, collection, limit: MAX_COLLECTION_PRODUCTS } };
   }
+  if (step.step.startsWith("tiers.too_large:")) {
+    // MVP 3: a Pro tier set's collections over the read limit (products.ts; params {collection: first title, count:
+    // collections}) — its products get the whole-store set instead. Never the set id, never a GID.
+    const { collection, count } = tooLargeCollections(step.params);
+    const limit = MAX_COLLECTION_PRODUCTS;
+    if (!collection) return { key: "sync.problem.tiersTooLargeUntitled", params: { limit } };
+    return count > 1
+      ? { key: "sync.problem.tiersTooLargeMany", params: { collection, n: count - 1, limit } }
+      : { key: "sync.problem.tiersTooLarge", params: { collection, limit } };
+  }
   if (step.step === "margin.too_large") {
     // The collection's title and size (products.ts collectionLimits): the stricter value applies to the whole store.
     // An exact count is ≤ 10 000 (Shopify counts exactly only up to it): the margin collections read first used the budget.
@@ -119,6 +129,15 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
       return /no valid previous config|could not restore/i.test(step.detail)
         ? { key: "sync.problem.configLost", params: { detail } }
         : { key: "sync.problem.config", params: { detail } };
+    case "storefront_config.write":
+    case "storefront_config.verify":
+      // MVP 3 (sync/storefront.ts): the product-page table's settings (app-data metafield) — never fatal, checkout unaffected.
+      return { key: "sync.problem.storefrontConfig", params: { detail } };
+    case "products.tiers": {
+      // MVP 3: the products' tier set (`tierRef`) written after the flip; the detail can carry product GIDs — never shown.
+      const refused = typeof step.params?.refused === "number" && step.params.refused > 0 ? step.params.refused : null;
+      return refused !== null ? { key: "sync.problem.productsTiersRefused", params: { n: refused } } : { key: "sync.problem.productsTiers" };
+    }
     case "products.membership":
       // The live config's membership of some products could not be read (products.ts, audit fix round 4): the
       // config is held for their margin collections. Own sentence (audit fix round 5): this is a READ failure,

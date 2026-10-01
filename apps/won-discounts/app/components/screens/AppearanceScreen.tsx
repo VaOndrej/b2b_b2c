@@ -9,7 +9,7 @@
 // A presentational component: app/routes/app.appearance.tsx renders it from
 // loadAppearanceScreen (app/lib/integration/appearance.server.ts).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Form, useSubmit } from "react-router";
 
 import { APPEARANCE_PRESETS } from "@won/core/discounts/config";
@@ -68,43 +68,16 @@ export function AppearanceScreen(props: AppearanceScreenProps) {
             <s-stack direction="block" gap="base">
               <TiersPreviewStyles />
               <div role="radiogroup" aria-label={t("appearance.choose")} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 380px), 1fr))", gap: 12 }}>
-                {APPEARANCE_PRESETS.map((p) => {
-                  const active = chosen === p;
-                  return (
-                    <label
-                      key={p}
-                      style={{
-                        ...selectionRing(active),
-                        position: "relative",
-                        display: "grid",
-                        alignContent: "start",
-                        gap: 10,
-                        padding: 12,
-                        borderRadius: 12,
-                        cursor: "pointer",
-                        fontFamily: WON_FONT,
-                        minWidth: 0,
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name={APPEARANCE_FIELD.preset}
-                        value={p}
-                        checked={active}
-                        onChange={(e) => {
-                          if (isAppearancePreset(e.currentTarget.value)) setChosen(e.currentTarget.value);
-                        }}
-                        style={{ position: "absolute", opacity: 0, width: 1, height: 1, margin: 0, pointerEvents: "none" }}
-                      />
-                      <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: WON_INK }}>{presetLabel(p, tr)}</span>
-                        {p === preset ? <span style={{ fontSize: 11, fontWeight: 700, color: WON_MUTED }}>{t("appearance.current")}</span> : null}
-                      </span>
-                      <span style={{ fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED }}>{presetDetails(p, tr)}</span>
-                      <TiersPreview set={sample} preset={p} tokens={tokens} product={product} bare withStyles={false} quantity={sample?.breaks[0]?.minQty ?? 3} />
-                    </label>
-                  );
-                })}
+                {APPEARANCE_PRESETS.map((p) => (
+                  <LookCard
+                    key={p}
+                    preset={p}
+                    active={chosen === p}
+                    saved={p === preset}
+                    onPick={setChosen}
+                    preview={<TiersPreview set={sample} preset={p} tokens={tokens} product={product} bare withStyles={false} quantity={sample?.breaks[0]?.minQty ?? 3} />}
+                  />
+                ))}
               </div>
               <FieldMessage text={presetError ? t(presetError.key, presetError.params) : undefined} />
               <div style={{ fontSize: 12, lineHeight: 1.4, color: WON_MUTED }}>
@@ -140,5 +113,75 @@ export function AppearanceScreen(props: AppearanceScreenProps) {
         </s-stack>
       </Form>
     </s-page>
+  );
+}
+
+/**
+ * One look (review fix 12): a native radio whose accessible name is the look's
+ * name only (`aria-labelledby`) and whose description is its one-line detail —
+ * the preview beside it is decoration for sighted users, not part of the name.
+ * The card shows keyboard focus with a visible ring (`:focus-visible`), never
+ * the selection blue alone (§11b: selection and focus are told apart).
+ */
+function LookCard({
+  preset,
+  active,
+  saved,
+  onPick,
+  preview,
+}: {
+  preset: AppearancePresetView;
+  active: boolean;
+  saved: boolean;
+  onPick: (preset: AppearancePresetView) => void;
+  preview: ReactNode;
+}) {
+  const tr = useT();
+  const nameId = useId();
+  const detailsId = useId();
+  const [focusVisible, setFocusVisible] = useState(false);
+  return (
+    <label
+      style={{
+        ...selectionRing(active),
+        position: "relative",
+        display: "grid",
+        alignContent: "start",
+        gap: 10,
+        padding: 12,
+        borderRadius: 12,
+        cursor: "pointer",
+        fontFamily: WON_FONT,
+        minWidth: 0,
+        ...(focusVisible ? { outline: `3px solid ${WON_INK}`, outlineOffset: 2 } : {}),
+      }}
+    >
+      <input
+        type="radio"
+        name={APPEARANCE_FIELD.preset}
+        value={preset}
+        checked={active}
+        aria-labelledby={nameId}
+        aria-describedby={detailsId}
+        onChange={(e) => {
+          if (isAppearancePreset(e.currentTarget.value)) onPick(e.currentTarget.value);
+        }}
+        onFocus={(e) => setFocusVisible(e.currentTarget.matches(":focus-visible"))}
+        onBlur={() => setFocusVisible(false)}
+        style={{ position: "absolute", opacity: 0, width: 1, height: 1, margin: 0, pointerEvents: "none" }}
+      />
+      <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <span id={nameId} style={{ fontSize: 14, fontWeight: 700, color: WON_INK }}>
+          {presetLabel(preset, tr)}
+        </span>
+        {saved ? <span style={{ fontSize: 11, fontWeight: 700, color: WON_MUTED }}>{tr.t("appearance.current")}</span> : null}
+      </span>
+      <span id={detailsId} style={{ fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED }}>
+        {presetDetails(preset, tr)}
+      </span>
+      <span aria-hidden="true" style={{ display: "block", minWidth: 0 }}>
+        {preview}
+      </span>
+    </label>
   );
 }

@@ -340,129 +340,189 @@ export interface PreviewRow {
   active: boolean;
   /** The block hides a break that saves nothing (a percent the margin ceiling cut to 0). */
   hidden: boolean;
-  /** What the row says it saves: the percent (after the ceiling, one decimal) or the amount per item (minor units). */
+  /** What the row says it saves: the percent (after the ceiling, one decimal) or the amount per item (the block's discount `d`). */
   save: { kind: "percent"; percent: number } | { kind: "amount"; amount: number };
-  /** The item's price at this break, minor units. */
+  /** The item's price at this break (price − d). */
   unitPrice: number;
 }
 
 export interface TiersPreviewModel {
   /** Breaks offered in the preview currency (MKT-1), in the set's order. */
   rows: PreviewRow[];
-  /** The break that applies at `quantity` (its minimum), or null. */
+  /** The break that applies at the count (its minimum), or null. */
   active: number | null;
-  /** The item's price at `quantity`. */
+  /** The per-item figure of the live line: price − floor(line discount / quantity). */
   unitPrice: number;
-  /** The next break that lowers the price, and how many more items reach it; null at the top. */
+  /** The live line after the discount: price × quantity − line discount. */
+  total: number;
+  /** The nearest higher break that lowers the per-item price, and how many more items reach it; null at the top. */
   next: { minQty: number; add: number; unitPrice: number } | null;
   /** Nothing is saved at any break: the block renders `data-state="empty"` (hidden). */
   empty: boolean;
 }
 
 /**
- * The block's table at `quantity` items of a product priced `unitPrice` (minor
- * units of `currency`) — step for step what blocks/quantity_tiers.liquid and
- * won-discounts-tiers.js compute (K6): per break the discount per item `d` =
- * round(min(percent, max) % of the price) or the amount in the currency, then
- * capped by the margin ceiling floor(price × max / 100) and the price; the row
- * price is price − d; the active break is the highest minimum the count
- * reaches; the next is the first higher break that lowers the price. `maxPercent`
- * = the margin ceiling (100 = none; the admin preview has no cost price).
+ * The block's table and live line — a port of the storefront's own pure logic
+ * (extensions/won-discounts-storefront/assets/won-discounts-tiers-core.js
+ * `compute`, the same steps as blocks/quantity_tiers.liquid; tests/ui/
+ * tiers-preview-parity.test.ts runs both on the same fixtures, so they cannot
+ * drift):
+ *   per item (the rows) d = floor(min(pct, max) % × price), or min(amount,
+ *     floor(price × max / 100)); never below 0 or above the price;
+ *   the count = quantity + items already in the cart counted toward the tier
+ *     (the admin preview has no cart: `inCart` 0); the active break is the
+ *     highest offered minimum ≤ count;
+ *   the live line like the engine: a percent rounds ONCE per line,
+ *     round(price × qty × min(pct, max) / 100), capped by floor(price × qty ×
+ *     max / 100); an amount is d × qty; per item = price − floor(line / qty);
+ *   next = the nearest higher break whose row price is below that per-item price.
+ * Units: the storefront's (Liquid money units, major × 100) — previewTiersLiquid
+ * converts from minor units. `maxPercent` = the margin ceiling (100 = none).
  */
-export function previewTiers(set: TierSetView, opts: { unitPrice: number; currency: string; quantity: number; maxPercent?: number }): TiersPreviewModel {
+export function previewTiers(
+  set: TierSetView,
+  opts: { unitPrice: number; currency: string; quantity: number; maxPercent?: number; inCart?: number },
+): TiersPreviewModel {
   const price = Math.max(0, Math.round(opts.unitPrice));
   const max = Math.min(100, Math.max(0, opts.maxPercent ?? 100));
-  const ceiling = Math.floor((price * max) / 100);
-  const count = Math.max(1, Math.floor(opts.quantity));
-  const rows: PreviewRow[] = [];
-  let activeMin = 0;
-  let activeD = 0;
+  const qty = Math.max(1, Math.floor(opts.quantity));
+  const count = qty + Math.max(0, Math.floor(opts.inCart ?? 0));
+  const rows: (PreviewRow & { d: number; pct: number | null })[] = [];
   for (const b of set.breaks) {
     if (!(b.minQty > 0)) continue;
     let d: number;
-    let save: PreviewRow["save"];
+    let pct: number | null = null;
     if (b.kind === "percent") {
-      const pct = Math.min(b.percent ?? 0, max);
-      d = Math.round((pct * price) / 100);
-      save = { kind: "percent", percent: Math.round(pct * 10) / 10 };
+      pct = Math.min(b.percent ?? 0, max);
+      d = Math.floor((price * pct) / 100);
     } else {
       const off = b.amount[opts.currency];
       if (off === undefined) continue;
-      d = off;
-      save = { kind: "amount", amount: 0 };
+      d = Math.min(off, Math.floor((price * max) / 100));
     }
-    d = Math.max(0, Math.min(d, ceiling, price));
-    if (save.kind === "amount") save = { kind: "amount", amount: d };
-    rows.push({ minQty: b.minQty, active: false, hidden: d <= 0, save, unitPrice: price - d });
-    if (b.minQty <= count && b.minQty > activeMin) {
-      activeMin = b.minQty;
-      activeD = d;
+    d = Math.max(0, Math.min(d, price));
+    rows.push({
+      minQty: b.minQty,
+      active: false,
+      hidden: d <= 0,
+      save: pct !== null ? { kind: "percent", percent: Math.round(pct * 10) / 10 } : { kind: "amount", amount: d },
+      unitPrice: price - d,
+      d,
+      pct,
+    });
+  }
+  let active: (typeof rows)[number] | null = null;
+  for (const row of rows) if (row.minQty <= count && (!active || row.minQty > active.minQty)) active = row;
+  let line = 0;
+  if (active) {
+    if (active.pct === null) line = active.d * qty;
+    else {
+      const d = Math.round((price * qty * active.pct) / 100);
+      line = Math.max(0, Math.min(d, Math.floor((price * qty * max) / 100)));
     }
   }
-  const unit = price - activeD;
-  for (const row of rows) row.active = row.minQty === activeMin;
-  const next = rows.find((r) => r.minQty > count && r.unitPrice < unit) ?? null;
+  const unit = price - Math.floor(line / qty);
+  let next: (typeof rows)[number] | null = null;
+  for (const row of rows) if (row.minQty > count && row.unitPrice < unit && (!next || row.minQty < next.minQty)) next = row;
   return {
-    rows,
-    active: activeMin > 0 ? activeMin : null,
+    rows: rows.map((row) => ({
+      minQty: row.minQty,
+      active: active !== null && row.minQty === active.minQty,
+      hidden: row.hidden,
+      save: row.save,
+      unitPrice: row.unitPrice,
+    })),
+    active: active ? active.minQty : null,
     unitPrice: unit,
+    total: price * qty - line,
     next: next ? { minQty: next.minQty, add: next.minQty - count, unitPrice: next.unitPrice } : null,
-    empty: !rows.some((r) => !r.hidden),
+    empty: !rows.some((r) => r.d > 0),
   };
+}
+
+/** Minor units of `currency` → the storefront's Liquid money units (major × 100, whatever the exponent). */
+export function liquidFactor(currency: string): number {
+  return 10 ** (2 - currencyExponent(currency));
+}
+
+/** previewTiers on a price and amounts in minor units: computed in Liquid money units, like the storefront. */
+export function previewTiersLiquid(set: TierSetView, opts: { unitPrice: number; currency: string; quantity: number; maxPercent?: number }): TiersPreviewModel {
+  const f = liquidFactor(opts.currency);
+  const scaled: TierSetView =
+    f === 1
+      ? set
+      : {
+          ...set,
+          breaks: set.breaks.map((b) => {
+            const off = b.amount[opts.currency];
+            return off === undefined ? b : { ...b, amount: { ...b.amount, [opts.currency]: off * f } };
+          }),
+        };
+  return previewTiers(scaled, { ...opts, unitPrice: opts.unitPrice * f });
 }
 
 // --- Money like the storefront ------------------------------------------------------------------------------
 
-const MONEY_PLACEHOLDER = /\{\{\s*(\w+)\s*\}\}/;
+/** The placeholders of a Shopify money format → [thousands, decimal mark, decimals] (won-discounts-tiers-core.js FORMATS). */
+const MONEY_FORMATS: Readonly<Record<string, readonly [string, string, number]>> = {
+  amount: [",", ".", 2],
+  amount_no_decimals: [",", ".", 0],
+  amount_with_comma_separator: [".", ",", 2],
+  amount_no_decimals_with_comma_separator: [".", ",", 0],
+  amount_with_space_separator: [" ", ",", 2],
+  amount_no_decimals_with_space_separator: [" ", ".", 0],
+  amount_with_period_and_space_separator: [" ", ".", 2],
+  amount_with_apostrophe_separator: ["'", ".", 2],
+};
 
-function delimited(cents: number, precision: number, thousands: string, decimal: string): string {
-  const fixed = (cents / 100).toFixed(precision);
-  const [whole, fraction] = fixed.split(".");
-  const grouped = (whole ?? "0").replace(/(\d)(?=(\d\d\d)+(?!\d))/g, `$1${thousands}`);
-  return fraction ? `${grouped}${decimal}${fraction}` : grouped;
+const NAMED_ENTITIES: Readonly<Record<string, string>> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: "\u00a0",
+  euro: "€",
+  pound: "£",
+  yen: "¥",
+  cent: "¢",
+  curren: "¤",
+  dollar: "$",
+};
+
+/** HTML entities as a browser shows them (a money format like `&euro;{{amount}}` is HTML, Liquid prints it as markup). */
+export function decodeEntities(text: string): string {
+  return text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, name: string) => {
+    if (name[0] === "#") {
+      const code = name[1] === "x" || name[1] === "X" ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10);
+      return Number.isFinite(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : whole;
+    }
+    return NAMED_ENTITIES[name.toLowerCase()] ?? whole;
+  });
 }
 
 /**
- * An amount as the shop's storefront writes it: the shop's money format
- * (Shopify `{{amount_with_comma_separator}} Kč` etc., Liquid money units =
- * major × 100 whatever the currency's exponent), HTML stripped. Without a usable
+ * An amount in Liquid money units (major × 100) as the storefront writes it:
+ * the shop's money format (every placeholder, like the block's `money()`),
+ * HTML stripped and entities decoded (what the page shows). Without a usable
  * format: the admin's own money format (core formatMoney).
  */
+export function formatLiquidMoney(cents: number, currency: string, format: string | null | undefined, locale: Locale): string {
+  const text = typeof format === "string" ? decodeEntities(format.replace(/<[^>]*>/g, "")).trim() : "";
+  let used = false;
+  const out = text.replace(/\{\{\s*(\w+)\s*\}\}/g, (whole, key: string) => {
+    const f = MONEY_FORMATS[key];
+    if (!f) return whole;
+    used = true;
+    const [whole_, fraction] = (Math.round(cents) / 100).toFixed(f[2]).split(".");
+    return (whole_ ?? "0").replace(/\B(?=(\d{3})+(?!\d))/g, f[0]) + (f[2] && fraction ? f[1] + fraction : "");
+  });
+  return used ? out : formatMoney(cents / liquidFactor(currency), currency, locale);
+}
+
+/** An amount in minor units of `currency`, written like the storefront (see formatLiquidMoney). */
 export function formatShopMoney(minor: number, currency: string, format: string | null | undefined, locale: Locale): string {
-  const text = typeof format === "string" ? format.replace(/<[^>]*>/g, "").trim() : "";
-  const placeholder = MONEY_PLACEHOLDER.exec(text)?.[1];
-  const cents = Math.round(minor * 10 ** (2 - currencyExponent(currency)));
-  let value: string | null = null;
-  switch (placeholder) {
-    case "amount":
-      value = delimited(cents, 2, ",", ".");
-      break;
-    case "amount_no_decimals":
-      value = delimited(cents, 0, ",", ".");
-      break;
-    case "amount_with_comma_separator":
-      value = delimited(cents, 2, ".", ",");
-      break;
-    case "amount_no_decimals_with_comma_separator":
-      value = delimited(cents, 0, ".", ",");
-      break;
-    case "amount_with_apostrophe_separator":
-      value = delimited(cents, 2, "'", ".");
-      break;
-    case "amount_no_decimals_with_space_separator":
-      value = delimited(cents, 0, " ", ",");
-      break;
-    case "amount_with_space_separator":
-      value = delimited(cents, 2, " ", ",");
-      break;
-    case "amount_with_period_and_space_separator":
-      value = delimited(cents, 2, " ", ".");
-      break;
-    default:
-      value = null;
-  }
-  if (value === null) return formatMoney(minor, currency, locale);
-  return text.replace(MONEY_PLACEHOLDER, value);
+  return formatLiquidMoney(minor * liquidFactor(currency), currency, format, locale);
 }
 
 // --- The table on the product page and the storefront config --------------------------------------------------
@@ -490,7 +550,8 @@ export function storefrontSyncText(view: StorefrontSyncView, tr: Translator): st
     case "pending":
       return tr.t("tiers.storefront.pending");
     case "failed":
-      return tr.t("tiers.storefront.failed", { date: formatDateTime(view.at, tr.locale) });
+      // No older storefront config on the site: there is no "previous table" to fall back to (review fix 7).
+      return tr.t(view.previous === false ? "tiers.storefront.failedFirst" : "tiers.storefront.failed", { date: formatDateTime(view.at, tr.locale) });
     case "missing":
       return tr.t("tiers.storefront.missing");
     case "unknown":

@@ -160,9 +160,15 @@ test("storefront config state (K5): missing / synced (cv = the config version) /
     state: "failed",
     at: "2026-09-30T11:00:00",
     problems: [{ key: "sync.problem.tooLarge" }],
+    previous: true,
   });
-  // Never written and the last sync failed: it failed (it is not "nothing saved yet").
-  assert.equal(storefrontSyncViewOf({ metafield: null, configVersion: "v1", sync: failed, timezone: null }).state, "failed");
+  // Never written and the last sync failed: it failed (it is not "nothing saved yet") — and there is NO previous table (fix 7).
+  assert.deepEqual(storefrontSyncViewOf({ metafield: null, configVersion: "v1", sync: failed, timezone: null }), {
+    state: "failed",
+    at: "2026-09-30T11:00:00",
+    problems: [{ key: "sync.problem.tooLarge" }],
+    previous: false,
+  });
   // Current even after a failed later run of something else: synced.
   assert.equal(storefrontSyncViewOf({ metafield: { cv: "v1", updatedAt: "2026-09-30T08:15:00Z" }, configVersion: "v1", sync: failed, timezone: "UTC" }).state, "synced");
 });

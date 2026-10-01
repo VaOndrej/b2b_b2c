@@ -371,11 +371,16 @@ test("the sanitizer's new tier / look issues are worded in the admin language fr
   assert.ok(worded.includes("Dvě úrovně začínaly od 3 ks, ponechala se první."), worded.join(" | "));
   assert.ok(worded.includes("Úroveň od 4 ks neměla procento ani částku, vyřadila se."), worded.join(" | "));
   assert.ok(worded.includes("Úroveň bez počtu kusů se vyřadila."), worded.join(" | "));
-  assert.ok(worded.includes("Dvě sady úrovní měly stejné označení, druhá se vyřadila."), worded.join(" | "));
+  assert.ok(worded.includes("Sada úrovní byla uložená dvakrát, druhá kopie se vyřadila."), worded.join(" | "));
   assert.ok(worded.includes("Neznámý vzhled, použil se výchozí (Tabulka)."), worded.join(" | "));
   assert.ok(worded.every((w) => !/\bg\b|neon/.test(w)), "no id or raw value");
   const en = wordIssues(issues, "en", () => assert.fail("worded"));
   assert.ok(en.includes("Two tiers started at 3 items; the first was kept."), en.join(" | "));
+  assert.ok(en.includes("A quantity discount set was stored twice; the second copy was dropped."), "no 'ID' in English either");
+  // invalid_percent next to an amount (review fix 15): the break keeps its amount — its own sentence.
+  const junk = sanitizeConfig({ modules: { tiers: { sets: [{ id: "g", scope: "global", countAcross: "line", breaks: [{ minQty: 2, percent: "lots", amountOff: { CZK: 500 } }] }] } } });
+  const junkText = wordIssues(junk.issues, "cs", () => assert.fail("worded"));
+  assert.ok(junkText.includes("Úroveň od 2 ks měla neplatné procento, ponechala se její částka za kus."), junkText.join(" | "));
 });
 
 test("MKT-1: a break with an amount lacks a currency → the markets where it is not offered, by name", () => {
@@ -404,8 +409,17 @@ test("preview = the storefront block's arithmetic (K6): the highest break the co
     ],
   );
   assert.equal(at(1).empty, false);
-  // d = round(percent of the price), the row price = price − d (the Liquid order of rounding): 15 % of 9,99 = 1,4985 → 1,50.
-  assert.equal(previewTiers(SET, { unitPrice: 999, currency: "CZK", quantity: 5 }).unitPrice, 849);
+  // The storefront's rounding (T4 7a4bb95): per item the percent is FLOORED (15 % of 9,99 = 1,4985 → 1,49, row 8,50);
+  // the live line rounds ONCE per line like the engine (5 × 9,99 × 15 % = 7,4925 → 7,49), per item price − floor(7,49 / 5).
+  const fraction = previewTiers(SET, { unitPrice: 999, currency: "CZK", quantity: 5 });
+  assert.equal(fraction.rows.find((r) => r.minQty === 5)!.unitPrice, 850);
+  assert.equal(fraction.total, 5 * 999 - 749);
+  assert.equal(fraction.unitPrice, 999 - Math.floor(749 / 5));
+  // A second line: 7 × 12,90 × 10 % = 9,03 rounds per line (not 7 × floor(1,29)).
+  const seven = previewTiers(SET, { unitPrice: 1290, currency: "CZK", quantity: 4 });
+  assert.equal(seven.total, 4 * 1290 - Math.round((1290 * 4 * 10) / 100));
+  // Items already in the cart count toward the tier (K6; the admin preview has none, the block may).
+  assert.equal(previewTiers(SET, { unitPrice: 20000, currency: "CZK", quantity: 1, inCart: 2 }).active, 3);
   // An amount per item never takes the price below 0; a currency without a value is not offered (row left out, MKT-1).
   const amount: TierSetView = {
     ...SET,
@@ -448,6 +462,10 @@ test("money like the storefront: the shop's money format (Liquid money units), H
   assert.equal(formatShopMoney(990, "CZK", '<span class="money">{{amount_with_comma_separator}} Kč</span>', "cs"), "9,90 Kč");
   assert.equal(formatShopMoney(123450, "CZK", null, "cs"), "1 234,50 Kč");
   assert.equal(formatShopMoney(123450, "CZK", "no placeholder", "cs"), "1 234,50 Kč");
+  // HTML entities as the page shows them (review fix 8); every placeholder of the format is filled (like the block's money()).
+  assert.equal(formatShopMoney(123450, "EUR", "&euro;{{amount_with_comma_separator}}", "cs"), "€1.234,50");
+  assert.equal(formatShopMoney(990, "GBP", "&pound;{{amount}}&nbsp;GBP", "en"), "£9.90\u00a0GBP");
+  assert.equal(formatShopMoney(990, "CZK", "{{amount}} / {{amount_no_decimals}}", "en"), "9.90 / 10");
 });
 
 test("scopeCss: the storefront CSS runs only inside the preview (nested under the scope); @keyframes / @font-face stay top-level", () => {
@@ -456,6 +474,9 @@ test("scopeCss: the storefront CSS runs only inside the preview (nested under th
   assert.match(out, /^@keyframes won-pulse \{ from \{ opacity: 0 \} to \{ opacity: 1 \} \}/);
   assert.match(out, /\.won-tiers-preview \{[\s\S]*\.won-tiers \{ color: inherit; \}[\s\S]*@media \(max-width: 600px\)[\s\S]*\.won-tiers--chips \.won-tiers__row/);
   assert.doesNotMatch(out, /\.won-tiers-preview \{[\s\S]*@keyframes/);
+  // @layer (review fix 9): a layer BLOCK styles elements → nested under the scope; only an order statement is hoisted.
+  const layered = scopeCss(`@layer base, theme;\n@layer theme { .won-tiers__row { padding: 0 } }`, ".s");
+  assert.match(layered, /^@layer base, theme;\n\.s \{\n@layer theme \{ \.won-tiers__row \{ padding: 0 \} \}\n\}$/);
   // A closing brace inside a string or a comment does not break the split.
   assert.equal(scopeCss(`.a::after { content: "}"; } /* } */ .b { x: 1 }`, ".s"), `.s {\n.a::after { content: "}"; }\n.b { x: 1 }\n}`);
 });

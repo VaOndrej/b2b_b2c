@@ -28,6 +28,7 @@ import type { FormDataLike } from "../../components/model/rule-form";
 import { readTiersForm, tierSetToConfig, tierSetView, TIERS_FIELD, TIERS_INTENT } from "../../components/model/tiers";
 import type { GateNoteView, TierSetView, TiersOverviewView, TiersScreenData, UiResult } from "../../components/model/types";
 import { loadConfig, type LoadedConfig } from "../config.server";
+import { tierProductCounts } from "../sync/storefront";
 import { graphqlOf, type ShopCtx } from "./context.server";
 import { readSaveOptions, saveConfigSection, type SaveOptions } from "./settings.server";
 import { ctxPlan, loadSyncView } from "./sync-status.server";
@@ -142,9 +143,12 @@ export async function loadTiersScreen(ctx: ShopCtx, opts: { scopes: string; fres
   ]);
   const timezone = shopContext.timezone;
   const sync = await loadSyncView(ctx, loaded, timezone);
-  const [storefront, product] = await Promise.all([
+  const [storefront, product, counts] = await Promise.all([
     readStorefrontSync(ctx, { configVersion: loaded.version, sync, timezone }),
+    // A product the whole-store set applies to (no Pro tierRef), never one that gets another set (review fix 2).
     readPreviewProduct(ctx, null),
+    // Pro only (BILL-1): how many products each Pro set reaches, from the index the sync wrote.
+    plan === "pro" ? tierProductCounts(ctx.db, ctx.shop).then((c) => c.bySet, () => null) : Promise.resolve(null),
   ]);
   const syncable = loaded.exists && !loaded.unreadable && !loaded.readOnly;
   return {
@@ -156,6 +160,8 @@ export async function loadTiersScreen(ctx: ShopCtx, opts: { scopes: string; fres
     block: look.block,
     storefront,
     preview: { tokens: look.tokens, preset: presetOf(stored.storefront.appearancePreset), product },
+    productsWithSets: counts,
+    outletWithAnything: stored.engine.combination.outletWithAnything === true,
   };
 }
 

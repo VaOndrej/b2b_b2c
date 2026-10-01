@@ -4,9 +4,8 @@
 //   - app-embed activation (onboarding step 3, Přehled): `activateAppId`;
 //   - the quantity-tier app block (MVP 3, §13): `addAppBlockId={api_key}/{handle}`
 //     with `template=product` and `target=mainSection` (the section with id
-//     "main" — Horizon's and Dawn's product section); a theme whose main section
-//     takes no app blocks gets it in a new Apps section instead (Shopify's own
-//     fallback). The merchant sees the block in the editor and saves it there.
+//     "main" — Horizon's and Dawn's product section). The merchant sees the
+//     block in the editor and saves it there.
 
 export const EMBED_BLOCK_HANDLE = "won_discounts_embed";
 

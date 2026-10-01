@@ -104,7 +104,8 @@ export function TierSetEditor({
           }))}
         />
         <RowNote>{t(countNow === "line" ? "tiers.count.line.details" : countNow === "product" ? "tiers.count.product.details" : "tiers.count.cart.details")}</RowNote>
-        {!pro ? <RowNote>{t("tiers.count.cartFree")}</RowNote> : null}
+        {/* Only where "Celý košík" is chosen on Free (stored before a downgrade): what the plan does instead. */}
+        {!pro && countNow === "cart" ? <RowNote>{t("tiers.count.cartFree")}</RowNote> : null}
         <FieldMessage text={errorFor(F.count(sid))} />
       </s-stack>
 

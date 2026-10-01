@@ -4,8 +4,9 @@
 //      order, product with shipping, order with shipping. Each switch says in one
 //      sentence what checkout does in its position (§4c, §10d), re-read from the
 //      form on every native change (§2/§17b) — a switch that differs from what
-//      is stored says "Po uložení:". Product with product is fixed (the better
-//      one wins, A1) and said, not switched. The link to Vyzkoušet košík checks
+//      is stored says "Po uložení:". Product with product is not a switch: the
+//      better one wins (A1) — on Pro unless the rule editor combines them
+//      (combinesWith); a quantity tier never stacks. Said per plan. The link to Vyzkoušet košík checks
 //      the change on a real cart (§13). One save for the page.
 //   2. Trhy a měny — the shop's market currencies and the admin language rule.
 // A presentational component: app/routes/app.settings.tsx renders it from
@@ -34,7 +35,7 @@ export interface SettingsScreenProps extends Partial<SettingsScreenData> {
   result?: UiResult | null;
 }
 
-export function SettingsScreen({ currencies, combination, configVersion = null, result }: SettingsScreenProps) {
+export function SettingsScreen({ currencies, combination, configVersion = null, plan = "free", result }: SettingsScreenProps) {
   const tr = useT();
   const { t } = tr;
   const withMarkets = currencies.filter((c) => c.markets.length > 0);
@@ -86,7 +87,8 @@ export function SettingsScreen({ currencies, combination, configVersion = null, 
               anchor="combination"
             >
               <s-stack direction="block" gap="base">
-                <s-text color="subdued">{t("settings.combination.fixed")}</s-text>
+                {/* Plan-aware (review fix 3): on Pro a rule may stack with the ones picked in its editor (combinesWith). */}
+                <s-text color="subdued">{t(plan === "pro" ? "settings.combination.fixedPro" : "settings.combination.fixed")}</s-text>
                 <div>
                   {COMBINATION_KEYS.map((key) => {
                     const on = draft[key];

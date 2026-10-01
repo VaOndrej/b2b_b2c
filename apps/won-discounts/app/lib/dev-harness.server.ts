@@ -944,8 +944,14 @@ function devBlock(state: string | null): TiersBlockView {
 function devStorefront(state: string | null): StorefrontSyncView {
   if (state === "empty") return { state: "missing" };
   if (state === "pending") return { state: "pending" };
-  if (state === "failed") {
-    return { state: "failed", at: "2026-09-28T16:20:00", problems: [{ key: "sync.problem.config", params: { detail: "metafieldsSet: Throttled (3 attempts)" } }] };
+  if (state === "failed" || state === "failed-first") {
+    return {
+      state: "failed",
+      at: "2026-09-28T16:20:00",
+      problems: [{ key: "sync.problem.storefrontConfig", params: { detail: "metafieldsSet: Throttled (3 attempts)" } }],
+      // failed-first: never written before — no previous table on the site (review fix 7).
+      previous: state === "failed",
+    };
   }
   return { state: "synced", at: "2026-09-28T16:20:00" };
 }
@@ -977,6 +983,9 @@ export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | nul
       preset: presetOf(config.storefront.appearancePreset),
       product: DEV_PREVIEW_PRODUCT,
     },
+    // Pro only (BILL-1): products per Pro set as the last sync wrote them (tierProductCounts).
+    productsWithSets: opts.plan === "pro" && opts.state !== "empty" ? { t_devautumn: 14 } : null,
+    outletWithAnything: opts.state === "outlet",
   };
 }
 
@@ -1009,7 +1018,7 @@ export function devAppearanceScreen(opts: { plan: "free" | "pro"; state: string 
     configVersion: "dev-config-version",
     preset: presetOf(config.storefront.appearancePreset),
     tokens: devTokens(opts.theme, devBlock(opts.state)),
-    sample: sampleSet(config),
+    sample: sampleSet(gateConfigForPlan(config, opts.plan).config),
     product: DEV_PREVIEW_PRODUCT,
     block: devBlock(opts.state),
     embed: opts.state === "empty" ? DEV_EMBED_OFF : DEV_EMBED_ON,

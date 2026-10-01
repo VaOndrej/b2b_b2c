@@ -141,7 +141,6 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
       /Pro funkce není aktivní/,
       /Produkty v ní ve Free nedostanou žádnou množstevní slevu/,
       /Varianty produktu dohromady/,
-      /Ve Free se kusy počítají po produktech/,
       /S jinou slevou na stejný produkt se nesčítá: platí ta, která dá zákazníkovi víc\./,
       /Teď se to týká 1 slevy na produkty\./,
       /href="\/app\/settings#combination"/,
@@ -183,13 +182,24 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
       /Kolekce Doplňky/,
     ],
   },
-  { path: "tiers?state=failed", expect: [/Propsání na web selhalo 28\. 9\. 2026 16:20/, /metafieldsSet: Throttled/] },
+  {
+    path: "tiers?state=failed",
+    expect: [/Propsání na web selhalo 28\. 9\. 2026 16:20\. Tabulka ukazuje předchozí nastavení/, /Nastavení tabulky na stránce produktu se na web nepropsalo \(metafieldsSet: Throttled/],
+  },
+  // Review fix 7: never written before → no "previous settings" to show.
+  { path: "tiers?state=failed-first", expect: [/Propsání na web selhalo 28\. 9\. 2026 16:20\. Tabulka se na webu zatím neukazuje/] },
+  // Review fix 5: clearance items combine → they can get a tier; gifts never.
+  { path: "tiers?state=outlet", expect: [/Dárky úroveň nedostanou\. Zboží ve výprodeji ji dostat může/] },
+  // Review fix 18: Pro sees how many products each Pro set reaches (Free sees nothing).
+  { path: "tiers?plan=pro&state=dawn", expect: [/Podle poslední synchronizace platí pro 14 produktů/] },
+  // Review fix 3: plan-aware — on Pro a rule may stack with the ones its editor combines.
+  { path: "settings?plan=pro", expect: [/V Pro se sečtou jen ty, které v editoru slevy spojíš\. Množstevní sleva se nesčítá nikdy/] },
   { path: "tiers?state=dawn", expect: [/Barvy a písmo z tématu Dawn/, /--won-tiers-accent:#c0392b/, /--inputs-radius:0px/] },
   { path: "tiers?state=no-scope", expect: [/Bez přístupu k tématu nevidíme/] },
   { path: "tiers?result=invalid", expect: [/Sleva tady musí být aspoň taková jako od 3 ks/, /Úroveň od 5 ks už v sadě je/] },
   {
     path: "tiers?locale=en",
-    expect: [/Set for the whole store/, /From 3 items −10%, from 5 items −15%, from 10 items −20%/, /Quantity discount/, /711,00 Kč each/, /Add table to the product page|View on my site/],
+    expect: [/Quantity discounts/, /Set for the whole store/, /From 3 items −10%, from 5 items −15%, from 10 items −20%/, /Quantity discount/, /711,00 Kč each/, /Add table to the product page|View on my site/],
   },
   {
     path: "appearance",
@@ -213,7 +223,7 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
     expect: [
       /Kombinování slev/,
       /Sčítá se: produkty s objednávkou, produkty s dopravou a objednávka s dopravou/,
-      /Dvě slevy na stejný produkt se nesčítají nikdy/,
+      /Dvě slevy na stejný produkt se nesčítají, platí výhodnější\. Množstevní sleva se nesčítá nikdy\./,
       /Zboží ve výprodeji další slevy nedostane/,
       /Výprodej přijde v další verzi/,
       /Obě se sčítají\. Sleva z objednávky se počítá z ceny po slevách na produkty/,
@@ -283,6 +293,14 @@ test("an unknown harness screen is a 404; tiers and appearance are built modules
   assert.equal(status, 404);
   assert.equal((await render("coming-soon?module=tiers")).status, 404);
   assert.equal((await render("coming-soon?module=appearance")).status, 404);
+});
+
+test("review fixes in the harness: no Pro product counts on Free, no 'per product on Free' note unless the stored set counts the whole cart, clearance said only as it is", async () => {
+  const free = await render("tiers");
+  assert.doesNotMatch(free.html, /Podle poslední synchronizace platí pro/, "Free: no Pro numbers (BILL-1)");
+  assert.doesNotMatch(free.html, /Na Free se místo celého košíku počítá po produktech/, "the stored set counts per product: nothing to explain");
+  assert.match(free.html, /Zboží ve výprodeji a dárky úroveň nedostanou/);
+  assert.doesNotMatch((await render("settings")).html, /V Pro se sečtou/, "Free: no Pro stacking claim");
 });
 
 test("the tier note is only for a product rule (an order rule does not compete with a tier)", async () => {
