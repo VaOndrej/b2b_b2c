@@ -9,15 +9,15 @@ app_version: MVP3
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-09-30
-keywords: [add table to product page, quantity tiers table, one click, app block, theme editor, deep link, přidat tabulku na stránku produktu]
+updated: 2026-10-01
+keywords: [add table to product page, quantity discounts table, quantity tiers table, one click, app block, theme editor, deep link, přidat tabulku na stránku produktu]
 summary: One click adds the quantity-tiers block to the active theme's product page; the admin shows whether the block is already there.
 ---
 
 # Add the quantity-tiers table to the product page
 
-1. Open **Quantity tiers**. The screen shows whether the table is already on
-   the product page of your active theme.
+1. Open **Quantity discounts**. The screen shows whether the table is already
+   on the product page of your active theme.
 2. If it is not there, click **Add table to the product page**. This opens the
    theme editor with the block ready to place on the product template; confirm
    there to add it.

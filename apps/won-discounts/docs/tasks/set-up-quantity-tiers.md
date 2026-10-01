@@ -1,5 +1,5 @@
 ---
-title: Set up quantity tiers
+title: Set up quantity discounts
 slug: set-up-quantity-tiers
 layer: task
 feature: tiers
@@ -9,19 +9,21 @@ app_version: MVP3
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-09-30
-keywords: [set up quantity tiers, volume discount, buy more save more, tier breaks, quantity break, count mode, nastavit množstevní slevy]
+updated: 2026-10-01
+keywords: [set up quantity tiers, quantity discounts, volume discount, buy more save more, tier breaks, quantity break, count mode, nastavit množstevní slevy]
 summary: Add quantity breaks to the tier set, choose a percentage or a fixed amount per currency, and pick how quantity is counted.
 ---
 
-# Set up quantity tiers
+# Set up quantity discounts
 
-1. Open **Quantity tiers**.
-2. Add a **break**: from how many items, and the discount — a percentage, or a
-   fixed amount off per item in each market's currency. Add more breaks for
-   more thresholds.
-3. Choose how quantity is **counted**: per cart line, or added up across every
-   line of the same product. (With Pro, also across the whole cart.)
+1. Open **Quantity discounts**.
+2. Add a **tier**: from how many items, and the discount — a percentage, or a
+   fixed amount off per item in each market's currency. Add more tiers for
+   more thresholds. A set is one kind only (every tier a percent, or every
+   tier an amount), and each tier must be worth at least as much as the one
+   before it; the form will not let you save otherwise.
+3. Choose how items are **counted**: each variant separately, or all variants
+   of the product together. (With Pro, also across the whole cart.)
 4. Save.
 
 ## Scoping (Pro)
@@ -38,6 +40,13 @@ set wins over the global one. See
 - A tier competes with other product discounts on the same item; the better
   one for the customer wins. Margin protection can still lower it.
 - Check the result in [try-a-cart](try-a-cart) before relying on it.
+
+## Running out of room
+
+Every tier set you save shares one small storage budget across the whole
+shop. With many sets, many tiers per set, or amounts in many currencies, you
+can run out of room before hitting the per-set tier limit; if a save would
+not fit, the admin says so and nothing is saved.
 
 Background: [../concepts/quantity-tiers.md](../concepts/quantity-tiers.md).
 Exact limits: [../reference/limits.generated.md](../reference/limits.generated.md).

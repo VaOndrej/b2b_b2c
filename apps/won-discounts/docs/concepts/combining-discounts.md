@@ -9,7 +9,7 @@ app_version: MVP1
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-09-30
+updated: 2026-10-01
 keywords: [combine, combination, stack, add up, better wins, two discounts, product discount, order discount, shipping, kombinace]
 summary: The default combining rules. Product discounts on the same item compete (the better one wins); product, order and shipping discounts add up.
 ---
@@ -20,7 +20,7 @@ summary: The default combining rules. Product discounts on the same item compete
 
 - **Product discount vs. product discount on the same item:** they do not add up.
   The one that saves the customer more wins. On an exact tie a fixed internal order
-  decides, so the result is always the same.
+  decides, so the result is always the same. This one is fixed, not a switch.
 - **Product + order + shipping:** they add up. The order discount is taken from the
   subtotal **after** product discounts.
 - **Order discount vs. order discount:** they do not add up; the better one wins.
@@ -38,8 +38,9 @@ that one for you by the rules above.
 
 ## Changing the defaults
 
-- **Free:** Settings lets you switch each category above between adding up and
-  competing, store-wide. See
+- **Free:** Settings lets you switch the product+order, product+shipping,
+  order+shipping and clearance categories between adding up and competing,
+  store-wide. Product vs. product stays fixed. See
   [../tasks/switch-combination-categories.md](../tasks/switch-combination-categories.md).
 - **Pro:** a discount can be set to stack with chosen other discounts. See
   [pro-combinations](pro-combinations).

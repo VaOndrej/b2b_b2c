@@ -9,9 +9,9 @@ app_version: MVP3
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-09-30
-keywords: [tier lowered, margin protection, quantity tiers, price floor, capped, discount smaller, úroveň je nižší kvůli ochraně marže]
-summary: A quantity tier is a product discount, so margin protection caps it the same way it caps any other product discount, never below the price floor.
+updated: 2026-10-01
+keywords: [tier lowered, margin protection, quantity tiers, price floor, capped, discount smaller, foreign currency, úroveň je nižší kvůli ochraně marže]
+summary: A quantity tier is a product discount, so margin protection caps it, never below the price floor. The product page never promises more than checkout; it can promise less while it catches up.
 ---
 
 # The quantity-tier discount is lower because of margin protection
@@ -35,8 +35,24 @@ give nothing extra once the item is already at its floor.
 
 - [try-a-cart](../tasks/try-a-cart.md) marks the item with the margin floor and
   shows the amount before and after.
-- On the product page, the live price already reflects the capped amount — it
-  is not a separate bug, the storefront and checkout use the same cap.
+- On the product page, the live price already reflects the cap in the rule
+  below.
+
+## The rule: the product page never promises more than checkout
+
+The product page's cap and checkout's cap are computed the same way, but not
+always at the exact same instant, so the rule is **never more, sometimes
+less**:
+
+- **A market with its own currency:** the product page converts the price
+  floor from the shop's currency using Shopify's own exchange rate, rounded
+  against the customer, so it never shows a bigger discount than checkout
+  will give. It can show a touch less.
+- **A variant whose floor is not known yet** — margin protection was just
+  turned on or changed, or the cost price was just added, and the floor has
+  not finished recomputing: the product page shows no discount promise for
+  that variant rather than a guess. It catches up once the recompute
+  finishes; checkout always uses the current floor.
 
 ## What you can change
 

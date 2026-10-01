@@ -9,8 +9,8 @@ app_version: MVP3
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-09-30
-keywords: [product no global tiers, missing quantity tiers, scoped tier set, one set per product, product excluded, produkt nedostal globální úrovně]
+updated: 2026-10-01
+keywords: [product no global tiers, missing quantity tiers, quantity discounts, scoped tier set, one set per product, product excluded, produkt nedostal globální úrovně]
 summary: A product with no quantity tiers is covered by a scoped Pro set that excludes it; only one tier set ever applies per product, scoped sets before the global one.
 ---
 
@@ -31,7 +31,7 @@ default, or none at all.
 
 ## How to check
 
-1. Open **Quantity tiers** and look at each scoped set's product and
+1. Open **Quantity discounts** and look at each scoped set's product and
    collection list for this product.
 2. If a scoped set claims it, remove the product (or its collection) from that
    set's scope, or add breaks to that set, to change what it gets.

@@ -33,9 +33,9 @@ again on the new theme.
 
 ## 3. The product has no tier set
 
-The table only renders when a tier set applies to the product. With Pro
-scoped sets, a product outside every scoped set's product/collection list,
-with no global set either, has none. See
+The table only renders when a tier set applies to the product. A product
+listed in a scoped set (by product or by collection) gets only that set,
+never the whole-store set, even when the scoped set has no tiers. See
 [product-did-not-get-the-global-tiers](product-did-not-get-the-global-tiers.md)
 and [../concepts/quantity-tiers.md](../concepts/quantity-tiers.md).
 
@@ -49,5 +49,9 @@ check the Overview for a sync error. See
 ## 5. Shop is on Free and the set is scoped
 
 A product-or-collection-scoped tier set is Pro; on Free it is switched off, not
-deleted, so a product it was meant for shows no table unless the global set
-also covers it. See [../concepts/plans-free-vs-pro.md](../concepts/plans-free-vs-pro.md).
+deleted. A product that set was meant for still gets **no** table: a product
+listed in a scoped set never falls back to the whole-store set, switched off
+or not — Won would rather show nothing than give a discount you did not set up
+for that product. See
+[../concepts/plans-free-vs-pro.md](../concepts/plans-free-vs-pro.md) and
+[product-did-not-get-the-global-tiers](product-did-not-get-the-global-tiers.md).

@@ -9,7 +9,7 @@ app_version: MVP3
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-09-30
+updated: 2026-10-01
 keywords: [choose appearance, block style, table, highlight, chips, tiles, preset, vzhled bloku]
 summary: Pick one of four ready-made looks for the quantity-tiers block; colors and fonts follow the theme automatically.
 ---
@@ -25,10 +25,10 @@ summary: Pick one of four ready-made looks for the quantity-tiers block; colors 
 
 | Preset | What it looks like |
 |---|---|
-| `default` | A plain table of the breaks |
-| `highlight` | The same table, with the break the shopper currently qualifies for highlighted |
-| `chips` | Compact labels in a row instead of a table |
-| `tiles` | Each break as its own tile |
+| `default` | A clear table of the tiers |
+| `highlight` | A table with the tier that applies clearly highlighted |
+| `chips` | Compact chips in a row; takes little space |
+| `tiles` | Tiles side by side; easy to read on a phone |
 
 Colors and the font always come from the active theme; only the layout
 changes between presets. A custom, fully own-designed look is a Pro feature

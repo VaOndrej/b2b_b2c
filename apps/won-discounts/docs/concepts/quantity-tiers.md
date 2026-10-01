@@ -1,5 +1,5 @@
 ---
-title: Quantity tiers
+title: Quantity discounts
 slug: quantity-tiers
 layer: concept
 feature: tiers
@@ -9,17 +9,25 @@ app_version: MVP3
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-09-30
-keywords: [quantity tiers, volume discount, buy more save more, tier set, tier break, product page table, qty breaks, count mode, množstevní slevy, úrovně]
-summary: Quantity tiers give a lower price per item from a chosen quantity up. One tier set applies per product; the better of a tier and a product discount wins.
+updated: 2026-10-01
+keywords: [quantity discounts, quantity tiers, volume discount, buy more save more, tier set, tier break, product page table, qty breaks, count mode, množstevní slevy, úrovně]
+summary: Quantity discounts give a lower price per item from a chosen quantity up. One tier set applies per product; the better of a tier and a product discount wins.
 ---
 
-# Quantity tiers
+# Quantity discounts
 
-Quantity tiers are Won's "buy more, save more" module: from a chosen quantity,
-each item in the tier costs less. A tier set is a list of **breaks** — `from 3
-→ −10 %`, `from 5 → −15 %` — either a percentage or a fixed amount off per
-item, in each market's currency.
+**Quantity discounts** ("Quantity discounts" in the admin's navigation) are
+Won's "buy more, save more" module: from a chosen quantity, each item costs
+less. Internally, and in this doc, each price step is called a **tier**; a
+**tier set** is its list of **breaks** — `from 3 → −10 %`, `from 5 → −15 %`.
+
+A tier set is **one kind only**: every break is a percentage, or every break
+is a fixed amount per item in each market's currency — never mixed within one
+set. Values never fall as quantity goes up: a later, higher break is always
+worth at least as much as an earlier one. The admin's form enforces both, so a
+set is never saved in a shape that could let the Free quantity-counting limits
+([below](#how-the-quantity-is-counted)) accidentally give a customer more than
+a stricter Pro counting would.
 
 ## Which tier set applies to a product
 
@@ -45,14 +53,19 @@ discount than you set up. See [plans-free-vs-pro](plans-free-vs-pro).
 
 Each tier set counts quantity one of three ways:
 
-- **Per line** — only that cart line's quantity.
-- **Per product** — every line of the same product, added up.
-- **Per cart** (Pro) — every line whose product uses this same tier set, added
-  up across the whole cart.
+- **Each variant separately** ("line") — only the one cart line it merges
+  into: the same variant, with no line properties and no selling plan, added
+  again stays the same line and keeps counting; the same variant with
+  different properties or a different subscription is a separate line and
+  does **not** add up with it.
+- **All variants of a product together** ("product") — every line of the same
+  product, added up.
+- **The whole cart** ("cart", Pro) — every line whose product uses this same
+  tier set, added up across the whole cart.
 
-Lines that cannot earn a discount at all (a clearance line, a free-gift line)
-are never counted. The break used is the highest quantity threshold at or
-below the count.
+Lines that cannot earn a discount at all (a clearance line not switched on
+for discounts, a free-gift line) are never counted. The break used is the
+highest quantity threshold at or below the count.
 
 ## Tiers vs. other discounts
 
@@ -61,19 +74,34 @@ product discounts compete with each other: **the better one for the customer
 wins**, they never add up. See [combining-discounts](combining-discounts). A
 tier is never part of a Pro stack.
 
+A clearance item only gets a tier when **Clearance with other discounts** is
+switched on in Settings; off (the default while clearance isn't built), it
+never does. Gift lines never get a tier. See
+[switch-combination-categories](../tasks/switch-combination-categories.md).
+
 ## Margin protection
 
 Margin protection can lower a tier's discount the same way it lowers any other
 product discount — never below the price floor you set. See
 [margin-protection](margin-protection).
 
+The product page shows that lowered value too, computed the same way as
+checkout — but **never more than checkout promises, sometimes a little less**
+while it catches up: in a market with its own currency the floor is converted
+using Shopify's exchange rate, and a variant whose floor is not known yet
+shows no discount promise rather than a guess. See
+[../support/tier-lowered-by-margin-protection.md](../support/tier-lowered-by-margin-protection.md).
+
 ## Free and Pro
 
 | | Free | Pro |
 |---|---|---|
 | Tier sets | 1, global | Several, scoped to chosen products or collections |
-| Counting | Per line or per product | + per cart |
+| Counting | Per variant or per product | + per cart |
 
+Every tier set, together, also shares one small storage budget, so very many
+sets with many breaks and currencies can run out of room before hitting the
+set or break count limits above; the admin says so when it would not fit.
 Exact limits: [reference/limits](../reference/limits.generated.md).
 
 ## Markets and currencies

@@ -323,6 +323,12 @@ margin setting make room.
 | Quantity tier sets (Pro; Free has one global set) | ${num(CONFIG_LIMITS.tierSets)} |
 | Quantity breaks in one tier set | ${num(CONFIG_LIMITS.breaksPerTierSet)} |
 | Ways to count quantity | ${TIER_COUNT_ACROSS_MODES.length} (\`${TIER_COUNT_ACROSS_MODES.join("`, `")}\`; \`cart\` is Pro) |
+| Combined size of every tier set (checkout reads a compact copy) | ${num(CONFIG_LIMITS.tierPayloadBytes)} bytes |
+
+All tier sets together share that last, much smaller budget, so many sets with
+many breaks and several currencies can run out of room well before the set or
+break counts above. A save that would not fit is refused with the byte count
+and the budget; nothing is saved.
 
 ## Block appearances
 

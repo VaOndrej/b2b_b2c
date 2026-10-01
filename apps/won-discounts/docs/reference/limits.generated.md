@@ -62,6 +62,12 @@ margin setting make room.
 | Quantity tier sets (Pro; Free has one global set) | 50 |
 | Quantity breaks in one tier set | 10 |
 | Ways to count quantity | 3 (`line`, `product`, `cart`; `cart` is Pro) |
+| Combined size of every tier set (checkout reads a compact copy) | 550 bytes |
+
+All tier sets together share that last, much smaller budget, so many sets with
+many breaks and several currencies can run out of room well before the set or
+break counts above. A save that would not fit is refused with the byte count
+and the budget; nothing is saved.
 
 ## Block appearances
 
