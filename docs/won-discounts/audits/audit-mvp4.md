@@ -7,7 +7,7 @@ jsou uvedené níž, protože bez živého běhu by prošly všemi testy na fale
 
 ## Findings
 
-Žádný P0 ani P1.
+Žádný P0 ani P1. Celkem 9 × P2 a 6 × P3 (vč. 5 nálezů živého E2E).
 
 ### Nalezené živým E2E (opravené před auditem)
 
@@ -16,6 +16,7 @@ jsou uvedené níž, protože bez živého běhu by prošly všemi testy na fale
 | E1 | P2 | Panel po přidání zboží četl `/cart.js` z HTTP cache (starý košík) → dárek se nepřidal | diagnostika E2E „zbývá 10 Kč“ při 5 ks | `cache: "no-store"` (`ca56ea4`), test s modelem cache |
 | E2 | P2 | `shopify:cart:lines-update` se vysílá na **začátku** změny (Storefront Events) → panel četl košík před dokončením | doc Storefront Events „Waiting for the result“ | čekání na `event.promise` (`7e194cf`), test |
 | E3 | P2 | Dotykové cíle panelu < 44 px (390 px); v Dawnu `rem` = 10 px | `assertResponsiveSane`, evidence `*-controls-*.json` (min-height 27,5 px) | `44px` (`ca56ea4`) |
+| E5 | P2 | Zápis odmítnutý nebo ztracený (síť, 429 Cloudflaru) se nezkusil znovu → dárek pod prahem zůstal v košíku a pokladna ho naúčtuje; panel přitom hlásil „Dárek zdarma je v košíku“ (flaky v E2E `rewards`, Horizon) | E2E „below the threshold“ | po neúspěchu panel košík znovu přečte a rozhodne znovu (nejvýš 2×, nikdy slepé opakování — ztracená odpověď by přidala dárek podruhé); pod prahem nikdy „dárek je v košíku“ (commit „opakování přes košík“), 3 testy |
 | E4 | P2 | (po odstranění `selfUntil`, F2) S počítáním ostatních slev vlastní událost tématu po změně kódu (Dawn) odebrala dárek dřív, než si zákazník vybral „Ponechat / Zrušit kód“ (flaky v E2E) | E2E `rewards-other` Dawn, „the gift stays“ | během zadávání kódu a čekajícího varování panel nic neodebírá (commit „varování čeká“), test |
 
 ### Audit
@@ -30,6 +31,7 @@ jsou uvedené níž, protože bez živého běhu by prošly všemi testy na fale
 | A1 | P3 | Uložený Pro práh ve Free červeně (`tone="attention"`); doktrína §16b: tarif = jen amber | `RewardsScreen.tsx` ř. 207 | `ProFrame locked` (`a9fe1dc`), test barvy |
 | F3 | P3 | Odmítnutá změna `updateCart` (`userErrors`) se zákazníkovi neříká | `won-discounts-cart.js` `write` | ponecháno vědomě: panel košík přečte znovu a dárek nabídne znovu; zapsáno v README extensionu (`242142b`) |
 | R2 | P3 | README funkce uvádělo Wasm 244 781 B; build z commitnutého `src` = 245 237 B | `README.md` „Wasm size“ | opraveno (`a6b86a1`) |
+| V1 | P3 | Na Horizonu panel z bloku těsně pod tlačítkem „Zaplatit“ (bez horní mezery) | `evidence/mvp4/e2e-B/rewards-pro-choice-390-horizon.png` | kosmetika, MVP 7 (editor vzhledu a textů storefrontu) |
 | D1 | P3 | Kontrakt R8 sliboval serverové vykreslení panelu (bez CLS); blok jen rezervuje místo | plán ř. 106 | kontrakt upřesněn podle měření: CLS 0 / 0,033 ≤ 0,1, E2E SF-1 hlídá (`a6b86a1`) |
 
 ## Shoda Rust ↔ TS a rozpočet instrukcí

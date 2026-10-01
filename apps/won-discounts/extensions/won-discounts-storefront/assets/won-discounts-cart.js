@@ -84,12 +84,15 @@
     return write({ discountCodes: codes().filter((c) => c !== code) });
   };
 
-  const react = (before) => {
+  const react = (before, n = 0) => {
     if (coding || warn?.loses) return;
     const removed = (before?.tiers || []).find((x) => x.line && view.tiers.some((y) => y.id === x.id && y.due && !y.line && !y.declined));
     if (removed) return decline({ id: removed.id, line: null });
-    if (view.remove.length) return write({ lines: view.remove.map((id) => ({ id, quantity: 0 })) }).then(() => view.add && addGift(view.add.tier, view.add.variant));
-    if (view.add) return addGift(view.add.tier, view.add.variant);
+    const done = view.remove.length
+      ? write({ lines: view.remove.map((id) => ({ id, quantity: 0 })) }).then(() => view.add && addGift(view.add.tier, view.add.variant))
+      : view.add && addGift(view.add.tier, view.add.variant);
+    // A write the cart rejected or lost (network, Cloudflare 429): read the cart again and decide again, twice at most.
+    return Promise.resolve(done).then(() => n < 2 && done && (view.add || view.remove.length) && new Promise((ok) => setTimeout(ok, 3000 * (n + 1))).then(refresh).then(() => react(null, n + 1)));
   };
 
   const askHint = () => {

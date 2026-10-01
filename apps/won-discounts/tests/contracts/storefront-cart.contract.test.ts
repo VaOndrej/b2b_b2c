@@ -247,6 +247,49 @@ test("a customer's change right after the panel's own write is not swallowed (no
   assert.deepEqual(p.state.updates[1]?.payload, { lines: [{ id: "g1", quantity: 0 }] });
 });
 
+test("a rejected write (network, Cloudflare 429: updateCart rejects) is tried again, at most twice more", async (t) => {
+  let calls = 0;
+  const p = page(t, {
+    cart: cartOf([item("a", 1, 160000)]),
+    onUpdate: (_payload, cart) => {
+      calls += 1;
+      if (calls === 1) throw new Error("SFAPI 429 Too Many Requests");
+      return cartOf([...cart.items, giftLine()]);
+    },
+  });
+  await p.settle(10);
+  p.emit("shopify:cart:lines-update");
+  await p.settle(8000);
+  assert.equal(p.state.updates.length, 2, "the same write, once more");
+  assert.deepEqual(p.state.updates[1]!.payload, p.state.updates[0]!.payload);
+  assert.match(p.panel(), /data-state="in"/);
+});
+
+test("a write that landed but answered with an error (lost response) is not sent again: the panel re-reads the cart, the gift is there once", async (t) => {
+  let calls = 0;
+  const p = page(t, {
+    cart: cartOf([item("a", 1, 160000)]),
+    onUpdate: () => {
+      calls += 1;
+      p.state.cart = cartOf([item("a", 1, 160000), giftLine()]);
+      throw new Error("Failed to fetch");
+    },
+  });
+  await p.settle(10);
+  p.emit("shopify:cart:lines-update");
+  await p.settle(12000);
+  assert.equal(calls, 1, "one gift write");
+  assert.match(p.panel(), /data-state="in"/);
+});
+
+test("below the threshold a gift line still in the cart (its removal pending or failed) is never 'your free gift' — checkout charges it", async (t) => {
+  const p = page(t, { cart: cartOf([item("a", 1, 100000), giftLine()]) });
+  await p.settle(1000);
+  assert.doesNotMatch(p.panel(), /data-state="in"/);
+  assert.match(p.panel(), /data-won-discounts-progress="gift"/);
+  assert.equal(p.state.updates.length, 0, "SF-1: on load nothing is written");
+});
+
 test("a customer's change below the threshold removes the gift", async (t) => {
   const p = page(t, { cart: cartOf([item("a", 1, 100000), giftLine()]), onUpdate: () => cartOf([item("a", 1, 100000)]) });
   await p.settle(10);

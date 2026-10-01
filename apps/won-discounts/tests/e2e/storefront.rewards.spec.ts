@@ -211,15 +211,27 @@ function giftThreshold(rw: RewardsSf, tierId: string, currency: string): number 
   return value!;
 }
 
+/** Scrolls the visible panel into view; the theme may re-render it meanwhile (the panel goes back in): try again. */
+async function scrollToPanel(page: Page): Promise<void> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await page.locator(`${PANEL}:visible`).first().scrollIntoViewIfNeeded({ timeout: 5_000 });
+      return;
+    } catch (error) {
+      if (attempt >= 3) throw error;
+      await page.waitForTimeout(1_000);
+    }
+  }
+}
+
 async function panelShots(page: Page, testInfo: TestInfo, name: string) {
-  const panel = page.locator(`${PANEL}:visible`).first();
   await page.setViewportSize({ width: 1440, height: 900 });
-  await panel.scrollIntoViewIfNeeded();
+  await scrollToPanel(page);
   await page.waitForTimeout(400);
   await saveScreenshot(page, testInfo, `${name}-1440`, { fullPage: false });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(800);
-  await page.locator(`${PANEL}:visible`).first().scrollIntoViewIfNeeded();
+  await scrollToPanel(page);
   // The controls' boxes and the CSS deciding them, kept with the evidence (the theme's styles meet ours here).
   const controls = await page
     .locator(`${PANEL}:visible`)

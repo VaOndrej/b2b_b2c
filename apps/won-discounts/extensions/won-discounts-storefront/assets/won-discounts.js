@@ -95,8 +95,9 @@
     let out = "";
     const s = view.ship;
     if (s) out += `<div class="won-cart__row" data-won-discounts-progress="shipping"><p>${s.reached ? t("ship_done") : t("ship_left", { amount: m(s.remaining) })}</p>${bar(s.remaining, s.threshold)}</div>`;
-    out += view.tiers.filter((x) => x.due || x.line).map((x) => giftRow(x, data, t)).join("");
-    const next = view.tiers.find((x) => !x.due && !x.line);
+    const shown = (x) => x.due || (x.line && x.reached);
+    out += view.tiers.filter(shown).map((x) => giftRow(x, data, t)).join("");
+    const next = view.tiers.find((x) => !shown(x));
     if (next) out += `<div class="won-cart__row" data-won-discounts-progress="gift"><p>${t("gift_left", { amount: m(next.left) })}</p>${bar(next.left, next.threshold)}</div>`;
     if (hint) out += `<p class="won-cart__hint" data-won-discounts-hint>${hint}</p>`;
     out += `<form class="won-cart__code" data-won-discounts-code><label>${t("code_label")} <input name="won-code" autocomplete="off" maxlength="255"></label><button type="submit">${t("code_apply")}</button></form>`;
