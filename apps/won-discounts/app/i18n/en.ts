@@ -556,6 +556,9 @@ export const en: Record<keyof typeof cs, string> = {
   "tryCart.warning.targeting": "Product targeting is being refreshed. The result shows the products as checkout knows them right now.",
   "tryCart.warning.membership": "For {lines} the collection membership changed in Shopify and checkout does not know it yet. The targeting is being refreshed; the result shows what checkout applies right now.",
   "tryCart.tier": "Quantity discount",
+  "tryCart.gift": "Gift",
+  "tryCart.giftAdded": "The cart on the website adds the gift once the order reaches the threshold. 1 item is free at checkout.",
+  "tryCart.giftChoice": "The customer picks one of {count} gifts in the cart; this is the first one offered.",
   "tryCart.margin.capped": "Margin floor",
   "tryCart.margin.rateEstimated":
     "Cost prices were converted to {currency} with a rate estimated from the market's prices. The rate is an estimate; checkout uses Shopify's current rate.",

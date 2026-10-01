@@ -561,6 +561,9 @@ export const cs = {
   "tryCart.warning.targeting": "Cílení na produkty se právě obnovuje. Výsledek ukazuje produkty tak, jak je teď zná pokladna.",
   "tryCart.warning.membership": "U položky {lines} se v Shopify změnilo členství v kolekci, pokladna to zatím nezná. Cílení se obnovuje, výsledek ukazuje stav, který pokladna uplatní teď.",
   "tryCart.tier": "Množstevní sleva",
+  "tryCart.gift": "Dárek",
+  "tryCart.giftAdded": "Dárek přidá košík na webu, když nákup dosáhne prahu. V pokladně je zdarma 1 kus.",
+  "tryCart.giftChoice": "Zákazník si v košíku vybere ze {count} dárků, tady je první z nabídky.",
   "tryCart.margin.capped": "Hranice marže",
   "tryCart.margin.rateEstimated":
     "Nákupní ceny jsme do {currency} přepočítali kurzem odhadnutým z cen v trhu. Kurz je odhad, pokladna použije aktuální kurz Shopify.",

@@ -20,6 +20,9 @@
 //              ESTIMATED from market prices (median of market price / base
 //              price over the cart's variants) — checkout uses Shopify's own
 //              presentmentCurrencyRate, and the view says so (`rateEstimated`);
+//   gifts      (rewards, MVP 4) each gift tier's first variant in the same
+//              read, priced like the cart: a reached tier gets the gift line
+//              the cart on the website adds (R8);
 // then planTryCart on the config gated for the shop's plan (BILL-1), with
 // checkout's own output mapping (item 8), and warnings when the last sync
 // failed, the stored config is not in Shopify yet, or the targeting is being
@@ -40,10 +43,20 @@ import { canReadMarkets, loadSyncStatus } from "../sync/save-and-sync.server";
 import { loadShopSyncFacts } from "../sync/sync-state.server";
 import { shopLocalDateTime } from "../sync/sync.server";
 import type { TryCartInput } from "../../components/model/try-cart-form";
-import type { CartPlanView, TryCartLineView, UiResult, UiText } from "../../components/model/types";
+import type {
+  CartPlanView,
+  TryCartLineView,
+  UiResult,
+  UiText,
+} from "../../components/model/types";
 import { nowOf, type ShopCtx } from "./context.server";
 import { ctxPlan } from "./sync-status.server";
-import { parseProductRefs, planTryCart, type PricedLine, type ProductRefs } from "./try-cart-plan";
+import {
+  parseProductRefs,
+  planTryCart,
+  type PricedLine,
+  type ProductRefs,
+} from "./try-cart-plan";
 import { parseCostValue } from "../sync/costs";
 
 /** Variants per WonTryCartVariants call (≤ 1 000 requested points; tests/integration/try-cart.test.ts). */
@@ -135,15 +148,26 @@ export const TRY_CART_DOCUMENTS = Object.freeze({
 /** A Shopify read failed in a way the merchant should hear about (technical detail). */
 class ShopifyReadError extends Error {}
 
-async function call<T>(ctx: ShopCtx, query: string, variables: Record<string, unknown>): Promise<T> {
+async function call<T>(
+  ctx: ShopCtx,
+  query: string,
+  variables: Record<string, unknown>,
+): Promise<T> {
   let result;
   try {
     result = await ctx.client.graphql<T>(query, variables);
   } catch (error) {
     if (error instanceof Response) throw error;
-    throw new ShopifyReadError(error instanceof AdminTransportError || error instanceof Error ? error.message : String(error));
+    throw new ShopifyReadError(
+      error instanceof AdminTransportError || error instanceof Error
+        ? error.message
+        : String(error),
+    );
   }
-  if (!result.data) throw new ShopifyReadError((result.errors ?? []).map((e) => e.message).join("; ") || "no data");
+  if (!result.data)
+    throw new ShopifyReadError(
+      (result.errors ?? []).map((e) => e.message).join("; ") || "no data",
+    );
   return result.data;
 }
 
@@ -164,10 +188,15 @@ export function clearMarketCountryCache(): void {
   marketCache.clear();
 }
 
-type Page<T> = { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: T[] };
+type Page<T> = {
+  pageInfo: { hasNextPage: boolean; endCursor: string | null };
+  nodes: T[];
+};
 
 /** The shop's markets with one country each (read_markets — optional; cached 60 s; [] without it or when unreadable). */
-export async function readMarketCountries(ctx: ShopCtx): Promise<MarketCountry[]> {
+export async function readMarketCountries(
+  ctx: ShopCtx,
+): Promise<MarketCountry[]> {
   if (!canReadMarkets(ctx.scopes)) return [];
   const hit = marketCache.get(ctx.shop);
   if (hit && Date.now() - hit.at < MARKETS_TTL_MS) return hit.value;
@@ -179,12 +208,22 @@ export async function readMarketCountries(ctx: ShopCtx): Promise<MarketCountry[]
         markets: Page<{
           handle: string;
           status: string;
-          currencySettings?: { baseCurrency?: { currencyCode?: string } | null } | null;
-          conditions?: { regionsCondition?: { regions?: { nodes: ({ __typename?: string; code?: string } | null)[] } | null } | null } | null;
+          currencySettings?: {
+            baseCurrency?: { currencyCode?: string } | null;
+          } | null;
+          conditions?: {
+            regionsCondition?: {
+              regions?: {
+                nodes: ({ __typename?: string; code?: string } | null)[];
+              } | null;
+            } | null;
+          } | null;
         }>;
       } = await call(ctx, TRY_CART_DOCUMENTS.markets, { after });
       for (const node of data.markets.nodes) {
-        const region = node.conditions?.regionsCondition?.regions?.nodes?.find((r) => r?.__typename === "MarketRegionCountry" && r.code);
+        const region = node.conditions?.regionsCondition?.regions?.nodes?.find(
+          (r) => r?.__typename === "MarketRegionCountry" && r.code,
+        );
         out.push({
           handle: node.handle,
           active: node.status === "ACTIVE",
@@ -216,10 +255,13 @@ export function countryFor(
 ): { country: string | null; handle: string | null } {
   if (market) {
     const shopify = markets.find((m) => m.handle === market);
-    const saved = config.markets.find((m) => m.handle === market)?.countries?.[0] ?? null;
+    const saved =
+      config.markets.find((m) => m.handle === market)?.countries?.[0] ?? null;
     return { country: shopify?.country ?? saved, handle: market };
   }
-  const selling = markets.find((m) => m.active && m.currency === currency && m.country);
+  const selling = markets.find(
+    (m) => m.active && m.currency === currency && m.country,
+  );
   return { country: selling?.country ?? null, handle: selling?.handle ?? null };
 }
 
@@ -230,7 +272,9 @@ interface VariantNode {
   id?: string;
   title?: string;
   price?: string;
-  contextualPricing?: { price?: { amount?: string; currencyCode?: string } | null } | null;
+  contextualPricing?: {
+    price?: { amount?: string; currencyCode?: string } | null;
+  } | null;
   product?: {
     id?: string;
     title?: string;
@@ -254,18 +298,25 @@ interface ReadVariant {
   collectionIds: string[];
 }
 
-async function productCollections(ctx: ShopCtx, productId: string, after: string | null): Promise<string[]> {
+async function productCollections(
+  ctx: ShopCtx,
+  productId: string,
+  after: string | null,
+): Promise<string[]> {
   const out: string[] = [];
   let cursor = after;
   for (let page = 0; cursor && page < MAX_COLLECTION_PAGES; page++) {
-    const data: { product: { collections: Page<{ id: string }> } | null } = await call(ctx, TRY_CART_DOCUMENTS.productCollections, {
-      id: productId,
-      after: cursor,
-    });
+    const data: { product: { collections: Page<{ id: string }> } | null } =
+      await call(ctx, TRY_CART_DOCUMENTS.productCollections, {
+        id: productId,
+        after: cursor,
+      });
     const connection = data.product?.collections;
     if (!connection) break;
     out.push(...connection.nodes.map((n) => n.id));
-    cursor = connection.pageInfo.hasNextPage ? connection.pageInfo.endCursor : null;
+    cursor = connection.pageInfo.hasNextPage
+      ? connection.pageInfo.endCursor
+      : null;
   }
   return out;
 }
@@ -273,36 +324,60 @@ async function productCollections(ctx: ShopCtx, productId: string, after: string
 async function readVariants(
   ctx: ShopCtx,
   ids: readonly string[],
-  opts: { locale: "cs" | "en"; currency: string; country: string | null; shopCurrency: string | null; withCollections: boolean },
+  opts: {
+    locale: "cs" | "en";
+    currency: string;
+    country: string | null;
+    shopCurrency: string | null;
+    withCollections: boolean;
+  },
 ): Promise<Map<string, ReadVariant>> {
   const out = new Map<string, ReadVariant>();
   const extraPages = new Map<string, string>();
   for (let i = 0; i < ids.length; i += TRY_CART_VARIANTS_BATCH) {
     const batch = ids.slice(i, i + TRY_CART_VARIANTS_BATCH);
     // Without a country there is no market price to ask for: the base price (shop currency) is used.
-    const data: { nodes: (VariantNode | null)[] } = await call(ctx, TRY_CART_DOCUMENTS.variants, {
-      ids: batch,
-      country: opts.country,
-      priced: opts.country !== null,
-      withCollections: opts.withCollections,
-    });
+    const data: { nodes: (VariantNode | null)[] } = await call(
+      ctx,
+      TRY_CART_DOCUMENTS.variants,
+      {
+        ids: batch,
+        country: opts.country,
+        priced: opts.country !== null,
+        withCollections: opts.withCollections,
+      },
+    );
     for (const node of data.nodes ?? []) {
-      if (!node || node.__typename !== "ProductVariant" || !node.id || !node.product?.id) continue;
+      if (
+        !node ||
+        node.__typename !== "ProductVariant" ||
+        !node.id ||
+        !node.product?.id
+      )
+        continue;
       let amount: string | null = null;
       if (opts.country) {
         const price = node.contextualPricing?.price;
-        if (price?.amount && price.currencyCode === opts.currency) amount = price.amount;
-      } else if (opts.currency === opts.shopCurrency && typeof node.price === "string") {
+        if (price?.amount && price.currencyCode === opts.currency)
+          amount = price.amount;
+      } else if (
+        opts.currency === opts.shopCurrency &&
+        typeof node.price === "string"
+      ) {
         amount = node.price;
       }
       const collections = node.product.collections;
-      if (collections?.pageInfo.hasNextPage && collections.pageInfo.endCursor) extraPages.set(node.product.id, collections.pageInfo.endCursor);
+      if (collections?.pageInfo.hasNextPage && collections.pageInfo.endCursor)
+        extraPages.set(node.product.id, collections.pageInfo.endCursor);
       out.set(node.id, {
         variantId: node.id,
         productId: node.product.id,
         // Never a raw GID in the merchant's text (audit fix round 2): an untitled product is said as such.
-        title: node.product.title?.trim() || t(opts.locale, "common.untitledProduct"),
-        variantTitle: node.title && node.title !== "Default Title" ? node.title : null,
+        title:
+          node.product.title?.trim() ||
+          t(opts.locale, "common.untitledProduct"),
+        variantTitle:
+          node.title && node.title !== "Default Title" ? node.title : null,
         amount,
         basePrice: typeof node.price === "string" ? node.price : null,
         refs: parseProductRefs(node.product.wonRefs?.value ?? null),
@@ -312,7 +387,8 @@ async function readVariants(
   }
   for (const [productId, cursor] of extraPages) {
     const more = await productCollections(ctx, productId, cursor);
-    for (const variant of out.values()) if (variant.productId === productId) variant.collectionIds.push(...more);
+    for (const variant of out.values())
+      if (variant.productId === productId) variant.collectionIds.push(...more);
   }
   return out;
 }
@@ -331,26 +407,41 @@ export async function tryCartSyncWarnings(
 ): Promise<{ warnings: UiText[]; targetingStale: boolean }> {
   const [status, notApplied, facts, applied] = await Promise.all([
     loadSyncStatus(ctx.db, ctx.shop),
-    storedConfigNotApplied(ctx.db, ctx.shop, opts.plan ? { plan: opts.plan } : {}),
+    storedConfigNotApplied(
+      ctx.db,
+      ctx.shop,
+      opts.plan ? { plan: opts.plan } : {},
+    ),
     loadShopSyncFacts(ctx.db, ctx.shop),
     appliedPlanOf(ctx.db, ctx.shop),
   ]);
   const out: UiText[] = [];
-  const proStillLive = opts.plan === "free" && applied === "pro" && (opts.stripped ?? 0) > 0;
+  const proStillLive =
+    opts.plan === "free" && applied === "pro" && (opts.stripped ?? 0) > 0;
   if (status && !status.ok) out.push({ key: "tryCart.warning.syncFailed" });
   else if (proStillLive) out.push({ key: "tryCart.warning.planPending" });
-  else if (!status || notApplied) out.push({ key: "tryCart.warning.notApplied" });
+  else if (!status || notApplied)
+    out.push({ key: "tryCart.warning.notApplied" });
   // The targeting warning is the plan's to give: only when the cart involves a collection rule (planTryCart).
-  const targetingStale = facts.targetingStaleAt !== null || (status?.pending.includes("products_in_progress") ?? false);
+  const targetingStale =
+    facts.targetingStaleAt !== null ||
+    (status?.pending.includes("products_in_progress") ?? false);
   return { warnings: out, targetingStale };
 }
 
 // --- Margin protection (MVP 2) -------------------------------------------------------------------
 
 /** The purchase costs checkout reads (the variant metafield the mirror wrote), by variant id. */
-export async function mirroredCosts(ctx: Pick<ShopCtx, "db" | "shop">, variantIds: readonly string[]): Promise<Map<string, { cost: number; cur: string }>> {
+export async function mirroredCosts(
+  ctx: Pick<ShopCtx, "db" | "shop">,
+  variantIds: readonly string[],
+): Promise<Map<string, { cost: number; cur: string }>> {
   const rows = await ctx.db.variantCost.findMany({
-    where: { shop: ctx.shop, variantId: { in: [...variantIds] }, metafieldValue: { not: null } },
+    where: {
+      shop: ctx.shop,
+      variantId: { in: [...variantIds] },
+      metafieldValue: { not: null },
+    },
     select: { variantId: true, metafieldValue: true },
   });
   const out = new Map<string, { cost: number; cur: string }>();
@@ -370,14 +461,22 @@ export function estimateShopToCartRate(
   variants: readonly { amount: string | null; basePrice: string | null }[],
   opts: { currency: string; shopCurrency: string | null },
 ): { rate: number | null; estimated: boolean } {
-  if (opts.shopCurrency && opts.currency === opts.shopCurrency) return { rate: 1, estimated: false };
+  if (opts.shopCurrency && opts.currency === opts.shopCurrency)
+    return { rate: 1, estimated: false };
   const ratios = variants
-    .map((v) => (v.amount !== null && v.basePrice !== null ? Number(v.amount) / Number(v.basePrice) : NaN))
+    .map((v) =>
+      v.amount !== null && v.basePrice !== null
+        ? Number(v.amount) / Number(v.basePrice)
+        : NaN,
+    )
     .filter((r) => Number.isFinite(r) && r > 0)
     .sort((a, b) => a - b);
   if (ratios.length === 0) return { rate: null, estimated: false };
   const mid = Math.floor(ratios.length / 2);
-  const rate = ratios.length % 2 === 1 ? ratios[mid]! : (ratios[mid - 1]! + ratios[mid]!) / 2;
+  const rate =
+    ratios.length % 2 === 1
+      ? ratios[mid]!
+      : (ratios[mid - 1]! + ratios[mid]!) / 2;
   return { rate, estimated: true };
 }
 
@@ -402,30 +501,67 @@ export async function runTryCartPlan(
 ): Promise<TryCartRun> {
   if (!opts.timezone) {
     // Rule days are shop days: without the zone the plan could be a day off.
-    return { result: { ok: false, reason: "shopify_unavailable", detail: "shop time zone" }, plan: null };
+    return {
+      result: {
+        ok: false,
+        reason: "shopify_unavailable",
+        detail: "shop time zone",
+      },
+      plan: null,
+    };
   }
   try {
     const time = shopLocalDateTime(nowOf(ctx), opts.timezone).slice(11);
     const plan0 = await ctxPlan(ctx);
-    const gate = gateConfigForPlan(opts.config, plan0, { now: `${input.date}T${time}` });
+    const gate = gateConfigForPlan(opts.config, plan0, {
+      now: `${input.date}T${time}`,
+    });
     // What checkout runs: a margin collection too large to read is folded into the whole store's values (P1-1).
     const gated = await foldedForCheckout(ctx.db, ctx.shop, gate.config);
-    const { warnings, targetingStale } = await tryCartSyncWarnings(ctx, { plan: plan0, stripped: gate.stripped.length });
+    const { warnings, targetingStale } = await tryCartSyncWarnings(ctx, {
+      plan: plan0,
+      stripped: gate.stripped.length,
+    });
     // While collection membership is being refreshed, the products' collections are read LIVE too:
     // a fresh joiner (no ref yet) or a leaver (still a ref) is then said per line.
-    const liveCollections = targetingStale && targetScopes(gated).collectionIds.size > 0;
+    const liveCollections =
+      targetingStale && targetScopes(gated).collectionIds.size > 0;
     const markets = await readMarketCountries(ctx);
-    const { country, handle } = countryFor(opts.config, markets, input.currency, input.market ?? null);
-    const variants = await readVariants(ctx, [...new Set(input.lines.map((l) => l.variantId))], {
-      locale: input.locale,
-      currency: input.currency,
-      country,
-      shopCurrency: opts.shopCurrency,
-      withCollections: liveCollections,
-    });
+    const { country, handle } = countryFor(
+      opts.config,
+      markets,
+      input.currency,
+      input.market ?? null,
+    );
+    // MVP 4 (R8): each gift tier offered in this currency → its first variant, the line the cart on the website adds.
+    const giftTiers = gated.modules.rewards.gifts.filter(
+      (tier) =>
+        typeof tier.threshold[input.currency] === "number" &&
+        tier.choices.length > 0,
+    );
+    const variants = await readVariants(
+      ctx,
+      [
+        ...new Set([
+          ...input.lines.map((l) => l.variantId),
+          ...giftTiers.map((tier) => tier.choices[0]!),
+        ]),
+      ],
+      {
+        locale: input.locale,
+        currency: input.currency,
+        country,
+        shopCurrency: opts.shopCurrency,
+        withCollections: liveCollections,
+      },
+    );
     if (input.lines.some((l) => !variants.has(l.variantId))) {
       return {
-        result: { ok: false, reason: "invalid", errors: [{ field: "lines", key: "tryCart.error.unknownProduct" }] },
+        result: {
+          ok: false,
+          reason: "invalid",
+          errors: [{ field: "lines", key: "tryCart.error.unknownProduct" }],
+        },
         plan: null,
       };
     }
@@ -435,7 +571,8 @@ export async function runTryCartPlan(
     for (const line of input.lines) {
       const v = variants.get(line.variantId)!;
       const title = v.variantTitle ? `${v.title} (${v.variantTitle})` : v.title;
-      const minor = v.amount === null ? null : toMinorUnits(v.amount, input.currency);
+      const minor =
+        v.amount === null ? null : toMinorUnits(v.amount, input.currency);
       lines.push({
         variantId: v.variantId,
         productId: v.productId,
@@ -458,19 +595,63 @@ export async function runTryCartPlan(
       });
     }
     if (missing.length > 0) {
-      return { result: { ok: false, reason: "prices_unavailable", currency: input.currency, products: [...new Set(missing)] }, plan: null, lines };
+      return {
+        result: {
+          ok: false,
+          reason: "prices_unavailable",
+          currency: input.currency,
+          products: [...new Set(missing)],
+        },
+        plan: null,
+        lines,
+      };
     }
-    const productRefs = new Map([...variants.values()].map((v) => [v.productId, v.refs]));
+    const giftCandidates = new Map<string, PricedLine & { choices: number }>();
+    for (const tier of giftTiers) {
+      const v = variants.get(tier.choices[0]!);
+      const minor =
+        v && v.amount !== null ? toMinorUnits(v.amount, input.currency) : null;
+      if (!v || minor === null) continue;
+      giftCandidates.set(tier.id, {
+        variantId: v.variantId,
+        productId: v.productId,
+        title: v.variantTitle ? `${v.title} (${v.variantTitle})` : v.title,
+        quantity: 1,
+        unitPrice: minor,
+        collectionIds: v.collectionIds,
+        giftTierId: tier.id,
+        choices: tier.choices.length,
+      });
+    }
+    const productRefs = new Map(
+      [...variants.values()].map((v) => [v.productId, v.refs]),
+    );
     // Margin protection: costs as checkout reads them, and the shop → cart rate (estimated outside the shop currency).
-    let margin: { shopToCartRate: number | null; rateEstimated: boolean } = { shopToCartRate: null, rateEstimated: false };
+    let margin: { shopToCartRate: number | null; rateEstimated: boolean } = {
+      shopToCartRate: null,
+      rateEstimated: false,
+    };
     if (gated.modules.margin.enabled) {
-      const costs = await mirroredCosts(ctx, priced.map((line) => line.variantId));
+      const costs = await mirroredCosts(
+        ctx,
+        priced.map((line) => line.variantId),
+      );
       for (const line of priced) {
         const cost = costs.get(line.variantId);
-        if (cost) Object.assign(line, { unitCost: cost.cost, unitCostCurrency: cost.cur });
+        if (cost)
+          Object.assign(line, {
+            unitCost: cost.cost,
+            unitCostCurrency: cost.cur,
+          });
       }
-      const estimate = estimateShopToCartRate([...variants.values()], { currency: input.currency, shopCurrency: opts.shopCurrency });
-      margin = { shopToCartRate: estimate.rate, rateEstimated: estimate.estimated };
+      const estimate = estimateShopToCartRate(
+        input.lines.map((l) => variants.get(l.variantId)!),
+        { currency: input.currency, shopCurrency: opts.shopCurrency },
+      );
+      margin = {
+        shopToCartRate: estimate.rate,
+        rateEstimated: estimate.estimated,
+      };
     }
     const plan = planTryCart(gated, {
       shopCurrency: opts.shopCurrency,
@@ -488,11 +669,20 @@ export async function runTryCartPlan(
       shopTimezone: opts.timezone,
       locale: input.locale,
       market: handle ? (opts.marketNames?.[handle] ?? handle) : null,
+      giftCandidates,
     });
     return { result: null, plan, lines };
   } catch (error) {
     if (error instanceof Response) throw error;
-    if (error instanceof ShopifyReadError) return { result: { ok: false, reason: "shopify_unavailable", detail: error.message }, plan: null };
+    if (error instanceof ShopifyReadError)
+      return {
+        result: {
+          ok: false,
+          reason: "shopify_unavailable",
+          detail: error.message,
+        },
+        plan: null,
+      };
     throw error;
   }
 }

@@ -435,6 +435,9 @@ export interface CartPlanLineView {
   marginCapped?: boolean;
   /** The line's product discount is a quantity tier (MVP 3; the explain sentence names the break). Additive (T5). */
   tier?: boolean;
+  /** MVP 4: the gift line the cart on the website adds (simulated, 1 item); `giftChoices` = how many the customer picks from. */
+  gift?: boolean;
+  giftChoices?: number;
 }
 
 /** One human sentence from explainPlan (engine), tied to lines when it is about them. */

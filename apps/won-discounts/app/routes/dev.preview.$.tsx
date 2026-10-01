@@ -4,23 +4,68 @@ import { useActionData, useLoaderData, useLocation } from "react-router";
 
 import { resolveLocale } from "../i18n";
 import { LocaleProvider, useT } from "../i18n/context";
-import { MoveDialog, MoveDialogBody, moveDialogHeading } from "../components/MoveDialog";
-import { isUpcomingModule, type UpcomingModule } from "../components/model/modules";
+import {
+  MoveDialog,
+  MoveDialogBody,
+  moveDialogHeading,
+} from "../components/MoveDialog";
+import {
+  isUpcomingModule,
+  type UpcomingModule,
+} from "../components/model/modules";
 import { isRecipeKey } from "../components/model/rule-form";
 import type { NativeDiscountView } from "../components/model/types";
 import { WonSection } from "../components/shell/WonSection";
 import { ComingSoonScreen } from "../components/screens/ComingSoonScreen";
-import { buildDiscountsProps, DiscountsScreen, type DiscountsScreenProps } from "../components/screens/DiscountsScreen";
-import { buildOnboardingProps, OnboardingScreen, type OnboardingScreenProps } from "../components/screens/OnboardingScreen";
-import { buildOverviewProps, OverviewScreen, type OverviewScreenProps } from "../components/screens/OverviewScreen";
-import { PlanScreen, type PlanScreenProps } from "../components/screens/PlanScreen";
-import { buildRuleEditorProps, RuleEditorScreen, type RuleEditorScreenProps } from "../components/screens/RuleEditorScreen";
-import { SettingsScreen, type SettingsScreenProps } from "../components/screens/SettingsScreen";
-import { AppearanceScreen, type AppearanceScreenProps } from "../components/screens/AppearanceScreen";
-import { TiersScreen, type TiersScreenProps } from "../components/screens/TiersScreen";
-import { RewardsScreen, type RewardsScreenProps } from "../components/screens/RewardsScreen";
-import { MarginScreen, type MarginScreenProps } from "../components/screens/MarginScreen";
-import { buildTryCartProps, TryCartScreen, type TryCartScreenProps } from "../components/screens/TryCartScreen";
+import {
+  buildDiscountsProps,
+  DiscountsScreen,
+  type DiscountsScreenProps,
+} from "../components/screens/DiscountsScreen";
+import {
+  buildOnboardingProps,
+  OnboardingScreen,
+  type OnboardingScreenProps,
+} from "../components/screens/OnboardingScreen";
+import {
+  buildOverviewProps,
+  OverviewScreen,
+  type OverviewScreenProps,
+} from "../components/screens/OverviewScreen";
+import {
+  PlanScreen,
+  type PlanScreenProps,
+} from "../components/screens/PlanScreen";
+import {
+  buildRuleEditorProps,
+  RuleEditorScreen,
+  type RuleEditorScreenProps,
+} from "../components/screens/RuleEditorScreen";
+import {
+  SettingsScreen,
+  type SettingsScreenProps,
+} from "../components/screens/SettingsScreen";
+import {
+  AppearanceScreen,
+  type AppearanceScreenProps,
+} from "../components/screens/AppearanceScreen";
+import {
+  TiersScreen,
+  type TiersScreenProps,
+} from "../components/screens/TiersScreen";
+import {
+  RewardsScreen,
+  type RewardsScreenProps,
+} from "../components/screens/RewardsScreen";
+import {
+  MarginScreen,
+  type MarginScreenProps,
+} from "../components/screens/MarginScreen";
+import {
+  buildTryCartProps,
+  TryCartScreen,
+  type TryCartScreenProps,
+} from "../components/screens/TryCartScreen";
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
 
 import { codeRuleLimit } from "../lib/ui-actions.server";
@@ -63,6 +108,8 @@ import {
   devTiersResult,
   devTiersScreen,
   devTryCartPlanTiers,
+  devTryCartPlanRewards,
+  devTryCartRewardLines,
   DEV_TRY_CART_TIER_LINES,
   isDevHarnessEnabled,
 } from "../lib/dev-harness.server";
@@ -144,7 +191,9 @@ export type HarnessScreen = (typeof HARNESS_SCREENS)[number];
 export function harnessScreen(pathname: string): HarnessScreen | null {
   const rest = pathname.replace(/^\/dev\/preview\/?/, "").replace(/\/+$/, "");
   if (rest === "") return "overview";
-  return (HARNESS_SCREENS as readonly string[]).includes(rest) ? (rest as HarnessScreen) : null;
+  return (HARNESS_SCREENS as readonly string[]).includes(rest)
+    ? (rest as HarnessScreen)
+    : null;
 }
 
 const notFound = () => new Response("Not Found", { status: 404 });
@@ -164,9 +213,18 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
   const sync = { state: "not_wired" as const };
   switch (screen) {
     case "overview": {
-      const wired = { readOnly, timezone: DEV_TIMEZONE, marketNames: names, now: DEV_NOW };
+      const wired = {
+        readOnly,
+        timezone: DEV_TIMEZONE,
+        marketNames: names,
+        now: DEV_NOW,
+      };
       if (state === "live") {
-        return buildOverviewProps(DEV_OVERVIEW_FIXTURE, { ...wired, signals: { ...DEV_SIGNALS, native: devNative(locale) }, ruleSync: DEV_RULE_SYNC_OK });
+        return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
+          ...wired,
+          signals: { ...DEV_SIGNALS, native: devNative(locale) },
+          ruleSync: DEV_RULE_SYNC_OK,
+        });
       }
       if (state === "sync-failed") {
         return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
@@ -177,7 +235,11 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       }
       if (state === "moved") {
         return {
-          ...buildOverviewProps(DEV_OVERVIEW_FIXTURE, { ...wired, signals: { ...DEV_SIGNALS, native: devNativeMoved(locale) }, ruleSync: DEV_RULE_SYNC_OK }),
+          ...buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
+            ...wired,
+            signals: { ...DEV_SIGNALS, native: devNativeMoved(locale) },
+            ruleSync: DEV_RULE_SYNC_OK,
+          }),
           // The Notice the Move fetcher shows in the section right after the move.
           nativeResult: devMovedResult(locale),
         };
@@ -190,22 +252,50 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
           ...devGate(locale),
         });
       }
-      if (state === "margin" || state === "margin-off" || state === "margin-running" || state === "margin-reauth" || state === "margin-too-large") {
-        const card = state === "margin" ? "stale" : state === "margin-off" ? "off" : state === "margin-running" ? "running" : state === "margin-reauth" ? "reauth" : "too-large";
+      if (
+        state === "margin" ||
+        state === "margin-off" ||
+        state === "margin-running" ||
+        state === "margin-reauth" ||
+        state === "margin-too-large"
+      ) {
+        const card =
+          state === "margin"
+            ? "stale"
+            : state === "margin-off"
+              ? "off"
+              : state === "margin-running"
+                ? "running"
+                : state === "margin-reauth"
+                  ? "reauth"
+                  : "too-large";
         return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
           ...wired,
-          signals: { ...DEV_SIGNALS, native: devNative(locale), margin: devMarginOverview(card) },
+          signals: {
+            ...DEV_SIGNALS,
+            native: devNative(locale),
+            margin: devMarginOverview(card),
+          },
           ruleSync: DEV_RULE_SYNC_OK,
         });
       }
       if (state === "tiers" || state === "tiers-empty") {
         return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
           ...wired,
-          signals: { ...DEV_SIGNALS, native: devNative(locale), tiers: devTiersOverview(state === "tiers" ? "off" : "empty") },
+          signals: {
+            ...DEV_SIGNALS,
+            native: devNative(locale),
+            tiers: devTiersOverview(state === "tiers" ? "off" : "empty"),
+          },
           ruleSync: DEV_RULE_SYNC_OK,
         });
       }
-      if (state === "empty") return buildOverviewProps(DEV_EMPTY_FIXTURE, { readOnly, timezone: DEV_TIMEZONE, now: DEV_NOW });
+      if (state === "empty")
+        return buildOverviewProps(DEV_EMPTY_FIXTURE, {
+          readOnly,
+          timezone: DEV_TIMEZONE,
+          now: DEV_NOW,
+        });
       return buildOverviewProps(DEV_OVERVIEW_FIXTURE, { readOnly });
     }
     case "discounts": {
@@ -224,12 +314,22 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
           ...(state === "f2-pending" ? { gateOff: [], gatePending: true } : {}),
         });
       }
-      const config = state === "empty" ? DEV_EMPTY_FIXTURE : DEV_OVERVIEW_FIXTURE;
+      const config =
+        state === "empty" ? DEV_EMPTY_FIXTURE : DEV_OVERVIEW_FIXTURE;
       const syncState = q.get("sync");
       return buildDiscountsProps(config, {
         readOnly,
-        sync: syncState === "ok" ? DEV_SIGNALS.sync : syncState === "failed" ? DEV_SIGNALS_SYNC_FAILED.sync : sync,
-        ...(syncState === "ok" ? { ruleSync: DEV_RULE_SYNC_OK } : syncState === "failed" ? { ruleSync: DEV_RULE_SYNC_FAILED } : {}),
+        sync:
+          syncState === "ok"
+            ? DEV_SIGNALS.sync
+            : syncState === "failed"
+              ? DEV_SIGNALS_SYNC_FAILED.sync
+              : sync,
+        ...(syncState === "ok"
+          ? { ruleSync: DEV_RULE_SYNC_OK }
+          : syncState === "failed"
+            ? { ruleSync: DEV_RULE_SYNC_FAILED }
+            : {}),
         codeRules: codeRuleLimit(config),
         timezone: DEV_TIMEZONE,
         marketNames: names,
@@ -241,41 +341,102 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       const ruleParam = q.get("rule") ?? "dev-fixture-4";
       const f2 = ruleParam.startsWith("dev-f2-");
       const withTiers = q.get("tiers") === "1";
-      const props = buildRuleEditorProps(withTiers ? DEV_TIERS_FIXTURE : f2 ? DEV_F2_FIXTURE : DEV_OVERVIEW_FIXTURE, {
-        ...(f2 && q.get("plan") !== "pro" ? devGate(locale) : {}),
-        ...(f2 ? { ruleSync: DEV_RULE_SYNC_F2, marketsScope: false } : {}),
-        ruleId: ruleParam,
-        recipe: isRecipeKey(recipe) ? recipe : null,
-        readOnly,
-        pro: q.get("plan") === "pro",
-        timezone: DEV_TIMEZONE,
-        sync,
-        codeRules: codeRuleLimit(DEV_OVERVIEW_FIXTURE),
-        shopCurrency: "CZK",
-        marketNames: names,
-        now: DEV_NOW,
-      });
+      const props = buildRuleEditorProps(
+        withTiers
+          ? DEV_TIERS_FIXTURE
+          : f2
+            ? DEV_F2_FIXTURE
+            : DEV_OVERVIEW_FIXTURE,
+        {
+          ...(f2 && q.get("plan") !== "pro" ? devGate(locale) : {}),
+          ...(f2 ? { ruleSync: DEV_RULE_SYNC_F2, marketsScope: false } : {}),
+          ruleId: ruleParam,
+          recipe: isRecipeKey(recipe) ? recipe : null,
+          readOnly,
+          pro: q.get("plan") === "pro",
+          timezone: DEV_TIMEZONE,
+          sync,
+          codeRules: codeRuleLimit(DEV_OVERVIEW_FIXTURE),
+          shopCurrency: "CZK",
+          marketNames: names,
+          now: DEV_NOW,
+        },
+      );
       if (!props) throw notFound();
       return {
         ...props,
         result: devEditorResult(q.get("result")),
         ...(q.get("margin") === "1" || q.get("margin") === "computing"
-          ? { marginImpact: devRuleMarginImpact(ruleParam, { pro: q.get("plan") === "pro", computing: q.get("margin") === "computing" }) }
+          ? {
+              marginImpact: devRuleMarginImpact(ruleParam, {
+                pro: q.get("plan") === "pro",
+                computing: q.get("margin") === "computing",
+              }),
+            }
           : {}),
       };
     }
     case "try-cart": {
-      const base = buildTryCartProps(DEV_OVERVIEW_FIXTURE, { timezone: DEV_TIMEZONE, marketNames: names, now: DEV_NOW });
+      const base = buildTryCartProps(DEV_OVERVIEW_FIXTURE, {
+        timezone: DEV_TIMEZONE,
+        marketNames: names,
+        now: DEV_NOW,
+      });
       if (state === "empty") return base;
-      if (state === "warnings") return { ...base, lines: DEV_TRY_CART_LINES, codes: "VIP10", currency: "CZK:cz", plan: devTryCartPlanWarnings(locale) };
-      if (state === "margin") return { ...base, lines: DEV_TRY_CART_MARGIN_LINES, currency: "EUR:sk", plan: devTryCartPlanMargin(locale) };
+      if (state === "warnings")
+        return {
+          ...base,
+          lines: DEV_TRY_CART_LINES,
+          codes: "VIP10",
+          currency: "CZK:cz",
+          plan: devTryCartPlanWarnings(locale),
+        };
+      if (state === "margin")
+        return {
+          ...base,
+          lines: DEV_TRY_CART_MARGIN_LINES,
+          currency: "EUR:sk",
+          plan: devTryCartPlanMargin(locale),
+        };
       if (state === "tiers") {
-        return { ...base, lines: DEV_TRY_CART_TIER_LINES, currency: "CZK:cz", plan: devTryCartPlanTiers(locale, q.get("plan") === "pro" ? "pro" : "free") };
+        return {
+          ...base,
+          lines: DEV_TRY_CART_TIER_LINES,
+          currency: "CZK:cz",
+          plan: devTryCartPlanTiers(
+            locale,
+            q.get("plan") === "pro" ? "pro" : "free",
+          ),
+        };
+      }
+      if (state === "rewards") {
+        const plan = q.get("plan") === "pro" ? "pro" : "free";
+        return {
+          ...base,
+          lines: devTryCartRewardLines(plan),
+          currency: "CZK:cz",
+          plan: devTryCartPlanRewards(locale, plan),
+        };
       }
       if (state === "not-wired") {
-        return { ...base, lines: DEV_TRY_CART_LINES, codes: "VIP10", result: { ok: false as const, reason: "not_wired" as const, what: "tryCart" as const } };
+        return {
+          ...base,
+          lines: DEV_TRY_CART_LINES,
+          codes: "VIP10",
+          result: {
+            ok: false as const,
+            reason: "not_wired" as const,
+            what: "tryCart" as const,
+          },
+        };
       }
-      return { ...base, lines: DEV_TRY_CART_LINES, codes: "VIP10", currency: "CZK:cz", plan: devTryCartPlan(locale) };
+      return {
+        ...base,
+        lines: DEV_TRY_CART_LINES,
+        codes: "VIP10",
+        currency: "CZK:cz",
+        plan: devTryCartPlan(locale),
+      };
     }
     case "onboarding": {
       const step = Number(q.get("step") ?? "1");
@@ -285,11 +446,16 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
         embed: q.get("embed") === "on" ? DEV_EMBED_ON : DEV_EMBED_OFF,
         readOnly,
       });
-      return { ...props, step: Math.min(3, Math.max(1, Number.isFinite(step) ? step : 1)) };
+      return {
+        ...props,
+        step: Math.min(3, Math.max(1, Number.isFinite(step) ? step : 1)),
+      };
     }
     case "move-dialog": {
       const discounts = devNative(locale).discounts.filter((d) => d.movable);
-      return { discounts: q.get("all") === "1" ? discounts : discounts.slice(0, 1) };
+      return {
+        discounts: q.get("all") === "1" ? discounts : discounts.slice(0, 1),
+      };
     }
     case "coming-soon": {
       const module = q.get("module") ?? "tiers";
@@ -297,21 +463,49 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       return { module };
     }
     case "plan":
-      return { pro: q.get("plan") === "pro", codeRules: codeRuleLimit(DEV_OVERVIEW_FIXTURE), maxRules: CONFIG_LIMITS.rules };
+      return {
+        pro: q.get("plan") === "pro",
+        codeRules: codeRuleLimit(DEV_OVERVIEW_FIXTURE),
+        maxRules: CONFIG_LIMITS.rules,
+      };
     case "settings":
-      return devSettingsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state });
+      return devSettingsScreen({
+        plan: q.get("plan") === "pro" ? "pro" : "free",
+        state,
+      });
     case "tiers":
       return {
-        ...devTiersScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, theme: q.get("theme") }),
+        ...devTiersScreen({
+          plan: q.get("plan") === "pro" ? "pro" : "free",
+          state,
+          locale,
+          theme: q.get("theme"),
+        }),
         result: devTiersResult(q.get("result")),
       };
     case "rewards":
-      return { ...devRewardsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale }), result: devRewardsResult(q.get("result")) };
+      return {
+        ...devRewardsScreen({
+          plan: q.get("plan") === "pro" ? "pro" : "free",
+          state,
+          locale,
+        }),
+        result: devRewardsResult(q.get("result")),
+      };
     case "appearance":
-      return devAppearanceScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, theme: q.get("theme") });
+      return devAppearanceScreen({
+        plan: q.get("plan") === "pro" ? "pro" : "free",
+        state,
+        theme: q.get("theme"),
+      });
     case "margin":
       return {
-        ...devMarginScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, focusRuleId: q.get("rule") }),
+        ...devMarginScreen({
+          plan: q.get("plan") === "pro" ? "pro" : "free",
+          state,
+          locale,
+          focusRuleId: q.get("rule"),
+        }),
         result: devMarginResult(q.get("result"), locale),
       };
     default:
@@ -335,12 +529,20 @@ function MoveDialogPreview({ discounts }: { discounts: NativeDiscountView[] }) {
       <WonSection title={moveDialogHeading(discounts, tr)} glyph="move">
         <MoveDialogBody discounts={discounts} />
         <div style={{ marginTop: 12 }}>
-          <s-button variant="primary" commandFor="won-move-dialog" command="--show">
+          <s-button
+            variant="primary"
+            commandFor="won-move-dialog"
+            command="--show"
+          >
             {tr.t("move.confirm")}
           </s-button>
         </div>
       </WonSection>
-      <MoveDialog id="won-move-dialog" discounts={discounts} onConfirm={() => undefined} />
+      <MoveDialog
+        id="won-move-dialog"
+        discounts={discounts}
+        onConfirm={() => undefined}
+      />
     </s-page>
   );
 }
@@ -351,7 +553,9 @@ export default function DevPreview() {
   const submitted = useActionData<typeof action>() ?? null;
   const location = useLocation();
   const screen = harnessScreen(location.pathname) ?? "overview";
-  const locale = resolveLocale(new URLSearchParams(location.search).get("locale"));
+  const locale = resolveLocale(
+    new URLSearchParams(location.search).get("locale"),
+  );
 
   let content: ReactNode;
   switch (screen) {
@@ -364,16 +568,33 @@ export default function DevPreview() {
       content = <DiscountsScreen {...(data as DiscountsScreenProps)} />;
       break;
     case "rule-editor":
-      content = <RuleEditorScreen {...(data as RuleEditorScreenProps)} result={submitted ?? (data as RuleEditorScreenProps).result} />;
+      content = (
+        <RuleEditorScreen
+          {...(data as RuleEditorScreenProps)}
+          result={submitted ?? (data as RuleEditorScreenProps).result}
+        />
+      );
       break;
     case "try-cart":
-      content = <TryCartScreen {...(data as TryCartScreenProps)} result={submitted ?? (data as TryCartScreenProps).result} />;
+      content = (
+        <TryCartScreen
+          {...(data as TryCartScreenProps)}
+          result={submitted ?? (data as TryCartScreenProps).result}
+        />
+      );
       break;
     case "onboarding":
-      content = <OnboardingScreen {...(data as OnboardingScreenProps)} result={submitted ?? (data as OnboardingScreenProps).result} />;
+      content = (
+        <OnboardingScreen
+          {...(data as OnboardingScreenProps)}
+          result={submitted ?? (data as OnboardingScreenProps).result}
+        />
+      );
       break;
     case "move-dialog":
-      content = <MoveDialogPreview {...(data as { discounts: NativeDiscountView[] })} />;
+      content = (
+        <MoveDialogPreview {...(data as { discounts: NativeDiscountView[] })} />
+      );
       break;
     case "coming-soon":
       content = <ComingSoonScreen {...(data as { module: UpcomingModule })} />;
@@ -382,19 +603,41 @@ export default function DevPreview() {
       content = <PlanScreen {...(data as PlanScreenProps)} />;
       break;
     case "settings":
-      content = <SettingsScreen {...(data as SettingsScreenProps)} result={submitted} />;
+      content = (
+        <SettingsScreen {...(data as SettingsScreenProps)} result={submitted} />
+      );
       break;
     case "tiers":
-      content = <TiersScreen {...(data as TiersScreenProps)} result={submitted ?? (data as TiersScreenProps).result} />;
+      content = (
+        <TiersScreen
+          {...(data as TiersScreenProps)}
+          result={submitted ?? (data as TiersScreenProps).result}
+        />
+      );
       break;
     case "rewards":
-      content = <RewardsScreen {...(data as RewardsScreenProps)} result={submitted ?? (data as RewardsScreenProps).result} />;
+      content = (
+        <RewardsScreen
+          {...(data as RewardsScreenProps)}
+          result={submitted ?? (data as RewardsScreenProps).result}
+        />
+      );
       break;
     case "appearance":
-      content = <AppearanceScreen {...(data as AppearanceScreenProps)} result={submitted} />;
+      content = (
+        <AppearanceScreen
+          {...(data as AppearanceScreenProps)}
+          result={submitted}
+        />
+      );
       break;
     case "margin":
-      content = <MarginScreen {...(data as MarginScreenProps)} result={submitted ?? (data as MarginScreenProps).result} />;
+      content = (
+        <MarginScreen
+          {...(data as MarginScreenProps)}
+          result={submitted ?? (data as MarginScreenProps).result}
+        />
+      );
       break;
   }
 
