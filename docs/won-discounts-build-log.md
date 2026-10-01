@@ -33,6 +33,8 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   **Nálezy k opravě v Task 9 (zapsané hned, ať se neztratí):**
   - ✅ N1 (opraveno, test „no longer offers“) storefront: dárkový řádek s variantou, která už není v nabídce úrovně, JS hlásí „dárek je v košíku“, ale
     pokladna ho účtuje (`plan()` v `won-discounts.js` nekontroluje variantu řádku proti `c`/`f`).
+  - ✅ N3 (opraveno, 2 testy „countOtherDiscounts: Keep/Remove the code“) storefront: s `countOtherDiscounts` volba
+    „Ponechat kód (bez dárku)“ dárek neodebrala (JS bral úroveň jako dosaženou před slevami); nově `due`/`left`.
   - N2 storefront: R8 říká „Liquid vykreslí výchozí stav serverově (bez CLS)“; blok jen rezervuje `min-height: 3rem`.
     Buď vykreslit progress v Liquidu, nebo upravit kontrakt (rozhodnout při QA podle naměřeného posunu).
   **Zbývá v MVP 4:**

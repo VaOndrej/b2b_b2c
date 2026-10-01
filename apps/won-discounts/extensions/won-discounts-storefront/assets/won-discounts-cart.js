@@ -84,7 +84,7 @@
   };
 
   const react = (before) => {
-    const removed = (before?.tiers || []).find((x) => x.line && view.tiers.some((y) => y.id === x.id && y.reached && !y.line && !y.declined));
+    const removed = (before?.tiers || []).find((x) => x.line && view.tiers.some((y) => y.id === x.id && y.due && !y.line && !y.declined));
     if (removed) return decline({ id: removed.id, line: null });
     if (view.remove.length) return write({ lines: view.remove.map((id) => ({ id, quantity: 0 })) }).then(() => view.add && addGift(view.add.tier, view.add.variant));
     if (view.add) return addGift(view.add.tier, view.add.variant);

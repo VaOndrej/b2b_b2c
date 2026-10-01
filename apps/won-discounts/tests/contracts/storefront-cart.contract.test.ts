@@ -285,6 +285,58 @@ test("codes: a code that does not apply warns; with countOtherDiscounts a code t
   assert.match(p.panel(), /data-won-drop="SLEVA20"/);
 });
 
+test("countOtherDiscounts: 'Keep the code' removes the gift (the threshold counts after discounts), a later change does not add it back while the code keeps the order below", async (t) => {
+  const discounted = (gift: boolean) =>
+    cartOf([{ ...item("a", 1, 160000), final_line_price: 128000 }, ...(gift ? [giftLine()] : [])], { discount_codes: [{ code: "SLEVA20", applicable: true }] });
+  let cart = cartOf([item("a", 1, 160000), giftLine()]);
+  const p = page(t, {
+    cart,
+    rewards: { ...REWARDS, other: true },
+    onUpdate: (payload) => {
+      const codes = payload.discountCodes as string[] | undefined;
+      if (codes?.includes("SLEVA20")) cart = discounted(true);
+      else if (codes) cart = cartOf([item("a", 1, 160000), ...cart.items.filter((i) => i.properties._won_gift)]);
+      else if ((payload.lines as { id?: string; quantity: number }[] | undefined)?.some((l) => l.id === "g1" && l.quantity === 0)) cart = discounted(false);
+      return cart;
+    },
+  });
+  await p.settle(10);
+  p.submit("SLEVA20");
+  await p.settle(2000);
+  assert.match(p.panel(), /data-won-discounts-code-warning/);
+  assert.equal(p.state.updates.length, 1, "the code only: the choice is the customer's");
+  p.click("data-won-keep", "");
+  await p.settle(2000);
+  assert.deepEqual(p.state.updates[1]!.payload, { lines: [{ id: "g1", quantity: 0 }] }, "Keep the code (no gift): the gift goes");
+  assert.doesNotMatch(p.panel(), /data-won-discounts-code-warning/);
+  assert.match(p.panel(), /data-won-discounts-progress="gift"/, "the gift progress counts after discounts again");
+  p.emit("shopify:cart:lines-update");
+  await p.settle(3000);
+  assert.equal(p.state.updates.length, 2, "below the threshold after discounts: not added back");
+});
+
+test("countOtherDiscounts: 'Remove the code' removes only the code; the gift stays", async (t) => {
+  const discounted = () =>
+    cartOf([{ ...item("a", 1, 160000), final_line_price: 128000 }, giftLine()], { discount_codes: [{ code: "SLEVA20", applicable: true }] });
+  let cart = cartOf([item("a", 1, 160000), giftLine()]);
+  const q = page(t, {
+    cart,
+    rewards: { ...REWARDS, other: true },
+    onUpdate: (payload) => {
+      const codes = payload.discountCodes as string[] | undefined;
+      cart = codes?.includes("SLEVA20") ? discounted() : cartOf([item("a", 1, 160000), giftLine()]);
+      return cart;
+    },
+  });
+  await q.settle(10);
+  q.submit("SLEVA20");
+  await q.settle(2000);
+  q.click("data-won-drop", "SLEVA20");
+  await q.settle(2000);
+  assert.deepEqual(q.state.updates.map((u) => u.payload), [{ discountCodes: ["SLEVA20"] }, { discountCodes: [] }]);
+  assert.match(q.panel(), /data-state="in"/);
+});
+
 test("writes are at least 1.5 s apart and go only through Shopify.actions.updateCart (no /cart/*.js writes in the scripts)", async (t) => {
   const p = page(t, { cart: cartOf([item("a", 1, 160000)]), onUpdate: (_payload, cart) => cart });
   await p.settle(10);

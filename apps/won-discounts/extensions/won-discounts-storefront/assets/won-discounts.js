@@ -39,8 +39,10 @@
       const tagged = (cart.items || []).filter((item) => giftOf(item) === g.id);
       const mine = tagged.filter((item) => offered.includes(item.variant_id));
       const reached = typeof threshold === "number" && b >= threshold;
-      out.remove.push(...(reached ? tagged.filter((item) => !mine.includes(item)) : tagged).map((item) => item.key));
-      if (!reached && typeof threshold !== "number") continue;
+      const lost = !!rw.other && reached && after < threshold;
+      const due = reached && !lost;
+      out.remove.push(...(due ? tagged.filter((item) => !mine.includes(item)) : tagged).map((item) => item.key));
+      if (typeof threshold !== "number") continue;
       let options = (g.c || []).filter(ok);
       if (!options.length && ok(g.f)) options = [g.f];
       const tier = {
@@ -48,14 +50,16 @@
         threshold,
         remaining: Math.max(0, threshold - b),
         reached,
-        lost: !!rw.other && reached && after < threshold,
+        lost,
+        due,
+        left: Math.max(0, threshold - (rw.other ? after : b)),
         line: mine[0] || null,
         options,
         declined: declined.includes(g.id),
         soldOut: !options.length,
       };
       out.tiers.push(tier);
-      if (reached && !tier.line && !tier.declined && options.length === 1 && !out.add) out.add = { tier: g.id, variant: options[0].v };
+      if (due && !tier.line && !tier.declined && options.length === 1 && !out.add) out.add = { tier: g.id, variant: options[0].v };
     }
     return out;
   };
@@ -91,9 +95,9 @@
     let out = "";
     const s = view.ship;
     if (s) out += `<div class="won-cart__row" data-won-discounts-progress="shipping"><p>${s.reached ? t("ship_done") : t("ship_left", { amount: m(s.remaining) })}</p>${bar(s.remaining, s.threshold)}</div>`;
-    out += view.tiers.filter((x) => x.reached).map((x) => giftRow(x, data, t)).join("");
-    const next = view.tiers.find((x) => !x.reached);
-    if (next) out += `<div class="won-cart__row" data-won-discounts-progress="gift"><p>${t("gift_left", { amount: m(next.remaining) })}</p>${bar(next.remaining, next.threshold)}</div>`;
+    out += view.tiers.filter((x) => x.due || x.line).map((x) => giftRow(x, data, t)).join("");
+    const next = view.tiers.find((x) => !x.due && !x.line);
+    if (next) out += `<div class="won-cart__row" data-won-discounts-progress="gift"><p>${t("gift_left", { amount: m(next.left) })}</p>${bar(next.left, next.threshold)}</div>`;
     if (hint) out += `<p class="won-cart__hint" data-won-discounts-hint>${hint}</p>`;
     out += `<form class="won-cart__code" data-won-discounts-code><label>${t("code_label")} <input name="won-code" autocomplete="off" maxlength="255"></label><button type="submit">${t("code_apply")}</button></form>`;
     out += codes.map((c) => `<p class="won-cart__applied">${esc(c)} <button type="button" data-won-drop="${esc(c)}">${t("code_remove")}</button></p>`).join("");
