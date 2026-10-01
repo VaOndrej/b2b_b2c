@@ -224,6 +224,14 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     const cart = await setupCart(page, below);
     const writes = recordCartWrites(page);
     const proxy = page.waitForResponse((r) => r.url().includes("/apps/won-discounts/cart-plan") && r.request().method() === "POST", { timeout: 30_000 });
+    // N2 (R8 "no layout shift"): the page's layout shifts while the panel fills, Core Web Vitals' way (no recent input).
+    await page.addInitScript(() => {
+      const w = window as unknown as { __wonCls: number };
+      w.__wonCls = 0;
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries() as unknown as { value: number; hadRecentInput: boolean }[]) if (!entry.hadRecentInput) w.__wonCls += entry.value;
+      }).observe({ type: "layout-shift", buffered: true });
+    });
     await gotoStorefront(page, "/cart");
     await expect(page.locator(`${PANEL}:visible`).first(), "the cart panel renders on the cart page (block or summary)").toBeVisible({ timeout: 20_000 });
     const answer = await proxy;
@@ -255,6 +263,8 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
       t: expect.stringContaining(inputs.titleByHandle[REWARDS_GIFT_HANDLE]!),
       a: true,
     });
+    const cls = await page.evaluate(() => (window as unknown as { __wonCls: number }).__wonCls);
+    expect(cls, "the cart page's layout shift while the panel fills (CLS, 'good' ≤ 0.1)").toBeLessThanOrEqual(0.1);
     await panelShots(page, testInfo, "rewards-cart-progress");
     await saveEvidence(testInfo, "rewards-sf1", {
       at: new Date().toISOString(),
@@ -268,6 +278,7 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
       writes,
       proxy: { status: answer.status(), ok: answerBody?.ok ?? null },
       giftFacts: facts.g,
+      cls,
     });
   });
 

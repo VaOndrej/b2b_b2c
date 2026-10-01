@@ -37,6 +37,15 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
     „Ponechat kód (bez dárku)“ dárek neodebrala (JS bral úroveň jako dosaženou před slevami); nově `due`/`left`.
   - N2 storefront: R8 říká „Liquid vykreslí výchozí stav serverově (bez CLS)“; blok jen rezervuje `min-height: 3rem`.
     Buď vykreslit progress v Liquidu, nebo upravit kontrakt (rozhodnout při QA podle naměřeného posunu).
+  - Oprava formátu `b07357b` (prettier z kořene přeformátoval a93993f; repo nemá prettier config — nepouštět).
+  - E2E `7f6d5a3` + `0847ce7`: profily `rewards` / `rewards-other` / `rewards-pro` (`scripts/e2e/rewards-fixture.mjs`,
+    seed s úklidem), overlay bloku `cart_rewards` do `templates/cart.json` obou témat, spec
+    `tests/e2e/storefront.rewards.spec.ts` (SF-1 + CLS ≤ 0,1 pro N2, progress = planCart, F-R1–F-R4, Odmítnout, pod práh,
+    pokladna, SK, kód s volbou, Pro žebřík). Brána `gate-mvp4a`: vše zelené kromě testu overlaye (opraven `0847ce7`).
+  - Wasm z aktuálního `src` přes CLI pipeline = **245 237 B** (README uvádí 244 781 B z měření úkolu 2 → opravit v auditu).
+  - Adversariální rozpočet odměn běží: rodiny MVP 3 (cap 550, `f40f0268…/scratchpad/mvp3-t2/fr1/cap550/fam`) × 3 varianty
+    odměn (nejdražší payload, který se vejde do 9 000 B; dárky na každém 10. / všech / žádném řádku), generátor
+    `scratchpad/rewfam/gen.mjs`. **Stop-pravidlo:** jeden průchod; ≥ 100 % → strop odměn v payloadu (největší ≤ 99,5 %).
   **Zbývá v MVP 4:**
   - Screenshoty adminu 390/1440 (Odměny Free/Pro/empty, Vyzkoušet košík rewards, karta Přehledu) — potřebují běžící
     `shopify app dev` (harness na jeho portu), udělat v Task 8 před restartem pro E2E.
