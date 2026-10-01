@@ -103,7 +103,8 @@ přítomnosti) — dárek dostane `_won_gift` + `_gift_progress: "1"`, žádný 
 
 **R8 — Košík v embedu (DOM, chování).** Jeden panel `[data-won-discounts-cart]` na dvou místech:
 - stránka košíku: app blok `cart_rewards` (cíl `section`, šablona `cart`; Dawn `main-cart-footer`, Horizon `main-cart` mají
-  `@app`), Liquid vykreslí výchozí stav serverově (bez CLS);
+  `@app`); blok jen rezervuje místo (`min-height`), panel vyplní skript embedu — **upřesněno auditem:** naměřený CLS
+  stránky košíku 0 (Horizon) / 0,033 (Dawn) ≤ 0,1 (E2E SF-1 to hlídá), serverové vykreslení není potřeba;
 - drawer: embed vloží panel do drawer kontejneru tématu (Horizon `cart-drawer-component`, Dawn `cart-drawer`,
   jinak nic) po otevření/změně košíku; místo v drawer je rezervované až po prvním vykreslení (drawer je zavřený = žádný
   posun obsahu stránky).
