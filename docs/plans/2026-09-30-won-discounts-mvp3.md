@@ -103,6 +103,15 @@ dolů>}`: nejvyšší sleva v %, kterou ochrana marže u varianty dovolí při j
 se známou nákupní cenou při zapnuté marži; jinak metafield neexistuje. Funkce ho nečte. Nákupní cena se nikdy
 nepíše do stránky.
 
+**K4 v2 (audit MVP 3 P1-1/P2-4, nahrazuje K4):** `$app:won_discounts/pdp` = `{"f": <celé číslo — hranice ceny
+kusu v minor units MĚNY OBCHODU, přesně engine `floorUnit` při košíku v měně obchodu>, "k": "<klíč nastavení marže>"}`.
+`f` nezávisí na ceně (změna ceny ho nezastará). Storefront config `margin` nese navíc `k` (stejný klíč z gated marže) a
+`cur` (měna obchodu). PDP: varianta s `pdp` a `pdp.k == margin.k` → sleva na kus max. `cena − hranice`, kde hranice =
+`f` v měně obchodu, jinak `ceil(f × Shopify.currency.rate × 10^exp / 10^exp_obchodu) + 1` minor unit (JS; Liquid v cizí
+měně hodnoty závislé na marži nevykreslí, doplní je JS; bez kurzu nic neslíbí). Varianta s nákupní cenou (variantní
+metafield `variant` existuje), ale bez `pdp` nebo se starým `k` → PDP pro ni nic neslíbí (fail closed). Varianta bez
+nákupní ceny → strop % z `margin` (beze změny). Nákupní cena se do stránky nikdy nevypíše.
+
 **K5 — Storefront config** = app-data metafield (vlastník `AppInstallation`, namespace `won_discounts`, klíč
 `storefront_config`, typ `json`; app-data **nepoužívá** `$app`), Liquid: `app.metafields.won_discounts.storefront_config.value`.
 Staví ho `buildStorefrontConfig` z **gated** configu (BILL-1). Tvar v1 (typy v `@won/core/discounts/storefront-config`):
