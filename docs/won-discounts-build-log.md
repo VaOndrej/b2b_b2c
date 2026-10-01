@@ -53,7 +53,17 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   - Screenshoty adminu `cdad0fc` (`evidence/mvp4/admin/`, 16 PNG, bez přetečení).
   - Živé E2E fáze A, běh 1 (`rewards`, Horizon): SF-1 ✓ (0 zápisů, progress = planCart, F-R2 ✓ `all_products`,
     F-R4 ✓ POST přes app proxy, CLS ≤ 0,1) — spadlo na tap targets < 44 px (opraveno CSS, commit „44 × 44“); další testy
-    401 „access token expired“ z theme dev proxy (infrastruktura), Dawn 429. Restart app dev, běh 2 běží.
+    401 „access token expired“ z theme dev proxy (infrastruktura), Dawn 429.
+  - Živé E2E odhalilo 3 skutečné chyby košíku (všechny opravené s červeným testem na falešné stránce):
+    (1) `/cart.js` čtený z HTTP cache → `cache: "no-store"`; (2) Storefront Events vysílají `shopify:cart:lines-update`
+    na ZAČÁTKU změny s `event.promise` → panel na ni čeká; (3) dotykové cíle `rem` v Dawnu (62,5% root) → `44px`.
+  - **F-R1 částečně:** `Shopify.actions.updateCart` přes `shopify theme dev` (127.0.0.1) nefunguje — proxy neobsluhuje
+    `/api/<verze>/graphql.json` (net::ERR_FAILED; přesměrování → 400). Spec odměn proto běží na **doméně storu
+    s náhledem tématu** (`?preview_theme_id=` nepublikovaného tématu „Horizon“/„Dawn“, do kterého theme dev synchronizuje
+    pracovní kopii s overlayi) — nic se nepublikuje. Tam updateCart přidá dárek s atributy (probe ✓).
+  - Doména storu má rate limit Cloudflaru (429) → opakování 429 v `gotoStorefront`, pauza 20 s mezi testy odměn.
+  - Běh 3 (ladicí, bez evidence): Horizon SF-1 ✓, přidání + Odmítnout ✓, pod práh ✓; Dawn SF-1 ✓, pod práh ✓, přidání
+    a SK ✓ napodruhé; zbytek 429. Oficiální běh 4 běží (`evidence/mvp4/e2e-A`).
   **Zbývá v MVP 4:**
   - ~~Screenshoty adminu 390/1440 (Odměny Free/Pro/empty, Vyzkoušet košík rewards, karta Přehledu) — potřebují běžící
     `shopify app dev` (harness na jeho portu), udělat v Task 8 před restartem pro E2E.
