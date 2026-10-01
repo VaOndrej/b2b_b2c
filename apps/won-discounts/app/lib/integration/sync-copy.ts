@@ -133,6 +133,7 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
       // Held behind the products (sync.server.ts HOLD_DETAIL): why, in the admin's words.
       if (step.params?.held === "margin_refs") return { key: "sync.problem.configHeldMargin" };
       if (step.params?.held === "rule_refs") return { key: "sync.problem.configHeldRules" };
+      if (step.params?.held === "tier_refs") return { key: "sync.problem.configHeldTiers" };
       if (step.params?.held === "products_unread") return { key: "sync.problem.configHeldProducts" };
       if (step.params?.held === "products_refused") return { key: "sync.problem.configHeldRefused" };
       return { key: "sync.problem.config", params: { detail } };

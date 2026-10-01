@@ -262,6 +262,7 @@ export const cs = {
   "sync.problem.phase1TooLarge": "Přepnutí kampaně čeká: nastavení je i po zjednodušení pro slevovou funkci moc velké ({detail}). Pomůže méně pravidel nebo méně kolekcí s vlastní marží.",
   "sync.problem.config": "Nové nastavení slev se do pokladny zatím nezapsalo, platí předchozí ({detail}).",
   "sync.problem.configHeldRules": "Nové nastavení slev se do pokladny zatím nezapsalo: u některých produktů se nepodařilo odebrat slevy, které k nim už nepatří. Platí předchozí nastavení, další synchronizace to zkusí znovu.",
+  "sync.problem.configHeldTiers": "Nové nastavení slev se do pokladny zatím nezapsalo: u některých produktů se nepodařilo připravit změnu množstevní sady. Platí předchozí nastavení, další synchronizace to zkusí znovu.",
   "sync.problem.configHeldMargin": "Nové nastavení slev se do pokladny zatím nezapsalo: u některých produktů se nepodařilo zapsat jejich kolekce s nastavením marže. Platí předchozí nastavení, další synchronizace to zkusí znovu.",
   "sync.problem.membershipReadFailed": "Nové nastavení marže zatím čeká: u některých produktů se nepodařilo zjistit, jestli patří do kolekce s vlastním nastavením marže. Platí předchozí nastavení, další synchronizace to zkusí znovu.",
   "sync.problem.configHeldProducts": "Nové nastavení slev se do pokladny zatím nezapsalo: produkty ve vybraných kolekcích se nepodařilo načíst ze Shopify. Platí předchozí nastavení, další synchronizace to zkusí znovu.",

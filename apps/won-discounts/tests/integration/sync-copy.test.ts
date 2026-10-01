@@ -90,6 +90,7 @@ test("audit fix rounds 2 + 3: a rule collection over the limit is named „by ti
   const held = (reason: string) => say({ step: "shop_config.write", ok: false, detail: "held: …", params: { held: reason } } as never);
   assert.match(held("margin_refs"), /nepodařilo zapsat jejich kolekce s nastavením marže\. Platí předchozí nastavení/);
   assert.match(held("rule_refs"), /nepodařilo odebrat slevy, které k nim už nepatří/);
+  assert.match(held("tier_refs"), /nepodařilo připravit změnu množstevní sady\. Platí předchozí nastavení/);
   assert.match(held("products_unread"), /nepodařilo načíst ze Shopify/);
   assert.match(held("products_refused"), /Shopify teď odmítá zápisy cílení u produktů/);
   assert.doesNotMatch(held("margin_refs"), /cleared|held/);
