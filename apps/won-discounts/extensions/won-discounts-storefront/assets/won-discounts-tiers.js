@@ -1,13 +1,4 @@
-/*
- * Won Discounts quantity tiers block (MVP 3, contracts K6 + K8). Liquid renders
- * the selected variant; this keeps the table live from the block's JSON, with
- * the pure logic of won-discounts-tiers-core.js (whichever file loads second
- * starts it). The buy form is found by our variant ids and `input.form`, never
- * by nesting (Horizon: block below the grid; Dawn: quantity input outside the
- * form). Never touches or reads the cart (SF-1): cart counts come from Liquid
- * and drop to 0 on the theme's cart-change signal. After every change it
- * dispatches `won-discounts:tiers:update` on document (K8).
- */
+/* Won Discounts — won-discounts-tiers.js. Notes: extensions/won-discounts-storefront/README.md */
 (function (w, doc) {
   "use strict";
   if (w.WonDiscountsTiers || w.__wonTiersBoot) return; // loaded twice: keep the first
@@ -23,10 +14,6 @@
     return null;
   }
 
-  // The buy form holds our variant id AND owns the quantity input or a submit
-  // button: Dawn and Horizon also render an installment form holding the id in
-  // the price block. In the block's own section a buy form wins even while its
-  // id is empty (unavailable variant); elsewhere only forms holding our id count.
   function pickForm(root, data, strict) {
     var forms = root ? root.querySelectorAll('form[action*="/cart/add"]') : [];
     var best = null;
@@ -81,7 +68,6 @@
     el.hidden = empty;
     if (empty) return;
     var t = data.t || {};
-    // Open question 1: format in the ACTIVE currency, read from Liquid's own `money` sample.
     var fmt = core.sampleFormat(data.ms) || data.fmt;
     var byMin = {};
     st.rows.forEach(function (r) { byMin[r.min] = r; });
@@ -123,7 +109,6 @@
     var id = loc && loc.id ? loc.id.value : data.sel;
     var qty = loc && loc.qty ? parseInt(loc.qty.value, 10) : 1;
     if (!(qty > 0)) qty = 1;
-    // K4 v2: a floor in another currency converts with the storefront's rate (shop -> active currency).
     var sc = w.Shopify && w.Shopify.currency;
     var rate = sc && sc.active === data.cur ? Number(sc.rate) : null;
     var key = id + "|" + qty + "|" + rate;
@@ -148,9 +133,6 @@
     for (var i = 0; i < roots.length; i++) update(roots[i]);
   }
 
-  // K6 (amended): a cart change zeroes the counts that came from the cart; they
-  // are never re-read (0 only ever under-promises). A new Liquid render of the
-  // block brings fresh ones (its JSON text changes, so readData parses it again).
   function zero() {
     var roots = doc.querySelectorAll(ROOT);
     for (var i = 0; i < roots.length; i++) {
@@ -163,7 +145,6 @@
     schedule(0);
   }
 
-  // Dawn's cart signal is its pubsub global `subscribe` (deferred pubsub.js may run after us).
   var hooked = false;
   function hookDawn() {
     if (!hooked && typeof w.subscribe === "function") {
@@ -172,8 +153,6 @@
     }
   }
 
-  // A debounce that never shortens a pending later rescan: a click right after a
-  // promise-less product:select must not rescan before the theme swapped the variant.
   var timer = null;
   var due = 0;
   function schedule(delay) {
@@ -193,16 +172,12 @@
   function boot() {
     if (core) return;
     core = w.WonDiscountsTiersCore;
-    // Capture phase: also events a theme stops. "click" = steppers without events;
-    // "quantity-selector:update" = Horizon's plus/minus.
     ["input", "change", "click", "quantity-selector:update", "shopify:section:load"].forEach(function (name) {
       doc.addEventListener(name, now, true);
     });
-    // Cart changes: Horizon's standard storefront event (older Horizon: cart:update).
     ["shopify:cart:lines-update", "cart:update"].forEach(function (name) {
       doc.addEventListener(name, zero, true);
     });
-    // Horizon morphs the form and sets input[name=id] without a change event.
     doc.addEventListener("shopify:product:select", function (event) {
       if (event && event.promise && typeof event.promise.then === "function") event.promise.then(now, now);
       else schedule(300);

@@ -1,17 +1,10 @@
-/*
- * Won Discounts quantity tiers: pure logic (MVP 3, contracts K2, K4 v2, K5, K6).
- * No DOM, no network: won-discounts-tiers.js renders with it. Split off so each
- * file stays under Theme Check's 10 000 B raw limit and readable (no build).
- * The block loads it with `defer`; whichever of the two files runs second
- * starts the block (window.__wonTiersBoot). Money = Liquid units (major x 100).
- */
+/* Won Discounts — won-discounts-tiers-core.js. Notes: extensions/won-discounts-storefront/README.md */
 (function (w) {
   "use strict";
   if (w.WonDiscountsTiersCore) return;
 
   var has = Object.prototype.hasOwnProperty;
 
-  // ISO 4217 minor digits other than 2 (= core money.ts MINOR_DIGITS).
   var EXP0 = " BIF CLP DJF GNF ISK JPY KMF KRW PYG RWF UGX VND VUV XAF XOF XPF ";
   var EXP3 = " BHD IQD JOD KWD LYD OMR TND ";
   function exp(cur) {
@@ -19,9 +12,6 @@
     return EXP0.indexOf(c) >= 0 ? 0 : EXP3.indexOf(c) >= 0 ? 3 : 2;
   }
 
-  // K4 v2: the item's floor in Liquid units of the cart currency. `f` = minor units
-  // of the shop currency `sc`; another currency converts with the shop -> cart
-  // rate, rounded up + 1 minor unit; no usable rate = null (nothing is promised).
   function floorUnits(f, sc, cur, rate) {
     var minor;
     if (!sc || !(f >= 0)) return null;
@@ -31,10 +21,6 @@
     return Math.ceil((minor * 100) / Math.pow(10, exp(cur)));
   }
 
-  // The per-item discount ceiling of a variant (K4 v2 / K6): `f` = price - floor;
-  // `m` = price x m / 100 rounded down to a minor unit (g), the percent ceiling of a
-  // variant without a cost; neither (a cost without a matching floor) = null: no
-  // table for it (fail closed).
   function capOf(v, data, rate, g) {
     if (v.f != null) {
       var fl = floorUnits(v.f, data.sc, data.cur, rate);
@@ -43,7 +29,6 @@
     return v.m != null ? Math.floor((v.p * v.m) / 100 / g) * g : null;
   }
 
-  // K5 breaks for the cart currency; an amount without a value there is not offered (MKT-1).
   function offered(breaks, cur) {
     var out = [];
     (Array.isArray(breaks) ? breaks : []).forEach(function (b) {
@@ -54,33 +39,23 @@
     return out;
   }
 
-  // Per item (the table): the percent rounded DOWN, or the amount; never above the
-  // ceiling `cap` or the price, so never more than checkout gives at any quantity.
-  // `g` = Liquid units per minor unit (100 for JPY & co.: Liquid counts yen x 100).
   function discount(b, price, cap, g) {
     g = g || 1;
     var d = b.pct != null ? Math.floor((price * b.pct) / 100 / g) * g : b.off;
     return Math.max(0, Math.min(d, cap, price));
   }
 
-  // Per line, like the engine: a percent rounds once per line (in minor units); the
-  // margin allows quantity x the per-item ceiling (P2-1: the engine's floor is per item).
   function lineDiscount(b, price, cap, qty, g) {
     g = g || 1;
     if (b.pct == null) return discount(b, price, cap, g) * qty;
     return Math.max(0, Math.min(Math.round((price * qty * b.pct) / 100 / g) * g, cap * qty, price * qty));
   }
 
-  // K6: the chosen quantity + the cart items counted toward the same tier.
   function countOf(mode, qty, inCart) {
     var extra = mode === "line" ? inCart.v : mode === "product" ? inCart.p : mode === "cart" ? inCart.s : 0;
     return qty + (extra > 0 ? extra : 0);
   }
 
-  // The block's state for a variant, quantity and shop -> cart rate. Tier = the
-  // highest min <= count (K2); `total` = the line after the discount, `unit` = its
-  // per-item price; next = the nearest tier that lowers the per-item price. A row
-  // capped by the margin says the percent it really gives (floored to 0.1).
   function compute(data, variantId, qty, rate) {
     var v = (data.variants || []).filter(function (x) {
       return String(x.id) === String(variantId);
@@ -121,8 +96,6 @@
     };
   }
 
-  // The theme's money format like Liquid's money filter:
-  // placeholder -> [thousands separator, decimal mark, decimals].
   var FORMATS = {
     amount: [",", ".", 2],
     amount_no_decimals: [",", ".", 0],
@@ -142,9 +115,6 @@
     });
   }
 
-  // The ACTIVE currency's money format, read back from Liquid's own rendering of
-  // 1 234 567,89 (`{{ 123456789 | money }}`): shop.money_format can be the shop
-  // currency's. Returns a format for money(), or null when the sample is unusual.
   function sampleFormat(sample) {
     var m = /\d[\d.,'\s\u00a0\u202f]*\d/.exec(String(sample || ""));
     if (!m) return null;
@@ -163,14 +133,12 @@
     return null;
   }
 
-  // "{name}" placeholders of the locale files and merchant texts.
   function fill(template, vars) {
     return String(template == null ? "" : template).replace(/\{(\w+)\}/g, function (all, key) {
       return has.call(vars, key) ? String(vars[key]) : all;
     });
   }
 
-  // A percent for display: one decimal at most, a decimal comma outside English.
   function pctText(n, lang) {
     var s = String(Math.round(n * 10) / 10);
     return lang === "en" ? s : s.replace(".", ",");
