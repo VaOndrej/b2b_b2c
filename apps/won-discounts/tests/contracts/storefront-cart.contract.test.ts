@@ -222,6 +222,34 @@ test("Odmítnout: the gift goes, the tier is declined, other cart attributes sta
   assert.match(p.panel(), /data-state="declined"/);
 });
 
+test("a gift line whose variant the tier no longer offers is not 'your gift' (checkout charges it): a customer's change replaces it with the offered gift", async (t) => {
+  const stale = item("old", 7777, 30000, 1, { _won_gift: "gift-1", _gift_progress: "1" });
+  let cart = cartOf([item("a", 1, 160000), stale]);
+  const p = page(t, {
+    cart,
+    onUpdate: (payload) => {
+      const lines = payload.lines as { id?: string; quantity: number }[];
+      cart = lines[0]!.id === "old" ? cartOf([item("a", 1, 160000)]) : cartOf([item("a", 1, 160000), giftLine()]);
+      return cart;
+    },
+  });
+  await p.settle(10);
+  assert.doesNotMatch(p.panel(), /data-state="in"/, "never 'Váš dárek je v košíku' for a line checkout charges");
+  assert.deepEqual(p.state.updates, [], "SF-1: nothing on load");
+  p.emit("shopify:cart:lines-update");
+  await p.settle(4000);
+  assert.deepEqual(
+    p.state.updates.map((u) => u.payload),
+    [
+      { lines: [{ id: "old", quantity: 0 }] },
+      {
+        lines: [{ merchandiseId: "gid://shopify/ProductVariant/9001", quantity: 1, attributes: [{ key: "_won_gift", value: "gift-1" }, { key: "_gift_progress", value: "1" }] }],
+      },
+    ],
+  );
+  assert.match(p.panel(), /data-state="in"/);
+});
+
 test("a gift the customer removed by hand is declined, not added back", async (t) => {
   const p = page(t, {
     cart: cartOf([item("a", 1, 160000), giftLine()]),

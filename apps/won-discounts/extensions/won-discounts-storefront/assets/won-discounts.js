@@ -35,12 +35,12 @@
     const ok = (o) => o && facts[o.v]?.a !== false;
     for (const g of rw.gifts || []) {
       const threshold = g.t?.[cur];
-      const mine = (cart.items || []).filter((item) => giftOf(item) === g.id);
+      const offered = [...(g.c || []), g.f].filter(Boolean).map((o) => o.v);
+      const tagged = (cart.items || []).filter((item) => giftOf(item) === g.id);
+      const mine = tagged.filter((item) => offered.includes(item.variant_id));
       const reached = typeof threshold === "number" && b >= threshold;
-      if (!reached) {
-        out.remove.push(...mine.map((item) => item.key));
-        if (typeof threshold !== "number") continue;
-      }
+      out.remove.push(...(reached ? tagged.filter((item) => !mine.includes(item)) : tagged).map((item) => item.key));
+      if (!reached && typeof threshold !== "number") continue;
       let options = (g.c || []).filter(ok);
       if (!options.length && ok(g.f)) options = [g.f];
       const tier = {

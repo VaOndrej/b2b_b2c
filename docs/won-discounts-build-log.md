@@ -31,7 +31,7 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
     Opraven kontraktní test extensionu (blok `cart_rewards`) — brána na `d0b496e..a93993f` byla červená (2 testy),
     nezachyceno, protože jsem po vrstvách pouštěl jen cílené testy. **Poučení: po každé vrstvě celý `test:unit`.**
   **Nálezy k opravě v Task 9 (zapsané hned, ať se neztratí):**
-  - N1 storefront: dárkový řádek s variantou, která už není v nabídce úrovně, JS hlásí „dárek je v košíku“, ale
+  - ✅ N1 (opraveno, test „no longer offers“) storefront: dárkový řádek s variantou, která už není v nabídce úrovně, JS hlásí „dárek je v košíku“, ale
     pokladna ho účtuje (`plan()` v `won-discounts.js` nekontroluje variantu řádku proti `c`/`f`).
   - N2 storefront: R8 říká „Liquid vykreslí výchozí stav serverově (bez CLS)“; blok jen rezervuje `min-height: 3rem`.
     Buď vykreslit progress v Liquidu, nebo upravit kontrakt (rozhodnout při QA podle naměřeného posunu).
