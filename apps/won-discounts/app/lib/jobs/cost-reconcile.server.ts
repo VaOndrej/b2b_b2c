@@ -33,15 +33,31 @@
 // stale-claim sweep); the margin screen, the Přehled card and the app's cost
 // refresher also ensure it (idempotent) — so it runs whether or not anybody
 // opens the admin.
+//
+// MVP 3 audit P2-4 — the storefront side, retried without an admin visit:
+//   - a pdp pass cut short (a cursor) or failed is already due here (costsDue)
+//     and resumes under the same margin (costs.ts runCostPass);
+//   - a shop whose live config was applied by a run whose STOREFRONT CONFIG
+//     write failed (sync/storefront.ts storefrontOutcome) gets resyncIfPending
+//     — the same call and the same throttle as the Přehled (at most once per
+//     RESYNC_MIN_INTERVAL_MS after the last run) — with its offline session
+//     (none → skipped quietly: the next admin visit retries), under the config
+//     lock (an admin write holding it → the next run), at most
+//     STOREFRONT_RETRY_SHOPS resyncs per run.
 
 import { gateConfigForPlan, type ShopPlan } from "@won/core/discounts/plan-gate";
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import type { AdminClient } from "../admin-client.server";
 import { loadConfig } from "../config.server";
+import { tryWithConfigLock } from "../integration/lock.server";
 import { planOf } from "../plan.server";
 import { costJobKind, costRetryRunning, costsDue, recordNoSession, startDueJob, type CostDue } from "../sync/cost-lane.server";
 import { parseCostPending } from "../sync/costs";
+import { appliedRun } from "../sync/runs";
+import { resyncIfPending } from "../sync/save-and-sync.server";
+import { storefrontOutcome } from "../sync/storefront";
+import type { Sync } from "../sync/sync.server";
 import { errorText } from "../sync/transport";
 import type { SyncLogger } from "../sync/types";
 
@@ -51,6 +67,8 @@ export const COST_RECONCILE_INTERVAL_MS = 60 * 60_000;
 export const COST_RECONCILE_SHOPS = 5;
 /** A shop whose last pass failed gets a reconcile slot at most this often (the per-shop cap, audit P3-1). */
 export const COST_RECONCILE_FAILED_INTERVAL_MS = 6 * 60 * 60_000;
+/** Storefront config resyncs per run (MVP 3 audit P2-4; bounded load, the rest waits for the next run). */
+export const STOREFRONT_RETRY_SHOPS = 5;
 
 const quiet: SyncLogger = { info() {}, warn() {}, error() {} };
 
@@ -62,12 +80,22 @@ export interface CostReconcileDeps {
   now?: () => Date;
   logger?: SyncLogger;
   maxShops?: number;
+  /** The sync the storefront retry resyncs with (default: the production sync). */
+  createSync?: (client: AdminClient, db: PrismaClient) => Sync;
+  maxStorefrontShops?: number;
 }
 
 export interface CostReconcileResult {
   checked: number;
   started: { shop: string; kind: CostDue }[];
   skippedNoSession: number;
+  /**
+   * Shops whose failed storefront config was looked at (P2-4): the resync reason, or why not ("too_soon",
+   * "up_to_date", … from resyncIfPending; "locked" = an admin write held the config lock).
+   */
+  storefront: { shop: string; outcome: string }[];
+  /** Shops with a failed storefront config but no offline session (skipped quietly). */
+  storefrontSkippedNoSession: number;
 }
 
 /** One run (see the header). Never throws. */
@@ -75,7 +103,7 @@ export async function runCostReconcileOnce(deps: CostReconcileDeps): Promise<Cos
   const logger = deps.logger ?? quiet;
   const now = (deps.now ?? (() => new Date()))();
   const plan = deps.plan ?? planOf;
-  const result: CostReconcileResult = { checked: 0, started: [], skippedNoSession: 0 };
+  const result: CostReconcileResult = { checked: 0, started: [], skippedNoSession: 0, storefront: [], storefrontSkippedNoSession: 0 };
   let shops: { shop: string; failedAt: number | null }[];
   try {
     shops = await rotation(deps.db);
@@ -109,7 +137,46 @@ export async function runCostReconcileOnce(deps: CostReconcileDeps): Promise<Cos
       logger.error(`cost reconcile ${shop}: ${errorText(error)}`);
     }
   }
+  await retryStorefronts(deps, shops.map((s) => s.shop), result, logger);
   return result;
+}
+
+/** The storefront side of P2-4 (see the header). Never throws. */
+async function retryStorefronts(deps: CostReconcileDeps, shops: readonly string[], result: CostReconcileResult, logger: SyncLogger): Promise<void> {
+  let resynced = 0;
+  for (const shop of shops) {
+    if (resynced >= (deps.maxStorefrontShops ?? STOREFRONT_RETRY_SHOPS)) break;
+    try {
+      const applied = await appliedRun(deps.db, shop);
+      if (!applied || storefrontOutcome(applied.steps) !== "failed") continue;
+      const client = await deps.clientFor(shop);
+      if (!client) {
+        result.storefrontSkippedNoSession += 1;
+        continue;
+      }
+      const attempt = tryWithConfigLock(shop, () =>
+        resyncIfPending({
+          client,
+          db: deps.db,
+          shop,
+          logger,
+          productWrites: "background",
+          ...(deps.now ? { now: deps.now } : {}),
+          ...(deps.createSync ? { createSync: deps.createSync } : {}),
+        }),
+      );
+      if (attempt.skipped) {
+        result.storefront.push({ shop, outcome: "locked" });
+        continue;
+      }
+      const outcome = await attempt.result;
+      result.storefront.push({ shop, outcome: outcome.resynced ? outcome.why : outcome.reason });
+      if (outcome.resynced) resynced += 1;
+    } catch (error) {
+      if (error instanceof Response) continue; // the offline session needs re-auth: like no session
+      logger.error(`storefront retry ${shop}: ${errorText(error)}`);
+    }
+  }
 }
 
 /**

@@ -56,7 +56,7 @@ import {
 import { foldedForCheckout } from "./margin-fold";
 import { errorText, Transport } from "./transport";
 import type { RetryOptions, SyncLogger } from "./types";
-import { chunks } from "./util";
+import { chunks, isoCurrency } from "./util";
 
 export type CostJob =
   | {
@@ -96,7 +96,7 @@ export type CostJobOutcome =
 interface Lane {
   kind: "full" | "clear";
   cancelled: boolean;
-  /** A full pass, once it runs: the margin it computes the pdp maximum with (costs.ts pdpMarginKey). */
+  /** A full pass, once it runs: the margin it computes the pdp floor with (costs.ts pdpMarginKey). */
   marginKey?: string;
 }
 
@@ -195,8 +195,8 @@ function pdpContext(transport: Transport, margin: MarginModule, floors: CostFloo
     marginRefs: floors.marginRefs,
     shopCurrency: () =>
       (currency ??= transport.call<{ shop: { currencyCode?: string | null } | null }>("costShop").then((data) => {
-        const code = typeof data.shop?.currencyCode === "string" ? data.shop.currencyCode.trim().toUpperCase() : "";
-        return /^[A-Z]{3}$/.test(code) ? code : null;
+        // The same normalization as the storefront config's (sync.server.ts): one string, one key (K4 v2).
+        return isoCurrency(data.shop?.currencyCode);
       })),
   };
 }
@@ -230,7 +230,7 @@ export function startCostJob(shop: string, deps: CostLaneDeps, job: CostJob): Pr
         isCancelled,
         now: deps.now,
         floors,
-        // The pdp maximum only while protection is on (full / items); a clear deletes it with the cost.
+        // The pdp floor only while protection is on (full / items); a clear deletes it with the cost.
         ...(enabled ? { pdp: pdpContext(transport, margin, floors) } : {}),
         ...(job.kind === "items" && job.retryRefused ? { retryRefused: true } : {}),
       };
@@ -288,7 +288,7 @@ export function startCostJob(shop: string, deps: CostLaneDeps, job: CostJob): Pr
 }
 
 /**
- * Does a full pass of `shop` already cover every variant's pdp maximum for the
+ * Does a full pass of `shop` already cover every variant's pdp floor for the
  * margin `marginKey` (MVP 3)? One queued and not started yet does (it reads the
  * stored config when it starts, and resumes a cursor only under the same
  * margin); one running does when it runs with that margin.

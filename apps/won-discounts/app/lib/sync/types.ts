@@ -59,6 +59,15 @@ export interface ShopConfigBuildOptions {
   shopCurrency?: string;
 }
 
+/** The encoded shop config (core EncodedShopFunctionConfig's part the sync uses). */
+export interface ShopConfigBuild {
+  json: string;
+  bytes: number;
+  fits: boolean;
+  /** MVP 3 audit: UTF-8 bytes of `modules.tiers` against their cap (core CONFIG_LIMITS.tierPayloadBytes). */
+  tiers?: { bytes: number; budget: number; fits: boolean };
+}
+
 export type ShopConfigCheck = { ok: true; bytes: number } | { ok: false; bytes: number; reason: string };
 
 export interface SyncLogger {
@@ -87,8 +96,11 @@ export interface SyncDeps {
    * shop's checkout never sees Pro data. Production: app/lib/plan.server.ts.
    */
   plan: (shop: string) => Promise<ShopPlan>;
-  /** Shared function config for the shop metafield (JSON carries `campaignVarsVersion`). */
-  buildShopFunctionConfig: (config: ConfigView, options: ShopConfigBuildOptions) => { json: string; bytes: number; fits: boolean };
+  /**
+   * Shared function config for the shop metafield (JSON carries `campaignVarsVersion`). `fits` = within the
+   * 9 000 B budget AND (MVP 3) the quantity tiers within their own cap, whose figures are `tiers`.
+   */
+  buildShopFunctionConfig: (config: ConfigView, options: ShopConfigBuildOptions) => ShopConfigBuild;
   /** `now` = shop-local `YYYY-MM-DDTHH:MM:SS`. */
   buildNodeVars: (role: SyncNodeRole, config: ConfigView, now: string) => SyncNodeVars;
   productRuleIndex: (config: ConfigView, products: readonly SyncProductInput[]) => Map<string, SyncProductEntry>;
@@ -96,9 +108,11 @@ export interface SyncDeps {
   verifyShopFunctionConfig: (json: string) => ShopConfigCheck;
   /**
    * The storefront config (MVP 3, contract K5: core buildStorefrontConfig) from
-   * the SAME gated config as the shop payload; `configVersion` = its `cv`.
+   * the SAME gated config as the shop payload; `configVersion` = its `cv`;
+   * `shopCurrency` gives its margin the K4 v2 key `k` and `cur` (the same
+   * string the cost mirror's pdp keys are built with).
    */
-  buildStorefrontConfig: (config: ConfigView, options: { configVersion: string }) => StorefrontConfigV1;
+  buildStorefrontConfig: (config: ConfigView, options: { configVersion: string; shopCurrency?: string }) => StorefrontConfigV1;
   now: () => Date;
   logger: SyncLogger;
   /** Injectable for tests (default: setTimeout). */

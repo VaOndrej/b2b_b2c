@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 
 import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
-import { pdpMaxDiscountPercent } from "@won/core/discounts/storefront-config";
+import { marginKey, pdpFloor } from "@won/core/discounts/storefront-config";
 
 import type { PrismaClient } from "../../app/generated/prisma/client.ts";
 import type { AdminClient } from "../../app/lib/admin-client.server.ts";
@@ -15,17 +15,18 @@ import { productionSyncDeps } from "../../app/lib/sync/wiring.server.ts";
 import { createTestDatabase, type TestDatabase } from "../lib/test-db.ts";
 import { FakeStore, quiet } from "./helpers.ts";
 
-// The variant `pdp` metafield (MVP 3, contract K4): `$app:won_discounts/pdp` =
-// {"max": <the largest discount % margin protection allows at the variant's
-// price in the SHOP currency, one decimal, rounded down>} — written by the cost
+// The variant `pdp` metafield (MVP 3, contract K4 v2): `$app:won_discounts/pdp` =
+// {"f": <the floor of one item in minor units of the SHOP currency — exactly the
+// engine's floorUnit>, "k": "<the margin settings' key>"} — written by the cost
 // mirror in the SAME metafieldsSet as the cost, only for variants with a known
-// cost while protection is on; recomputed when the price changes
-// (products/update → the product's variants), when the cost changes
-// (inventory_items/update), when the margin settings change (the sync queues a
-// full pass) and when a product's margin collections change (the sync queues
-// its variants); deleted when the cost disappears or protection goes off.
-// Only changed values are written. `max` = core pdpMaxDiscountPercent with the
-// gated margin checkout runs and the product's marginRefs (what the function reads).
+// cost while protection is on; recomputed when the cost changes
+// (inventory_items/update), when the margin settings change (`k`: the sync
+// queues a full pass) and when a product's margin collections change (the sync
+// queues its variants); `f` does not depend on the price, so a price change
+// writes nothing; deleted when the cost disappears or protection goes off.
+// Only changed values are written. {f, k} = core pdpFloor with the gated margin
+// checkout runs, the shop currency and the product's marginRefs (what the
+// function reads); the storefront config's margin carries the same `k`.
 
 let db: TestDatabase;
 let seq = 0;
@@ -93,19 +94,17 @@ function catalogue() {
   return { store, v1: p1.variantIds[0]!, v2: p2.variantIds[0]!, v3: p3.variantIds[0]!, p1, p3 };
 }
 
-/** What core says for a variant (gated stored margin, the product's refs from the index). */
-async function expectedMax(plan: Plan, variant: { price: string; cost: number; productId: string }) {
+/** What core says for a variant (gated stored margin, the shop currency, the product's refs from the index). */
+async function expectedPdp(plan: Plan, variant: { cost: number; productId: string }) {
   const loaded = await loadConfig(db.prisma, shop);
   const row = await db.prisma.productTargetIndex.findUnique({ where: { shop_productId: { shop, productId: variant.productId } } });
   const refs = row?.value ? ((JSON.parse(row.value) as { marginRefs?: string[] }).marginRefs ?? []) : [];
-  return pdpMaxDiscountPercent({
-    unitPrice: Math.round(Number(variant.price) * 100),
-    unitCost: variant.cost,
-    costCurrency: "CZK",
-    shopCurrency: "CZK",
-    margin: gateConfigForPlan(loaded.config, plan).config.modules.margin,
-    collectionIds: refs,
-  });
+  return pdpFloor({ unitCost: variant.cost, costCurrency: "CZK", shopCurrency: "CZK", margin: gateConfigForPlan(loaded.config, plan).config.modules.margin, collectionIds: refs });
+}
+
+/** The key of the stored margin as checkout runs it (gated) in the shop currency. */
+async function keyOf(plan: Plan) {
+  return marginKey(gateConfigForPlan((await loadConfig(db.prisma, shop)).config, plan).config.modules.margin, "CZK");
 }
 
 const variantSets = (store: FakeStore) =>
@@ -114,14 +113,17 @@ const variantSets = (store: FakeStore) =>
     .map((call) => (call.variables as { metafields: { ownerId: string; key: string; value: string }[] }).metafields)
     .filter((mfs) => mfs.every((mf) => mf.key === "variant" || mf.key === "pdp"));
 
-test("a full pass writes pdp {max} with the cost in the same metafieldsSet (10.00 at cost 6.00, min. margin 25 % → 20 %)", async () => {
+test("a full pass writes pdp {f, k} with the cost in the same metafieldsSet (cost 6.00, min. margin 25 % → floor 8.00)", async () => {
   const { store, v1, v2 } = catalogue();
   const plan = { current: "pro" as Plan };
   await save(store, plan, marginInput());
   await startCostJob(shop, laneDeps(store, plan), { kind: "full", restart: true });
   await settle();
-  assert.deepEqual(store.sync.variantPdpMetafield(v1), { max: 20 });
+  assert.deepEqual(store.sync.variantPdpMetafield(v1), { f: 800, k: await keyOf("pro") });
   assert.deepEqual(store.sync.variantCostMetafield(v1), { cost: 6, cur: "CZK" });
+  // The storefront config carries the same key (the same gated margin and shop currency): the PDP trusts `f`.
+  assert.equal((store.sync.storefrontConfig() as { margin: { k?: string; cur?: string } }).margin.k, await keyOf("pro"));
+  assert.equal((store.sync.storefrontConfig() as { margin: { k?: string; cur?: string } }).margin.cur, "CZK");
   assert.equal(store.sync.variantPdpMetafield(v2), undefined, "no cost → no pdp (the storefront uses the config cap)");
   const withV1 = variantSets(store).filter((mfs) => mfs.some((mf) => mf.ownerId === v1));
   assert.ok(
@@ -136,10 +138,10 @@ test("the product's margin collections decide (marginRefs, as checkout): a stric
   await save(store, plan, marginInput({ perCollection: [{ collectionId: COLLECTION, minMarginPercent: 50 }] }));
   await startCostJob(shop, laneDeps(store, plan), { kind: "full", restart: true });
   await settle();
-  // 10.00 at cost 4.00, min. margin 50 % → floor 8.00 → 20 %; the global 25 % would give 46.6 % (floor 5.34).
-  assert.deepEqual(store.sync.variantPdpMetafield(v3), { max: 20 });
-  assert.equal(20, await expectedMax("pro", { price: "10.00", cost: 4, productId: p3.id }));
-  assert.deepEqual(store.sync.variantPdpMetafield(v1), { max: 20 });
+  // Cost 4.00 with the collection's min. margin 50 % → floor 8.00 (the global 25 % would give 5.34).
+  assert.deepEqual(store.sync.variantPdpMetafield(v3), { f: 800, k: await keyOf("pro") });
+  assert.deepEqual(await expectedPdp("pro", { cost: 4, productId: p3.id }), { f: 800, k: await keyOf("pro") });
+  assert.deepEqual(store.sync.variantPdpMetafield(v1), { f: 800, k: await keyOf("pro") });
 });
 
 test("Free: the gated margin (collections folded into the store's values) decides, like checkout", async () => {
@@ -148,12 +150,12 @@ test("Free: the gated margin (collections folded into the store's values) decide
   await save(store, plan, marginInput({ perCollection: [{ collectionId: COLLECTION, minMarginPercent: 50 }] }));
   await startCostJob(shop, laneDeps(store, plan), { kind: "full", restart: true });
   await settle();
-  const want = await expectedMax("free", { price: "10.00", cost: 6, productId: p1.id });
-  assert.deepEqual(store.sync.variantPdpMetafield(v1), { max: want });
-  assert.equal(want, 0, "Free folds the 50 % collection into every product: 10.00 at cost 6.00 has no room");
+  const want = await expectedPdp("free", { cost: 6, productId: p1.id });
+  assert.deepEqual(store.sync.variantPdpMetafield(v1), want);
+  assert.equal(want?.f, 1200, "Free folds the 50 % collection into every product: cost 6.00 → floor 12.00");
 });
 
-test("a price change (products/update → the product's variants) recomputes pdp; only pdp is written, nothing when unchanged", async () => {
+test("a price change (products/update → the product's variants) writes nothing: the floor does not depend on the price", async () => {
   const { store, v1, p1 } = catalogue();
   const plan = { current: "pro" as Plan };
   await save(store, plan, marginInput());
@@ -162,16 +164,8 @@ test("a price change (products/update → the product's variants) recomputes pdp
   store.sync.calls = [];
   store.sync.variants.get(v1)!.price = "20.00";
   await startCostJob(shop, laneDeps(store, plan), { kind: "items", productIds: [p1.id] });
-  // 20.00 at cost 6.00, min. margin 25 % → floor 8.00 → 60 % (the 30 % cap is for variants WITHOUT a cost).
-  assert.deepEqual(store.sync.variantPdpMetafield(v1), { max: 60 });
-  assert.deepEqual(
-    variantSets(store).map((mfs) => mfs.map((mf) => `${mf.key}:${mf.ownerId}`)),
-    [[`pdp:${v1}`]],
-    "the cost did not change: only pdp",
-  );
-  store.sync.calls = [];
-  await startCostJob(shop, laneDeps(store, plan), { kind: "items", productIds: [p1.id] });
-  assert.equal(store.sync.mutations().length, 0, "nothing changed: nothing written");
+  assert.deepEqual(store.sync.variantPdpMetafield(v1), { f: 800, k: await keyOf("pro") });
+  assert.equal(store.sync.mutations().length, 0, "nothing written");
 });
 
 test("a cost change (inventory_items/update) recomputes pdp together with the cost", async () => {
@@ -183,9 +177,9 @@ test("a cost change (inventory_items/update) recomputes pdp together with the co
   store.sync.setCost(v1, "7.00");
   store.sync.calls = [];
   await startCostJob(shop, laneDeps(store, plan), { kind: "items", inventoryItemIds: [store.sync.variants.get(v1)!.inventoryItemId] });
-  const want = await expectedMax("pro", { price: "10.00", cost: 7, productId: p1.id });
-  assert.deepEqual(store.sync.variantPdpMetafield(v1), { max: want });
-  assert.ok(want !== null && want < 20);
+  // Cost 7.00, min. margin 25 % → floor ⌈9.333⌉ = 9.34.
+  assert.deepEqual(store.sync.variantPdpMetafield(v1), { f: 934, k: await keyOf("pro") });
+  assert.deepEqual(await expectedPdp("pro", { cost: 7, productId: p1.id }), { f: 934, k: await keyOf("pro") });
   assert.deepEqual(variantSets(store).map((mfs) => mfs.map((mf) => mf.key).sort()), [["pdp", "variant"]]);
 });
 
@@ -221,11 +215,14 @@ test("margin settings change: the sync queues a full pass that recomputes every 
   await save(store, plan, marginInput());
   await startCostJob(shop, laneDeps(store, plan), { kind: "full", restart: true });
   await settle();
-  assert.deepEqual(store.sync.variantPdpMetafield(v1), { max: 20 });
-  // Min. margin 10 %: floor ⌈6.667⌉ = 6.67 → 33.3 % (rounded down to 0.1 %).
+  const before = await keyOf("pro");
+  assert.deepEqual(store.sync.variantPdpMetafield(v1), { f: 800, k: before });
+  // Min. margin 10 %: floor ⌈6.667⌉ = 6.67, and a new key.
   await save(store, plan, marginInput({ min: 10 }));
-  assert.deepEqual(store.sync.variantPdpMetafield(v1), { max: 33.3 });
-  assert.equal(33.3, await expectedMax("pro", { price: "10.00", cost: 6, productId: store.sync.variants.get(v1)!.productId }));
+  const after = await keyOf("pro");
+  assert.notEqual(after, before);
+  assert.deepEqual(store.sync.variantPdpMetafield(v1), { f: 667, k: after });
+  assert.equal((store.sync.storefrontConfig() as { margin: { k?: string } }).margin.k, after, "the storefront config moved to the same key");
 });
 
 test("a product that joins a margin collection (targeting refresh) gets its pdp recomputed", async () => {
@@ -234,13 +231,13 @@ test("a product that joins a margin collection (targeting refresh) gets its pdp 
   await save(store, plan, marginInput({ perCollection: [{ collectionId: COLLECTION, minMarginPercent: 50 }] }));
   await startCostJob(shop, laneDeps(store, plan), { kind: "full", restart: true });
   await settle();
-  assert.deepEqual(store.sync.variantPdpMetafield(v1), { max: 20 });
+  assert.deepEqual(store.sync.variantPdpMetafield(v1), { f: 800, k: await keyOf("pro") });
   store.sync.collections.get(COLLECTION)!.push(p1.id);
   const loaded = await loadConfig(db.prisma, shop);
   await syncFor(plan)(store, db.prisma).refreshProducts(shop, loaded.config);
   await settle();
-  // 10.00 at cost 6.00 with min. margin 50 %: floor 12.00 > price → 0 %.
-  assert.deepEqual(store.sync.variantPdpMetafield(v1), { max: 0 });
+  // Cost 6.00 with the collection's min. margin 50 %: floor 12.00.
+  assert.deepEqual(store.sync.variantPdpMetafield(v1), { f: 1200, k: await keyOf("pro") });
 });
 
 test("protection switched off: the clear deletes the cost and pdp of every variant", async () => {
@@ -275,16 +272,16 @@ test("a pdp write Shopify refuses is recorded on the variant and backed off (not
   await save(store, plan, marginInput());
   await startCostJob(shop, laneDeps(store, plan), { kind: "full", restart: true });
   await settle();
-  store.sync.variants.get(v1)!.price = "20.00";
+  const old = { f: 800, k: await keyOf("pro") };
   store.sync.refusedOwners.add(v1);
-  const first = await startCostJob(shop, laneDeps(store, plan), { kind: "items", productIds: [p1.id] });
-  assert.equal(first.done === "items" && first.result.refused, 1);
+  // A margin change: the cost stays, pdp alone must move (new f and k) — Shopify refuses it.
+  await save(store, plan, marginInput({ min: 10 }));
   const row = await db.prisma.variantCost.findUnique({ where: { shop_variantId: { shop, variantId: v1 } } });
   assert.match(row!.writeError ?? "", /pdp/);
+  assert.deepEqual(store.sync.variantPdpMetafield(v1), old, "the old value (old k: the PDP promises nothing for it) stays until the retry");
   store.sync.calls = [];
   await startCostJob(shop, laneDeps(store, plan), { kind: "items", productIds: [p1.id] });
   assert.equal(store.sync.mutations().length, 0, "backed off");
-  assert.deepEqual(store.sync.variantPdpMetafield(v1), { max: 20 }, "the old value stays until the retry");
 });
 
 const COST_OPS = ["WonSyncCostShop", "WonSyncCostVariantsCount", "WonSyncCostVariants", "WonSyncCostVariantNodes", "WonSyncCostInventoryItems", "WonSyncCostProductVariants"];
@@ -320,14 +317,14 @@ test("more than PDP_ITEMS_MAX products whose margin collections changed → one 
   await startCostJob(shop, laneDeps(store, plan), { kind: "full", restart: true });
   await settle();
   const first = store.sync.products.get(ids[0]!)!.variantIds[0]!;
-  assert.deepEqual(store.sync.variantPdpMetafield(first), { max: 20 });
+  assert.deepEqual(store.sync.variantPdpMetafield(first), { f: 800, k: await keyOf("pro") });
   store.sync.collections.get(COLLECTION)!.push(...ids);
   store.ops = [];
   await syncFor(plan)(store, db.prisma).refreshProducts(shop, (await loadConfig(db.prisma, shop)).config);
   await settle();
   assert.ok(costOps(store).includes("WonSyncCostVariants"), "a full pass ran");
   assert.equal(costOps(store).filter((op) => op === "WonSyncCostProductVariants").length, 0, "no per-product reads");
-  assert.deepEqual(store.sync.variantPdpMetafield(first), { max: 0 });
+  assert.deepEqual(store.sync.variantPdpMetafield(first), { f: 1200, k: await keyOf("pro") });
 });
 
 test("a margin change while a full pass for the SAME margin already runs starts no second pass (coalesced)", async () => {
@@ -413,5 +410,5 @@ test("the shop config is written although the product plan did not finish: a mar
   const result = await save(store, plan, input);
   assert.ok(result.sync?.steps.some((s) => s.step === "products" && !s.ok), JSON.stringify(result.sync?.steps));
   assert.ok(result.sync?.steps.some((s) => s.step === "shop_config.write" && s.ok));
-  assert.deepEqual(store.sync.variantPdpMetafield(v1), { max: 20 });
+  assert.deepEqual(store.sync.variantPdpMetafield(v1), { f: 800, k: await keyOf("pro") });
 });

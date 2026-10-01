@@ -27,7 +27,8 @@ export function productionSyncDeps(client: AdminClient, db: PrismaClient, logger
     buildNodeVars: (role, config, now) => buildNodeVars(role, config, now),
     productRuleIndex: (config, products) => productRuleIndex(config, products),
     verifyShopFunctionConfig: (json) => verifyShopFunctionConfig(json),
-    buildStorefrontConfig: (config, options) => buildStorefrontConfig(config, { configVersion: options.configVersion }),
+    buildStorefrontConfig: (config, options) =>
+      buildStorefrontConfig(config, { configVersion: options.configVersion, ...(options.shopCurrency ? { shopCurrency: options.shopCurrency } : {}) }),
     now: () => new Date(),
     logger,
   };

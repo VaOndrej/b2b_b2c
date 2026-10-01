@@ -48,9 +48,9 @@
 //      token; only behind a shop config that is in place, read back; a failure
 //      is a failed step (retried by the next sync), never fatal;
 //   5. product metafields, AFTER lane: products that carry no Won refs yet and
-//      only gain some, the marginRef bridges pruned, and EVERY tierRef change
-//      (MVP 3, controller ruling: a product keeps its old tier set during the
-//      sync — products.ts tierWrites). `productWrites: "background"` (the admin save, item 7)
+//      only gain some, the marginRef bridges pruned, and EVERY tierRef change's
+//      final value (MVP 3 audit P2-2: the BEFORE lane put TIER_SENTINEL there —
+//      no tier while the sync runs — products.ts tierWrites). `productWrites: "background"` (the admin save, item 7)
 //      runs it in this process's per-shop queue after the run returned; the
 //      run is recorded with pending `products_in_progress` and the lane
 //      records its own SyncRun. A newer sync of the shop cancels a queued or
@@ -119,10 +119,10 @@ import { clearSyncProgress } from "./progress";
 import { recordAppliedPlan, recordProductsSynced, recordShopTimezone } from "./sync-state.server";
 import { writeStorefrontConfig } from "./storefront";
 import { errorText, setMetafields, Transport } from "./transport";
-import type { ConfigView, PendingWork, SyncDeps, SyncResult, SyncStep } from "./types";
+import type { ConfigView, PendingWork, ShopConfigBuild, SyncDeps, SyncResult, SyncStep } from "./types";
 import { foldedIn } from "./margin-fold";
 import { appliedRun, parseSteps, shopConfigApplied } from "./runs";
-import { canonicalJson, sameJson } from "./util";
+import { canonicalJson, isoCurrency, sameJson } from "./util";
 
 /** Shop-local `YYYY-MM-DDTHH:MM:SS` (DateTimeWithoutTimezone, what the engine and C4 use). */
 export function shopLocalDateTime(date: Date, timeZone: string): string {
@@ -378,7 +378,7 @@ async function runSync(deps: SyncDeps, shop: string, config: ConfigView, options
   const result = await persist(deps, shop, startedAt, steps, [...pending], configVersionId);
   if (after?.productsComplete && !background && result.ok) await bookkeeping(deps, shop, () => recordProductsSynced(deps.db, shop, startedAt));
   if (!background) clearSyncProgress(shop);
-  // MVP 3 (pdp), whenever the shop config was written: the margin it ships changed → every variant's pdp maximum;
+  // MVP 3 (pdp), whenever the shop config was written: the margin it ships changed → every variant's pdp floor;
   // else the products whose marginRefs changed (all written in the BEFORE lane, so they are in place now).
   if (outcome && !rethrow) recomputePdp(deps, shop, outcome.marginKey !== null ? { margin: outcome.marginKey } : (after?.pdpProducts ?? []));
   if (background && after) {
@@ -539,7 +539,7 @@ interface StepsArgs {
   pending: Set<PendingWork>;
 }
 
-/** A run whose shop config is in place (written, or already equal): its AFTER lane and what the pdp maximum needs. */
+/** A run whose shop config is in place (written, or already equal): its AFTER lane and what the pdp floor needs. */
 interface StepsOutcome {
   /** Null when the product plan did not finish (nothing for the AFTER lane). */
   after: AfterLane | null;
@@ -550,7 +550,7 @@ interface StepsOutcome {
 /** What is left for the AFTER lane once the shop config is written. */
 interface AfterLane {
   args: ProductSyncArgs;
-  /** Products whose marginRefs this run changed (MVP 3: their variants' pdp maximum is recomputed). */
+  /** Products whose marginRefs this run changed (MVP 3: their variants' pdp floor is recomputed). */
   pdpProducts: readonly string[];
   additions: Parameters<typeof applyAfterLane>[1]["additions"];
   /** Products that carried a marginRef bridge across the flip: their final value (products.ts bridgeMarginRefs). */
@@ -607,11 +607,7 @@ async function syncSteps({ deps, transport, shop, config: stored, configVersionI
   const payloadConfig = limits.payloadConfig;
   const payload = deps.buildShopFunctionConfig(payloadConfig, { now: nowLocal, shopTimezone, shopCurrency });
   if (!payload.fits) {
-    record({
-      step: "shop_config.build",
-      ok: false,
-      detail: `the discount function config is ${payload.bytes} B, over the 9000 B budget — nothing was written`,
-    });
+    record({ step: "shop_config.build", ok: false, ...overBudget(payload, "nothing was written") });
     return null;
   }
   let storedJson = shopState.functionConfig;
@@ -623,11 +619,7 @@ async function syncSteps({ deps, transport, shop, config: stored, configVersionI
   if (switching) {
     const noCampaign = phaseOnePayload(deps, payloadConfig, storedJson, { now: nowLocal, shopTimezone, shopCurrency });
     if (!noCampaign.fits) {
-      record({
-        step: "shop_config.phase1.build",
-        ok: false,
-        detail: `the no-campaign config is ${noCampaign.bytes} B, over the 9000 B budget — nothing was written, the running campaign continues`,
-      });
+      record({ step: "shop_config.phase1.build", ok: false, ...overBudget(noCampaign, "nothing was written, the running campaign continues", "the no-campaign config") });
       pending.add("campaign_switch_held");
       return null;
     }
@@ -729,12 +721,35 @@ async function syncSteps({ deps, transport, shop, config: stored, configVersionI
   // I-2: the plan the LIVE shop config was built for (a change of plan is then a reason to resync).
   await bookkeeping(deps, shop, () => recordAppliedPlan(deps.db, shop, plan));
   // 4b. The storefront config (MVP 3, K5) from the SAME gated config as the payload, behind it; never fatal.
-  await writeStorefrontConfig({ deps, transport, shop, config: payloadConfig, stored, configVersionId, record });
-  // The pdp maximum (MVP 3): did the margin the shop config ships change (also when the product plan did not finish)?
+  // K4 v2: its margin key from the same gated margin and the same shop currency string as the pdp keys (cost lane).
+  await writeStorefrontConfig({ deps, transport, shop, config: payloadConfig, stored, configVersionId, shopCurrency: isoCurrency(shopCurrency), record });
+  // The pdp floor (MVP 3): did the margin the shop config ships change (also when the product plan did not finish)?
   const nextMargin = liveMarginOf(payload.json);
   const marginChanged = nextMargin.enabled && (shopState.functionConfig === null || canonicalJson(liveMarginOf(shopState.functionConfig)) !== canonicalJson(nextMargin));
   // 5. The AFTER lane (runSync runs it inline or queues it) — only behind a config that is in place.
   return { after, marginKey: marginChanged ? pdpMarginKey(payloadConfig.modules.margin) : null };
+}
+
+/**
+ * Why a built shop config does not fit, for support and the admin (sync-copy.ts words it from `params`): the
+ * whole payload over FUNCTION_CONFIG_BUDGET_BYTES, and/or (MVP 3 audit) the quantity tiers over their own cap —
+ * `params` = {bytes, budget} and, only when the tier part is over its cap, {tiersBytes, tiersBudget} (the
+ * admin's naming contract: sync-copy.ts words "využito X %" from them).
+ */
+function overBudget(
+  built: ShopConfigBuild,
+  outcome: string,
+  what = "the discount function config",
+): { detail: string; params: Record<string, number> } {
+  const tiers = built.tiers;
+  const parts = [
+    ...(built.bytes > FUNCTION_CONFIG_BUDGET_BYTES ? [`${what} is ${built.bytes} B, over the ${FUNCTION_CONFIG_BUDGET_BYTES} B budget`] : []),
+    ...(tiers && !tiers.fits ? [`its quantity tiers take ${tiers.bytes} B, over their ${tiers.budget} B cap`] : []),
+  ];
+  return {
+    detail: `${parts.length > 0 ? parts.join("; ") : `${what} does not fit (${built.bytes} B)`} — ${outcome}`,
+    params: { bytes: built.bytes, budget: FUNCTION_CONFIG_BUDGET_BYTES, ...(tiers && !tiers.fits ? { tiersBytes: tiers.bytes, tiersBudget: tiers.budget } : {}) },
+  };
 }
 
 /** The held shop config, one line for support per reason (the admin words it from `params.held`: sync-copy.ts). */
@@ -743,6 +758,8 @@ const HOLD_DETAIL: Record<HoldReason, string> = {
     "held: some products could not be cleared of rules they no longer belong to, so the new config is not applied yet (the previous one stays); the next sync retries",
   margin_refs:
     "held: the margin collections of some products could not be written, so the new config is not applied yet (the previous one stays); the next sync retries",
+  tier_refs:
+    "held: some products whose quantity tier set changes could not be switched off their old set first, so the new config is not applied yet (the previous one stays); the next sync retries",
   products_unread: "held: the targeted products could not be read, so the new config is not applied yet (the previous one stays); the next sync retries",
   products_refused:
     "held: Shopify refused every product write in several batches in a row, so the new config is not applied yet (the previous one stays); the next sync retries",
@@ -776,7 +793,7 @@ function phaseOnePayload(
   payloadConfig: ConfigView,
   storedJson: string | null,
   options: { now: string; shopTimezone: string; shopCurrency: string | undefined },
-): { json: string; bytes: number; fits: boolean } {
+): ShopConfigBuild {
   const noCampaign = { ...options, forceNoCampaign: true };
   const liveMargin = storedJson !== null ? liveMarginPart(storedJson) : undefined;
   if (liveMargin !== undefined) {
@@ -809,13 +826,14 @@ function liveMarginPart(json: string): unknown {
  * still carries the NEW margin; it falls back to folding every margin
  * collection into the global values instead (the strictest, safe fallback).
  */
-export function withMarginPart(built: { json: string; bytes: number; fits: boolean }, margin: unknown): { json: string; bytes: number; fits: boolean } | null {
+export function withMarginPart(built: ShopConfigBuild, margin: unknown): ShopConfigBuild | null {
   const payload = JSON.parse(built.json) as { modules?: Record<string, unknown> };
   if (typeof payload.modules !== "object" || payload.modules === null) return null;
   payload.modules.margin = margin;
   const json = JSON.stringify(payload);
   const bytes = new TextEncoder().encode(json).length;
-  return { json, bytes, fits: bytes <= FUNCTION_CONFIG_BUDGET_BYTES };
+  // The tiers part is untouched: its cap (MVP 3 audit) still decides with the budget.
+  return { json, bytes, fits: bytes <= FUNCTION_CONFIG_BUDGET_BYTES && (built.tiers?.fits ?? true), ...(built.tiers ? { tiers: built.tiers } : {}) };
 }
 
 /** The margin settings a live shop config JSON carries, as the engine reads them (off when absent or unreadable). */

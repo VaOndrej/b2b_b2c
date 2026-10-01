@@ -26,20 +26,24 @@
 //                         looked up by the item (never trusting the payload's
 //                         cost: a late delivery re-reads the current state);
 //   mirrorProducts        products/create|update (webhook): the product's variants.
-// The PDP maximum (MVP 3, contract K4): with the cost the mirror writes
-//   $app:won_discounts/pdp = {"max": <core pdpMaxDiscountPercent>}
-// — the largest discount % margin protection allows on the variant at its
-// price in the SHOP currency (`price`, the shop's base price), with the cost as
-// written, the gated margin checkout runs (cost-lane.server.ts runningMargin)
-// and the product's `marginRefs` from the product index (what the function
-// reads; more than MAX_MARGIN_REFS → every collection, like the engine). In the
-// SAME metafieldsSet as the cost when the cost changes, alone when only the
-// price / settings / collections moved; deleted with the cost, and wherever
-// core says null (a cost in another currency than the shop's: checkout ignores
-// it). Diffed against the pdp value Shopify has (read in the same query), so
-// only changed values are written. Without a pdp context (`ctx.pdp`, or an
-// unknown shop currency) pdp is left as it is, except that it always goes with
-// a deleted cost. A pdp write Shopify refuses is recorded on the variant like a
+// The PDP floor (MVP 3, contract K4 v2): with the cost the mirror writes
+//   $app:won_discounts/pdp = {"f": <floor of one item, minor units of the SHOP currency>, "k": "<margin key>"}
+// — core pdpFloor: exactly the engine's floorUnit for a cart in the shop
+// currency, from the cost as written, the gated margin checkout runs
+// (cost-lane.server.ts runningMargin) and the product's `marginRefs` from the
+// product index (what the function reads; more than MAX_MARGIN_REFS → every
+// collection, like the engine); `k` = core marginKey of that margin and the shop
+// currency, the same key the storefront config's margin carries (sync.server.ts
+// passes the same gated margin and the same currency string, util.ts
+// isoCurrency) — a pdp with another `k` is not trusted by the page (fail
+// closed). `f` does not depend on the price: a price change writes nothing.
+// In the SAME metafieldsSet as the cost when the cost changes, alone when only
+// the settings (k) / collections moved; deleted with the cost, and wherever core
+// says null (a cost in another currency than the shop's: checkout ignores it).
+// Diffed against the pdp value Shopify has (read in the same query), so only
+// changed values are written. Without a pdp context (`ctx.pdp`, or an unknown
+// shop currency) pdp is left as it is, except that it always goes with a
+// deleted cost. A pdp write Shopify refuses is recorded on the variant like a
 // refused cost (`writeError` "pdp: …", backed off). Accepted gap: after a
 // REFUSED cost write whose older cost stays (olderCostsThatStay), pdp keeps the
 // value it had until the write goes through (checkout is authoritative).
@@ -72,7 +76,7 @@ import { randomUUID } from "node:crypto";
 import type { MarginModule, ReadonlyDeep } from "@won/core/discounts/config";
 import { buildMarginPayload, costMinorUnits, marginFloorUnit, MAX_MARGIN_REFS, resolveProductMargin, type FunctionMarginPayload } from "@won/core/discounts/margin";
 import { toMinorUnits } from "@won/core/discounts/money";
-import { pdpMaxDiscountPercent } from "@won/core/discounts/storefront-config";
+import { pdpFloor } from "@won/core/discounts/storefront-config";
 
 import { Prisma, type PrismaClient } from "../../generated/prisma/client";
 import { VARIANT_COST_KEY, VARIANT_PDP_KEY, WON_NAMESPACE } from "./graphql";
@@ -174,7 +178,7 @@ export interface CostPending {
   failedAt?: string;
   error?: string;
   /**
-   * The margin the pass computes the pdp maximum with (pdpMarginKey; MVP 3):
+   * The margin the pass computes the pdp floor with (pdpMarginKey; MVP 3):
    * a pass cut short is resumed only under the same margin — after a margin
    * change the variants before its cursor have stale pdp values, so the next
    * pass starts over.
@@ -182,7 +186,7 @@ export interface CostPending {
   margin?: string;
 }
 
-/** A stable key of the margin a pdp maximum is computed with (gated, folded: what checkout runs). */
+/** A stable key of the margin a pdp floor is computed with (gated, folded: what checkout runs). */
 export function pdpMarginKey(margin: ReadonlyDeep<MarginModule>): string {
   return canonicalJson(buildMarginPayload(margin));
 }
@@ -518,10 +522,10 @@ export async function olderCostsThatStay(ctx: Pick<CostCtx, "floors">, snapshots
 }
 
 /**
- * The pdp value each snapshot's variant should carry (see the header): null =
- * none (no cost, a price Won cannot read, or core says null); the map itself is
- * null when pdp is not managed in this call (no context, or the shop currency
- * is unknown).
+ * The pdp value each snapshot's variant should carry (see the header): {f, k}
+ * from core pdpFloor — the floor does not depend on the price — or null (no
+ * cost, or core says null); the map itself is null when pdp is not managed in
+ * this call (no context, or the shop currency is unknown).
  */
 async function desiredPdps(ctx: CostCtx, snapshots: readonly VariantSnapshot[]): Promise<Map<string, string | null> | null> {
   const pdp = ctx.pdp;
@@ -535,23 +539,22 @@ async function desiredPdps(ctx: CostCtx, snapshots: readonly VariantSnapshot[]):
   const everyCollection = payload.enabled ? Object.keys(payload.col ?? {}) : [];
   const out = new Map<string, string | null>();
   for (const { s, cost } of costed) {
-    const unitPrice = toMinorUnits(s.price, shopCurrency);
-    if (!payload.enabled || cost === null || unitPrice === null) {
+    if (!payload.enabled || cost === null) {
       out.set(s.variantId, null);
       continue;
     }
     const raw = refs.get(s.productId) ?? [];
     // More than MAX_MARGIN_REFS entries: the engine takes the store's strictest setting (every collection).
     const collectionIds = raw.length > MAX_MARGIN_REFS ? everyCollection : raw.filter((ref): ref is string => typeof ref === "string");
-    const max = pdpMaxDiscountPercent({ unitPrice, unitCost: cost.cost, costCurrency: cost.cur, shopCurrency, margin: pdp.margin, collectionIds });
-    out.set(s.variantId, max === null ? null : JSON.stringify({ max }));
+    const floor = pdpFloor({ unitCost: cost.cost, costCurrency: cost.cur, shopCurrency, margin: pdp.margin, collectionIds });
+    out.set(s.variantId, floor === null ? null : JSON.stringify({ f: floor.f, k: floor.k }));
   }
   return out;
 }
 
 /**
  * Record the snapshots and bring each variant's metafields to their desired
- * values (only where they differ): the cost, and with it the pdp maximum
+ * values (only where they differ): the cost, and with it the pdp floor
  * (MVP 3, see the header). `metafieldValue` is only ever a CONFIRMED value
  * (read from Shopify, or set by a write Shopify accepted); before a write goes
  * out the row is marked `mayCarry` (write-ahead: a switch-off clear never
@@ -876,7 +879,7 @@ export async function runCostPass(opts: CostPassOptions): Promise<CostPassResult
     // A pass that failed for want of a session never ran: its cursor is resumed like one cut short.
     (previous.failedAt === undefined || previous.error === COST_NO_SESSION) &&
     now.getTime() - Date.parse(previous.since) < COST_RESUME_MAX_AGE_MS &&
-    // MVP 3: only under the margin it computed the pdp maximum with (its earlier pages are stale otherwise).
+    // MVP 3: only under the margin it computed the pdp floor with (its earlier pages are stale otherwise).
     previous.margin === marginKey;
   const out: CostPassResult = { outcome: "done", read: 0, written: 0, cleared: 0, pdp: 0, removed: 0, refused: 0, errors: [], resumed: resumable };
   const pending: CostPending = {
@@ -1012,7 +1015,7 @@ export interface ClearResult {
 /**
  * Delete the metafields of every variant that may carry one (`mayCarry`: a
  * confirmed value, a write that may have landed, a pdp value, or an uninstall
- * marker) — the cost and the pdp maximum, ≤ 250 inputs per call — then the
+ * marker) — the cost and the pdp floor, ≤ 250 inputs per call — then the
  * shop's rows and its pass bookkeeping. Rows whose delete failed stay (still
  * marked) for the next clear.
  */

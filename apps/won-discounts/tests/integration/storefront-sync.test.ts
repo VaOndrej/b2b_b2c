@@ -2,13 +2,14 @@ import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 
 import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
-import { buildStorefrontConfig } from "@won/core/discounts/storefront-config";
+import { buildStorefrontConfig, marginKey } from "@won/core/discounts/storefront-config";
 
 import type { PrismaClient } from "../../app/generated/prisma/client.ts";
 import { CATALOGUES } from "../../app/i18n/index.ts";
 import type { AdminClient } from "../../app/lib/admin-client.server.ts";
 import { configVersionToken, loadConfig } from "../../app/lib/config.server.ts";
 import { syncProblems } from "../../app/lib/integration/sync-copy.ts";
+import { foldMarginCollections } from "../../app/lib/sync/products.ts";
 import { resyncIfPending, resyncShop, saveAndSync } from "../../app/lib/sync/save-and-sync.server.ts";
 import { STOREFRONT_CONFIG_MAX_BYTES, tierProductCounts } from "../../app/lib/sync/storefront.ts";
 import { createSync, syncIdle } from "../../app/lib/sync/sync.server.ts";
@@ -72,7 +73,7 @@ async function save(store: FakeStore, plan: { current: Plan }, config: unknown) 
 /** What the storefront config must be: core's builder over the gated stored config, `cv` = its F12 token. */
 async function expected(plan: Plan) {
   const loaded = await loadConfig(db.prisma, shop);
-  return buildStorefrontConfig(gateConfigForPlan(loaded.config, plan).config, { configVersion: loaded.version! });
+  return buildStorefrontConfig(gateConfigForPlan(loaded.config, plan).config, { configVersion: loaded.version!, shopCurrency: "CZK" });
 }
 
 const storefrontWrites = (store: FakeStore) => store.sync.callsOf("WonSyncStorefrontConfigSet");
@@ -242,7 +243,9 @@ test("a margin collection too large to read is folded into the storefront caps e
     plan,
     input({ margin: { enabled: true, global: { minMarginPercent: 10, maxDiscountPercent: 40 }, perCollection: [{ collectionId: huge, maxDiscountPercent: 20 }] } }),
   );
-  assert.deepEqual((store.sync.storefrontConfig() as { margin: unknown }).margin, { on: true, max: 20 });
+  // K4 v2: the key of the FOLDED margin (what the payload and the cost mirror's pdp use) in the shop currency.
+  const folded = foldMarginCollections(gateConfigForPlan((await loadConfig(db.prisma, shop)).config, "pro").config, new Set([huge]));
+  assert.deepEqual((store.sync.storefrontConfig() as { margin: unknown }).margin, { on: true, max: 20, k: marginKey(folded.modules.margin, "CZK"), cur: "CZK" });
   const payload = JSON.parse(store.sync.shopMetafieldValue("function_config")!) as { modules: { margin: { max: number; col?: unknown } } };
   assert.equal(payload.modules.margin.max, 20);
   assert.equal(payload.modules.margin.col, undefined);

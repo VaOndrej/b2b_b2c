@@ -20,19 +20,20 @@
 //
 // Quantity tiers (MVP 3, contracts K1/K3): the products and collections the
 // Pro (scoped) tier sets list are read like rule targets (tierScopes — inert
-// Free sets included: they still claim their products), and the engine's
-// `tierRef` goes into the value. EVERY tierRef change is written AFTER the
-// flip (controller ruling — a changed set can raise OR lower a discount): a
-// BEFORE-lane write carries the tierRef the product has now, and the final
+// sets only while a global set with tiers exists: audit P3-6), and the
+// engine's `tierRef` goes into the value. EVERY tierRef change — gained,
+// changed or dropped, newcomers included — passes through TIER_SENTINEL (audit
+// P2-2): the BEFORE lane writes it (no tier under the old config nor the new
+// one; a failed sentinel write holds the new config, `tier_refs`), the final
 // value follows in the AFTER lane (`tierWrites`, step `products.tiers`; a
-// failure there holds nothing and is retried). So during the sync a product
-// keeps its old tier set; after the flip, until its tier write lands, a ref to
-// a set the new payload lacks gives no tier (engine K1, fail closed) and a
-// product that joined a set's collection keeps the global set — more OR less
-// than its own: the accepted latency, also for the webhook-driven refresh. A
-// tier collection too large to read is left out like a rule's (failed step
-// `tiers.too_large:<setId>`): its products get the global set instead. Tier
-// collections are counted after the margin ones and before the rules'.
+// failure there holds nothing: the product keeps the sentinel, no tier, until
+// retried). So while a sync runs no product gets more than both the old and the
+// new config give it — set values changing in the same save included. A tier
+// collection too large to read is left out like a rule's (failed step
+// `tiers.too_large:<setId>`), but a product that already carries that set's
+// tierRef KEEPS it (audit P2-3: never widened to the global set by the read
+// limit); products not read yet get the global set. Tier collections are
+// counted after the margin ones and before the rules'.
 //
 // Which products carry our metafield is sync bookkeeping in Prisma
 // ProductTargetIndex {shop, productId, payloadHash} (DATA-1; no cap). A row
@@ -111,7 +112,7 @@
 
 import { marginCollectionIds, resolveMargin, type FunctionMarginPayload } from "@won/core/discounts/margin";
 import { decisiveMarginRefs, parseRuleRef, productMetafieldValue, variantKey } from "@won/core/discounts/targeting";
-import { reachableTierSets } from "@won/core/discounts/tiers";
+import { globalTierSet, reachableTierSets } from "@won/core/discounts/tiers";
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import { PRODUCT_KEY, WON_NAMESPACE } from "./graphql";
@@ -165,14 +166,18 @@ function addScope(scopes: Scopes, target: unknown): void {
 
 /**
  * The products and collections the Pro (scoped) tier sets list — the sets a
- * product can reach (core reachableTierSets), inert ones included: on Free a
- * scoped set has no breaks but still claims its products (contract K1), so
- * they carry its `tierRef` and never fall into the global set.
+ * product can reach (core reachableTierSets). An inert set (no breaks: a Pro
+ * set on Free) is read only while a global set WITH breaks exists (audit
+ * P3-6): then it keeps its products out of the global set (contract K1);
+ * without one it changes nothing and would only use up the read limit.
  */
 export function tierScopes(config: ConfigView): { productIds: Set<string>; collectionIds: Set<string> } {
   const out = { productIds: new Set<string>(), collectionIds: new Set<string>() };
-  for (const set of reachableTierSets(config.modules.tiers.sets)) {
+  const reachable = reachableTierSets(config.modules.tiers.sets);
+  const globalHasTiers = (globalTierSet(reachable)?.breaks.length ?? 0) > 0;
+  for (const set of reachable) {
     if (set.scope === "global") continue;
+    if (set.breaks.length === 0 && !globalHasTiers) continue;
     for (const id of set.scope.productIds ?? []) out.productIds.add(id);
     for (const id of set.scope.collectionIds ?? []) out.collectionIds.add(id);
   }
@@ -317,7 +322,7 @@ export interface ProductPlan {
    */
   tierWrites: FinalWrite[];
   /**
-   * Products whose marginRefs change in this pass (MVP 3): their variants' pdp maximum is recomputed
+   * Products whose marginRefs change in this pass (MVP 3): their variants' pdp floor is recomputed
    * (sync.server.ts → the cost mirror), since it follows the same refs checkout reads.
    */
   marginRefsChanged: string[];
@@ -331,7 +336,15 @@ export interface ProductPlan {
 }
 
 /** Why a BEFORE lane holds the new shop config (the admin words each: sync-copy.ts). */
-export type HoldReason = "rule_refs" | "margin_refs" | "products_unread" | "products_refused";
+export type HoldReason = "rule_refs" | "margin_refs" | "tier_refs" | "products_unread" | "products_refused";
+
+/**
+ * MVP 3 audit P2-2: the tierRef a product carries while its tier set changes
+ * (BEFORE lane → AFTER lane). Not a set id (ids are [A-Za-z0-9_-]) and not ""
+ * (the storefront reads "" as "no ref" = the global set): the engine, the
+ * function and the storefront all read it as "no tier" — fail closed.
+ */
+export const TIER_SENTINEL = "~";
 
 export interface ProductSyncResult {
   steps: SyncStep[];
@@ -389,6 +402,12 @@ export interface CollectionLimits {
    * product carries for it are then kept as they are).
    */
   alsoRead: string[];
+  /**
+   * Tier sets whose collections did not fit (step `tiers.too_large:<setId>`):
+   * a product that carries one of their tierRefs keeps it (audit P2-3 — its
+   * membership is unknown; the known, stricter state stays).
+   */
+  tierTooLarge: string[];
 }
 
 /**
@@ -442,7 +461,7 @@ export async function collectionLimits(
   // Read for membership only, counted LAST: they never push a rule's or a setting's collection out.
   const extraIds = [...new Set(args.alsoRead ?? [])].filter((id) => !configSet.has(id));
   const ids = [...configIds, ...extraIds];
-  const unchanged: CollectionLimits = { config, payloadConfig: config, steps: [], marginTooLarge: [], alsoRead: [] };
+  const unchanged: CollectionLimits = { config, payloadConfig: config, steps: [], marginTooLarge: [], alsoRead: [], tierTooLarge: [] };
   if (ids.length === 0) return unchanged;
   const sizes = new Map<string, { count: number; exact: boolean; title: string | null }>();
   try {
@@ -527,8 +546,8 @@ export async function collectionLimits(
       detail:
         `a quantity tier set does not reach the products of ${titles.length > 0 ? titles.map((t) => `"${t}"`).join(", ") : "an untitled collection"}` +
         `${collections.size > titles.length && titles.length > 0 ? ` and ${collections.size - titles.length} untitled` : ""}: the targeted collections have more than ` +
-        `${MAX_COLLECTION_PRODUCTS} products together, more than Won reads per sync — those products get the store-wide set (if any) ` +
-        `instead; everything else is synced as usual`,
+        `${MAX_COLLECTION_PRODUCTS} products together, more than Won reads per sync — products that already carry this set keep it, ` +
+        `products not read yet get the store-wide set (if any); everything else is synced as usual`,
       params: { collection: titles[0] ?? "", count: collections.size },
     });
   }
@@ -549,9 +568,10 @@ export async function collectionLimits(
     });
   }
   const dropped = new Set(droppedMargin);
-  if (dropped.size === 0) return { config: out, payloadConfig: config, steps, marginTooLarge, alsoRead };
+  const tierTooLarge = [...tierAffected.keys()];
+  if (dropped.size === 0) return { config: out, payloadConfig: config, steps, marginTooLarge, alsoRead, tierTooLarge };
   // The refs and the payload share one margin view: the too-large collections folded (and left out).
-  return { config: foldMarginCollections(out, dropped), payloadConfig: foldMarginCollections(config, dropped), steps, marginTooLarge, alsoRead };
+  return { config: foldMarginCollections(out, dropped), payloadConfig: foldMarginCollections(config, dropped), steps, marginTooLarge, alsoRead, tierTooLarge };
 }
 
 async function targetedProducts(args: ProductSyncArgs, scopes: Scopes) {
@@ -632,19 +652,21 @@ interface Refs {
   ruleIds: Set<string>;
   variants: Map<string, Set<string>>;
   marginRefs: Set<string>;
+  tierRef: string | undefined;
 }
 
 /** The refs a product metafield value carries ({} for none); null when it cannot be read. */
 function refsOf(value: string | null | undefined): Refs | null {
-  if (value === null || value === undefined) return { ruleIds: new Set(), variants: new Map(), marginRefs: new Set() };
+  if (value === null || value === undefined) return { ruleIds: new Set(), variants: new Map(), marginRefs: new Set(), tierRef: undefined };
   try {
-    const parsed = JSON.parse(value) as { ruleIds?: unknown; variantRuleIds?: unknown; marginRefs?: unknown };
+    const parsed = JSON.parse(value) as { ruleIds?: unknown; variantRuleIds?: unknown; marginRefs?: unknown; tierRef?: unknown };
     const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
     const variants = new Map<string, Set<string>>();
     if (parsed.variantRuleIds && typeof parsed.variantRuleIds === "object") {
       for (const [variant, refs] of Object.entries(parsed.variantRuleIds as Record<string, unknown>)) variants.set(variant, new Set(strings(refs)));
     }
-    return { ruleIds: new Set(strings(parsed.ruleIds)), variants, marginRefs: new Set(strings(parsed.marginRefs)) };
+    const tierRef = typeof parsed.tierRef === "string" && parsed.tierRef !== "" ? parsed.tierRef : undefined;
+    return { ruleIds: new Set(strings(parsed.ruleIds)), variants, marginRefs: new Set(strings(parsed.marginRefs)), tierRef };
   } catch {
     return null;
   }
@@ -673,9 +695,11 @@ export function onlyAddsRefs(next: string, current: string | null | undefined, l
  * What a FAILED write of `next` over `current` would leave wrong (null =
  * nothing, onlyAddsRefs): "rule_refs" = a rule ref the product should lose
  * (or an unreadable value); "margin_refs" = its marginRefs change (see
- * onlyAddsRefs).
+ * onlyAddsRefs); "tier_refs" = its tierRef changes (a BEFORE write only ever
+ * changes it to TIER_SENTINEL — audit P2-2: without it the product would run
+ * the new set values on its old tierRef).
  */
-function holdsNothing(next: string, current: string | null | undefined, liveMarginRefs?: ReadonlySet<string>): "rule_refs" | "margin_refs" | null {
+function holdsNothing(next: string, current: string | null | undefined, liveMarginRefs?: ReadonlySet<string>): "rule_refs" | "margin_refs" | "tier_refs" | null {
   const have = refsOf(current);
   const want = refsOf(next);
   if (!have || !want) return "rule_refs";
@@ -685,6 +709,7 @@ function holdsNothing(next: string, current: string | null | undefined, liveMarg
   }
   for (const ref of want.marginRefs) if (!have.marginRefs.has(ref)) return "margin_refs";
   for (const ref of have.marginRefs) if (!want.marginRefs.has(ref) && (!liveMarginRefs || liveMarginRefs.has(ref))) return "margin_refs";
+  if (have.tierRef !== want.tierRef) return "tier_refs";
   return null;
 }
 
@@ -801,6 +826,19 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
     collectionIds: [...(productCollections.get(productId) ?? [])].sort(),
   }));
   const entries = args.productRuleIndex(config, inputs);
+  // Audit P2-3: a product that carries the tierRef of a set whose collection could not be read keeps it, unless the
+  // index now gives it another set from what WAS read (a known membership) — never widened to the global set.
+  if (limited.tierTooLarge.length > 0) {
+    const keep = new Set(limited.tierTooLarge);
+    const valueOf = new Map(rows.map((row) => [row.productId, row.value]));
+    for (const productId of candidates) {
+      const entry = entries.get(productId);
+      if (entry?.tierRef) continue;
+      const current = tierRefOf(valueOf.get(productId));
+      if (current === undefined || !keep.has(current)) continue;
+      entries.set(productId, { ...(entry ?? { ruleIds: [], variantRuleIds: {} }), tierRef: current });
+    }
+  }
 
   // Plan against the index (no Shopify read for products already up to date).
   const wanted = new Map<string, { value: string; hash: string }>();
@@ -839,10 +877,13 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
     );
   }
   const wantedIndexed = [...wanted.keys()].filter((productId) => indexed.has(productId));
-  // Products without Won refs yet: only-rule gains go AFTER the flip; a gained marginRef goes BEFORE it (audit P2-3).
+  // Products without Won refs yet: only-rule gains go AFTER the flip; a gained marginRef goes BEFORE it (audit P2-3);
+  // a gained tierRef puts the sentinel BEFORE it (MVP 3 audit P2-2: until written the product would otherwise get the
+  // NEW global set, possibly more than both its old and its new set).
   const newcomers = [...wanted].filter(([productId]) => !indexed.has(productId)).map(([productId, w]) => ({ productId, ...w }));
-  const additions = newcomers.filter((w) => marginRefsOf(w.value).length === 0);
+  const additions = newcomers.filter((w) => marginRefsOf(w.value).length === 0 && tierRefOf(w.value) === undefined);
   const marginNewcomers = newcomers.filter((w) => marginRefsOf(w.value).length > 0);
+  const tierNewcomers = newcomers.filter((w) => marginRefsOf(w.value).length === 0 && tierRefOf(w.value) !== undefined);
   steps.push({
     step: "products.scope",
     ok: true,
@@ -861,27 +902,31 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
   }
 
   // Read the products that already carry our metafield and must change, and the newcomers that gain a
-  // marginRef: deleted ones are dropped, an identical value is only recorded.
+  // marginRef or a tierRef: deleted ones are dropped, an identical value is only recorded.
   const sets: IndexedWrite[] = [];
   const recorded: { productId: string; hash: string; value: string }[] = [];
   const gone: string[] = [];
   const clearing = new Set(toClear);
   let values: Map<string, MetafieldNode>;
   try {
-    values = await readProductValues(transport, [...wantedIndexed, ...toClear, ...marginNewcomers.map((w) => w.productId)], args.isCancelled);
+    values = await readProductValues(
+      transport,
+      [...wantedIndexed, ...toClear, ...marginNewcomers.map((w) => w.productId), ...tierNewcomers.map((w) => w.productId)],
+      args.isCancelled,
+    );
   } catch (error) {
     if (error instanceof Response || error instanceof SyncCancelled) throw error;
     steps.push({ step: "products", ok: false, detail: `could not read the products to update: ${errorText(error)}` });
-    // Every one of them may lose a ref, or lack a stricter collection the new config relies on: nothing may flip.
-    return failedPlan(steps, toClear.length > 0 || wantedIndexed.length > 0 || marginNewcomers.length > 0);
+    // Every one of them may lose a ref, lack a stricter collection or a sentinel the new config relies on: nothing may flip.
+    return failedPlan(steps, toClear.length > 0 || wantedIndexed.length > 0 || marginNewcomers.length > 0 || tierNewcomers.length > 0);
   }
   // Across the flip (args.bridgeFrom), a product whose value changes carries a marginRef bridge (bridgeMarginRefs):
   // its final value (null = a clear) and what Shopify has now, decided below.
   const live = args.bridgeFrom;
   const crossing: Crossing[] = [];
   const prunes: FinalWrite[] = [];
-  // Every tierRef change goes AFTER the flip (MVP 3, controller ruling): a BEFORE write keeps the tierRef the product
-  // carries now, and its final value follows in the AFTER lane (tierWrites).
+  // Every tierRef change goes through the sentinel (MVP 3 audit P2-2): the BEFORE write carries TIER_SENTINEL (no
+  // tier under the old config and the new one), the final value follows in the AFTER lane (tierWrites).
   const tierWrites: FinalWrite[] = [];
   const marginRefsChanged = new Set<string>();
   const noteMarginRefs = (productId: string, current: string | null | undefined, final: string | null) => {
@@ -894,9 +939,23 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
       return;
     }
     tierWrites.push({ productId: final.productId, value: final.value, hash: final.hash });
-    const value = withRefs(final.value, { tierRef: tier });
+    const value = withRefs(final.value, { tierRef: TIER_SENTINEL });
     if (!sameJson(current, value)) sets.push({ productId: final.productId, value, hash: hashOf(value), current });
   };
+  for (const write of tierNewcomers) {
+    const node = values.get(write.productId);
+    if (!node) continue; // deleted meanwhile: nothing to write, nothing indexed
+    const current = node.metafield?.value ?? null;
+    if (sameJson(current, write.value)) {
+      recorded.push(write);
+      continue;
+    }
+    noteMarginRefs(write.productId, current, write.value);
+    // The sentinel ALONE before the flip: its rule gains follow with the final value, like any newcomer's.
+    tierWrites.push({ productId: write.productId, value: write.value, hash: write.hash });
+    const value = withRefs(null, { tierRef: TIER_SENTINEL });
+    if (!sameJson(current, value)) sets.push({ productId: write.productId, value, hash: hashOf(value), current });
+  }
   for (const write of marginNewcomers) {
     const node = values.get(write.productId);
     if (!node) continue; // deleted meanwhile: nothing to write, nothing indexed
@@ -932,12 +991,12 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
       crossing.push({ productId, final: null, current: node.metafield.value });
       continue;
     }
-    // A product that carries a tierRef keeps only it until the flip (its rule refs go before), then the metafield goes.
+    // A product that carries a tierRef gets only the sentinel until the flip (its rule refs go before), then the metafield goes.
     const tier = tierRefOf(node.metafield.value);
     if (!tier) continue;
     clearing.delete(productId);
     tierWrites.push({ productId, value: null, hash: null });
-    const value = withRefs(null, { tierRef: tier });
+    const value = withRefs(null, { tierRef: TIER_SENTINEL });
     if (!sameJson(node.metafield.value, value)) sets.push({ productId, value, hash: hashOf(value), current: node.metafield.value });
   }
   let hold: HoldReason | undefined;
@@ -959,11 +1018,11 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
         if (item.final) sets.push({ ...item.final, current: item.current });
         continue;
       }
-      // Across the flip it carries the bridge and its CURRENT tierRef; the final value follows after it
-      // (a tierRef change counts as a tier write: it changes a discount, a bare prune never does).
+      // Across the flip it carries the bridge and — when its tierRef changes — the sentinel (else its tierRef); the final
+      // value follows after it (a tierRef change counts as a tier write: it changes a discount, a bare prune never does).
       clearing.delete(item.productId);
       (tierChanges ? tierWrites : prunes).push({ productId: item.productId, value: finalValue, hash: item.final?.hash ?? null });
-      const value = withRefs(finalValue, { marginRefs: refs, tierRef: tier });
+      const value = withRefs(finalValue, { marginRefs: refs, tierRef: tierChanges ? TIER_SENTINEL : tier });
       if (sameJson(item.current, value)) continue; // it already carries the bridge: only the final write after the flip
       sets.push({ productId: item.productId, value, hash: hashOf(value), current: item.current });
     }

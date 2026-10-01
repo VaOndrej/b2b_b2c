@@ -44,6 +44,16 @@ export function sameJson(stored: string | null | undefined, desired: unknown): b
   }
 }
 
+/**
+ * Shopify's `shop.currencyCode` as the sync passes it on (trimmed, upper-case
+ * ISO 4217), or null when it is not one. The storefront config's margin key and
+ * the variant pdp key must be built from the SAME string (MVP 3, K4 v2).
+ */
+export function isoCurrency(raw: unknown): string | null {
+  const code = typeof raw === "string" ? raw.trim().toUpperCase() : "";
+  return /^[A-Z]{3}$/.test(code) ? code : null;
+}
+
 /** Short content hash (sha256, 32 hex). */
 export function hashText(text: string): string {
   return createHash("sha256").update(text).digest("hex").slice(0, 32);

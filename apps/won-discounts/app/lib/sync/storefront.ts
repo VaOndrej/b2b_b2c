@@ -31,6 +31,7 @@ import type { StorefrontConfigV1 } from "@won/core/discounts/storefront-config";
 import type { PrismaClient } from "../../generated/prisma/client";
 import { configVersionToken, loadConfig } from "../config.server";
 import { STOREFRONT_CONFIG_KEY, STOREFRONT_NAMESPACE } from "./graphql";
+import { TIER_SENTINEL } from "./products";
 import { errorText, userErrorText, type Transport, type UserErrorLike } from "./transport";
 import type { ConfigView, SyncDeps, SyncStep } from "./types";
 import { canonicalJson, hashText, sameJson } from "./util";
@@ -71,6 +72,8 @@ export interface StorefrontWriteArgs {
   /** The stored config as the run received it and the ConfigVersion it was saved as (`cv`). */
   stored: ConfigView;
   configVersionId: string | null;
+  /** The shop currency (util.ts isoCurrency of `shop.currencyCode`): the margin's K4 v2 key `k` and `cur`; absent = left out. */
+  shopCurrency?: string | null;
   record: (step: SyncStep) => void;
 }
 
@@ -83,7 +86,10 @@ export async function writeStorefrontConfig(args: StorefrontWriteArgs): Promise<
   let json: string;
   try {
     const configVersion = await storefrontConfigVersion(args.deps.db, args.shop, args.configVersionId, args.stored);
-    const value: StorefrontConfigV1 = args.deps.buildStorefrontConfig(args.config, { configVersion });
+    const value: StorefrontConfigV1 = args.deps.buildStorefrontConfig(args.config, {
+      configVersion,
+      ...(args.shopCurrency ? { shopCurrency: args.shopCurrency } : {}),
+    });
     json = JSON.stringify(value);
   } catch (error) {
     fail(STOREFRONT_WRITE_STEP, `could not build the storefront config: ${errorText(error)}`);
@@ -183,7 +189,8 @@ export async function tierProductCounts(db: PrismaClient, shop: string): Promise
       } catch {
         continue;
       }
-      if (typeof tierRef !== "string" || tierRef === "") continue;
+      // The sentinel (a tier set change in flight, products.ts TIER_SENTINEL) is no set.
+      if (typeof tierRef !== "string" || tierRef === "" || tierRef === TIER_SENTINEL) continue;
       total += 1;
       bySet.set(tierRef, (bySet.get(tierRef) ?? 0) + 1);
     }
