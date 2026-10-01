@@ -45,7 +45,7 @@ free shipping, while active or scheduled.
 
 ## What stays in Shopify
 
-- Buy X get Y (Won has no Buy X get Y; volume discounts are planned to cover it).
+- Buy X get Y (Won has no Buy X get Y; [quantity discounts](quantity-tiers.md) cover "buy more, pay less").
 - Discounts calculated by another app.
 - Discounts limited to specific customers or segments.
 - Discounts for subscriptions only.

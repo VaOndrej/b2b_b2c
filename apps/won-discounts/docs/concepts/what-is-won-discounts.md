@@ -28,6 +28,12 @@ and it decides how discounts combine instead of leaving that to chance.
   See [codes-vs-automatic-discounts](codes-vs-automatic-discounts).
 - **Margin protection**: a Won discount never takes an item below a price floor you
   set. See [margin-protection](margin-protection).
+- **Quantity discounts**: "from 3 items −10 %" tiers with a table and a live price on
+  the product page. See [quantity-tiers](quantity-tiers).
+- **Appearance**: four ready-made looks for the product page table. See
+  [choose-an-appearance](../tasks/choose-an-appearance.md).
+- **Combining discounts**: per-category switches in Settings. See
+  [combining-discounts](combining-discounts).
 - **Try a cart**: build a cart and see which discounts apply and why, exactly as
   checkout will apply them. See [how-won-plans-discounts](how-won-plans-discounts).
 - **Overview**: what is running, the sync with Shopify, warnings, and the discounts
@@ -37,7 +43,7 @@ and it decides how discounts combine instead of leaving that to chance.
 
 ## Not built yet
 
-Volume discounts, Cart rewards, Clearance (Pro), Campaigns (Pro) and Appearance are
+Cart rewards, Clearance (Pro) and Campaigns (Pro) are
 in the menu but open a "coming in a later version" page. Nothing can be set up there
 yet.
 

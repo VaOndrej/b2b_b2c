@@ -123,7 +123,7 @@ const CAPABILITY_META: { readonly [K in ProCapability]: { label: string; area: A
   rule_combinations: { label: "Choose per discount which other discounts it stacks with", area: "discounts" },
   campaigns: { label: "Campaigns: start and end many discounts at once (e.g. Black Friday)", area: "campaigns" },
   tier_set_scope: { label: "Quantity discount sets for chosen products or collections", area: "tiers" },
-  tier_sets_extra: { label: "More than one volume discount set", area: "tiers" },
+  tier_sets_extra: { label: "More than one quantity discount set", area: "tiers" },
   tier_count_across_cart: { label: "Quantity discounts counted across the whole cart", area: "tiers" },
   gift_ladder: { label: "A ladder of several gift thresholds", area: "rewards" },
   gift_choices: { label: "A choice of gifts at one threshold", area: "rewards" },
