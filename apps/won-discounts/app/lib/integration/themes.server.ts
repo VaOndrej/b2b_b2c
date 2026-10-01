@@ -242,26 +242,54 @@ function* enabledBlocks(node: Rec): Generator<Rec> {
   }
 }
 
-/**
- * Is the quantity_tiers app block on a product template (type
- * `shopify://apps/<app>/blocks/quantity_tiers/<uuid>`, contract F-T3)? Enabled
- * block in an enabled section only; with its `accent` setting when it has one.
- */
-export function tiersBlockIn(templates: readonly { filename: string; content: string | null }[]): { on: boolean; accent: string | null; template: string | null } {
-  for (const file of templates) {
-    if (!/^templates\/product(?:\.[^/]+)?\.json$/.test(file.filename)) continue;
-    const data = parseThemeJson(file.content);
-    if (!isRec(data) || !isRec(data.sections)) continue;
-    for (const section of Object.values(data.sections)) {
-      if (!isRec(section) || section.disabled === true) continue;
-      for (const block of enabledBlocks(section)) {
-        if (typeof block.type !== "string" || !block.type.includes(TIERS_BLOCK_TYPE)) continue;
-        const accent = isRec(block.settings) && typeof block.settings.accent === "string" && SAFE_COLOR.test(block.settings.accent.trim()) ? block.settings.accent.trim() : null;
-        return { on: true, accent, template: file.filename };
-      }
+/** The block (enabled, in an enabled section) in one template's JSON, with its accent; null when it is not there. */
+function blockInTemplate(content: string | null): { accent: string | null } | null {
+  const data = parseThemeJson(content);
+  if (!isRec(data) || !isRec(data.sections)) return null;
+  for (const section of Object.values(data.sections)) {
+    if (!isRec(section) || section.disabled === true) continue;
+    for (const block of enabledBlocks(section)) {
+      if (typeof block.type !== "string" || !block.type.includes(TIERS_BLOCK_TYPE)) continue;
+      const accent = isRec(block.settings) && typeof block.settings.accent === "string" && SAFE_COLOR.test(block.settings.accent.trim()) ? block.settings.accent.trim() : null;
+      return { accent };
     }
   }
-  return { on: false, accent: null, template: null };
+  return null;
+}
+
+const MAIN_PRODUCT_TEMPLATE = "templates/product.json";
+
+/**
+ * Is the quantity_tiers app block (type `shopify://apps/<app>/blocks/
+ * quantity_tiers/<uuid>`, contract F-T3; enabled, in an enabled section) on
+ * the product page? "On" = in `templates/product.json`, the template every
+ * product uses unless assigned another (audit P3-8). Alternate templates
+ * (`templates/product.<name>.json`) that have it are listed by name: on its
+ * own an alternate covers only the products assigned to it. The accent is the
+ * main template's block's (else the first alternate's).
+ */
+export function tiersBlockIn(templates: readonly { filename: string; content: string | null }[]): {
+  on: boolean;
+  accent: string | null;
+  template: string | null;
+  alternates: string[];
+} {
+  let main: { accent: string | null } | null = null;
+  const alternates: { name: string; accent: string | null; filename: string }[] = [];
+  for (const file of templates) {
+    const m = /^templates\/product(?:\.([^/]+))?\.json$/.exec(file.filename);
+    if (!m) continue;
+    const found = blockInTemplate(file.content);
+    if (!found) continue;
+    if (file.filename === MAIN_PRODUCT_TEMPLATE) main = found;
+    else alternates.push({ name: `product.${m[1]}`, accent: found.accent, filename: file.filename });
+  }
+  return {
+    on: main !== null,
+    accent: main?.accent ?? alternates[0]?.accent ?? null,
+    template: main ? MAIN_PRODUCT_TEMPLATE : (alternates[0]?.filename ?? null),
+    alternates: alternates.map((a) => a.name).sort(),
+  };
 }
 
 // --- Reading the MAIN theme ------------------------------------------------------------------------------------
@@ -323,7 +351,8 @@ async function loadThemeLook(ctx: LookCtx): Promise<ThemeLook> {
     const themeName = typeof theme.name === "string" ? theme.name : null;
     const tokens = themeTokensFrom({ themeName, settingsData: settings, productTemplate: mainTemplate, blockAccent: found.accent });
     if (templates.length === 0) return { tokens, block: { state: "unknown", addUrl } };
-    return { tokens, block: found.on ? { state: "on", themeName: themeName ?? "" } : { state: "off", addUrl } };
+    const alternates = found.alternates.length > 0 ? { alternates: found.alternates } : {};
+    return { tokens, block: found.on ? { state: "on", themeName: themeName ?? "", ...alternates } : { state: "off", addUrl, ...alternates } };
   } catch (error) {
     if (error instanceof Response) throw error;
     return { tokens: null, block: { state: "unknown", addUrl } };

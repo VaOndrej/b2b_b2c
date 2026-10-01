@@ -6,6 +6,8 @@
 // The sentences are UiText (i18n key + params): the screen words them in the
 // page's language. Pure; unit tested (tests/integration/sync-copy.test.ts).
 
+import { CONFIG_LIMITS } from "@won/core/discounts/config";
+
 import { MAX_COLLECTION_PRODUCTS } from "../sync/products";
 import type { SyncStep } from "../sync/types";
 import type { SyncOutcomeView, UiText } from "../../components/model/types";
@@ -49,6 +51,10 @@ function tooLargeCollections(params: SyncStep["params"]): { collection: string; 
     collection: typeof params?.collection === "string" ? params.collection : "",
     count: typeof params?.count === "number" ? params.count : 1,
   };
+}
+
+function numberParam(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 /** One failed step → one sentence. */
@@ -104,8 +110,15 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
       return { key: "sync.problem.shopRead", params: { detail } };
     case "shop.currency":
       return { key: "sync.problem.currency" };
-    case "shop_config.build":
+    case "shop_config.build": {
+      // The tiers over their own cap (CONFIG_LIMITS.tierPayloadBytes, MVP 3 audit): the sync records the tier part's
+      // bytes and budget (params `tiersBytes` / `tiersBudget`, or a detail naming the tiers) — said as a share, never bytes.
+      const bytes = numberParam(step.params?.tiersBytes ?? step.params?.tierBytes);
+      const budget = numberParam(step.params?.tiersBudget ?? step.params?.tierBudget) ?? CONFIG_LIMITS.tierPayloadBytes;
+      if (bytes !== null && bytes > budget) return { key: "sync.problem.tiersOverCapPercent", params: { percent: Math.ceil((bytes * 100) / budget) } };
+      if (/\btiers?\b/i.test(step.detail)) return { key: "sync.problem.tiersOverCap" };
       return { key: "sync.problem.tooLarge" };
+    }
     case "shop_config.phase1.build":
       // Over the 9 000 B budget even folded to the global values (sync.server.ts phaseOnePayload): retrying
       // alone will not fit it — own sentence, never "the next sync finishes it" (audit fix round 5).

@@ -937,6 +937,8 @@ const DEV_ADD_BLOCK_URL = tiersBlockAddUrl(DEV_SHOP, "dev-api-key");
 function devBlock(state: string | null): TiersBlockView {
   if (state === "empty" || state === "block-off") return { state: "off", addUrl: DEV_ADD_BLOCK_URL };
   if (state === "block-unknown") return { state: "unknown", addUrl: DEV_ADD_BLOCK_URL };
+  // Audit P3-8: the block only in an alternate product template (most products do not use it).
+  if (state === "alternate") return { state: "off", addUrl: DEV_ADD_BLOCK_URL, alternates: ["product.bundle"] };
   if (state === "no-scope") return { state: "no_scope" };
   return { state: "on", themeName: "Horizon" };
 }

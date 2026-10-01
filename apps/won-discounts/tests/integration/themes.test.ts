@@ -135,16 +135,23 @@ test("tokens: the block's own accent (the only accent the storefront CSS uses); 
 });
 
 test("the quantity_tiers block in a product template, nested (Horizon) or in the section (Dawn); disabled = not there", () => {
-  assert.deepEqual(tiersBlockIn([{ filename: "templates/product.json", content: HORIZON_PRODUCT }]), { on: true, accent: "#c0392b", template: "templates/product.json" });
-  assert.deepEqual(tiersBlockIn([{ filename: "templates/product.json", content: DAWN_PRODUCT }]), { on: true, accent: null, template: "templates/product.json" });
+  assert.deepEqual(tiersBlockIn([{ filename: "templates/product.json", content: HORIZON_PRODUCT }]), { on: true, accent: "#c0392b", template: "templates/product.json", alternates: [] });
+  assert.deepEqual(tiersBlockIn([{ filename: "templates/product.json", content: DAWN_PRODUCT }]), { on: true, accent: null, template: "templates/product.json", alternates: [] });
   const disabled = DAWN_PRODUCT.replace('"settings":{"accent":""}', '"settings":{"accent":""},"disabled":true');
-  assert.deepEqual(tiersBlockIn([{ filename: "templates/product.json", content: disabled }]), { on: false, accent: null, template: null });
+  assert.deepEqual(tiersBlockIn([{ filename: "templates/product.json", content: disabled }]), { on: false, accent: null, template: null, alternates: [] });
   const sectionOff = DAWN_PRODUCT.replace('"type":"main-product"', '"type":"main-product","disabled":true');
   assert.equal(tiersBlockIn([{ filename: "templates/product.json", content: sectionOff }]).on, false);
   const other = DAWN_PRODUCT.replace("/blocks/quantity_tiers/", "/blocks/reviews/");
   assert.equal(tiersBlockIn([{ filename: "templates/product.json", content: other }]).on, false);
-  // An alternate product template counts too.
-  assert.equal(tiersBlockIn([{ filename: "templates/product.json", content: other }, { filename: "templates/product.bundle.json", content: DAWN_PRODUCT }]).on, true);
+  // Audit P3-8: "on the product page" = templates/product.json (what most products use); an alternate template
+  // with the block is listed by name, on its own it is NOT "on".
+  assert.deepEqual(tiersBlockIn([{ filename: "templates/product.json", content: other }, { filename: "templates/product.bundle.json", content: DAWN_PRODUCT }]), {
+    on: false,
+    accent: null,
+    template: "templates/product.bundle.json",
+    alternates: ["product.bundle"],
+  });
+  assert.deepEqual(tiersBlockIn([{ filename: "templates/product.json", content: HORIZON_PRODUCT }, { filename: "templates/product.gift.json", content: DAWN_PRODUCT }]).alternates, ["product.gift"]);
 });
 
 test("storefront config state (K5): missing / synced (cv = the config version) / pending / failed with the sync's problems", () => {

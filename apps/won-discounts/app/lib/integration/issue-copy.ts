@@ -107,6 +107,12 @@ const COPY: Readonly<Record<string, IssueCopy | ((issue: ConfigIssue) => IssueCo
   clamped_tier_quantity: { key: "fix.clamped_tier_quantity", params: { from: "value", to: "to", min: "min", max: "max" } },
   unknown_appearance_preset: { key: "fix.unknown_appearance_preset" },
   unknown_onboarding_goal: { key: "fix.unknown_onboarding_goal" },
+  // Audit fix MVP 3 (core): a tier scope neither "global" nor a selection → an inert set; margin collections over the limit folded.
+  invalid_tier_scope: { key: "fix.invalid_tier_scope" },
+  margin_overrides_folded: {
+    key: "fix.margin_overrides_folded",
+    params: { max: "max", count: "count", min: percent("minMarginPercent"), ceiling: percent("maxDiscountPercent") },
+  },
   value_target_mismatch: { key: "fix.value_target_mismatch" },
 };
 

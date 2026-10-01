@@ -11,7 +11,7 @@
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
 
 import { useT } from "../../i18n/context";
-import { scopeSummary, TIERS_FIELD, tierSummary } from "../model/tiers";
+import { scopeSummary, TIERS_FIELD, tierSummary, type TierPayloadUse } from "../model/tiers";
 import type { CurrencyView, TierSetView } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
 import { ProFrame } from "../shell/ProFrame";
@@ -49,6 +49,7 @@ export function ProTierSets({
   onRowsChange,
   productsWithSets = null,
   storedIds,
+  capacity,
 }: {
   pro: boolean;
   /** The Pro sets as the page holds them (stored ones + added ones, with picked scopes). */
@@ -68,6 +69,8 @@ export function ProTierSets({
   productsWithSets?: Readonly<Record<string, number>> | null;
   /** Ids of the sets as stored (a set added on this page has no count yet). */
   storedIds?: ReadonlySet<string>;
+  /** How much of the checkout's room for tiers the page's sets take (live; CONFIG_LIMITS.tierPayloadBytes). */
+  capacity?: TierPayloadUse;
 }) {
   const tr = useT();
   const { t } = tr;
@@ -83,6 +86,13 @@ export function ProTierSets({
           <s-stack direction="block" gap="base">
             <s-text color="subdued">{t("tiers.pro.body")}</s-text>
             <s-text color="subdued">{t("tiers.pro.precedence")}</s-text>
+            {capacity ? (
+              // The checkout's room for tiers (audit: cap 550 B) as a share, never bytes; over it the page cannot be saved.
+              <div>
+                <s-text type="strong">{t("tiers.capacity", { percent: capacity.percent })}</s-text>
+                <RowNote tone={capacity.fits ? undefined : "attention"}>{t(capacity.fits ? "tiers.capacity.hint" : "tiers.capacity.over")}</RowNote>
+              </div>
+            ) : null}
             {sets.map((set, i) => {
               const draft = drafts.find((d) => d.id === set.id) ?? set;
               const sid = set.id;
@@ -145,7 +155,6 @@ export function ProTierSets({
                 <RowNote>{tierSummary({ id: "sample", scope: { kind: "global" }, countAcross: "product", breaks: [{ minQty: 2, kind: "percent", percent: 5, amount: {} }, { minQty: 6, kind: "percent", percent: 8, amount: {} }] }, tr)}</RowNote>
               </WonRow>
             ) : null}
-            <FieldMessage text={errorFor(F.set)} />
             <s-stack direction="inline" gap="base" alignItems="center">
               <s-button onClick={onAdd} disabled={!pro || full ? true : undefined}>
                 {t("tiers.pro.add")}

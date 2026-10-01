@@ -413,7 +413,8 @@ test("sync steps of MVP 3 are worded (cs + en) — never a product GID or a set 
   };
   const write = say({ step: "storefront_config.write", ok: false, detail: "metafieldsSet: Throttled" });
   assert.equal(write.key, "sync.problem.storefrontConfig");
-  assert.match(write.text, /Nastavení tabulky na stránce produktu se na web nepropsalo \(metafieldsSet: Throttled\)\. Pokladny se to netýká/);
+  // Audit P2-4: the site may show older (even higher) tiers until fixed; checkout applies the new ones.
+  assert.match(write.text, /Nastavení tabulky na stránce produktu se na web nepropsalo \(metafieldsSet: Throttled\)\. Do opravy může web ukazovat starší \(i vyšší\) úrovně, pokladna platí nové\./);
   assert.equal(say({ step: "storefront_config.verify", ok: false, detail: "differs" }).key, "sync.problem.storefrontConfig");
   const refused = say({ step: "products.tiers", ok: false, detail: "gid://shopify/Product/9 refused", params: { refused: 3 } });
   assert.equal(refused.key, "sync.problem.productsTiersRefused");
@@ -464,4 +465,237 @@ test("the preview product is one the whole-store set applies to (review fix 2): 
   const data = await loadTiersScreen(ctxFor(st), { scopes: SCOPES });
   assert.equal(data.preview.product, null, "every product has a tierRef: no real product to show");
   assert.equal(data.outletWithAnything, false);
+});
+
+// --- Audit fix (audit-mvp3.md P3-4, P3-2, P2-3) -----------------------------------------------------------------
+
+test("P3-4: on Free a stored Pro set outside the form's grammar (0 %, 3 decimals, non-GID ids) round-trips UNCHANGED — kept by id, never re-parsed", async () => {
+  const ctx = ctxFor(storeFor(), "free");
+  const odd = {
+    id: "t_import",
+    scope: { productIds: ["legacy-sku-42", "gid://shopify/Product/1"], collectionIds: ["not-a-gid"] },
+    countAcross: "cart" as const,
+    breaks: [
+      { minQty: 2, percent: 0 },
+      { minQty: 4, percent: 12.345 },
+    ],
+  };
+  await store((c) => ({
+    ...c,
+    modules: { ...c.modules, tiers: { sets: [{ id: "global", scope: "global", countAcross: "product", breaks: [{ minQty: 3, percent: 10 }] }, odd] } },
+  }));
+  const before = (await loadConfig(db.prisma, shop)).config.modules.tiers.sets[1]!;
+  const version = (await loadConfig(db.prisma, shop)).version!;
+  // The Free page posts the global set's fields and only the id + "kept" for the Pro set.
+  const result = await tiersAction(
+    ctx,
+    formOf([
+      [F.intent, "save"],
+      [F.configVersion, version],
+      [F.set, "global"],
+      [F.scope("global"), "global"],
+      [F.count("global"), "product"],
+      [F.kind("global"), "percent"],
+      [F.row("global"), "r0"],
+      [F.min("global", "r0"), "3"],
+      [F.percent("global", "r0"), "11"],
+      [F.set, "t_import"],
+      [F.kept("t_import"), "1"],
+    ]),
+  );
+  assert.equal(result.ok, true, JSON.stringify(result));
+  await syncIdle(shop);
+  const sets = (await loadConfig(db.prisma, shop)).config.modules.tiers.sets;
+  assert.deepEqual(sets[0]!.breaks, [{ minQty: 3, percent: 11 }], "the edited set saved");
+  assert.deepEqual(sets[1], before, "the kept set exactly as stored");
+  // A "kept" id the config does not have is a stale or tampered form: refused.
+  const tampered = await tiersAction(ctx, formOf([[F.intent, "save"], [F.configVersion, (await loadConfig(db.prisma, shop)).version!], [F.set, "t_ghost"], [F.kept("t_ghost"), "1"]]));
+  assert.deepEqual(tampered, { ok: false, reason: "invalid", errors: [{ field: F.set, key: "tiers.error.set" }] });
+});
+
+test("P3-2: emptying the first whole-store set keeps it as a set WITHOUT tiers when a dormant second one follows — the second never wakes up", async () => {
+  const ctx = ctxFor(storeFor(), "pro");
+  await store((c) => ({
+    ...c,
+    modules: {
+      ...c.modules,
+      tiers: {
+        sets: [
+          { id: "global", scope: "global", countAcross: "line", breaks: [{ minQty: 3, percent: 10 }] },
+          { id: "t_dormant", scope: "global", countAcross: "line", breaks: [{ minQty: 2, percent: 50 }] },
+        ],
+      },
+    },
+  }));
+  const version = (await loadConfig(db.prisma, shop)).version!;
+  const result = await tiersAction(
+    ctx,
+    formOf([
+      [F.intent, "save"],
+      [F.configVersion, version],
+      [F.set, "global"],
+      [F.scope("global"), "global"],
+      [F.count("global"), "line"],
+      [F.kind("global"), "percent"],
+      [F.set, "t_dormant"],
+      [F.kept("t_dormant"), "1"],
+    ]),
+  );
+  assert.equal(result.ok, true, JSON.stringify(result));
+  await syncIdle(shop);
+  const sets = (await loadConfig(db.prisma, shop)).config.modules.tiers.sets;
+  assert.deepEqual(
+    sets.map((s) => [s.id, s.breaks.length]),
+    [
+      ["global", 0],
+      ["t_dormant", 1],
+    ],
+    "the first whole-store set stays (no tiers) ahead of the dormant one",
+  );
+});
+
+test("P2-3: a Pro set may not pick a collection the sync cannot read (> 10 000 products, or together) — refused with the title; a read failure refuses too", async () => {
+  const st = storeFor();
+  const sizes = new Map<string, { title: string; count: number; precision: string }>([
+    ["gid://shopify/Collection/5", { title: "Zimní", count: 120, precision: "EXACT" }],
+    ["gid://shopify/Collection/6", { title: "Celý sklad", count: 10000, precision: "AT_LEAST" }],
+    ["gid://shopify/Collection/7", { title: "Velká A", count: 6000, precision: "EXACT" }],
+    ["gid://shopify/Collection/8", { title: "Velká B", count: 5000, precision: "EXACT" }],
+  ]);
+  st.overrides.set("WonTiersCollectionSizes", (variables) => ({
+    data: {
+      nodes: ((variables.ids as string[]) ?? []).map((id) => {
+        const size = sizes.get(id);
+        return size ? { __typename: "Collection", id, title: size.title, productsCount: { count: size.count, precision: size.precision } } : null;
+      }),
+    },
+  }));
+  const ctx = ctxFor(st, "pro");
+  const post = (collections: string[]) =>
+    tiersAction(
+      ctx,
+      formOf([
+        [F.intent, "save"],
+        [F.set, "t_new"],
+        [F.scope("t_new"), "selection"],
+        ...collections.map((c): [string, string] => [F.collection("t_new"), c]),
+        [F.count("t_new"), "line"],
+        [F.kind("t_new"), "percent"],
+        [F.row("t_new"), "r0"],
+        [F.min("t_new", "r0"), "2"],
+        [F.percent("t_new", "r0"), "5"],
+      ]),
+    );
+  assert.deepEqual(await post(["gid://shopify/Collection/6"]), {
+    ok: false,
+    reason: "invalid",
+    errors: [{ field: F.collection("t_new"), key: "tiers.error.collectionTooLarge", params: { collection: "Celý sklad", limit: 10000 } }],
+  });
+  assert.deepEqual(await post(["gid://shopify/Collection/7", "gid://shopify/Collection/8"]), {
+    ok: false,
+    reason: "invalid",
+    errors: [{ field: F.collection("t_new"), key: "tiers.error.collectionsTooLarge", params: { limit: 10000 } }],
+  });
+  assert.equal((await loadConfig(db.prisma, shop)).exists, false, "nothing saved");
+  st.overrides.set("WonTiersCollectionSizes", () => {
+    throw new Error("Throttled");
+  });
+  assert.deepEqual(await post(["gid://shopify/Collection/5"]), {
+    ok: false,
+    reason: "invalid",
+    errors: [{ field: F.collection("t_new"), key: "tiers.error.collectionSizeUnknown" }],
+  });
+  st.overrides.delete("WonTiersCollectionSizes");
+  st.overrides.set("WonTiersCollectionSizes", (variables) => ({
+    data: { nodes: ((variables.ids as string[]) ?? []).map((id) => ({ __typename: "Collection", id, title: "Zimní", productsCount: { count: 120, precision: "EXACT" } })) },
+  }));
+  const ok = await post(["gid://shopify/Collection/5"]);
+  assert.equal(ok.ok, true, JSON.stringify(ok));
+  await syncIdle(shop);
+});
+
+// --- Audit fix: the tier cap (CONFIG_LIMITS.tierPayloadBytes 550 B) and the new core codes ---------------------
+
+test("the checkout's room for tiers: the admin's measure IS core's (stored and Free-gated, +3 B for a whole-cart set on Free)", async () => {
+  const { tierPayloadUse } = await import("../../app/components/model/tiers.ts");
+  const { buildShopFunctionConfigWorstCase } = await import("@won/core/discounts/function-payload");
+  const { readStoredConfig, CONFIG_LIMITS } = await import("@won/core/discounts/config");
+  assert.equal(CONFIG_LIMITS.tierPayloadBytes, 550);
+  const cases = [
+    [{ id: "global", scope: "global", countAcross: "cart", breaks: [{ minQty: 3, percent: 10 }, { minQty: 5, percent: 15 }] }],
+    [
+      { id: "global", scope: "global", countAcross: "line", breaks: [{ minQty: 2, amountOff: { CZK: 3000, EUR: 120 } }, { minQty: 6, amountOff: { CZK: 6000, EUR: 250 } }] },
+      { id: "t_a", scope: { productIds: [P1] }, countAcross: "cart", breaks: [{ minQty: 2, percent: 5 }] },
+      { id: "t_b", scope: { collectionIds: [C5] }, countAcross: "product", breaks: [] },
+    ],
+    [],
+  ];
+  for (const sets of cases) {
+    const config = readStoredConfig({ modules: { tiers: { sets } } });
+    const core = buildShopFunctionConfigWorstCase(config).tiers;
+    const ours = tierPayloadUse(config.modules.tiers.sets);
+    assert.equal(ours.bytes, core.bytes, JSON.stringify(sets));
+    assert.equal(ours.budget, core.budget);
+    assert.equal(ours.fits, core.fits);
+  }
+});
+
+test("a save over the room for tiers is refused with what to do (a share of the room, never bytes); nothing saved", async () => {
+  const ctx = ctxFor(storeFor(), "free");
+  const entries: [string, string][] = [
+    [F.intent, "save"],
+    [F.set, "global"],
+    [F.scope("global"), "global"],
+    [F.count("global"), "line"],
+    [F.kind("global"), "amount"],
+  ];
+  // 10 amount breaks in 8 currencies: far over 550 B.
+  const currencies = ["CZK", "EUR", "HUF", "PLN", "USD", "GBP", "SEK", "DKK"];
+  await store((c) => ({ ...c, markets: currencies.map((currency, i) => ({ handle: `m${i}`, currency, enabled: true })) }));
+  const version = (await loadConfig(db.prisma, shop)).version!;
+  entries.push([F.configVersion, version]);
+  for (let i = 0; i < 10; i += 1) {
+    entries.push([F.row("global"), `r${i}`], [F.min("global", `r${i}`), String(i + 2)]);
+    for (const c of currencies) entries.push([F.amount("global", `r${i}`, c), String(1000 + i * 100)]);
+  }
+  const refused = await tiersAction(ctx, formOf(entries));
+  assert.equal(refused.ok, false);
+  assert.ok(!refused.ok && refused.reason === "invalid");
+  const error = !refused.ok && refused.reason === "invalid" ? refused.errors[0]! : null;
+  assert.equal(error?.field, F.set);
+  assert.equal(error?.key, "tiers.error.tooLarge");
+  assert.ok(typeof error?.params?.percent === "number" && error.params.percent > 100, JSON.stringify(error));
+  const { t } = await import("../../app/i18n/index.ts");
+  const sentence = t("cs", error!.key, error!.params);
+  assert.match(sentence, /Úrovně by se do pokladny nevešly \(zabraly by \d+\u00a0% místa/);
+  assert.doesNotMatch(sentence, /\bB\b|bajt|byte/i, "no bytes jargon");
+  assert.deepEqual((await loadConfig(db.prisma, shop)).config.modules.tiers.sets, [], "nothing saved");
+});
+
+test("the sync's over-cap refusal and the new core issue codes are worded (cs + en)", async () => {
+  const { stepProblem } = await import("../../app/lib/integration/sync-copy.ts");
+  const { wordIssues } = await import("../../app/lib/integration/issue-copy.ts");
+  const { sanitizeConfig } = await import("@won/core/discounts/config");
+  const { t } = await import("../../app/i18n/index.ts");
+  const names = new Map<string, string>();
+  const over = stepProblem({ step: "shop_config.build", ok: false, detail: "tiers 612 B over 550 B", params: { tiersBytes: 612, tiersBudget: 550 } }, names);
+  assert.equal(over.key, "sync.problem.tiersOverCapPercent");
+  assert.equal(t("cs", over.key, over.params), "Množstevní slevy se do pokladny nevejdou (zabraly by 112\u00a0% místa), nic se nezapsalo a platí předchozí nastavení. V Množstevních slevách odeber sadu nebo úroveň.");
+  assert.equal(stepProblem({ step: "shop_config.build", ok: false, detail: "the quantity tiers are over their cap" }, names).key, "sync.problem.tiersOverCap");
+  assert.equal(stepProblem({ step: "shop_config.build", ok: false, detail: "9500 B over the 9000 B budget" }, names).key, "sync.problem.tooLarge");
+
+  const { issues } = sanitizeConfig({
+    modules: {
+      tiers: { sets: [{ id: "t_x", scope: 5, countAcross: "line", breaks: [{ minQty: 2, percent: 5 }] }] },
+      margin: {
+        enabled: true,
+        global: { maxDiscountPercent: 40 },
+        perCollection: Array.from({ length: 52 }, (_, i) => ({ collectionId: `gid://shopify/Collection/${i + 1}`, maxDiscountPercent: i === 51 ? 5 : 30 })),
+      },
+    },
+  });
+  const cs = wordIssues(issues, "cs", (m) => assert.fail(`unworded: ${m}`));
+  assert.ok(cs.includes("Sada úrovní neměla platný rozsah. Uložila se jako sada bez vybraných produktů, takže se na nic neuplatní."), cs.join(" | "));
+  assert.ok(cs.some((x) => /Vlastní nastavení marže může mít nejvýš 50 kolekcí\. Zbývající kolekce \(2\) jsme sloučili do nastavení pro celý obchod, platí to přísnější: min\. marže 0\u00a0%, bez nákupní ceny sleva nejvýš 5\u00a0%\./.test(x)), cs.join(" | "));
+  assert.ok(wordIssues(issues, "en", () => assert.fail("unworded")).every((x) => !/t_x|gid:\/\//.test(x)));
 });

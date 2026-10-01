@@ -218,37 +218,12 @@ export function TierSetEditor({
   );
 }
 
-/** A whole set as hidden fields (a Pro set on Free: kept on save, §14a — never edited, never dropped). */
+/**
+ * A set this page shows but does not edit (a Pro set on Free, a dormant extra
+ * whole-store set): only its id and the "kept" mark travel — the server keeps
+ * the STORED set by id, never re-parsing its values (§14a; audit P3-4: a
+ * stored 0 %, a third decimal or a non-Shopify id would not pass the form).
+ */
 export function HiddenTierSet({ set }: { set: TierSetView }) {
-  const sid = set.id;
-  return (
-    <>
-      <input type="hidden" name={F.scope(sid)} value={set.scope.kind} />
-      <input type="hidden" name={F.count(sid)} value={set.countAcross} />
-      <input type="hidden" name={F.kind(sid)} value={set.breaks[0]?.kind ?? "percent"} />
-      {set.scope.kind === "selection" ? (
-        <>
-          {set.scope.products.map((p) => (
-            <input key={p.id} type="hidden" name={F.product(sid)} value={p.id} />
-          ))}
-          {set.scope.collections.map((c) => (
-            <input key={c.id} type="hidden" name={F.collection(sid)} value={c.id} />
-          ))}
-        </>
-      ) : null}
-      {set.breaks.map((b, i) => {
-        const row = `r${i}`;
-        return (
-          <span key={row} hidden>
-            <input type="hidden" name={F.row(sid)} value={row} />
-            <input type="hidden" name={F.min(sid, row)} value={String(b.minQty)} />
-            {b.kind === "percent" ? <input type="hidden" name={F.percent(sid, row)} value={percentValue(b)} /> : null}
-            {b.kind === "amount"
-              ? Object.entries(b.amount).map(([code, minor]) => <input key={code} type="hidden" name={F.amount(sid, row, code)} value={minorToInput(minor, code)} />)
-              : null}
-          </span>
-        );
-      })}
-    </>
-  );
+  return <input type="hidden" name={F.kept(set.id)} value="1" />;
 }

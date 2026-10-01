@@ -506,9 +506,13 @@ export interface TierSetView {
 
 /** Is the quantity table on the live theme's product page (read_themes, templates/product*.json)? */
 export type TiersBlockView =
-  | { state: "on"; themeName: string }
-  /** `addUrl`: theme-editor deep link with addAppBlockId (null when the shop / API key is unknown). */
-  | { state: "off"; addUrl: string | null }
+  /** In `templates/product.json` (audit P3-8). `alternates` = alternate product templates that have it too (additive, T5). */
+  | { state: "on"; themeName: string; alternates?: string[] }
+  /**
+   * Not in `templates/product.json`. `addUrl`: theme-editor deep link with addAppBlockId (null when the shop / API key is
+   * unknown). `alternates` = alternate product templates that do have it ("jen v šabloně X"; additive, T5).
+   */
+  | { state: "off"; addUrl: string | null; alternates?: string[] }
   | { state: "unknown"; addUrl: string | null }
   | { state: "no_scope" };
 

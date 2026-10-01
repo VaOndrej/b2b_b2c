@@ -10,7 +10,9 @@
 // per item and never more than the item's price; a currency without a value =
 // that break is not shown there.
 
-import { CONFIG_LIMITS, type TierBreak, type TierSet } from "@won/core/discounts/config";
+import { CONFIG_LIMITS, createDefaultConfig, type TierBreak, type TierSet, type TiersModule } from "@won/core/discounts/config";
+import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
+import { buildTiersPayload } from "@won/core/discounts/tiers";
 import { describeTierBreak, describeTierSet, formatMoney, type DescribableTierBreak } from "@won/core/discounts/describe";
 import { currencyExponent } from "@won/core/discounts/money";
 
@@ -50,6 +52,12 @@ export const TIERS_FIELD = {
   amount: (sid: string, row: string, currency: string) => `set.${sid}.${row}.amount.${currency}`,
   /** A break's amounts as a whole (the "enter at least one currency" error). */
   amounts: (sid: string, row: string) => `set.${sid}.${row}.amount`,
+  /**
+   * "1" = a set this page shows but does not edit (a Pro set on Free, a dormant
+   * extra whole-store set): it is never re-parsed from the form — the server
+   * keeps the STORED set by its id, exactly as stored (§14a; audit P3-4).
+   */
+  kept: (sid: string) => `set.${sid}.kept`,
 } as const;
 
 export const TIERS_INTENT = { save: "save" } as const;
@@ -75,12 +83,16 @@ export interface TiersFormContext {
   keptCurrencies?: readonly string[];
   /** Known product / collection titles (Shopify's), so the draft keeps showing names. Never read from the form. */
   titles?: ReadonlyMap<string, string>;
+  /** A kept set (TIERS_FIELD.kept) by its id: the stored one (server) / the shown one (draft); unknown → `tiers.error.set`. */
+  keep?: (id: string) => TierSetView | undefined;
 }
 
 export interface TiersFormResult {
   /** What the form says, as far as it parses (the live draft; on the server: what is saved when `errors` is empty). */
   sets: TierSetView[];
   errors: FieldError[];
+  /** Ids of the kept sets (taken as stored, never parsed — the server saves the stored set itself). */
+  kept: string[];
 }
 
 function str(v: FormDataEntryValue | null | undefined): string {
@@ -111,6 +123,7 @@ export function readTiersForm(form: FormDataLike, ctx: TiersFormContext): TiersF
   const F = TIERS_FIELD;
   const errors: FieldError[] = [];
   const sets: TierSetView[] = [];
+  const kept: string[] = [];
   const currencies = [...new Set([...ctx.currencies, ...(ctx.keptCurrencies ?? [])])].filter((c) => /^[A-Z]{3}$/.test(c));
   const title = (id: string) => ctx.titles?.get(id) ?? "";
   const ids = uniqueStrings(form.getAll(F.set));
@@ -119,6 +132,15 @@ export function readTiersForm(form: FormDataLike, ctx: TiersFormContext): TiersF
   if (valid.length > CONFIG_LIMITS.tierSets) errors.push({ field: F.set, key: "tiers.error.tooManySets", params: { max: CONFIG_LIMITS.tierSets } });
 
   for (const sid of valid.slice(0, CONFIG_LIMITS.tierSets)) {
+    // A kept set: never re-parsed (its stored values may be outside this form's grammar, audit P3-4).
+    if (str(form.get(F.kept(sid))) === "1") {
+      const stored = ctx.keep?.(sid);
+      if (stored) {
+        sets.push(stored);
+        kept.push(sid);
+      } else errors.push({ field: F.set, key: "tiers.error.set" });
+      continue;
+    }
     // Scope.
     let scope: TierScopeView = { kind: "global" };
     if (str(form.get(F.scope(sid))) === "selection") {
@@ -200,7 +222,7 @@ export function readTiersForm(form: FormDataLike, ctx: TiersFormContext): TiersF
     errors.push(...notAscending(sid, breaks, rowOf));
     sets.push({ id: sid, scope, countAcross, breaks });
   }
-  return { sets, errors };
+  return { sets, errors, kept };
 }
 
 /**
@@ -267,6 +289,35 @@ export function tierSetView(set: TierSet, titles: ReadonlyMap<string, string>): 
         : { minQty: b.minQty, kind: "amount", percent: null, amount: { ...b.amountOff } },
     );
   return { id: set.id, scope, countAcross: set.countAcross, breaks };
+}
+
+// --- The tier cap (CONFIG_LIMITS.tierPayloadBytes) ---------------------------------------------------------
+
+export interface TierPayloadUse {
+  /** UTF-8 bytes of the tiers' part of the shop config — the larger of the config as stored and gated for Free. */
+  bytes: number;
+  budget: number;
+  /** Share of the room used, rounded UP (100 % never hides an overflow). */
+  percent: number;
+  fits: boolean;
+}
+
+/**
+ * How much of the checkout's room for quantity tiers `sets` take: exactly
+ * core's measure (buildShopFunctionConfigWorstCase `tiers`: JSON of
+ * buildTiersPayload, for the stored AND the Free-gated config — Free counts a
+ * whole-cart set per product, 3 B longer). Pure and client-safe: the screen
+ * shows it live, the server refuses a save over the cap with it (audit, cap
+ * 550 B; tests pin it to core's own number).
+ */
+export function tierPayloadUse(sets: readonly TierSet[]): TierPayloadUse {
+  const bytesOf = (tiers: TiersModule) => new TextEncoder().encode(JSON.stringify(buildTiersPayload(tiers))).length;
+  const stored: TiersModule = { sets: sets.map((s) => JSON.parse(JSON.stringify(s)) as TierSet) };
+  const base = createDefaultConfig();
+  const free = gateConfigForPlan({ ...base, modules: { ...base.modules, tiers: stored } }, "free").config.modules.tiers;
+  const bytes = Math.max(bytesOf(stored), bytesOf(free));
+  const budget = CONFIG_LIMITS.tierPayloadBytes;
+  return { bytes, budget, percent: Math.ceil((bytes * 100) / budget), fits: bytes <= budget };
 }
 
 // --- Wording ------------------------------------------------------------------------------------------
@@ -367,14 +418,16 @@ export interface TiersPreviewModel {
  * `compute`, the same steps as blocks/quantity_tiers.liquid; tests/ui/
  * tiers-preview-parity.test.ts runs both on the same fixtures, so they cannot
  * drift):
- *   per item (the rows) d = floor(min(pct, max) % × price), or min(amount,
- *     floor(price × max / 100)); never below 0 or above the price;
+ *   per item (the rows) d = floor(pct % × price), or the amount, capped by the
+ *     per-item ceiling floor(price × max / 100) and the price (a capped percent
+ *     row says the percent it really gives);
  *   the count = quantity + items already in the cart counted toward the tier
  *     (the admin preview has no cart: `inCart` 0); the active break is the
  *     highest offered minimum ≤ count;
  *   the live line like the engine: a percent rounds ONCE per line,
- *     round(price × qty × min(pct, max) / 100), capped by floor(price × qty ×
- *     max / 100); an amount is d × qty; per item = price − floor(line / qty);
+ *     round(price × qty × pct / 100), capped by qty × the per-item ceiling
+ *     (audit P2-1: the engine's floor is per item); an amount is d × qty; per
+ *     item = price − floor(line / qty);
  *   next = the nearest higher break whose row price is below that per-item price.
  * Units: the storefront's (Liquid money units, major × 100) — previewTiersLiquid
  * converts from minor units. `maxPercent` = the margin ceiling (100 = none).
@@ -385,6 +438,8 @@ export function previewTiers(
 ): TiersPreviewModel {
   const price = Math.max(0, Math.round(opts.unitPrice));
   const max = Math.min(100, Math.max(0, opts.maxPercent ?? 100));
+  // The per-item ceiling of a variant without a cost price (K6): floor(price × max / 100).
+  const cap = Math.floor((price * max) / 100);
   const qty = Math.max(1, Math.floor(opts.quantity));
   const count = qty + Math.max(0, Math.floor(opts.inCart ?? 0));
   const rows: (PreviewRow & { d: number; pct: number | null })[] = [];
@@ -393,19 +448,22 @@ export function previewTiers(
     let d: number;
     let pct: number | null = null;
     if (b.kind === "percent") {
-      pct = Math.min(b.percent ?? 0, max);
+      pct = b.percent ?? 0;
       d = Math.floor((price * pct) / 100);
     } else {
       const off = b.amount[opts.currency];
       if (off === undefined) continue;
-      d = Math.min(off, Math.floor((price * max) / 100));
+      d = off;
     }
-    d = Math.max(0, Math.min(d, price));
+    const full = d;
+    d = Math.max(0, Math.min(d, cap, price));
+    // A row the ceiling lowered says the percent it really gives (the block's rule).
+    const shown = pct === null ? null : d >= full ? pct : Math.min(pct, max);
     rows.push({
       minQty: b.minQty,
       active: false,
       hidden: d <= 0,
-      save: pct !== null ? { kind: "percent", percent: Math.round(pct * 10) / 10 } : { kind: "amount", amount: d },
+      save: shown !== null ? { kind: "percent", percent: Math.round(shown * 10) / 10 } : { kind: "amount", amount: d },
       unitPrice: price - d,
       d,
       pct,
@@ -415,11 +473,9 @@ export function previewTiers(
   for (const row of rows) if (row.minQty <= count && (!active || row.minQty > active.minQty)) active = row;
   let line = 0;
   if (active) {
+    // Like the engine: a percent rounds once per line; the margin allows quantity × the per-item ceiling (audit P2-1).
     if (active.pct === null) line = active.d * qty;
-    else {
-      const d = Math.round((price * qty * active.pct) / 100);
-      line = Math.max(0, Math.min(d, Math.floor((price * qty * max) / 100)));
-    }
+    else line = Math.max(0, Math.min(Math.round((price * qty * active.pct) / 100), cap * qty, price * qty));
   }
   const unit = price - Math.floor(line / qty);
   let next: (typeof rows)[number] | null = null;
@@ -527,13 +583,21 @@ export function formatShopMoney(minor: number, currency: string, format: string 
 
 // --- The table on the product page and the storefront config --------------------------------------------------
 
+/** The alternate product templates that also have the table ("Také v šabloně product.bundle."), or null. */
+export function blockAlternatesText(block: TiersBlockView, tr: Translator): string | null {
+  return block.state === "on" && block.alternates && block.alternates.length > 0 ? tr.t("tiers.block.alsoAlternate", { templates: tr.list(block.alternates) }) : null;
+}
+
 /** Is the table on the live theme's product page (read_themes)? One sentence (§11d, §12). */
 export function blockText(block: TiersBlockView, tr: Translator): string {
   switch (block.state) {
     case "on":
       return tr.t("tiers.block.on", { theme: block.themeName || "—" });
     case "off":
-      return tr.t("tiers.block.off");
+      // Only in an alternate template: most products do not use it (audit P3-8).
+      return block.alternates && block.alternates.length > 0
+        ? tr.t("tiers.block.onlyAlternate", { templates: tr.list(block.alternates) })
+        : tr.t("tiers.block.off");
     case "no_scope":
       return tr.t("tiers.block.noScope");
     case "unknown":

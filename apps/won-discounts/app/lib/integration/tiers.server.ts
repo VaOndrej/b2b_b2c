@@ -25,9 +25,10 @@ import { explainGate, gateConfigForPlan, type ProCapability } from "@won/core/di
 import { presetOf } from "../../components/model/appearance";
 import { currencyCodes, currencyViews } from "../../components/model/markets";
 import type { FormDataLike } from "../../components/model/rule-form";
-import { readTiersForm, tierSetToConfig, tierSetView, TIERS_FIELD, TIERS_INTENT } from "../../components/model/tiers";
-import type { GateNoteView, TierSetView, TiersOverviewView, TiersScreenData, UiResult } from "../../components/model/types";
+import { readTiersForm, tierPayloadUse, tierSetToConfig, tierSetView, TIERS_FIELD, TIERS_INTENT } from "../../components/model/tiers";
+import type { FieldError, GateNoteView, TierSetView, TiersOverviewView, TiersScreenData, UiResult } from "../../components/model/types";
 import { loadConfig, type LoadedConfig } from "../config.server";
+import { MAX_COLLECTION_PRODUCTS } from "../sync/products";
 import { tierProductCounts } from "../sync/storefront";
 import { graphqlOf, type ShopCtx } from "./context.server";
 import { readSaveOptions, saveConfigSection, type SaveOptions } from "./settings.server";
@@ -166,27 +167,139 @@ export async function loadTiersScreen(ctx: ShopCtx, opts: { scopes: string; fres
 }
 
 /**
- * Save the page's sets (config order; the global set without tiers is not
- * stored — it would only shadow nothing). F12 compares the tiers module only.
+ * The sets to store from the page's (config order). `keep` = sets the page did not edit
+ * (TIERS_FIELD.kept), saved as STORED, never round-tripped through the form
+ * (§14a, audit P3-4). The first whole-store set without tiers is dropped only
+ * when it is the only one: with a dormant second whole-store set after it, it
+ * stays as a set WITHOUT tiers — otherwise that set would silently become the
+ * whole store's (K1, audit P3-2).
  */
-export function saveTiers(ctx: ShopCtx, sets: readonly TierSetView[], opts: SaveOptions): Promise<UiResult> {
-  const next = sets.filter((s) => !(s.scope.kind === "global" && s.breaks.length === 0)).map(tierSetToConfig);
+export function nextTierSets(sets: readonly TierSetView[], keep?: ReadonlyMap<string, TierSet>): TierSet[] {
+  const globals = sets.filter((s) => s.scope.kind === "global");
+  return sets
+    .filter((s) => !(s === globals[0] && globals.length === 1 && s.breaks.length === 0 && !keep?.has(s.id)))
+    .map((s) => keep?.get(s.id) ?? tierSetToConfig(s));
+}
+
+/** Save the page's sets (nextTierSets) like every admin change (saveConfigSection: lock, F12 on the tiers only, saveAndSync). */
+export function saveTiers(
+  ctx: ShopCtx,
+  sets: readonly TierSetView[],
+  opts: SaveOptions & { keep?: ReadonlyMap<string, TierSet> },
+): Promise<UiResult> {
+  const next = nextTierSets(sets, opts.keep);
   return saveConfigSection(ctx, {
-    ...opts,
+    configVersion: opts.configVersion,
+    ...(opts.replaceUnreadable !== undefined ? { replaceUnreadable: opts.replaceUnreadable } : {}),
     path: "modules.tiers",
     pick: (config) => config.modules.tiers,
     apply: (config) => ({ ...config, modules: { ...config.modules, tiers: { ...config.modules.tiers, sets: next } } }),
   });
 }
 
-/** The Množstevní slevy action: `intent=save`, the form parsed on the server (SEC-1) against the stored markets. */
+/** Validated against Admin 2026-04 (Shopify dev MCP): the size of collections a Pro set picks (the sync reads at most 10 000). */
+export const COLLECTION_SIZES_DOCUMENT = `#graphql
+query WonTiersCollectionSizes($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    __typename
+    ... on Collection {
+      id
+      title
+      productsCount {
+        count
+        precision
+      }
+    }
+  }
+}`;
+
+/**
+ * Audit P2-3 (SEC-3: a dangerous state is unsavable): a Pro set may not pick a
+ * collection the sync cannot read — more than MAX_COLLECTION_PRODUCTS products
+ * (or a count Shopify only gives as "at least"), or collections that together
+ * exceed it — its products would silently get the whole-store set. Checked for
+ * the collections a set ADDS against the stored config (an unrelated save is
+ * never blocked by a collection that grew since; the sync keeps such a set's
+ * products where they were). A size Shopify does not give → refused too (fail
+ * closed: the merchant tries again).
+ */
+async function collectionSizeErrors(ctx: ShopCtx, sets: readonly TierSetView[], stored: readonly TierSet[]): Promise<FieldError[]> {
+  const before = new Map(stored.map((s) => [s.id, new Set(s.scope === "global" ? [] : (s.scope.collectionIds ?? []))]));
+  const added = sets
+    .filter((s): s is TierSetView & { scope: Extract<TierSetView["scope"], { kind: "selection" }> } => s.scope.kind === "selection")
+    .map((s) => ({ set: s, ids: s.scope.collections.map((c) => c.id).filter((id) => !before.get(s.id)?.has(id)) }))
+    .filter((x) => x.ids.length > 0);
+  if (added.length === 0) return [];
+  const sizes = new Map<string, { count: number; exact: boolean; title: string }>();
+  const ids = [...new Set(added.flatMap((x) => x.set.scope.collections.map((c) => c.id)))];
+  try {
+    for (let i = 0; i < ids.length; i += 100) {
+      const result = await ctx.client.graphql<{ nodes?: ({ id?: string; title?: string | null; productsCount?: { count: number; precision: string } | null } | null)[] }>(
+        COLLECTION_SIZES_DOCUMENT,
+        { ids: ids.slice(i, i + 100) },
+      );
+      for (const node of result.data?.nodes ?? []) {
+        if (node?.id && node.productsCount) {
+          sizes.set(node.id, { count: node.productsCount.count, exact: node.productsCount.precision === "EXACT", title: node.title ?? "" });
+        }
+      }
+    }
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    return added.map((x) => ({ field: TIERS_FIELD.collection(x.set.id), key: "tiers.error.collectionSizeUnknown" }));
+  }
+  const errors: FieldError[] = [];
+  for (const { set, ids: newIds } of added) {
+    const field = TIERS_FIELD.collection(set.id);
+    const limit = MAX_COLLECTION_PRODUCTS;
+    const big = newIds.map((id) => ({ id, size: sizes.get(id) })).find(({ size }) => size && (!size.exact || size.count > limit));
+    if (big?.size) {
+      errors.push(
+        big.size.title.trim()
+          ? { field, key: "tiers.error.collectionTooLarge", params: { collection: big.size.title, limit } }
+          : { field, key: "tiers.error.collectionTooLargeUntitled", params: { limit } },
+      );
+      continue;
+    }
+    // A collection deleted meanwhile has no size: the sync reports it; nothing to measure here.
+    const total = set.scope.collections.reduce((sum, c) => sum + (sizes.get(c.id)?.count ?? 0), 0);
+    if (total > limit) errors.push({ field, key: "tiers.error.collectionsTooLarge", params: { limit } });
+  }
+  return errors;
+}
+
+/**
+ * The Množstevní slevy action: `intent=save`, the form parsed on the server
+ * (SEC-1) against the stored markets; kept sets taken from the stored config by
+ * id (audit P3-4); a new Pro collection the sync could not read refused (P2-3);
+ * tiers over the checkout's room for them refused (the 550 B cap, audit).
+ */
 export async function tiersAction(ctx: ShopCtx, form: FormDataLike): Promise<UiResult> {
   if (form.get(TIERS_FIELD.intent) !== TIERS_INTENT.save) return { ok: false, reason: "bad_request" };
   const [loaded, shopContext] = await Promise.all([loadConfig(ctx.db, ctx.shop), readShopContext(graphqlOf(ctx))]);
+  const stored = loaded.config.modules.tiers.sets;
+  const storedById = new Map(stored.map((s) => [s.id, s]));
   const currencies = currencyCodes(currencyViews(loaded.config.markets, { shopCurrency: shopContext.currencyCode }));
-  const parsed = readTiersForm(form, { currencies, keptCurrencies: keptCurrencies(loaded.config, currencies) });
+  const parsed = readTiersForm(form, {
+    currencies,
+    keptCurrencies: keptCurrencies(loaded.config, currencies),
+    keep: (id) => {
+      const set = storedById.get(id);
+      return set ? tierSetView(set, new Map()) : undefined;
+    },
+  });
   if (parsed.errors.length > 0) return { ok: false, reason: "invalid", errors: parsed.errors };
-  return saveTiers(ctx, parsed.sets, readSaveOptions(form));
+  const sizeErrors = await collectionSizeErrors(
+    ctx,
+    parsed.sets.filter((s) => !parsed.kept.includes(s.id)),
+    stored,
+  );
+  if (sizeErrors.length > 0) return { ok: false, reason: "invalid", errors: sizeErrors };
+  const keep = new Map(parsed.kept.map((id) => [id, storedById.get(id)!]));
+  // The checkout's room for tiers (CONFIG_LIMITS.tierPayloadBytes, audit): refused with what to do, never "bytes".
+  const use = tierPayloadUse(nextTierSets(parsed.sets, keep));
+  if (!use.fits) return { ok: false, reason: "invalid", errors: [{ field: TIERS_FIELD.set, key: "tiers.error.tooLarge", params: { percent: use.percent } }] };
+  return saveTiers(ctx, parsed.sets, { ...readSaveOptions(form), keep });
 }
 
 // --- Přehled --------------------------------------------------------------------------------------------------------

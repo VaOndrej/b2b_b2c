@@ -161,7 +161,11 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
       /Zobrazit na mém webu/,
       /Sady pro vybrané produkty a kolekce/,
       /Produkt ve vlastní sadě dostane jen ji, ne sadu pro celý obchod/,
-      /Uloženo, ve Free neplatí/,
+      /Uloženo, ve Free neplatí: produkty z ní teď nedostanou žádnou množstevní slevu\. Když sadu odebereš, dostanou sadu pro celý obchod\./,
+      /Každý řádek košíku zvlášť/,
+      /aria-current="true"/,
+      /aria-label="Ubrat kus"/,
+      /aria-label="Přidat kus"/,
     ],
   },
   {
@@ -184,16 +188,20 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
   },
   {
     path: "tiers?state=failed",
-    expect: [/Propsání na web selhalo 28\. 9\. 2026 16:20\. Tabulka ukazuje předchozí nastavení/, /Nastavení tabulky na stránce produktu se na web nepropsalo \(metafieldsSet: Throttled/],
+    expect: [/Propsání na web selhalo 28\. 9\. 2026 16:20\. Do opravy může web ukazovat starší \(i vyšší\) úrovně, pokladna platí nové/, /Nastavení tabulky na stránce produktu se na web nepropsalo \(metafieldsSet: Throttled/],
   },
   // Review fix 7: never written before → no "previous settings" to show.
   { path: "tiers?state=failed-first", expect: [/Propsání na web selhalo 28\. 9\. 2026 16:20\. Tabulka se na webu zatím neukazuje/] },
+  // Audit P3-8: only in an alternate template → not "on the product page"; the fix button stays.
+  { path: "tiers?state=alternate", expect: [/Tabulka je jen v šabloně product\.bundle\. Na stránce produktu, kterou používá většina produktů, zatím není\./, /Přidat tabulku na stránku produktu/] },
   // Review fix 5: clearance items combine → they can get a tier; gifts never.
   { path: "tiers?state=outlet", expect: [/Dárky úroveň nedostanou\. Zboží ve výprodeji ji dostat může/] },
   // Review fix 18: Pro sees how many products each Pro set reaches (Free sees nothing).
   { path: "tiers?plan=pro&state=dawn", expect: [/Podle poslední synchronizace platí pro 14 produktů/] },
+  // Audit: the checkout's room for tiers as a share (cap 550 B), with what takes room.
+  { path: "tiers?plan=pro", expect: [/Místo pro úrovně v pokladně: využito \d+\u00a0%/, /Sady v procentech zaberou méně místa než částky v několika měnách/] },
   // Review fix 3: plan-aware — on Pro a rule may stack with the ones its editor combines.
-  { path: "settings?plan=pro", expect: [/V Pro se sečtou jen ty, které v editoru slevy spojíš\. Množstevní sleva se nesčítá nikdy/] },
+  { path: "settings?plan=pro", expect: [/V Pro se sečtou jen ty, které v editoru slevy spojíš\. Množstevní sleva se s jinou slevou na stejný produkt nesčítá nikdy/] },
   { path: "tiers?state=dawn", expect: [/Barvy a písmo z tématu Dawn/, /--won-tiers-accent:#c0392b/, /--inputs-radius:0px/] },
   { path: "tiers?state=no-scope", expect: [/Bez přístupu k tématu nevidíme/] },
   { path: "tiers?result=invalid", expect: [/Sleva tady musí být aspoň taková jako od 3 ks/, /Úroveň od 5 ks už v sadě je/] },
@@ -223,7 +231,7 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
     expect: [
       /Kombinování slev/,
       /Sčítá se: produkty s objednávkou, produkty s dopravou a objednávka s dopravou/,
-      /Dvě slevy na stejný produkt se nesčítají, platí výhodnější\. Množstevní sleva se nesčítá nikdy\./,
+      /Dvě slevy na stejný produkt se nesčítají, platí výhodnější\. Množstevní sleva se s jinou slevou na stejný produkt nesčítá nikdy\./,
       /Zboží ve výprodeji další slevy nedostane/,
       /Výprodej přijde v další verzi/,
       /Obě se sčítají\. Sleva z objednávky se počítá z ceny po slevách na produkty/,

@@ -7,7 +7,7 @@
 // product the set applies to. Shared by Množstevní slevy and Vzhled.
 
 import { useT } from "../../i18n/context";
-import { blockText, storefrontSyncText } from "../model/tiers";
+import { blockAlternatesText, blockText, storefrontSyncText } from "../model/tiers";
 import { uiText } from "../model/result-copy";
 import type { PreviewProductView, StorefrontSyncView, TiersBlockView } from "../model/types";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
@@ -42,6 +42,11 @@ export function TiersBlockSection({
             }
           >
             <RowNote tone={block.state === "off" ? "attention" : undefined}>{addUrl ? t("tiers.block.addHint") : t("tiers.block.noLink")}</RowNote>
+          </WonRow>
+        ) : null}
+        {blockAlternatesText(block, tr) ? (
+          <WonRow>
+            <RowNote>{blockAlternatesText(block, tr)}</RowNote>
           </WonRow>
         ) : null}
         {storefront ? (

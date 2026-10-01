@@ -27,8 +27,9 @@ import { Form, useSubmit } from "react-router";
 import { useT } from "../../i18n/context";
 import { pickCollections, pickProducts } from "../model/app-bridge";
 import { currencyCodes } from "../model/markets";
-import { newTierSetId, readTiersForm, TIERS_FIELD, TIERS_INTENT, tierSummary } from "../model/tiers";
+import { newTierSetId, readTiersForm, tierPayloadUse, tierSetToConfig, TIERS_FIELD, TIERS_INTENT, tierSummary } from "../model/tiers";
 import type { FieldError, TierSetView, TiersScreenData, UiResult } from "../model/types";
+import { FieldMessage } from "../rule-editor/parts";
 import { GateNotes } from "../shell/GateNotes";
 import { Notice } from "../shell/Notice";
 import { WonSection } from "../shell/WonSection";
@@ -115,8 +116,10 @@ export function TiersScreen(props: TiersScreenProps) {
     const form = formRef.current;
     if (!form) return;
     setSnapshot(snapshotOf(form));
-    setDraft(readTiersForm(new FormData(form), { currencies: codes, keptCurrencies: kept, titles }).sets);
-  }, [codes, kept, titles]);
+    // A kept set (not edited on this page) is the one shown, never re-parsed (audit P3-4).
+    const keep = (id: string) => proSets.find((s) => s.id === id) ?? sets.find((s) => s.id === id);
+    setDraft(readTiersForm(new FormData(form), { currencies: codes, keptCurrencies: kept, titles, keep }).sets);
+  }, [codes, kept, titles, proSets, sets]);
   useEffect(() => {
     const el = formRef.current;
     if (!el) return;
@@ -202,6 +205,8 @@ export function TiersScreen(props: TiersScreenProps) {
   };
 
   const globalDraft = draft.find((s) => s.id === globalSet.id) ?? globalSet;
+  // The checkout's room for tiers, live from what is typed (the server refuses a save over it).
+  const capacity = useMemo(() => tierPayloadUse(draft.map(tierSetToConfig)), [draft]);
   const hasTiers = globalDraft.breaks.length > 0;
 
   return (
@@ -211,6 +216,8 @@ export function TiersScreen(props: TiersScreenProps) {
         {configVersion ? <input type="hidden" name={F.configVersion} value={configVersion} /> : null}
         <s-stack key={formKey} direction="block" gap="base">
           <Notice result={result} onReplace={replaceUnreadable} />
+          {/* A refusal about the page as a whole (the tiers do not fit at checkout, a stale form) — at the top, not in a section. */}
+          <FieldMessage text={errorFor(F.set)} />
           {gateNotes.length > 0 ? <GateNotes notes={gateNotes} /> : null}
           <input type="hidden" name={F.set} value={globalSet.id} />
           <input type="hidden" name={F.scope(globalSet.id)} value="global" />
@@ -255,6 +262,7 @@ export function TiersScreen(props: TiersScreenProps) {
             onRowsChange={reread}
             productsWithSets={pro ? (props.productsWithSets ?? null) : null}
             storedIds={storedIds}
+            capacity={capacity}
           />
           {/* One save for the whole form, last on the page (plus the App Bridge save bar). */}
           <div>

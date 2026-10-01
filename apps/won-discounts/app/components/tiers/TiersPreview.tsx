@@ -176,6 +176,8 @@ export function TiersPreview({
             data-won-discounts-tier-row=""
             data-min={row.minQty}
             data-active={row.active ? "true" : "false"}
+            // K8 (audit P3-7): the tier that applies is announced, not only shown in bold.
+            aria-current={row.active ? "true" : undefined}
             hidden={row.hidden}
           >
             <span className="won-tiers__qty">{storefrontText(locale, "row_qty", { min: row.minQty })}</span>
@@ -234,13 +236,13 @@ export function TiersPreview({
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: WON_MUTED }}>
             <span>{t("tiers.preview.quantity")}</span>
-            <button type="button" aria-label="−" onClick={() => setQuantity((q) => Math.max(1, q - 1))} style={stepper}>
+            <button type="button" aria-label={t("tiers.preview.less")} onClick={() => setQuantity((q) => Math.max(1, q - 1))} style={stepper}>
               −
             </button>
             <span style={{ minWidth: 20, textAlign: "center", fontWeight: 700, color: WON_INK }} aria-live="polite">
               {quantity}
             </span>
-            <button type="button" aria-label="+" onClick={() => setQuantity((q) => Math.min(TIER_MIN_QTY_MAX, q + 1))} style={stepper}>
+            <button type="button" aria-label={t("tiers.preview.more")} onClick={() => setQuantity((q) => Math.min(TIER_MIN_QTY_MAX, q + 1))} style={stepper}>
               +
             </button>
           </div>
