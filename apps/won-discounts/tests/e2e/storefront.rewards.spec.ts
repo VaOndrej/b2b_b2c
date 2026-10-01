@@ -28,8 +28,9 @@ import {
   TOTAL,
 } from "./support/checkout.ts";
 import { saveEvidence, saveScreenshot } from "./support/evidence.ts";
-import { E2E_PROFILE, expect, gotoStorefront, test, THEME_LABEL, unlockRealStorefront } from "./support/fixtures.ts";
+import { E2E_PROFILE, expect, gotoStorefront, STORE_ORIGIN, test, THEME_LABEL, unlockRealStorefront } from "./support/fixtures.ts";
 import { marginPlanInput } from "./support/margin.ts";
+import { executeAsApp } from "./support/won-plan.ts";
 import { numericId, readTierInputs, type TierInputs } from "./support/tiers.ts";
 
 // SPEC-DRIVEN (MVP 4, Task 8). Live proof of cart rewards on BOTH shared themes
@@ -41,7 +42,9 @@ import { numericId, readTierInputs, type TierInputs } from "./support/tiers.ts";
 //   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --profile rewards --live
 //   WON_E2E_PROFILE=rewards npm run test:e2e:local:all -w won-discounts
 // The cart block is put into each theme copy's cart template by the runner
-// (e2e.app.config.mjs templateOverlays, scripts/make-e2e-overlay.mjs).
+// (e2e.app.config.mjs templateOverlays, scripts/make-e2e-overlay.mjs). The pages are
+// opened on the real store domain previewing that theme (openThemePreview: the
+// theme-dev proxy does not serve the Storefront API that Shopify.actions uses).
 //
 // Exit criteria of MVP 4 (spec §10), per profile:
 //   rewards (Free)
@@ -147,6 +150,26 @@ async function waitForCart(page: Page, done: (cart: Cart) => boolean, timeoutMs 
   return cart;
 }
 
+/**
+ * The rewards spec runs on the REAL store domain, previewing the theme `shopify theme dev` syncs (the matrix's
+ * remote theme "Horizon" / "Dawn", unpublished: its workspace with the overlays). Why: the cart panel writes through
+ * Shopify.actions.updateCart, which posts to the storefront's own /api/<version>/graphql.json — the theme-dev proxy
+ * (127.0.0.1) does not serve that path (net::ERR_FAILED, probed 2026-10-01), a live storefront always does.
+ */
+async function openThemePreview(page: Page): Promise<void> {
+  const data = await executeAsApp<{ themes: { nodes: { id: string; name: string; role: string }[] } }>("query WonE2eThemes { themes(first: 50) { nodes { id name role } } }", {});
+  const theme = data.themes.nodes.find((t) => t.name === THEME_LABEL);
+  expect(theme, `the matrix's remote theme "${THEME_LABEL}" exists`).toBeDefined();
+  expect(theme!.role, "previewed, never published").not.toBe("MAIN");
+  await unlockRealStorefront(page);
+  await gotoStorefront(page, `${STORE_ORIGIN}/?preview_theme_id=${theme!.id.split("/").pop()}`);
+  const shown = await page.evaluate(() => (window as unknown as { Shopify?: { theme?: { name?: string } } }).Shopify?.theme?.name ?? null);
+  expect(shown, "the store renders the previewed theme").toBe(THEME_LABEL);
+}
+
+/** A storefront page of the previewed theme (absolute: the page is on the store domain, not the theme-dev base URL). */
+const go = (page: Page, path: string) => gotoStorefront(page, `${STORE_ORIGIN}${path}`);
+
 /** A cart of `quantity` × the cart product, set up by the test (no customer event). */
 async function setupCart(page: Page, quantity: number): Promise<Cart> {
   return freshCartOfVariants(page, [{ handle: REWARDS_CART_HANDLE, quantity }], []);
@@ -154,7 +177,7 @@ async function setupCart(page: Page, quantity: number): Promise<Cart> {
 
 /** The customer adds `quantity` on the product page with the theme's own buy button (the theme fires its cart event). */
 async function addOnProductPage(page: Page, handle: string, quantity: number): Promise<void> {
-  await gotoStorefront(page, `/products/${handle}`);
+  await go(page, `/products/${handle}`);
   const input = page.locator('input[name="quantity"]:visible').first();
   if (quantity !== 1) await input.fill(String(quantity));
   await page.locator('button[name="add"]:visible').first().click();
@@ -179,6 +202,19 @@ async function panelShots(page: Page, testInfo: TestInfo, name: string) {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(800);
   await page.locator(`${PANEL}:visible`).first().scrollIntoViewIfNeeded();
+  // The controls' boxes and the CSS deciding them, kept with the evidence (the theme's styles meet ours here).
+  const controls = await page
+    .locator(`${PANEL}:visible`)
+    .first()
+    .locator("button, input")
+    .evaluateAll((els) =>
+      els.map((el) => {
+        const r = el.getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        return { tag: el.tagName, text: (el.textContent || (el as HTMLInputElement).name || "").trim().slice(0, 30), w: Math.round(r.width), h: Math.round(r.height), minHeight: cs.minHeight, display: cs.display, padding: cs.padding };
+      }),
+    );
+  await saveEvidence(testInfo, `${name}-controls`, controls);
   await assertResponsiveSane(page, { root: PANEL });
   await saveScreenshot(page, testInfo, `${name}-390`, { fullPage: false });
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -196,6 +232,42 @@ async function progressOf(page: Page): Promise<Record<string, number>> {
       ),
     );
 }
+/** Records the cart events the page sees (the theme's and ours) — read back with panelDiagnostics on a failure. */
+async function recordCartEvents(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __wonEvents: string[] };
+    w.__wonEvents = [];
+    for (const name of ["shopify:cart:lines-update", "shopify:cart:discount-update", "cart:update", "won-discounts:cart:update"]) {
+      document.addEventListener(name, (e) => w.__wonEvents.push(`${name}${(e as CustomEvent).detail?.won ? " (won)" : ""}`), true);
+    }
+  });
+}
+
+/** What the page knows when the panel did not act: events seen, Storefront actions, the panel's boot and view. */
+async function panelDiagnostics(page: Page) {
+  return page
+    .evaluate(() => {
+      const w = window as unknown as {
+        __wonEvents?: string[];
+        __wonCartStarted?: boolean;
+        subscribe?: unknown;
+        Shopify?: { actions?: Record<string, unknown> };
+        WonDiscounts?: { ready?: boolean; cart?: { on?: boolean } };
+      };
+      return {
+        url: location.pathname,
+        events: w.__wonEvents ?? null,
+        actions: Object.keys(w.Shopify?.actions ?? {}),
+        cartStarted: w.__wonCartStarted ?? false,
+        dawnSubscribe: typeof w.subscribe,
+        ready: w.WonDiscounts?.ready ?? false,
+        cartDataOn: w.WonDiscounts?.cart?.on ?? null,
+        panel: document.querySelector("[data-won-discounts-cart]")?.outerHTML.slice(0, 400) ?? null,
+      };
+    })
+    .catch((error: unknown) => ({ error: String(error) }));
+}
+
 const pct = (left: number, threshold: number) => (threshold > 0 ? Math.min(100, Math.round(((threshold - left) * 100) / threshold)) : 100);
 
 test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)${PRO ? " [Pro: ladder, choice of 3]" : OTHER ? " [counting other discounts]" : ""}${THEME_LABEL ? ` — ${THEME_LABEL}` : ""}`, () => {
@@ -204,8 +276,8 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     `WON_E2E_PROFILE=${E2E_PROFILE}: this spec needs the rewards seed (seed-mvp1.mjs --profile rewards|rewards-other|rewards-pro --live) and WON_E2E_PROFILE=rewards|rewards-other|rewards-pro`,
   );
 
-  test.afterEach(async ({ page, baseURL }) => {
-    if (page.url().startsWith(new URL(baseURL!).origin)) await clearCartQuietly(page);
+  test.afterEach(async ({ page }) => {
+    if (page.url().startsWith(STORE_ORIGIN)) await clearCartQuietly(page);
   });
 
   test("SF-1: opening the cart writes nothing; the panel's progress = planCart; the gift facts come from all_products (F-R2); the app proxy answers a POST (F-R4)", async ({
@@ -216,8 +288,8 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     const inputs = await readTierInputs(REWARDS_HANDLES);
     const rw = rewardsOf(inputs);
     await page.setViewportSize({ width: 1440, height: 900 });
-    await unlockRealStorefront(page);
-    await gotoStorefront(page, `/products/${REWARDS_CART_HANDLE}`);
+    await openThemePreview(page);
+    await go(page, `/products/${REWARDS_CART_HANDLE}`);
     const probe = await setupCart(page, 1);
     const below = itemsFor(giftThreshold(rw, REWARDS_GIFT_TIER_ID, probe.currency), probe.items[0]!.original_price) - 1;
     expect(below, "the gift threshold needs more than one item").toBeGreaterThan(0);
@@ -232,7 +304,7 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
         for (const entry of list.getEntries() as unknown as { value: number; hadRecentInput: boolean }[]) if (!entry.hadRecentInput) w.__wonCls += entry.value;
       }).observe({ type: "layout-shift", buffered: true });
     });
-    await gotoStorefront(page, "/cart");
+    await go(page, "/cart");
     await expect(page.locator(`${PANEL}:visible`).first(), "the cart panel renders on the cart page (block or summary)").toBeVisible({ timeout: 20_000 });
     const answer = await proxy;
     const answerBody = (await answer.json().catch(() => null)) as {
@@ -290,16 +362,18 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     const inputs = await readTierInputs(REWARDS_HANDLES);
     const rw = rewardsOf(inputs);
     await page.setViewportSize({ width: 1440, height: 900 });
-    await unlockRealStorefront(page);
-    await gotoStorefront(page, `/products/${REWARDS_CART_HANDLE}`);
+    await openThemePreview(page);
+    await go(page, `/products/${REWARDS_CART_HANDLE}`);
     const probe = await setupCart(page, 1);
     const needed = itemsFor(giftThreshold(rw, REWARDS_GIFT_TIER_ID, probe.currency), probe.items[0]!.original_price);
     await setupCart(page, needed - 1);
 
     const writes = recordCartWrites(page);
+    await recordCartEvents(page);
     await test.step("the customer adds 1 on the product page", () => addOnProductPage(page, REWARDS_CART_HANDLE, 1));
     const withGift = await waitForCart(page, (c) => giftLines(c, REWARDS_GIFT_TIER_ID).length === 1);
     const giftLine = giftLines(withGift, REWARDS_GIFT_TIER_ID)[0];
+    if (!giftLine) await saveEvidence(testInfo, "rewards-gift-diagnostics", { writes, diagnostics: await panelDiagnostics(page), cart: withGift.items.map((i) => [i.variant_id, i.quantity, i.properties]) });
     expect(giftLine, `the panel added the gift within ${GIFT_ALLOWANCE_MS / 1000} s of the customer's add`).toBeDefined();
     expect(giftLine!.properties, "the gift line's attributes (R7, A11)").toMatchObject({ _won_gift: REWARDS_GIFT_TIER_ID, _gift_progress: "1" });
     expect(giftLine!.quantity).toBe(1);
@@ -323,7 +397,7 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
       });
     }
 
-    await gotoStorefront(page, "/cart");
+    await go(page, "/cart");
     const panel = page.locator(`${PANEL}:visible`).first();
     await expect(panel.locator(`[data-won-discounts-gift="${REWARDS_GIFT_TIER_ID}"]`), "the cart page panel: the gift is in").toHaveAttribute(
       "data-state",
@@ -366,8 +440,8 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     const inputs = await readTierInputs(REWARDS_HANDLES);
     const rw = rewardsOf(inputs);
     await page.setViewportSize({ width: 1440, height: 900 });
-    await unlockRealStorefront(page);
-    await gotoStorefront(page, `/products/${REWARDS_CART_HANDLE}`);
+    await openThemePreview(page);
+    await go(page, `/products/${REWARDS_CART_HANDLE}`);
     const probe = await setupCart(page, 1);
     const needed = itemsFor(giftThreshold(rw, REWARDS_GIFT_TIER_ID, probe.currency), probe.items[0]!.original_price);
     await setupCart(page, needed - 1);
@@ -375,7 +449,7 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     const withGift = await waitForCart(page, (c) => giftLines(c).length === 1);
     expect(giftLines(withGift), "precondition: the panel added the gift").toHaveLength(1);
 
-    await gotoStorefront(page, "/cart");
+    await go(page, "/cart");
     const title = inputs.titleByHandle[REWARDS_CART_HANDLE]!;
     const remove = page
       .locator(`cart-remove-button a[aria-label*="${title}"], button.cart-items__remove[aria-label*="${title}"]`)
@@ -402,8 +476,8 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     const inputs = await readTierInputs(REWARDS_HANDLES);
     const rw = rewardsOf(inputs);
     await page.setViewportSize({ width: 1440, height: 900 });
-    await unlockRealStorefront(page);
-    await gotoStorefront(page, `/products/${REWARDS_CART_HANDLE}`);
+    await openThemePreview(page);
+    await go(page, `/products/${REWARDS_CART_HANDLE}`);
     const probe = await setupCart(page, 1);
     const needed = itemsFor(giftThreshold(rw, REWARDS_GIFT_TIER_ID, probe.currency), probe.items[0]!.original_price);
     await setupCart(page, needed - 1);
@@ -416,7 +490,7 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     const giftTitle = inputs.titleByHandle[REWARDS_GIFT_HANDLE]!;
     const productTitle = inputs.titleByHandle[REWARDS_CART_HANDLE]!;
 
-    await openCheckout(page);
+    await openCheckout(page, `${STORE_ORIGIN}/checkout`);
     await test.step("contact, CZ address, first shipping rate", () => fillShippingAddress(page, CZECH_ADDRESS, EMAIL));
     const before = await priceSummary(page);
     const shippingRow = before.find((r) => SHIPPING.test(r.label));
@@ -477,8 +551,8 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     const inputs = await readTierInputs(REWARDS_HANDLES);
     const rw = rewardsOf(inputs);
     await page.setViewportSize({ width: 1440, height: 900 });
-    await unlockRealStorefront(page);
-    await gotoStorefront(page, `/products/${REWARDS_CART_HANDLE}`);
+    await openThemePreview(page);
+    await go(page, `/products/${REWARDS_CART_HANDLE}`);
     try {
       const market = await setStorefrontCountry(page, "SK");
       expect(market.status).toBe(200);
@@ -492,7 +566,7 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
       const plan = planOf(cart, inputs, "SK");
       const rows = expectCartMatchesPlan(cart, plan);
       expect(plan.progress.freeShipping?.reached, "free shipping reached in EUR").toBe(true);
-      await gotoStorefront(page, "/cart");
+      await go(page, "/cart");
       await expect(page.locator(`${PANEL}:visible [data-won-discounts-gift="${REWARDS_GIFT_TIER_ID}"]`).first()).toHaveAttribute("data-state", "in", {
         timeout: 20_000,
       });
@@ -519,15 +593,15 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     const rw = rewardsOf(inputs);
     expect(rw.other, "the storefront config counts other discounts").toBe(true);
     await page.setViewportSize({ width: 1440, height: 900 });
-    await unlockRealStorefront(page);
-    await gotoStorefront(page, `/products/${REWARDS_CART_HANDLE}`);
+    await openThemePreview(page);
+    await go(page, `/products/${REWARDS_CART_HANDLE}`);
     const probe = await setupCart(page, 1);
     const needed = itemsFor(giftThreshold(rw, REWARDS_GIFT_TIER_ID, probe.currency), probe.items[0]!.original_price);
     await setupCart(page, needed - 1);
     await addOnProductPage(page, REWARDS_CART_HANDLE, 1);
     expect(giftLines(await waitForCart(page, (c) => giftLines(c).length === 1)), "precondition: the gift").toHaveLength(1);
 
-    await gotoStorefront(page, "/cart");
+    await go(page, "/cart");
     const panel = page.locator(`${PANEL}:visible`).first();
     const enterCode = async () => {
       await panel.locator('input[name="won-code"]').fill(REWARDS_CODE);
@@ -578,8 +652,8 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     const ladder = rw.gifts.find((g) => g.id === REWARDS_LADDER_TIER_ID);
     expect(ladder?.c, "Pro: the second threshold offers 3 gifts").toHaveLength(3);
     await page.setViewportSize({ width: 1440, height: 900 });
-    await unlockRealStorefront(page);
-    await gotoStorefront(page, `/products/${REWARDS_CART_HANDLE}`);
+    await openThemePreview(page);
+    await go(page, `/products/${REWARDS_CART_HANDLE}`);
     const probe = await setupCart(page, 1);
     const needed = itemsFor(giftThreshold(rw, REWARDS_LADDER_TIER_ID, probe.currency), probe.items[0]!.original_price);
     await setupCart(page, needed - 1);
@@ -588,7 +662,7 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     expect(giftLines(first, REWARDS_GIFT_TIER_ID), "the single-option tier is added").toHaveLength(1);
     expect(giftLines(first, REWARDS_LADDER_TIER_ID), "the choice waits for the customer").toEqual([]);
 
-    await gotoStorefront(page, "/cart");
+    await go(page, "/cart");
     const pick = page.locator(`${PANEL}:visible [data-won-discounts-gift="${REWARDS_LADDER_TIER_ID}"]`).first();
     await expect(pick, "the panel offers the choice").toHaveAttribute("data-state", "pick", { timeout: 20_000 });
     await expect(pick.locator("[data-won-add]")).toHaveCount(3);

@@ -18,7 +18,7 @@
   const codes = () => (cart.discount_codes || []).map((c) => c.code);
 
   const refresh = () =>
-    fetch("/cart.js", { headers: { Accept: "application/json" } })
+    fetch("/cart.js", { cache: "no-store", headers: { Accept: "application/json" } })
       .then((r) => r.json())
       .then((c) => {
         cart = c;

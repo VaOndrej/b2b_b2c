@@ -37,12 +37,13 @@
   font: inherit;
   color: inherit;
   cursor: pointer;
-  /* Tap targets at least 44 × 44 px (WCAG 2.5.5), the text-link buttons included. */
+  /* Tap targets at least 44 × 44 px (WCAG 2.5.5), the text-link buttons included. In px, not rem:
+     Dawn sets html { font-size: 62.5% }, so 2.75rem would be 27.5 px there. */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.75rem;
-  min-width: 2.75rem;
+  min-height: 44px;
+  min-width: 44px;
 }
 .won-cart__row button,
 .won-cart__applied button {
@@ -73,7 +74,7 @@
 .won-cart__code input {
   font: inherit;
   box-sizing: border-box;
-  min-height: 2.75rem;
+  min-height: 44px;
   padding: 0.5rem;
   border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
   border-radius: 0.25rem;

@@ -79,6 +79,7 @@ function page(t: TestContext, opts: { cart: Cart; rewards?: unknown; onUpdate?: 
     },
   };
   const state = { cart: opts.cart, updates: [] as { at: number; payload: Record<string, unknown> }[], proxy: [] as unknown[] };
+  let cached: string | undefined;
   const document = {
     readyState: "complete",
     documentElement: { lang: "cs" },
@@ -136,8 +137,13 @@ function page(t: TestContext, opts: { cart: Cart; rewards?: unknown; onUpdate?: 
       observe() {}
     },
     requestAnimationFrame: (fn: () => void) => setTimeout(fn, 0),
-    fetch: async (url: string, init?: { body?: string }) => {
-      if (url === "/cart.js") return { ok: true, json: async () => JSON.parse(JSON.stringify(state.cart)) };
+    fetch: async (url: string, init?: { body?: string; cache?: string }) => {
+      // Like the browser on a live store (E2E MVP 4): a /cart.js read the HTTP cache may answer gets the first
+      // cart read; only `cache: "no-store"` sees the cart as it is now.
+      if (url === "/cart.js") {
+        if (init?.cache !== "no-store") cached ??= JSON.stringify(state.cart);
+        return { ok: true, json: async () => JSON.parse(init?.cache === "no-store" ? JSON.stringify(state.cart) : cached!) };
+      }
       state.proxy.push(JSON.parse(init?.body ?? "null"));
       return { ok: true, json: async () => ({ ok: true }) };
     },
