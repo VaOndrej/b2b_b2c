@@ -395,8 +395,13 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     const rows = expectCartMatchesPlan(withGift, plan);
     expect(giftLine!.final_line_price, "the gift is free in the cart").toBe(0);
 
-    // F-R1: where the theme has a drawer open (Horizon), the panel in it shows the gift without a reload.
+    // F-R1: Horizon's cart is a drawer (Dawn's dev-store setting is the notification popup, no drawer): opened
+    // through Shopify.actions.openCart, the panel in it shows the gift without a reload.
     const drawerPanel = page.locator(`cart-drawer-component ${PANEL}:visible, #CartDrawer ${PANEL}:visible`).first();
+    if (THEME_LABEL === "Horizon") {
+      await page.evaluate(() => (window as unknown as { Shopify: { actions: { openCart: () => Promise<void> } } }).Shopify.actions.openCart());
+      await expect(drawerPanel, "F-R1: Horizon's drawer shows the cart panel").toBeVisible({ timeout: 15_000 });
+    }
     const drawerShown = await drawerPanel.isVisible().catch(() => false);
     let drawerState: string | null = null;
     if (drawerShown) {
