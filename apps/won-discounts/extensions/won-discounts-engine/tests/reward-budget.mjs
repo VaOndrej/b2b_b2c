@@ -2,7 +2,7 @@
 // every budget fixture — the worst rewards payload that still fits each
 // config's 9 000 B (up to 10 tiers × 4 variants, 64-character tier ids, both
 // thresholds at the money cap) and a gift attribute on every 10th line — with
-// one Wasm build (as Building function won-discounts-engine... leaves it). Not a test.
+// one Wasm build (as the CLI's function build leaves it). Not a test.
 //
 //   node tests/reward-budget.mjs <wasm>
 import { readdirSync, readFileSync } from "node:fs";
