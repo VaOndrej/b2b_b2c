@@ -63,7 +63,16 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
     pracovní kopii s overlayi) — nic se nepublikuje. Tam updateCart přidá dárek s atributy (probe ✓).
   - Doména storu má rate limit Cloudflaru (429) → opakování 429 v `gotoStorefront`, pauza 20 s mezi testy odměn.
   - Běh 3 (ladicí, bez evidence): Horizon SF-1 ✓, přidání + Odmítnout ✓, pod práh ✓; Dawn SF-1 ✓, pod práh ✓, přidání
-    a SK ✓ napodruhé; zbytek 429. Oficiální běh 4 běží (`evidence/mvp4/e2e-A`).
+    a SK ✓ napodruhé; zbytek 429.
+  - **Fáze A (Free) ✓** `8cbca3f`: rewards 5/5, rewards-other, mvp1, shapes, margin, tiers — Horizon i Dawn, 0 opakování;
+    F-R1 drawer (Horizon, openCart) ✓, F-R2 ✓, F-R3 dárek 0 + doprava 0 v pokladně = planCart ✓, F-R4 ✓, SK v EUR ✓.
+  - **Audit** `docs/won-discounts/audits/audit-mvp4.md` (0 P0 / 0 P1 / 7 P2 / 5 P3): opraveno F1/F2 (fronta reakcí, bez
+    selfUntil), P1/P2 (strop cache, limit čtení proxy, 429), L1 (5 dárkových prahů = 20 handle pro `all_products`), A1
+    (amber), R2/D1 docs; F3 vědomě v README. Replay 2 691 běhů: 72 rozdílů = nové běhy odměn (MVP 4 = log), nic nového.
+  - **Brána po opravách ✓** (`gate-mvp4b`): unit 1 164 + cargo 94 + vitest 544, core 811 + testing 50, guard 301,
+    typecheck, lint, build, validate.
+  - Běží: fáze A znovu pro `rewards` + `rewards-other` (opravy košíku/proxy), pak fáze B (`scratchpad/phaseB4.sh`:
+    rewards-pro, tiers-pro, margin-pro, shapes Pro; app dev s `WON_DEV_PLAN=pro`).
   **Zbývá v MVP 4:**
   - ~~Screenshoty adminu 390/1440 (Odměny Free/Pro/empty, Vyzkoušet košík rewards, karta Přehledu) — potřebují běžící
     `shopify app dev` (harness na jeho portu), udělat v Task 8 před restartem pro E2E.
