@@ -74,9 +74,12 @@ test("embed serves the app-data config as an inline JSON script tag", async () =
   assert.match(block, /'\{\}'|"\{\}"/);
 });
 
-test("embed loads storefront JS with defer via the schema, not an inline <script src>", async () => {
+test("embed loads storefront JS with defer via the schema; the only <script src> is the cart script, deferred, only with rewards (MVP 4)", async () => {
   const block = await readExtension("blocks/won_discounts_embed.liquid");
-  assert.doesNotMatch(block, /<script[^>]+src=/);
+  const srcs = [...block.matchAll(/<script[^>]+src=[^>]*>/g)].map((m) => m[0]);
+  assert.deepEqual(srcs, [`<script src="{{ 'won-discounts-cart.js' | asset_url }}" defer>`]);
+  const at = block.indexOf("<script src=\"{{ 'won-discounts-cart.js'");
+  assert.ok(block.lastIndexOf("{%- if rw != blank -%}", at) !== -1 && block.indexOf("{%- endif -%}", at) !== -1, "loaded only when the storefront config offers rewards");
 });
 
 test("storefront JS never touches cart mutation endpoints and stays a passive foundation", async () => {

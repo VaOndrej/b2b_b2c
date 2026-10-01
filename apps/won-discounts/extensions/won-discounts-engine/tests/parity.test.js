@@ -1161,7 +1161,7 @@ function generator(seed, onlySearch = false) {
     const lines = Array.from({ length: lineCount }, (_, i) => {
       const giftRoll = rnd();
       const gift = giftRoll < 0.25 ? { value: pick([...tierIds, ...tierIds, "nope", " gift-1", ""]) } : null;
-      const variant = gift ? pick([1001, 1002, 1003, 1004, 1005, 1009, 12345678901234567890]) : 2000 + int(50);
+      const variant = gift ? pick([1001, 1002, 1003, 1004, 1005, 1009, Number("12345678901234567890")]) : 2000 + int(50);
       return {
         id: `gid://shopify/CartLine/${i}`,
         quantity: gift ? pick([1, 1, 1, 2, 3]) : pick([1, 1, 2, 3, 5]),

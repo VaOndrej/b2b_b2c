@@ -1,12 +1,33 @@
 {
   "tiers": {
     "heading": "Množstevná zľava",
-    "row_qty": "Od {min}\u00a0ks",
-    "save_pct": "−{pct}\u00a0%",
+    "row_qty": "Od {min} ks",
+    "save_pct": "−{pct} %",
     "save_off": "−{amount}",
     "unit": "{price}/ks",
-    "live": "{qty}\u00a0ks za {total} ({price}/ks)",
-    "live_cart": "{qty}\u00a0ks za {total} ({price}/ks). Počítame aj {cart}\u00a0ks v košíku.",
-    "next": "Ešte {count}\u00a0ks a zaplatíte {price}/ks."
+    "live": "{qty} ks za {total} ({price}/ks)",
+    "live_cart": "{qty} ks za {total} ({price}/ks). Počítame aj {cart} ks v košíku.",
+    "next": "Ešte {count} ks a zaplatíte {price}/ks."
+  },
+  "cart": {
+    "ship_left": "Do dopravy zadarmo zostáva {amount}.",
+    "ship_done": "Máte dopravu zadarmo.",
+    "gift_left": "Do darčeka zadarmo zostáva {amount}.",
+    "gift_done": "Darček zadarmo je v košíku.",
+    "gift_decline": "Odmietnuť",
+    "gift_declined": "Darček zadarmo ste odmietli.",
+    "gift_pick": "Vyberte si darček zadarmo:",
+    "gift_add": "Pridať darček",
+    "gift_soldout": "Darček je, žiaľ, vypredaný.",
+    "code_label": "Zľavový kód",
+    "code_apply": "Použiť",
+    "code_remove": "Odobrať",
+    "code_invalid": "Kód {code} sa na tento košík nevzťahuje.",
+    "code_loses_gift": "S kódom {code} klesne nákup pod hranicu darčeka a darček zadarmo stratíte.",
+    "keep_code": "Ponechať kód (bez darčeka)",
+    "drop_code": "Zrušiť kód",
+    "saved": "Ušetríte {amount}.",
+    "hint": "Pridajte {n} ks {product} a dostanete {value}.",
+    "hint_capped": "Pridajte {n} ks {product} a dostanete nižšiu cenu."
   }
 }

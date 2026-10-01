@@ -5,6 +5,26 @@ explanations live here: every comment counts against the storefront JavaScript b
 10 240 B gzipped for all scripts together, MVP 4 moved ~2 kB of comments here to make room for the
 cart). Each note below is the comment that stood above the named line.
 
+## The cart panel (MVP 4, contracts R7–R9)
+
+- `blocks/won_discounts_embed.liquid` prints the cart data only when the storefront config offers rewards: the
+  rewards, each gift variant's title and availability (`all_products[handle]`, at most 20 handles a page), the cart
+  currency's minor digits, the texts (`locales/*.json` → `cart.*`) and the app proxy path (with the locale prefix of
+  `routes.root_url`); then `won-discounts-cart.js` (deferred).
+- `won-discounts.js` holds the pure part (`plan`: thresholds before discounts — R1 — and after them for
+  countOtherDiscounts; what an earned tier lacks; which gift lines must go) and the panel's HTML (`html`, every text
+  escaped). `won-discounts-cart.js` reads `/cart.js`, renders the panel into the cart block's slot
+  (`blocks/cart_rewards.liquid`) or the theme's drawer / cart summary (Horizon `cart-drawer-component
+  .cart-drawer__summary`, `.cart-page__summary`; Dawn `#CartDrawer .drawer__footer`, `#main-cart-footer .cart__footer`),
+  and puts it back whenever the theme re-renders (MutationObserver).
+- SF-1: it writes only through `Shopify.actions.updateCart` (the theme refreshes itself) and only in answer to the
+  customer — a cart change event the customer caused (`shopify:cart:lines-update`, `shopify:cart:discount-update`,
+  Horizon `cart:update`, Dawn's pubsub `cart-update`; the events of its own writes carry `detail.won` and are
+  ignored), a click or the code form. Never on page load. Writes are 1.5 s apart (Cloudflare).
+- A gift line carries `_won_gift` (the function reads it) and `_gift_progress` (Won Toasts skips it, A11).
+  "Odmítnout" / a gift removed by hand → the tier in the cart attribute `_won_gift_declined`, never added again.
+- The quantity hint ("přidej 1 ks") comes from the app proxy (`/apps/won-discounts/cart-plan`, the engine).
+
 ## `won-discounts-tiers-core.js`
 
 Won Discounts quantity tiers: pure logic (MVP 3, contracts K2, K4 v2, K5, K6). No DOM, no network: won-discounts-tiers.js renders with it. Split off so each file stays under Theme Check's 10 000 B raw limit and readable (no build). The block loads it with `defer`; whichever of the two files runs second starts the block (window.__wonTiersBoot). Money = Liquid units (major x 100).
@@ -35,3 +55,17 @@ Won Discounts quantity tiers block (MVP 3, contracts K6 + K8). Liquid renders th
 - `["input", "change", "click", "quantity-selector:update", "shopify:section:load"].forEach(f` — Capture phase: also events a theme stops. "click" = steppers without events; "quantity-selector:update" = Horizon's plus/minus.
 - `["shopify:cart:lines-update", "cart:update"].forEach(function (name) {` — Cart changes: Horizon's standard storefront event (older Horizon: cart:update).
 - `doc.addEventListener("shopify:product:select", function (event) {` — Horizon morphs the form and sets input[name=id] without a change event.
+
+## `won-discounts.js`
+
+- `const base = (cart) => plain(cart).reduce((s, item) => s + (item.original_line_price || 0)` — R1: the non-gift lines before every discount (/cart.js cents = Liquid units).
+- `const afterBase = (cart) =>` — R4: the same after their discounts and the order's.
+- `const plan = (cart, rw, facts) => {` — What the panel shows and what the cart lacks; `facts` = gift variants from Liquid ({id: {t, a}}).
+
+## `won-discounts-cart.js`
+
+- `const write = (payload) => {` — Every write goes through Shopify's updateCart (the theme refreshes itself), one at a time and GAP_MS apart (Cloudflare); the events it emits are ours and trigger nothing.
+- `const withDeclined = (list) => {` — Cart attributes are replaced as a whole: keep the others, set the declined tiers.
+- `const react = (before) => {` — A cart change the customer made: the gift follows the threshold (SF-1: never on load); a gift the customer removed by hand counts as declined (it never comes back).
+- `const askHint = () => {` — R9: the quantity hint comes from the app proxy (the engine); nothing on failure.
+- `const panels = () => {` — The theme re-renders its drawer and cart page: the panel goes back in whenever it is missing.

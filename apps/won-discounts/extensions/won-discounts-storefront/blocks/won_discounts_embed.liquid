@@ -1,17 +1,13 @@
 {% comment %}
-  App embed for Won Discounts (MVP0). This block only proves the storefront
-  foundation loads: it renders a hidden root marker and an inline JSON config
-  script tag, then loads the storefront JS with `defer`. It applies no
-  discount and mutates no cart — later MVPs build the actual discount UI on
-  top of this foundation. See doctrine SF-1 (no cart mutation from the
-  embed) and SF-2 (storefront JS gzip budget).
-
-  The marker is rendered as "loading"; only won-discounts.js sets "ready"
-  after it initialised window.WonDiscounts, so "ready" proves the JS ran.
-
-  The config is the MVP 3 contract K5 app-data metafield (owner
-  AppInstallation, namespace won_discounts, key storefront_config). App-data
-  metafields use a plain namespace, never $app.
+  App embed for Won Discounts. MVP 0: the root marker (rendered "loading";
+  won-discounts.js sets "ready", so "ready" proves the script ran) and the
+  storefront config (contract K5: the app-data metafield, plain namespace,
+  never $app). MVP 4 (contract R7/R8): when the config offers rewards, the cart
+  panel's data — the rewards, each gift variant's title and availability
+  (all_products[handle]: at most 20 handles a page, F-R2), the cart currency's
+  minor digits, the texts, the app proxy path — and won-discounts-cart.js.
+  The embed never changes the cart by itself (SF-1): the cart script writes
+  only in answer to the customer. Notes: extensions/won-discounts-storefront/README.md
 {% endcomment %}
 
 {% liquid
@@ -20,6 +16,21 @@
     assign won_discounts_config = '{}'
   else
     assign won_discounts_config = won_discounts_config_raw | json
+  endif
+  assign rw = won_discounts_config_raw.rewards
+  assign cur = cart.currency.iso_code
+  assign exp = 2
+  assign exp0 = 'BIF,CLP,DJF,GNF,ISK,JPY,KMF,KRW,PYG,RWF,UGX,VND,VUV,XAF,XOF,XPF' | split: ','
+  assign exp3 = 'BHD,IQD,JOD,KWD,LYD,OMR,TND' | split: ','
+  if exp0 contains cur
+    assign exp = 0
+  elsif exp3 contains cur
+    assign exp = 3
+  endif
+  if routes.root_url == '/'
+    assign proxy = '/apps/won-discounts/cart-plan'
+  else
+    assign proxy = routes.root_url | append: '/apps/won-discounts/cart-plan'
   endif
 %}
 
@@ -31,6 +42,51 @@
   hidden
 ></div>
 <script type="application/json" id="won-discounts-config">{{ won_discounts_config }}</script>
+
+{%- if rw != blank -%}
+  {%- capture won_gift_facts -%}
+    {%- assign sep = '' -%}
+    {%- for g in rw.gifts -%}
+      {%- for o in g.c -%}
+        {%- assign gp = all_products[o.h] -%}
+        {%- for gv in gp.variants -%}
+          {%- if gv.id == o.v -%}
+            {%- liquid
+              assign title = gp.title
+              unless gv.title == 'Default Title'
+                assign title = title | append: ' — ' | append: gv.title
+              endunless
+            -%}
+            {{- sep -}}"{{ o.v }}":{"t":{{ title | json }},"a":{{ gv.available }}}
+            {%- assign sep = ',' -%}
+          {%- endif -%}
+        {%- endfor -%}
+      {%- endfor -%}
+      {%- if g.f != blank -%}
+        {%- assign gp = all_products[g.f.h] -%}
+        {%- for gv in gp.variants -%}
+          {%- if gv.id == g.f.v -%}
+            {{- sep -}}"{{ g.f.v }}":{"t":{{ gp.title | json }},"a":{{ gv.available }}}
+            {%- assign sep = ',' -%}
+          {%- endif -%}
+        {%- endfor -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endcapture -%}
+  {%- capture won_cart_data -%}
+    {"on":true,"rw":{{ rw | json }},"exp":{{ exp }},"lang":{{ request.locale.iso_code | json }},"proxy":{{ proxy | json }},"g":{ {{- won_gift_facts -}} },"tx":{
+    "ship_left":{{ 'cart.ship_left' | t | json }},"ship_done":{{ 'cart.ship_done' | t | json }},
+    "gift_left":{{ 'cart.gift_left' | t | json }},"gift_done":{{ 'cart.gift_done' | t | json }},
+    "gift_decline":{{ 'cart.gift_decline' | t | json }},"gift_declined":{{ 'cart.gift_declined' | t | json }},
+    "gift_pick":{{ 'cart.gift_pick' | t | json }},"gift_add":{{ 'cart.gift_add' | t | json }},"gift_soldout":{{ 'cart.gift_soldout' | t | json }},
+    "code_label":{{ 'cart.code_label' | t | json }},"code_apply":{{ 'cart.code_apply' | t | json }},"code_remove":{{ 'cart.code_remove' | t | json }},
+    "code_invalid":{{ 'cart.code_invalid' | t | json }},"code_loses_gift":{{ 'cart.code_loses_gift' | t | json }},
+    "keep_code":{{ 'cart.keep_code' | t | json }},"drop_code":{{ 'cart.drop_code' | t | json }},"saved":{{ 'cart.saved' | t | json }},
+    "hint":{{ 'cart.hint' | t | json }},"hint_capped":{{ 'cart.hint_capped' | t | json }}}}
+  {%- endcapture -%}
+  <script type="application/json" id="won-discounts-cart-data">{{ won_cart_data | replace: '</', '<\/' }}</script>
+  <script src="{{ 'won-discounts-cart.js' | asset_url }}" defer></script>
+{%- endif -%}
 
 {% schema %}
 {

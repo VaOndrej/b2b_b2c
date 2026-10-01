@@ -22,7 +22,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ASSETS = path.join(HERE, "../../extensions/won-discounts-storefront/assets");
 // won-discounts-tiers-core.js = the tiers block's pure logic, split off (fix round 1) so each
 // file stays under the raw threshold; the block loads it with a deferred <script>.
-const STOREFRONT_JS = ["won-discounts.js", "won-discounts-tiers.js", "won-discounts-tiers-core.js"];
+const STOREFRONT_JS = ["won-discounts.js", "won-discounts-cart.js", "won-discounts-tiers.js", "won-discounts-tiers-core.js"];
 const GZIP_BUDGET_BYTES = 10 * 1024; // 10240 B ceiling (SF-2), all files together
 const RAW_THEME_CHECK_BYTES = 10_000; // AssetSizeAppBlockJavaScript default, per file
 

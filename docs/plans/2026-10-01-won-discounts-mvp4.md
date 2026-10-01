@@ -97,8 +97,9 @@ rewards?: {
 a `available` varianty do JSON embedu (nejvýš 20 handle na stránku → strop `giftTiers × 4` drží ≤ 40 — **ověřit
 F-R2**; nad 20 se zbytek doplní z `/products/<h>.js` až při otevření košíku). Vyprodaná nabídka se nenabízí, poctivá věta
 „Dárek je vyprodaný“, pak záložní (A4). Odmítnutí: atribut košíku `_won_gift_declined` = id úrovní oddělená čárkou
-(attributes se přepisují celé — embed vždy sloučí se stávajícími z `/cart.js`). Toasts (A11): atribut košíku
-`_gift_progress` = `"<base>/<threshold>"` nejbližší nedosažené úrovně (jen čtení pro jiné appky, bez závislosti).
+(attributes se přepisují celé — embed vždy sloučí se stávajícími z `/cart.js`). Toasts (A11, upřesněno při Task 5):
+Won Toasts pozná dárkový řádek podle **vlastnosti řádku** `_gift_progress` (toast ho přeskočí, milník „dárek“ bere z jeho
+přítomnosti) — dárek dostane `_won_gift` + `_gift_progress: "1"`, žádný další zápis do košíku.
 
 **R8 — Košík v embedu (DOM, chování).** Jeden panel `[data-won-discounts-cart]` na dvou místech:
 - stránka košíku: app blok `cart_rewards` (cíl `section`, šablona `cart`; Dawn `main-cart-footer`, Horizon `main-cart` mají

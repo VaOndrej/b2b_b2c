@@ -8,5 +8,26 @@
     "live": "{qty} for {total} ({price} each)",
     "live_cart": "{qty} for {total} ({price} each). Counting {cart} already in your cart.",
     "next": "Add {count} more to pay {price} each."
+  },
+  "cart": {
+    "ship_left": "{amount} more for free shipping.",
+    "ship_done": "You have free shipping.",
+    "gift_left": "{amount} more for a free gift.",
+    "gift_done": "Your free gift is in the cart.",
+    "gift_decline": "No thanks",
+    "gift_declined": "You declined the free gift.",
+    "gift_pick": "Choose your free gift:",
+    "gift_add": "Add gift",
+    "gift_soldout": "Sorry, the gift is sold out.",
+    "code_label": "Discount code",
+    "code_apply": "Apply",
+    "code_remove": "Remove",
+    "code_invalid": "Code {code} does not apply to this cart.",
+    "code_loses_gift": "With code {code} your order drops below the gift threshold and you lose the free gift.",
+    "keep_code": "Keep the code (no gift)",
+    "drop_code": "Remove the code",
+    "saved": "You save {amount}.",
+    "hint": "Add {n} more {product} to get {value}.",
+    "hint_capped": "Add {n} more {product} for a lower price."
   }
 }
