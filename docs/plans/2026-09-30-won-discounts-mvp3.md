@@ -43,7 +43,7 @@ App Bridge deep link `addAppBlockId`, `@won/testing` runner s overlayem šablony
 - Storefront: SF-1 embed ani blok nemění košík; SF-2 JS ≤ 10 kB gz celkem; vlastní markery
   `data-won-discounts-*`; rescan na `shopify:product:select` (+ `event.promise`), formulář přes
   `input.form`; texty cs/sk/en z configu s fallbackem na locales extensionu; theme check 0.
-- Rozpočty funkce jako MVP 2 (běžné fixtures ≤ 70 %, nejtěžší ≤ 85 % škálovaného limitu s reálnými
+- Rozpočty funkce jako MVP 2 (běžné fixtures ≤ 70 %, realistické nejtěžší ≤ 90 %, žádný zkonstruovaný tvar ≥ 100 % škálovaného limitu s reálnými
   id; dotaz ≤ 30 a ≤ 3000 znaků včetně komentářů; Wasm < 256 kB; shop config ≤ 9 000 B).
 - Admin: cs + en, §4c, §13 (tlačítko „Přidat tabulku na stránku produktu“ = deep link do editoru
   tématu s `addAppBlockId`), §16, §17; náhled bloku věrný tématu (C5 fallback: tokeny tématu ze
