@@ -1,5 +1,5 @@
 {
-  "scenario": "Instruction budget, the Pro worst case with margin protection (drift audit P1/P2): 200 lines, each with 4 rule refs, the Pro stack VIP + S_x, a cost price, 4 marginRefs of 50 collections with a margin setting (as many as the sync's transition bridge writes: the old and the new decisive ones) and 2–3 variant-level refs of other variants of its product: the input filled to Shopify's limit of 128 kB of MessagePack; 37 rules, a 10 % order discount. The exact output is over the budget: every stack goes to its top rule. The code rule's 25 codes of 64 Czech letters with diacritics (the longest a Won code can be), all entered in lower case: each normalized, hashed and matched (the config keeps 50 collections within its 9 000 B). Quantity tiers on every line (MVP 3): 10 sets of 5 breaks (a global one counted per product; scoped ones per line, per product and across the cart, percents and CZK/EUR amounts), 3 of 4 lines naming a scoped set by tierRef; every tier below the line's Pro stack. With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.",
+  "scenario": "Instruction budget, the Pro worst case with margin protection (drift audit P1/P2): 200 lines, each with 4 rule refs, the Pro stack VIP + S_x, a cost price, 4 marginRefs of 50 collections with a margin setting (as many as the sync's transition bridge writes: the old and the new decisive ones) and 2–3 variant-level refs of other variants of its product: the input filled to Shopify's limit of 128 kB of MessagePack; 37 rules, a 10 % order discount. The exact output is over the budget: every stack goes to its top rule. The code rule's 25 codes of 64 Czech letters with diacritics (the longest a Won code can be), all entered in lower case: each normalized, hashed and matched (the config keeps 50 collections within its 9 000 B). Quantity tiers on every line (MVP 3): 7 sets of 5 breaks (a global one counted per product; scoped ones per line, per product and across the cart, percents and CZK/EUR amounts), 3 of 4 lines naming a scoped set by tierRef; every tier below the line's Pro stack. With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.",
   "payload": {
     "export": "cart-lines-discounts-generate-run",
     "target": "cart.lines.discounts.generate.run",
@@ -653,18 +653,10 @@
                       ],
                       [
                         3,
-                        3
-                      ],
-                      [
-                        5,
                         4
                       ],
                       [
-                        10,
-                        5
-                      ],
-                      [
-                        20,
+                        5,
                         6
                       ]
                     ]
@@ -687,26 +679,12 @@
                       [
                         3,
                         [
-                          400,
-                          15
-                        ]
-                      ],
-                      [
-                        5,
-                        [
                           500,
                           20
                         ]
                       ],
                       [
-                        10,
-                        [
-                          600,
-                          25
-                        ]
-                      ],
-                      [
-                        20,
+                        5,
                         [
                           800,
                           30
@@ -725,18 +703,10 @@
                       ],
                       [
                         3,
-                        4
-                      ],
-                      [
-                        5,
                         5
                       ],
                       [
-                        10,
-                        6
-                      ],
-                      [
-                        20,
+                        5,
                         8
                       ]
                     ]
@@ -759,26 +729,12 @@
                       [
                         3,
                         [
-                          400,
-                          15
-                        ]
-                      ],
-                      [
-                        5,
-                        [
                           500,
                           20
                         ]
                       ],
                       [
-                        10,
-                        [
-                          600,
-                          25
-                        ]
-                      ],
-                      [
-                        20,
+                        5,
                         [
                           800,
                           30
@@ -797,18 +753,10 @@
                       ],
                       [
                         3,
-                        4
-                      ],
-                      [
-                        5,
                         5
                       ],
                       [
-                        10,
-                        6
-                      ],
-                      [
-                        20,
+                        5,
                         8
                       ]
                     ]
@@ -831,26 +779,12 @@
                       [
                         3,
                         [
-                          400,
-                          15
-                        ]
-                      ],
-                      [
-                        5,
-                        [
                           500,
                           20
                         ]
                       ],
                       [
-                        10,
-                        [
-                          600,
-                          25
-                        ]
-                      ],
-                      [
-                        20,
+                        5,
                         [
                           800,
                           30
@@ -869,136 +803,11 @@
                       ],
                       [
                         3,
-                        4
-                      ],
-                      [
-                        5,
                         5
                       ],
                       [
-                        10,
-                        6
-                      ],
-                      [
-                        20,
+                        5,
                         8
-                      ]
-                    ]
-                  ],
-                  [
-                    "t_206c01c47270333cc677",
-                    "line",
-                    [
-                      "CZK",
-                      "EUR"
-                    ],
-                    [
-                      [
-                        2,
-                        [
-                          300,
-                          10
-                        ]
-                      ],
-                      [
-                        3,
-                        [
-                          400,
-                          15
-                        ]
-                      ],
-                      [
-                        5,
-                        [
-                          500,
-                          20
-                        ]
-                      ],
-                      [
-                        10,
-                        [
-                          600,
-                          25
-                        ]
-                      ],
-                      [
-                        20,
-                        [
-                          800,
-                          30
-                        ]
-                      ]
-                    ]
-                  ],
-                  [
-                    "t_28fdae5a9bf4bf6235c5",
-                    "product",
-                    [],
-                    [
-                      [
-                        2,
-                        3
-                      ],
-                      [
-                        3,
-                        4
-                      ],
-                      [
-                        5,
-                        5
-                      ],
-                      [
-                        10,
-                        6
-                      ],
-                      [
-                        20,
-                        8
-                      ]
-                    ]
-                  ],
-                  [
-                    "t_53b951b434dde2f8972f",
-                    "cart",
-                    [
-                      "CZK",
-                      "EUR"
-                    ],
-                    [
-                      [
-                        2,
-                        [
-                          300,
-                          10
-                        ]
-                      ],
-                      [
-                        3,
-                        [
-                          400,
-                          15
-                        ]
-                      ],
-                      [
-                        5,
-                        [
-                          500,
-                          20
-                        ]
-                      ],
-                      [
-                        10,
-                        [
-                          600,
-                          25
-                        ]
-                      ],
-                      [
-                        20,
-                        [
-                          800,
-                          30
-                        ]
                       ]
                     ]
                   ]
@@ -1540,7 +1349,7 @@
                         "r_c138ef0a711cfdc3bc29"
                       ]
                     },
-                    "tierRef": "t_206c01c47270333cc677"
+                    "tierRef": "t_3cc070c2f20fb3d1de14"
                   }
                 }
               }
@@ -1591,7 +1400,7 @@
                         "r_32e323ea191cbe62b3b4"
                       ]
                     },
-                    "tierRef": "t_28fdae5a9bf4bf6235c5"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -1692,7 +1501,7 @@
                         "r_e72b62455eab3688db1f"
                       ]
                     },
-                    "tierRef": "t_3cc070c2f20fb3d1de14"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -1743,7 +1552,7 @@
                         "r_039b127f577c8be8b081"
                       ]
                     },
-                    "tierRef": "t_782ae0009bbdaac6ad86"
+                    "tierRef": "t_29260facf9ceb387d5c1"
                   }
                 }
               }
@@ -1794,7 +1603,7 @@
                         "r_fca3e73ac29ab30cad03"
                       ]
                     },
-                    "tierRef": "t_67d93cc563eeb90e360f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -1895,7 +1704,7 @@
                         "r_35ffb6d4ec30f83cf76b"
                       ]
                     },
-                    "tierRef": "t_29260facf9ceb387d5c1"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -1946,7 +1755,7 @@
                         "r_7ec9f530f8b14e813d6a"
                       ]
                     },
-                    "tierRef": "t_682f8ea7267d90973c77"
+                    "tierRef": "t_67d93cc563eeb90e360f"
                   }
                 }
               }
@@ -1997,7 +1806,7 @@
                         "r_ef1d7c15cc23abe93784"
                       ]
                     },
-                    "tierRef": "t_206c01c47270333cc677"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -2098,7 +1907,7 @@
                         "r_8ec81a4c7974046b6a8c"
                       ]
                     },
-                    "tierRef": "t_53b951b434dde2f8972f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -2504,7 +2313,7 @@
                         "r_9350563c171917851a49"
                       ]
                     },
-                    "tierRef": "t_28fdae5a9bf4bf6235c5"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -2555,7 +2364,7 @@
                         "r_6eff3b66bc1efa99f777"
                       ]
                     },
-                    "tierRef": "t_53b951b434dde2f8972f"
+                    "tierRef": "t_67d93cc563eeb90e360f"
                   }
                 }
               }
@@ -2606,7 +2415,7 @@
                         "r_f3a31531621de8721585"
                       ]
                     },
-                    "tierRef": "t_3cc070c2f20fb3d1de14"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -2707,7 +2516,7 @@
                         "r_59db893986720f6aafa2"
                       ]
                     },
-                    "tierRef": "t_67d93cc563eeb90e360f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -2758,7 +2567,7 @@
                         "r_1574d2084183cc915ce0"
                       ]
                     },
-                    "tierRef": "t_ed10f533e57ca41cb974"
+                    "tierRef": "t_3cc070c2f20fb3d1de14"
                   }
                 }
               }
@@ -2809,7 +2618,7 @@
                         "r_c138ef0a711cfdc3bc29"
                       ]
                     },
-                    "tierRef": "t_29260facf9ceb387d5c1"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -2910,7 +2719,7 @@
                         "r_725a0bffb1182b209bb8"
                       ]
                     },
-                    "tierRef": "t_206c01c47270333cc677"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -2961,7 +2770,7 @@
                         "r_e72b62455eab3688db1f"
                       ]
                     },
-                    "tierRef": "t_28fdae5a9bf4bf6235c5"
+                    "tierRef": "t_29260facf9ceb387d5c1"
                   }
                 }
               }
@@ -3012,7 +2821,7 @@
                         "r_039b127f577c8be8b081"
                       ]
                     },
-                    "tierRef": "t_53b951b434dde2f8972f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -3367,7 +3176,7 @@
                         "r_8ec81a4c7974046b6a8c"
                       ]
                     },
-                    "tierRef": "t_206c01c47270333cc677"
+                    "tierRef": "t_3cc070c2f20fb3d1de14"
                   }
                 }
               }
@@ -3418,7 +3227,7 @@
                         "r_2c0edde62aab12945ed5"
                       ]
                     },
-                    "tierRef": "t_28fdae5a9bf4bf6235c5"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -3519,7 +3328,7 @@
                         "r_e0d32550c671a04d2504"
                       ]
                     },
-                    "tierRef": "t_3cc070c2f20fb3d1de14"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -3570,7 +3379,7 @@
                         "r_b4fff9d9747191e71275"
                       ]
                     },
-                    "tierRef": "t_782ae0009bbdaac6ad86"
+                    "tierRef": "t_29260facf9ceb387d5c1"
                   }
                 }
               }
@@ -3621,7 +3430,7 @@
                         "r_f07e8cdcfd298af1e399"
                       ]
                     },
-                    "tierRef": "t_67d93cc563eeb90e360f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -3722,7 +3531,7 @@
                         "r_cdfd48f1940214cbadc3"
                       ]
                     },
-                    "tierRef": "t_29260facf9ceb387d5c1"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -3773,7 +3582,7 @@
                         "r_9350563c171917851a49"
                       ]
                     },
-                    "tierRef": "t_682f8ea7267d90973c77"
+                    "tierRef": "t_67d93cc563eeb90e360f"
                   }
                 }
               }
@@ -3824,7 +3633,7 @@
                         "r_6eff3b66bc1efa99f777"
                       ]
                     },
-                    "tierRef": "t_206c01c47270333cc677"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -3925,7 +3734,7 @@
                         "r_330d200efa0de8e63c88"
                       ]
                     },
-                    "tierRef": "t_53b951b434dde2f8972f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -4331,7 +4140,7 @@
                         "r_fca3e73ac29ab30cad03"
                       ]
                     },
-                    "tierRef": "t_28fdae5a9bf4bf6235c5"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -4382,7 +4191,7 @@
                         "r_865c46abee6906c4a5e4"
                       ]
                     },
-                    "tierRef": "t_53b951b434dde2f8972f"
+                    "tierRef": "t_67d93cc563eeb90e360f"
                   }
                 }
               }
@@ -4433,7 +4242,7 @@
                         "r_35ffb6d4ec30f83cf76b"
                       ]
                     },
-                    "tierRef": "t_3cc070c2f20fb3d1de14"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -4534,7 +4343,7 @@
                         "r_ef1d7c15cc23abe93784"
                       ]
                     },
-                    "tierRef": "t_67d93cc563eeb90e360f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -4585,7 +4394,7 @@
                         "r_e53b192958f01ee36118"
                       ]
                     },
-                    "tierRef": "t_ed10f533e57ca41cb974"
+                    "tierRef": "t_3cc070c2f20fb3d1de14"
                   }
                 }
               }
@@ -4631,9 +4440,12 @@
                       ],
                       "48468679006701": [
                         "r_e53b192958f01ee36118"
+                      ],
+                      "48468679006702": [
+                        "r_8ec81a4c7974046b6a8c"
                       ]
                     },
-                    "tierRef": "t_29260facf9ceb387d5c1"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -4679,6 +4491,9 @@
                       ],
                       "48468679006801": [
                         "r_8ec81a4c7974046b6a8c"
+                      ],
+                      "48468679006802": [
+                        "r_2c0edde62aab12945ed5"
                       ]
                     }
                   }
@@ -4726,9 +4541,12 @@
                       ],
                       "48468679006901": [
                         "r_2c0edde62aab12945ed5"
+                      ],
+                      "48468679006902": [
+                        "r_f76e4fad2caa92940742"
                       ]
                     },
-                    "tierRef": "t_206c01c47270333cc677"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -4774,9 +4592,12 @@
                       ],
                       "48468679007001": [
                         "r_f76e4fad2caa92940742"
+                      ],
+                      "48468679007002": [
+                        "r_e0d32550c671a04d2504"
                       ]
                     },
-                    "tierRef": "t_28fdae5a9bf4bf6235c5"
+                    "tierRef": "t_29260facf9ceb387d5c1"
                   }
                 }
               }
@@ -4822,9 +4643,12 @@
                       ],
                       "48468679007101": [
                         "r_e0d32550c671a04d2504"
+                      ],
+                      "48468679007102": [
+                        "r_b4fff9d9747191e71275"
                       ]
                     },
-                    "tierRef": "t_53b951b434dde2f8972f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -4870,6 +4694,9 @@
                       ],
                       "48468679007201": [
                         "r_b4fff9d9747191e71275"
+                      ],
+                      "48468679007202": [
+                        "r_f07e8cdcfd298af1e399"
                       ]
                     }
                   }
@@ -4917,6 +4744,9 @@
                       ],
                       "48468679007301": [
                         "r_f07e8cdcfd298af1e399"
+                      ],
+                      "48468679007302": [
+                        "r_97990b42c2dab84a25be"
                       ]
                     },
                     "tierRef": "t_782ae0009bbdaac6ad86"
@@ -5158,7 +4988,7 @@
                         "r_f3a31531621de8721585"
                       ]
                     },
-                    "tierRef": "t_206c01c47270333cc677"
+                    "tierRef": "t_3cc070c2f20fb3d1de14"
                   }
                 }
               }
@@ -5206,7 +5036,7 @@
                         "r_330d200efa0de8e63c88"
                       ]
                     },
-                    "tierRef": "t_28fdae5a9bf4bf6235c5"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -5301,7 +5131,7 @@
                         "r_1574d2084183cc915ce0"
                       ]
                     },
-                    "tierRef": "t_3cc070c2f20fb3d1de14"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -5349,7 +5179,7 @@
                         "r_c138ef0a711cfdc3bc29"
                       ]
                     },
-                    "tierRef": "t_782ae0009bbdaac6ad86"
+                    "tierRef": "t_29260facf9ceb387d5c1"
                   }
                 }
               }
@@ -5397,7 +5227,7 @@
                         "r_32e323ea191cbe62b3b4"
                       ]
                     },
-                    "tierRef": "t_67d93cc563eeb90e360f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -5492,7 +5322,7 @@
                         "r_e72b62455eab3688db1f"
                       ]
                     },
-                    "tierRef": "t_29260facf9ceb387d5c1"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -5540,7 +5370,7 @@
                         "r_039b127f577c8be8b081"
                       ]
                     },
-                    "tierRef": "t_682f8ea7267d90973c77"
+                    "tierRef": "t_67d93cc563eeb90e360f"
                   }
                 }
               }
@@ -5588,7 +5418,7 @@
                         "r_fca3e73ac29ab30cad03"
                       ]
                     },
-                    "tierRef": "t_206c01c47270333cc677"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -5683,7 +5513,7 @@
                         "r_35ffb6d4ec30f83cf76b"
                       ]
                     },
-                    "tierRef": "t_53b951b434dde2f8972f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -6065,7 +5895,7 @@
                         "r_b4fff9d9747191e71275"
                       ]
                     },
-                    "tierRef": "t_28fdae5a9bf4bf6235c5"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -6113,7 +5943,7 @@
                         "r_f07e8cdcfd298af1e399"
                       ]
                     },
-                    "tierRef": "t_53b951b434dde2f8972f"
+                    "tierRef": "t_67d93cc563eeb90e360f"
                   }
                 }
               }
@@ -6161,7 +5991,7 @@
                         "r_97990b42c2dab84a25be"
                       ]
                     },
-                    "tierRef": "t_3cc070c2f20fb3d1de14"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -6256,7 +6086,7 @@
                         "r_9350563c171917851a49"
                       ]
                     },
-                    "tierRef": "t_67d93cc563eeb90e360f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -6304,7 +6134,7 @@
                         "r_6eff3b66bc1efa99f777"
                       ]
                     },
-                    "tierRef": "t_ed10f533e57ca41cb974"
+                    "tierRef": "t_3cc070c2f20fb3d1de14"
                   }
                 }
               }
@@ -6352,7 +6182,7 @@
                         "r_f3a31531621de8721585"
                       ]
                     },
-                    "tierRef": "t_29260facf9ceb387d5c1"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -6447,7 +6277,7 @@
                         "r_59db893986720f6aafa2"
                       ]
                     },
-                    "tierRef": "t_206c01c47270333cc677"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -6495,7 +6325,7 @@
                         "r_1574d2084183cc915ce0"
                       ]
                     },
-                    "tierRef": "t_28fdae5a9bf4bf6235c5"
+                    "tierRef": "t_29260facf9ceb387d5c1"
                   }
                 }
               }
@@ -6543,7 +6373,7 @@
                         "r_c138ef0a711cfdc3bc29"
                       ]
                     },
-                    "tierRef": "t_53b951b434dde2f8972f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -6877,7 +6707,7 @@
                         "r_35ffb6d4ec30f83cf76b"
                       ]
                     },
-                    "tierRef": "t_206c01c47270333cc677"
+                    "tierRef": "t_3cc070c2f20fb3d1de14"
                   }
                 }
               }
@@ -6925,7 +6755,7 @@
                         "r_7ec9f530f8b14e813d6a"
                       ]
                     },
-                    "tierRef": "t_28fdae5a9bf4bf6235c5"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -7020,7 +6850,7 @@
                         "r_e53b192958f01ee36118"
                       ]
                     },
-                    "tierRef": "t_3cc070c2f20fb3d1de14"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -7068,7 +6898,7 @@
                         "r_8ec81a4c7974046b6a8c"
                       ]
                     },
-                    "tierRef": "t_782ae0009bbdaac6ad86"
+                    "tierRef": "t_29260facf9ceb387d5c1"
                   }
                 }
               }
@@ -7116,7 +6946,7 @@
                         "r_2c0edde62aab12945ed5"
                       ]
                     },
-                    "tierRef": "t_67d93cc563eeb90e360f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -7211,7 +7041,7 @@
                         "r_e0d32550c671a04d2504"
                       ]
                     },
-                    "tierRef": "t_29260facf9ceb387d5c1"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -7259,7 +7089,7 @@
                         "r_b4fff9d9747191e71275"
                       ]
                     },
-                    "tierRef": "t_682f8ea7267d90973c77"
+                    "tierRef": "t_67d93cc563eeb90e360f"
                   }
                 }
               }
@@ -7307,7 +7137,7 @@
                         "r_f07e8cdcfd298af1e399"
                       ]
                     },
-                    "tierRef": "t_206c01c47270333cc677"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -7402,7 +7232,7 @@
                         "r_cdfd48f1940214cbadc3"
                       ]
                     },
-                    "tierRef": "t_53b951b434dde2f8972f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -7784,7 +7614,7 @@
                         "r_32e323ea191cbe62b3b4"
                       ]
                     },
-                    "tierRef": "t_28fdae5a9bf4bf6235c5"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -7832,7 +7662,7 @@
                         "r_725a0bffb1182b209bb8"
                       ]
                     },
-                    "tierRef": "t_53b951b434dde2f8972f"
+                    "tierRef": "t_67d93cc563eeb90e360f"
                   }
                 }
               }
@@ -7880,7 +7710,7 @@
                         "r_e72b62455eab3688db1f"
                       ]
                     },
-                    "tierRef": "t_3cc070c2f20fb3d1de14"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -7975,7 +7805,7 @@
                         "r_fca3e73ac29ab30cad03"
                       ]
                     },
-                    "tierRef": "t_67d93cc563eeb90e360f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -8023,7 +7853,7 @@
                         "r_865c46abee6906c4a5e4"
                       ]
                     },
-                    "tierRef": "t_ed10f533e57ca41cb974"
+                    "tierRef": "t_3cc070c2f20fb3d1de14"
                   }
                 }
               }
@@ -8071,7 +7901,7 @@
                         "r_35ffb6d4ec30f83cf76b"
                       ]
                     },
-                    "tierRef": "t_29260facf9ceb387d5c1"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -8166,7 +7996,7 @@
                         "r_ef1d7c15cc23abe93784"
                       ]
                     },
-                    "tierRef": "t_206c01c47270333cc677"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -8214,7 +8044,7 @@
                         "r_e53b192958f01ee36118"
                       ]
                     },
-                    "tierRef": "t_28fdae5a9bf4bf6235c5"
+                    "tierRef": "t_29260facf9ceb387d5c1"
                   }
                 }
               }
@@ -8262,7 +8092,7 @@
                         "r_8ec81a4c7974046b6a8c"
                       ]
                     },
-                    "tierRef": "t_53b951b434dde2f8972f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -8596,7 +8426,7 @@
                         "r_cdfd48f1940214cbadc3"
                       ]
                     },
-                    "tierRef": "t_206c01c47270333cc677"
+                    "tierRef": "t_3cc070c2f20fb3d1de14"
                   }
                 }
               }
@@ -8644,7 +8474,7 @@
                         "r_9350563c171917851a49"
                       ]
                     },
-                    "tierRef": "t_28fdae5a9bf4bf6235c5"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -8739,7 +8569,7 @@
                         "r_f3a31531621de8721585"
                       ]
                     },
-                    "tierRef": "t_3cc070c2f20fb3d1de14"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -8787,7 +8617,7 @@
                         "r_330d200efa0de8e63c88"
                       ]
                     },
-                    "tierRef": "t_782ae0009bbdaac6ad86"
+                    "tierRef": "t_29260facf9ceb387d5c1"
                   }
                 }
               }
@@ -8835,7 +8665,7 @@
                         "r_59db893986720f6aafa2"
                       ]
                     },
-                    "tierRef": "t_67d93cc563eeb90e360f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -8930,7 +8760,7 @@
                         "r_c138ef0a711cfdc3bc29"
                       ]
                     },
-                    "tierRef": "t_29260facf9ceb387d5c1"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -8978,7 +8808,7 @@
                         "r_32e323ea191cbe62b3b4"
                       ]
                     },
-                    "tierRef": "t_682f8ea7267d90973c77"
+                    "tierRef": "t_67d93cc563eeb90e360f"
                   }
                 }
               }
@@ -9026,7 +8856,7 @@
                         "r_725a0bffb1182b209bb8"
                       ]
                     },
-                    "tierRef": "t_206c01c47270333cc677"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -9121,7 +8951,7 @@
                         "r_039b127f577c8be8b081"
                       ]
                     },
-                    "tierRef": "t_53b951b434dde2f8972f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -9503,7 +9333,7 @@
                         "r_2c0edde62aab12945ed5"
                       ]
                     },
-                    "tierRef": "t_28fdae5a9bf4bf6235c5"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -9551,7 +9381,7 @@
                         "r_f76e4fad2caa92940742"
                       ]
                     },
-                    "tierRef": "t_53b951b434dde2f8972f"
+                    "tierRef": "t_67d93cc563eeb90e360f"
                   }
                 }
               }
@@ -9599,7 +9429,7 @@
                         "r_e0d32550c671a04d2504"
                       ]
                     },
-                    "tierRef": "t_3cc070c2f20fb3d1de14"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -9694,7 +9524,7 @@
                         "r_f07e8cdcfd298af1e399"
                       ]
                     },
-                    "tierRef": "t_67d93cc563eeb90e360f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -9742,7 +9572,7 @@
                         "r_97990b42c2dab84a25be"
                       ]
                     },
-                    "tierRef": "t_ed10f533e57ca41cb974"
+                    "tierRef": "t_3cc070c2f20fb3d1de14"
                   }
                 }
               }
@@ -9790,7 +9620,7 @@
                         "r_cdfd48f1940214cbadc3"
                       ]
                     },
-                    "tierRef": "t_29260facf9ceb387d5c1"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -9885,7 +9715,7 @@
                         "r_6eff3b66bc1efa99f777"
                       ]
                     },
-                    "tierRef": "t_206c01c47270333cc677"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -9933,7 +9763,7 @@
                         "r_f3a31531621de8721585"
                       ]
                     },
-                    "tierRef": "t_28fdae5a9bf4bf6235c5"
+                    "tierRef": "t_29260facf9ceb387d5c1"
                   }
                 }
               }
@@ -9981,7 +9811,7 @@
                         "r_330d200efa0de8e63c88"
                       ]
                     },
-                    "tierRef": "t_53b951b434dde2f8972f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -10315,7 +10145,7 @@
                         "r_039b127f577c8be8b081"
                       ]
                     },
-                    "tierRef": "t_206c01c47270333cc677"
+                    "tierRef": "t_3cc070c2f20fb3d1de14"
                   }
                 }
               }
@@ -10363,7 +10193,7 @@
                         "r_fca3e73ac29ab30cad03"
                       ]
                     },
-                    "tierRef": "t_28fdae5a9bf4bf6235c5"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -10458,7 +10288,7 @@
                         "r_35ffb6d4ec30f83cf76b"
                       ]
                     },
-                    "tierRef": "t_3cc070c2f20fb3d1de14"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -10506,7 +10336,7 @@
                         "r_7ec9f530f8b14e813d6a"
                       ]
                     },
-                    "tierRef": "t_782ae0009bbdaac6ad86"
+                    "tierRef": "t_29260facf9ceb387d5c1"
                   }
                 }
               }
@@ -10554,7 +10384,7 @@
                         "r_ef1d7c15cc23abe93784"
                       ]
                     },
-                    "tierRef": "t_67d93cc563eeb90e360f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }
@@ -10649,7 +10479,7 @@
                         "r_8ec81a4c7974046b6a8c"
                       ]
                     },
-                    "tierRef": "t_29260facf9ceb387d5c1"
+                    "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
               }
@@ -10697,7 +10527,7 @@
                         "r_2c0edde62aab12945ed5"
                       ]
                     },
-                    "tierRef": "t_682f8ea7267d90973c77"
+                    "tierRef": "t_67d93cc563eeb90e360f"
                   }
                 }
               }
@@ -10745,7 +10575,7 @@
                         "r_f76e4fad2caa92940742"
                       ]
                     },
-                    "tierRef": "t_206c01c47270333cc677"
+                    "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
               }
@@ -10840,7 +10670,7 @@
                         "r_b4fff9d9747191e71275"
                       ]
                     },
-                    "tierRef": "t_53b951b434dde2f8972f"
+                    "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
               }

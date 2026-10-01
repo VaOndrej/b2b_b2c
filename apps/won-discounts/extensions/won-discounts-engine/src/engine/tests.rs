@@ -8,6 +8,7 @@
 use shopify_function::run_function_with_input;
 
 use super::cart::{CampaignInput, CartInput, LineInput, LineTier};
+use super::tiers::{resolve_set, SetIndex};
 use super::config::Config;
 use super::emit::{emit_for_node, NodeEmission, NodeRole};
 use super::margin::{ceil_tol, cost_minor_units, margin_floor_unit, resolve_margin, strictest_margin, MarginBasis, MarginRef, MARGIN_TOLERANCE, MAX_MARGIN_REFS};
@@ -94,7 +95,7 @@ fn cart<'a>(lines: &'a [Line], codes: &[&'a str]) -> CartInput<'a> {
                 margin_ref_count: l.margin_refs.len(),
             })
             .collect(),
-        tiers: lines.iter().map(|l| LineTier { tier_ref: l.tier_ref, product_id: l.product }).collect(),
+        tiers: Vec::new(),
         entered_codes: codes.to_vec(),
         campaign: CampaignInput::default(),
         today: Some("2026-10-01"),
@@ -1501,6 +1502,19 @@ fn tier_rules(rules: &str, tiers: &str, extra: &str) -> Config {
     config(&format!(r#"{{"modules": {{"codes": {{"rules": [{rules}]}}, "tiers": {tiers}}}{extra}}}"#))
 }
 
+/// `cart` with each line's tier set resolved against `c` as the function's
+/// reader resolves it (`tiers::resolve_set`, plan-tiers.ts step 1; gift lines none).
+fn tcart<'a>(lines: &'a [Line], codes: &[&'a str], c: &Config) -> CartInput<'a> {
+    let index = SetIndex::of(&c.tiers.sets);
+    CartInput {
+        tiers: lines
+            .iter()
+            .map(|l| LineTier { set: if l.gift { None } else { resolve_set(&c.tiers, &index, l.tier_ref) }, product_id: l.product })
+            .collect(),
+        ..cart(lines, codes)
+    }
+}
+
 /// A line of `product` whose product metafield has `tier_ref` (none: no `tierRef`).
 fn tier_line(id: &'static str, qty: i64, price: i64, product: &'static str, tier_ref: Option<&'static str>, refs: &[&str]) -> Line {
     Line { product, tier_ref, ..line(id, qty, price, refs) }
@@ -1547,7 +1561,7 @@ fn a_line_takes_the_highest_offered_break_its_count_reaches() {
         tier_line("l4", 4, 10000, "P3", None, &[]),
         tier_line("l5", 5, 10000, "P4", None, &[]),
     ];
-    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let plan = plan_cart(tcart(&lines, &[], &c), Some(&c));
     assert_eq!(product_of(&plan, "l2"), None);
     assert_eq!(product_of(&plan, "l3"), Some(("tier:g", &EmittedValue::Percent(10.0), 3000)));
     assert_eq!(product_of(&plan, "l4"), Some(("tier:g", &EmittedValue::Percent(10.0), 4000)));
@@ -1563,7 +1577,7 @@ fn a_line_takes_the_highest_offered_break_its_count_reaches() {
         )
     );
     // In English.
-    let mut en = cart(&lines, &[]);
+    let mut en = tcart(&lines, &[], &c);
     en.locale_en = true;
     let plan = plan_cart(en, Some(&c));
     let messages: Vec<&str> = plan.lines.iter().filter_map(|l| l.product.as_ref()).map(|p| p.message.as_ref()).collect();
@@ -1586,7 +1600,7 @@ fn tiers_count_per_line_per_product_or_across_the_cart() {
         tier_line("d1", 2, 10000, "P4", Some("cart_s"), &[]),
         tier_line("d2", 3, 10000, "P5", Some("cart_s"), &[]),
     ];
-    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let plan = plan_cart(tcart(&lines, &[], &c), Some(&c));
     // Per product: P1's two variants count 3 together; P2 alone 2.
     assert_eq!(product_of(&plan, "a1"), Some(("tier:prod_s", &EmittedValue::Percent(10.0), 2000)));
     assert_eq!(product_of(&plan, "a2"), Some(("tier:prod_s", &EmittedValue::Percent(10.0), 1000)));
@@ -1614,7 +1628,7 @@ fn a_lines_set_is_its_tier_ref_else_the_global_one_and_gifts_and_outlets_count_n
     lines[4].gift = true;
     lines[5].outlet = true;
     let c = tier_rules("", tiers, "");
-    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let plan = plan_cart(tcart(&lines, &[], &c), Some(&c));
     // The global set counts l1 and l7 only (2 < 3): the gift and the outlet line are not in it.
     assert_eq!(product_of(&plan, "l1"), None);
     assert_eq!(product_of(&plan, "l7"), None);
@@ -1625,7 +1639,7 @@ fn a_lines_set_is_its_tier_ref_else_the_global_one_and_gifts_and_outlets_count_n
     assert_eq!(product_of(&plan, "l5"), None);
     // With outlet lines combinable, the outlet line counts and gets the tier too.
     let c = tier_rules("", tiers, r#""engine": {"combination": {"outletWithAnything": true}}"#);
-    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let plan = plan_cart(tcart(&lines, &[], &c), Some(&c));
     for id in ["l1", "l6", "l7"] {
         assert_eq!(product_of(&plan, id), Some(("tier:g", &EmittedValue::Percent(10.0), 1000)), "{id}");
     }
@@ -1636,7 +1650,7 @@ fn a_lines_set_is_its_tier_ref_else_the_global_one_and_gifts_and_outlets_count_n
 fn an_amount_tier_is_per_item_in_the_cart_currency_and_capped_at_the_price() {
     let c = tier_rules("", r#"{"global": "m", "sets": [["m", "line", ["CZK", "EUR"], [[2, [5000, 200]], [5, [8000, null]]]]]}"#, "");
     let lines = [tier_line("l1", 2, 10000, "P1", None, &[]), tier_line("l2", 5, 6000, "P2", None, &[])];
-    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let plan = plan_cart(tcart(&lines, &[], &c), Some(&c));
     assert_eq!(product_of(&plan, "l1"), Some(("tier:m", &EmittedValue::FixedPerItem(5000), 10000)));
     // 80 Kč off a 60 Kč item: the item price; the message names the configured amount.
     assert_eq!(product_of(&plan, "l2"), Some(("tier:m", &EmittedValue::FixedPerItem(6000), 30000)));
@@ -1651,13 +1665,13 @@ fn an_amount_tier_is_per_item_in_the_cart_currency_and_capped_at_the_price() {
     );
     // EUR: the 5-item break has no EUR amount (not offered there), so 5 items reach the 2-item one.
     let eur = [tier_line("l3", 5, 1000, "P3", None, &[])];
-    let mut cart_eur = cart(&eur, &[]);
+    let mut cart_eur = tcart(&eur, &[], &c);
     cart_eur.currency = "EUR".into();
     let plan = plan_cart(cart_eur, Some(&c));
     assert_eq!(product_of(&plan, "l3"), Some(("tier:m", &EmittedValue::FixedPerItem(200), 1000)));
     assert_eq!(plan.lines[0].product.as_ref().unwrap().message, "Od 2 ks \u{2212}2\u{A0}€ za kus");
     // USD: no break is offered.
-    let mut cart_usd = cart(&eur, &[]);
+    let mut cart_usd = tcart(&eur, &[], &c);
     cart_usd.currency = "USD".into();
     assert_eq!(product_of(&plan_cart(cart_usd, Some(&c)), "l3"), None);
 }
@@ -1668,17 +1682,17 @@ fn a_tier_competes_with_rules_never_stacks_and_takes_no_place_in_the_stack_pool(
     // A tie: amount, then priority, then id ("a" < "tier:g" < "z").
     let c = tier_rules(&[pct("a", 10.0, ""), pct("z", 10.0, "")].join(","), &tiers(10.0), "");
     let lines = [tier_line("l1", 1, 10000, "P1", None, &["a"]), tier_line("l2", 1, 10000, "P2", None, &["z"])];
-    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let plan = plan_cart(tcart(&lines, &[], &c), Some(&c));
     assert_eq!(product_of(&plan, "l1").unwrap().0, "a");
     assert_eq!(product_of(&plan, "l2").unwrap().0, "tier:g");
     let c = tier_rules(&[pct("a", 10.0, ""), pct("z", 10.0, r#", "priority": 1"#)].join(","), &tiers(10.0), "");
-    assert_eq!(product_of(&plan_cart(cart(&lines, &[]), Some(&c)), "l2").unwrap().0, "z");
+    assert_eq!(product_of(&plan_cart(tcart(&lines, &[], &c), Some(&c)), "l2").unwrap().0, "z");
     // A Pro stack (15 % + 10 %) beats the tier only with a larger total; a tie keeps the tier.
     let stack = [pct("p", 15.0, r#", "combinesWith": {"ruleIds": ["q"]}"#), pct("q", 10.0, "")].join(",");
     let lines = [tier_line("l1", 1, 10000, "P1", None, &["p", "q"])];
     for (tier, owner, amount) in [(20.0, "p", 2500), (25.0, "tier:g", 2500), (30.0, "tier:g", 3000)] {
         let c = tier_rules(&stack, &tiers(tier), "");
-        let plan = plan_cart(cart(&lines, &[]), Some(&c));
+        let plan = plan_cart(tcart(&lines, &[], &c), Some(&c));
         let (id, _, got) = product_of(&plan, "l1").unwrap();
         assert_eq!((id, got), (owner, amount), "tier {tier} %");
     }
@@ -1687,14 +1701,14 @@ fn a_tier_competes_with_rules_never_stacks_and_takes_no_place_in_the_stack_pool(
     let mesh: Vec<String> = ids.iter().enumerate().map(|(k, id)| pct(id, (10 - k) as f64, &mesh_link(&ids, k))).collect();
     let lines = [tier_line("l1", 1, 100000, "P1", None, &ids)];
     let c = tier_rules(&mesh.join(","), &tiers(11.0), "");
-    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let plan = plan_cart(tcart(&lines, &[], &c), Some(&c));
     let stack = plan.lines[0].product.as_ref().unwrap();
     assert_eq!(stack.components.iter().map(|c| plan.rules[c.rule].id).collect::<Vec<_>>(), vec!["a", "b", "c", "d", "e", "f"]);
     assert_eq!((stack.amount, stack.message.as_ref()), (45000, "a + b + c + d + e + f"));
     // No rule can list a tier in combinesWith.
     let c = tier_rules(&pct("x", 5.0, r#", "combinesWith": {"ruleIds": ["tier:g", "g"]}"#), &tiers(10.0), "");
     let lines = [tier_line("l1", 1, 10000, "P1", None, &["x"])];
-    assert_eq!(product_of(&plan_cart(cart(&lines, &[]), Some(&c)), "l1"), Some(("tier:g", &EmittedValue::Percent(10.0), 1000)));
+    assert_eq!(product_of(&plan_cart(tcart(&lines, &[], &c), Some(&c)), "l1"), Some(("tier:g", &EmittedValue::Percent(10.0), 1000)));
 }
 
 #[test]
@@ -1708,11 +1722,11 @@ fn margin_protection_caps_a_tier_and_only_the_automatic_node_emits_it() {
         Line { product: "P1", ..cost_line("l1", 1, 100_000, 700.0, &[]) },
         tier_line("l2", 2, 20_000, "P2", None, &[]),
     ];
-    let plan = plan_cart(cart(&lines, &["WELCOME15"]), Some(&c));
-    // Floor 700 / 0,8 = 875 Kč: the 300 Kč tier is cut to its 125 Kč headroom, with the break's message.
+    let plan = plan_cart(tcart(&lines, &["WELCOME15"], &c), Some(&c));
+    // Floor 700 / 0,8 = 875 Kč: the 300 Kč tier is cut to its 125 Kč headroom, named without its value (step 7).
     assert_eq!(product_of(&plan, "l1"), Some(("tier:g", &EmittedValue::FixedTotal(12_500), 12_500)));
     assert!(plan.lines[0].margin_capped);
-    assert_eq!(plan.lines[0].product.as_ref().unwrap().message, "Od 1 ks \u{2212}30\u{A0}%");
+    assert_eq!(plan.lines[0].product.as_ref().unwrap().message, "Množstevní sleva od 1 ks");
     assert_eq!(product_of(&plan, "l2"), Some(("tier:g", &EmittedValue::Percent(30.0), 12_000)));
     assert_eq!(lines_of(&emit_for_node(&plan, &NodeRole::Automatic, None)), vec!["l1", "l2"]);
     assert!(emit_for_node(&plan, &NodeRole::Code("c".into()), Some("WELCOME15")).product.is_empty());
@@ -1721,11 +1735,38 @@ fn margin_protection_caps_a_tier_and_only_the_automatic_node_emits_it() {
         lines_json(&plan, lines.len()),
         concat!(
             r#"{"operations":[{"productDiscountsAdd":{"candidates":["#,
-            "{\"message\":\"Od 1 ks \u{2212}30\u{A0}%\",\"targets\":[{\"cartLine\":{\"id\":\"l1\"}}],\"value\":{\"fixedAmount\":{\"amount\":\"125.00\",\"appliesToEachItem\":true}}},",
+            "{\"message\":\"Množstevní sleva od 1 ks\",\"targets\":[{\"cartLine\":{\"id\":\"l1\"}}],\"value\":{\"fixedAmount\":{\"amount\":\"125.00\",\"appliesToEachItem\":true}}},",
             "{\"message\":\"Od 1 ks \u{2212}30\u{A0}%\",\"targets\":[{\"cartLine\":{\"id\":\"l2\"}}],\"value\":{\"percentage\":{\"value\":30}}}",
             r#"],"selectionStrategy":"ALL"}}]}"#,
         )
     );
+}
+
+#[test]
+fn a_rule_whose_id_is_a_tier_candidates_id_is_read_as_the_tier_like_plan_ts() {
+    // plan.ts finds rules by id in a map where the tier's `tier:g` replaces a rule of that id
+    // (no id the sanitizer allows): never a product candidate, and under margin protection an
+    // order rule of that id counts as the tier (0 %): no order discount. Without margin it applies.
+    let tiers = r#"{"global": "g", "sets": [["g", "line", [], [[5, 10]]]]}"#;
+    let order = order_rule("tier:g", r#"{"kind": "percentage", "percent": 10}"#, "");
+    let product = pct("tier:g", 20.0, "");
+    let lines = [tier_line("l1", 1, 10000, "P1", None, &["tier:g"])];
+    let c = tier_rules(&[order.clone(), product.clone()].join(","), tiers, "");
+    let plan = plan_cart(tcart(&lines, &[], &c), Some(&c));
+    assert_eq!(product_of(&plan, "l1"), None);
+    assert_eq!(plan.order.as_ref().map(|o| o.stack.amount), Some(1000));
+    let c = config(&format!(
+        r#"{{"modules": {{"codes": {{"rules": [{order}]}}, "margin": {{"enabled": true, "min": 0, "max": 100}}, "tiers": {tiers}}}}}"#
+    ));
+    let plan = plan_cart(tcart(&lines, &[], &c), Some(&c));
+    assert!(plan.order.is_none());
+    // In English, a capped tier: "Quantity discount from 1 item".
+    let c = config(r#"{"modules": {"codes": {"rules": []}, "margin": {"enabled": true, "max": 10}, "tiers": {"global": "g", "sets": [["g", "line", [], [[1, 30]]]]}}}"#);
+    let mut en = tcart(&lines, &[], &c);
+    en.locale_en = true;
+    let plan = plan_cart(en, Some(&c));
+    assert_eq!(product_of(&plan, "l1"), Some(("tier:g", &EmittedValue::FixedTotal(1000), 1000)));
+    assert_eq!(plan.lines[0].product.as_ref().unwrap().message, "Quantity discount from 1 item");
 }
 
 #[test]
@@ -1736,12 +1777,12 @@ fn the_exclusive_switch_drops_a_tier_like_a_product_discount() {
     let lines = [tier_line("l1", 1, 10000, "P1", None, &[]), tier_line("l2", 1, 10000, "P2", None, &[])];
     // Tier 2 × 10 Kč = 20 Kč; order 20 % of 200 = 40 Kč: the order wins, the tier is dropped.
     let c = tier_rules(&order(20.0), tiers, off);
-    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let plan = plan_cart(tcart(&lines, &[], &c), Some(&c));
     assert!(plan.lines.iter().all(|l| l.product.is_none()));
     assert_eq!(plan.order.as_ref().unwrap().stack.amount, 4000);
     // Order 10 % = 20 Kč: a tie keeps the products.
     let c = tier_rules(&order(10.0), tiers, off);
-    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let plan = plan_cart(tcart(&lines, &[], &c), Some(&c));
     assert!(plan.order.is_none());
     assert_eq!(product_of(&plan, "l2"), Some(("tier:g", &EmittedValue::Percent(10.0), 1000)));
 }

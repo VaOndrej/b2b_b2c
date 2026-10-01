@@ -6,8 +6,9 @@
 // depends on them.
 //
 //   1. a line's set: gift lines none; `tierRef` absent or null → the payload's
-//      global set; a string → the set with exactly that id (looked up in a
-//      table built once), else none ("" and any other JSON value included);
+//      global set; a string → the set with exactly that id (`SetIndex`, a
+//      table built once), else none ("" and any other JSON value included) —
+//      `resolve_set`, called once a line by the reader (src/input.rs);
 //   2. eligible lines: not excluded (no gift, no outlet unless
 //      `outletWithAnything`) — only they count and get a tier;
 //   3. counting groups: "line" the line, "product" the set's lines of one
@@ -18,9 +19,13 @@
 //   5. the candidate: a percent p → round(subtotal × p / 100) (engine/js.rs
 //      `round`), value {percent: p}; an amount a → min(a, unit price) × quantity,
 //      value {fixedPerItem}; 0 → none. Its message is describeTierBreak of the
-//      reached break (the configured amount, not the capped one).
+//      reached break (the configured amount, not the capped one);
+//   7. (plan.rs `apply_margin_protection`) margin protection lowering a tier:
+//      the message is the break without a value (describeCappedTierBreak,
+//      `capped_message`).
 
 use super::cart::{LineTier, NormalizedLine};
+use super::describe::describe_capped_tier_break;
 use super::config::{TierCount, TierSet, TierValue, Tiers};
 use super::describe::{describe_tier_break, TierBreakValue};
 use super::js;
@@ -40,6 +45,20 @@ pub struct TierCandidate {
     /// describeTierBreak of the reached break: one text per set and break for
     /// the whole run (the output groups messages by address).
     pub message: &'static str,
+    /// Its message when margin protection lowers it (port spec step 7,
+    /// describeCappedTierBreak): the break without a value.
+    pub capped_message: &'static str,
+}
+
+/// K1 step 1 for one line (plan-tiers.ts): `tierRef` absent or null → the
+/// payload's global set; a text → the set with exactly that id, else none (""
+/// for any other JSON value: no set has that id). The reader resolves each
+/// line once (`LineTier::set`); the plan only reads the result.
+pub fn resolve_set(tiers: &Tiers, index: &SetIndex, tier_ref: Option<&str>) -> Option<usize> {
+    match tier_ref {
+        None => tiers.global,
+        Some(id) => index.get(&tiers.sets, id),
+    }
 }
 
 /// A break's value in the cart currency, when it is offered there.
@@ -67,6 +86,7 @@ impl SetIndex {
     }
 
     /// The index of every set (ids unique).
+    #[inline(never)]
     pub fn of(sets: &[TierSet]) -> Self {
         let mut index = Self::new(sets);
         for i in 0..sets.len() {
@@ -76,6 +96,7 @@ impl SetIndex {
     }
 
     /// Adds set `i`, unless an earlier one has its id (the first of an id wins): whether it was added.
+    #[inline(never)]
     pub fn add(&mut self, sets: &[TierSet], i: usize) -> bool {
         let id = sets[i].id.as_bytes();
         let mut at = *self.first.get_or_insert_with(text_hash(id), || i);
@@ -142,28 +163,22 @@ fn group_of<'a>(groups: &mut Vec<Group<'a>>, by_hash: &mut Table<u64, usize>, se
 }
 
 /// Steps 1–5: each line's tier candidate, cart order; empty when the payload
-/// has no set. `eligible(i)`: line i can take a product discount (plan.ts
-/// `excluded === null`).
+/// has no set. `of_lines`: each line's set (step 1, resolved by the reader) and
+/// product id — a line without an entry gets no tier. `eligible(i)`: line i can
+/// take a product discount (plan.ts `excluded === null`).
 pub fn prepare_tiers(tiers: &Tiers, lines: &[NormalizedLine], of_lines: &[LineTier], eligible: impl Fn(usize) -> bool, currency: &str, cs: bool) -> Vec<Option<TierCandidate>> {
     let sets = &tiers.sets;
     if sets.is_empty() {
         return Vec::new();
     }
-    let by_id = SetIndex::of(sets);
-    // Steps 1–3: each eligible line's set, and its counting group ("line": none, its own quantity).
+    debug_assert!(of_lines.is_empty() || of_lines.len() == lines.len(), "one LineTier a line");
+    // Steps 2–3: each eligible line's set, and its counting group ("line": none, its own quantity).
     let mut groups: Vec<Group> = Vec::new();
     let mut by_hash: Table<u64, usize> = Table::default();
     let mut of_line: Vec<(usize, usize)> = Vec::with_capacity(lines.len());
     for (i, line) in lines.iter().enumerate() {
         let read = of_lines.get(i).copied().unwrap_or_default();
-        let set = if !eligible(i) {
-            None
-        } else {
-            match read.tier_ref {
-                None => tiers.global,
-                Some(id) => by_id.get(sets, id),
-            }
-        };
+        let set = if eligible(i) { read.set.filter(|&s| s < sets.len()) } else { None };
         let Some(set) = set else {
             of_line.push((NO_GROUP, NO_GROUP));
             continue;
@@ -182,7 +197,7 @@ pub fn prepare_tiers(tiers: &Tiers, lines: &[NormalizedLine], of_lines: &[LineTi
     // Steps 4–5: the reached break of each line's count and its candidate. A
     // message is built once per set and break.
     let mut message_of: Table<u64, usize> = Table::default();
-    let mut messages: Vec<&'static str> = Vec::new();
+    let mut messages: Vec<(&'static str, &'static str)> = Vec::new();
     let mut out = Vec::with_capacity(lines.len());
     for (line, &(set, group)) in lines.iter().zip(&of_line) {
         if set == NO_GROUP {
@@ -217,10 +232,14 @@ pub fn prepare_tiers(tiers: &Tiers, lines: &[NormalizedLine], of_lines: &[LineTi
         let fresh = messages.len();
         let at = *message_of.get_or_insert_with(((set as u64) << 32) | k as u64, || fresh);
         if at == fresh {
-            messages.push(Box::leak(describe_tier_break(sets[set].breaks[k].min_qty, value, cs, currency).into_boxed_str()));
+            let min_qty = sets[set].breaks[k].min_qty;
+            messages.push((
+                Box::leak(describe_tier_break(min_qty, value, cs, currency).into_boxed_str()),
+                Box::leak(describe_capped_tier_break(min_qty, cs).into_boxed_str()),
+            ));
         }
-        let message = messages[at];
-        out.push(Some(TierCandidate { set, amount, value: emitted, message }));
+        let (message, capped_message) = messages[at];
+        out.push(Some(TierCandidate { set, amount, value: emitted, message, capped_message }));
     }
     out
 }

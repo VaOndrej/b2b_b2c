@@ -14,6 +14,17 @@ pub enum TierBreakValue {
     Amount(i64),
 }
 
+/// `describeCappedTierBreak` (describe.ts): a tier break margin protection
+/// lowered, named without a value — "Množstevní sleva od 5 ks", "Quantity
+/// discount from 1 item", "Quantity discount from 5 items".
+pub fn describe_capped_tier_break(min_qty: f64, cs: bool) -> String {
+    let mut out = String::with_capacity(32);
+    out.push_str(if cs { "Množstevní sleva od " } else { "Quantity discount from " });
+    out.push_str(&js::number_to_string(min_qty));
+    out.push_str(if cs { " ks" } else if min_qty == 1.0 { " item" } else { " items" });
+    out
+}
+
 /// `describeTierBreak(tierStepBreak(reached, currency), { locale, currency })`
 /// (describe.ts) of a break offered in the cart currency: "Od 3 ks −10 %",
 /// "From 1 item −10%", "Od 5 ks −50 Kč za kus", "From 5 items −CZK 50 per item".
@@ -113,5 +124,8 @@ mod tests {
         assert_eq!(describe_tier_break(5.0, Amount(5000), true, "CZK"), "Od 5 ks \u{2212}50\u{A0}Kč za kus");
         assert_eq!(describe_tier_break(2.0, Amount(5000), false, "CZK"), "From 2 items \u{2212}CZK 50 per item");
         assert_eq!(describe_tier_break(10.0, Amount(250), false, "EUR"), "From 10 items \u{2212}€2.50 per item");
+        assert_eq!(describe_capped_tier_break(5.0, true), "Množstevní sleva od 5 ks");
+        assert_eq!(describe_capped_tier_break(1.0, false), "Quantity discount from 1 item");
+        assert_eq!(describe_capped_tier_break(5.0, false), "Quantity discount from 5 items");
     }
 }

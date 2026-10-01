@@ -116,6 +116,41 @@ describe("output size: every fixture output fits the budget", () => {
   }
 });
 
+// The tier payload the app writes holds only numbers both engines read alike
+// (README "Accepted edge differences", 16+ significant digits): whatever a
+// merchant config holds — fractional, 16–17 digit, huge or negative minQty and
+// amounts — sanitizeConfig → buildTiersPayload ships whole minQty 1–10 000 and
+// whole amounts 0–10¹², exactly representable and read the same by serde_json
+// and JSON.parse; percents are the sanitized 0–100.
+describe("the tier payload the app writes has only exact quantities and amounts", () => {
+  test("2 000 random merchant tier configs", () => {
+    const rnd = prng(20261011);
+    const pick = (list) => list[Math.floor(rnd() * list.length)];
+    const weird = [0.9999999999999999, 2.9999999999999996, 2.7, 0.5, 1e-320, 1e300, -3, 10_001, 3, 7, 12.5, 1, 9999.999999999998];
+    for (let k = 0; k < 2_000; k += 1) {
+      const sets = Array.from({ length: 1 + Math.floor(rnd() * 3) }, (_, i) => ({
+        id: i === 0 ? "g" : `s${i}`,
+        scope: i === 0 ? "global" : { productIds: ["gid://shopify/Product/1"] },
+        countAcross: pick(["line", "product", "cart"]),
+        breaks: Array.from({ length: 1 + Math.floor(rnd() * 4) }, () =>
+          rnd() < 0.5 ? { minQty: pick(weird), percent: pick([5, 12.5, 33.333, 0.9999999999999999, 150, -2]) } : { minQty: pick(weird), amountOff: { CZK: pick(weird), EUR: pick([100, 2.5, 1e13]) } },
+        ),
+      }));
+      const { config } = sanitizeConfig({ modules: { codes: { rules: [] }, tiers: { sets } } });
+      for (const [, , , breaks] of buildTiersPayload(config.modules.tiers).sets) {
+        for (const [minQty, value] of breaks) {
+          expect(Number.isInteger(minQty) && minQty >= 1 && minQty <= 10_000, `minQty ${minQty}`).toBe(true);
+          if (Array.isArray(value)) {
+            for (const a of value) expect(a === null || (Number.isInteger(a) && a >= 0 && a <= 1e12), `amount ${a}`).toBe(true);
+          } else {
+            expect(value >= 0 && value <= 100, `percent ${value}`).toBe(true);
+          }
+        }
+      }
+    }
+  });
+});
+
 // --- Random cases ---------------------------------------------------------------------------
 
 /** mulberry32: a small seeded PRNG (deterministic cases for a given seed). */

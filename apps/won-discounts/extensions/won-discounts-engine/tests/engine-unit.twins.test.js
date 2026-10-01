@@ -1155,7 +1155,7 @@ const TWINS = {
     const plan = planCart(cart(lines, ["WELCOME15"]), c);
     expect(productOf(plan, "l1")).toEqual(["tier:g", { fixedTotal: 12_500 }, 12_500]);
     expect(Boolean(plan.lines[0].marginCapped)).toBe(true);
-    expect(plan.lines[0].product.message).toBe("Od 1 ks \u221230\u00a0%");
+    expect(plan.lines[0].product.message).toBe("Množstevní sleva od 1 ks");
     expect(productOf(plan, "l2")).toEqual(["tier:g", { percent: 30 }, 12_000]);
     expect(lineIds(emitForNode(plan, { kind: "automatic" }, null))).toEqual(["l1", "l2"]);
     expect(emitForNode(plan, { kind: "code", ruleId: "c" }, "WELCOME15").productCandidates).toEqual([]);
@@ -1163,11 +1163,25 @@ const TWINS = {
     expect(JSON.stringify(autoLines(plan, lines.length).lines)).toBe(
       [
         '{"operations":[{"productDiscountsAdd":{"candidates":[',
-        '{"message":"Od 1 ks \u221230\u00a0%","targets":[{"cartLine":{"id":"l1"}}],"value":{"fixedAmount":{"amount":"125.00","appliesToEachItem":true}}},',
+        '{"message":"Množstevní sleva od 1 ks","targets":[{"cartLine":{"id":"l1"}}],"value":{"fixedAmount":{"amount":"125.00","appliesToEachItem":true}}},',
         '{"message":"Od 1 ks \u221230\u00a0%","targets":[{"cartLine":{"id":"l2"}}],"value":{"percentage":{"value":30}}}',
         '],"selectionStrategy":"ALL"}}]}',
       ].join(""),
     );
+  },
+
+  a_rule_whose_id_is_a_tier_candidates_id_is_read_as_the_tier_like_plan_ts() {
+    const tiers = { global: "g", sets: [["g", "line", [], [[5, 10]]]] };
+    const orderRule = order("tier:g", { kind: "percentage", percent: 10 });
+    const lines = [tline("l1", 1, 10000, "P1", undefined, { ruleIds: ["tier:g"] })];
+    const plain = planCart(cart(lines), tcfg([orderRule, pct("tier:g", 20)], tiers));
+    expect(productOf(plain, "l1")).toBeNull();
+    expect(plain.order?.amount).toBe(1000);
+    const margin = planCart(cart(lines), { modules: { codes: { rules: [orderRule] }, margin: { enabled: true, min: 0, max: 100 }, tiers } });
+    expect(margin.order).toBeNull();
+    const en = planCart(cart(lines, [], { locale: "en" }), { modules: { codes: { rules: [] }, margin: { enabled: true, max: 10 }, tiers: { global: "g", sets: [["g", "line", [], [[1, 30]]]] } } });
+    expect(productOf(en, "l1")).toEqual(["tier:g", { fixedTotal: 1000 }, 1000]);
+    expect(en.lines[0].product.message).toBe("Quantity discount from 1 item");
   },
 
   the_exclusive_switch_drops_a_tier_like_a_product_discount() {

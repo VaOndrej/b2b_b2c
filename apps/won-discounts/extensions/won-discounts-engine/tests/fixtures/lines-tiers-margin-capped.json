@@ -1,5 +1,5 @@
 {
-  "scenario": "Margin protection caps a tier like any product discount (minimum margin 20 %, maximum discount 50 %): line 1 (cost 700 Kč, price 1 000 Kč, floor 875 Kč) gets its 125 Kč headroom of the 30 % tier, emitted as that exact amount with the break's message; line 2 (no cost) keeps the 30 %.",
+  "scenario": "Margin protection caps a tier like any product discount (minimum margin 20 %, maximum discount 50 %): line 1 (cost 700 Kč, price 1 000 Kč, floor 875 Kč) gets its 125 Kč headroom of the 30 % tier, emitted as that exact amount and named by its break without the value (port spec step 7: never more than the line gets); line 2 (no cost) keeps the 30 % and its message.",
   "payload": {
     "export": "cart-lines-discounts-generate-run",
     "target": "cart.lines.discounts.generate.run",
@@ -153,7 +153,7 @@
           "productDiscountsAdd": {
             "candidates": [
               {
-                "message": "Od 1 ks −30 %",
+                "message": "Množstevní sleva od 1 ks",
                 "targets": [
                   {
                     "cartLine": {

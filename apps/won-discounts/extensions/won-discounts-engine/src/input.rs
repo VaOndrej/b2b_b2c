@@ -37,7 +37,7 @@ use crate::engine::hash::{parse_hash, MAX_ENTERED_CODES};
 use crate::engine::js;
 use crate::engine::margin::MarginRef;
 use crate::engine::money::{currency_exponent, to_minor_units_with};
-use crate::engine::tiers::SetIndex;
+use crate::engine::tiers::{resolve_set, SetIndex};
 use crate::json::{is_true, non_empty, number, prop, string, DecimalNumber, DecimalText, Key, NodeVars, OutletLists, WonProduct, WonVariant};
 
 /// The node's role from its `function_vars`. A code node MUST have a rule id; an
@@ -108,7 +108,11 @@ enum Positions {
 }
 
 impl<const N: usize> Shape<N> {
+    /// A learned shape has at most MAX_FIELDS fields (checked at compile time).
+    const FITS: () = assert!(N <= MAX_FIELDS, "a learned shape has at most MAX_FIELDS fields");
+
     fn new(keys: [Key; N]) -> Self {
+        let () = Self::FITS;
         Self { keys, at: Positions::Unknown }
     }
 
@@ -200,10 +204,10 @@ struct ReadLine {
     margin_ref_count: usize,
 }
 
-/// What quantity tiers read of a line (`LineTier`), owned.
+/// What quantity tiers need of a line (`LineTier`), owned: its set, resolved once here.
 #[derive(Default)]
 struct ReadTier {
-    tier_ref: Option<String>,
+    set: Option<usize>,
     product_id: String,
 }
 
@@ -267,11 +271,12 @@ impl RunInput {
         let mut variant_shape = Shape::new([Key::Typename, Key::Id, Key::WonVariant, Key::Product]);
         let mut product_shape = Shape::new([Key::Id, Key::WonProduct]);
         // Tier sets (MVP 3): a line's `tierRef` matters only when the config has
-        // some; its product's id only when its set counts per product (K2), a
-        // set found by id in a table built once (plan-tiers.ts step 1).
+        // some, and resolves to its set here, once (plan-tiers.ts step 1: the
+        // sets by id in a table built once); its product's id only when that
+        // set counts per product (K2).
         let tiers = &config.tiers;
         let tiers_on = !tiers.sets.is_empty();
-        let per_product: Option<SetIndex> = tiers.any_per_product().then(|| SetIndex::of(&tiers.sets));
+        let set_index: Option<SetIndex> = tiers_on.then(|| SetIndex::of(&tiers.sets));
         let mut read_tiers: Vec<ReadTier> = Vec::with_capacity(if tiers_on { line_count } else { 0 });
         for line in lines_value.iter().flat_map(|l| (0..line_count).map(|i| l.get_at_index(i))) {
             // (A line, its merchandise, product and cost are objects in any input
@@ -290,7 +295,7 @@ impl RunInput {
                 margin_refs: Vec::new(),
                 margin_ref_count: 0,
             };
-            let mut tier = ReadTier::default();
+            let mut tier_ref: Option<String> = None;
             let merchandise = line_shape.get(&line, 4);
             let product = variant_shape.get(&merchandise, 3);
             // `product { id wonProduct }`; a product of one key (an input of the
@@ -312,7 +317,7 @@ impl RunInput {
                     read.margin_refs = won.margin_refs();
                 }
                 read.rule_ids = won.take_rule_ids();
-                tier.tier_ref = won.take_tier_ref();
+                tier_ref = won.take_tier_ref();
             }
             if margin_on {
                 if let Some(cost) = sole(&variant_shape.get(&merchandise, 2), Key::JsonValue) {
@@ -327,19 +332,18 @@ impl RunInput {
             read.unit_price =
                 amount.and_then(|amount| DecimalText::read(&amount).text().and_then(|text| to_minor_units_with(text, exponent))).unwrap_or(0);
             read.gift = sole(&line_shape.get(&line, 3), Key::Value).and_then(|value| non_empty(&value)).is_some();
-            if let Some(by_id) = per_product.as_ref().filter(|_| !read.gift) {
-                let set = match tier.tier_ref.as_deref() {
-                    None => tiers.global,
-                    Some(id) => by_id.get(&tiers.sets, id),
-                };
-                if set.is_some_and(|s| tiers.sets[s].count == TierCount::Product) {
-                    tier.product_id = string(&product_shape.get(&product, 0)).unwrap_or_default();
+            if let Some(index) = set_index.as_ref() {
+                // A gift line has no set (step 1).
+                let mut tier = ReadTier::default();
+                if !read.gift {
+                    tier.set = resolve_set(tiers, index, tier_ref.as_deref());
+                    if tier.set.is_some_and(|s| tiers.sets[s].count == TierCount::Product) {
+                        tier.product_id = string(&product_shape.get_sized(&product, product_keys, 0)).unwrap_or_default();
+                    }
                 }
-            }
-            lines.push(read);
-            if tiers_on {
                 read_tiers.push(tier);
             }
+            lines.push(read);
         }
 
         // The entered codes matter only to a code rule with a hash an entered code
@@ -397,7 +401,7 @@ impl RunInput {
                     margin_ref_count: l.margin_ref_count,
                 })
                 .collect(),
-            tiers: self.tiers.iter().map(|t| LineTier { tier_ref: t.tier_ref.as_deref(), product_id: &t.product_id }).collect(),
+            tiers: self.tiers.iter().map(|t| LineTier { set: t.set, product_id: &t.product_id }).collect(),
             entered_codes: self.entered_codes.iter().map(String::as_str).collect(),
             campaign: CampaignInput {
                 id: self.campaign_id.as_deref(),

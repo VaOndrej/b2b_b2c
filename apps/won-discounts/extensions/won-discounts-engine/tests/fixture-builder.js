@@ -251,14 +251,12 @@ function cartLine(l) {
 export function buildInput(scenario) {
   const s = withRealisticIds(scenario);
   const config = merchantConfig(s);
-  const shopConfig =
-    s.shopConfig === "null"
-      ? null
-      : {
-          jsonValue:
-            s.shopConfig ??
-            buildShopFunctionConfig(config, { now: NOW, shopTimezone: SHOP_TIMEZONE, shopCurrency: s.shopCurrency ?? SHOP_CURRENCY }).payload,
-        };
+  const encoded = buildShopFunctionConfig(config, { now: NOW, shopTimezone: SHOP_TIMEZONE, shopCurrency: s.shopCurrency ?? SHOP_CURRENCY });
+  // A config the app can save (≤ 9 000 B, tiers ≤ CONFIG_LIMITS.tierPayloadBytes): a scenario never tests one it cannot.
+  if (s.shopConfig === undefined && !encoded.fits) {
+    throw new Error(`${s.name}: the shop config does not fit (${encoded.bytes} B; tiers ${encoded.tiers.bytes} of ${encoded.tiers.budget} B)`);
+  }
+  const shopConfig = s.shopConfig === "null" ? null : { jsonValue: s.shopConfig ?? encoded.payload };
   const baseVars = /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (buildNodeVars(s.role, config, NOW)));
   const vars = s.varsPatch ? s.varsPatch({ ...baseVars }) : baseVars;
   /** @type {Record<string, unknown>} */

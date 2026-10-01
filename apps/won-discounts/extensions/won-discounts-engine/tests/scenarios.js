@@ -1095,7 +1095,7 @@ function allScenarios() {
   {
     name: "lines-tiers-margin-capped",
     description:
-      "Margin protection caps a tier like any product discount (minimum margin 20 %, maximum discount 50 %): line 1 (cost 700 Kč, price 1 000 Kč, floor 875 Kč) gets its 125 Kč headroom of the 30 % tier, emitted as that exact amount with the break's message; line 2 (no cost) keeps the 30 %.",
+      "Margin protection caps a tier like any product discount (minimum margin 20 %, maximum discount 50 %): line 1 (cost 700 Kč, price 1 000 Kč, floor 875 Kč) gets its 125 Kč headroom of the 30 % tier, emitted as that exact amount and named by its break without the value (port spec step 7: never more than the line gets); line 2 (no cost) keeps the 30 % and its message.",
     target: "lines",
     rules: [],
     tiers: tiers(tierSet("mnozstvi", "line", [{ minQty: 1, percent: 30 }])),
@@ -1105,7 +1105,7 @@ function allScenarios() {
       { n: 1, price: "1000.0", qty: 1, won: won(), variantMeta: costOf(700) },
       { n: 2, price: "200.0", qty: 2, won: won() },
     ],
-    expected: out(products(pc(fromPct(1, 30), [1], perItem("125.00")), pc(fromPct(1, 30), [2], percent(30)))),
+    expected: out(products(pc("Množstevní sleva od 1 ks", [1], perItem("125.00")), pc(fromPct(1, 30), [2], percent(30)))),
   },
   {
     name: "lines-tiers-exclusive-order",
@@ -1230,13 +1230,13 @@ function allScenarios() {
   marginSlowBudget(),
   marginCappedBudget(200),
   marginCappedBudget(500),
-  filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, tierSets: 10 })),
-  filledToInputLimit((siblings) => marginProBudget({ lines: 500, siblings, tierSets: 10 })),
-  filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, marginRefs: 4, name: "bridge", tierSets: 10 })),
-  filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, marginRefs: 4, name: "bridge-codes", codes: 250, tierSets: 10 })),
-  filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, marginRefs: 4, name: "bridge-won-codes", wonCodes: true, tierSets: 10 })),
+  filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, tierSets: LOSING_SETS })),
+  filledToInputLimit((siblings) => marginProBudget({ lines: 500, siblings, tierSets: LOSING_SETS })),
+  filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, marginRefs: 4, name: "bridge", tierSets: LOSING_SETS })),
+  filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, marginRefs: 4, name: "bridge-codes", codes: 250, tierSets: LOSING_SETS })),
+  filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, marginRefs: 4, name: "bridge-won-codes", wonCodes: true, tierSets: LOSING_SETS })),
   filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, ruleIdLength: 64, collections: 29, name: "long-ids" })),
-  filledToInputLimit((siblings) => proMeshBudget({ lines: 200, siblings, tierSets: 8 })),
+  filledToInputLimit((siblings) => proMeshBudget({ lines: 200, siblings, tierSets: LOSING_SETS })),
   filledToInputLimit((siblings) => tiersProBudget({ lines: 200, siblings })),
   filledToInputLimit((siblings) => tiersProBudget({ lines: 500, siblings })),
   filledToInputLimit((siblings) => nearMinBudget({ lines: 200, siblings })),
@@ -1734,25 +1734,28 @@ function marginCappedBudget(count) {
 
 // --- Quantity tiers on every line of the Pro budget carts (MVP 3) ----------------------------
 //
-// A realistic Pro tier setup next to the rules (core margin-sync.test.ts PRO_TIERS:
-// admin-style 22-character set ids `t_` + 20 hex digits, 5 breaks a set): a
-// global set counted per product and scoped sets counted per line, per product
-// and across the cart, percent sets and amount sets (CZK and EUR per item).
-// Every line is in a set: 3 of 4 lines name a scoped set by `tierRef`, the
-// 4th takes the global set. Every value is below the line's Pro stack (8 % at
-// most; 8 Kč a piece at most, under 8,5 % of the cheapest item), so the stack
-// still wins every line and the expected output is the cart's own: the tier
-// work — the payload read, the `tierRef` and product id read, counting, the
-// reached break, its message, the extra candidate — is all paid for.
+// A realistic Pro tier setup next to the rules, as large as the tier cap lets
+// it be (CONFIG_LIMITS.tierPayloadBytes, 550 B): admin-style 22-character set
+// ids `t_` + 20 hex digits, 3 breaks a set, a global set counted per product
+// and scoped sets counted across the cart, per line and per product, percent
+// sets and amount sets (CZK and EUR per item). Every line is in a set: 3 of 4
+// lines name a scoped set by `tierRef`, the 4th takes the global set. Every
+// value is below the line's Pro stack (8 % at most; 8 Kč a piece at most,
+// under 8,5 % of the cheapest item), so the stack still wins every line and the
+// expected output is the cart's own: the tier work — the payload read, the
+// `tierRef` and product id read, counting, the reached break, its message, the
+// extra candidate — is all paid for.
 
 /** An admin-style tier set id (`t_` + 20 hex digits). */
 const tierSetId = (/** @type {string} */ name) => `t_${appRuleId(`tier-${name}`).slice(2)}`;
-const LOSING_PERCENTS = [3, 4, 5, 6, 8];
-const LOSING_CZK = [300, 400, 500, 600, 800];
-const LOSING_EUR = [10, 15, 20, 25, 30];
-const TIER_QTYS = [2, 3, 5, 10, 20];
+const LOSING_PERCENTS = [3, 5, 8];
+const LOSING_CZK = [300, 500, 800];
+const LOSING_EUR = [10, 20, 30];
+const TIER_QTYS = [2, 3, 5];
 /** The highest per-item tier value of LOSING_TIERS: 8 % or 8 Kč. */
 const LOSING_MAX = { percent: 8, czk: 800 };
+/** As many sets as the tier cap (550 B) takes: a global set and 6 scoped ones. */
+const LOSING_SETS = 7;
 
 /**
  * `count` sets (1 global + scoped ones), for the products `productIds` of the
@@ -1762,7 +1765,7 @@ const LOSING_MAX = { percent: 8, czk: 800 };
  */
 function losingTiers(count) {
   const sets = [
-    tierSet(tierSetId("global"), "product", TIER_QTYS.map((minQty, k) => ({ minQty, percent: [2, 3, 4, 5, 6][k] }))),
+    tierSet(tierSetId("global"), "product", TIER_QTYS.map((minQty, k) => ({ minQty, percent: [2, 4, 6][k] }))),
   ];
   for (let k = 1; k < count; k += 1) {
     const amount = k % 2 === 1;
@@ -1982,16 +1985,16 @@ function marginProBudget({ lines: count, siblings, ruleIdLength = 22, collection
 
 // --- The quantity-tier worst case (instruction budget, MVP 3) ------------------------------
 //
-// Tiers winning on every line of a Pro cart at Shopify's input limit, within
-// the shop config's 9 000 B: a global set counted per product and scoped sets
-// counted per line, per product and across the cart, every set with the most
-// breaks a set can have (10), the amount sets with an amount in 8 currencies
-// (the cart's among them); every line in a set (5 of 6 products name a scoped
-// set by tierRef), every product two lines (two variants counted together in a
-// set counted per product); 4 product rules a line that the tier beats (3 % at
-// most against 4 % and 6 Kč a piece at least), a code rule whose 25 codes are
-// all entered, a 5 % order discount, margin protection with a cost price on
-// every line; variant-level refs of other variants fill the input.
+// Tiers winning on every line of a Pro cart at Shopify's input limit, as many
+// as the tier cap takes (CONFIG_LIMITS.tierPayloadBytes, 550 B): a global set
+// counted per product and scoped sets counted per line, per product and across
+// the cart, 5 breaks each, the amount sets in CZK and EUR; every line in a set
+// (5 of 6 products name a scoped set by tierRef), every product two lines (two
+// variants counted together in a set counted per product); 4 product rules a
+// line that the tier beats (3 % at most against 4 % and 6 Kč a piece at least),
+// a code rule whose 25 codes are all entered, a 5 % order discount, margin
+// protection with a cost price on every line; variant-level refs of other
+// variants fill the input.
 // The expected output by a simple model: each line's count (its line / its
 // product's two lines / every line of its set), the highest break ≤ count, its
 // value (whole Kč prices: every percent is a whole number of haléřů) and
@@ -2000,12 +2003,13 @@ function marginProBudget({ lines: count, siblings, ruleIdLength = 22, collection
 // most 13 %), every line carries its share of the order discount on both bases,
 // so the order discount is its full amount, emitted exactly.
 
-const TIER_BREAK_QTYS = [1, 2, 3, 4, 5, 6, 8, 10, 15, 20];
-const TIER_PERCENTS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
-/** Per item, haléře (CZK), whole Kč; the other currencies' amounts only fill the payload as real ones would. */
-const TIER_AMOUNTS_CZK = [600, 700, 800, 900, 1000, 1200, 1400, 1600, 1800, 2000];
-const TIER_OTHER = { BHD: 3, EUR: 25, GBP: 21, HUF: 1000, PLN: 110, SEK: 290, USD: 28 };
-const TIER_SCOPED = 21;
+const TIER_BREAK_QTYS = [1, 2, 3, 5, 10];
+const TIER_PERCENTS = [4, 6, 8, 10, 13];
+/** Per item, haléře (CZK), whole Kč; the EUR amounts (cents) fill the payload as a real second market would. */
+const TIER_AMOUNTS_CZK = [600, 800, 1000, 1400, 2000];
+const TIER_AMOUNTS_EUR = [25, 30, 40, 55, 80];
+/** As many scoped sets as the tier cap (550 B) takes next to the global one. */
+const TIER_SCOPED = 4;
 const TIER_MARGIN_MIN = 20;
 
 /** Scoped set k (1…TIER_SCOPED): its count mode and kind. */
@@ -2017,7 +2021,7 @@ function tierWorstSets(/** @type {number} */ products) {
     const { count, amount } = tierShape(k);
     const breaks = TIER_BREAK_QTYS.map((minQty, j) =>
       amount
-        ? { minQty, amountOff: { CZK: TIER_AMOUNTS_CZK[j], ...Object.fromEntries(Object.entries(TIER_OTHER).map(([c, v]) => [c, v * (j + 1)])) } }
+        ? { minQty, amountOff: { CZK: TIER_AMOUNTS_CZK[j], EUR: TIER_AMOUNTS_EUR[j] } }
         : { minQty, percent: TIER_PERCENTS[j] },
     );
     const listed = Array.from({ length: products }, (_, p) => p + 1).filter((p) => tierOfProduct(p) === k).slice(0, 3);
@@ -2107,7 +2111,7 @@ function tiersProBudget({ lines: count, siblings }) {
     realisticIds: true,
     description:
       `Instruction budget, the quantity-tier worst case (MVP 3): ${count} lines of ${productTotal} products (two variants each), every line in a tier set and the tier winning it: ` +
-      `a global set counted per product and ${TIER_SCOPED} scoped sets counted per line, per product and across the cart, 10 breaks each, amount sets with amounts in 8 currencies; ` +
+      `a global set counted per product and ${TIER_SCOPED} scoped sets counted per line, per product and across the cart, 5 breaks each, amount sets in CZK and EUR (the tier cap, 550 B); ` +
       `4 product rules a line that the tier beats, a code rule whose 25 codes are all entered, a 5 % order discount, margin protection with a cost price on every line, ` +
       `${fewest === most ? fewest : `${fewest}–${most}`} variant-level refs of other variants a product: the input filled to Shopify's limit of ${128 * Math.max(1, count / 200)} kB of MessagePack. ` +
       `With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.`,

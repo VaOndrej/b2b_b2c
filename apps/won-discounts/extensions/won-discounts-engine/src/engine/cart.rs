@@ -38,15 +38,16 @@ pub struct LineInput<'a> {
     pub margin_ref_count: usize,
 }
 
-/// What quantity tiers read of a cart line (MVP 3; CartLineInput `tierRef` and
+/// What quantity tiers need of a cart line (MVP 3; CartLineInput `tierRef` and
 /// `productId`), kept beside the lines: a cart without tier sets carries none,
 /// and the lines the plan walks stay as small as before (instruction budget).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct LineTier<'a> {
-    /// The product metafield's `tierRef` (K1/K3): none = absent or null (the
-    /// payload's global set); a text = the set with exactly that id, else no
-    /// tier ("" for any other JSON value: no set has that id).
-    pub tier_ref: Option<&'a str>,
+    /// The line's set (K1, plan-tiers.ts step 1), resolved once by the reader
+    /// (`tiers::resolve_set`) against the config the cart is planned with: an
+    /// index into `Tiers::sets`; none = no set (a `tierRef` naming no set, or
+    /// none and no global set).
+    pub set: Option<usize>,
     /// The product's GID (`merchandise.product.id`): the lines of one product
     /// count together in a set counted per product. Read only when the line's
     /// set counts so; "" otherwise (and for a CustomProduct).
@@ -68,8 +69,9 @@ pub struct CartInput<'a> {
     pub currency: String,
     pub country_code: Option<&'a str>,
     pub lines: Vec<LineInput<'a>>,
-    /// Per line (`lines` order) what quantity tiers read; empty = none read (no
-    /// tier set, or every line: no `tierRef`, no product id).
+    /// Per line (`lines` order) its tier set and product id: one entry a line
+    /// when the config has tier sets, else none. A line without an entry gets
+    /// no tier (never the global set: fail closed).
     pub tiers: Vec<LineTier<'a>>,
     /// The entered codes, raw, one per entry (an entry without a code string is "").
     pub entered_codes: Vec<&'a str>,
@@ -118,7 +120,7 @@ pub struct NormalizedCart<'a> {
     /// Upper-case ISO 3166-1 alpha-2, or none.
     pub country_code: Option<String>,
     pub lines: Vec<NormalizedLine<'a>>,
-    /// Per line what quantity tiers read (`CartInput::tiers`; empty = none).
+    /// Per line its tier set and product id (`CartInput::tiers`).
     pub tiers: Vec<LineTier<'a>>,
     /// The entered codes as given, one per entry (the reader reads the first 25
     /// entries; one without a code string is ""): plan.rs `match_codes` matches

@@ -33,7 +33,7 @@ use super::js;
 use super::margin::{resolve_margin, strictest_margin, CostContext, FloorRule, MarginPayload, MarginRef, MAX_MARGIN_REFS};
 use super::money::mul_sat;
 use super::order_search::{order_set_limit, search_order_sets, OrderSetLine, EXACT_LINES, SAFE_BELOW};
-use super::tiers::{prepare_tiers, TierCandidate};
+use super::tiers::{prepare_tiers, SetIndex, TierCandidate};
 
 // --- Plan shape -------------------------------------------------------------------------------
 
@@ -1002,10 +1002,44 @@ struct StackContext<'c, 'a> {
     rules: &'c [Rule<'a>],
     /// `rules[first_tier..]` are the tier sets' pseudo-rules (MVP 3), payload order.
     first_tier: usize,
+    /// (rule, tier pseudo-rule) for every rule whose id is a tier candidate's
+    /// `tier:<setId>` (`tier_shadows`; none the sanitizer lets through).
+    shadows: &'c [(usize, usize)],
     partners: &'c Partners,
     any_partners: bool,
     cart: &'c NormalizedCart<'a>,
     labels: RefCell<StackLabels>,
+}
+
+/// The rules plan.ts finds under another rule's id: it looks rules up by id in a
+/// map where a tier set's pseudo-rule `tier:<setId>` replaces a rule of that id
+/// (plan.ts `byId`; `:` is no id character the sanitizer allows, so only a
+/// hand-made payload has one). Such a rule is then never a product candidate
+/// (`plan_products`), and margin protection's order stage counts it as the tier
+/// (0 %, `protect_order`): never more than plan.ts. (rule, tier pseudo-rule)
+/// pairs; looked up by the set id (`SetIndex`), only for ids with the prefix.
+fn tier_shadows(rules: &[Rule], first_tier: usize, sets: &[TierSet]) -> Vec<(usize, usize)> {
+    let mut out = Vec::new();
+    if first_tier == rules.len() {
+        return out;
+    }
+    let mut index: Option<SetIndex> = None;
+    for (i, rule) in rules[..first_tier].iter().enumerate() {
+        let Some(set_id) = rule.id.strip_prefix("tier:") else { continue };
+        let index = index.get_or_insert_with(|| SetIndex::of(sets));
+        if let Some(set) = index.get(sets, set_id) {
+            out.push((i, first_tier + set));
+        }
+    }
+    out
+}
+
+impl StackContext<'_, '_> {
+    /// The rule plan.ts's rule map gives for rule `i`'s id (`tier_shadows`).
+    #[inline]
+    fn in_rule_map(&self, i: usize) -> usize {
+        self.shadows.iter().find(|&&(rule, _)| rule == i).map_or(i, |&(_, tier)| tier)
+    }
 }
 
 // --- Stage: product discounts --------------------------------------------------------------------
@@ -1014,15 +1048,9 @@ struct StackContext<'c, 'a> {
 fn plan_products<'a>(work: &mut [WorkLine<'a>], tiers: &[Option<TierCandidate>], ctx: &StackContext<'_, 'a>) {
     let rules = ctx.rules;
     let mut values: Vec<ProductValue> = rules[..ctx.first_tier].iter().map(ProductValue::of).collect();
-    // plan.ts looks a line's rules up in a map where a tier set's `tier:<setId>`
-    // replaces a rule of that id (none the sanitizer lets through: `:` is not an
-    // id character), so such a rule is never a product candidate.
-    if ctx.first_tier < rules.len() {
-        for (i, rule) in rules[..ctx.first_tier].iter().enumerate() {
-            if rule.id.starts_with("tier:") && rules[ctx.first_tier..].iter().any(|t| t.id == rule.id) {
-                values[i] = ProductValue::Out;
-            }
-        }
+    // A rule plan.ts finds as a tier's pseudo-rule is never a product candidate (`tier_shadows`).
+    for &(i, _) in ctx.shadows {
+        values[i] = ProductValue::Out;
     }
     let mut positive: Vec<Component> = Vec::new();
     for (at, (w, line)) in work.iter_mut().zip(&ctx.cart.lines).enumerate() {
@@ -1151,9 +1179,10 @@ fn restack<'a>(rules: &[Rule<'a>], labels: &RefCell<StackLabels>, kept: Vec<Comp
 /// `applyMarginProtection`: each line's product allocation (the winner stack
 /// planProducts picked) at most its headroom = max(0, subtotal − floorUnit ×
 /// quantity). A larger one is cut in rank order and emitted as that exact total;
-/// no headroom → no product discount on the line.
-fn apply_margin_protection<'a>(work: &mut [WorkLine<'a>], ctx: &StackContext<'_, 'a>) {
-    for (w, line) in work.iter_mut().zip(&ctx.cart.lines) {
+/// no headroom → no product discount on the line. A lowered tier names its
+/// break without a value (port spec step 7: never more than the line gets).
+fn apply_margin_protection<'a>(work: &mut [WorkLine<'a>], tiers: &[Option<TierCandidate>], ctx: &StackContext<'_, 'a>) {
+    for (at, (w, line)) in work.iter_mut().zip(&ctx.cart.lines).enumerate() {
         let (Some(stack), Some(floor)) = (w.product.as_mut(), w.floor) else { continue };
         let headroom = line.subtotal.saturating_sub(floor_total(floor, line.quantity)).max(0);
         if stack.amount <= headroom {
@@ -1165,6 +1194,11 @@ fn apply_margin_protection<'a>(work: &mut [WorkLine<'a>], ctx: &StackContext<'_,
             stack.components[0].amount = headroom;
             stack.amount = headroom;
             stack.value = EmittedValue::FixedTotal(headroom);
+            if stack.components[0].rule >= ctx.first_tier {
+                if let Some(t) = tiers.get(at).and_then(Option::as_ref) {
+                    stack.message = Cow::Borrowed(t.capped_message);
+                }
+            }
             continue;
         }
         let kept = cut_in_rank_order(&stack.components, headroom);
@@ -1258,7 +1292,8 @@ fn protect_order<'a>(
         lines.push(OrderLine { index, line: OrderSetLine { after, before: line.subtotal, headroom } });
     }
 
-    let components = &order.stack.components;
+    // plan.ts finds the components' rules by id (`tier_shadows`).
+    let components: Vec<Component> = order.stack.components.iter().map(|c| Component { rule: ctx.in_rule_map(c.rule), amount: c.amount }).collect();
     let wanted_at = |base: i64| -> i64 {
         let sum = components.iter().map(|c| order_amount(&rules[c.rule], base)).fold(0i64, i64::saturating_add);
         sum.min(base)
@@ -1580,7 +1615,9 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
             margin_tight: false,
         });
     }
-    let partners = partners_of(&rules, &by_id);
+    // The rules only: a tier never stacks (no rule can list it), and sizing the
+    // partner bits by the rules keeps the one-word stack search up to 64 rules.
+    let partners = partners_of(&rules[..first_tier], &by_id);
     drop(by_id);
 
     let markets_here = markets_here(&cart, &config.market_countries);
@@ -1593,12 +1630,13 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
     let tiers = prepare_tiers(&config.tiers, &cart.lines, &cart.tiers, |i| work[i].excluded.is_none(), &cart.currency, !cart.locale_en);
 
     let any_partners = !partners.bits.is_empty();
-    let ctx = StackContext { rules: &rules, first_tier, partners: &partners, any_partners, cart: &cart, labels: RefCell::default() };
+    let shadows = tier_shadows(&rules, first_tier, &config.tiers.sets);
+    let ctx = StackContext { rules: &rules, first_tier, shadows: &shadows, partners: &partners, any_partners, cart: &cart, labels: RefCell::default() };
     plan_products(&mut work, &tiers, &ctx);
     // Margin protection (MVP 2, A1.7): off by default, then the plan is MVP 1's.
     if let Some(margin) = config.margin.as_ref() {
         compute_floors(&mut work, margin, &cart);
-        apply_margin_protection(&mut work, &ctx);
+        apply_margin_protection(&mut work, &tiers, &ctx);
     }
     let mut order = plan_order_stage(&mut work, &engine, &ctx, config.margin.is_some());
     if config.margin.is_some() {
@@ -1674,12 +1712,16 @@ mod search_tests {
     /// (a seed already in a set is skipped, a set of one is no set), the largest
     /// capped sum wins (a tie keeps the earlier seed's), then each chosen amount
     /// capped at what is left of `cap`.
-    fn reference_pick(rules: &[Rule], positive: &[Component], cap: i64, p: &Partners) -> (Vec<Component>, i64) {
-        let mut sorted = positive.to_vec();
+    /// With a quantity tier (MVP 3, fix round 2 of plan.ts): the tier takes no
+    /// place in the pool — the MAX_STACK_CANDIDATES best-ranked RULE candidates —
+    /// and the search starts from the best single candidate, the tier included.
+    fn reference_pick(rules: &[Rule], positive: &[Component], tier: Option<Component>, cap: i64, p: &Partners) -> (Vec<Component>, i64) {
+        let mut sorted: Vec<Component> = positive.iter().copied().chain(tier).collect();
         sorted.sort_by(|a, b| by_rank(rules, a, b));
-        let pool = &sorted[..sorted.len().min(MAX_STACK_CANDIDATES)];
-        let mut chosen = vec![pool[0]];
-        let mut best_total = cap.min(pool[0].amount);
+        let stackable: Vec<Component> = sorted.iter().copied().filter(|c| tier.is_none_or(|t| t.rule != c.rule)).collect();
+        let pool = &stackable[..stackable.len().min(MAX_STACK_CANDIDATES)];
+        let mut chosen = vec![sorted[0]];
+        let mut best_total = cap.min(sorted[0].amount);
         let mut covered: Vec<usize> = Vec::new();
         for seed in pool {
             if !p.has_any(seed.rule) || covered.contains(&seed.rule) {
@@ -1721,13 +1763,24 @@ mod search_tests {
         // 130 rules (one and more partner words a rule), a target's distinct
         // candidates in any order (up to 24: past the cap), equal and distinct
         // amounts, priorities that tie, and caps below, between and above the sums.
+        // Half the cases add a quantity tier (MVP 3) after the rules — its own draws
+        // (`trng`), so the rule cases stay the ones before — with the partner bits
+        // over the rules only, as the plan builds them: 64 rules + a tier keep the
+        // one-word search.
         let ids: Vec<&'static str> = (0..130).map(|k| &*Box::leak(format!("r{k:03}").into_boxed_str())).collect();
+        let tier_ids = ["tier:a", "tier:r032", "tier:zz", "r032", "s"];
         let mut rng = Rng(0x5EED_2026_0930);
+        let mut trng = Rng(0x7135_2026_1001);
         let cart = super::super::cart::normalize_cart(CartInput::default());
         let (mut stacked, mut past_cap, mut left_out) = (0, 0, 0);
+        let (mut tier_wins, mut stack_beats_tier, mut tier_tops_a_full_pool) = (0, 0, 0);
         for case in 0..20_000 {
             let count = [4, 9, 20, 64, 65, 130][case % 6];
             let mut rules: Vec<Rule> = ids[..count].iter().map(|&id| rule(id, [0, 0, 0, 3, 9][rng.below(5) as usize])).collect();
+            let with_tier = trng.below(2) == 0;
+            if with_tier {
+                rules.push(rule(tier_ids[trng.below(5) as usize], 0));
+            }
             rank_ids(&mut rules);
             let density = [0, 5, 20, 50, 90, 100][rng.below(6) as usize];
             let mut links = Vec::new();
@@ -1750,11 +1803,41 @@ mod search_tests {
                 .collect();
             let sum: i64 = positive.iter().map(|c| c.amount).sum();
             let cap = [sum / 3, sum / 2, sum, sum * 2, 1, i64::MAX][rng.below(6) as usize].max(1);
-            let ctx = StackContext { rules: &rules, first_tier: rules.len(), partners: &p, any_partners: !links.is_empty(), cart: &cart, labels: RefCell::default() };
+            let tier = with_tier.then(|| {
+                let amount = match trng.below(4) {
+                    0 => positive[trng.below(n as u64) as usize].amount,
+                    1 => 500,
+                    2 => 1 + trng.below(4_000) as i64,
+                    _ => sum / 2 + 1,
+                };
+                Component { rule: count, amount: amount.max(1) }
+            });
+            let ctx = StackContext {
+                rules: &rules,
+                first_tier: count,
+                shadows: &[],
+                partners: &p,
+                any_partners: !links.is_empty(),
+                cart: &cart,
+                labels: RefCell::default(),
+            };
             let mut got = positive.clone();
-            let picked = pick(&ctx, &mut got, None, cap);
-            let (expected, total) = reference_pick(&rules, &positive, cap, &p);
+            let picked = pick(&ctx, &mut got, tier, cap);
+            let (expected, total) = reference_pick(&rules, &positive, tier, cap, &p);
             assert_eq!((&picked.components, picked.total), (&expected, total), "case {case}");
+            if let Some(t) = tier {
+                let won = expected.len() == 1 && expected[0].rule == t.rule;
+                tier_wins += usize::from(won);
+                stack_beats_tier += usize::from(expected.len() > 1);
+                // The tier ranks in the 6 best of the line and the rules still fill the pool.
+                let mut all = positive.clone();
+                all.push(t);
+                all.sort_by(|a, b| by_rank(&rules, a, b));
+                tier_tops_a_full_pool += usize::from(
+                    expected.len() > 1 && n >= MAX_STACK_CANDIDATES && all[..MAX_STACK_CANDIDATES].iter().any(|c| c.rule == t.rule),
+                );
+                continue;
+            }
             stacked += usize::from(expected.len() > 1);
             past_cap += usize::from(expected.len() > 1 && n > MAX_STACK_CANDIDATES);
             // A partner of every member ranked below the cap: left out only by it.
@@ -1772,7 +1855,11 @@ mod search_tests {
             list.sort_by(|a, b| by_rank(&rules, a, b));
             assert_eq!(list, sorted, "case {case}");
         }
-        assert!(stacked > 5_000 && past_cap > 1_000 && left_out > 500, "stacks {stacked}, past the cap {past_cap}, a partner left out {left_out}");
+        assert!(stacked > 2_500 && past_cap > 500 && left_out > 250, "stacks {stacked}, past the cap {past_cap}, a partner left out {left_out}");
+        assert!(
+            tier_wins > 1_000 && stack_beats_tier > 1_000 && tier_tops_a_full_pool > 200,
+            "tier wins {tier_wins}, a stack beats the tier {stack_beats_tier}, the tier in the 6 best of a full pool {tier_tops_a_full_pool}"
+        );
     }
 
     fn rule(id: &'static str, priority: i64) -> Rule<'static> {
