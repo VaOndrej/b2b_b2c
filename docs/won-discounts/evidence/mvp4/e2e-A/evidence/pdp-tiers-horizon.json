@@ -1,0 +1,306 @@
+{
+  "at": "2026-10-01T19:23:08.349Z",
+  "theme": "Horizon",
+  "profile": "tiers",
+  "variant": {
+    "id": "gid://shopify/ProductVariant/48468678902001",
+    "price": 1000,
+    "cost": {
+      "cost": 6,
+      "cur": "CZK"
+    },
+    "pdp": {
+      "f": 858,
+      "k": "22b4f9e0"
+    }
+  },
+  "initial": {
+    "state": "ready",
+    "hidden": false,
+    "setId": "e2e-tiers-global",
+    "countMode": "product",
+    "preset": "default",
+    "heading": "Množstevní sleva",
+    "rows": [
+      {
+        "min": 3,
+        "active": false,
+        "hidden": false,
+        "qty": "Od 3 ks",
+        "save": "−10 %",
+        "unit": "9,00 Kč/ks"
+      },
+      {
+        "min": 5,
+        "active": false,
+        "hidden": false,
+        "qty": "Od 5 ks",
+        "save": "−14,2 %",
+        "unit": "8,58 Kč/ks"
+      }
+    ],
+    "liveUnitCents": 1000,
+    "liveText": "1 ks za 10,00 Kč (10,00 Kč/ks)",
+    "next": {
+      "hidden": false,
+      "text": "Ještě 2 ks a zaplatíte 9,00 Kč/ks."
+    },
+    "data": {
+      "v": 1,
+      "product": 9692429058289,
+      "set": "e2e-tiers-global",
+      "count": "product",
+      "cur": "CZK",
+      "sc": "CZK",
+      "ms": "1.234.567,89 Kč",
+      "fmt": "{{amount_with_comma_separator}} Kč",
+      "lang": "cs",
+      "sel": 48468678902001,
+      "breaks": [
+        {
+          "min": 3,
+          "pct": 10
+        },
+        {
+          "min": 5,
+          "pct": 15
+        }
+      ],
+      "cart": {
+        "p": 0,
+        "s": 0
+      },
+      "variants": [
+        {
+          "id": 48468678902001,
+          "p": 1000,
+          "c": 0,
+          "f": 858
+        }
+      ],
+      "t": {
+        "save_pct": "−{pct} %",
+        "save_off": "−{amount}",
+        "unit": "{price}/ks",
+        "live": "{qty} ks za {total} ({price}/ks)",
+        "live_cart": "{qty} ks za {total} ({price}/ks). Počítáme i {cart} ks v košíku.",
+        "next": "Ještě {count} ks a zaplatíte {price}/ks."
+      }
+    },
+    "wrapperId": "shopify-block-AVEhsR2lHdkNoNWtKa__won_discounts_quantity_tiers",
+    "wrapperClass": "shopify-block shopify-app-block"
+  },
+  "steps": [
+    {
+      "quantity": 2,
+      "unitCents": 1000,
+      "liveText": "2 ks za 20,00 Kč (10,00 Kč/ks)",
+      "activeMin": 0,
+      "plan": {
+        "discount": 0,
+        "value": null,
+        "marginCapped": null,
+        "message": null
+      }
+    },
+    {
+      "quantity": 3,
+      "unitCents": 900,
+      "liveText": "3 ks za 27,00 Kč (9,00 Kč/ks)",
+      "activeMin": 3,
+      "plan": {
+        "discount": 300,
+        "value": {
+          "percent": 10
+        },
+        "marginCapped": null,
+        "message": "Od 3 ks −10 %"
+      }
+    },
+    {
+      "quantity": 4,
+      "unitCents": 900,
+      "liveText": "4 ks za 36,00 Kč (9,00 Kč/ks)",
+      "activeMin": 3,
+      "plan": {
+        "discount": 400,
+        "value": {
+          "percent": 10
+        },
+        "marginCapped": null,
+        "message": "Od 3 ks −10 %"
+      }
+    },
+    {
+      "quantity": 5,
+      "unitCents": 858,
+      "liveText": "5 ks za 42,90 Kč (8,58 Kč/ks)",
+      "activeMin": 5,
+      "plan": {
+        "discount": 710,
+        "value": {
+          "fixedTotal": 710
+        },
+        "marginCapped": {
+          "before": 750,
+          "after": 710,
+          "floorUnit": 858,
+          "basis": "cost",
+          "minMarginPercent": 30,
+          "source": "global"
+        },
+        "message": "Množstevní sleva od 5 ks"
+      }
+    },
+    {
+      "quantity": 7,
+      "unitCents": 858,
+      "liveText": "7 ks za 60,06 Kč (8,58 Kč/ks)",
+      "activeMin": 5,
+      "plan": {
+        "discount": 994,
+        "value": {
+          "fixedTotal": 994
+        },
+        "marginCapped": {
+          "before": 1050,
+          "after": 994,
+          "floorUnit": 858,
+          "basis": "cost",
+          "minMarginPercent": 30,
+          "source": "global"
+        },
+        "message": "Množstevní sleva od 5 ks"
+      }
+    }
+  ],
+  "events": [
+    {
+      "at": 1790882586027,
+      "variantId": 48468678902001,
+      "quantity": 1,
+      "count": 1,
+      "min": 0,
+      "unitCents": 1000
+    },
+    {
+      "at": 1790882586173,
+      "variantId": 48468678902001,
+      "quantity": 2,
+      "count": 2,
+      "min": 0,
+      "unitCents": 1000
+    },
+    {
+      "at": 1790882586210,
+      "variantId": 48468678902001,
+      "quantity": 3,
+      "count": 3,
+      "min": 3,
+      "unitCents": 900
+    },
+    {
+      "at": 1790882586241,
+      "variantId": 48468678902001,
+      "quantity": 4,
+      "count": 4,
+      "min": 3,
+      "unitCents": 900
+    },
+    {
+      "at": 1790882586274,
+      "variantId": 48468678902001,
+      "quantity": 5,
+      "count": 5,
+      "min": 5,
+      "unitCents": 858
+    },
+    {
+      "at": 1790882586308,
+      "variantId": 48468678902001,
+      "quantity": 7,
+      "count": 7,
+      "min": 5,
+      "unitCents": 858
+    }
+  ],
+  "facts": {
+    "fT1": {
+      "statement": "Liquid in the app block reads $app product/variant metafields",
+      "variant": {
+        "id": "gid://shopify/ProductVariant/48468678902001",
+        "pdpMetafield": {
+          "f": 858,
+          "k": "22b4f9e0"
+        },
+        "row5": "−14,2 %"
+      },
+      "product": {
+        "metafield": {},
+        "note": "Free: no tierRef on any product (global set); the product read is proven in phase B (tierRef)"
+      }
+    },
+    "fT2": {
+      "statement": "app.metafields.won_discounts.storefront_config.value in the block",
+      "adminRead": {
+        "cv": "705ad417617c94cb7cd615d04c56f5d3",
+        "tiers": {
+          "global": "e2e-tiers-global",
+          "sets": {
+            "e2e-tiers-global": {
+              "count": "product",
+              "breaks": [
+                {
+                  "min": 3,
+                  "pct": 10
+                },
+                {
+                  "min": 5,
+                  "pct": 15
+                }
+              ]
+            }
+          }
+        },
+        "margin": {
+          "on": true,
+          "max": 30,
+          "k": "22b4f9e0",
+          "cur": "CZK"
+        },
+        "updatedAt": "2026-10-01T19:21:21Z"
+      },
+      "block": {
+        "setId": "e2e-tiers-global",
+        "count": "product",
+        "breaks": [
+          {
+            "min": 3,
+            "pct": 10
+          },
+          {
+            "min": 5,
+            "pct": 15
+          }
+        ]
+      }
+    },
+    "fT3": {
+      "statement": "the template block type",
+      "expectedType": "shopify://apps/won-discounts/blocks/quantity_tiers/01a0e790-ee4d-733c-ac8e-14c7baa03fff",
+      "workspace": {
+        "file": "tmp/e2e-themes/won-discounts/horizon/templates/product.json",
+        "type": "shopify://apps/won-discounts/blocks/quantity_tiers/01a0e790-ee4d-733c-ac8e-14c7baa03fff",
+        "parent": "main/product-details"
+      },
+      "wrapper": {
+        "id": "shopify-block-AVEhsR2lHdkNoNWtKa__won_discounts_quantity_tiers",
+        "class": "shopify-block shopify-app-block"
+      },
+      "scripts": [
+        "https://cdn.shopify.com/extensions/01a0f881-2399-70f6-9cbb-7075c8e78b2b/dev-306e3770-b99f-4ee9-a007-d20f324a9755/assets/won-discounts-tiers.js",
+        "https://cdn.shopify.com/extensions/01a0f881-2399-70f6-9cbb-7075c8e78b2b/dev-306e3770-b99f-4ee9-a007-d20f324a9755/assets/won-discounts-tiers-core.js"
+      ]
+    }
+  }
+}

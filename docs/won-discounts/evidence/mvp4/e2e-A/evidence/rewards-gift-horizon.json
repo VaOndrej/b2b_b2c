@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-01T18:02:20.604Z",
+  "at": "2026-10-01T18:25:55.353Z",
   "theme": "Horizon",
   "withGift": [
     {
@@ -49,8 +49,8 @@
     }
   },
   "drawer": {
-    "shown": false,
-    "state": null
+    "shown": true,
+    "state": "in"
   },
   "declined": [
     "e2e-gift"
