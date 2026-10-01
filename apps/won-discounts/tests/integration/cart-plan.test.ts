@@ -7,8 +7,12 @@ import { sanitizeConfig } from "@won/core/discounts/config";
 
 import type { AdminClient } from "../../app/lib/admin-client.server.ts";
 import {
+  CART_PLAN_CACHE_MAX,
   CART_PLAN_CACHE_MS,
   CART_PLAN_MAX_LINES,
+  CART_PLAN_READS_PER_MINUTE,
+  CartPlanRateLimited,
+  cartPlanCacheSize,
   cartPlanInput,
   clearCartPlanCache,
   parseCartPlanRequest,
@@ -179,6 +183,30 @@ test("Shopify reads are cached per shop for 60 s (injected clock), per variant",
   assert.deepEqual(calls.slice(3), ["WonCartPlanConfig", "WonCartPlanVariants"]);
   await runCartPlan(client, "other.myshopify.com", request([line(11)]));
   assert.deepEqual(calls.slice(5), ["WonCartPlanConfig", "WonCartPlanVariants"], "another shop never reads this shop's cache (SEC-2)");
+});
+
+test("audit P1: the cache never grows past its cap — random variant ids from a public endpoint cannot exhaust memory", async () => {
+  const config = payload({ tiers: TIERS });
+  const { client } = fakeAdmin(config, {});
+  const lines = (from: number) => Array.from({ length: CART_PLAN_MAX_LINES }, (_, i) => ({ key: `k${i}`, variantId: from + i, productId: 1, quantity: 1, unitPrice: 100_00 }));
+  // Spread over many shops so the per-shop read limit does not stop it first.
+  for (let n = 0; n * CART_PLAN_MAX_LINES < CART_PLAN_CACHE_MAX * 2; n++) await runCartPlan(client, `s${n}.myshopify.com`, request(lines(n * CART_PLAN_MAX_LINES + 1)));
+  assert.ok(cartPlanCacheSize() <= CART_PLAN_CACHE_MAX, `${cartPlanCacheSize()} entries`);
+});
+
+test("audit P2: Shopify reads per shop are limited per minute; over the limit no read and no answer (the panel shows no hint, fail closed)", async () => {
+  const config = payload({ tiers: TIERS });
+  const { client, calls } = fakeAdmin(config, {});
+  const line = (variantId: number) => ({ key: `k${variantId}`, variantId, productId: 1, quantity: 1, unitPrice: 100_00 });
+  for (let i = 0; i < CART_PLAN_READS_PER_MINUTE; i++) await runCartPlan(client, "busy.myshopify.com", request([line(1000 + i)]));
+  const before = calls.length;
+  await assert.rejects(runCartPlan(client, "busy.myshopify.com", request([line(5000)])), CartPlanRateLimited);
+  assert.equal(calls.length, before, "nothing read from Shopify over the limit");
+  // Cached answers still work over the limit, and another shop is not affected.
+  await runCartPlan(client, "busy.myshopify.com", request([line(1000)]));
+  await runCartPlan(client, "quiet.myshopify.com", request([line(5000)]));
+  clock += 60_000;
+  await runCartPlan(client, "busy.myshopify.com", request([line(5000)]));
 });
 
 test("the route authenticates the app proxy request first, takes the shop from it, answers no-store", async () => {

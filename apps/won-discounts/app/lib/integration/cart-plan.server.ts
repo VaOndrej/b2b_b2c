@@ -18,7 +18,9 @@
 //                  without a campaign.
 // The answer carries no purchase cost, margin or rule internals: only the hint
 // and what the shopper may see. Every Shopify read is cached for CACHE_MS per
-// shop (and per variant), with an injectable clock for tests.
+// shop (and per variant), with an injectable clock for tests; the caches hold at
+// most CACHE_MAX entries and a shop's requests that need Shopify are limited a
+// minute (a public endpoint: the ids come from the browser — audit P1/P2).
 
 import type { CartLineInput, CartPlanInput } from "@won/core/discounts/cart";
 import { shopLocalDates } from "@won/core/discounts/function-payload";
@@ -29,6 +31,13 @@ import { parseProductRefs } from "./try-cart-plan";
 
 export const CART_PLAN_MAX_LINES = 100;
 export const CART_PLAN_CACHE_MS = 60_000;
+/** Cached entries kept at most (all shops together): the endpoint is public, its variant ids come from the browser (audit P1). */
+export const CART_PLAN_CACHE_MAX = 5_000;
+/** Requests a minute per shop that may read Shopify (cached answers are not counted; audit P2: the shop's API budget belongs to its sync). */
+export const CART_PLAN_READS_PER_MINUTE = 30;
+
+/** Over CART_PLAN_READS_PER_MINUTE: nothing is read, nothing planned — the route answers 429 and the panel shows no hint. */
+export class CartPlanRateLimited extends Error {}
 
 export interface CartPlanRequestLine {
   /** The /cart.js line key: echoed back so the embed can find the line. */
@@ -209,6 +218,7 @@ interface CacheEntry<T> {
 }
 const configCache = new Map<string, CacheEntry<{ config: PlanConfig | null; timezone: string | null }>>();
 const variantCache = new Map<string, CacheEntry<VariantFacts>>();
+const readWindows = new Map<string, { start: number; count: number }>();
 let now = () => Date.now();
 
 /** Tests: a fixed clock and empty caches. */
@@ -218,6 +228,40 @@ export function setCartPlanClock(clock: () => number): void {
 export function clearCartPlanCache(): void {
   configCache.clear();
   variantCache.clear();
+  readWindows.clear();
+}
+/** Tests: the cached entries now (both caches). */
+export function cartPlanCacheSize(): number {
+  return configCache.size + variantCache.size;
+}
+
+/** Stores an entry; past the cap the expired ones go first, then the oldest (Map keeps insertion order). */
+function remember<T>(cache: Map<string, CacheEntry<T>>, key: string, value: T): void {
+  cache.delete(key);
+  cache.set(key, { at: now(), value });
+  if (configCache.size + variantCache.size <= CART_PLAN_CACHE_MAX) return;
+  for (const map of [variantCache, configCache] as Map<string, CacheEntry<unknown>>[]) {
+    for (const [k, entry] of map) if (!fresh(entry)) map.delete(k);
+  }
+  for (const map of [variantCache, configCache] as Map<string, CacheEntry<unknown>>[]) {
+    for (const k of map.keys()) {
+      if (configCache.size + variantCache.size <= CART_PLAN_CACHE_MAX) return;
+      map.delete(k);
+    }
+  }
+}
+
+/** One request of `shop` that needs Shopify: counted in its minute window; over the limit it is refused. */
+function takeRead(shop: string): void {
+  const t = now();
+  const window = readWindows.get(shop);
+  if (!window || t - window.start >= 60_000) {
+    readWindows.set(shop, { start: t, count: 1 });
+    if (readWindows.size > CART_PLAN_CACHE_MAX) readWindows.delete(readWindows.keys().next().value!);
+    return;
+  }
+  if (window.count >= CART_PLAN_READS_PER_MINUTE) throw new CartPlanRateLimited(shop);
+  window.count += 1;
 }
 
 const fresh = <T>(entry: CacheEntry<T> | undefined): entry is CacheEntry<T> => entry !== undefined && now() - entry.at < CART_PLAN_CACHE_MS;
@@ -229,7 +273,7 @@ async function readConfig(client: AdminClient, shop: string): Promise<{ config: 
   const parsed = parseJson(result.data?.shop?.config?.value ?? null);
   // Over 10 000 B Shopify hands the function null (C7): the same here — planCart then plans nothing.
   const value = { config: isFunctionConfigPayload(parsed) ? (parsed as PlanConfig) : null, timezone: result.data?.shop?.ianaTimezone ?? null };
-  configCache.set(shop, { at: now(), value });
+  remember(configCache, shop, value);
   return value;
 }
 
@@ -257,7 +301,7 @@ async function readVariants(client: AdminClient, shop: string, ids: readonly num
     missing.forEach((id, i) => {
       const node = result.data?.nodes?.[i];
       const facts: VariantFacts = { product: node?.product?.won?.value ?? null, cost: node?.cost?.value ?? null };
-      variantCache.set(`${shop}|${id}`, { at: now(), value: facts });
+      remember(variantCache, `${shop}|${id}`, facts);
       out.set(id, facts);
     });
   }
@@ -266,6 +310,8 @@ async function readVariants(client: AdminClient, shop: string, ids: readonly num
 
 /** The live plan of a storefront cart for `shop` (the app proxy's authenticated shop, SEC-2). */
 export async function runCartPlan(client: AdminClient, shop: string, request: CartPlanRequest): Promise<CartPlanAnswer> {
+  const needsRead = !fresh(configCache.get(shop)) || request.lines.some((l) => !fresh(variantCache.get(`${shop}|${l.variantId}`)));
+  if (needsRead) takeRead(shop);
   const { config, timezone } = await readConfig(client, shop);
   const facts = await readVariants(client, shop, request.lines.map((l) => l.variantId));
   return cartPlanAnswer(planCart(cartPlanInput(request, facts, shopToday(timezone, now())), config));
