@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-01T06:22:05.044Z",
+  "at": "2026-10-01T12:53:45.941Z",
   "theme": "Horizon",
   "profile": "margin",
   "collection": null,
@@ -77,7 +77,7 @@
         "wonVariant": null
       }
     ],
-    "oracleParityRuns": 8
+    "oracleParityRuns": 2
   },
   "cart": {
     "currency": "CZK",
@@ -93,11 +93,11 @@
     "cart_level": [
       {
         "type": "discount_code",
-        "key": "59659e96-6916-45ac-bb29-511a3d609511",
+        "key": "4c7b43e1-be0c-4911-8c83-1b37446c5e94",
         "title": "WONE2EM20",
         "description": null,
         "value": "3.0",
-        "created_at": "2026-10-01T06:21:27.607Z",
+        "created_at": "2026-10-01T12:53:11.815Z",
         "value_type": "fixed_amount",
         "allocation_method": "across",
         "target_selection": "all",
@@ -411,12 +411,12 @@
     ],
     "subtotal": 17070,
     "orderDiscount": -300,
-    "shipping": 64628,
+    "shipping": 64682,
     "tax": 0,
     "includedTaxRows": [],
-    "total": 81398,
-    "charged": 81398,
-    "expectedTotal": 81398
+    "total": 81452,
+    "charged": 81452,
+    "expectedTotal": 81452
   },
   "thankYouSummaryRows": [
     {
@@ -436,13 +436,13 @@
     },
     {
       "label": "Expedice",
-      "value": "646,28 Kč",
-      "amount": 64628
+      "value": "646,82 Kč",
+      "amount": 64682
     },
     {
       "label": "Celkem",
-      "value": "813,98 Kč",
-      "amount": 81398
+      "value": "814,52 Kč",
+      "amount": 81452
     },
     {
       "label": "CELKOVÁ ÚSPORA68,30 Kč",
@@ -451,7 +451,7 @@
     }
   ],
   "loggedOrder": {
-    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20261001_062148_468Z_extensions_won-discounts-engine_f9e417.json",
+    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20261001_125323_985Z_extensions_won-discounts-engine_e8ce0f.json",
     "candidate": {
       "message": "E2E marže kód 20 %",
       "targets": [

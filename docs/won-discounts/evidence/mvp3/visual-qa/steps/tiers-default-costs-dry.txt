@@ -1,0 +1,7 @@
+# stored config of b2b-b2c-store-development.myshopify.com: margin protection ON (plan free)
+
+# dry-run of the app's full pass (cost + pdp): margin as checkout runs it = {"enabled":true,"global":{"maxDiscountPercent":30,"minMarginPercent":30},"perCollection":[]}
+
+# dry-run result: done — 51 variant(s) read, 0 cost write(s), 0 pdp-only write(s), 0 deletion(s); 0 pdp value(s) in the planned metafieldsSet
+
+(dry-run: nothing written; pass --live)

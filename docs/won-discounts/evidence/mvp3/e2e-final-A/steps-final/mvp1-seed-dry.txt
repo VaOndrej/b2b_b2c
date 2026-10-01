@@ -1,0 +1,96 @@
+# stored config of b2b-b2c-store-development.myshopify.com: 0 rule(s)
+  margin protection off
+  no tier set
+
+# seed (profile mvp1): won-e2e-simple-a = gid://shopify/Product/9692429058289; code WONE2E15
+  + e2e-mvp1-auto-10 "E2E auto 10 %" automatic
+  + e2e-mvp1-code-15 "E2E kód" code
+  margin protection off
+  no tier set
+
+# sync plan (dry-run, apps/won-discounts/scripts/sync/live-sync.ts --config /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/34104025-5b69-4033-91ec-cf56865061ef/scratchpad/e2eA/seed-mvp1-seed-config.json)
+# Won Discounts sync — DRY-RUN (reads b2b-b2c-store-development.myshopify.com, writes nothing; pass --live to execute)
+dry-run: seeded 1 tracked node(s) and 0 indexed product(s) from the app database (read-only)
+
+--- would send WonSyncCodeCreate ---
+{
+  "codeAppDiscount": {
+    "title": "E2E kód",
+    "functionHandle": "won-discounts-engine",
+    "startsAt": "2026-10-01T12:36:50.677Z",
+    "discountClasses": [
+      "ORDER"
+    ],
+    "combinesWith": {
+      "productDiscounts": true,
+      "orderDiscounts": true,
+      "shippingDiscounts": true
+    },
+    "metafields": [
+      {
+        "namespace": "$app:won_discounts",
+        "key": "function_vars",
+        "type": "json",
+        "value": "{\"role\":\"code\",\"ruleId\":\"e2e-mvp1-code-15\",\"campaignId\":null,\"campaignStart\":\"1970-01-01T00:00:00\",\"campaignEnd\":\"1970-01-01T00:00:00\",\"varsVersion\":null}"
+      }
+    ],
+    "code": "WONE2E15",
+    "context": {
+      "all": "ALL"
+    },
+    "appliesOncePerCustomer": false
+  }
+}
+
+--- would send WonSyncMetafieldsSet ---
+{
+  "metafields": [
+    {
+      "ownerId": "gid://shopify/Shop/78971076849",
+      "namespace": "$app:won_discounts",
+      "key": "function_config",
+      "type": "json",
+      "value": "<733 B> {\"schemaVersion\":1,\"campaignId\":null,\"campaignVarsVersion\":null,\"engine\":{\"combination\":{\"outletWithAnything\":false,\"pro…"
+    }
+  ]
+}
+
+--- would send WonSyncStorefrontConfigSet ---
+{
+  "metafields": [
+    {
+      "ownerId": "gid://shopify/AppInstallation/1052084633841",
+      "namespace": "won_discounts",
+      "key": "storefront_config",
+      "type": "json",
+      "value": "{\"v\":1,\"cv\":\"unsaved:592653037016241f18360633a28f246d\",\"tiers\":{\"global\":null,\"sets\":{}},\"margin\":{\"on\":false},\"appearance\":{\"preset\":\"default\"},\"texts\":{}}"
+    }
+  ]
+}
+
+--- would send WonSyncMetafieldsSet ---
+{
+  "metafields": [
+    {
+      "ownerId": "gid://shopify/Product/9692429058289",
+      "namespace": "$app:won_discounts",
+      "key": "product",
+      "type": "json",
+      "value": "{\"ruleIds\":[\"e2e-mvp1-auto-10\"],\"variantRuleIds\":{}}"
+    }
+  ]
+}
+[won-sync] sync b2b-b2c-store-development.myshopify.com: ok (9 steps) 
+
+# result: ok (dry-run: 4 mutation(s) planned)
+✔ shop.read — gid://shopify/Shop/78971076849, shop time 2026-10-01T08:36:50 (America/New_York), currency CZK
+✔ plan — plan free: nothing to gate
+✔ node.create:code:e2e-mvp1-code-15 — created "E2E kód" with code WONE2E15
+✔ products.scope — 1 targeted product(s) (0 collection(s), 0 variant target(s)); 0 up to date
+✔ shop_config.write — 733 B written
+✔ shop_config.verify — read back and verified (733 B)
+✔ storefront_config.write — 156 B written
+✔ storefront_config.verify — read back and verified (156 B)
+✔ products.add — 1 product(s) got their new rules
+
+(dry-run: nothing written; pass --live)

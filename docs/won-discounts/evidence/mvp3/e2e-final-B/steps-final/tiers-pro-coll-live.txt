@@ -1,0 +1,15 @@
+# store: collection won-e2e-tiers does not exist; won-e2e-simple-b is in []; won-e2e-spare is in []
+
+--- sending WonE2eMarginCollectionCreate ---
+{
+  "input": {
+    "title": "Won E2E — Tiers (Pro)",
+    "handle": "won-e2e-tiers",
+    "products": [
+      "gid://shopify/Product/9692429091057",
+      "gid://shopify/Product/9692429189361"
+    ]
+  }
+}
+# read-back: collection won-e2e-tiers = gid://shopify/Collection/492043763953 "Won E2E — Tiers (Pro)" (manual), products [won-e2e-simple-b, won-e2e-spare]; won-e2e-simple-b is in [won-e2e-tiers]; won-e2e-spare is in [won-e2e-tiers]
+Evidence: /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/34104025-5b69-4033-91ec-cf56865061ef/scratchpad/e2eB/tiers-collection-create-2026-10-01T11-54-47-477Z.json

@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-01T06:11:29.966Z",
+  "at": "2026-10-01T12:39:30.255Z",
   "theme": "Horizon",
   "checkoutPath": "/checkouts/cn/<token>/cs-cz/thank-you",
   "codeCarriedIntoCheckout": false,
@@ -45,10 +45,10 @@
     "lineFinal": 900,
     "subtotal": 900,
     "orderDiscount": -135,
-    "shipping": 64628,
+    "shipping": 64682,
     "tax": 0,
-    "total": 65393,
-    "charged": 65393
+    "total": 65447,
+    "charged": 65447
   },
   "thankYouLines": [
     {
@@ -81,13 +81,13 @@
     },
     {
       "label": "Expedice",
-      "value": "646,28 Kč",
-      "amount": 64628
+      "value": "646,82 Kč",
+      "amount": 64682
     },
     {
       "label": "Celkem",
-      "value": "653,93 Kč",
-      "amount": 65393
+      "value": "654,47 Kč",
+      "amount": 65447
     },
     {
       "label": "CELKOVÁ ÚSPORA2,35 Kč",

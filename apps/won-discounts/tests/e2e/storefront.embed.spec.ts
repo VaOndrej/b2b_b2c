@@ -5,7 +5,7 @@ import type { Page, TestInfo } from "@playwright/test";
 import { WON_E2E_PRODUCTS } from "@won/testing/e2e-products";
 import { assertResponsiveSane } from "@won/testing/playwright";
 
-import { expect, test } from "./support/fixtures.ts";
+import { expect, gotoStorefront, test } from "./support/fixtures.ts";
 
 // SPEC-DRIVEN (MVP 0, Task 6). Live proof that the Won Discounts app embed —
 // switched on through the e2e/settings_data.*.json overlay, never by hand —
@@ -62,8 +62,7 @@ function watchOurErrors(page: Page): string[] {
 
 /** Open the PDP and wait until the embed is rendered AND its JS has booted. */
 async function openReadyPdp(page: Page) {
-  const response = await page.goto(PDP_PATH, { waitUntil: "load" });
-  expect(response?.status(), `GET ${PDP_PATH}`).toBeLessThan(400);
+  await gotoStorefront(page, PDP_PATH);
 
   const embed = page.locator("[data-won-discounts-embed]");
   await expect(

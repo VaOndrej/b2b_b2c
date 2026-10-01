@@ -1,0 +1,18 @@
+# stored config of b2b-b2c-store-development.myshopify.com: margin protection off (plan free)
+
+$ npx tsx apps/won-discounts/scripts/sync/live-costs.ts --clear --live   (DATABASE_URL = the app's dev SQLite)
+# Won Discounts cost mirror clear — LIVE on b2b-b2c-store-development.myshopify.com
+
+# result: done, 6 metafield(s) cleared
+
+# read-back 2026-10-01T13:41:55.578Z: 9 won-e2e variant(s), 6 with a Shopify cost, 0 with the variant metafield, 0 with pdp
+  won-e2e-simple-a       Default Title gid://shopify/ProductVariant/48468678902001  price 10.00  cost 6.0 CZK  metafield —  pdp —
+  won-e2e-simple-b       Default Title gid://shopify/ProductVariant/48468678934769  price 12.00  cost —  metafield —  pdp —
+  won-e2e-two-variants   Small        gid://shopify/ProductVariant/48468678967537  price 15.00  cost 5.0 CZK  metafield —  pdp —
+  won-e2e-two-variants   Large        gid://shopify/ProductVariant/48468679000305  price 18.00  cost —  metafield —  pdp —
+  won-e2e-multiaxis      S / Red      gid://shopify/ProductVariant/48468679033073  price 20.00  cost 8.0 CZK  metafield —  pdp —
+  won-e2e-multiaxis      S / Blue     gid://shopify/ProductVariant/48468679065841  price 20.00  cost 8.0 CZK  metafield —  pdp —
+  won-e2e-multiaxis      M / Red      gid://shopify/ProductVariant/48468679098609  price 22.00  cost 8.0 CZK  metafield —  pdp —
+  won-e2e-multiaxis      M / Blue     gid://shopify/ProductVariant/48468679131377  price 22.00  cost 8.0 CZK  metafield —  pdp —
+  won-e2e-spare          Default Title gid://shopify/ProductVariant/48468679164145  price 9.00  cost —  metafield —  pdp —
+Evidence: /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/34104025-5b69-4033-91ec-cf56865061ef/scratchpad/e2eQ/margin-costs-readback-2026-10-01T13-41-55-578Z.json

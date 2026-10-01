@@ -1,0 +1,28 @@
+# stored config of b2b-b2c-store-development.myshopify.com: 0 rule(s)
+  margin protection off
+  no tier set
+# collection won-e2e-tiers = gid://shopify/Collection/492043763953 (2 product(s))
+
+# seed (profile tiers-pro): ; quantity tiers + Pro: a set on won-e2e-tiers counted across the cart (from 2 items −20 %) before the global set; margin protection on (min margin 30 %, max discount 30 %), no rule
+  margin protection ON (min margin 30 %, max discount 30 %, 0 collection setting(s))
+  tier set e2e-tiers-col (scoped {"collectionIds":["gid://shopify/Collection/492043763953"]}, per cart): 2+ −20 %
+  tier set e2e-tiers-global (global, per product): 3+ −10 %, 5+ −15 %
+
+# backup: /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/34104025-5b69-4033-91ec-cf56865061ef/scratchpad/e2eB/seed-mvp1-backup.json
+[won-sync] sync b2b-b2c-store-development.myshopify.com: ok (9 steps) 
+
+# save: ok (version cmuphagpk0000snuvlgnfleg8, 532 B)
+# sync: ok (run cmuphbqxh0005snuvyybddrwc)
+✔ shop.read — gid://shopify/Shop/78971076849, shop time 2026-10-01T07:56:16 (America/New_York), currency CZK
+✔ plan — plan pro: nothing to gate
+✔ products.scope — 2 targeted product(s) (1 collection(s), 0 variant target(s)); 0 up to date
+✔ products.set — 2 product(s) updated
+✔ shop_config.write — 532 B written
+✔ shop_config.verify — read back and verified (532 B)
+✔ storefront_config.write — 347 B written
+✔ storefront_config.verify — read back and verified (347 B)
+✔ products.tiers — 2/2 product(s) finished after the flip (their quantity tier set)
+
+Evidence: /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/34104025-5b69-4033-91ec-cf56865061ef/scratchpad/e2eB/seed-mvp1-tiers-pro-2026-10-01T11-57-26-869Z.json
+next: mirror the purchase costs (+ the variant pdp maximum) — node apps/won-discounts/scripts/e2e/margin-costs.mjs (dry-run), then --live
+[won-sync] costs b2b-b2c-store-development.myshopify.com: full pass done (51 read, 6 written, 0 cleared, 0 pdp, 0 refused) 

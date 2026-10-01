@@ -49,6 +49,7 @@
 //       config and the sync plan (scripts/sync/live-sync.ts dry-run: every
 //       mutation printed, none sent). Writes nothing anywhere.
 //   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs [--profile shapes] --live
+//   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --profile tiers --preset chips [--live]   (visual QA of a block preset)
 //       backs up the stored config (only when no backup exists yet, so a re-seed
 //       never backs up its own seed), saves the seed config and syncs it.
 //   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --cleanup [--live]
@@ -159,7 +160,7 @@ const printJson = flag("--json");
 const OUT_DIR = path.resolve(option("--out") ?? process.env.WON_E2E_OUT ?? path.join(os.tmpdir(), "won-discounts-e2e"));
 const BACKUP_FILE = path.join(OUT_DIR, "seed-mvp1-backup.json");
 for (const arg of argv) {
-  if (arg.startsWith("--") && !["--live", "--cleanup", "--state", "--json", "--out", "--profile"].includes(arg)) {
+  if (arg.startsWith("--") && !["--live", "--cleanup", "--state", "--json", "--out", "--profile", "--preset"].includes(arg)) {
     throw new Error(`unknown argument ${arg}`);
   }
 }
@@ -213,7 +214,11 @@ const { createCliAdminClient } = await appModule("app/lib/admin-client-cli.serve
 const { loadConfig } = await appModule("app/lib/config.server.ts");
 const { saveAndSync, loadSyncStatus } = await appModule("app/lib/sync/save-and-sync.server.ts");
 const { detectNativeDiscounts } = await appModule("app/lib/native/detect.server.ts");
-const { createDefaultConfig } = await import("@won/core/discounts/config");
+const { APPEARANCE_PRESETS, createDefaultConfig } = await import("@won/core/discounts/config");
+// --preset <default|highlight|chips|tiles> (visual QA of the quantity tiers block, MVP 3): the seeded
+// config's storefront.appearancePreset. Only with a tiers profile; absent = the default preset.
+const PRESET = option("--preset");
+if (PRESET !== undefined && !APPEARANCE_PRESETS.includes(PRESET)) throw new Error(`unknown --preset ${PRESET} (${APPEARANCE_PRESETS.join(", ")})`);
 
 const client = createCliAdminClient({ appDir: APP_DIR, cwd: REPO_ROOT, store: STORE });
 
@@ -360,6 +365,10 @@ function seedConfig(previous, productIds, collectionIds) {
   config.modules.codes.rules = PROFILES[PROFILE].rules(productIds);
   if (PROFILES[PROFILE].margin) config.modules.margin = PROFILES[PROFILE].margin(collectionIds);
   if (PROFILES[PROFILE].tiers) config.modules.tiers = PROFILES[PROFILE].tiers(collectionIds);
+  if (PRESET !== undefined) {
+    if (!PROFILES[PROFILE].tiers) throw new Error(`--preset needs a tiers profile (--profile ${PROFILE} has no tier set)`);
+    config.storefront.appearancePreset = PRESET;
+  }
   return config;
 }
 

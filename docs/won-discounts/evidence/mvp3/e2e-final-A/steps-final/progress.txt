@@ -1,0 +1,31 @@
+mvp1 seed-dry exit=0
+mvp1 seed-live exit=0
+mvp1 e2e exit=0
+mvp1 cleanup exit=0
+mvp1 verify-clean exit=0
+mvp1 DONE
+shapes seed-dry exit=0
+shapes seed-live exit=0
+shapes e2e exit=0
+shapes cleanup exit=0
+shapes verify-clean exit=0
+shapes DONE
+margin seed-dry exit=0
+margin seed-live exit=0
+margin costs-dry exit=0
+margin costs-live exit=0
+margin e2e exit=0
+margin cleanup exit=0
+margin costs-clear exit=0
+margin verify-clean exit=0
+margin DONE
+tiers seed-dry exit=0
+tiers seed-live exit=0
+tiers costs-dry exit=0
+tiers costs-live exit=0
+tiers e2e exit=0
+tiers cleanup exit=0
+tiers costs-clear exit=0
+tiers verify-clean exit=0
+tiers DONE
+PHASE-A DONE

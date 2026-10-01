@@ -1,0 +1,70 @@
+{
+  "at": "2026-10-01T13:06:55.600Z",
+  "theme": "Dawn",
+  "localization": {
+    "status": 200,
+    "country": "SK",
+    "currency": "EUR"
+  },
+  "pageCurrency": {
+    "active": "EUR",
+    "rate": "0.0415531865"
+  },
+  "functionRate": {
+    "rate": "0.0415531865",
+    "count": 1
+  },
+  "variant": {
+    "id": "gid://shopify/ProductVariant/48468678902001",
+    "floorShopCurrency": 858,
+    "pricePage": 42,
+    "floorEur": 37,
+    "capPerItem": 5
+  },
+  "pdp": {
+    "quantity": 5,
+    "unitCents": 37,
+    "liveText": "5 ks za €1,85 (€0,37/ks)",
+    "line": 25,
+    "rows": [
+      {
+        "min": 3,
+        "active": false,
+        "hidden": false,
+        "qty": "Od 3 ks",
+        "save": "−10 %",
+        "unit": "€0,38/ks"
+      },
+      {
+        "min": 5,
+        "active": true,
+        "hidden": false,
+        "qty": "Od 5 ks",
+        "save": "−11,9 %",
+        "unit": "€0,37/ks"
+      }
+    ]
+  },
+  "cart": {
+    "currency": "EUR",
+    "line": 30,
+    "allocations": [
+      {
+        "amount": 30,
+        "discount_application": {
+          "type": "",
+          "key": "9d45b599-950b-4e84-84cd-18dc03bfb7e7",
+          "title": "Množstevní sleva od 5 ks",
+          "description": null,
+          "value": "0.06",
+          "created_at": "2026-10-01T13:06:54.067Z",
+          "value_type": "fixed_amount",
+          "allocation_method": "each",
+          "target_selection": "entitled",
+          "target_type": "line_item",
+          "total_allocated_amount": 30
+        }
+      }
+    ]
+  }
+}

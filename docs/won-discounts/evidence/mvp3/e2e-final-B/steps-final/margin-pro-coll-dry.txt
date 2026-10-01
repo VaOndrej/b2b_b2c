@@ -1,0 +1,14 @@
+# store: collection won-e2e-margin does not exist; won-e2e-simple-b is in []
+
+--- would send WonE2eMarginCollectionCreate ---
+{
+  "input": {
+    "title": "Won E2E — Margin (Pro)",
+    "handle": "won-e2e-margin",
+    "products": [
+      "gid://shopify/Product/9692429091057"
+    ]
+  }
+}
+
+(dry-run: nothing written; pass --live)

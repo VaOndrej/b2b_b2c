@@ -78,7 +78,7 @@ export interface StorefrontConfigRead {
   v: number;
   cv: string;
   tiers: { global: string | null; sets: Record<string, { count: string; breaks: ({ min: number; pct: number } | { min: number; off: Record<string, number> })[] }> };
-  margin: { on: false } | { on: true; max: number; col?: Record<string, number> };
+  margin: { on: false } | { on: true; max: number; k: string; cur: string; col?: Record<string, number> };
   appearance: { preset: string };
   texts: Record<string, Record<string, string>>;
 }
@@ -90,8 +90,8 @@ export interface TierVariant {
   /** Admin price in the shop currency, minor units. */
   price: number;
   cost: VariantCost | null;
-  /** The `pdp` metafield (K4) as read; null = none. */
-  pdp: { max?: unknown } | null;
+  /** The `pdp` metafield (K4 v2: `f` = floor per item in shop-currency minor units, `k` = margin key) as read; null = none. */
+  pdp: { f?: unknown; k?: unknown } | null;
 }
 
 export interface TierInputs extends MarginInputs {
@@ -139,7 +139,7 @@ export async function readTierInputs(handles: readonly string[], collectionHandl
       const cost = parse<VariantCost>(v.metafield?.value);
       costByVariantId[v.id] = cost;
       variantLabel[v.id] = `${handle} · ${v.title}`;
-      return { id: v.id, numericId: numericId(v.id), title: v.title, price: Math.round(Number(v.price) * 100), cost, pdp: parse<{ max?: unknown }>(v.pdp?.value) };
+      return { id: v.id, numericId: numericId(v.id), title: v.title, price: Math.round(Number(v.price) * 100), cost, pdp: parse<{ f?: unknown; k?: unknown }>(v.pdp?.value) };
     });
   });
   const first = data.p0 as ProductNode;
@@ -241,7 +241,8 @@ export interface BlockData {
   sel: number;
   breaks: ({ min: number; pct: number } | { min: number; off: Record<string, number> })[];
   cart: { p: number; s: number };
-  variants: { id: number; p: number; m: number; c: number }[];
+  /** K4 v2: a costed variant carries `f` (its floor), one without a cost `m` (the percent ceiling), neither = no table. */
+  variants: { id: number; p: number; c: number; f?: number; m?: number }[];
 }
 
 export interface BlockState {

@@ -99,7 +99,13 @@ export async function unlockRealStorefront(page: Page): Promise<void> {
   const input = page.locator("input[type='password']").first();
   if (page.url().includes("/password") && (await input.count()) > 0) {
     expect(password, "SHOPIFY_E2E_STOREFRONT_PASSWORD (env or apps/won-discounts/.env) is needed for the real storefront").not.toBe("");
-    await input.fill(password);
+    // Never type the password with fill/type: on a timeout Playwright's call log prints the filled value
+    // (`fill("…")`) into the test output and the evidence. evaluate() arguments are not logged.
+    await input.evaluate((el, value) => {
+      const field = el as HTMLInputElement;
+      field.value = value;
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    }, password);
     let challenged = false;
     page.on("framenavigated", (frame) => {
       if (frame === page.mainFrame() && frame.url().includes("__cf_chl")) challenged = true;
@@ -123,4 +129,24 @@ export async function unlockRealStorefront(page: Page): Promise<void> {
     }
   }
   expect(page.url(), "real storefront still locked").not.toContain("/password");
+}
+
+/**
+ * page.goto for a storefront page that must load (status < 400). Shopify's storefront
+ * now and then answers a transient 5xx ("There was a problem loading this website. Try
+ * refreshing", seen on Dawn in the MVP 3 final E2E): that one is reloaded, at most 3 loads,
+ * 3 s apart. A 4xx fails at once — it is never transient.
+ */
+export async function gotoStorefront(page: Page, url: string): Promise<void> {
+  for (let attempt = 1; ; attempt += 1) {
+    const response = await page.goto(url, { waitUntil: "load" });
+    const status = response?.status() ?? 0;
+    if (status >= 500 && attempt < 3) {
+      console.log(`[gotoStorefront] ${url}: HTTP ${status} on load ${attempt}, reloading`);
+      await page.waitForTimeout(3_000);
+      continue;
+    }
+    expect(status, `GET ${url}`).toBeLessThan(400);
+    return;
+  }
 }

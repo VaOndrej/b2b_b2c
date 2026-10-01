@@ -1,0 +1,32 @@
+# stored config of b2b-b2c-store-development.myshopify.com: 0 rule(s)
+  margin protection off
+  no tier set
+# collection won-e2e-margin = gid://shopify/Collection/492043927793 (1 product(s))
+
+# seed (profile margin-pro): won-e2e-simple-a = gid://shopify/Product/9692429058289, won-e2e-simple-b = gid://shopify/Product/9692429091057, won-e2e-spare = gid://shopify/Product/9692429189361; margin protection on (min margin 25 %, max discount 30 %) + Pro: collection won-e2e-margin max discount 10 %, auto 50 % on 3 products + codes WONE2EM20, WONE2EM60
+  + e2e-margin-auto-50 "E2E marže auto 50 %" automatic
+  + e2e-margin-code-20 "E2E marže kód 20 %" code
+  + e2e-margin-code-60 "E2E marže kód 60 %" code
+  margin protection ON (min margin 25 %, max discount 30 %, 1 collection setting(s))
+  no tier set
+
+# backup: /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/34104025-5b69-4033-91ec-cf56865061ef/scratchpad/e2eB/seed-mvp1-backup.json
+[won-sync] sync b2b-b2c-store-development.myshopify.com: ok (11 steps) 
+
+# save: ok (version cmuphq2ht0000snh3qro2tmx6, 1002 B)
+# sync: ok (run cmuphsx0c0006snh30exnvnz3)
+✔ shop.read — gid://shopify/Shop/78971076849, shop time 2026-10-01T08:08:24 (America/New_York), currency CZK
+✔ plan — plan pro: nothing to gate
+✔ node.create:code:e2e-margin-code-20 — created "E2E marže kód 20 %" with code WONE2EM20
+✔ node.create:code:e2e-margin-code-60 — created "E2E marže kód 60 %" with code WONE2EM60
+✔ products.scope — 3 targeted product(s) (1 collection(s), 0 variant target(s)); 0 up to date
+✔ products.set — 1 product(s) updated
+✔ shop_config.write — 1002 B written
+✔ shop_config.verify — read back and verified (1002 B)
+✔ storefront_config.write — 209 B written
+✔ storefront_config.verify — read back and verified (209 B)
+✔ products.add — 2 product(s) got their new rules
+
+Evidence: /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/34104025-5b69-4033-91ec-cf56865061ef/scratchpad/e2eB/seed-mvp1-margin-pro-2026-10-01T12-10-51-434Z.json
+next: mirror the purchase costs (+ the variant pdp maximum) — node apps/won-discounts/scripts/e2e/margin-costs.mjs (dry-run), then --live
+[won-sync] costs b2b-b2c-store-development.myshopify.com: full pass done (51 read, 6 written, 0 cleared, 0 pdp, 0 refused) 

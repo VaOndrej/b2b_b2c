@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-01T06:16:24.133Z",
+  "at": "2026-10-01T12:46:49.184Z",
   "theme": "Dawn",
   "planMode": "free",
   "freeGate": {
@@ -192,12 +192,12 @@
     "subtotal": 900,
     "orderDiscountRows": [],
     "totalSavings": 2500,
-    "shipping": 64628,
+    "shipping": 64682,
     "tax": 0,
-    "total": 65528,
-    "charged": 65528,
+    "total": 65582,
+    "charged": 65582,
     "payFormGone": true,
-    "expectedTotal": 65528
+    "expectedTotal": 65582
   },
   "thankYouSummaryRows": [
     {
@@ -207,13 +207,13 @@
     },
     {
       "label": "Expedice",
-      "value": "646,28 Kč",
-      "amount": 64628
+      "value": "646,82 Kč",
+      "amount": 64682
     },
     {
       "label": "Celkem",
-      "value": "655,28 Kč",
-      "amount": 65528
+      "value": "655,82 Kč",
+      "amount": 65582
     },
     {
       "label": "CELKOVÁ ÚSPORA25,00 Kč",

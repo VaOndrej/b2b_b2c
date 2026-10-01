@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-01T06:27:46.677Z",
+  "at": "2026-10-01T12:57:50.441Z",
   "theme": "Dawn",
   "profile": "margin",
   "collection": null,
@@ -86,11 +86,11 @@
     "cart_level": [
       {
         "type": "discount_code",
-        "key": "4513869f-97c7-412b-a9e9-68d6d9eff18c",
+        "key": "16ff2e90-bd15-4d8b-867a-cf98bbf34265",
         "title": "WONE2EM60",
         "description": null,
         "value": "16.31",
-        "created_at": "2026-10-01T06:27:12.176Z",
+        "created_at": "2026-10-01T12:57:18.269Z",
         "value_type": "fixed_amount",
         "allocation_method": "across",
         "target_selection": "all",
@@ -104,7 +104,7 @@
         "properties": {},
         "quantity": 1,
         "variant_id": 48468679033073,
-        "key": "48468679033073:c68e51b72ef988cd8a1d9b67a39e6e3b",
+        "key": "48468679033073:2d9dff428dffbeaf34db05aace25af69",
         "title": "Won E2E — Multi Axis - S / Red",
         "price": 2000,
         "original_price": 2000,
@@ -171,7 +171,7 @@
         "properties": {},
         "quantity": 1,
         "variant_id": 48468678967537,
-        "key": "48468678967537:9daa93f55e00f521ff4a18e4145a84a2",
+        "key": "48468678967537:8922fb3112a090e045e45b24e86b518b",
         "title": "Won E2E — Two Variants - Small",
         "price": 1500,
         "original_price": 1500,
@@ -330,12 +330,12 @@
     ],
     "subtotal": 3500,
     "orderDiscount": -1631,
-    "shipping": 64628,
+    "shipping": 64682,
     "tax": 0,
     "includedTaxRows": [],
-    "total": 66497,
-    "charged": 66497,
-    "expectedTotal": 66497
+    "total": 66551,
+    "charged": 66551,
+    "expectedTotal": 66551
   },
   "thankYouSummaryRows": [
     {
@@ -355,13 +355,13 @@
     },
     {
       "label": "Expedice",
-      "value": "646,28 Kč",
-      "amount": 64628
+      "value": "646,82 Kč",
+      "amount": 64682
     },
     {
       "label": "Celkem",
-      "value": "664,97 Kč",
-      "amount": 66497
+      "value": "665,51 Kč",
+      "amount": 66551
     },
     {
       "label": "CELKOVÁ ÚSPORA16,31 Kč",
@@ -370,7 +370,7 @@
     }
   ],
   "loggedOrder": {
-    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20261001_062728_622Z_extensions_won-discounts-engine_bcf5df.json",
+    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20261001_125733_361Z_extensions_won-discounts-engine_2832e0.json",
     "candidate": {
       "message": "E2E marže kód 60 %",
       "targets": [

@@ -53,7 +53,7 @@ import {
   type SummaryRow,
 } from "./support/checkout.ts";
 import { saveEvidence, saveScreenshot } from "./support/evidence.ts";
-import { E2E_PROFILE, expect, test, THEME_LABEL, unlockRealStorefront } from "./support/fixtures.ts";
+import { E2E_PROFILE, expect, gotoStorefront, test, THEME_LABEL, unlockRealStorefront } from "./support/fixtures.ts";
 import {
   ceilTol,
   marginPlanInput,
@@ -711,8 +711,7 @@ test.describe(`Won Discounts margin protection in cart and checkout (MVP 2)${PRO
     const inputs = await readMarginInputs(MARGIN_CART_HANDLES, [MARGIN_COLLECTION_HANDLE]);
     const payload = expectLivePayload(inputs);
 
-    const response = await page.goto(`/products/${MARGIN_PRODUCT_A_HANDLE}`, { waitUntil: "load" });
-    expect(response?.status()).toBeLessThan(400);
+    await gotoStorefront(page, `/products/${MARGIN_PRODUCT_A_HANDLE}`);
 
     const cartAt = Date.now();
     const cart = await freshCartOfVariants(page, MARGIN_CART, [MARGIN_CODE]);
@@ -768,8 +767,7 @@ test.describe(`Won Discounts margin protection in cart and checkout (MVP 2)${PRO
     await page.setViewportSize({ width: 1440, height: 900 });
 
     await unlockRealStorefront(page);
-    const response = await page.goto(`/products/${MARGIN_PRODUCT_A_HANDLE}`, { waitUntil: "load" });
-    expect(response?.status()).toBeLessThan(400);
+    await gotoStorefront(page, `/products/${MARGIN_PRODUCT_A_HANDLE}`);
 
     const cartAt = Date.now();
     const cart = await freshCartOfVariants(page, MARGIN_CART, [MARGIN_CODE]);
@@ -838,8 +836,7 @@ test.describe(`Won Discounts margin protection in cart and checkout (MVP 2)${PRO
     await page.setViewportSize({ width: 1440, height: 900 });
 
     await unlockRealStorefront(page);
-    const response = await page.goto(`/products/${MARGIN_MULTIAXIS_HANDLE}`, { waitUntil: "load" });
-    expect(response?.status()).toBeLessThan(400);
+    await gotoStorefront(page, `/products/${MARGIN_MULTIAXIS_HANDLE}`);
 
     const cartAt = Date.now();
     const cart = await freshCartOfVariants(page, MARGIN_ORDER_CAP_CART, [MARGIN_ORDER_CAP_CODE]);
@@ -916,8 +913,7 @@ test.describe(`Won Discounts margin protection in cart and checkout (MVP 2)${PRO
     await page.setViewportSize({ width: 1440, height: 900 });
 
     await unlockRealStorefront(page);
-    const response = await page.goto(`/products/${MARGIN_PRODUCT_A_HANDLE}`, { waitUntil: "load" });
-    expect(response?.status()).toBeLessThan(400);
+    await gotoStorefront(page, `/products/${MARGIN_PRODUCT_A_HANDLE}`);
     try {
       const localization = await test.step("switch the storefront to Slovakia (?country=SK)", () => setStorefrontCountry(page, "SK"));
       console.log(`[checkout.margin] ${THEME_LABEL || "theme"}: after ?country=SK: country ${localization.country}, currency ${localization.currency}`);

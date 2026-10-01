@@ -215,14 +215,24 @@ async function waitForOrigin(baseUrl, timeoutMs, isChildAlive) {
 async function preflightAppProxy(baseUrl, config) {
   let status = null;
   let body = "";
-  try {
-    const response = await fetch(`${baseUrl}${config.appProxyProbe.path}`, {
-      redirect: "manual",
-    });
-    status = response.status;
-    body = await response.text();
-  } catch {
-    status = null;
+  // The app proxy runs through the dev tunnel, which now and then answers a
+  // transient 503 (Won Discounts MVP 3 visual QA: one Dawn run never started).
+  // A 5xx or no response is retried, at most 3 attempts, 3 s apart.
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const response = await fetch(`${baseUrl}${config.appProxyProbe.path}`, {
+        redirect: "manual",
+      });
+      status = response.status;
+      body = await response.text();
+    } catch {
+      status = null;
+    }
+    if (status !== null && status < 500) break;
+    if (attempt < 3) {
+      console.log(`   app proxy ${config.appProxyProbe.path} answered ${status ?? "no response"} (attempt ${attempt}), retrying in 3 s.`);
+      await new Promise((resolve) => setTimeout(resolve, 3_000));
+    }
   }
 
   if (status === 200 && body.includes(config.appProxyProbe.bodyMarker)) {

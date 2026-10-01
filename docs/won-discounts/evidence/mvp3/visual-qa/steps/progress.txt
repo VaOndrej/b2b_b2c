@@ -1,0 +1,46 @@
+tiers seed-dry exit=0
+tiers seed-live exit=0
+tiers costs-dry exit=0
+tiers costs-live exit=0
+tiers e2e exit=0
+tiers cleanup exit=0
+tiers costs-clear exit=0
+tiers verify-clean exit=0
+tiers DONE
+tiers seed-dry exit=0
+tiers seed-live exit=0
+tiers costs-dry exit=0
+tiers costs-live exit=0
+tiers e2e exit=0
+tiers cleanup exit=0
+tiers costs-clear exit=0
+tiers verify-clean exit=0
+tiers DONE
+tiers seed-dry exit=0
+tiers seed-live exit=0
+tiers costs-dry exit=0
+tiers costs-live exit=0
+tiers e2e exit=1
+tiers cleanup exit=0
+tiers costs-clear exit=0
+tiers verify-clean exit=0
+tiers DONE
+tiers seed-dry exit=0
+tiers seed-live exit=0
+tiers costs-dry exit=0
+tiers costs-live exit=0
+tiers e2e exit=0
+tiers cleanup exit=0
+tiers costs-clear exit=0
+tiers verify-clean exit=0
+tiers DONE
+QA DONE
+tiers seed-dry exit=0
+tiers seed-live exit=0
+tiers costs-dry exit=0
+tiers costs-live exit=0
+tiers e2e exit=0
+tiers cleanup exit=0
+tiers costs-clear exit=0
+tiers verify-clean exit=0
+tiers DONE

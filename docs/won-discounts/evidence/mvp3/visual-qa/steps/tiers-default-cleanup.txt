@@ -1,0 +1,20 @@
+# stored config of b2b-b2c-store-development.myshopify.com: 0 rule(s) (the E2E seed is in it)
+  margin protection ON (min margin 30 %, max discount 30 %, 0 collection setting(s))
+  tier set e2e-tiers-global (global, per product): 3+ −10 %, 5+ −15 %
+
+# cleanup: restore the backup of 2026-10-01T13:09:43.917Z (0 rule(s))
+  after the cleanup: 0 rule(s), margin protection off, no tier set
+[won-sync] sync b2b-b2c-store-development.myshopify.com: ok (7 steps) 
+
+# save: ok (version cmupk55290000sn9z0zedtpol, 389 B)
+# sync: ok (run cmupk5qlw0001sn9zr0jor0t7)
+✔ shop.read — gid://shopify/Shop/78971076849, shop time 2026-10-01T09:16:06 (America/New_York), currency CZK
+✔ plan — plan free: nothing to gate
+✔ products — no targeted products and none to clean
+✔ shop_config.write — 389 B written
+✔ shop_config.verify — read back and verified (389 B)
+✔ storefront_config.write — 148 B written
+✔ storefront_config.verify — read back and verified (148 B)
+
+Evidence: /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/34104025-5b69-4033-91ec-cf56865061ef/scratchpad/e2eQ/seed-mvp1-cleanup-2026-10-01T13-16-34-680Z.json
+next: clear the cost metafields — node apps/won-discounts/scripts/e2e/margin-costs.mjs --clear, then --clear --live

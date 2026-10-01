@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-01T06:26:01.689Z",
+  "at": "2026-10-01T12:56:10.799Z",
   "theme": "Dawn",
   "profile": "margin",
   "collection": null,
@@ -280,11 +280,11 @@
   "cart_level": [
     {
       "type": "discount_code",
-      "key": "041f87d1-ea4d-4d6a-bd43-652cc5b0421a",
+      "key": "f37790a0-ff4b-4485-87f0-908189f84871",
       "title": "WONE2EM20",
       "description": null,
       "value": "3.0",
-      "created_at": "2026-10-01T06:25:51.143Z",
+      "created_at": "2026-10-01T12:56:01.452Z",
       "value_type": "fixed_amount",
       "allocation_method": "across",
       "target_selection": "all",
@@ -351,7 +351,7 @@
     }
   ],
   "loggedOrder": {
-    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20261001_062551_045Z_extensions_won-discounts-engine_461bdc.json",
+    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20261001_125601_360Z_extensions_won-discounts-engine_452726.json",
     "candidate": {
       "message": "E2E marže kód 20 %",
       "targets": [

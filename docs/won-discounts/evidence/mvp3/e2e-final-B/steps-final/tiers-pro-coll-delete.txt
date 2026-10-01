@@ -1,0 +1,10 @@
+# store: collection won-e2e-tiers = gid://shopify/Collection/492043763953 "Won E2E — Tiers (Pro)" (manual), products [won-e2e-simple-b, won-e2e-spare]; won-e2e-simple-b is in [won-e2e-tiers]; won-e2e-spare is in [won-e2e-tiers]
+
+--- sending WonE2eMarginCollectionDelete ---
+{
+  "input": {
+    "id": "gid://shopify/Collection/492043763953"
+  }
+}
+# read-back: collection won-e2e-tiers does not exist; won-e2e-simple-b is in []; won-e2e-spare is in []
+Evidence: /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/34104025-5b69-4033-91ec-cf56865061ef/scratchpad/e2eB/tiers-collection-delete-2026-10-01T12-05-25-767Z.json

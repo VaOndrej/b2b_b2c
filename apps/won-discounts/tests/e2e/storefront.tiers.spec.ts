@@ -22,7 +22,7 @@ import {
   TIERS_TEMPLATE_BLOCK_ID,
   TIERS_VARIANTS_HANDLE,
 } from "../../scripts/e2e/tiers-fixture.mjs";
-import { clearCartQuietly, freshCartOfVariants, storefrontJson, type Cart, type CartItem } from "./support/cart.ts";
+import { clearCartQuietly, freshCartOfVariants, setStorefrontCountry, storefrontJson, type Cart, type CartItem } from "./support/cart.ts";
 import {
   checkoutLines,
   CZECH_ADDRESS,
@@ -40,8 +40,8 @@ import {
   type CheckoutLine,
 } from "./support/checkout.ts";
 import { saveEvidence, saveScreenshot } from "./support/evidence.ts";
-import { E2E_PROFILE, expect, test, THEME_LABEL, unlockRealStorefront } from "./support/fixtures.ts";
-import { ceilTol } from "./support/margin.ts";
+import { E2E_PROFILE, expect, gotoStorefront, test, THEME_LABEL, unlockRealStorefront } from "./support/fixtures.ts";
+import { ceilTol, LINES_TARGET, readFunctionRuns, runCart, type FunctionRun } from "./support/margin.ts";
 import {
   BLOCK,
   chooseVariant,
@@ -59,6 +59,7 @@ import {
   variantOf,
   workspaceBlock,
   type BlockState,
+  type StorefrontConfigRead,
   type TierInputs,
   type TierVariant,
 } from "./support/tiers.ts";
@@ -80,7 +81,7 @@ import {
 // counted per product (from 3 items −10 %, from 5 items −15 %), margin
 // protection on (minimum margin 30 %, maximum discount 30 %).
 //   1 PDP won-e2e-simple-a: the table renders from the storefront config (F-T2)
-//     and the variant pdp metafield (F-T1: the 5-item row is cut to pdp.max),
+//     and the variant pdp metafield (F-T1: the 5-item row is cut by the pdp floor, K4 v2),
 //     the live price follows the quantity (= planCart's line discount per
 //     item, floored), the K8 event; the block type of the overlay (F-T3);
 //     screenshots 1440 + 390, no horizontal overflow at 390.
@@ -118,7 +119,13 @@ function expectStorefrontConfig(inputs: TierInputs) {
     count: TIERS_COUNT_ACROSS,
     breaks: TIERS_BREAKS.map((b) => ({ min: b.minQty, pct: b.percent })),
   });
-  expect(sf!.margin, "margin on, the 30 % ceiling for variants without pdp").toEqual({ on: true, max: TIERS_MAX_DISCOUNT_PERCENT });
+  // K4 v2: margin carries the key the pdp metafields must match (k) and the shop currency their floors are in (cur).
+  expect(sf!.margin, "margin on, the 30 % ceiling for variants without pdp, key + shop currency (K4 v2)").toEqual({
+    on: true,
+    max: TIERS_MAX_DISCOUNT_PERCENT,
+    k: expect.stringMatching(/^[0-9a-f]{8}$/u),
+    cur: inputs.shopCurrency,
+  });
   if (PRO) {
     expect(sf!.tiers.sets[TIERS_COLLECTION_SET_ID], "Pro: the collection set, counted across the cart").toEqual({
       count: "cart",
@@ -130,29 +137,31 @@ function expectStorefrontConfig(inputs: TierInputs) {
   return sf!;
 }
 
-/** K4 restated: the most margin allows for a costed variant, floored to 1 decimal (shop currency, rate 1). */
-function restatedPdpMax(variant: TierVariant): number | null {
+/** K4 v2 restated: the engine's floor per item of a costed variant, minor units of the shop currency (rate 1). */
+function restatedPdpFloor(variant: TierVariant): number | null {
   const cost = typeof variant.cost?.cost === "number" ? variant.cost.cost : null;
   if (cost === null || cost <= 0) return null;
-  const floorUnit = ceilTol((cost * 100) / (1 - TIERS_MIN_MARGIN_PERCENT / 100));
-  return Math.floor(((variant.price - floorUnit) * 1000) / variant.price) / 10;
+  return ceilTol((cost * 100) / (1 - TIERS_MIN_MARGIN_PERCENT / 100));
 }
 
-/** The pdp metafield of a costed variant must be there and equal K4 (the full cost pass ran). */
-function expectPdp(variant: TierVariant, label: string): number {
-  const restated = restatedPdpMax(variant);
-  expect(restated, `${label}: has a purchase cost (catalog)`).not.toBeNull();
+/**
+ * The pdp metafield of a costed variant must be there and equal K4 v2 (the full cost pass ran):
+ * `f` = the engine floor, `k` = the storefront config's margin key. Returns the floor and the
+ * percent the block shows for a tier the margin cuts (⌊(price − f) × 1000 / price⌋ / 10).
+ */
+function expectPdp(variant: TierVariant, label: string, sf: StorefrontConfigRead): { floor: number; cutPct: number } {
+  const floor = restatedPdpFloor(variant);
+  expect(floor, `${label}: has a purchase cost (catalog)`).not.toBeNull();
   expect(variant.pdp, `${label}: the pdp metafield exists — run scripts/e2e/margin-costs.mjs --live (the app's full cost pass)`).not.toBeNull();
-  expect(variant.pdp!.max, `${label}: pdp.max = K4 (cost ${String(variant.cost?.cost)}, minimum margin ${TIERS_MIN_MARGIN_PERCENT} %)`).toBe(restated);
-  return restated!;
+  expect(variant.pdp!.f, `${label}: pdp.f = the engine floor (cost ${String(variant.cost?.cost)}, minimum margin ${TIERS_MIN_MARGIN_PERCENT} %)`).toBe(floor);
+  expect(variant.pdp!.k, `${label}: pdp.k = the storefront config's margin key (else the block promises nothing)`).toBe(sf.margin.on ? sf.margin.k : null);
+  return { floor: floor!, cutPct: Math.floor(((variant.price - floor!) * 1000) / variant.price) / 10 };
 }
 
 async function emptyCartAndOpen(page: Page, handle: string): Promise<void> {
-  const first = await page.goto(`/products/${handle}`, { waitUntil: "load" });
-  expect(first?.status(), `GET /products/${handle}`).toBeLessThan(400);
+  await gotoStorefront(page, `/products/${handle}`);
   await storefrontJson(page, "POST", "/cart/clear.js", {});
-  const response = await page.goto(`/products/${handle}`, { waitUntil: "load" });
-  expect(response?.status(), `GET /products/${handle}`).toBeLessThan(400);
+  await gotoStorefront(page, `/products/${handle}`);
   await expect(tiersBlock(page), "the quantity tiers block rendered (template overlay + live storefront config)").toHaveCount(1);
 }
 
@@ -275,7 +284,7 @@ test.describe(`Won Discounts quantity tiers: PDP, cart and checkout (MVP 3)${PRO
     const inputs = await readTierInputs(TIERS_HANDLES, COLLECTIONS);
     const sf = expectStorefrontConfig(inputs);
     const variant = variantOf(inputs, TIERS_PRODUCT_HANDLE);
-    const pdpMax = expectPdp(variant, TIERS_PRODUCT_HANDLE);
+    const { floor: pdpFloor, cutPct: pdpMax } = expectPdp(variant, TIERS_PRODUCT_HANDLE, sf);
     const [low, high] = TIERS_BREAKS;
     expect(pdpMax, "the case under test: margin cuts the 5-item tier").toBeLessThan(high!.percent);
     expect(pdpMax, "…and leaves the 3-item tier alone").toBeGreaterThanOrEqual(low!.percent);
@@ -284,7 +293,7 @@ test.describe(`Won Discounts quantity tiers: PDP, cart and checkout (MVP 3)${PRO
     await recordTierEvents(page);
     await emptyCartAndOpen(page, TIERS_PRODUCT_HANDLE);
 
-    const initial = await test.step("(a) Liquid render: K8 markers, set and rows from the storefront config, pdp.max from the variant metafield", async () => {
+    const initial = await test.step("(a) Liquid render: K8 markers, set and rows from the storefront config, pdp floor from the variant metafield", async () => {
       const state = await readBlock(page);
       expect(state.state, "ready").toBe("ready");
       expect(state.hidden).toBe(false);
@@ -298,10 +307,10 @@ test.describe(`Won Discounts quantity tiers: PDP, cart and checkout (MVP 3)${PRO
       expect(state.data!.cart, "empty cart: nothing counted from the cart").toEqual({ p: 0, s: 0 });
       const own = state.data!.variants.find((v) => v.id === variant.numericId);
       expect(own?.p, "the variant price (Liquid units)").toBe(variant.price);
-      expect(own?.m, "F-T1: the variant's max % = its $app:won_discounts/pdp metafield").toBe(pdpMax);
+      expect(own?.f, "F-T1: the variant's floor = its $app:won_discounts/pdp metafield (K4 v2)").toBe(pdpFloor);
       expect(state.rows.map((r) => r.min)).toEqual(TIERS_BREAKS.map((b) => b.minQty));
       expect(state.rows[0]!.save, `3 items: −${low!.percent} % (not cut)`).toContain(pctText(low!.percent));
-      expect(state.rows[1]!.save, `5 items: cut to pdp.max ${pdpMax} % on the page`).toContain(pctText(Math.min(high!.percent, pdpMax)));
+      expect(state.rows[1]!.save, `5 items: cut by the pdp floor to ${pdpMax} % on the page`).toContain(pctText(Math.min(high!.percent, pdpMax)));
       expect(state.rows.every((r) => !r.hidden)).toBe(true);
       expect(activeMin(state), "1 item: no tier reached").toBe(0);
       expect(state.liveUnitCents, "1 item: the full price").toBe(variant.price);
@@ -378,7 +387,7 @@ test.describe(`Won Discounts quantity tiers: PDP, cart and checkout (MVP 3)${PRO
     const sf = expectStorefrontConfig(inputs);
     const small = variantOf(inputs, TIERS_VARIANTS_HANDLE, TIERS_SMALL_OPTION);
     const large = variantOf(inputs, TIERS_VARIANTS_HANDLE, TIERS_LARGE_OPTION);
-    const smallMax = expectPdp(small, "two-variants Small");
+    const { floor: smallFloor } = expectPdp(small, "two-variants Small", sf);
     expect(large.pdp, "Large has no cost → no pdp metafield (K4)").toBeNull();
 
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -388,7 +397,7 @@ test.describe(`Won Discounts quantity tiers: PDP, cart and checkout (MVP 3)${PRO
     const before = await readBlock(page);
     expect(before.state).toBe("ready");
     expect(before.data!.sel, "the selected variant is Small").toBe(small.numericId);
-    expect(before.data!.variants.find((v) => v.id === small.numericId)?.m, "Small: its pdp.max").toBe(smallMax);
+    expect(before.data!.variants.find((v) => v.id === small.numericId)?.f, "Small: its pdp floor").toBe(smallFloor);
     expect(before.data!.variants.find((v) => v.id === large.numericId)?.m, "Large: the storefront config's ceiling (no cost)").toBe(sf.margin.on ? sf.margin.max : 100);
 
     const smallAt3 = pdpExpectation(inputs, TIERS_VARIANTS_HANDLE, small, 3);
@@ -427,9 +436,9 @@ test.describe(`Won Discounts quantity tiers: PDP, cart and checkout (MVP 3)${PRO
     test.skip(PRO, "phase A cart (the Pro cart is test 5)");
     test.setTimeout(240_000);
     const inputs = await readTierInputs(TIERS_HANDLES, COLLECTIONS);
-    expectStorefrontConfig(inputs);
+    const sf = expectStorefrontConfig(inputs);
     const a = variantOf(inputs, TIERS_PRODUCT_HANDLE);
-    const pdpMax = expectPdp(a, TIERS_PRODUCT_HANDLE);
+    const { cutPct: pdpMax } = expectPdp(a, TIERS_PRODUCT_HANDLE, sf);
 
     // What the PDP shows for 5 items (empty cart), observed before the cart is built.
     await emptyCartAndOpen(page, TIERS_PRODUCT_HANDLE);
@@ -484,8 +493,7 @@ test.describe(`Won Discounts quantity tiers: PDP, cart and checkout (MVP 3)${PRO
     expectStorefrontConfig(inputs);
     await page.setViewportSize({ width: 1440, height: 900 });
     await unlockRealStorefront(page);
-    const response = await page.goto(`/products/${TIERS_PRODUCT_HANDLE}`, { waitUntil: "load" });
-    expect(response?.status()).toBeLessThan(400);
+    await gotoStorefront(page, `/products/${TIERS_PRODUCT_HANDLE}`);
     const cart = await freshCartOfVariants(page, TIERS_CART, []);
     const plan = planFor(cart, inputs);
     expectCartMatchesPlan(cart, plan);
@@ -498,6 +506,97 @@ test.describe(`Won Discounts quantity tiers: PDP, cart and checkout (MVP 3)${PRO
       plan: { totals: plan.totals, lines: plan.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity, subtotal: l.subtotal, product: l.product, marginCapped: l.marginCapped ?? null })) },
       thankYou,
     });
+  });
+
+  test("slovensko (EUR, K4 v2 live): Shopify.currency.rate on the PDP = the function's presentmentCurrencyRate; the table is in EUR and the margin-cut tier never promises more than /cart.js", async ({ page }, testInfo) => {
+    test.skip(PRO, "phase A (the market check needs the Free tiers seed with margin)");
+    test.setTimeout(300_000);
+    const inputs = await readTierInputs(TIERS_HANDLES, COLLECTIONS);
+    const sf = expectStorefrontConfig(inputs);
+    const variant = variantOf(inputs, TIERS_PRODUCT_HANDLE);
+    const { floor } = expectPdp(variant, TIERS_PRODUCT_HANDLE, sf);
+    const high = TIERS_BREAKS[1]!;
+    const quantity = high.minQty;
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await emptyCartAndOpen(page, TIERS_PRODUCT_HANDLE);
+    try {
+      const localization = await test.step("switch the storefront to Slovakia (?country=SK)", () => setStorefrontCountry(page, "SK"));
+      expect(localization.country, "the storefront session is in Slovakia").toBe("SK");
+      expect(localization.currency, "…and shows EUR").toBe("EUR");
+      const pageCurrency = await page.evaluate(() => {
+        const shopify = (window as unknown as { Shopify?: { currency?: { active?: string; rate?: string | number } } }).Shopify;
+        return { active: shopify?.currency?.active ?? null, rate: shopify?.currency?.rate ?? null };
+      });
+      const pageRate = Number(pageCurrency.rate);
+      expect(pageRate, `Shopify.currency.rate on the PDP (${String(pageCurrency.rate)})`).toBeGreaterThan(0);
+
+      const state = await test.step("(a) the block in EUR: K4 v2 floor from the pdp metafield, prices with €", async () => {
+        const st = await readBlock(page);
+        expect(st.state, "ready").toBe("ready");
+        expect(st.data!.cur, "the block counts in the cart currency").toBe("EUR");
+        const own = st.data!.variants.find((v) => v.id === variant.numericId);
+        expect(own?.f, "F-T1 in EUR: the variant's floor (shop currency) = its pdp metafield").toBe(floor);
+        const shown = st.rows.filter((r) => !r.hidden);
+        expect(shown.length, "the table shows its rows in SK").toBeGreaterThan(0);
+        for (const row of shown) expect(row.unit, `row from ${row.min}: per-item price in EUR`).toMatch(/€|EUR/u);
+        return st;
+      });
+
+      // K4 v2 restated: the floor in EUR = ⌈f × rate⌉ + 1 minor unit (CZK and EUR both have 2 decimals).
+      const own = state.data!.variants.find((v) => v.id === variant.numericId)!;
+      const floorEur = Math.ceil(floor * pageRate) + 1;
+      const cap = Math.max(0, own.p - floorEur);
+      const pdpLine = Math.max(0, Math.min(Math.round((own.p * quantity * high.percent) / 100), cap * quantity, own.p * quantity));
+      const pdpUnit = own.p - Math.floor(pdpLine / quantity);
+      await test.step(`(b) ${quantity} items: the live price uses the page's rate (K4 v2)`, () => setQuantity(page, quantity, pdpUnit));
+      const live = await readBlock(page);
+      expect(live.liveText, "the live price is formatted in EUR (shop.money_format re-render, audit OQ1)").toMatch(/€|EUR/u);
+      await pdpShots(page, testInfo, `pdp-tiers-${TIERS_PRODUCT_HANDLE}-sk-q${quantity}`);
+
+      const cartAt = Date.now();
+      const cart = await freshCartOfVariants(page, [{ handle: TIERS_PRODUCT_HANDLE, quantity }], []);
+      expect(cart.currency, "the cart is in EUR").toBe("EUR");
+      const item = cart.items[0]!;
+      expect(item.original_price, "the PDP price = the cart price in EUR").toBe(own.p);
+      const cartLine = item.line_level_discount_allocations.reduce((sum, a) => sum + a.amount, 0);
+      await test.step("(c) the PDP never promises more than checkout gives, and at most 2 minor units per item less", () => {
+        expect(cartLine, "the function cut the tier in EUR (the case under test)").toBeLessThan(Math.round((own.p * quantity * high.percent) / 100));
+        expect(pdpLine, `PDP line ${pdpLine} ≤ /cart.js line ${cartLine}`).toBeLessThanOrEqual(cartLine);
+        expect(cartLine - pdpLine, "the +1 minor unit safety margin of K4 v2 costs at most 2 per item").toBeLessThanOrEqual(2 * quantity);
+      });
+
+      const runs = await test.step("(d) the function run of this EUR cart: presentmentCurrencyRate = Shopify.currency.rate", async () => {
+        const want = `gid://shopify/ProductVariant/${item.variant_id}`;
+        let found: FunctionRun[] = [];
+        for (let i = 0; i < 40 && found.length === 0; i += 1) {
+          found = (await readFunctionRuns(cartAt - 1_000)).filter((run) => {
+            if (run.target !== LINES_TARGET || run.status !== "success" || run.role !== "automatic") return false;
+            const c = runCart(run);
+            return c.currency === "EUR" && c.variantIds.join(",") === want;
+          });
+          if (found.length === 0) await page.waitForTimeout(2_000);
+        }
+        expect(found.length, "a logged automatic-node run of this EUR cart (is `shopify app dev` running?)").toBeGreaterThan(0);
+        const rates = [...new Set(found.map((r) => r.rate?.raw ?? "<none>"))];
+        expect(rates, "one presentmentCurrencyRate for this cart").toHaveLength(1);
+        const functionRate = found[0]!.rate?.value ?? Number.NaN;
+        expect(Math.abs(functionRate - pageRate), `function rate ${rates[0]} = Shopify.currency.rate ${String(pageCurrency.rate)}`).toBeLessThanOrEqual(1e-12);
+        return { rate: rates[0], count: found.length };
+      });
+
+      await saveEvidence(testInfo, named("pdp-tiers-sk"), {
+        at: new Date().toISOString(),
+        theme: THEME_LABEL || null,
+        localization,
+        pageCurrency,
+        functionRate: runs,
+        variant: { id: variant.id, floorShopCurrency: floor, pricePage: own.p, floorEur, capPerItem: cap },
+        pdp: { quantity, unitCents: live.liveUnitCents, liveText: live.liveText, line: pdpLine, rows: live.rows },
+        cart: { currency: cart.currency, line: cartLine, allocations: item.line_level_discount_allocations },
+      });
+    } finally {
+      await setStorefrontCountry(page, "CZ").catch(() => undefined);
+    }
   });
 
   test("Pro: a set on the collection, counted across the cart — the PDP names it and counts the cart (F-T1 tierRef), /cart.js and the Bogus checkout = planCart", async ({ page }, testInfo) => {

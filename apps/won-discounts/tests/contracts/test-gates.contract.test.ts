@@ -133,3 +133,14 @@ test("make-e2e-overlay --check exits non-zero when the canonical theme changed (
   assert.equal(result.code, 1, result.output);
   assert.match(result.output, /settings_data\.horizon\.json is missing or stale/);
 });
+
+// --- Secrets in E2E output ----------------------------------------------------------------------
+
+test("E2E never types the storefront password through fill/type/pressSequentially (Playwright logs the value on failure)", () => {
+  const dir = path.join(APP_ROOT, "tests/e2e");
+  const files = execFileSync("find", [dir, "-name", "*.ts"], { encoding: "utf8" }).trim().split("\n").filter(Boolean);
+  const offenders = files.filter((file) =>
+    /\.(?:fill|type|pressSequentially)\(\s*(?:password|pw|storefrontPassword)\b/u.test(readFileSync(file, "utf8")),
+  );
+  assert.deepEqual(offenders.map((f) => path.relative(APP_ROOT, f)), []);
+});

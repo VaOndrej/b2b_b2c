@@ -1,0 +1,58 @@
+# stored config of b2b-b2c-store-development.myshopify.com: 0 rule(s)
+  margin protection off
+  no tier set
+
+# seed (profile tiers): ; quantity tiers: global set per product (from 3 items −10 %, from 5 items −15 %), margin protection on (min margin 30 %, max discount 30 %), no rule
+  margin protection ON (min margin 30 %, max discount 30 %, 0 collection setting(s))
+  tier set e2e-tiers-global (global, per product): 3+ −10 %, 5+ −15 %
+
+# sync plan (dry-run, apps/won-discounts/scripts/sync/live-sync.ts --config /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/34104025-5b69-4033-91ec-cf56865061ef/scratchpad/e2eQ/seed-mvp1-seed-tiers-config.json)
+# Won Discounts sync — DRY-RUN (reads b2b-b2c-store-development.myshopify.com, writes nothing; pass --live to execute)
+dry-run: seeded 1 tracked node(s) and 0 indexed product(s) from the app database (read-only)
+
+--- would send WonSyncMetafieldsSet ---
+{
+  "metafields": [
+    {
+      "ownerId": "gid://shopify/Shop/78971076849",
+      "namespace": "$app:won_discounts",
+      "key": "function_config",
+      "type": "json",
+      "value": "<495 B> {\"schemaVersion\":1,\"campaignId\":null,\"campaignVarsVersion\":null,\"engine\":{\"combination\":{\"outletWithAnything\":false,\"pro…"
+    }
+  ]
+}
+
+--- would send WonSyncStorefrontConfigSet ---
+{
+  "metafields": [
+    {
+      "ownerId": "gid://shopify/AppInstallation/1052084633841",
+      "namespace": "won_discounts",
+      "key": "storefront_config",
+      "type": "json",
+      "value": "{\"v\":1,\"cv\":\"unsaved:89e2864c2fc603394fd83e0326562419\",\"tiers\":{\"global\":\"e2e-tiers-global\",\"sets\":{\"e2e-tiers-global\":{\"count\":\"product\",\"breaks\":[{\"min\":3,\"pct\":10},{\"min\":5,\"pct\":15}]}}},\"margin\":{\"on\":true,\"max\":30,\"k\":\"22b4f9e0\",\"cur\":\"CZK\"},\"appearance\":{\"preset\":\"tiles\"},\"texts\":{}}"
+    }
+  ]
+}
+[won-sync] sync b2b-b2c-store-development.myshopify.com: ok (7 steps) 
+
+# result: ok (dry-run: 2 mutation(s) planned)
+✔ shop.read — gid://shopify/Shop/78971076849, shop time 2026-10-01T09:33:53 (America/New_York), currency CZK
+✔ plan — plan free: nothing to gate
+✔ products — no targeted products and none to clean
+✔ shop_config.write — 495 B written
+✔ shop_config.verify — read back and verified (495 B)
+✔ storefront_config.write — 290 B written
+✔ storefront_config.verify — read back and verified (290 B)
+[won-sync] costs b2b-b2c-store-development.myshopify.com: 
+Invalid `db.shopConfig.findUnique()` invocation in
+/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/app/lib/config.server.ts:195:35
+
+  192  * defaults rather than throwing (DATA-2 — never crash on bad stored data).
+  193  */
+  194 export async function loadConfig(db: PrismaClient, shop: string): Promise<LoadedConfig> {
+→ 195   const row = await db.shopConfig.findUnique(
+Response from the Engine was empty 
+
+(dry-run: nothing written; pass --live)

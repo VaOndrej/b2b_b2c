@@ -1,0 +1,37 @@
+tiers-pro coll-dry exit=0
+tiers-pro coll-live exit=0
+tiers-pro seed-dry exit=0
+tiers-pro seed-live exit=0
+tiers-pro costs-dry exit=0
+tiers-pro costs-live exit=0
+tiers-pro e2e exit=0
+tiers-pro cleanup exit=0
+tiers-pro costs-clear exit=0
+tiers-pro verify-clean exit=0
+tiers-pro DONE
+tiers-pro coll-delete exit=0
+margin-pro coll-dry exit=0
+margin-pro coll-live exit=0
+margin-pro seed-dry exit=0
+margin-pro seed-live exit=0
+margin-pro costs-dry exit=0
+margin-pro costs-live exit=0
+margin-pro e2e exit=0
+margin-pro cleanup exit=0
+margin-pro costs-clear exit=0
+margin-pro verify-clean exit=0
+margin-pro DONE
+margin-pro coll-delete exit=0
+shapes seed-dry exit=0
+shapes seed-live exit=0
+shapes e2e exit=0
+shapes cleanup exit=0
+shapes verify-clean exit=0
+shapes DONE
+PHASE-B DONE
+shapes seed-dry exit=0
+shapes seed-live exit=0
+shapes e2e exit=0
+shapes cleanup exit=0
+shapes verify-clean exit=0
+shapes DONE

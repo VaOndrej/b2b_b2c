@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-01T06:33:15.557Z",
+  "at": "2026-10-01T13:05:34.496Z",
   "theme": "Dawn",
   "profile": "tiers",
   "variant": {
@@ -10,7 +10,8 @@
       "cur": "CZK"
     },
     "pdp": {
-      "max": 14.2
+      "f": 858,
+      "k": "22b4f9e0"
     }
   },
   "initial": {
@@ -50,6 +51,8 @@
       "set": "e2e-tiers-global",
       "count": "product",
       "cur": "CZK",
+      "sc": "CZK",
+      "ms": "1.234.567,89 Kč",
       "fmt": "{{amount_with_comma_separator}} Kč",
       "lang": "cs",
       "sel": 48468678902001,
@@ -71,8 +74,8 @@
         {
           "id": 48468678902001,
           "p": 1000,
-          "m": 14.2,
-          "c": 0
+          "c": 0,
+          "f": 858
         }
       ],
       "t": {
@@ -146,7 +149,7 @@
           "minMarginPercent": 30,
           "source": "global"
         },
-        "message": "Od 5 ks −15 %"
+        "message": "Množstevní sleva od 5 ks"
       }
     },
     {
@@ -167,13 +170,13 @@
           "minMarginPercent": 30,
           "source": "global"
         },
-        "message": "Od 5 ks −15 %"
+        "message": "Množstevní sleva od 5 ks"
       }
     }
   ],
   "events": [
     {
-      "at": 1790836392965,
+      "at": 1790859932300,
       "variantId": 48468678902001,
       "quantity": 1,
       "count": 1,
@@ -181,7 +184,7 @@
       "unitCents": 1000
     },
     {
-      "at": 1790836393129,
+      "at": 1790859932367,
       "variantId": 48468678902001,
       "quantity": 2,
       "count": 2,
@@ -189,7 +192,7 @@
       "unitCents": 1000
     },
     {
-      "at": 1790836393209,
+      "at": 1790859932399,
       "variantId": 48468678902001,
       "quantity": 3,
       "count": 3,
@@ -197,7 +200,7 @@
       "unitCents": 900
     },
     {
-      "at": 1790836393275,
+      "at": 1790859932429,
       "variantId": 48468678902001,
       "quantity": 4,
       "count": 4,
@@ -205,7 +208,7 @@
       "unitCents": 900
     },
     {
-      "at": 1790836393342,
+      "at": 1790859932465,
       "variantId": 48468678902001,
       "quantity": 5,
       "count": 5,
@@ -213,7 +216,7 @@
       "unitCents": 858
     },
     {
-      "at": 1790836393451,
+      "at": 1790859932499,
       "variantId": 48468678902001,
       "quantity": 7,
       "count": 7,
@@ -227,9 +230,9 @@
       "variant": {
         "id": "gid://shopify/ProductVariant/48468678902001",
         "pdpMetafield": {
-          "max": 14.2
+          "f": 858,
+          "k": "22b4f9e0"
         },
-        "blockMaxPercent": 14.2,
         "row5": "−14,2 %"
       },
       "product": {
@@ -261,9 +264,11 @@
         },
         "margin": {
           "on": true,
-          "max": 30
+          "max": 30,
+          "k": "22b4f9e0",
+          "cur": "CZK"
         },
-        "updatedAt": "2026-10-01T06:30:02Z"
+        "updatedAt": "2026-10-01T13:02:05Z"
       },
       "block": {
         "setId": "e2e-tiers-global",
@@ -293,8 +298,8 @@
         "class": "shopify-block shopify-app-block"
       },
       "scripts": [
-        "https://cdn.shopify.com/extensions/01a0f613-0152-707b-951e-640f7ead205e/dev-9b836333-c040-4366-b082-7086cf17f2ba/assets/won-discounts-tiers.js",
-        "https://cdn.shopify.com/extensions/01a0f613-0152-707b-951e-640f7ead205e/dev-9b836333-c040-4366-b082-7086cf17f2ba/assets/won-discounts-tiers-core.js"
+        "https://cdn.shopify.com/extensions/01a0f777-6588-765a-9bb1-e6cb50f44aa9/dev-0e9c213a-349e-485f-ac2e-6088ffe4b1b9/assets/won-discounts-tiers.js",
+        "https://cdn.shopify.com/extensions/01a0f777-6588-765a-9bb1-e6cb50f44aa9/dev-0e9c213a-349e-485f-ac2e-6088ffe4b1b9/assets/won-discounts-tiers-core.js"
       ]
     }
   }

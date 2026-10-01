@@ -1,0 +1,15 @@
+# store: collection won-e2e-tiers does not exist; won-e2e-simple-b is in []; won-e2e-spare is in []
+
+--- would send WonE2eMarginCollectionCreate ---
+{
+  "input": {
+    "title": "Won E2E — Tiers (Pro)",
+    "handle": "won-e2e-tiers",
+    "products": [
+      "gid://shopify/Product/9692429091057",
+      "gid://shopify/Product/9692429189361"
+    ]
+  }
+}
+
+(dry-run: nothing written; pass --live)

@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-01T06:33:46.967Z",
+  "at": "2026-10-01T13:06:04.992Z",
   "theme": "Dawn",
   "profile": "tiers",
   "pdp": {
@@ -91,7 +91,7 @@
           "tier:e2e-tiers-global"
         ],
         "amount": 710,
-        "message": "Od 5 ks −15 %",
+        "message": "Množstevní sleva od 5 ks",
         "value": {
           "fixedTotal": 710
         },
@@ -107,7 +107,7 @@
       "cart": {
         "allocations": [
           [
-            "Od 5 ks −15 %",
+            "Množstevní sleva od 5 ks",
             710
           ]
         ],

@@ -117,10 +117,27 @@ export function lineAllocation(lines: readonly CheckoutLine[], discountTitle: st
   return null;
 }
 
-/** Go to the storefront's /checkout (it redirects to /checkouts/cn/<token>) and wait for the form. */
+/**
+ * Go to the storefront's /checkout (it redirects to /checkouts/cn/<token>) and wait for the form.
+ * The hosted checkout sometimes never renders on the first load (MVP 3 final E2E: Horizon, no #email
+ * after 90 s, the retry rendered in 31 s). Each attempt waits 40 s; a stalled one is logged (path +
+ * title only, nothing secret) and the navigation repeats — the same cart, at most 3 loads.
+ */
 export async function openCheckout(page: Page, url = "/checkout"): Promise<void> {
-  await page.goto(url, { waitUntil: "domcontentloaded" });
-  await expect(page.locator("#email")).toBeVisible({ timeout: 90_000 });
+  const email = page.locator("#email");
+  for (let attempt = 1; ; attempt += 1) {
+    const target = attempt > 1 && new URL(page.url()).pathname.startsWith("/checkouts/") ? page.url() : url;
+    await page.goto(target, { waitUntil: "domcontentloaded" });
+    const shown = await email.waitFor({ state: "visible", timeout: 40_000 }).then(
+      () => true,
+      () => false,
+    );
+    if (shown) break;
+    console.log(`[openCheckout] attempt ${attempt}: no checkout form at ${new URL(page.url()).pathname} ("${await page.title().catch(() => "")}")`);
+    if (attempt >= 3) {
+      await expect(email, "the checkout form after 3 loads").toBeVisible({ timeout: 1_000 });
+    }
+  }
   expect(new URL(page.url()).pathname).toMatch(/^\/checkouts\//u);
 }
 

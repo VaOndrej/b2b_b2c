@@ -1,0 +1,211 @@
+{
+  "at": "2026-10-01T12:32:41.166Z",
+  "theme": "Dawn",
+  "planMode": "pro",
+  "checkoutPath": "/checkouts/cn/<token>/cs-cz/thank-you",
+  "cart": {
+    "currency": "CZK",
+    "original_total_price": 3400,
+    "items_subtotal_price": 850,
+    "total_price": 850,
+    "lines": [
+      {
+        "handle": "won-e2e-simple-b",
+        "quantity": 2,
+        "unitPrice": 1200,
+        "allocations": [
+          {
+            "title": "E2E fix 1000 Kč/ks",
+            "value_type": "percentage",
+            "value": "100.0",
+            "amount": 2400
+          }
+        ],
+        "final_line_price": 0
+      },
+      {
+        "handle": "won-e2e-simple-a",
+        "quantity": 1,
+        "unitPrice": 1000,
+        "allocations": [
+          {
+            "title": "E2E Pro 10 % + E2E Pro 5 %",
+            "value_type": "percentage",
+            "value": "15.0",
+            "amount": 150
+          }
+        ],
+        "final_line_price": 850
+      }
+    ]
+  },
+  "plan": {
+    "totals": {
+      "subtotal": 3400,
+      "productDiscount": 2550,
+      "orderDiscount": 0,
+      "total": 850
+    },
+    "lines": [
+      {
+        "handle": "won-e2e-simple-b",
+        "product": {
+          "components": [
+            {
+              "ruleId": "e2e-shapes-cap-fixed",
+              "method": "automatic",
+              "module": "codes",
+              "amount": 2400
+            }
+          ],
+          "amount": 2400,
+          "ownerRuleId": "e2e-shapes-cap-fixed",
+          "ownerMethod": "automatic",
+          "value": {
+            "fixedPerItem": 1200
+          },
+          "message": "E2E fix 1000 Kč/ks"
+        },
+        "emitted": {
+          "kind": "percentage",
+          "percent": 100
+        }
+      },
+      {
+        "handle": "won-e2e-simple-a",
+        "product": {
+          "components": [
+            {
+              "ruleId": "e2e-shapes-pro-10",
+              "method": "automatic",
+              "module": "codes",
+              "amount": 100
+            },
+            {
+              "ruleId": "e2e-shapes-pro-5",
+              "method": "automatic",
+              "module": "codes",
+              "amount": 50
+            }
+          ],
+          "amount": 150,
+          "ownerRuleId": "e2e-shapes-pro-10",
+          "ownerMethod": "automatic",
+          "value": {
+            "fixedTotal": 150
+          },
+          "message": "E2E Pro 10 % + E2E Pro 5 %"
+        },
+        "emitted": {
+          "kind": "percentage",
+          "percent": 15
+        }
+      }
+    ],
+    "rules": [
+      {
+        "ruleId": "e2e-shapes-cap-fixed",
+        "state": "applied",
+        "amount": 2400,
+        "combinedInto": null
+      },
+      {
+        "ruleId": "e2e-shapes-pro-10",
+        "state": "applied",
+        "amount": 100,
+        "combinedInto": null
+      },
+      {
+        "ruleId": "e2e-shapes-pro-5",
+        "state": "combined",
+        "amount": 50,
+        "combinedInto": "e2e-shapes-pro-10"
+      }
+    ]
+  },
+  "thankYou": {
+    "lines": [
+      {
+        "handle": "won-e2e-simple-b",
+        "quantity": 2,
+        "message": "E2E fix 1000 Kč/ks",
+        "observed": {
+          "allocations": [
+            {
+              "title": "E2E FIX 1000 KČ/KS",
+              "amount": -2400
+            }
+          ],
+          "discount": -2400,
+          "originalPrice": 2400,
+          "finalPrice": 0
+        },
+        "plan": {
+          "discount": -2400,
+          "originalPrice": 2400,
+          "finalPrice": 0,
+          "emitted": {
+            "kind": "percentage",
+            "percent": 100
+          }
+        }
+      },
+      {
+        "handle": "won-e2e-simple-a",
+        "quantity": 1,
+        "message": "E2E Pro 10 % + E2E Pro 5 %",
+        "observed": {
+          "allocations": [
+            {
+              "title": "E2E PRO 10 % + E2E PRO 5 %",
+              "amount": -150
+            }
+          ],
+          "discount": -150,
+          "originalPrice": 1000,
+          "finalPrice": 850
+        },
+        "plan": {
+          "discount": -150,
+          "originalPrice": 1000,
+          "finalPrice": 850,
+          "emitted": {
+            "kind": "percentage",
+            "percent": 15
+          }
+        }
+      }
+    ],
+    "subtotal": 850,
+    "orderDiscountRows": [],
+    "totalSavings": 2550,
+    "shipping": 64682,
+    "tax": 0,
+    "total": 65532,
+    "charged": 65532,
+    "payFormGone": true,
+    "expectedTotal": 65532
+  },
+  "thankYouSummaryRows": [
+    {
+      "label": "Mezisoučet • 3 položek",
+      "value": "8,50 Kč",
+      "amount": 850
+    },
+    {
+      "label": "Expedice",
+      "value": "646,82 Kč",
+      "amount": 64682
+    },
+    {
+      "label": "Celkem",
+      "value": "655,32 Kč",
+      "amount": 65532
+    },
+    {
+      "label": "CELKOVÁ ÚSPORA25,50 Kč",
+      "value": "",
+      "amount": null
+    }
+  ]
+}

@@ -32,7 +32,7 @@ import {
   type SummaryRow,
 } from "./support/checkout.ts";
 import { saveEvidence, saveScreenshot } from "./support/evidence.ts";
-import { E2E_PROFILE, expect, test, THEME_LABEL, unlockRealStorefront } from "./support/fixtures.ts";
+import { E2E_PROFILE, expect, gotoStorefront, test, THEME_LABEL, unlockRealStorefront } from "./support/fixtures.ts";
 import { expectedFor, readLiveInputsFor, type Expected, type LiveInputs } from "./support/won-plan.ts";
 
 // SPEC-DRIVEN (MVP 1 gate). Live proof of the function output shapes the MVP 1
@@ -277,8 +277,7 @@ test.describe(`Won Discounts output shapes in cart and checkout (MVP 1 gate)${E2
       }
     }
 
-    const response = await page.goto(`/products/${SHAPES_PRODUCT_A_HANDLE}`, { waitUntil: "load" });
-    expect(response?.status()).toBeLessThan(400);
+    await gotoStorefront(page, `/products/${SHAPES_PRODUCT_A_HANDLE}`);
 
     const cart = await freshCartWith(page, SHAPES_CART, []);
     const expected = expectedFor(cart, inputs, CHECKOUT_COUNTRY);
@@ -399,8 +398,7 @@ test.describe(`Won Discounts output shapes in cart and checkout (MVP 1 gate)${E2
     await page.setViewportSize({ width: 1440, height: 900 });
 
     await unlockRealStorefront(page);
-    const response = await page.goto(`/products/${SHAPES_PRODUCT_A_HANDLE}`, { waitUntil: "load" });
-    expect(response?.status()).toBeLessThan(400);
+    await gotoStorefront(page, `/products/${SHAPES_PRODUCT_A_HANDLE}`);
 
     const cart = await freshCartWith(page, SHAPES_CART, []);
     const expected = expectedFor(cart, inputs, CHECKOUT_COUNTRY);

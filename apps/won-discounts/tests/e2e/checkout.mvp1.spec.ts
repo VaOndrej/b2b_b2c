@@ -28,7 +28,7 @@ import {
   TOTAL,
 } from "./support/checkout.ts";
 import { saveEvidence, saveScreenshot } from "./support/evidence.ts";
-import { E2E_PROFILE, expect, STORE_ORIGIN, test, THEME_LABEL, unlockRealStorefront } from "./support/fixtures.ts";
+import { E2E_PROFILE, expect, gotoStorefront, STORE_ORIGIN, test, THEME_LABEL, unlockRealStorefront } from "./support/fixtures.ts";
 import { expectedFor, readLiveInputs } from "./support/won-plan.ts";
 
 // SPEC-DRIVEN (MVP 1, Task 6). Live proof that Won discounts really apply in
@@ -72,8 +72,7 @@ test.describe(`Won Discounts in cart and checkout (MVP 1)${THEME_LABEL ? ` — $
     );
     expect(inputs.productRefs.ruleIds ?? [], `${E2E_PRODUCT_HANDLE} is targeted by the automatic rule`).toContain(E2E_AUTO_RULE_ID);
 
-    const response = await page.goto(`/products/${E2E_PRODUCT_HANDLE}`, { waitUntil: "load" });
-    expect(response?.status()).toBeLessThan(400);
+    await gotoStorefront(page, `/products/${E2E_PRODUCT_HANDLE}`);
 
     // (a) automatic rule: one line-level allocation, 10 %, titled with the rule name.
     const autoCart = await test.step("(a) add won-e2e-simple-a → /cart.js line allocation", async () => {
@@ -159,8 +158,7 @@ test.describe(`Won Discounts in cart and checkout (MVP 1)${THEME_LABEL ? ` — $
     await page.setViewportSize({ width: 1440, height: 900 });
 
     await unlockRealStorefront(page);
-    const response = await page.goto(`/products/${E2E_PRODUCT_HANDLE}`, { waitUntil: "load" });
-    expect(response?.status()).toBeLessThan(400);
+    await gotoStorefront(page, `/products/${E2E_PRODUCT_HANDLE}`);
 
     // The cart right before checkout (theme-dev session) and its plan.
     const cart = await freshCart(page, E2E_PRODUCT_HANDLE, [E2E_CODE]);

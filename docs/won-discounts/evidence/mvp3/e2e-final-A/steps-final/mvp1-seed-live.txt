@@ -1,0 +1,26 @@
+# stored config of b2b-b2c-store-development.myshopify.com: 0 rule(s)
+  margin protection off
+  no tier set
+
+# seed (profile mvp1): won-e2e-simple-a = gid://shopify/Product/9692429058289; code WONE2E15
+  + e2e-mvp1-auto-10 "E2E auto 10 %" automatic
+  + e2e-mvp1-code-15 "E2E kód" code
+  margin protection off
+  no tier set
+
+# backup: /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/34104025-5b69-4033-91ec-cf56865061ef/scratchpad/e2eA/seed-mvp1-backup.json
+[won-sync] sync b2b-b2c-store-development.myshopify.com: ok (9 steps) 
+
+# save: ok (version cmupiroog0000sn6t5rjr0yu9, 733 B)
+# sync: ok (run cmupisugt0003sn6tmfemssq7)
+✔ shop.read — gid://shopify/Shop/78971076849, shop time 2026-10-01T08:37:39 (America/New_York), currency CZK
+✔ plan — plan free: nothing to gate
+✔ node.create:code:e2e-mvp1-code-15 — created "E2E kód" with code WONE2E15
+✔ products.scope — 1 targeted product(s) (0 collection(s), 0 variant target(s)); 0 up to date
+✔ shop_config.write — 733 B written
+✔ shop_config.verify — read back and verified (733 B)
+✔ storefront_config.write — 148 B written
+✔ storefront_config.verify — read back and verified (148 B)
+✔ products.add — 1 product(s) got their new rules
+
+Evidence: /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/34104025-5b69-4033-91ec-cf56865061ef/scratchpad/e2eA/seed-mvp1-2026-10-01T12-38-41-630Z.json

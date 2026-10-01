@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-01T06:32:57.922Z",
+  "at": "2026-10-01T13:04:55.996Z",
   "theme": "Horizon",
   "profile": "tiers",
   "cart": {
@@ -88,7 +88,7 @@
           "value": {
             "fixedTotal": 710
           },
-          "message": "Od 5 ks −15 %"
+          "message": "Množstevní sleva od 5 ks"
         },
         "marginCapped": {
           "before": 750,
@@ -139,7 +139,7 @@
         "quantity": 5,
         "allocations": [
           {
-            "title": "OD 5 KS −15 %",
+            "title": "MNOŽSTEVNÍ SLEVA OD 5 KS",
             "amount": -710
           }
         ],
@@ -155,13 +155,13 @@
       },
       {
         "label": "Expedice",
-        "value": "646,28 Kč",
-        "amount": 64628
+        "value": "646,82 Kč",
+        "amount": 64682
       },
       {
         "label": "Celkem",
-        "value": "747,08 Kč",
-        "amount": 74708
+        "value": "747,62 Kč",
+        "amount": 74762
       },
       {
         "label": "CELKOVÁ ÚSPORA12,20 Kč",
@@ -170,11 +170,11 @@
       }
     ],
     "subtotal": 10080,
-    "shipping": 64628,
+    "shipping": 64682,
     "tax": 0,
     "includedTaxRows": [],
-    "total": 74708,
-    "charged": 74708,
+    "total": 74762,
+    "charged": 74762,
     "checkoutPath": "/checkouts/cn/<token>/cs-cz/thank-you"
   }
 }

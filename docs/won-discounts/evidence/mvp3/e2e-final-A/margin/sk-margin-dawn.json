@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-01T06:28:42.375Z",
+  "at": "2026-10-01T12:58:48.242Z",
   "theme": "Dawn",
   "profile": "margin",
   "collection": null,
@@ -144,11 +144,11 @@
     "cart_level": [
       {
         "type": "discount_code",
-        "key": "3a81642b-7fb0-4531-bc20-cece53ac1398",
+        "key": "56e47fd4-08a5-4c15-a778-d37d4d980f22",
         "title": "WONE2EM20",
         "description": null,
         "value": "0.12",
-        "created_at": "2026-10-01T06:28:10.393Z",
+        "created_at": "2026-10-01T12:58:14.527Z",
         "value_type": "fixed_amount",
         "allocation_method": "across",
         "target_selection": "all",
@@ -445,12 +445,12 @@
     ],
     "subtotal": 157,
     "orderDiscount": -12,
-    "shipping": 2685,
+    "shipping": 2688,
     "tax": 0,
     "includedTaxRows": [],
-    "total": 2830,
-    "charged": 2830,
-    "expectedTotal": 2830
+    "total": 2833,
+    "charged": 2833,
+    "expectedTotal": 2833
   },
   "thankYouSummaryRows": [
     {
@@ -470,13 +470,13 @@
     },
     {
       "label": "Expedice",
-      "value": "26,85 €",
-      "amount": 2685
+      "value": "26,88 €",
+      "amount": 2688
     },
     {
       "label": "Celkem",
-      "value": "28,30 €",
-      "amount": 2830
+      "value": "28,33 €",
+      "amount": 2833
     },
     {
       "label": "CELKOVÁ ÚSPORA0,46 €",
@@ -485,7 +485,7 @@
     }
   ],
   "loggedOrder": {
-    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20261001_062825_838Z_extensions_won-discounts-engine_d93f10.json",
+    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20261001_125832_097Z_extensions_won-discounts-engine_bf8e64.json",
     "candidate": {
       "message": "E2E marže kód 20 %",
       "targets": [
