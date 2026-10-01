@@ -40,9 +40,9 @@ margin protection, Try a cart and moving Shopify discounts work in full on Free.
 |---|---|---|
 | Show a discount only in chosen markets | Discounts & codes | The whole discount does not apply on Free (removing only its targeting would widen it to everyone). |
 | Choose per discount which other discounts it stacks with | Discounts & codes | The Pro setting is left out; the rest keeps working. |
-| Volume discount sets for chosen products or collections | Volume discounts | The Pro setting is left out; the rest keeps working. |
-| More than one volume discount set | Volume discounts | The Pro setting is left out; the rest keeps working. |
-| Volume discounts counted across the whole cart | Volume discounts | Kept within the Free limit. |
+| Quantity discount sets for chosen products or collections | Quantity discounts | The Pro setting is left out; the rest keeps working. |
+| More than one volume discount set | Quantity discounts | The Pro setting is left out; the rest keeps working. |
+| Quantity discounts counted across the whole cart | Quantity discounts | Kept within the Free limit. |
 | Margin protection settings per collection | Margin protection | Merged into the store-wide setting; the strictest value wins. |
 
 With per-discount combinations, at most **6** discounts stack on one line
