@@ -135,7 +135,9 @@ export async function unlockRealStorefront(page: Page): Promise<void> {
  * page.goto for a storefront page that must load (status < 400). Shopify's storefront
  * now and then answers a transient 5xx ("There was a problem loading this website. Try
  * refreshing", seen on Dawn in the MVP 3 final E2E): that one is reloaded, at most 3 loads,
- * 3 s apart. A 4xx fails at once — it is never transient.
+ * 3 s apart. Cloudflare's rate limit on the store domain (HTTP 429 "Verifying your
+ * connection…", MVP 4 E2E on the real domain) is waited out the same way the cart helpers
+ * do: 15 / 30 / 45 s, at most 4 loads. Any other 4xx fails at once — it is never transient.
  */
 export async function gotoStorefront(page: Page, url: string): Promise<void> {
   for (let attempt = 1; ; attempt += 1) {
@@ -144,6 +146,11 @@ export async function gotoStorefront(page: Page, url: string): Promise<void> {
     if (status >= 500 && attempt < 3) {
       console.log(`[gotoStorefront] ${url}: HTTP ${status} on load ${attempt}, reloading`);
       await page.waitForTimeout(3_000);
+      continue;
+    }
+    if (status === 429 && attempt < 4) {
+      console.log(`[gotoStorefront] ${url}: HTTP 429 (rate limited) on load ${attempt}, waiting ${15 * attempt} s`);
+      await page.waitForTimeout(15_000 * attempt);
       continue;
     }
     expect(status, `GET ${url}`).toBeLessThan(400);

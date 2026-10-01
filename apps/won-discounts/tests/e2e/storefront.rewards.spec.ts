@@ -170,6 +170,13 @@ async function openThemePreview(page: Page): Promise<void> {
 /** A storefront page of the previewed theme (absolute: the page is on the store domain, not the theme-dev base URL). */
 const go = (page: Page, path: string) => gotoStorefront(page, `${STORE_ORIGIN}${path}`);
 
+/** The cart's currency and the cart product's price in it — reads only (the store domain rate-limits writes). */
+async function priceProbe(page: Page): Promise<{ currency: string; price: number }> {
+  const cart = await storefrontJson<Cart>(page, "GET", "/cart.js");
+  const product = await storefrontJson<{ variants: { price: number }[] }>(page, "GET", `/products/${REWARDS_CART_HANDLE}.js`);
+  return { currency: cart.currency, price: product.variants[0]!.price };
+}
+
 /** A cart of `quantity` × the cart product, set up by the test (no customer event). */
 async function setupCart(page: Page, quantity: number): Promise<Cart> {
   return freshCartOfVariants(page, [{ handle: REWARDS_CART_HANDLE, quantity }], []);
@@ -276,6 +283,12 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     `WON_E2E_PROFILE=${E2E_PROFILE}: this spec needs the rewards seed (seed-mvp1.mjs --profile rewards|rewards-other|rewards-pro --live) and WON_E2E_PROFILE=rewards|rewards-other|rewards-pro`,
   );
 
+  // The store domain sits behind Cloudflare's rate limit (HTTP 429 "Verifying your connection…" after a few
+  // tests in a row, MVP 4 E2E): each test starts after a pause so the limit has room again.
+  test.beforeEach(async ({ page }) => {
+    await page.waitForTimeout(20_000);
+  });
+
   test.afterEach(async ({ page }) => {
     if (page.url().startsWith(STORE_ORIGIN)) await clearCartQuietly(page);
   });
@@ -290,8 +303,8 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     await page.setViewportSize({ width: 1440, height: 900 });
     await openThemePreview(page);
     await go(page, `/products/${REWARDS_CART_HANDLE}`);
-    const probe = await setupCart(page, 1);
-    const below = itemsFor(giftThreshold(rw, REWARDS_GIFT_TIER_ID, probe.currency), probe.items[0]!.original_price) - 1;
+    const probe = await priceProbe(page);
+    const below = itemsFor(giftThreshold(rw, REWARDS_GIFT_TIER_ID, probe.currency), probe.price) - 1;
     expect(below, "the gift threshold needs more than one item").toBeGreaterThan(0);
     const cart = await setupCart(page, below);
     const writes = recordCartWrites(page);
@@ -364,8 +377,8 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     await page.setViewportSize({ width: 1440, height: 900 });
     await openThemePreview(page);
     await go(page, `/products/${REWARDS_CART_HANDLE}`);
-    const probe = await setupCart(page, 1);
-    const needed = itemsFor(giftThreshold(rw, REWARDS_GIFT_TIER_ID, probe.currency), probe.items[0]!.original_price);
+    const probe = await priceProbe(page);
+    const needed = itemsFor(giftThreshold(rw, REWARDS_GIFT_TIER_ID, probe.currency), probe.price);
     await setupCart(page, needed - 1);
 
     const writes = recordCartWrites(page);
@@ -442,8 +455,8 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     await page.setViewportSize({ width: 1440, height: 900 });
     await openThemePreview(page);
     await go(page, `/products/${REWARDS_CART_HANDLE}`);
-    const probe = await setupCart(page, 1);
-    const needed = itemsFor(giftThreshold(rw, REWARDS_GIFT_TIER_ID, probe.currency), probe.items[0]!.original_price);
+    const probe = await priceProbe(page);
+    const needed = itemsFor(giftThreshold(rw, REWARDS_GIFT_TIER_ID, probe.currency), probe.price);
     await setupCart(page, needed - 1);
     await addOnProductPage(page, REWARDS_CART_HANDLE, 1);
     const withGift = await waitForCart(page, (c) => giftLines(c).length === 1);
@@ -478,8 +491,8 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     await page.setViewportSize({ width: 1440, height: 900 });
     await openThemePreview(page);
     await go(page, `/products/${REWARDS_CART_HANDLE}`);
-    const probe = await setupCart(page, 1);
-    const needed = itemsFor(giftThreshold(rw, REWARDS_GIFT_TIER_ID, probe.currency), probe.items[0]!.original_price);
+    const probe = await priceProbe(page);
+    const needed = itemsFor(giftThreshold(rw, REWARDS_GIFT_TIER_ID, probe.currency), probe.price);
     await setupCart(page, needed - 1);
     await addOnProductPage(page, REWARDS_CART_HANDLE, 1);
     const cart = await waitForCart(page, (c) => giftLines(c).length === 1);
@@ -556,9 +569,9 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     try {
       const market = await setStorefrontCountry(page, "SK");
       expect(market.status).toBe(200);
-      const probe = await setupCart(page, 1);
+      const probe = await priceProbe(page);
       expect(probe.currency, "the SK cart is in EUR").toBe("EUR");
-      const needed = itemsFor(giftThreshold(rw, REWARDS_GIFT_TIER_ID, "EUR"), probe.items[0]!.original_price);
+      const needed = itemsFor(giftThreshold(rw, REWARDS_GIFT_TIER_ID, "EUR"), probe.price);
       await setupCart(page, needed - 1);
       await addOnProductPage(page, REWARDS_CART_HANDLE, 1);
       const cart = await waitForCart(page, (c) => giftLines(c).length === 1);
@@ -595,8 +608,8 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     await page.setViewportSize({ width: 1440, height: 900 });
     await openThemePreview(page);
     await go(page, `/products/${REWARDS_CART_HANDLE}`);
-    const probe = await setupCart(page, 1);
-    const needed = itemsFor(giftThreshold(rw, REWARDS_GIFT_TIER_ID, probe.currency), probe.items[0]!.original_price);
+    const probe = await priceProbe(page);
+    const needed = itemsFor(giftThreshold(rw, REWARDS_GIFT_TIER_ID, probe.currency), probe.price);
     await setupCart(page, needed - 1);
     await addOnProductPage(page, REWARDS_CART_HANDLE, 1);
     expect(giftLines(await waitForCart(page, (c) => giftLines(c).length === 1)), "precondition: the gift").toHaveLength(1);
@@ -654,8 +667,8 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     await page.setViewportSize({ width: 1440, height: 900 });
     await openThemePreview(page);
     await go(page, `/products/${REWARDS_CART_HANDLE}`);
-    const probe = await setupCart(page, 1);
-    const needed = itemsFor(giftThreshold(rw, REWARDS_LADDER_TIER_ID, probe.currency), probe.items[0]!.original_price);
+    const probe = await priceProbe(page);
+    const needed = itemsFor(giftThreshold(rw, REWARDS_LADDER_TIER_ID, probe.currency), probe.price);
     await setupCart(page, needed - 1);
     await addOnProductPage(page, REWARDS_CART_HANDLE, 1);
     const first = await waitForCart(page, (c) => giftLines(c, REWARDS_GIFT_TIER_ID).length === 1);
