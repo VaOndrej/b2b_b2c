@@ -21,7 +21,10 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   (3) spec, který zapisuje do košíku přes `Shopify.actions`, běží na doméně storu s `?preview_theme_id=` (theme dev
   neobsluhuje Storefront API); doména storu má rate limit 429 → pauzy; (4) Storefront Events: čekat na `event.promise`,
   `/cart.js` číst `no-store`, reakce v jedné frontě; (5) Dawn: `html { font-size: 62.5% }` → velikosti v px.
-  Skripty běhu: `scratchpad/profile3.sh <profil> <tag> free|pro`, fáze B `phaseB4.sh` (kolekce fixture).
+  Skripty běhu jsou v repu: `apps/won-discounts/scripts/e2e/runbook/` (gate, profile, phase-b, debug-run). Vstupy
+  konstruovaných rodin rozpočtu: `.superpowers/sdd/2026-10-01-won-discounts-mvp4/budget-families-cap550.tar.gz`
+  (lokálně, gitignored), nástroje `extensions/won-discounts-engine/tests/budget-families/`.
+- **Další zadání:** `docs/won-discounts/prompt-mvp4-overeni-mvp5.md` (ověř MVP 4 → MVP 5).
 - **Poslední commit:** checkpoint MVP 4 (viz `git log`), pushnuto na `origin/main`.
 - `shopify app dev` **neběží**. E2E runbook (MVP 3) a skripty běhu: `profile.sh`-styl průchod = seed dry-run → live →
   (`margin*`/`tiers*`) `margin-costs` dry-run → live → E2E → úklid → `margin-costs --clear` → `verify-clean`.
