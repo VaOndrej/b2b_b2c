@@ -112,7 +112,15 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
       <s-stack direction="block" gap="base">
         <s-text-field name={F.name} label={t("campaign.field.name")} value={editing?.name ?? ""} error={err(F.name)} disabled={boolAttr(!pro)} />
         <s-grid gridTemplateColumns="minmax(0, 2fr) minmax(0, 1fr)" gap="base" alignItems="start">
-          <s-date-field name={F.startDate} label={t("campaign.field.start")} value={editing?.start.date ?? ""} allow={`${today}--`} error={err(F.startDate)} disabled={boolAttr(!pro)} />
+          <s-date-field
+            name={F.startDate}
+            label={t("campaign.field.start")}
+            value={editing?.start.date ?? ""}
+            // Audit C2: a running campaign keeps its past start; a new or scheduled one starts today at the earliest.
+            allow={editing?.status === "running" ? undefined : `${today}--`}
+            error={err(F.startDate)}
+            disabled={boolAttr(!pro)}
+          />
           <s-text-field name={F.startTime} label={t("campaign.field.time")} value={editing?.start.time ?? "00:00"} placeholder="HH:MM" disabled={boolAttr(!pro)} />
           <s-date-field name={F.endDate} label={t("campaign.field.end")} value={editing?.end.date ?? ""} allow={`${today}--`} error={err(F.endDate)} disabled={boolAttr(!pro)} />
           <s-text-field name={F.endTime} label={t("campaign.field.time")} value={editing?.end.time ?? "23:59"} placeholder="HH:MM" disabled={boolAttr(!pro)} />

@@ -133,6 +133,9 @@ import { foldedIn } from "./margin-fold";
 import { appliedRun, parseSteps, shopConfigApplied } from "./runs";
 import { canonicalJson, isoCurrency, sameJson } from "./util";
 
+/** A held campaign switch is retried this long after (scheduler campaigns.due, K4). */
+export const CAMPAIGN_HELD_RETRY_MS = 5 * 60_000;
+
 /** Shop-local `YYYY-MM-DDTHH:MM:SS` (DateTimeWithoutTimezone, what the engine and C4 use). */
 export function shopLocalDateTime(date: Date, timeZone: string): string {
   try {
@@ -625,6 +628,13 @@ async function syncSteps({ deps, transport, shop, config: stored, configVersionI
   }
   let storedJson = shopState.functionConfig;
 
+  // Audit C1 (K4): a held switch is retried by the scheduler (campaigns.due) 5 minutes on, even when no
+  // boundary was recorded before (a first campaign, a killed one).
+  const holdSwitch = async () => {
+    pending.add("campaign_switch_held");
+    await bookkeeping(deps, shop, () => recordCampaignBoundary(deps.db, shop, new Date(now.getTime() + CAMPAIGN_HELD_RETRY_MS)));
+  };
+
   // P1. Campaign switch: no-campaign shop config first; stop if it fails (M2).
   const newVersion = campaignVersionOf(payload.json);
   const oldVersion = storedJson === null ? null : campaignVersionOf(storedJson);
@@ -633,7 +643,7 @@ async function syncSteps({ deps, transport, shop, config: stored, configVersionI
     const noCampaign = phaseOnePayload(deps, payloadConfig, storedJson, { now: nowLocal, shopTimezone, shopCurrency });
     if (!noCampaign.fits) {
       record({ step: "shop_config.phase1.build", ok: false, ...overBudget(noCampaign, "nothing was written, the running campaign continues", "the no-campaign config") });
-      pending.add("campaign_switch_held");
+      await holdSwitch();
       return null;
     }
     const written = await writeShopConfig(deps, transport, shopState.id, storedJson, noCampaign, "shop_config.phase1", record);
@@ -646,7 +656,7 @@ async function syncSteps({ deps, transport, shop, config: stored, configVersionI
         ok: false,
         detail: "the campaign switch could not start (the no-campaign config was not written); nothing else was changed, the running campaign continues",
       });
-      pending.add("campaign_switch_held");
+      await holdSwitch();
       return null;
     }
   }
@@ -716,7 +726,7 @@ async function syncSteps({ deps, transport, shop, config: stored, configVersionI
 
   // 4. Final shop config (or held).
   if (switching && newVersion !== null && !nodes.varsComplete) {
-    pending.add("campaign_switch_held");
+    await holdSwitch();
     record({
       step: "shop_config.write",
       ok: false,

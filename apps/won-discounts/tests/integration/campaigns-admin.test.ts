@@ -215,3 +215,15 @@ test("screen: Free shows the form locked in the amber Pro frame (§16b), never r
   assert.doesNotMatch(pro, /<s-button[^>]*type="submit"[^>]*variant="primary"[^>]*disabled/);
   assert.doesNotMatch(text(pro.replace(/<[^>]+>/g, " ")), /gid:\/\/shopify|dev-fixture/, "never an id on screen (§4c)");
 });
+
+test("audit C2: editing a running campaign does not restrict its (past) start date; a new one starts today at the earliest", async () => {
+  const { createElement } = await import("react");
+  const { CampaignsScreen } = await import("../../app/components/screens/CampaignsScreen.tsx");
+  const { devCampaignsScreen } = await import("../../app/lib/dev-harness.server.ts");
+  const { renderPage } = await import("./helpers.ts");
+  const edit = await renderPage(createElement(CampaignsScreen, devCampaignsScreen({ plan: "pro", state: null, locale: "cs", edit: "weekend" })));
+  const startField = /<s-date-field[^>]*name="cp\.startDate"[^>]*>/.exec(edit)![0];
+  assert.doesNotMatch(startField, /allow=/, "the running campaign's start (26. 9.) stays valid");
+  const fresh = await renderPage(createElement(CampaignsScreen, devCampaignsScreen({ plan: "pro", state: null, locale: "cs", edit: null })));
+  assert.match(/<s-date-field[^>]*name="cp\.startDate"[^>]*>/.exec(fresh)![0], /allow="2026-09-28--"/);
+});

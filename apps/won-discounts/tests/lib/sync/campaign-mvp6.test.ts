@@ -83,6 +83,8 @@ test("K5: a held switch stays at the live rules without a campaign", async () =>
   const live = JSON.parse(fake.shopMetafieldValue("function_config")!) as Record<string, unknown>;
   assert.equal(live.campaignVarsVersion, null);
   assert.deepEqual(ruleIds(live), ["c"], "held: the new rule is not live (MVP 2 debt)");
+  // Audit C1 (K4): a held switch is retried by the scheduler even when no boundary was recorded before.
+  assert.equal((await loadShopSyncFacts(db.prisma, shop)).campaignBoundaryAt?.toISOString(), "2026-09-28T12:05:00.000Z", "NOW + 5 min");
 });
 
 test("K4: the sync records the boundary (the selected campaign's end, UTC); none without a campaign", async () => {
