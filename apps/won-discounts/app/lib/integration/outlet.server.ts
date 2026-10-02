@@ -12,8 +12,8 @@
 //   reopenOutletRun(deps, id)     O7: a return after the end (Pro): the same row runs again from a NEW backup.
 //   recordOutletWebhook(...)      O7: orders/create, orders/cancelled, refunds/create → ledger steps, idempotent
 //                                 per order line (OutletEvent.key, WBH-2); returns the runs to end / reopen.
-//   writeOutletFlags / writeOutletStorefront   the product metafields `product.outlet` (function) and `outlet`
-//                                 (storefront block), in the shop's sync queue (no lane writes over the flag).
+//   writeOutletFlag / writeOutletStorefront   the variant metafield `outlet` = true (the function's `wonOutlet`,
+//                                 O6) and the product metafield `outlet` (storefront block, O9).
 // Every Shopify call goes through the sync Transport (retry/backoff, API-3). Prices are minor units inside, decimal
 // strings at Shopify. The session shop only (SEC-2).
 
@@ -35,16 +35,13 @@ import {
   type OutletPriceSnapshot,
 } from "@won/core/discounts/outlet";
 import type { ShopPlan } from "@won/core/discounts/plan-gate";
-import { productMetafieldValue, type ProductMetafieldValue } from "@won/core/discounts/targeting";
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import type { AdminClient } from "../admin-client.server";
 import { loadConfig } from "../config.server";
-import { OUTLET_STOREFRONT_KEY, PRODUCT_KEY, WON_NAMESPACE } from "../sync/graphql";
-import { outletVariantsByProduct } from "../sync/outlet-flags";
+import { OUTLET_STOREFRONT_KEY, OUTLET_VARIANT_KEY, WON_NAMESPACE } from "../sync/graphql";
 import { errorText, Transport, userErrorText, type UserErrorLike } from "../sync/transport";
 import type { RetryOptions, SyncLogger } from "../sync/types";
-import { canonicalJson, chunks, hashText } from "../sync/util";
 
 export interface OutletDeps {
   shop: string;
@@ -56,8 +53,6 @@ export interface OutletDeps {
   logger?: SyncLogger;
   retry?: Partial<RetryOptions>;
   sleep?: (ms: number) => Promise<void>;
-  /** The shop's sync queue (default: sync.server inSyncQueue): flag writes never race a product lane. */
-  queue?: <T>(shop: string, work: () => Promise<T>) => Promise<T>;
 }
 
 export type OutletResult =
@@ -85,12 +80,6 @@ async function planFor(deps: OutletDeps): Promise<ShopPlan> {
   if (deps.plan) return deps.plan(deps.shop);
   const { planOf } = await import("../plan.server");
   return planOf(deps.shop);
-}
-
-async function queueFor(deps: OutletDeps): Promise<<T>(shop: string, work: () => Promise<T>) => Promise<T>> {
-  if (deps.queue) return deps.queue;
-  const { inSyncQueue } = await import("../sync/sync.server");
-  return inSyncQueue;
 }
 
 /** The module's settings (display on the web, return after the end) from the stored config. */
@@ -199,12 +188,10 @@ const parseRecord = (text: string | null): PriceRecord | null => {
   }
 };
 
-/** Running sales of the shop (for validation): variants, products, sales per product. */
+/** Variants with a sale not ended (validation: one per variant, OUTLET_LIMITS.running per shop). */
 async function runningOf(deps: OutletDeps) {
-  const rows = await deps.db.outletRun.findMany({ where: { shop: deps.shop, status: { in: [...OUTLET_NOT_ENDED] } }, select: { variantId: true, productId: true } });
-  const perProduct = new Map<string, number>();
-  for (const r of rows) perProduct.set(r.productId, (perProduct.get(r.productId) ?? 0) + 1);
-  return { runningVariantIds: new Set(rows.map((r) => r.variantId)), runningProductIds: new Set(rows.map((r) => r.productId)), runningPerProduct: perProduct };
+  const rows = await deps.db.outletRun.findMany({ where: { shop: deps.shop, status: { in: [...OUTLET_NOT_ENDED] } }, select: { variantId: true } });
+  return { runningVariantIds: new Set(rows.map((r) => r.variantId)) };
 }
 
 /** O4: a new sale from the admin (or a script). */
@@ -273,7 +260,7 @@ async function applySale(deps: OutletDeps, runId: string): Promise<OutletResult>
       }
     }
     await deps.db.outletRun.update({ where: { id: runId }, data: { status: "ending", endedAt: nowOf(deps), error: `start: ${message}` } });
-    const flags = await writeOutletFlags(deps, [run.productId]);
+    const flags = await writeOutletFlag(deps, run.variantId);
     await deps.db.outletRun.update({ where: { id: runId }, data: flags ? { error: `start: ${message}; flags: ${flags}`, ...retryAt(deps, 0) } : { status: "ended" } });
     await event(deps, runId, "start_failed", { detail: { message } });
     return { ok: false, reason: "failed", message, runId };
@@ -309,7 +296,7 @@ async function applySale(deps: OutletDeps, runId: string): Promise<OutletResult>
   };
   // Write-ahead (§14c): the backup is stored before the first write.
   await deps.db.outletRun.update({ where: { id: runId }, data: { backup: JSON.stringify(backup), sale: JSON.stringify(sale) } });
-  const flagged = await writeOutletFlags(deps, [run.productId]);
+  const flagged = await writeOutletFlag(deps, run.variantId);
   if (flagged) return fail(`flag: ${flagged}`, false);
   const variantError = await writeVariant(transport, run.productId, run.variantId, variant.currency, {
     price: sale.variant.price,
@@ -413,7 +400,7 @@ export async function endOutletRun(deps: OutletDeps, runId: string, reason: Outl
     }
     await deps.db.outletRun.update({ where: { id: runId }, data: { endedAt: nowOf(deps) } });
   }
-  const flags = await writeOutletFlags(deps, [run.productId]);
+  const flags = await writeOutletFlag(deps, run.variantId);
   if (flags) {
     await deps.db.outletRun.update({ where: { id: runId }, data: { error: `flags: ${flags}`, ...retryAt(deps, run.attempts) } });
     return { ok: true, runId, skippedLists: [], pending: "flags" };
@@ -426,63 +413,27 @@ export async function endOutletRun(deps: OutletDeps, runId: string, reason: Outl
 }
 
 /**
- * O6: the product metafield `product` of each product, with `outlet` = its sales from the DB, merged into what
- * Shopify holds now (the sync's refs stay as they are). In the shop's sync queue. Null = done, else the error.
+ * O6: the variant's sale flag — the variant metafield `outlet` = true while a run of it is not ended and its
+ * prices are not back (`endedAt` null); deleted otherwise. Only this module writes the key (the sync and the
+ * cost mirror never touch it). Null = done, else the error.
  */
-export async function writeOutletFlags(deps: OutletDeps, productIds: readonly string[]): Promise<string | null> {
-  const queue = await queueFor(deps);
-  return queue(deps.shop, async () => {
-    const transport = transportOf(deps);
-    const wanted = await outletVariantsByProduct(deps.db, deps.shop, productIds);
-    for (const ids of chunks([...new Set(productIds)], 100)) {
-      type Node = { __typename?: string; id?: string; metafield?: { value?: string } | null } | null;
-      let nodes: Node[];
-      try {
-        const data: { nodes: Node[] } = await transport.call("productMetafields", { ids });
-        nodes = data.nodes;
-      } catch (error) {
-        return errorText(error);
-      }
-      for (const node of nodes) {
-        if (!node?.id) continue;
-        let current: ProductMetafieldValue | null = null;
-        try {
-          current = node.metafield?.value ? (JSON.parse(node.metafield.value) as ProductMetafieldValue) : null;
-        } catch {
-          current = null;
-        }
-        const outlet = wanted.get(node.id) ?? [];
-        const next = productMetafieldValue({ ...(current ?? { ruleIds: [], variantRuleIds: {} }), outlet });
-        if (current && canonicalJson(productMetafieldValue(current)) === canonicalJson(next)) continue;
-        if (!current && outlet.length === 0) continue;
-        const empty = next.ruleIds.length === 0 && Object.keys(next.variantRuleIds ?? {}).length === 0 && !next.marginRefs && !next.tierRef && !next.outlet;
-        const where = { shop_productId: { shop: deps.shop, productId: node.id } };
-        // Write-ahead (DATA-1): the row exists, hash unknown, before the write.
-        await deps.db.productTargetIndex.upsert({ where, create: { shop: deps.shop, productId: node.id, payloadHash: null }, update: { payloadHash: null } });
-        try {
-          if (empty) {
-            const data: { metafieldsDelete: { userErrors: UserErrorLike[] } } = await transport.call("metafieldsDelete", {
-              metafields: [{ ownerId: node.id, namespace: WON_NAMESPACE, key: PRODUCT_KEY }],
-            });
-            const error = userErrorText(data.metafieldsDelete.userErrors);
-            if (error) return error;
-            await deps.db.productTargetIndex.deleteMany({ where: { shop: deps.shop, productId: node.id } });
-          } else {
-            const value = JSON.stringify(next);
-            const data: { metafieldsSet: { userErrors: UserErrorLike[] } } = await transport.call("metafieldsSet", {
-              metafields: [{ ownerId: node.id, namespace: WON_NAMESPACE, key: PRODUCT_KEY, type: "json", value }],
-            });
-            const error = userErrorText(data.metafieldsSet.userErrors);
-            if (error) return error;
-            await deps.db.productTargetIndex.update({ where, data: { payloadHash: hashText(canonicalJson(next)), value } });
-          }
-        } catch (error) {
-          return errorText(error);
-        }
-      }
+export async function writeOutletFlag(deps: OutletDeps, variantId: string): Promise<string | null> {
+  const transport = transportOf(deps);
+  const flagged = await deps.db.outletRun.count({ where: { shop: deps.shop, variantId, status: { in: [...OUTLET_NOT_ENDED] }, endedAt: null } });
+  try {
+    if (flagged > 0) {
+      const data: { metafieldsSet: { userErrors: UserErrorLike[] } } = await transport.call("metafieldsSet", {
+        metafields: [{ ownerId: variantId, namespace: WON_NAMESPACE, key: OUTLET_VARIANT_KEY, type: "json", value: "true" }],
+      });
+      return userErrorText(data.metafieldsSet.userErrors);
     }
-    return null;
-  });
+    const data: { metafieldsDelete: { userErrors: UserErrorLike[] } } = await transport.call("metafieldsDelete", {
+      metafields: [{ ownerId: variantId, namespace: WON_NAMESPACE, key: OUTLET_VARIANT_KEY }],
+    });
+    return userErrorText(data.metafieldsDelete.userErrors);
+  } catch (error) {
+    return errorText(error);
+  }
 }
 
 /** O9: the storefront block's product metafield `outlet` — the active sales and what they have left; deleted when none. */

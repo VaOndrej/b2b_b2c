@@ -38,9 +38,9 @@ function setup() {
   const product = fake.addProduct(40 + seq, 1);
   const variant = product.variantIds[0]!;
   fake.variants.get(variant)!.price = "20.00";
-  const deps: OutletDeps = { shop, db: db.prisma, client: fake, plan: async () => "pro", now: () => clock, sleep: async () => {}, retry: { attempts: 1 }, queue: (_s, w) => w() };
+  const deps: OutletDeps = { shop, db: db.prisma, client: fake, plan: async () => "pro", now: () => clock, sleep: async () => {}, retry: { attempts: 1 } };
   const due = (extra: Partial<Parameters<typeof runOutletDueOnce>[0]> = {}) =>
-    runOutletDueOnce({ db: db.prisma, clientFor: async () => fake, plan: async () => "pro", now: () => clock, outletDeps: { sleep: async () => {}, retry: { attempts: 1 }, queue: (_s, w) => w() }, ...extra });
+    runOutletDueOnce({ db: db.prisma, clientFor: async () => fake, plan: async () => "pro", now: () => clock, outletDeps: { sleep: async () => {}, retry: { attempts: 1 } }, ...extra });
   return { fake, deps, product, variant, due };
 }
 

@@ -8,6 +8,7 @@ import { sanitizeConfig } from "@won/core/discounts/config";
 import type { AdminClient } from "../../app/lib/admin-client.server.ts";
 import {
   CART_PLAN_CACHE_MAX,
+  CART_PLAN_DOCUMENTS,
   CART_PLAN_CACHE_MS,
   CART_PLAN_MAX_LINES,
   CART_PLAN_READS_PER_MINUTE,
@@ -141,6 +142,24 @@ test("lines are mapped like the function's input adapter: refs, outlet (all or l
     { id: "c", variantId: "gid://shopify/ProductVariant/31", productId: "gid://shopify/Product/3", quantity: 1, unitPrice: 50_00, ruleIds: [] },
   ]);
   assert.equal(input.today, "2026-10-01");
+});
+
+test("MVP 5 (O6): the variant's own sale flag (metafield `outlet` = true) makes the line outlet, like the function's `wonOutlet`; anything else does not", () => {
+  const input = cartPlanInput(
+    request([
+      { key: "a", variantId: 11, productId: 1, quantity: 1, unitPrice: 100_00 },
+      { key: "b", variantId: 21, productId: 2, quantity: 1, unitPrice: 100_00 },
+      { key: "c", variantId: 31, productId: 3, quantity: 1, unitPrice: 100_00 },
+    ]),
+    new Map([
+      [11, { product: null, cost: null, outlet: "true" }],
+      [21, { product: null, cost: null, outlet: '"true"' }],
+      [31, { product: null, cost: null, outlet: null }],
+    ]),
+    "2026-10-02",
+  );
+  assert.deepEqual(input.lines.map((l) => l.outlet === true), [true, false, false]);
+  assert.match(CART_PLAN_DOCUMENTS.variants, /outlet: metafield\(namespace: "\$app:won_discounts", key: "outlet"\)/);
 });
 
 test("the answer: the tier hint (line key), the rewards' progress — and never a purchase cost or a rule id", async () => {

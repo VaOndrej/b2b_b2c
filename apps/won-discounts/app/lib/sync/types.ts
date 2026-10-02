@@ -40,8 +40,6 @@ export interface SyncProductEntry {
   marginRefs?: readonly string[];
   /** The Pro tier set that applies to the product (MVP 3, contract K1/K3; absent = the global set). */
   tierRef?: string;
-  /** MVP 5 (contract O6): the product's variants with a running sale (GIDs, sorted; outlet-flags.ts). */
-  outlet?: readonly string[];
   /** The engine shrank the value to fit the product budget (never written; surfaced as a warning step). */
   oversized?: { bytes: number; collapsedRefs: readonly string[]; droppedRefs: readonly string[] };
 }

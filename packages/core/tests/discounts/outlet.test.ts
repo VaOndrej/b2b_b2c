@@ -11,7 +11,6 @@ import {
   outletDue,
   outletExhausted,
   outletLeft,
-  outletList,
   outletOversold,
   outletPricesFor,
   outletReturnQty,
@@ -20,7 +19,6 @@ import {
   restoreDecision,
   validateOutletDraft,
 } from "../../src/discounts/outlet.ts";
-import { productMetafieldValue } from "../../src/discounts/targeting.ts";
 
 const V = (n: number) => `gid://shopify/ProductVariant/${n}`;
 const P = (n: number) => `gid://shopify/Product/${n}`;
@@ -98,7 +96,6 @@ const ctx = (over: Partial<Parameters<typeof validateOutletDraft>[1]> = {}) => (
   plan: "pro" as const,
   now: new Date("2026-10-02T12:00:00Z"),
   runningVariantIds: new Set<string>(),
-  runningProductIds: new Set<string>(),
   ...over,
 });
 const draft = { variantId: V(1), productId: P(1), quota: 5, percent: 30, endsAt: null, priceListIds: [] };
@@ -137,34 +134,15 @@ test("O4: bounds — quota 1..100 000, whole percent 1..90, an end in the future
   );
 });
 
-test("O1: one running sale per variant; at most OUTLET_LIMITS.products products with a running sale (budget)", () => {
-  const busy = validateOutletDraft(draft, ctx({ runningVariantIds: new Set([V(1)]), runningProductIds: new Set([P(1)]) }));
+test("O1: one running sale per variant; at most OUTLET_LIMITS.running sales not ended per shop", () => {
+  const busy = validateOutletDraft(draft, ctx({ runningVariantIds: new Set([V(1)]) }));
   assert.ok(!busy.ok);
   assert.deepEqual(busy.errors.map((e) => e.key), ["outlet.error.running"]);
-  const many = new Set(Array.from({ length: OUTLET_LIMITS.products }, (_, i) => P(1000 + i)));
-  const full = validateOutletDraft(draft, ctx({ runningProductIds: many }));
+  const many = new Set(Array.from({ length: OUTLET_LIMITS.running }, (_, i) => V(1000 + i)));
+  const full = validateOutletDraft(draft, ctx({ runningVariantIds: many }));
   assert.ok(!full.ok);
-  assert.deepEqual(full.errors.map((e) => e.key), ["outlet.error.products"]);
-  // Another variant of a product that already has a sale adds no product: allowed at the cap.
-  const sameProduct = new Set([...[...many].slice(1), P(1)]);
-  assert.ok(validateOutletDraft(draft, ctx({ runningVariantIds: new Set([V(2)]), runningProductIds: sameProduct })).ok);
-});
-
-test("O6: at most OUTLET_LIMITS.variantsPerProduct running sales on one product (its list in the product metafield)", () => {
-  const per = new Map([[P(1), OUTLET_LIMITS.variantsPerProduct]]);
-  const r = validateOutletDraft(draft, ctx({ runningProductIds: new Set([P(1)]), runningPerProduct: per }));
-  assert.ok(!r.ok);
-  assert.deepEqual(r.errors.map((e) => e.key), ["outlet.error.variants"]);
-});
-
-test("O6: the product's outlet list = its own running variants' GIDs, unique and sorted", () => {
-  assert.deepEqual(outletList([V(3), V(1), V(3)]), [V(1), V(3)]);
-  assert.deepEqual(outletList([]), []);
-});
-
-test("O6: productMetafieldValue carries `outlet` only when non-empty (the function reads it, json.rs Outlet::Variants)", () => {
-  assert.deepEqual(productMetafieldValue({ ruleIds: [], variantRuleIds: {}, outlet: [V(1)] }), { ruleIds: [], variantRuleIds: {}, outlet: [V(1)] });
-  assert.deepEqual(productMetafieldValue({ ruleIds: ["r1"], variantRuleIds: {}, outlet: [] }), { ruleIds: ["r1"], variantRuleIds: {} });
+  assert.deepEqual(full.errors.map((e) => e.key), ["outlet.error.limit"]);
+  assert.ok(validateOutletDraft(draft, ctx({ runningVariantIds: new Set([...many].slice(1)) })).ok);
 });
 
 test("O9: storefront value — display + what is left per variant (numeric id); nothing running → null", () => {

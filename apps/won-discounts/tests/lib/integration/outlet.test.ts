@@ -49,13 +49,13 @@ function setup(plan: "pro" | "free" = "pro") {
     now: () => clock,
     sleep: async () => {},
     retry: { attempts: 1 },
-    queue: (_shop, work) => work(),
   };
   return { fake, deps, product, small, large };
 }
 
 const draft = (variantId: string, productId: string, extra: Record<string, unknown> = {}) => ({ variantId, productId, quota: 5, percent: 50, priceListIds: [LIST], ...extra });
 const events = async (runId: string) => (await db.prisma.outletEvent.findMany({ where: { runId }, orderBy: { at: "asc" } })).map((e) => e.kind);
+const flag = (fake: FakeShopify, variantId: string) => fake.variants.get(variantId)!.metafields.get("$app:won_discounts/outlet")?.value;
 const order = (id: number, variantId: string, quantity: number, lineId = id * 10, created = "2026-10-02T11:00:00Z") => ({
   id,
   created_at: created,
@@ -72,11 +72,11 @@ test("O4: start — backup first, the flag, the variant price (compareAt = the p
   assert.equal(fake.variants.get(large)!.price, "9.00");
   assert.equal(fake.variants.get(large)!.compareAtPrice, "18.00");
   assert.deepEqual(fake.priceLists.get(LIST)!.fixed.get(large), { price: "99.50", compareAt: "199.00" });
-  assert.deepEqual(fake.productMetafield(product.id), { ruleIds: [], variantRuleIds: {}, outlet: [large] });
+  assert.equal(flag(fake, large), "true", "the variant's sale flag (the function's wonOutlet)");
+  assert.equal(fake.productMetafield(product.id), undefined, "the sync's product metafield is not touched");
   const storefront = fake.products.get(product.id)!.metafields.get("$app:won_discounts/outlet");
   assert.deepEqual(JSON.parse(storefront!.value), { d: "strike_badge", v: { [large.split("/").pop()!]: 5 } });
   assert.deepEqual(await events(r.runId), ["started"]);
-  assert.equal(await db.prisma.productTargetIndex.count({ where: { shop } }), 1, "the flag is tracked like the sync's writes");
 });
 
 test("O4: the flag goes out BEFORE any price (a sale price never runs without it)", async () => {
@@ -120,7 +120,7 @@ test("O4: a refused variant write leaves every price as it was, the flag gone, t
   const r = await startOutletRun(deps, draft(large, product.id));
   assert.ok(!r.ok && r.reason === "failed");
   assert.equal(fake.variants.get(large)!.price, "18.00");
-  assert.equal(fake.productMetafield(product.id), undefined, "flag removed again");
+  assert.equal(flag(fake, large), undefined, "flag removed again");
   const run = (await db.prisma.outletRun.findFirst({ where: { shop } }))!;
   assert.equal(run.status, "ended");
   assert.match(run.error!, /Price is invalid/);
@@ -134,7 +134,7 @@ test("O4: a refused price list write after the variant was written undoes the va
   assert.ok(!r.ok);
   assert.equal(fake.variants.get(large)!.price, "18.00");
   assert.equal(fake.variants.get(large)!.compareAtPrice, null);
-  assert.equal(fake.productMetafield(product.id), undefined);
+  assert.equal(flag(fake, large), undefined);
   const ops = fake.calls.map((c) => c.op);
   assert.ok(ops.lastIndexOf("WonOutletVariantUpdate") < ops.lastIndexOf("WonSyncMetafieldsDelete"), "prices back before the flag goes");
 });
@@ -148,7 +148,7 @@ test("O5: a manual end restores every field still on sale, then drops the flag a
   assert.equal(fake.variants.get(large)!.price, "18.00");
   assert.equal(fake.variants.get(large)!.compareAtPrice, null);
   assert.deepEqual(fake.priceLists.get(LIST)!.fixed.get(large), { price: "199.00", compareAt: null });
-  assert.equal(fake.productMetafield(product.id), undefined);
+  assert.equal(flag(fake, large), undefined);
   assert.equal(fake.products.get(product.id)!.metafields.get("$app:won_discounts/outlet"), undefined);
   const run = (await db.prisma.outletRun.findUnique({ where: { id: r.runId } }))!;
   assert.equal(run.status, "ended");
@@ -180,7 +180,7 @@ test("O5: an end that fails stays `ending` (flag kept, next attempt scheduled) a
   let run = (await db.prisma.outletRun.findUnique({ where: { id: r.runId } }))!;
   assert.equal(run.status, "ending");
   assert.ok(run.nextAttemptAt && run.nextAttemptAt > clock);
-  assert.deepEqual(fake.productMetafield(product.id), { ruleIds: [], variantRuleIds: {}, outlet: [large] }, "still on sale: still flagged");
+  assert.equal(flag(fake, large), "true", "still on sale: still flagged");
   const second = await endOutletRun(deps, r.runId, "date");
   assert.ok(second.ok);
   run = (await db.prisma.outletRun.findUnique({ where: { id: r.runId } }))!;

@@ -106,6 +106,8 @@ export function parseCartPlanRequest(body: unknown): CartPlanRequest | null {
 export interface VariantFacts {
   product: string | null;
   cost: string | null;
+  /** MVP 5 (Výprodej, contract O6): the variant metafield `outlet` (JSON text; `true` = on sale). */
+  outlet?: string | null;
 }
 
 const parseJson = (text: string | null): unknown => {
@@ -139,6 +141,8 @@ export function cartPlanInput(request: CartPlanRequest, facts: ReadonlyMap<numbe
       if (Array.isArray(won.marginRefs)) line.marginRefs = won.marginRefs.filter((r): r is string => typeof r === "string");
       if (Object.prototype.hasOwnProperty.call(won, "tierRef")) line.tierRef = won.tierRef as string | null;
     }
+    // MVP 5 (O6): the variant's own sale flag, like the function's `wonOutlet`.
+    if (parseJson(fact?.outlet ?? null) === true) line.outlet = true;
     const cost = parseJson(fact?.cost ?? null);
     if (isRecord(cost) && typeof cost.cost === "number") {
       line.unitCost = cost.cost;
@@ -200,6 +204,9 @@ export const CART_PLAN_DOCUMENTS = Object.freeze({
     ... on ProductVariant {
       id
       cost: metafield(namespace: "$app:won_discounts", key: "variant") {
+        value
+      }
+      outlet: metafield(namespace: "$app:won_discounts", key: "outlet") {
         value
       }
       product {
@@ -296,11 +303,11 @@ async function readVariants(client: AdminClient, shop: string, ids: readonly num
     else missing.push(id);
   }
   if (missing.length > 0) {
-    type Node = { id?: string; cost?: { value: string } | null; product?: { won?: { value: string } | null } | null } | null;
+    type Node = { id?: string; cost?: { value: string } | null; outlet?: { value: string } | null; product?: { won?: { value: string } | null } | null } | null;
     const result = await client.graphql<{ nodes: Node[] }>(CART_PLAN_DOCUMENTS.variants, { ids: missing.map((id) => `gid://shopify/ProductVariant/${id}`) });
     missing.forEach((id, i) => {
       const node = result.data?.nodes?.[i];
-      const facts: VariantFacts = { product: node?.product?.won?.value ?? null, cost: node?.cost?.value ?? null };
+      const facts: VariantFacts = { product: node?.product?.won?.value ?? null, cost: node?.cost?.value ?? null, outlet: node?.outlet?.value ?? null };
       remember(variantCache, `${shop}|${id}`, facts);
       out.set(id, facts);
     });

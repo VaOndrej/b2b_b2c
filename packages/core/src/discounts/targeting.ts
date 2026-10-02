@@ -97,13 +97,6 @@ export interface ProductMetafieldValue {
    * Never dropped over the budget (see the header).
    */
   tierRef?: string;
-  /**
-   * MVP 5 (Výprodej, contract O6): GIDs of THIS product's variants with a sale not yet ended, sorted (core
-   * outletList); absent when none. The function keeps every other discount off those lines (A1, unless
-   * `outletWithAnything`). Written by the sync from the app's sale runs, never from the config; never dropped
-   * over the budget (at most OUTLET_LIMITS.variantsPerProduct entries).
-   */
-  outlet?: string[];
 }
 
 export interface ProductRuleEntry extends ProductMetafieldValue {
@@ -125,7 +118,6 @@ export function productMetafieldValue(entry: ProductMetafieldValue): ProductMeta
     variantRuleIds: entry.variantRuleIds,
     ...(entry.marginRefs && entry.marginRefs.length > 0 ? { marginRefs: entry.marginRefs } : {}),
     ...(entry.tierRef ? { tierRef: entry.tierRef } : {}),
-    ...(entry.outlet && entry.outlet.length > 0 ? { outlet: entry.outlet } : {}),
   };
 }
 

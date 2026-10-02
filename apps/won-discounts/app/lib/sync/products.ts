@@ -1,12 +1,7 @@
 // Product targeting write (spec §1 C3, T1 targeting.ts): the engine's
 // `productRuleIndex` → `$app:won_discounts`/`product` =
-// productMetafieldValue(entry) = {"ruleIds": [...], "variantRuleIds": {"<variant numeric id>": [...]}, "marginRefs"?: [...], "tierRef"?: "<set id>", "outlet"?: [...]}
+// productMetafieldValue(entry) = {"ruleIds": [...], "variantRuleIds": {"<variant numeric id>": [...]}, "marginRefs"?: [...], "tierRef"?: "<set id>"}
 // on every targeted product, so the function never needs rule id lists.
-//
-// Výprodej (MVP 5, contract O6): a product with a running sale is a candidate whatever its rules and carries
-// `outlet` (its sale variants' GIDs, from the app DB: outlet-flags.ts). The sale's own lane writes the flag at
-// its start and drops it after its prices are back; this pass only keeps what the DB says, so it never drops
-// a flag a running sale relies on.
 //
 // Margin protection (MVP 2): the collections with a margin setting (core
 // marginCollectionIds — only while protection is on, and read from the GATED
@@ -122,7 +117,6 @@ import { globalTierSet, reachableTierSets } from "@won/core/discounts/tiers";
 import type { PrismaClient } from "../../generated/prisma/client";
 import { PRODUCT_KEY, WON_NAMESPACE } from "./graphql";
 import { setSyncProgress } from "./progress";
-import { outletVariantsByProduct } from "./outlet-flags";
 import { errorText, userErrorText, type Transport, type UserErrorLike } from "./transport";
 import type { ConfigView, SyncProductEntry, SyncProductInput, SyncStep } from "./types";
 import { canonicalJson, chunks, hashText, METAFIELDS_DELETE_BATCH, METAFIELDS_SET_BATCH, NODES_BATCH, sameJson } from "./util";
@@ -148,8 +142,7 @@ export function isEmptyEntry(entry: SyncProductEntry): boolean {
     entry.ruleIds.length === 0 &&
     Object.values(entry.variantRuleIds ?? {}).every((refs) => refs.length === 0) &&
     (entry.marginRefs ?? []).length === 0 &&
-    !entry.tierRef &&
-    (entry.outlet ?? []).length === 0
+    !entry.tierRef
   );
 }
 
@@ -821,10 +814,8 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
     return failedPlan(steps, indexed.size > 0 || marginCollectionIds(config.modules.margin).length > 0);
   }
   const { targeted, productCollections, allVariants, missing } = found;
-  // MVP 5 (contract O6): products with a running sale carry `outlet` whatever their rules (outlet-flags.ts).
-  const outlet = await outletVariantsByProduct(db, shop);
 
-  const candidates = [...new Set([...targeted, ...indexed.keys(), ...outlet.keys()])].sort();
+  const candidates = [...new Set([...targeted, ...indexed.keys()])].sort();
   if (candidates.length === 0) {
     steps.push({ step: "products", ok: true, detail: "no targeted products and none to clean" });
     return { steps, staleRisk: false, complete: true, sets: [], clears: [], additions: [], prunes: [], tierWrites: [], marginRefsChanged: [], liveMarginRefs };
@@ -835,7 +826,6 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
     collectionIds: [...(productCollections.get(productId) ?? [])].sort(),
   }));
   const entries = args.productRuleIndex(config, inputs);
-  for (const [productId, variants] of outlet) entries.set(productId, { ...(entries.get(productId) ?? { ruleIds: [], variantRuleIds: {} }), outlet: variants });
   // Audit P2-3: a product that carries the tierRef of a set whose collection could not be read keeps it, unless the
   // index now gives it another set from what WAS read (a known membership) — never widened to the global set.
   if (limited.tierTooLarge.length > 0) {
@@ -872,7 +862,6 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
           variantRuleIds: Object.fromEntries(Object.entries(entry.variantRuleIds ?? {}).map(([k, v]) => [k, [...v]])),
           ...(entry.marginRefs && entry.marginRefs.length > 0 ? { marginRefs: [...entry.marginRefs] } : {}),
           ...(entry.tierRef ? { tierRef: entry.tierRef } : {}),
-          ...(entry.outlet && entry.outlet.length > 0 ? { outlet: [...entry.outlet] } : {}),
         }),
       );
       const hash = hashText(canonicalJson(JSON.parse(value)));

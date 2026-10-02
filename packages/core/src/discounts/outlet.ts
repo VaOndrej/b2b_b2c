@@ -2,8 +2,8 @@
 //
 // A sale runs on an EXISTING variant (no product copy): the app backs up the variant's `price` /
 // `compareAtPrice` and the fixed prices of the price lists the merchant picked, lowers them by one whole
-// percent (O2), flags the variant in its product's metafield (`outlet: [variant GIDs]`, O6: the function
-// then keeps every other discount off it, A1), counts the pieces sold from orders (O7: cancellations and
+// percent (O2), flags the variant (its metafield `outlet` = true, O6: the function then keeps every other
+// discount off it, A1), counts the pieces sold from orders (O7: cancellations and
 // restocked refunds come back) and restores the prices when the quota is used up, at the end date or by hand
 // (O5). The runs live in the app's database; this module holds the rules the admin, the webhooks and the
 // scheduler share:
@@ -12,7 +12,7 @@
 //   outletLeft / outletOversold / …     the quota ledger;
 //   outletReturnQty / outletAfterReturn  cancellations, refunds and a return after the end;
 //   validateOutletDraft                 a new sale from the admin form (Pro only, bounds, caps);
-//   outletList / outletStorefrontValue  what the product metafields carry (function, storefront block).
+//   outletStorefrontValue               what the storefront block's product metafield carries.
 
 import type { OutletDisplay, ReopenOnReturnMode } from "./config/enums.ts";
 import type { ShopPlan } from "./plan-gate.ts";
@@ -21,13 +21,8 @@ export const OUTLET_LIMITS = {
   percentMin: 1,
   percentMax: 90,
   quotaMax: 100_000,
-  /**
-   * Products with a running sale per shop: each carries an `outlet` list the function reads per cart line
-   * (instruction budget, plan "Rozpočet — výprodej"; the admin refuses more, the sync never writes more).
-   */
-  products: 100,
-  /** Running sales on one product's variants (its `outlet` list: ~45 B a GID in the product metafield). */
-  variantsPerProduct: 50,
+  /** Sales not ended per shop (the admin's list and the scheduler's sweep stay bounded). */
+  running: 500,
   /** Price lists one sale changes. */
   priceLists: 10,
 } as const;
@@ -120,12 +115,8 @@ export interface OutletDraftError {
 export interface OutletDraftContext {
   plan: ShopPlan;
   now: Date;
-  /** Variants with a sale not yet ended (any status but `ended`). */
+  /** Variants with a sale not yet ended (any status but `ended`): one sale per variant, OUTLET_LIMITS.running per shop. */
   runningVariantIds: ReadonlySet<string>;
-  /** Their products. */
-  runningProductIds: ReadonlySet<string>;
-  /** Running sales per product id (variantsPerProduct cap); absent = not checked. */
-  runningPerProduct?: ReadonlyMap<string, number>;
 }
 
 const gidOf = (kind: string, value: unknown): string | null => {
@@ -161,21 +152,13 @@ export function validateOutletDraft(raw: unknown, ctx: OutletDraftContext): { ok
   }
   if (errors.length > 0) return { ok: false, errors };
   if (ctx.runningVariantIds.has(variantId!)) return { ok: false, errors: [{ field: "variantId", key: "outlet.error.running" }] };
-  if (!ctx.runningProductIds.has(productId!) && ctx.runningProductIds.size >= OUTLET_LIMITS.products) {
-    return { ok: false, errors: [{ field: "variantId", key: "outlet.error.products", params: { max: OUTLET_LIMITS.products } }] };
-  }
-  if ((ctx.runningPerProduct?.get(productId!) ?? 0) >= OUTLET_LIMITS.variantsPerProduct) {
-    return { ok: false, errors: [{ field: "variantId", key: "outlet.error.variants", params: { max: OUTLET_LIMITS.variantsPerProduct } }] };
+  if (ctx.runningVariantIds.size >= OUTLET_LIMITS.running) {
+    return { ok: false, errors: [{ field: "variantId", key: "outlet.error.limit", params: { max: OUTLET_LIMITS.running } }] };
   }
   return {
     ok: true,
     draft: { variantId: variantId!, productId: productId!, quota, percent, endsAt, priceListIds: [...new Set(lists as string[])] },
   };
-}
-
-/** O6: a product's `outlet` list — its variants with a sale not yet ended, unique, sorted. */
-export function outletList(variantIds: readonly string[]): string[] {
-  return [...new Set(variantIds)].sort();
 }
 
 /** O9: the product metafield `$app:won_discounts.outlet` the storefront block reads; null = delete it. */

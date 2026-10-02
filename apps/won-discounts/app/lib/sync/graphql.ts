@@ -8,9 +8,11 @@
 // it, and the discount function reads the same keys:
 //   shop     function_config  the shared config (C7), one atomic write for all nodes
 //   node     function_vars    per-node input-query variables (role, campaign window)
-//   product  product          productMetafieldValue(entry) = {"ruleIds", "variantRuleIds", "marginRefs"?, "tierRef"?, "outlet"?}
+//   product  product          productMetafieldValue(entry) = {"ruleIds", "variantRuleIds", "marginRefs"?, "tierRef"?}
 //   product  outlet           MVP 5 (contract O9, outlet.server.ts): {"d": display, "v": {"<variant numeric id>": left}},
 //                              only while a sale runs on the product; the storefront block reads it
+//   variant  outlet           MVP 5 (contract O6, outlet.server.ts): true while the variant is on sale; the function
+//                              reads it as `wonOutlet` (A1: no other discount), the app proxy and the tier block too
 //   variant  variant          the cost mirror (margin protection, MVP 2, costs.ts):
 //                              {"cost": <inventoryItem.unitCost.amount>, "cur": "<its currency>"},
 //                              only on variants with a cost > 0
@@ -37,6 +39,8 @@ export const PRODUCT_KEY = "product";
 export const VARIANT_COST_KEY = "variant";
 /** MVP 5 (contract O9): product metafield the storefront's outlet block reads, {"d": display, "v": {variant: left}}. */
 export const OUTLET_STOREFRONT_KEY = "outlet";
+/** MVP 5 (contract O6): variant metafield `true` while the variant is on sale (the function's `wonOutlet`). */
+export const OUTLET_VARIANT_KEY = "outlet";
 /** Variant metafield `$app:won_discounts/pdp` (MVP 3, K4). */
 export const VARIANT_PDP_KEY = "pdp";
 /** App-data metafield (AppInstallation, plain namespace — K5). */
