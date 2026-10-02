@@ -12,7 +12,7 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > technická pravidla, zakázané věci). **MVP N+1 nezačíná, dokud MVP N není finální** (brána, živé E2E A+B,
 > vizuální QA, audit s opravenými nálezy, checkpoint, push).
 
-- **Aktivní zadání:** docs/won-discounts/prompt-mvp5-dokonceni-mvp6.md (5a → 5b po schválení → MVP 6). Krok: MVP6-B0 (5a ✅ uzavřené `60f1f1a`; **sonda F-O1 2026-10-02 odpoledne: `ACCESS_DENIED: This app is not approved to access the Order object`** → toml vrácen, app dev konfiguraci vrátil (granted: read_products, read_themes, write_discounts, write_products); 5b dál čeká. Další: MVP 6 B0 rozpočet kampaní → plán). `shopify app dev` neběží.
+- **Aktivní zadání:** docs/won-discounts/prompt-mvp5-dokonceni-mvp6.md (5a → 5b po schválení → MVP 6). Krok: MVP6-B0 běží (plán `docs/plans/2026-10-02-won-discounts-mvp6.md` K1–K9 commitnutý; měření `scratchpad/budget/{base,camp2}.tsv`, pak core K2/K3/K6 + validace) (5a ✅ uzavřené `60f1f1a`; **sonda F-O1 2026-10-02 odpoledne: `ACCESS_DENIED: This app is not approved to access the Order object`** → toml vrácen, app dev konfiguraci vrátil (granted: read_products, read_themes, write_discounts, write_products); 5b dál čeká. Další: MVP 6 B0 rozpočet kampaní → plán). `shopify app dev` neběží.
 - **Předchozí zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md — **hotové až na živé E2E objednávek**
   (checkpoint MVP 5 níž). **Zastaveno, čeká na Ondřeje (F-O1):** povolit appce přístup k chráněným datům zákazníků
   (Partner Dashboard → Apps → won-discounts → API access requests → Protected customer data access → Request access →
