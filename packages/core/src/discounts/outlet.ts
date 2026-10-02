@@ -98,7 +98,7 @@ export function outletAfterReturn(mode: ReopenOnReturnMode, plan: ShopPlan): "re
 }
 
 /** O8: a running sale whose end date has come. */
-export function outletDue(run: { status: OutletStatus; endsAt: Date | null }, now: Date): boolean {
+export function outletDue(run: { status: OutletStatus | string; endsAt: Date | null }, now: Date): boolean {
   return run.status !== "ended" && run.endsAt !== null && run.endsAt.getTime() <= now.getTime();
 }
 

@@ -174,6 +174,16 @@ function enqueue<T>(shop: string, work: () => Promise<T>): Promise<T> {
   return run;
 }
 
+/**
+ * Výprodej (MVP 5, contract O6): run `work` in the shop's sync queue — after every sync and background product
+ * lane queued before it, before any queued after. The sale's own lane writes the product metafield's `outlet`
+ * flag here, so a lane planned before a sale started can never write over the flag (and a later pass reads the
+ * sale from the DB and keeps it).
+ */
+export function inSyncQueue<T>(shop: string, work: () => Promise<T>): Promise<T> {
+  return enqueue(shop, work);
+}
+
 /** True while a sync, a product refresh or a background product lane of `shop` is queued or running here. */
 export function isSyncRunning(shop: string): boolean {
   return inflight.has(shop);

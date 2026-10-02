@@ -226,3 +226,70 @@ model VariantCost {
   @@index([shop, inventoryItemId])
   @@index([shop, productId])
 }
+
+/// Výprodej (MVP 5, contracts O1–O7, app/lib/integration/outlet.server.ts): one sale on an existing
+/// variant. `backup` is written BEFORE the first price write (write-ahead, §14c) and is what the end
+/// restores; `sale` is what the start wrote (the end restores only fields that still hold it, O5).
+/// At most one run not `ended` per variant (checked in the start's transaction). Erased with the shop.
+model OutletRun {
+  id            String    @id @default(cuid())
+  shop          String
+  productId     String    // Shopify Product GID
+  variantId     String    // Shopify ProductVariant GID
+  quota         Int
+  percent       Int
+  endsAt        DateTime?
+  /// JSON string[]: the price lists (GIDs) whose fixed price the merchant picked.
+  priceListIds  String    @default("[]")
+  /// "starting" | "active" | "ending" | "ended"
+  status        String
+  /// "quota" | "date" | "manual" | null
+  endReason     String?
+  sold          Int       @default(0)
+  returned      Int       @default(0)
+  /// Pieces returned after the end that wait for the merchant's decision (reopenOnReturnAfterEnd = ask).
+  returnPending Int       @default(0)
+  /// JSON {currency, variant: {price, compareAt}, lists: [{id, currency, price, compareAt}]} — minor units.
+  backup        String?
+  /// JSON, same shape: what the start wrote.
+  sale          String?
+  /// The last failed step (start / end), retried by the scheduler; null = none.
+  error         String?
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime?
+  createdAt     DateTime  @default(now())
+  startedAt     DateTime?
+  endedAt       DateTime?
+  updatedAt     DateTime  @updatedAt
+  @@index([shop, status])
+  @@index([shop, variantId])
+}
+
+/// History of a sale's steps (O1): started, sale, cancel, refund, quota_reached, ended, price_restored,
+/// price_kept, price_list_skipped, return_after_end, reopened, oversold, start_failed, end_failed.
+/// `key` makes every webhook step idempotent (WBH-2): `sale:<orderId>:<lineItemId>`,
+/// `cancel:<orderId>:<lineItemId>`, `refund:<refundId>:<refundLineItemId>`. No PII: numeric order ids only.
+/// Pruned 400 days after the run ended (scheduler `history.prune`).
+model OutletEvent {
+  id      String   @id @default(cuid())
+  shop    String
+  runId   String
+  kind    String
+  qty     Int      @default(0)
+  orderId String?
+  /// The order line this step counts for (sale / cancel / refund): numeric line item id.
+  lineId  String?
+  key     String
+  detail  String?
+  at      DateTime @default(now())
+  @@unique([shop, key])
+  @@index([shop, runId, at])
+}
+
+/// Scheduler bookkeeping (MVP 5, contract O8, app/lib/jobs/scheduler.server.ts): one row per task.
+model JobState {
+  name      String    @id
+  lastRunAt DateTime?
+  lastError String?
+  updatedAt DateTime  @updatedAt
+}

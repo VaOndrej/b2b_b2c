@@ -3,6 +3,7 @@ import { addDocumentResponseHeaders } from "./shopify.server";
 import db from "./db.server";
 import { offlineClient } from "./lib/integration/costs.server";
 import { ensureCostReconcileJob } from "./lib/jobs/cost-reconcile.server";
+import { startScheduler } from "./lib/jobs/scheduler.server";
 import { startStaleClaimJob } from "./lib/jobs/stale-claims.server";
 
 export { streamTimeout };
@@ -21,5 +22,9 @@ startStaleClaimJob({ db });
 // can be lost). Started once per process here on boot (idempotent: the
 // margin screen and Přehled also ensure it); app/lib/jobs/cost-reconcile.server.ts.
 ensureCostReconcileJob(db, { clientFor: offlineClient });
+
+// Výprodej (MVP 5, contract O8): the scheduler — sales at their end date, failed ends retried, the history
+// retention — with its state in the DB (a task that came due while the process was down runs after the boot).
+startScheduler(db, { clientFor: offlineClient });
 
 export default createHandleRequest(addDocumentResponseHeaders);

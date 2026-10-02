@@ -58,6 +58,8 @@ export interface FakeVariant {
   productId: string;
   title: string;
   price: string;
+  /** MVP 5 (Výprodej): null = none. */
+  compareAtPrice?: string | null;
   inventoryItemId: string;
   unitCost: { amount: string; currencyCode: string } | null;
   metafields: Map<string, FakeMetafield>;
@@ -95,6 +97,8 @@ export class FakeShopify implements AdminClient {
   functions = [{ id: WON_FUNCTION_ID, handle: WON_FUNCTION_HANDLE, apiType: "discounts" }];
   /** Shopify Markets (read with read_markets). */
   markets: { id?: string; handle: string; name: string; status: "ACTIVE" | "DRAFT"; currency: string; countries: string[] }[] = [];
+  /** Price lists (MVP 5 Výprodej): fixed prices by variant GID, decimal strings in the list's currency. */
+  priceLists = new Map<string, { id: string; name: string; currency: string; catalogTitle: string | null; fixed: Map<string, { price: string; compareAt: string | null }> }>();
   /** Page size for every paged connection (the documents ask for 250/100; smaller exercises paging). */
   pageSize = 250;
   /** Codes that fail inside an async bulk add (per-code errors). */
@@ -306,6 +310,8 @@ export class FakeShopify implements AdminClient {
       WonSyncMetafieldsSet: "metafieldsSet",
       WonSyncStorefrontConfigSet: "metafieldsSet",
       WonSyncMetafieldsDelete: "metafieldsDelete",
+      WonOutletVariantUpdate: "productVariantsBulkUpdate",
+      WonOutletFixedPrices: "priceListFixedPricesUpdate",
     };
     const field = root[op];
     if (!field) throw new Error(`userErrors injected for a non-mutation ${op}`);
@@ -718,6 +724,72 @@ export class FakeShopify implements AdminClient {
             variants: this.page(variants.map((variant) => this.variantView(variant, { product: false })), v.after),
           },
         };
+      }
+      case "WonOutletVariant": {
+        const variant = this.variants.get(v.id);
+        const product = variant && this.products.get(variant.productId);
+        return {
+          shop: { currencyCode: this.currencyCode },
+          productVariant: variant
+            ? {
+                id: variant.id,
+                price: variant.price,
+                compareAtPrice: variant.compareAtPrice ?? null,
+                displayName: `${product?.title ?? "Product"} - ${variant.title}`,
+                title: variant.title,
+                product: { id: variant.productId, title: product?.title ?? "Product" },
+              }
+            : null,
+        };
+      }
+      case "WonOutletPriceLists":
+        return {
+          priceLists: {
+            nodes: [...this.priceLists.values()].map((l) => ({
+              id: l.id,
+              name: l.name,
+              currency: l.currency,
+              fixedPricesCount: l.fixed.size,
+              catalog: l.catalogTitle === null ? null : { title: l.catalogTitle },
+            })),
+          },
+        };
+      case "WonOutletPriceListPrices": {
+        const list = this.priceLists.get(v.id);
+        if (!list) return { priceList: null };
+        const productNumeric = String(v.query).replace(/^product_id:/, "");
+        const nodes = [...list.fixed.entries()]
+          .filter(([variantId]) => this.variants.get(variantId)?.productId === `gid://shopify/Product/${productNumeric}`)
+          .map(([variantId, p]) => ({
+            variant: { id: variantId },
+            price: { amount: p.price, currencyCode: list.currency },
+            compareAtPrice: p.compareAt === null ? null : { amount: p.compareAt, currencyCode: list.currency },
+          }));
+        return { priceList: { id: list.id, name: list.name, currency: list.currency, prices: { nodes } } };
+      }
+      case "WonOutletVariantUpdate": {
+        const updated = [];
+        for (const input of v.variants as { id: string; price?: string; compareAtPrice?: string | null }[]) {
+          const variant = this.variants.get(input.id);
+          if (!variant || variant.productId !== v.productId) {
+            return { productVariantsBulkUpdate: { productVariants: null, userErrors: [{ field: ["variants"], message: "Product variant does not exist", code: "PRODUCT_VARIANT_DOES_NOT_EXIST" }] } };
+          }
+          if (input.price !== undefined) variant.price = input.price;
+          if (input.compareAtPrice !== undefined) variant.compareAtPrice = input.compareAtPrice;
+          updated.push({ id: variant.id, price: variant.price, compareAtPrice: variant.compareAtPrice ?? null });
+        }
+        return { productVariantsBulkUpdate: { productVariants: updated, userErrors: [] } };
+      }
+      case "WonOutletFixedPrices": {
+        const list = this.priceLists.get(v.priceListId);
+        if (!list) return { priceListFixedPricesUpdate: { pricesAdded: null, deletedFixedPriceVariantIds: null, userErrors: [{ field: ["priceListId"], message: "Price list not found", code: "PRICE_LIST_NOT_FOUND" }] } };
+        const added = [];
+        for (const p of v.pricesToAdd as { variantId: string; price: { amount: string; currencyCode: string }; compareAtPrice?: { amount: string; currencyCode: string } | null }[]) {
+          list.fixed.set(p.variantId, { price: p.price.amount, compareAt: p.compareAtPrice ? p.compareAtPrice.amount : null });
+          added.push({ variant: { id: p.variantId }, price: p.price, compareAtPrice: p.compareAtPrice ? { amount: p.compareAtPrice.amount } : null });
+        }
+        const deleted = (v.variantIdsToDelete as string[]).filter((id) => list.fixed.delete(id));
+        return { priceListFixedPricesUpdate: { pricesAdded: added, deletedFixedPriceVariantIds: deleted, userErrors: [] } };
       }
       default:
         throw new Error(`FakeShopify: unknown operation ${op}`);

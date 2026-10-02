@@ -102,10 +102,11 @@ jen historie. Ve Free se nikdy znovu neotevírá (A6).
 
 **O8 — Scheduler (`app/lib/jobs/scheduler.server.ts`).** Jeden ticker na proces (minuta), úlohy s vlastním intervalem
 a stavem v DB (`JobState { name, lastRunAt, lastError }`), injektované hodiny: `outlet.due` (1 min: konec podle data,
-opakování `starting`/`ending` s chybou, znovuotevření `auto`), `outlet.history` (denně: smazat události běhů
-ukončených před > 400 dny; běh samotný zůstává), `costs.reconcile` (hodinově, dnešní `runCostReconcileOnce`, nejvýš
-5 obchodů za běh — dluh MVP 2/3), `claims.stale` (dnešní sweep). Při startu procesu se úlohy, jejichž čas prošel,
-spustí hned (výprodej s datem konce během výpadku skončí po startu).
+vyčerpaná kvóta, kterou webhook nemohl ukončit, opakování `ending` po backoffu, přerušený start `starting` > 10 min,
+znovu zápis hodnoty pro storefront), `history.prune` (denně: události běhů ukončených před > 400 dny; běh zůstává;
+plus `pruneExpiredConfigHistory` — dluh MVP 1). Při startu procesu se úlohy, jejichž čas prošel, spustí hned.
+**Rozhodnuto výchozí hodnotou:** srovnání nákupních cen (hodinově, ≤ 5 obchodů — dluh MVP 2/3 je tím splněný) a
+sweep claimů mají své otestované časovače z MVP 1–2 a zůstávají; scheduler přidává jen úlohy se stavem v DB.
 
 **O9 — Storefront.** Nový blok `outlet_badge` (PDP, Liquid) čte produktový metafield `$app:won_discounts.outlet`
 (JSON, píše ho výprodej, ne sync): `{ "d": "silent" | "strike" | "strike_badge" | "strike_badge_left", "v": {

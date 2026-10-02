@@ -8,7 +8,9 @@
 // it, and the discount function reads the same keys:
 //   shop     function_config  the shared config (C7), one atomic write for all nodes
 //   node     function_vars    per-node input-query variables (role, campaign window)
-//   product  product          productMetafieldValue(entry) = {"ruleIds", "variantRuleIds", "marginRefs"?, "tierRef"?}
+//   product  product          productMetafieldValue(entry) = {"ruleIds", "variantRuleIds", "marginRefs"?, "tierRef"?, "outlet"?}
+//   product  outlet           MVP 5 (contract O9, outlet.server.ts): {"d": display, "v": {"<variant numeric id>": left}},
+//                              only while a sale runs on the product; the storefront block reads it
 //   variant  variant          the cost mirror (margin protection, MVP 2, costs.ts):
 //                              {"cost": <inventoryItem.unitCost.amount>, "cur": "<its currency>"},
 //                              only on variants with a cost > 0
@@ -33,6 +35,8 @@ export const SHOP_CONFIG_KEY = "function_config";
 export const NODE_VARS_KEY = "function_vars";
 export const PRODUCT_KEY = "product";
 export const VARIANT_COST_KEY = "variant";
+/** MVP 5 (contract O9): product metafield the storefront's outlet block reads, {"d": display, "v": {variant: left}}. */
+export const OUTLET_STOREFRONT_KEY = "outlet";
 /** Variant metafield `$app:won_discounts/pdp` (MVP 3, K4). */
 export const VARIANT_PDP_KEY = "pdp";
 /** App-data metafield (AppInstallation, plain namespace — K5). */
@@ -698,6 +702,104 @@ export const GQL = {
           value
         }
       }
+    }
+  }
+}`,
+
+  // Výprodej (MVP 5, contracts O2–O5; app/lib/integration/outlet.server.ts). Validated with the Shopify dev
+  // MCP (admin 2026-04): read_products for the reads, write_products for both mutations (price lists too).
+  outletVariant: `query WonOutletVariant($id: ID!) {
+  shop {
+    currencyCode
+  }
+  productVariant(id: $id) {
+    id
+    price
+    compareAtPrice
+    displayName
+    title
+    product {
+      id
+      title
+    }
+  }
+}`,
+
+  // The price lists the admin offers (no markets: those need read_markets; the catalog title names the market).
+  outletPriceLists: `query WonOutletPriceLists {
+  priceLists(first: 25) {
+    nodes {
+      id
+      name
+      currency
+      fixedPricesCount
+      catalog {
+        title
+      }
+    }
+  }
+}`,
+
+  // One list's fixed prices of one product (query "product_id:<numeric id>"); the caller picks the variant.
+  outletPriceListPrices: `query WonOutletPriceListPrices($id: ID!, $query: String!) {
+  priceList(id: $id) {
+    id
+    name
+    currency
+    prices(first: 100, originType: FIXED, query: $query) {
+      nodes {
+        variant {
+          id
+        }
+        price {
+          amount
+          currencyCode
+        }
+        compareAtPrice {
+          amount
+          currencyCode
+        }
+      }
+    }
+  }
+}`,
+
+  // Only the fields given change (an omitted compareAtPrice stays); compareAtPrice null removes it.
+  outletVariantUpdate: `mutation WonOutletVariantUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+  productVariantsBulkUpdate(productId: $productId, variants: $variants) {
+    productVariants {
+      id
+      price
+      compareAtPrice
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}`,
+
+  // A fixed price is written whole (price + compareAtPrice); variantIdsToDelete is always [] here.
+  outletFixedPrices: `mutation WonOutletFixedPrices($priceListId: ID!, $pricesToAdd: [PriceListPriceInput!]!, $variantIdsToDelete: [ID!]!) {
+  priceListFixedPricesUpdate(priceListId: $priceListId, pricesToAdd: $pricesToAdd, variantIdsToDelete: $variantIdsToDelete) {
+    pricesAdded {
+      variant {
+        id
+      }
+      price {
+        amount
+        currencyCode
+      }
+      compareAtPrice {
+        amount
+      }
+    }
+    deletedFixedPriceVariantIds
+    userErrors {
+      field
+      message
+      code
     }
   }
 }`,
