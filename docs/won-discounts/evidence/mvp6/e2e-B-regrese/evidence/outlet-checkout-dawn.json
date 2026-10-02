@@ -1,0 +1,29 @@
+{
+  "theme": "Dawn",
+  "charged": 75193,
+  "rows": [
+    {
+      "label": "Mezisoučet",
+      "value": "99,50 Kč",
+      "amount": 9950
+    },
+    {
+      "label": "Expedice",
+      "value": "652,43 Kč",
+      "amount": 65243
+    },
+    {
+      "label": "Celkem",
+      "value": "751,93 Kč",
+      "amount": 75193
+    }
+  ],
+  "lines": [
+    {
+      "title": "Won E2E — Spare",
+      "allocations": [],
+      "originalPrice": null,
+      "finalPrice": 9950
+    }
+  ]
+}

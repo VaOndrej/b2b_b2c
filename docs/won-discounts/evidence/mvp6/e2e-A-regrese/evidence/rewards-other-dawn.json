@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-02T19:56:09.568Z",
+  "theme": "Dawn",
+  "dropped": {
+    "codes": [],
+    "gifts": 1
+  },
+  "kept": {
+    "codes": [
+      {
+        "code": "WONE2EDAR",
+        "applicable": true
+      }
+    ],
+    "gifts": 0,
+    "total": 2500
+  },
+  "plan": {
+    "totals": {
+      "subtotal": 5000,
+      "productDiscount": 0,
+      "orderDiscount": 2500,
+      "total": 2500
+    },
+    "warnings": [
+      {
+        "code": "code_loses_gift",
+        "ruleId": "gift:e2e-gift"
+      }
+    ]
+  }
+}

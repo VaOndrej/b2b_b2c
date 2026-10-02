@@ -1,0 +1,56 @@
+[
+  {
+    "tag": "BUTTON",
+    "text": "Odmítnout",
+    "w": 68,
+    "h": 44,
+    "minHeight": "44px",
+    "display": "inline-flex",
+    "padding": "0px"
+  },
+  {
+    "tag": "INPUT",
+    "text": "won-code",
+    "w": 294,
+    "h": 44,
+    "minHeight": "44px",
+    "display": "block",
+    "padding": "5px"
+  },
+  {
+    "tag": "BUTTON",
+    "text": "Použít",
+    "w": 61,
+    "h": 44,
+    "minHeight": "44px",
+    "display": "flex",
+    "padding": "5px 10px"
+  },
+  {
+    "tag": "BUTTON",
+    "text": "Odebrat",
+    "w": 51,
+    "h": 44,
+    "minHeight": "44px",
+    "display": "inline-flex",
+    "padding": "0px"
+  },
+  {
+    "tag": "BUTTON",
+    "text": "Ponechat kód (bez dárku)",
+    "w": 174,
+    "h": 44,
+    "minHeight": "44px",
+    "display": "inline-flex",
+    "padding": "1px 6px"
+  },
+  {
+    "tag": "BUTTON",
+    "text": "Zrušit kód",
+    "w": 79,
+    "h": 44,
+    "minHeight": "44px",
+    "display": "inline-flex",
+    "padding": "1px 6px"
+  }
+]

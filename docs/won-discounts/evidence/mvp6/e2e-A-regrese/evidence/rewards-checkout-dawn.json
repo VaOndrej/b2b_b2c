@@ -1,0 +1,102 @@
+{
+  "at": "2026-10-02T19:44:18.900Z",
+  "theme": "Dawn",
+  "cart": {
+    "currency": "CZK",
+    "items": [
+      [
+        48468679164145,
+        1,
+        "e2e-gift",
+        0
+      ],
+      [
+        48468678902001,
+        5,
+        null,
+        5000
+      ]
+    ],
+    "total_price": 5000
+  },
+  "plan": {
+    "totals": {
+      "subtotal": 24900,
+      "productDiscount": 19900,
+      "orderDiscount": 0,
+      "total": 5000
+    },
+    "gifts": [
+      {
+        "tierId": "e2e-gift",
+        "lineId": "gid://shopify/CartLine/0",
+        "state": "earned"
+      }
+    ],
+    "shipping": {
+      "ruleId": "reward:shipping",
+      "method": "automatic",
+      "ownerRuleId": "reward:shipping",
+      "ownerMethod": "automatic",
+      "value": {
+        "percent": 100
+      },
+      "amount": null,
+      "message": "Doprava zdarma"
+    }
+  },
+  "thankYou": {
+    "rows": [
+      {
+        "label": "Mezisoučet • 6 položek",
+        "value": "50,00 Kč",
+        "amount": 5000
+      },
+      {
+        "label": "Expedice",
+        "value": "Zdarma",
+        "amount": null
+      },
+      {
+        "label": "DOPRAVA ZDARMA",
+        "value": "",
+        "amount": null
+      },
+      {
+        "label": "Celkem",
+        "value": "50,00 Kč",
+        "amount": 5000
+      },
+      {
+        "label": "CELKOVÁ ÚSPORA851,43 Kč",
+        "value": "",
+        "amount": null
+      }
+    ],
+    "lines": [
+      {
+        "title": "Won E2E — Spare",
+        "allocations": [
+          {
+            "title": "DÁREK ZDARMA",
+            "amount": -19900
+          }
+        ],
+        "originalPrice": 19900,
+        "finalPrice": 0
+      },
+      {
+        "title": "Won E2E — Simple A",
+        "allocations": [],
+        "originalPrice": null,
+        "finalPrice": 5000
+      }
+    ],
+    "charged": 5000,
+    "shippingBeforePay": {
+      "label": "Expedice",
+      "value": "$0.00",
+      "amount": 0
+    }
+  }
+}

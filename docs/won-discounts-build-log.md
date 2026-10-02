@@ -12,7 +12,7 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > technická pravidla, zakázané věci). **MVP N+1 nezačíná, dokud MVP N není finální** (brána, živé E2E A+B,
 > vizuální QA, audit s opravenými nálezy, checkpoint, push).
 
-- **Aktivní zadání:** docs/won-discounts/prompt-mvp5-dokonceni-mvp6.md (5a → 5b po schválení → MVP 6). Krok: MVP6-brána+E2E (vrstvy hotové: core `c6f19f0`, sync `4ebae7a`, embed `089846f`, admin `b24d4aa`, docs `8d720c9`, E2E `95299d7`; dev DB migrovaná; brána `gate-mvp6` ✓ (core 836 + 50, guard 301, unit 1 263 + 94 + 549, validate 0); **běží E2E Free** `profile.sh campaign m6-free free` (app dev Free, log scratchpad `app-dev-m6-free.log`, progress `$TMPDIR/won-discounts-runs/m6-free/progress.txt`), pak E2E: app dev Free → seed `campaign` → matice; Pro; regrese `phase-b.sh` + Free profily) (5a ✅ uzavřené `60f1f1a`; **sonda F-O1 2026-10-02 odpoledne: `ACCESS_DENIED: This app is not approved to access the Order object`** → toml vrácen, app dev konfiguraci vrátil (granted: read_products, read_themes, write_discounts, write_products); 5b dál čeká. Další: MVP 6 B0 rozpočet kampaní → plán). `shopify app dev` neběží.
+- **Aktivní zadání:** docs/won-discounts/prompt-mvp5-dokonceni-mvp6.md — **hotové: 5a ✅, MVP 6 ✅ (checkpoint níž), 5b čeká na F-O1 + F-O6.** MVP 7 nezačínat bez nového zadání. `shopify app dev` neběží.
 - **Předchozí zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md — **hotové až na živé E2E objednávek**
   (checkpoint MVP 5 níž). **Zastaveno, čeká na Ondřeje (F-O1):** povolit appce přístup k chráněným datům zákazníků
   (Partner Dashboard → Apps → won-discounts → API access requests → Protected customer data access → Request access →
@@ -260,6 +260,46 @@ pro zvednutí stropu 550 B; ve Wasm zbývá ~2,8 kB; formát ceny v bloku vs. t�
 | C6 | kód při přesunu | rozhodnuto: záloha → smazání → vytvoření ve Won | `rozhodnuti.md` |
 
 ## Checkpointy MVP
+
+### MVP 6 — Kampaně (Pro) ✅ (badge zůstává `Beta`)
+
+Plán `docs/plans/2026-10-02-won-discounts-mvp6.md` (K1–K9, D1–D6), audit `audits/audit-mvp6.md`, evidence `evidence/mvp6/`.
+
+**Hotové a ověřené**
+- **B0 rozpočet** (stop-pravidlo předem): rodiny cap 550 × živá kampaň `none` / `value` / `retarget` max **99,86 %**,
+  0 ≥ 100 %, 0 DIFF; odměny × kampaň 89,73 %. **Funkce beze změny** (Wasm 245 497 B, dotazy 30/30).
+- **Core** `campaigns.ts`: stav v čase, hranice (konec vybrané kampaně), kampaň z živého configu pro košík, validace
+  návrhu (okno na minutu, 5 min předstih, ≤ 92 dní, překryv jménem, hodnoty), `shopLocalToUtc`; payload jen přepisy
+  pravidel (D1); gate nechá doběhnout kampaně běžící při downgradu (A6, `finishing`).
+- **Sync**: fáze 1 přepnutí = živý config bez kampaně (dluh MVP 2 vyřešen), `campaignBoundaryAt` + scheduler
+  `campaigns.due` (resync na hranici, zadržené přepnutí za 5 min), `campaignsFinishing`, migrace `20261002180000`.
+- **Embed v košíku** (app proxy) počítá s kampaní v okně jako funkce (K6).
+- **Admin**: modul Kampaně (naplánovat, upravit, Ukončit hned = kill switch i ve Free, smazat neběžící, seznam podle
+  stavu, „Vyzkoušet košík v době kampaně“), Free zamčeno v amber, karta na Přehledu, čas ve Vyzkoušet košík; cs + en,
+  harness, screenshoty 390/1440 `evidence/mvp6/admin/`.
+- **Docs**: concept `campaigns`, task `create-a-campaign`, support `campaign-did-not-start`, Free vs Pro, Try a cart.
+- **Živé E2E** (`storefront.campaign`, okno 5 min v čase obchodu America/New_York, plánuje spec sám):
+  Free ✓ Horizon ✓ Dawn (10 % před, v okně i po — kampaň ve Free nikdy); Pro ✓ Horizon ✓ Dawn (10 % → 30 % 10 s po
+  startu → pokladna Bogus 7,00 Kč místo 10 Kč → 10 % 10 s po konci). Regrese: Pro outlet 5+5, rewards-pro 3+3,
+  tiers-pro 5+5, margin-pro 6+6, shapes 4+4; Free mvp1 5+5, shapes 4+4, margin 6+6, tiers 7+7, rewards 7+7,
+  rewards-other 3+3, outlet 4+4 — vše ✓ ✓, 0 opakování, úklid + verify-clean exit 0.
+- **Audit**: 0 P0 / 0 P1; P2 C1 (zadržené přepnutí bez hranice) a C2 (úprava běžící kampaně) opravené s testy;
+  P3 C3–C5 přijaté.
+
+**Brána MVP 6 final (`gate-mvp6-final`)**: core 836 + testing 50 ✓ · guard 301 ✓ · `test:unit` node 1 264 + cargo 94
+(1 ignored) + vitest 549 ✓ · typecheck ✓ · lint ✓ · build ✓ · validate 0 nálezů ✓.
+
+**Neověřeno / otázky**
+- **D1 (otázka pro Ondřeje):** kampaně v1 mění jen slevy a kódy; množstevní slevy a dárky běží beze změny.
+- Downgrade A6 naživo (bez billingu MVP 7 nejde přepnout plán živě) — jen testy syncu a gate.
+- F-K1 okraj konce: kampaň je pryč do 10 s po konci; přesná sekunda nezměřena (polling 15 s).
+
+**Self-audit (co jsem obešel / ošidil)**
+- Server a obrazovku Kampaní jsem psal před integračními testy (testy hned potom, ne červené napřed).
+- Jednou jsem při běžícím app dev (5a) zapsal soubor do `extensions/won-discounts-engine/tests/`; přesunut, bez
+  přestavby (log).
+- `tiers-pro` v regresi Pro selhal na přechodném 403 Shopify CLI (App Management), zopakován samostatně ✓ ✓;
+  přerušený běh nechal seed, který uklidil následující profil (záloha jedna pro všechny).
 
 ### MVP 5 — Výprodej (Pro): **5a ✅, 5b čeká na schválení** (badge zůstává `Beta`)
 
@@ -589,8 +629,8 @@ typecheck ✓.
 Z MVP 2 (žádné neblokuje):
 - **Free přepínače kombinování po kategoriích v adminu chybí** (rozhodnutí: „Free: merchant přepíná výchozí
   pravidla po kategoriích“; engine je umí, admin ne) → zařadit do MVP 3 (admin).
-- Kampaně: fáze 1 přepnutí kampaně posílá nová pravidla, i když finální zápis zůstane zadržený (marže už
-  opravena) → řešit v MVP 6.
+- ~~Kampaně: fáze 1 přepnutí kampaně posílá nová pravidla, i když finální zápis zůstane zadržený~~ → **vyřešeno
+  v MVP 6** (K5: fáze 1 = živý config bez kampaně, `4ebae7a`).
 - Dokumentace: `index.generated.md`, `dist/corpus.jsonl` a corpus test jako u Toasts → MVP 7.
 - Zrcadlo nákupních cen: srovnání max. 5 obchodů za hodinu → scheduler MVP 5; Postgres port migrace → MVP 7.
 
