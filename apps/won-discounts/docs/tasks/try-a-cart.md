@@ -9,7 +9,7 @@ app_version: MVP2
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-10-01
+updated: 2026-10-02
 keywords: [try a cart, test discount, preview, simulate, check code, what applies, why, checkout may differ, vyzkoušet košík]
 summary: Build a test cart with products, a market, codes and a day, and see which Won discounts apply at checkout and why. Nothing is ordered.
 ---
@@ -26,6 +26,8 @@ ordered.
 4. Optional: **Codes**, several separated by commas. Codes of discounts outside Won
    are recognised but not counted.
 5. Optional: **Date**, a day in the shop's time zone, to check a scheduled discount.
+   Optional: **Time** (HH:MM) on that day, to check a campaign at an exact minute (empty = now); a
+   campaign's **Try a cart during the campaign** fills both in.
 6. **Calculate**.
 
 ## Reading the result

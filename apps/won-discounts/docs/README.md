@@ -15,9 +15,9 @@ jako „not built yet“.
 
 | Složka | Co tam je | Kdo to píše |
 |---|---|---|
-| [`concepts/`](concepts/) | Jak engine plánuje slevy, kombinování (A1 + Pro per sleva + přepínání po kategoriích), kódy vs. automatické, sync se Shopify, slevy mimo Won a přesun, ochrana marže, nákupní ceny, marže per kolekce (Pro), trhy a měny, Free vs Pro, množstevní slevy. | Ručně |
-| [`tasks/`](tasks/) | Automatická sleva, kód, přesun nativních slev, undo přesunu, zapnutí ochrany marže, Vyzkoušet košík, nastavení množstevních slev, přidání tabulky na produkt, výběr vzhledu bloku, přepínání kombinování v Nastavení. | Ručně |
-| [`support/`](support/) | Sleva v pokladně jiná, kód se neuplatnil, sleva snížená marží, produkty bez nákupní ceny, sleva mimo Won, sleva se v měně nenabízí, tabulka se na produktu nezobrazuje, sleva v košíku jiná než na produktu, úroveň snížená marží, produkt nedostal globální úrovně, kvóta výprodeje se neodečítá. | Ručně |
+| [`concepts/`](concepts/) | Jak engine plánuje slevy, kombinování (A1 + Pro per sleva + přepínání po kategoriích), kódy vs. automatické, sync se Shopify, slevy mimo Won a přesun, ochrana marže, nákupní ceny, marže per kolekce (Pro), trhy a měny, Free vs Pro, množstevní slevy, kampaně. | Ručně |
+| [`tasks/`](tasks/) | Automatická sleva, kód, přesun nativních slev, undo přesunu, zapnutí ochrany marže, Vyzkoušet košík, nastavení množstevních slev, přidání tabulky na produkt, výběr vzhledu bloku, přepínání kombinování v Nastavení, naplánování kampaně. | Ručně |
+| [`support/`](support/) | Sleva v pokladně jiná, kód se neuplatnil, sleva snížená marží, produkty bez nákupní ceny, sleva mimo Won, sleva se v měně nenabízí, tabulka se na produktu nezobrazuje, sleva v košíku jiná než na produktu, úroveň snížená marží, produkt nedostal globální úrovně, kvóta výprodeje se neodečítá, kampaň nezačala. | Ručně |
 | [`reference/`](reference/) | Free vs Pro, limity, výchozí kombinování, nastavení marže, volby slevy + recepty, stavy slev. | **Generováno** (`*.generated.md`), needitovat |
 
 Jazyk: angličtina (jako won-toasts). Klíčové pojmy adminu jsou v `keywords` i česky
