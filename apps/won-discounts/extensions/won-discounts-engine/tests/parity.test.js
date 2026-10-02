@@ -1675,6 +1675,25 @@ describe("Wasm (function-runner)", () => {
     expect(maxMemory).toBeLessThanOrEqual(MEMORY_BOUND_KB);
   }, 300_000);
 
+  test("delivery: the classes (MVP 5) — absent or null = a SHIPPING node (the query no longer reads them); listed without SHIPPING = nothing; Wasm = TS", async () => {
+    const { payload } = readFixture("delivery-free-shipping-auto.json");
+    expect(payload.output.operations.length).toBeGreaterThan(0);
+    const cases = [
+      [undefined, payload.output],
+      [null, payload.output],
+      [["SHIPPING"], payload.output],
+      [["PRODUCT", "ORDER"], { operations: [] }],
+      [[], { operations: [] }],
+    ];
+    for (const [classes, expected] of cases) {
+      const input = structuredClone(payload.input);
+      if (classes !== undefined) input.discount.discountClasses = classes;
+      expect(referenceOutput(payload.export, input), JSON.stringify(classes)).toEqual(expected);
+      const result = await runWasm(runnerPath, wasmPath, payload.export, input);
+      expect(rawOutputText(result.stdout), JSON.stringify(classes)).toBe(sortedJson(expected));
+    }
+  });
+
   test(`random carts and configs, seeds ${SEEDS.join(", ")} × ${CASES}: Wasm = TS reference, every branch hit`, async () => {
     const failures = [];
     /** @type {Map<string, number>} */

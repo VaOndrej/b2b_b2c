@@ -168,7 +168,8 @@ export function decimalNumber(v) {
  * optional chaining and no helper calls; the engine re-validates every field
  * anyway (normalizeCart keeps only strings, only this variant's refs, …).
  *   - `ruleIds` / `variantRuleIds`: passed through as the sync wrote them;
- *   - `outlet`: `true` (every variant) or a list of variant GIDs;
+ *   - `outlet`: `true` (every variant) or a list of variant GIDs; or (MVP 5) the variant's own
+ *     metafield `outlet` = true (`wonOutlet`);
  *   - gift: the `_won_gift` line attribute (a property of the line, not the product);
  *   - margin (MVP 2): `marginRefs` from the product metafield, `cost` / `cur` from the
  *     variant metafield — as read (normalizeCart keeps a number / a string / strings);
@@ -207,6 +208,8 @@ function readLine(line, currency) {
     if (won.marginRefs !== undefined) out.marginRefs = won.marginRefs;
     if (won.tierRef !== undefined) out.tierRef = won.tierRef;
   }
+  // MVP 5 (Výprodej, contract O6): the variant's own flag `outlet` = true.
+  if (isVariant && merchandise.wonOutlet?.jsonValue === true) out.outlet = true;
   const cost = isVariant ? merchandise.wonVariant?.jsonValue : null;
   if (typeof cost === "object" && cost !== null) {
     if (cost.cost !== undefined) out.unitCost = cost.cost;
@@ -367,8 +370,12 @@ export function runCartLines(input) {
  */
 export function runDelivery(input) {
   try {
-    if (!arr(rec(rec(input).discount).discountClasses).includes("SHIPPING")) return { operations: [] };
+    // The delivery query does not read the classes (MVP 5): Shopify runs this target only for a SHIPPING
+    // node; an input that lists them (not null) still must name SHIPPING.
+    const classes = rec(rec(input).discount).discountClasses;
+    if (classes != null && !arr(classes).includes("SHIPPING")) return { operations: [] };
     const adapted = adaptInput(input);
+    if (classes == null) adapted.classes = ["SHIPPING"];
     const { plan, emission } = emissionFor(adapted);
     return toDeliveryResult(emission, adapted, plan);
   } catch {

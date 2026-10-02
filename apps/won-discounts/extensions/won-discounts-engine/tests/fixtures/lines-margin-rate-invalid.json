@@ -111,6 +111,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/1",
                 "wonProduct": {

@@ -47,6 +47,7 @@ export const SHOP_CURRENCY = "CZK";
  * @property {number} [product]          product number: `merchandise.product.id` = productId(product ?? n)
  *                                        (lines of one product: the same number; MVP 3 tiers count per product)
  * @property {string} [productGid]       product id (default productId(product ?? n))
+ * @property {unknown} [variantOutlet]    MVP 5: variant metafield `$app:won_discounts`/`outlet` jsonValue (true = on sale)
  * @property {unknown} [variantMeta]      variant metafield `$app:won_discounts`/`variant` jsonValue
  *                                        (MVP 2 margin: `{cost, cur}`, cost in MAJOR units of the shop currency)
  *
@@ -239,6 +240,7 @@ function cartLine(l) {
         __typename: "ProductVariant",
         id: l.variantGid ?? variantId(l.variant ?? 1000 + l.n),
         wonVariant: l.variantMeta === undefined ? null : { jsonValue: l.variantMeta },
+        wonOutlet: l.variantOutlet === undefined ? null : { jsonValue: l.variantOutlet },
         product: { id: l.productGid ?? productId(l.product ?? l.n), wonProduct: l.won ? { jsonValue: l.won } : null },
       };
   return {
@@ -273,7 +275,9 @@ export function buildInput(scenario) {
     triggeringDiscountCode: s.triggering ?? null,
     enteredDiscountCodes: (s.entered ?? []).map((code) => ({ code })),
     discount: {
-      discountClasses: s.classes ?? ALL_CLASSES,
+      // The delivery query does not read the classes (MVP 5); a delivery scenario lists them only to test the
+      // guard for an input that has them.
+      ...(s.target !== "delivery" || s.classes ? { discountClasses: s.classes ?? ALL_CLASSES } : {}),
       vars: vars === null ? null : { jsonValue: vars },
     },
     shop: {

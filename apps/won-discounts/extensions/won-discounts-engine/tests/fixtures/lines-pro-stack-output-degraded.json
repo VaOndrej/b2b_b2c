@@ -123,6 +123,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1001",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/1",
                 "wonProduct": {
@@ -149,6 +150,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1002",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/2",
                 "wonProduct": {
@@ -175,6 +177,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1003",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/3",
                 "wonProduct": {
@@ -201,6 +204,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1004",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/4",
                 "wonProduct": {
@@ -227,6 +231,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1005",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/5",
                 "wonProduct": {
@@ -253,6 +258,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1006",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/6",
                 "wonProduct": {
@@ -279,6 +285,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1007",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/7",
                 "wonProduct": {
@@ -305,6 +312,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1008",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8",
                 "wonProduct": {
@@ -331,6 +339,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1009",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/9",
                 "wonProduct": {
@@ -357,6 +366,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1010",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/10",
                 "wonProduct": {
@@ -383,6 +393,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1011",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/11",
                 "wonProduct": {
@@ -409,6 +420,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1012",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/12",
                 "wonProduct": {
@@ -435,6 +447,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1013",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/13",
                 "wonProduct": {
@@ -461,6 +474,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1014",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/14",
                 "wonProduct": {
@@ -487,6 +501,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1015",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/15",
                 "wonProduct": {
@@ -513,6 +528,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1016",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/16",
                 "wonProduct": {
@@ -539,6 +555,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1017",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/17",
                 "wonProduct": {
@@ -565,6 +582,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1018",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/18",
                 "wonProduct": {
@@ -591,6 +609,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1019",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/19",
                 "wonProduct": {
@@ -617,6 +636,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1020",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/20",
                 "wonProduct": {
@@ -643,6 +663,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1021",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/21",
                 "wonProduct": {
@@ -669,6 +690,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1022",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/22",
                 "wonProduct": {
@@ -695,6 +717,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1023",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/23",
                 "wonProduct": {
@@ -721,6 +744,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1024",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/24",
                 "wonProduct": {
@@ -747,6 +771,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1025",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/25",
                 "wonProduct": {
@@ -773,6 +798,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1026",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/26",
                 "wonProduct": {
@@ -799,6 +825,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1027",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/27",
                 "wonProduct": {
@@ -825,6 +852,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1028",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/28",
                 "wonProduct": {
@@ -851,6 +879,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1029",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/29",
                 "wonProduct": {
@@ -877,6 +906,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1030",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/30",
                 "wonProduct": {
@@ -903,6 +933,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1031",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/31",
                 "wonProduct": {
@@ -929,6 +960,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1032",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/32",
                 "wonProduct": {
@@ -955,6 +987,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1033",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/33",
                 "wonProduct": {
@@ -981,6 +1014,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1034",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/34",
                 "wonProduct": {
@@ -1007,6 +1041,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1035",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/35",
                 "wonProduct": {
@@ -1033,6 +1068,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1036",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/36",
                 "wonProduct": {
@@ -1059,6 +1095,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1037",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/37",
                 "wonProduct": {
@@ -1085,6 +1122,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1038",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/38",
                 "wonProduct": {
@@ -1111,6 +1149,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1039",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/39",
                 "wonProduct": {
@@ -1137,6 +1176,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1040",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/40",
                 "wonProduct": {
@@ -1163,6 +1203,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1041",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/41",
                 "wonProduct": {
@@ -1189,6 +1230,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1042",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/42",
                 "wonProduct": {
@@ -1215,6 +1257,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1043",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/43",
                 "wonProduct": {
@@ -1241,6 +1284,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1044",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/44",
                 "wonProduct": {
@@ -1267,6 +1311,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1045",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/45",
                 "wonProduct": {
@@ -1293,6 +1338,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1046",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/46",
                 "wonProduct": {
@@ -1319,6 +1365,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1047",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/47",
                 "wonProduct": {
@@ -1345,6 +1392,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1048",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/48",
                 "wonProduct": {
@@ -1371,6 +1419,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1049",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/49",
                 "wonProduct": {
@@ -1397,6 +1446,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1050",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/50",
                 "wonProduct": {
@@ -1423,6 +1473,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1051",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/51",
                 "wonProduct": {
@@ -1449,6 +1500,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1052",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/52",
                 "wonProduct": {
@@ -1475,6 +1527,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1053",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/53",
                 "wonProduct": {
@@ -1501,6 +1554,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1054",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/54",
                 "wonProduct": {
@@ -1527,6 +1581,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1055",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/55",
                 "wonProduct": {
@@ -1553,6 +1608,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1056",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/56",
                 "wonProduct": {
@@ -1579,6 +1635,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1057",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/57",
                 "wonProduct": {
@@ -1605,6 +1662,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1058",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/58",
                 "wonProduct": {
@@ -1631,6 +1689,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1059",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/59",
                 "wonProduct": {
@@ -1657,6 +1716,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1060",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/60",
                 "wonProduct": {
@@ -1683,6 +1743,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1061",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/61",
                 "wonProduct": {
@@ -1709,6 +1770,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1062",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/62",
                 "wonProduct": {
@@ -1735,6 +1797,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1063",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/63",
                 "wonProduct": {
@@ -1761,6 +1824,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1064",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/64",
                 "wonProduct": {
@@ -1787,6 +1851,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1065",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/65",
                 "wonProduct": {
@@ -1813,6 +1878,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1066",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/66",
                 "wonProduct": {
@@ -1839,6 +1905,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1067",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/67",
                 "wonProduct": {
@@ -1865,6 +1932,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1068",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/68",
                 "wonProduct": {
@@ -1891,6 +1959,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1069",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/69",
                 "wonProduct": {
@@ -1917,6 +1986,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1070",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/70",
                 "wonProduct": {
@@ -1943,6 +2013,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1071",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/71",
                 "wonProduct": {
@@ -1969,6 +2040,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1072",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/72",
                 "wonProduct": {
@@ -1995,6 +2067,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1073",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/73",
                 "wonProduct": {
@@ -2021,6 +2094,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1074",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/74",
                 "wonProduct": {
@@ -2047,6 +2121,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1075",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/75",
                 "wonProduct": {
@@ -2073,6 +2148,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1076",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/76",
                 "wonProduct": {
@@ -2099,6 +2175,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1077",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/77",
                 "wonProduct": {
@@ -2125,6 +2202,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1078",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/78",
                 "wonProduct": {
@@ -2151,6 +2229,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1079",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/79",
                 "wonProduct": {
@@ -2177,6 +2256,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1080",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/80",
                 "wonProduct": {
@@ -2203,6 +2283,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1081",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/81",
                 "wonProduct": {
@@ -2229,6 +2310,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1082",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/82",
                 "wonProduct": {
@@ -2255,6 +2337,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1083",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/83",
                 "wonProduct": {
@@ -2281,6 +2364,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1084",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/84",
                 "wonProduct": {
@@ -2307,6 +2391,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1085",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/85",
                 "wonProduct": {
@@ -2333,6 +2418,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1086",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/86",
                 "wonProduct": {
@@ -2359,6 +2445,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1087",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/87",
                 "wonProduct": {
@@ -2385,6 +2472,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1088",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/88",
                 "wonProduct": {
@@ -2411,6 +2499,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1089",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/89",
                 "wonProduct": {
@@ -2437,6 +2526,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1090",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/90",
                 "wonProduct": {
@@ -2463,6 +2553,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1091",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/91",
                 "wonProduct": {
@@ -2489,6 +2580,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1092",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/92",
                 "wonProduct": {
@@ -2515,6 +2607,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1093",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/93",
                 "wonProduct": {
@@ -2541,6 +2634,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1094",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/94",
                 "wonProduct": {
@@ -2567,6 +2661,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1095",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/95",
                 "wonProduct": {
@@ -2593,6 +2688,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1096",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/96",
                 "wonProduct": {
@@ -2619,6 +2715,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1097",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/97",
                 "wonProduct": {
@@ -2645,6 +2742,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1098",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/98",
                 "wonProduct": {
@@ -2671,6 +2769,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1099",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/99",
                 "wonProduct": {
@@ -2697,6 +2796,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1100",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/100",
                 "wonProduct": {
@@ -2723,6 +2823,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1101",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/101",
                 "wonProduct": {
@@ -2749,6 +2850,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1102",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/102",
                 "wonProduct": {
@@ -2775,6 +2877,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1103",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/103",
                 "wonProduct": {
@@ -2801,6 +2904,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1104",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/104",
                 "wonProduct": {
@@ -2827,6 +2931,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1105",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/105",
                 "wonProduct": {
@@ -2853,6 +2958,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1106",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/106",
                 "wonProduct": {
@@ -2879,6 +2985,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1107",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/107",
                 "wonProduct": {
@@ -2905,6 +3012,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1108",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/108",
                 "wonProduct": {
@@ -2931,6 +3039,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1109",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/109",
                 "wonProduct": {
@@ -2957,6 +3066,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1110",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/110",
                 "wonProduct": {
@@ -2983,6 +3093,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1111",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/111",
                 "wonProduct": {
@@ -3009,6 +3120,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1112",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/112",
                 "wonProduct": {
@@ -3035,6 +3147,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1113",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/113",
                 "wonProduct": {
@@ -3061,6 +3174,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1114",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/114",
                 "wonProduct": {
@@ -3087,6 +3201,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1115",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/115",
                 "wonProduct": {
@@ -3113,6 +3228,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1116",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/116",
                 "wonProduct": {
@@ -3139,6 +3255,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1117",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/117",
                 "wonProduct": {
@@ -3165,6 +3282,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1118",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/118",
                 "wonProduct": {
@@ -3191,6 +3309,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1119",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/119",
                 "wonProduct": {
@@ -3217,6 +3336,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1120",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/120",
                 "wonProduct": {
@@ -3243,6 +3363,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1121",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/121",
                 "wonProduct": {
@@ -3269,6 +3390,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1122",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/122",
                 "wonProduct": {
@@ -3295,6 +3417,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1123",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/123",
                 "wonProduct": {
@@ -3321,6 +3444,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1124",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/124",
                 "wonProduct": {
@@ -3347,6 +3471,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1125",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/125",
                 "wonProduct": {
@@ -3373,6 +3498,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1126",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/126",
                 "wonProduct": {
@@ -3399,6 +3525,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1127",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/127",
                 "wonProduct": {
@@ -3425,6 +3552,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1128",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/128",
                 "wonProduct": {
@@ -3451,6 +3579,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1129",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/129",
                 "wonProduct": {
@@ -3477,6 +3606,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1130",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/130",
                 "wonProduct": {
@@ -3503,6 +3633,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1131",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/131",
                 "wonProduct": {
@@ -3529,6 +3660,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1132",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/132",
                 "wonProduct": {
@@ -3555,6 +3687,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1133",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/133",
                 "wonProduct": {
@@ -3581,6 +3714,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1134",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/134",
                 "wonProduct": {
@@ -3607,6 +3741,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1135",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/135",
                 "wonProduct": {
@@ -3633,6 +3768,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1136",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/136",
                 "wonProduct": {
@@ -3659,6 +3795,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1137",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/137",
                 "wonProduct": {
@@ -3685,6 +3822,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1138",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/138",
                 "wonProduct": {
@@ -3711,6 +3849,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1139",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/139",
                 "wonProduct": {
@@ -3737,6 +3876,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1140",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/140",
                 "wonProduct": {
@@ -3763,6 +3903,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1141",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/141",
                 "wonProduct": {
@@ -3789,6 +3930,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1142",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/142",
                 "wonProduct": {
@@ -3815,6 +3957,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1143",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/143",
                 "wonProduct": {
@@ -3841,6 +3984,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1144",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/144",
                 "wonProduct": {
@@ -3867,6 +4011,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1145",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/145",
                 "wonProduct": {
@@ -3893,6 +4038,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1146",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/146",
                 "wonProduct": {
@@ -3919,6 +4065,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1147",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/147",
                 "wonProduct": {
@@ -3945,6 +4092,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1148",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/148",
                 "wonProduct": {
@@ -3971,6 +4119,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1149",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/149",
                 "wonProduct": {
@@ -3997,6 +4146,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1150",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/150",
                 "wonProduct": {
@@ -4023,6 +4173,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1151",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/151",
                 "wonProduct": {
@@ -4049,6 +4200,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1152",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/152",
                 "wonProduct": {
@@ -4075,6 +4227,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1153",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/153",
                 "wonProduct": {
@@ -4101,6 +4254,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1154",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/154",
                 "wonProduct": {
@@ -4127,6 +4281,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1155",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/155",
                 "wonProduct": {
@@ -4153,6 +4308,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1156",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/156",
                 "wonProduct": {
@@ -4179,6 +4335,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1157",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/157",
                 "wonProduct": {
@@ -4205,6 +4362,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1158",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/158",
                 "wonProduct": {
@@ -4231,6 +4389,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1159",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/159",
                 "wonProduct": {
@@ -4257,6 +4416,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1160",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/160",
                 "wonProduct": {
@@ -4283,6 +4443,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1161",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/161",
                 "wonProduct": {
@@ -4309,6 +4470,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1162",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/162",
                 "wonProduct": {
@@ -4335,6 +4497,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1163",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/163",
                 "wonProduct": {
@@ -4361,6 +4524,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1164",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/164",
                 "wonProduct": {
@@ -4387,6 +4551,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1165",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/165",
                 "wonProduct": {
@@ -4413,6 +4578,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1166",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/166",
                 "wonProduct": {
@@ -4439,6 +4605,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1167",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/167",
                 "wonProduct": {
@@ -4465,6 +4632,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1168",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/168",
                 "wonProduct": {
@@ -4491,6 +4659,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1169",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/169",
                 "wonProduct": {
@@ -4517,6 +4686,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1170",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/170",
                 "wonProduct": {
@@ -4543,6 +4713,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1171",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/171",
                 "wonProduct": {
@@ -4569,6 +4740,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1172",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/172",
                 "wonProduct": {
@@ -4595,6 +4767,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1173",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/173",
                 "wonProduct": {
@@ -4621,6 +4794,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1174",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/174",
                 "wonProduct": {
@@ -4647,6 +4821,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1175",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/175",
                 "wonProduct": {
@@ -4673,6 +4848,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1176",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/176",
                 "wonProduct": {
@@ -4699,6 +4875,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1177",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/177",
                 "wonProduct": {
@@ -4725,6 +4902,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1178",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/178",
                 "wonProduct": {
@@ -4751,6 +4929,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1179",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/179",
                 "wonProduct": {
@@ -4777,6 +4956,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1180",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/180",
                 "wonProduct": {
@@ -4803,6 +4983,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1181",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/181",
                 "wonProduct": {
@@ -4829,6 +5010,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1182",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/182",
                 "wonProduct": {
@@ -4855,6 +5037,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1183",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/183",
                 "wonProduct": {
@@ -4881,6 +5064,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1184",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/184",
                 "wonProduct": {
@@ -4907,6 +5091,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1185",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/185",
                 "wonProduct": {
@@ -4933,6 +5118,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1186",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/186",
                 "wonProduct": {
@@ -4959,6 +5145,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1187",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/187",
                 "wonProduct": {
@@ -4985,6 +5172,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1188",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/188",
                 "wonProduct": {
@@ -5011,6 +5199,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1189",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/189",
                 "wonProduct": {
@@ -5037,6 +5226,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1190",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/190",
                 "wonProduct": {
@@ -5063,6 +5253,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1191",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/191",
                 "wonProduct": {
@@ -5089,6 +5280,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1192",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/192",
                 "wonProduct": {
@@ -5115,6 +5307,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1193",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/193",
                 "wonProduct": {
@@ -5141,6 +5334,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1194",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/194",
                 "wonProduct": {
@@ -5167,6 +5361,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1195",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/195",
                 "wonProduct": {
@@ -5193,6 +5388,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1196",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/196",
                 "wonProduct": {
@@ -5219,6 +5415,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1197",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/197",
                 "wonProduct": {
@@ -5245,6 +5442,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1198",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/198",
                 "wonProduct": {
@@ -5271,6 +5469,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1199",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/199",
                 "wonProduct": {
@@ -5297,6 +5496,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1200",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/200",
                 "wonProduct": {

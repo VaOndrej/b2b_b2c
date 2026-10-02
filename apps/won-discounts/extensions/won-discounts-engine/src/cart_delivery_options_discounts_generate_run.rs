@@ -1,7 +1,7 @@
 // `cart.delivery-options.discounts.generate.run`: the same plan as the lines
 // target (the shipping winner depends on the lines: minimums, product/order
 // switches); the node emits its shipping winner on every delivery group. A node
-// without the SHIPPING class, an unknown role or a missing/invalid shared
+// listed without the SHIPPING class, an unknown role or a missing/invalid shared
 // config emits no operations; nothing here fails.
 
 use crate::engine::emit::emit_for_node;
@@ -15,7 +15,9 @@ use shopify_function::wasm_api::Value;
 /// lives; nothing the run built is dropped (src/main.rs).
 pub fn cart_delivery_options_discounts_generate_run<S: Sink>(input: Value, out: &mut S) -> Result<(), Error> {
     let (discount, classes) = node(&input);
-    if !classes.shipping {
+    // The delivery query does not read the classes (MVP 5): Shopify runs this target only for a node with the
+    // SHIPPING class. An input that lists them (a hand-made one, a logged run of an older query) still must.
+    if classes.listed && !classes.shipping {
         return DeliveryResult::default().write(out);
     }
     let group_ids = delivery_group_ids(&input);

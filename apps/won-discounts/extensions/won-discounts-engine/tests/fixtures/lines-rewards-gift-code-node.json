@@ -122,6 +122,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1001",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/1",
                 "wonProduct": {
@@ -147,6 +148,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/2001",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/2",
                 "wonProduct": null

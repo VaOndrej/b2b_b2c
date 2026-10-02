@@ -1,15 +1,11 @@
 {
-  "scenario": "Pro order stack A 20 % + code B 5 %, 10 % ceiling: lowered to 99,99 Kč, taken in rank order — A alone — so A owns it and the automatic node emits it (B's code gets nothing).",
+  "scenario": "MVP 5: with engine.combination.outletWithAnything the variant flag excludes nothing (the same as a product outlet).",
   "payload": {
     "export": "cart-lines-discounts-generate-run",
     "target": "cart.lines.discounts.generate.run",
     "input": {
       "triggeringDiscountCode": null,
-      "enteredDiscountCodes": [
-        {
-          "code": "KOD"
-        }
-      ],
+      "enteredDiscountCodes": [],
       "discount": {
         "discountClasses": [
           "PRODUCT",
@@ -34,7 +30,7 @@
             "campaignVarsVersion": null,
             "engine": {
               "combination": {
-                "outletWithAnything": false,
+                "outletWithAnything": true,
                 "productWithProduct": "best",
                 "productWithOrder": true,
                 "productWithShipping": true,
@@ -46,41 +42,32 @@
               "codes": {
                 "rules": [
                   {
-                    "id": "a",
+                    "id": "summer",
                     "enabled": true,
-                    "name": "Objednávka A",
+                    "name": "Letní sleva",
                     "method": "automatic",
                     "value": {
                       "kind": "percentage",
-                      "percent": 20
+                      "percent": 10
                     },
                     "target": {
-                      "kind": "order"
-                    },
-                    "combinesWith": {
-                      "ruleIds": [
-                        "b"
-                      ]
+                      "kind": "products"
                     }
                   },
                   {
-                    "id": "b",
+                    "id": "order5",
                     "enabled": true,
-                    "name": "Kód B",
-                    "method": "code",
+                    "name": "5 % na objednávku",
+                    "method": "automatic",
                     "value": {
                       "kind": "percentage",
                       "percent": 5
                     },
                     "target": {
                       "kind": "order"
-                    },
-                    "codeHashes": [
-                      "c5b30741"
-                    ]
+                    }
                   }
-                ],
-                "maxCodeLength": 3
+                ]
               },
               "tiers": {
                 "sets": []
@@ -89,9 +76,7 @@
                 "g": []
               },
               "margin": {
-                "enabled": true,
-                "max": 10,
-                "cur": "CZK"
+                "enabled": false
               }
             },
             "campaigns": []
@@ -123,7 +108,7 @@
             "quantity": 1,
             "cost": {
               "amountPerQuantity": {
-                "amount": "1000.0"
+                "amount": "100.0"
               }
             },
             "gift": null,
@@ -134,7 +119,41 @@
               "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/1",
-                "wonProduct": null
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": [
+                      "summer"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/2",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "100.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1002",
+              "wonVariant": null,
+              "wonOutlet": {
+                "jsonValue": true
+              },
+              "product": {
+                "id": "gid://shopify/Product/2",
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": [
+                      "summer"
+                    ]
+                  }
+                }
               }
             }
           }
@@ -144,10 +163,37 @@
     "output": {
       "operations": [
         {
+          "productDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "Letní sleva",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/1"
+                    }
+                  },
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/2"
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 10
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "ALL"
+          }
+        },
+        {
           "orderDiscountsAdd": {
             "candidates": [
               {
-                "message": "Objednávka A",
+                "message": "5 % na objednávku",
                 "targets": [
                   {
                     "orderSubtotal": {
@@ -156,8 +202,8 @@
                   }
                 ],
                 "value": {
-                  "fixedAmount": {
-                    "amount": "99.99"
+                  "percentage": {
+                    "value": 5
                   }
                 }
               }

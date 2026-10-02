@@ -7,11 +7,6 @@
       "triggeringDiscountCode": null,
       "enteredDiscountCodes": [],
       "discount": {
-        "discountClasses": [
-          "PRODUCT",
-          "ORDER",
-          "SHIPPING"
-        ],
         "vars": {
           "jsonValue": {
             "role": "automatic",
@@ -128,6 +123,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1001",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/1",
                 "wonProduct": {
@@ -153,6 +149,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1002",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/2",
                 "wonProduct": null

@@ -1,5 +1,5 @@
 {
-  "scenario": "Instruction budget, the Pro stack search's worst case (audit round 3): 18 product rules that all combine with each other, every one of the 200 lines listing a DIFFERENT 12 of them; the stack is searched among a line's 6 best-ranked candidates only (plan.ts MAX_STACK_CANDIDATES), so each line stacks its 6 best. A cost price on every line, a 5 % order discount, 0–1 variant-level refs of other variants a line: the input filled to Shopify's limit of 128 kB of MessagePack. The exact output is over the budget: every stack goes to its top rule. Quantity tiers on every line (MVP 3): 7 sets of 5 breaks, 3 of 4 lines naming a scoped set by tierRef; every tier below the line's stack. With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.",
+  "scenario": "Instruction budget, the Pro stack search's worst case (audit round 3): 18 product rules that all combine with each other, every one of the 198 lines listing a DIFFERENT 12 of them; the stack is searched among a line's 6 best-ranked candidates only (plan.ts MAX_STACK_CANDIDATES), so each line stacks its 6 best. A cost price on every line, a 5 % order discount, 0–1 variant-level refs of other variants a line: the input filled to Shopify's limit of 128 kB of MessagePack. The exact output is over the budget: every stack goes to its top rule. Quantity tiers on every line (MVP 3): 7 sets of 5 breaks, 3 of 4 lines naming a scoped set by tierRef; every tier below the line's stack. With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.",
   "payload": {
     "export": "cart-lines-discounts-generate-run",
     "target": "cart.lines.discounts.generate.run",
@@ -737,6 +737,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500001",
                 "wonProduct": {
@@ -784,6 +785,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500002",
                 "wonProduct": {
@@ -802,11 +804,6 @@
                       "r_82bda7ce9fe44fd0f828",
                       "r_e753e801fadc51915393"
                     ],
-                    "variantRuleIds": {
-                      "48468679000200": [
-                        "r_6298cc6d335c770cb382"
-                      ]
-                    },
                     "tierRef": "t_67d93cc563eeb90e360f"
                   }
                 }
@@ -831,6 +828,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500003",
                 "wonProduct": {
@@ -849,11 +847,6 @@
                       "r_b9246fef56fefa734d92",
                       "r_899281c59eb5c0505fcf"
                     ],
-                    "variantRuleIds": {
-                      "48468679000300": [
-                        "r_dfddfb08774792b32614"
-                      ]
-                    },
                     "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
@@ -878,6 +871,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500004",
                 "wonProduct": {
@@ -895,12 +889,7 @@
                       "r_e753e801fadc51915393",
                       "r_5bbc293980c9a786eee3",
                       "r_b7c1e70678b261729005"
-                    ],
-                    "variantRuleIds": {
-                      "48468679000400": [
-                        "r_6c794b63522a93990b5a"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -924,6 +913,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500005",
                 "wonProduct": {
@@ -942,11 +932,6 @@
                       "r_b9246fef56fefa734d92",
                       "r_82bda7ce9fe44fd0f828"
                     ],
-                    "variantRuleIds": {
-                      "48468679000500": [
-                        "r_f181c7eb656c1a1f0a23"
-                      ]
-                    },
                     "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
@@ -971,6 +956,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500006",
                 "wonProduct": {
@@ -989,11 +975,6 @@
                       "r_6298cc6d335c770cb382",
                       "r_4ea45d1e8e216a8e5c34"
                     ],
-                    "variantRuleIds": {
-                      "48468679000600": [
-                        "r_82bda7ce9fe44fd0f828"
-                      ]
-                    },
                     "tierRef": "t_3cc070c2f20fb3d1de14"
                   }
                 }
@@ -1018,6 +999,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500007",
                 "wonProduct": {
@@ -1036,11 +1018,6 @@
                       "r_82bda7ce9fe44fd0f828",
                       "r_dfddfb08774792b32614"
                     ],
-                    "variantRuleIds": {
-                      "48468679000700": [
-                        "r_ace824f19becad1d4c69"
-                      ]
-                    },
                     "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
@@ -1065,6 +1042,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500008",
                 "wonProduct": {
@@ -1082,12 +1060,7 @@
                       "r_82bda7ce9fe44fd0f828",
                       "r_6298cc6d335c770cb382",
                       "r_899281c59eb5c0505fcf"
-                    ],
-                    "variantRuleIds": {
-                      "48468679000800": [
-                        "r_82b5bd8f682556a24858"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1111,6 +1084,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500009",
                 "wonProduct": {
@@ -1129,11 +1103,6 @@
                       "r_d9136e7240a28ac04e90",
                       "r_6c794b63522a93990b5a"
                     ],
-                    "variantRuleIds": {
-                      "48468679000900": [
-                        "r_f45a8b7db38e01c2c138"
-                      ]
-                    },
                     "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
@@ -1158,6 +1127,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500010",
                 "wonProduct": {
@@ -1176,11 +1146,6 @@
                       "r_899281c59eb5c0505fcf",
                       "r_fd01e7cc052cb5ab8a95"
                     ],
-                    "variantRuleIds": {
-                      "48468679001000": [
-                        "r_5bbc293980c9a786eee3"
-                      ]
-                    },
                     "tierRef": "t_29260facf9ceb387d5c1"
                   }
                 }
@@ -1205,6 +1170,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500011",
                 "wonProduct": {
@@ -1223,11 +1189,6 @@
                       "r_ec367a4f3260312faa48",
                       "r_6298cc6d335c770cb382"
                     ],
-                    "variantRuleIds": {
-                      "48468679001100": [
-                        "r_b7c1e70678b261729005"
-                      ]
-                    },
                     "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
@@ -1252,6 +1213,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500012",
                 "wonProduct": {
@@ -1269,12 +1231,7 @@
                       "r_ace824f19becad1d4c69",
                       "r_ec367a4f3260312faa48",
                       "r_e753e801fadc51915393"
-                    ],
-                    "variantRuleIds": {
-                      "48468679001200": [
-                        "r_b9246fef56fefa734d92"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1298,6 +1255,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500013",
                 "wonProduct": {
@@ -1316,11 +1274,6 @@
                       "r_ec367a4f3260312faa48",
                       "r_e753e801fadc51915393"
                     ],
-                    "variantRuleIds": {
-                      "48468679001300": [
-                        "r_fd01e7cc052cb5ab8a95"
-                      ]
-                    },
                     "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
@@ -1345,6 +1298,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500014",
                 "wonProduct": {
@@ -1363,11 +1317,6 @@
                       "r_d9136e7240a28ac04e90",
                       "r_2c572ad3bcca64a9a887"
                     ],
-                    "variantRuleIds": {
-                      "48468679001400": [
-                        "r_d9136e7240a28ac04e90"
-                      ]
-                    },
                     "tierRef": "t_67d93cc563eeb90e360f"
                   }
                 }
@@ -1392,6 +1341,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500015",
                 "wonProduct": {
@@ -1410,11 +1360,6 @@
                       "r_d9136e7240a28ac04e90",
                       "r_dfddfb08774792b32614"
                     ],
-                    "variantRuleIds": {
-                      "48468679001500": [
-                        "r_ec367a4f3260312faa48"
-                      ]
-                    },
                     "tierRef": "t_ed10f533e57ca41cb974"
                   }
                 }
@@ -1439,6 +1384,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500016",
                 "wonProduct": {
@@ -1456,12 +1402,7 @@
                       "r_4ea45d1e8e216a8e5c34",
                       "r_ec367a4f3260312faa48",
                       "r_5bbc293980c9a786eee3"
-                    ],
-                    "variantRuleIds": {
-                      "48468679001600": [
-                        "r_899281c59eb5c0505fcf"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1485,6 +1426,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500017",
                 "wonProduct": {
@@ -1503,11 +1445,6 @@
                       "r_2c572ad3bcca64a9a887",
                       "r_5bbc293980c9a786eee3"
                     ],
-                    "variantRuleIds": {
-                      "48468679001700": [
-                        "r_4ea45d1e8e216a8e5c34"
-                      ]
-                    },
                     "tierRef": "t_682f8ea7267d90973c77"
                   }
                 }
@@ -1532,6 +1469,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500018",
                 "wonProduct": {
@@ -1550,11 +1488,6 @@
                       "r_899281c59eb5c0505fcf",
                       "r_b7c1e70678b261729005"
                     ],
-                    "variantRuleIds": {
-                      "48468679001800": [
-                        "r_e753e801fadc51915393"
-                      ]
-                    },
                     "tierRef": "t_3cc070c2f20fb3d1de14"
                   }
                 }
@@ -1579,6 +1512,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500019",
                 "wonProduct": {
@@ -1597,11 +1531,6 @@
                       "r_6298cc6d335c770cb382",
                       "r_dfddfb08774792b32614"
                     ],
-                    "variantRuleIds": {
-                      "48468679001900": [
-                        "r_2c572ad3bcca64a9a887"
-                      ]
-                    },
                     "tierRef": "t_782ae0009bbdaac6ad86"
                   }
                 }
@@ -1626,6 +1555,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500020",
                 "wonProduct": {
@@ -1643,12 +1573,7 @@
                       "r_ace824f19becad1d4c69",
                       "r_dfddfb08774792b32614",
                       "r_4ea45d1e8e216a8e5c34"
-                    ],
-                    "variantRuleIds": {
-                      "48468679002000": [
-                        "r_6298cc6d335c770cb382"
-                      ]
-                    }
+                    ]
                   }
                 }
               }
@@ -1672,6 +1597,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500021",
                 "wonProduct": {
@@ -1714,6 +1640,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500022",
                 "wonProduct": {
@@ -1756,6 +1683,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500023",
                 "wonProduct": {
@@ -1798,6 +1726,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500024",
                 "wonProduct": {
@@ -1839,6 +1768,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500025",
                 "wonProduct": {
@@ -1881,6 +1811,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500026",
                 "wonProduct": {
@@ -1923,6 +1854,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500027",
                 "wonProduct": {
@@ -1965,6 +1897,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500028",
                 "wonProduct": {
@@ -2006,6 +1939,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500029",
                 "wonProduct": {
@@ -2048,6 +1982,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500030",
                 "wonProduct": {
@@ -2090,6 +2025,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500031",
                 "wonProduct": {
@@ -2132,6 +2068,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500032",
                 "wonProduct": {
@@ -2173,6 +2110,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500033",
                 "wonProduct": {
@@ -2215,6 +2153,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500034",
                 "wonProduct": {
@@ -2257,6 +2196,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500035",
                 "wonProduct": {
@@ -2299,6 +2239,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500036",
                 "wonProduct": {
@@ -2340,6 +2281,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500037",
                 "wonProduct": {
@@ -2382,6 +2324,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500038",
                 "wonProduct": {
@@ -2424,6 +2367,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500039",
                 "wonProduct": {
@@ -2466,6 +2410,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500040",
                 "wonProduct": {
@@ -2507,6 +2452,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500041",
                 "wonProduct": {
@@ -2549,6 +2495,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500042",
                 "wonProduct": {
@@ -2591,6 +2538,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500043",
                 "wonProduct": {
@@ -2633,6 +2581,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500044",
                 "wonProduct": {
@@ -2674,6 +2623,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500045",
                 "wonProduct": {
@@ -2716,6 +2666,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500046",
                 "wonProduct": {
@@ -2758,6 +2709,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500047",
                 "wonProduct": {
@@ -2800,6 +2752,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500048",
                 "wonProduct": {
@@ -2841,6 +2794,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500049",
                 "wonProduct": {
@@ -2883,6 +2837,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500050",
                 "wonProduct": {
@@ -2925,6 +2880,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500051",
                 "wonProduct": {
@@ -2967,6 +2923,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500052",
                 "wonProduct": {
@@ -3008,6 +2965,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500053",
                 "wonProduct": {
@@ -3050,6 +3008,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500054",
                 "wonProduct": {
@@ -3092,6 +3051,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500055",
                 "wonProduct": {
@@ -3134,6 +3094,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500056",
                 "wonProduct": {
@@ -3175,6 +3136,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500057",
                 "wonProduct": {
@@ -3217,6 +3179,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500058",
                 "wonProduct": {
@@ -3259,6 +3222,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500059",
                 "wonProduct": {
@@ -3301,6 +3265,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500060",
                 "wonProduct": {
@@ -3342,6 +3307,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500061",
                 "wonProduct": {
@@ -3384,6 +3350,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500062",
                 "wonProduct": {
@@ -3426,6 +3393,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500063",
                 "wonProduct": {
@@ -3468,6 +3436,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500064",
                 "wonProduct": {
@@ -3509,6 +3478,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500065",
                 "wonProduct": {
@@ -3551,6 +3521,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500066",
                 "wonProduct": {
@@ -3593,6 +3564,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500067",
                 "wonProduct": {
@@ -3635,6 +3607,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500068",
                 "wonProduct": {
@@ -3676,6 +3649,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500069",
                 "wonProduct": {
@@ -3718,6 +3692,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500070",
                 "wonProduct": {
@@ -3760,6 +3735,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500071",
                 "wonProduct": {
@@ -3802,6 +3778,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500072",
                 "wonProduct": {
@@ -3843,6 +3820,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500073",
                 "wonProduct": {
@@ -3885,6 +3863,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500074",
                 "wonProduct": {
@@ -3927,6 +3906,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500075",
                 "wonProduct": {
@@ -3969,6 +3949,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500076",
                 "wonProduct": {
@@ -4010,6 +3991,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500077",
                 "wonProduct": {
@@ -4052,6 +4034,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500078",
                 "wonProduct": {
@@ -4094,6 +4077,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500079",
                 "wonProduct": {
@@ -4136,6 +4120,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500080",
                 "wonProduct": {
@@ -4177,6 +4162,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500081",
                 "wonProduct": {
@@ -4219,6 +4205,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500082",
                 "wonProduct": {
@@ -4261,6 +4248,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500083",
                 "wonProduct": {
@@ -4303,6 +4291,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500084",
                 "wonProduct": {
@@ -4344,6 +4333,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500085",
                 "wonProduct": {
@@ -4386,6 +4376,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500086",
                 "wonProduct": {
@@ -4428,6 +4419,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500087",
                 "wonProduct": {
@@ -4470,6 +4462,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500088",
                 "wonProduct": {
@@ -4511,6 +4504,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500089",
                 "wonProduct": {
@@ -4553,6 +4547,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500090",
                 "wonProduct": {
@@ -4595,6 +4590,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500091",
                 "wonProduct": {
@@ -4637,6 +4633,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500092",
                 "wonProduct": {
@@ -4678,6 +4675,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500093",
                 "wonProduct": {
@@ -4720,6 +4718,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500094",
                 "wonProduct": {
@@ -4762,6 +4761,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500095",
                 "wonProduct": {
@@ -4804,6 +4804,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500096",
                 "wonProduct": {
@@ -4845,6 +4846,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500097",
                 "wonProduct": {
@@ -4887,6 +4889,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500098",
                 "wonProduct": {
@@ -4929,6 +4932,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500099",
                 "wonProduct": {
@@ -4971,6 +4975,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500100",
                 "wonProduct": {
@@ -5012,6 +5017,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500101",
                 "wonProduct": {
@@ -5054,6 +5060,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500102",
                 "wonProduct": {
@@ -5096,6 +5103,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500103",
                 "wonProduct": {
@@ -5138,6 +5146,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500104",
                 "wonProduct": {
@@ -5179,6 +5188,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500105",
                 "wonProduct": {
@@ -5221,6 +5231,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500106",
                 "wonProduct": {
@@ -5263,6 +5274,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500107",
                 "wonProduct": {
@@ -5305,6 +5317,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500108",
                 "wonProduct": {
@@ -5346,6 +5359,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500109",
                 "wonProduct": {
@@ -5388,6 +5402,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500110",
                 "wonProduct": {
@@ -5430,6 +5445,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500111",
                 "wonProduct": {
@@ -5472,6 +5488,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500112",
                 "wonProduct": {
@@ -5513,6 +5530,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500113",
                 "wonProduct": {
@@ -5555,6 +5573,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500114",
                 "wonProduct": {
@@ -5597,6 +5616,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500115",
                 "wonProduct": {
@@ -5639,6 +5659,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500116",
                 "wonProduct": {
@@ -5680,6 +5701,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500117",
                 "wonProduct": {
@@ -5722,6 +5744,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500118",
                 "wonProduct": {
@@ -5764,6 +5787,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500119",
                 "wonProduct": {
@@ -5806,6 +5830,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500120",
                 "wonProduct": {
@@ -5847,6 +5872,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500121",
                 "wonProduct": {
@@ -5889,6 +5915,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500122",
                 "wonProduct": {
@@ -5931,6 +5958,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500123",
                 "wonProduct": {
@@ -5973,6 +6001,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500124",
                 "wonProduct": {
@@ -6014,6 +6043,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500125",
                 "wonProduct": {
@@ -6056,6 +6086,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500126",
                 "wonProduct": {
@@ -6098,6 +6129,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500127",
                 "wonProduct": {
@@ -6140,6 +6172,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500128",
                 "wonProduct": {
@@ -6181,6 +6214,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500129",
                 "wonProduct": {
@@ -6223,6 +6257,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500130",
                 "wonProduct": {
@@ -6265,6 +6300,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500131",
                 "wonProduct": {
@@ -6307,6 +6343,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500132",
                 "wonProduct": {
@@ -6348,6 +6385,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500133",
                 "wonProduct": {
@@ -6390,6 +6428,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500134",
                 "wonProduct": {
@@ -6432,6 +6471,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500135",
                 "wonProduct": {
@@ -6474,6 +6514,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500136",
                 "wonProduct": {
@@ -6515,6 +6556,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500137",
                 "wonProduct": {
@@ -6557,6 +6599,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500138",
                 "wonProduct": {
@@ -6599,6 +6642,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500139",
                 "wonProduct": {
@@ -6641,6 +6685,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500140",
                 "wonProduct": {
@@ -6682,6 +6727,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500141",
                 "wonProduct": {
@@ -6724,6 +6770,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500142",
                 "wonProduct": {
@@ -6766,6 +6813,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500143",
                 "wonProduct": {
@@ -6808,6 +6856,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500144",
                 "wonProduct": {
@@ -6849,6 +6898,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500145",
                 "wonProduct": {
@@ -6891,6 +6941,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500146",
                 "wonProduct": {
@@ -6933,6 +6984,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500147",
                 "wonProduct": {
@@ -6975,6 +7027,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500148",
                 "wonProduct": {
@@ -7016,6 +7069,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500149",
                 "wonProduct": {
@@ -7058,6 +7112,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500150",
                 "wonProduct": {
@@ -7100,6 +7155,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500151",
                 "wonProduct": {
@@ -7142,6 +7198,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500152",
                 "wonProduct": {
@@ -7183,6 +7240,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500153",
                 "wonProduct": {
@@ -7225,6 +7283,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500154",
                 "wonProduct": {
@@ -7267,6 +7326,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500155",
                 "wonProduct": {
@@ -7309,6 +7369,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500156",
                 "wonProduct": {
@@ -7350,6 +7411,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500157",
                 "wonProduct": {
@@ -7392,6 +7454,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500158",
                 "wonProduct": {
@@ -7434,6 +7497,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500159",
                 "wonProduct": {
@@ -7476,6 +7540,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500160",
                 "wonProduct": {
@@ -7517,6 +7582,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500161",
                 "wonProduct": {
@@ -7559,6 +7625,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500162",
                 "wonProduct": {
@@ -7601,6 +7668,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500163",
                 "wonProduct": {
@@ -7643,6 +7711,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500164",
                 "wonProduct": {
@@ -7684,6 +7753,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500165",
                 "wonProduct": {
@@ -7726,6 +7796,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500166",
                 "wonProduct": {
@@ -7768,6 +7839,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500167",
                 "wonProduct": {
@@ -7810,6 +7882,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500168",
                 "wonProduct": {
@@ -7851,6 +7924,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500169",
                 "wonProduct": {
@@ -7893,6 +7967,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500170",
                 "wonProduct": {
@@ -7935,6 +8010,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500171",
                 "wonProduct": {
@@ -7977,6 +8053,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500172",
                 "wonProduct": {
@@ -8018,6 +8095,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500173",
                 "wonProduct": {
@@ -8060,6 +8138,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500174",
                 "wonProduct": {
@@ -8102,6 +8181,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500175",
                 "wonProduct": {
@@ -8144,6 +8224,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500176",
                 "wonProduct": {
@@ -8185,6 +8266,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500177",
                 "wonProduct": {
@@ -8227,6 +8309,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500178",
                 "wonProduct": {
@@ -8269,6 +8352,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500179",
                 "wonProduct": {
@@ -8311,6 +8395,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500180",
                 "wonProduct": {
@@ -8352,6 +8437,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500181",
                 "wonProduct": {
@@ -8394,6 +8480,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500182",
                 "wonProduct": {
@@ -8436,6 +8523,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500183",
                 "wonProduct": {
@@ -8478,6 +8566,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500184",
                 "wonProduct": {
@@ -8519,6 +8608,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500185",
                 "wonProduct": {
@@ -8561,6 +8651,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500186",
                 "wonProduct": {
@@ -8603,6 +8694,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500187",
                 "wonProduct": {
@@ -8645,6 +8737,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500188",
                 "wonProduct": {
@@ -8686,6 +8779,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500189",
                 "wonProduct": {
@@ -8728,6 +8822,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500190",
                 "wonProduct": {
@@ -8770,6 +8865,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500191",
                 "wonProduct": {
@@ -8812,6 +8908,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500192",
                 "wonProduct": {
@@ -8853,6 +8950,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500193",
                 "wonProduct": {
@@ -8895,6 +8993,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500194",
                 "wonProduct": {
@@ -8937,6 +9036,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500195",
                 "wonProduct": {
@@ -8979,6 +9079,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500196",
                 "wonProduct": {
@@ -9020,6 +9121,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500197",
                 "wonProduct": {
@@ -9062,6 +9164,7 @@
                   "cur": "CZK"
                 }
               },
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/8841234500198",
                 "wonProduct": {
@@ -9081,89 +9184,6 @@
                       "r_2c572ad3bcca64a9a887"
                     ],
                     "tierRef": "t_3cc070c2f20fb3d1de14"
-                  }
-                }
-              }
-            }
-          },
-          {
-            "id": "gid://shopify/CartLine/198",
-            "quantity": 2,
-            "cost": {
-              "amountPerQuantity": {
-                "amount": "896.0"
-              }
-            },
-            "gift": null,
-            "merchandise": {
-              "__typename": "ProductVariant",
-              "id": "gid://shopify/ProductVariant/48468678900199",
-              "wonVariant": {
-                "jsonValue": {
-                  "cost": 268.8,
-                  "cur": "CZK"
-                }
-              },
-              "product": {
-                "id": "gid://shopify/Product/8841234500199",
-                "wonProduct": {
-                  "jsonValue": {
-                    "ruleIds": [
-                      "r_6c794b63522a93990b5a",
-                      "r_d9136e7240a28ac04e90",
-                      "r_ace824f19becad1d4c69",
-                      "r_e753e801fadc51915393",
-                      "r_b7c1e70678b261729005",
-                      "r_f181c7eb656c1a1f0a23",
-                      "r_82bda7ce9fe44fd0f828",
-                      "r_5bbc293980c9a786eee3",
-                      "r_dfddfb08774792b32614",
-                      "r_82b5bd8f682556a24858",
-                      "r_899281c59eb5c0505fcf",
-                      "r_fd01e7cc052cb5ab8a95"
-                    ],
-                    "tierRef": "t_782ae0009bbdaac6ad86"
-                  }
-                }
-              }
-            }
-          },
-          {
-            "id": "gid://shopify/CartLine/199",
-            "quantity": 3,
-            "cost": {
-              "amountPerQuantity": {
-                "amount": "900.0"
-              }
-            },
-            "gift": null,
-            "merchandise": {
-              "__typename": "ProductVariant",
-              "id": "gid://shopify/ProductVariant/48468678900200",
-              "wonVariant": {
-                "jsonValue": {
-                  "cost": 270,
-                  "cur": "CZK"
-                }
-              },
-              "product": {
-                "id": "gid://shopify/Product/8841234500200",
-                "wonProduct": {
-                  "jsonValue": {
-                    "ruleIds": [
-                      "r_6c794b63522a93990b5a",
-                      "r_6298cc6d335c770cb382",
-                      "r_d9136e7240a28ac04e90",
-                      "r_899281c59eb5c0505fcf",
-                      "r_82bda7ce9fe44fd0f828",
-                      "r_5bbc293980c9a786eee3",
-                      "r_2c572ad3bcca64a9a887",
-                      "r_4ea45d1e8e216a8e5c34",
-                      "r_b9246fef56fefa734d92",
-                      "r_f45a8b7db38e01c2c138",
-                      "r_e753e801fadc51915393",
-                      "r_f181c7eb656c1a1f0a23"
-                    ]
                   }
                 }
               }
@@ -9779,11 +9799,6 @@
                     "cartLine": {
                       "id": "gid://shopify/CartLine/197"
                     }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/199"
-                    }
                   }
                 ],
                 "value": {
@@ -10069,11 +10084,6 @@
                     "cartLine": {
                       "id": "gid://shopify/CartLine/192"
                     }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/198"
-                    }
                   }
                 ],
                 "value": {
@@ -10255,7 +10265,7 @@
                 ],
                 "value": {
                   "fixedAmount": {
-                    "amount": "5420.03"
+                    "amount": "5297.18"
                   }
                 }
               }

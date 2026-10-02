@@ -70,6 +70,7 @@ keys! {
     Product = "product",
     WonProduct = "wonProduct",
     WonVariant = "wonVariant",
+    WonOutlet = "wonOutlet",
     DeliveryGroups = "deliveryGroups",
     // Node variables.
     Role = "role",

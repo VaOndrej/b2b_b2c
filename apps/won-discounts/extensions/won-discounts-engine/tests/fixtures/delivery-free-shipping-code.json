@@ -11,11 +11,6 @@
         }
       ],
       "discount": {
-        "discountClasses": [
-          "PRODUCT",
-          "ORDER",
-          "SHIPPING"
-        ],
         "vars": {
           "jsonValue": {
             "role": "code",
@@ -116,6 +111,7 @@
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1001",
               "wonVariant": null,
+              "wonOutlet": null,
               "product": {
                 "id": "gid://shopify/Product/1",
                 "wonProduct": null

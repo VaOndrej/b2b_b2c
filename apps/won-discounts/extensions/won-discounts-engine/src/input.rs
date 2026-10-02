@@ -156,6 +156,9 @@ pub struct Classes {
     pub product: bool,
     pub order: bool,
     pub shipping: bool,
+    /// `discount.discountClasses` was in the input (not null): the delivery query no longer asks for it (MVP 5:
+    /// its point paid for `wonOutlet`) — Shopify runs the delivery target only for a SHIPPING node.
+    pub listed: bool,
 }
 
 /// `discount` of the input and the node's classes: read first, a node without
@@ -164,6 +167,7 @@ pub fn node(root: &Value) -> (Value, Classes) {
     let discount = prop(root, Key::Discount);
     let mut classes = Classes::default();
     if let Some(list) = field(&discount, Key::DiscountClasses) {
+        classes.listed = !list.is_null();
         for i in 0..list.array_len().unwrap_or(0) {
             match list.get_at_index(i).as_string().as_deref() {
                 Some("PRODUCT") => classes.product = true,
@@ -280,7 +284,7 @@ impl RunInput {
         let mut outlet_lists = OutletLists::default();
         // `cart.lines[]` and its `merchandise` (a ProductVariant), in the query's field order.
         let mut line_shape = Shape::new([Key::Id, Key::Quantity, Key::Cost, Key::Gift, Key::Merchandise]);
-        let mut variant_shape = Shape::new([Key::Typename, Key::Id, Key::WonVariant, Key::Product]);
+        let mut variant_shape = Shape::new([Key::Typename, Key::Id, Key::WonVariant, Key::WonOutlet, Key::Product]);
         let mut product_shape = Shape::new([Key::Id, Key::WonProduct]);
         // Tier sets (MVP 3): a line's `tierRef` matters only when the config has
         // some, and resolves to its set here, once (plan-tiers.ts step 1: the
@@ -311,7 +315,7 @@ impl RunInput {
             };
             let mut tier_ref: Option<String> = None;
             let merchandise = line_shape.get(&line, 4);
-            let product = variant_shape.get(&merchandise, 3);
+            let product = variant_shape.get(&merchandise, 4);
             // `product { id wonProduct }`; a product of one key (an input of the
             // MVP 2 query, a hand-made one) is read by position like `sole`.
             let product_keys = product.obj_len();
@@ -332,6 +336,10 @@ impl RunInput {
                 }
                 read.rule_ids = won.take_rule_ids();
                 tier_ref = won.take_tier_ref();
+            }
+            // MVP 5 (Výprodej, contract O6): the variant's own flag `outlet` = true.
+            if !read.outlet {
+                read.outlet = sole(&variant_shape.get(&merchandise, 3), Key::JsonValue).is_some_and(|flag| is_true(&flag));
             }
             if margin_on {
                 if let Some(cost) = sole(&variant_shape.get(&merchandise, 2), Key::JsonValue) {

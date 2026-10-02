@@ -83,7 +83,10 @@ Rules for a change:
 ## Input query
 
 Both targets read the same fields (`src/*.graphql`; the delivery target also reads
-`cart.deliveryGroups`). The `.graphql` files keep only a short header: Shopify counts every
+`cart.deliveryGroups` and, since MVP 5, not `discount.discountClasses`: Shopify runs the delivery
+target only for a node with the SHIPPING class, and its point paid for `wonOutlet`; an input that
+still lists the classes — a logged run, a hand-made one — must name SHIPPING, or nothing is emitted).
+**Both queries cost 30 of 30 since MVP 5**: a new field needs a point freed first. The `.graphql` files keep only a short header: Shopify counts every
 character of an input query file, comments included, against its 3000-character limit
 (`tests/query-cost.test.js` measures the whole file).
 
@@ -109,6 +112,12 @@ only its own part (src/input.rs; reference: tests/reference-adapter.js).
   wonVariant      per variant `$app:won_discounts`/`variant` = `{cost, cur}`: the
                   cost price in MAJOR units of the shop currency (margin
                   protection, MVP 2; read only while margin protection is on)
+  wonOutlet       per variant `$app:won_discounts`/`outlet` = true while the
+                  variant is on sale (Výprodej, MVP 5): the line takes no other
+                  discount (A1, unless outletWithAnything), like a product's
+                  `outlet`. A per-variant flag, not the product's list: the
+                  list's key alone cost ~1.7 k instructions a line (each line
+                  reads its own copy of the product map; MVP 5 plan, B0)
   presentmentCurrencyRate
                   shop currency → cart currency (a Decimal): converts cost
                   prices when the cart is in another currency (margin, MVP 2)
@@ -285,7 +294,7 @@ constructed and mesh ones. On the fix-round build 64 → 65 moves as 63 → 64 a
 60-rule Pro shop 78.29 → 78.52 %, the top constructed base 99.14 → 99.41 %, a
 39-rule constructed base 96.31 → 96.40 %, the mesh cart 77.90 → 78.15 %.
 
-Wasm size (MVP 4): **245 237 B** of 256 000 B (the committed `src` through the CLI pipeline, 2026-10-01; the first MVP 4 measurement build was 244 781 B). Rewards added ~4.9 kB; the float printing of `core::fmt` (~15 kB) gave way to `js::number_to_string`'s own digit search (see "Accepted edge differences", Number text). The CLI pipeline is `cargo build` (opt-level 3) → `wasm-opt -Oz` → trampoline; measured alternatives (105 fixtures, outputs equal): opt-level `s` 221 kB but +4.3 points of the instruction limit, `z` 188 kB +13.9, `-C llvm-args=-inline-threshold=150` −10.2 kB +0.9, `=100` −16.9 kB +1.1 — kept in reserve.
+Wasm size (MVP 5): **245 497 B** of 256 000 B (the committed `src` through the CLI pipeline, 2026-10-02; MVP 4: 245 237 B, the variant sale flag added 260 B). Rewards added ~4.9 kB; the float printing of `core::fmt` (~15 kB) gave way to `js::number_to_string`'s own digit search (see "Accepted edge differences", Number text). The CLI pipeline is `cargo build` (opt-level 3) → `wasm-opt -Oz` → trampoline; measured alternatives (105 fixtures, outputs equal): opt-level `s` 221 kB but +4.3 points of the instruction limit, `z` 188 kB +13.9, `-C llvm-args=-inline-threshold=150` −10.2 kB +0.9, `=100` −16.9 kB +1.1 — kept in reserve.
 
 Wasm size before MVP 4: 253 170 B of Shopify's 256 000 B (MVP 2: 234 856 B; MVP 3 before
 its fix round 1: 251 546 B — the capped tier message and the reader's set

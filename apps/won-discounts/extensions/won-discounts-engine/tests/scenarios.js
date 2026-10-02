@@ -305,16 +305,9 @@ function allScenarios() {
     lines: [{ n: 1, price: "100.0", won: null }],
     expected: out(delivery("Doprava zdarma s kódem", percent(100))),
   },
-  {
-    name: "delivery-no-shipping-class",
-    description: "A node without the SHIPPING class never emits a delivery candidate.",
-    target: "delivery",
-    rules: [SHIP],
-    role: AUTO,
-    classes: ["PRODUCT", "ORDER"],
-    lines: [{ n: 1, price: "2000.0", won: null }],
-    expected: NONE,
-  },
+  // "A node without the SHIPPING class never emits a delivery candidate": no fixture any more — the delivery
+  // query does not read the classes (MVP 5) and Shopify runs the target only for a SHIPPING node; the guard for
+  // an input that lists them is tests/parity.test.js "delivery: the classes".
   {
     name: "lines-free-shipping-only",
     description: "The lines target of a node with only a free-shipping rule emits nothing (shipping is the delivery target's job).",
@@ -340,6 +333,35 @@ function allScenarios() {
       { n: 4, price: "100.0", variant: 32, won: { ruleIds: ["summer"], outlet: [variantId(31)] } },
     ],
     expected: out(products(pc("Letní sleva", [1, 4], percent(10))), order("5 % na objednávku", [2, 3], percent(5))),
+  },
+  {
+    name: "lines-outlet-variant-flag",
+    description:
+      "MVP 5 (Výprodej, O6): a variant whose own metafield outlet is exactly true is on sale — no product discount, out of the order subtotal (with or without a product metafield); false or the text \"true\" is not a flag.",
+    target: "lines",
+    rules: [SUMMER, ORDER5],
+    role: AUTO,
+    lines: [
+      { n: 1, price: "100.0", won: won("summer") },
+      { n: 2, price: "100.0", won: won("summer"), variantOutlet: true },
+      { n: 3, price: "100.0", won: won("summer"), variantOutlet: false },
+      { n: 4, price: "100.0", won: won("summer"), variantOutlet: "true" },
+      { n: 5, price: "100.0", variantOutlet: true },
+    ],
+    expected: out(products(pc("Letní sleva", [1, 3, 4], percent(10))), order("5 % na objednávku", [2, 5], percent(5))),
+  },
+  {
+    name: "lines-outlet-variant-flag-with-anything",
+    description: "MVP 5: with engine.combination.outletWithAnything the variant flag excludes nothing (the same as a product outlet).",
+    target: "lines",
+    rules: [SUMMER, ORDER5],
+    role: AUTO,
+    configExtra: { engine: { combination: { outletWithAnything: true } } },
+    lines: [
+      { n: 1, price: "100.0", won: won("summer") },
+      { n: 2, price: "100.0", won: won("summer"), variantOutlet: true },
+    ],
+    expected: out(products(pc("Letní sleva", [1, 2], percent(10))), order("5 % na objednávku", [], percent(5))),
   },
   {
     name: "lines-gift-excluded",
@@ -1388,8 +1410,9 @@ function allScenarios() {
   filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, marginRefs: 4, name: "bridge", tierSets: LOSING_SETS })),
   filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, marginRefs: 4, name: "bridge-codes", codes: 250, tierSets: LOSING_SETS })),
   filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, marginRefs: 4, name: "bridge-won-codes", wonCodes: true, tierSets: LOSING_SETS })),
-  filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, ruleIdLength: 64, collections: 29, name: "long-ids" })),
-  filledToInputLimit((siblings) => proMeshBudget({ lines: 200, siblings, tierSets: LOSING_SETS })),
+  // 196 lines: with every variant's `wonOutlet` (MVP 5) 200 lines of 64-character ids do not fit the input limit.
+  filledToInputLimit((siblings) => marginProBudget({ lines: 196, siblings, ruleIdLength: 64, collections: 29, name: "long-ids" })),
+  filledToInputLimit((siblings) => proMeshBudget({ lines: 198, siblings, tierSets: LOSING_SETS })), // 198: see long-ids (MVP 5 `wonOutlet`)
   filledToInputLimit((siblings) => tiersProBudget({ lines: 200, siblings })),
   filledToInputLimit((siblings) => tiersProBudget({ lines: 500, siblings })),
   filledToInputLimit((siblings) => nearMinBudget({ lines: 200, siblings })),
@@ -2011,7 +2034,7 @@ function filledToInputLimit(make) {
     else over = mid;
   }
   const scenario = make((i) => each + (i <= fits ? 1 : 0));
-  if (size(scenario) > limit) throw new Error(`${scenario.name}: input over Shopify's limit`);
+  if (size(scenario) > limit) throw new Error(`${scenario.name}: input over Shopify's limit (${size(scenario)} > ${limit} B)`);
   return scenario;
 }
 
