@@ -144,11 +144,11 @@ test("locale files stay valid JSON with identical key sets across en/cs/sk", asy
   }
 });
 
-test("MVP 3 + 4: the extension ships the embed, the quantity_tiers and the cart_rewards app blocks; every schema asset exists", async () => {
+test("MVP 3–5: the extension ships the embed, the quantity_tiers, cart_rewards and outlet_badge app blocks; every schema asset exists", async () => {
   const blocks = (await readdir(path.join(extensionRoot, "blocks"))).filter((f) => f.endsWith(".liquid")).sort();
   // The handles `quantity_tiers` / `cart_rewards` are the file names: the admin deep links (addAppBlockId,
   // CART_BLOCK_HANDLE) and the theme template's block type `shopify://apps/won-discounts/blocks/<handle>/<uuid>` use them.
-  assert.deepEqual(blocks, ["cart_rewards.liquid", "quantity_tiers.liquid", "won_discounts_embed.liquid"]);
+  assert.deepEqual(blocks, ["cart_rewards.liquid", "outlet_badge.liquid", "quantity_tiers.liquid", "won_discounts_embed.liquid"]);
   assert.equal(CART_BLOCK_HANDLE, "cart_rewards");
   const cartSchema = JSON.parse((await readExtension("blocks/cart_rewards.liquid")).match(/\{%\s*schema\s*%\}([\s\S]*?)\{%\s*endschema\s*%\}/)?.[1] ?? "{}");
   assert.deepEqual(cartSchema.enabled_on, { templates: ["cart"] }, "the cart panel block only on the cart template");

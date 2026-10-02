@@ -95,6 +95,12 @@ export interface StorefrontConfigV1 {
   texts: Partial<Record<LocaleCode, Record<string, string>>>;
   /** MVP 4 (contract R7): the cart rewards; absent when nothing is offered (the embed shows no panel). */
   rewards?: StorefrontRewards;
+  /**
+   * MVP 5 (contract O9): 1 when outlet combines with anything (`engine.combination.outletWithAnything`); absent =
+   * the default A1, a sale variant gets no other discount, so the PDP shows it no tier table (the product
+   * metafield's `outlet` list names the sale variants).
+   */
+  ow?: 1;
 }
 
 /** A gift variant with its product's handle (Liquid renders it through `all_products[h]`). */
@@ -234,6 +240,7 @@ export function buildStorefrontConfig(gated: ReadonlyDeep<WonDiscountsConfig>, o
     appearance: { preset: (APPEARANCE_PRESETS as readonly string[]).includes(preset) ? preset : "default" },
     texts: storefrontTexts(gated.locales),
     ...rewardsPart(gated.modules.rewards, opts.variantHandles ?? {}),
+    ...(gated.engine.combination.outletWithAnything ? { ow: 1 as const } : {}),
   };
 }
 

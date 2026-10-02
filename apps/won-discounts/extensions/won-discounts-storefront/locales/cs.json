@@ -29,5 +29,9 @@
     "saved": "Ušetříte {amount}.",
     "hint": "Přidejte {n} ks {product} a dostanete {value}.",
     "hint_capped": "Přidejte {n} ks {product} a dostanete nižší cenu."
+  },
+  "outlet": {
+    "badge": "Výprodej",
+    "left": "Zbývá {{ count }} ks"
   }
 }

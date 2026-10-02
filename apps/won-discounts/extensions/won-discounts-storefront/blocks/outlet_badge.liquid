@@ -1,0 +1,52 @@
+{% comment %}
+  Won Discounts — sale badge (MVP 5, Výprodej; contract O9, docs/plans/2026-10-02-won-discounts-mvp5.md).
+  App block, product template only. Reads the product metafield `outlet` the sale writes:
+  {"d": display, "v": {"<variant numeric id>": pieces left}} (absent = nothing on sale).
+  - silent / strike: nothing here (the theme strikes compare_at_price itself);
+  - strike_badge: "Výprodej"; strike_badge_left: + "Zbývá X ks" (X > 0, the real quota).
+  A product with one variant gets one badge; otherwise one row per sale variant, named — so the badge is
+  right whatever variant the shopper picks, with no script (SF-2 budget untouched) and the same in every
+  theme. Never reads or changes the cart (SF-1). Markers data-won-discounts-outlet*.
+{% endcomment %}
+{%- liquid
+  assign ov = product.metafields['$app:won_discounts'].outlet.value
+  assign d = ov.d
+  assign show = false
+  if d == 'strike_badge' or d == 'strike_badge_left'
+    assign show = true
+  endif
+-%}
+{%- if show and ov.v != blank -%}
+  <div class="won-outlet" data-won-discounts-outlet>
+    {%- for v in product.variants -%}
+      {%- liquid
+        assign key = v.id | append: ''
+        assign left = ov.v[key]
+      -%}
+      {%- if left != nil -%}
+        {%- assign left = left | plus: 0 -%}
+        <p class="won-outlet__row" data-won-discounts-outlet-variant="{{ v.id }}">
+          <span class="won-outlet__badge" data-won-discounts-outlet-badge>{{ 'outlet.badge' | t }}</span>
+          {%- unless product.has_only_default_variant -%}
+            <span class="won-outlet__variant">{{ v.title | escape }}</span>
+          {%- endunless -%}
+          {%- if d == 'strike_badge_left' and left > 0 -%}
+            <span class="won-outlet__left" data-won-discounts-outlet-left>{{ 'outlet.left' | t: count: left }}</span>
+          {%- endif -%}
+        </p>
+      {%- endif -%}
+    {%- endfor -%}
+  </div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Sale badge",
+  "target": "section",
+  "enabled_on": {
+    "templates": ["product"]
+  },
+  "stylesheet": "won-discounts-outlet.css",
+  "settings": []
+}
+{% endschema %}

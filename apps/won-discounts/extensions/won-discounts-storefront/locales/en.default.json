@@ -29,5 +29,9 @@
     "saved": "You save {amount}.",
     "hint": "Add {n} more {product} to get {value}.",
     "hint_capped": "Add {n} more {product} for a lower price."
+  },
+  "outlet": {
+    "badge": "Sale",
+    "left": "Only {{ count }} left"
   }
 }

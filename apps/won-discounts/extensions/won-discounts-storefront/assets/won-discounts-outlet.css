@@ -1,0 +1,30 @@
+/* Won Discounts — sale badge (MVP 5). Colors and fonts from the theme (currentColor); sizes in px (Dawn's 62.5 % rem). */
+.won-outlet {
+  margin: 0 0 12px;
+}
+.won-outlet [hidden] {
+  display: none !important;
+}
+.won-outlet__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.won-outlet__badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+}
+.won-outlet__left {
+  font-size: 14px;
+}
+.won-outlet__variant {
+  font-weight: 600;
+}

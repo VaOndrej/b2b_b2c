@@ -119,6 +119,16 @@
       assign path = 'none'
     endif
   endif
+  # MVP 5 (contracts O6, O9): a sale variant (its metafield `outlet` = true) takes no other discount (A1,
+  # unless outlet combines with anything, cfg.ow): no table and no live tier price for it, like a variant
+  # without a usable ceiling.
+  assign no_outlet = true
+  if cfg.ow == 1
+    assign no_outlet = false
+  endif
+  if no_outlet and variant.metafields['$app:won_discounts'].outlet.value == true
+    assign path = 'none'
+  endif
   if path == 'f'
     if cur == cfg.margin.cur
       assign floor_l = v_pdp.f
@@ -371,6 +381,9 @@
             elsif vv_mf.variant != nil
               assign v_cap = ''
             endif
+          endif
+          if no_outlet and v.metafields['$app:won_discounts'].outlet.value == true
+            assign v_cap = ''
           endif
           assign merge_key = ',' | append: v.id | append: ':'
           assign vc = 0

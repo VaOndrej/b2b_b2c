@@ -189,3 +189,10 @@ test("K4 property: pdp.max never lets a percent below the checkout floor (same m
     if (max < 100) assert.ok(unitPrice - (unitPrice * (max + 0.1)) / 100 < floorUnit + 1e-6, `${unitPrice} ${unitCost} ${max} ${floorUnit}`);
   }
 });
+
+test("MVP 5 (contract O9): `ow: 1` only when outlet combines with anything — the PDP then keeps the tier table for a sale variant", () => {
+  const off = buildStorefrontConfig(gateConfigForPlan(configOf({}), "pro").config, { configVersion: "v1" });
+  assert.equal(off.ow, undefined, "default A1: outlet with nothing");
+  const on = buildStorefrontConfig(gateConfigForPlan(configOf({ engine: { combination: { outletWithAnything: true } } }), "free").config, { configVersion: "v1" });
+  assert.equal(on.ow, 1);
+});

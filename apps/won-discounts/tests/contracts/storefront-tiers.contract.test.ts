@@ -1327,3 +1327,11 @@ test("property: the PDP line discount (won-discounts-tiers-core.js) ≤ planCart
   }
   assert.ok(capped > 200 && foreign > 600 && costPath > 300 && equal > 300, `capped ${capped}, foreign ${foreign}, cost path ${costPath}, equal ${equal}`);
 });
+
+test("MVP 5 (contracts O6, O9): a sale variant (its metafield `outlet` = true) gets no table and no live tier price unless outlet combines with anything (`cfg.ow`)", async () => {
+  const liquid = await read(BLOCK);
+  assert.match(liquid, /if cfg\.ow == 1\s+assign no_outlet = false/);
+  // The selected variant (server render) and every variant of the data JSON (the script) the same way.
+  assert.match(liquid, /if no_outlet and variant\.metafields\['\$app:won_discounts'\]\.outlet\.value == true\s+assign path = 'none'/);
+  assert.match(liquid, /if no_outlet and v\.metafields\['\$app:won_discounts'\]\.outlet\.value == true\s+assign v_cap = ''/);
+});
