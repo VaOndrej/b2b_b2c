@@ -1,0 +1,29 @@
+{
+  "theme": "Horizon",
+  "cart": {
+    "currency": "CZK",
+    "total_price": 2376,
+    "items": [
+      {
+        "variant": "Small",
+        "price": 1500,
+        "allocations": [
+          150
+        ]
+      },
+      {
+        "variant": "Large",
+        "price": 1800,
+        "allocations": [
+          180
+        ]
+      }
+    ],
+    "order": [
+      {
+        "title": "WONE2EVYP",
+        "amount": 594
+      }
+    ]
+  }
+}

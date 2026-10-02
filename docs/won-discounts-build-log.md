@@ -12,7 +12,7 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > technická pravidla, zakázané věci). **MVP N+1 nezačíná, dokud MVP N není finální** (brána, živé E2E A+B,
 > vizuální QA, audit s opravenými nálezy, checkpoint, push).
 
-- **Aktivní zadání:** docs/won-discounts/prompt-mvp5-dokonceni-mvp6.md (5a → 5b po schválení → MVP 6). Krok: 5a-uzavření (5a-admin `5e7417c`; 5b připravené vypnuté: spec `WON_E2E_ORDERS=1`, `outlet-orders.mjs`, postup „Aktivace 5b“ v plánu MVP 5; další: brána → E2E outlet free/pro → audit → checkpoint).
+- **Aktivní zadání:** docs/won-discounts/prompt-mvp5-dokonceni-mvp6.md (5a → 5b po schválení → MVP 6). Krok: MVP6-sonda (5a ✅ uzavřené, checkpoint níž; další: sonda F-O1 → MVP 6 B0 rozpočet kampaní → plán). `shopify app dev` neběží.
 - **Předchozí zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md — **hotové až na živé E2E objednávek**
   (checkpoint MVP 5 níž). **Zastaveno, čeká na Ondřeje (F-O1):** povolit appce přístup k chráněným datům zákazníků
   (Partner Dashboard → Apps → won-discounts → API access requests → Protected customer data access → Request access →
@@ -261,7 +261,32 @@ pro zvednutí stropu 550 B; ve Wasm zbývá ~2,8 kB; formát ceny v bloku vs. t�
 
 ## Checkpointy MVP
 
-### MVP 5 — Výprodej (Pro) ⏸ (hotové kromě živého E2E objednávek; badge zůstává `Beta`)
+### MVP 5 — Výprodej (Pro): **5a ✅, 5b čeká na schválení** (badge zůstává `Beta`)
+
+**5a (2026-10-02, `5e7417c`, `2b4a06a`, uzavírací commit):**
+- **Poctivý admin bez objednávek:** `app/lib/integration/orders-access.server.ts` — přístup = scope `read_orders`
+  v session **a** úspěšné `orders(first:1)` (cache 60 s; `ACCESS_DENIED` nebo chyba = nepočítá se, chyba se
+  nekešuje). Modul Výprodej: banner „Kvóta se zatím neodečítá — výprodej skončí datem nebo ručně.“ + u kvóty
+  „nastavte datum konce“; karta na Přehledu totéž při běžícím výprodeji (audit B4). cs + en, docs
+  (`concepts/clearance.md`, `support/clearance-quota-not-counting.md`), harness `?orders=on`, screenshoty 390/1440
+  `evidence/mvp5/admin/*orders*`.
+- **5b připravené vypnuté:** spec `storefront.outlet` „5b: Bogus orders until the quota…“ a „5b: a cancelled order…“
+  (jen `WON_E2E_ORDERS=1`, jinak skip s důvodem F-O1), storno skript `scripts/e2e/outlet-orders.mjs` (dry-run napřed,
+  jen objednávky tohoto běhu; unit test), `outlet.mjs --start --only`, postup „Aktivace 5b“ v plánu MVP 5.
+  `shopify.app.toml` beze změny.
+- **Brána `gate-5a-final`** (po opravách B1/B2/B4): core 825 + testing 50 · guard 301 · unit node 1 237 + cargo 94 (1 ignored) + vitest 549 ·
+  typecheck · lint · build · validate 0 nálezů.
+- **Živé E2E** (`profile.sh outlet`): Free ✓ Horizon ✓ Dawn (4 + 4, 5b skip), Pro ✓ Horizon ✓ Dawn (5 + 5, 0 opakování; PDP, košík, pokladna Bogus 99,50 Kč; `--verify-restored` ✔ ceny = záloha, verify-clean 0), evidence `evidence/mvp5/e2e-5a-{A,B}/`.
+- **Audit dávky** (`audit-mvp5.md` „Dávka 5a“): B1–B5 opravené / přijaté, B6 živý fakt F-O6 (store auth bez objednávek).
+
+**5b čeká:** F-O1 (Ondřej: chráněná data zákazníků v Partner Dashboardu) + F-O6 (`shopify store auth … --scopes
+read_orders,write_orders,read_products`). Sonda na začátku každé session.
+
+**Self-audit 5a:** jednou jsem zapsal soubor do `extensions/won-discounts-engine/tests/` při běžícím app dev
+(generátor rodin pro MVP 6) — hned přesunut do scratchpadu, log app dev neukazuje přestavbu funkce, E2E Pro běželo
+dál; E2E testy 5b nejsou živě ověřené (nejdou bez F-O1), ověřené jen načtení specu a skip.
+
+**Původní checkpoint MVP 5 (před rozdělením na 5a / 5b):**
 
 **Hotové a ověřené**
 - **B0 rozpočet** (stop-pravidla předem): MVP 4 Wasm 99,21 % potvrzeno; produktové seznamy `outlet` by dávaly 102,38 %

@@ -29,6 +29,17 @@ plus samostatná kontrola shody Rust ↔ TS a rozpočtu instrukcí.
 | A6 | P2 | (živé E2E, fakt F-O3) V trhu s ceníkem Shopify u varianty bez pevné ceny přeškrtnutí neukáže (kontextová `compareAtPrice` null), admin a docs slibovaly přeškrtnutí obecně | sonda `contextualPricing` CZ/SK během výprodeje | věta v adminu (`outlet.display.note`) a docs; spec PDP ověřuje cenu výprodeje a přeškrtnutí u pevné ceny ceníku |
 | A4 | P3 | Po odinstalaci zůstane výprodejová cena (appka ztratí přístup) — „Připravit na odinstalaci“ je až MVP 7 (A7) | `webhooks.app.uninstalled.tsx` | docs concept: před odinstalací výprodeje ukončit; MVP 7 |
 
+### Dávka 5a (2026-10-02, `5e7417c..HEAD`: poctivý admin bez objednávek, 5b připravené vypnuté)
+
+| # | P | Dopad | Důkaz | Oprava |
+|---|---|---|---|---|
+| B1 | P2 | Storno ve specu 5b hned po pokladně: vyhledávání objednávek Shopify je s prodlevou, `--latest` by nenašel nic a test by čekal na vratku do timeoutu | `outlet-orders.mjs` (dotaz `orders(query:)`), `support/outlet-orders.ts` | `--live` bez nalezené objednávky = exit 3, helper zkusí znovu (9 × 10 s) |
+| B2 | P2 | Test kvóty 5b ukončí výprodej Large; matice pak pustí druhé téma na stejných výprodejích → PDP test Dawnu by selhal | `profile.sh` (jeden start výprodejů na celou matici), spec „5b: Bogus orders…“ | `outlet.mjs --start --live --only <handle>`; test po ověření konce výprodej znovu spustí |
+| B3 | P3 | `orderCancel` s refundem pošle i `refunds/create` — hrozilo by dvojí vrácení kusu | `outlet.server.ts` `recordOutletWebhook` (`outletReturnQty`: vrácené za řádek ≤ prodané) | beze změny, strop už platí; spec ověřuje `returned` přesně +1 |
+| B4 | P3 | Karta na Přehledu varovala „kvóta se neodečítá“ i v obchodě bez výprodeje (ve Free šum) | `OutletOverviewCard.tsx` | varování jen při běžícím výprodeji; obrazovka modulu ho ukazuje vždy (zakládá se tam) |
+| B5 | P3 | Výsledek sondy přístupu se kešuje 60 s na obchod: po udělení scope se banner může ukázat ještě minutu | `orders-access.server.ts` (`cachedRead`) | přijato (stejně jako ostatní signály adminu), zapsáno v hlavičce |
+| B6 | — | Živý fakt F-O6: uložený `shopify store auth` objednávky nečte („Access denied for orders field“) | dry-run `outlet-orders.mjs` 2026-10-02 | srozumitelná chyba s přesným příkazem; krok 3 „Aktivace 5b“ v plánu MVP 5 |
+
 ## Shoda Rust ↔ TS a rozpočet instrukcí
 
 - **Fixtures** 116 (2 nové pro variantní příznak; rozpočtové long-ids 196 a mesh 198 řádků — 200 řádků s polem

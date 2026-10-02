@@ -209,6 +209,10 @@ test("screen and card: no order access says the quota is not counted and recomme
   assert.match(en, /The quota is not counted yet — the sale ends by its date or by hand\./);
   const card = text((await renderPage(createElement(OutletOverviewCard, { outlet: { ...devOutletOverview(), ordersCounted: false } }))).replace(/<[^>]+>/g, " "));
   assert.match(card, OFF_TEXT);
+  const idle = text(
+    (await renderPage(createElement(OutletOverviewCard, { outlet: { running: 0, pendingReturns: [], oversold: 0, problems: 0, ordersCounted: false } }))).replace(/<[^>]+>/g, " "),
+  );
+  assert.doesNotMatch(idle, /Kvóta se zatím neodečítá/, "audit B4: no sale running, no warning on the card (Free noise)");
   const cardOn = text((await renderPage(createElement(OutletOverviewCard, { outlet: { ...devOutletOverview(), ordersCounted: true } }))).replace(/<[^>]+>/g, " "));
   assert.doesNotMatch(cardOn, /Kvóta se zatím neodečítá/);
 });

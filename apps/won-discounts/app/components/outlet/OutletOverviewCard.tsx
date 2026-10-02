@@ -3,7 +3,7 @@
 // /app/outlet, which checks the plan: Free never reopens, A6); an oversold sale or a failed step is named, the
 // exact number is on the module screen. The whole module is Pro: the amber marker always (§16).
 // `outlet` absent = not known: the card is not rendered (§12). Without order access (5a, F-O1) the card says the
-// quota is not counted.
+// quota is not counted while a sale runs (audit 5a B4: no warning without a sale).
 
 import { Form } from "react-router";
 
@@ -26,7 +26,7 @@ export function OutletOverviewCard({ outlet }: { outlet: OutletOverviewView }) {
       anchor="outlet"
     >
       <div>
-        {!outlet.ordersCounted ? (
+        {!outlet.ordersCounted && outlet.running > 0 ? (
           <WonRow>
             <RowNote tone="attention">{t("outlet.orders.off")}</RowNote>
           </WonRow>

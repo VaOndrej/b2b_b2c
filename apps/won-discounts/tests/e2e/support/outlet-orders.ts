@@ -31,6 +31,15 @@ export interface OutletSaleState {
   runs: OutletRunState[];
 }
 
+class ScriptExit extends Error {
+  constructor(
+    message: string,
+    readonly code: number | null,
+  ) {
+    super(message);
+  }
+}
+
 function run(script: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [path.join(APP_DIR, "scripts/e2e", script), ...args, "--out", OUT_DIR], {
@@ -42,7 +51,7 @@ function run(script: string, args: string[]): Promise<string> {
     let err = "";
     child.stdout.on("data", (d) => (out += d));
     child.stderr.on("data", (d) => (err += d));
-    child.on("close", (code) => (code === 0 ? resolve(out) : reject(new Error(`${script} ${args.join(" ")} → exit ${code}: ${err.split("\n").find((l) => /Error/.test(l)) ?? err.slice(-400)}`))));
+    child.on("close", (code) => (code === 0 ? resolve(out) : reject(new ScriptExit(`${script} ${args.join(" ")} → exit ${code}: ${err.split("\n").find((l) => /Error/.test(l)) ?? err.slice(-400)}`, code))));
   });
 }
 
@@ -78,6 +87,14 @@ export async function restartSale(handle: string): Promise<void> {
 }
 
 /** Cancel the newest test order of this run (restock), through the guarded script. */
-export async function cancelLatestOrder(since: string): Promise<string> {
-  return run("outlet-orders.mjs", ["--since", since, "--latest", "--live"]);
+export async function cancelLatestOrder(since: string, tries = 9): Promise<string> {
+  for (let i = 1; ; i += 1) {
+    try {
+      return await run("outlet-orders.mjs", ["--since", since, "--latest", "--live"]);
+    } catch (error) {
+      // Exit 3: the order is not in Shopify's order search yet (eventually consistent) — wait and look again.
+      if (!(error instanceof ScriptExit) || error.code !== 3 || i >= tries) throw error;
+      await new Promise((r) => setTimeout(r, 10_000));
+    }
+  }
 }

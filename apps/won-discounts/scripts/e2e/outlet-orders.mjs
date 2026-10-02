@@ -13,7 +13,8 @@
 //                                                                                   to the Bogus card); --latest =
 //                                                                                   only the newest one.
 // Options: --email <e-mail> (default won-e2e-outlet@example.com) · --out <dir> (default $WON_E2E_OUT or
-// <tmp>/won-discounts-e2e) · --json. Every run writes <out>/outlet-orders[-live].json.
+// <tmp>/won-discounts-e2e) · --json. Every run writes <out>/outlet-orders[-live].json. Exit 3 (--live): nothing to
+// cancel yet (Shopify's order search lags behind a fresh checkout; the spec retries).
 // Only the shared dev store. Validated with the Shopify dev MCP (admin 2026-10). Needs the CLI's store auth with
 // order scopes (once, Ondřej: `shopify store auth -s <store> --scopes read_orders,write_orders,read_products`).
 import { execFileSync } from "node:child_process";
@@ -83,7 +84,11 @@ async function main() {
     const will = targets.includes(o);
     console.log(`${o.name} ${o.createdAt} [${lines}] → ${will ? (live ? "CANCEL (restock)" : "would cancel (restock)") : `skip: ${o.skip ?? "not the latest"}`}`);
   }
-  if (!targets.length) console.log("nothing to cancel");
+  if (!targets.length) {
+    console.log("nothing to cancel");
+    // Exit 3 = nothing found: the order search is eventually consistent, a just-placed order can be missing a while.
+    if (live) process.exitCode = 3;
+  }
   if (!live) {
     if (targets.length) console.log("\n(dry-run: nothing written; pass --live)");
   } else {
