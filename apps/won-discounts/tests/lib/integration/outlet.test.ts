@@ -232,6 +232,24 @@ test("O7: a sale past the quota while the end is still running is recorded as ov
   assert.equal((await db.prisma.outletRun.findUnique({ where: { id: r.runId } }))!.sold, 3);
 });
 
+test("O7 (audit): an order placed while the start is still writing (prices already lowered, the run `starting`) counts", async () => {
+  const { deps, product, large } = setup();
+  const run = await db.prisma.outletRun.create({
+    data: { shop, productId: product.id, variantId: large, quota: 5, percent: 50, status: "starting", startedAt: new Date("2026-10-02T09:59:00Z") },
+  });
+  const r = await recordOutletWebhook(deps, "ORDERS_CREATE", order(1, large, 1, 10, "2026-10-02T09:59:30Z"));
+  assert.equal(r.recorded, 1);
+  assert.equal((await db.prisma.outletRun.findUnique({ where: { id: run.id } }))!.sold, 1);
+});
+
+test("O7 (audit): the start records startedAt before any write; a reopen starts the clock again", async () => {
+  const { fake, deps, product, large } = setup();
+  fake.fail("WonOutletVariantUpdate", { userErrors: [{ message: "no" }] });
+  await startOutletRun(deps, draft(large, product.id));
+  const failed = (await db.prisma.outletRun.findFirst({ where: { shop } }))!;
+  assert.ok(failed.startedAt, "set at the write-ahead, before the first price write");
+});
+
 test("O7: orders placed before the start and other variants are not counted", async () => {
   const { deps, product, large, small } = setup();
   const r = await startOutletRun(deps, draft(large, product.id));

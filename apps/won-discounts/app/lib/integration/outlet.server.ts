@@ -232,7 +232,7 @@ export async function reopenOutletRun(deps: OutletDeps, runId: string): Promise<
   if (busy) return { ok: false, reason: "invalid", errors: [{ field: "variantId", key: "outlet.error.running" }] };
   await deps.db.outletRun.update({
     where: { id: run.id },
-    data: { status: "starting", endReason: null, endedAt: null, error: null, attempts: 0, nextAttemptAt: null, returnPending: 0, backup: null, sale: null },
+    data: { status: "starting", endReason: null, endedAt: null, startedAt: null, error: null, attempts: 0, nextAttemptAt: null, returnPending: 0, backup: null, sale: null },
   });
   await event(deps, run.id, "reopened", { qty: run.returnPending });
   return applySale(deps, run.id);
@@ -295,7 +295,8 @@ async function applySale(deps: OutletDeps, runId: string): Promise<OutletResult>
     lists: lists.map((l) => ({ ...l, ...outletPricesFor({ price: l.price, compareAt: l.compareAt }, run.percent, settings.display)! })),
   };
   // Write-ahead (§14c): the backup is stored before the first write.
-  await deps.db.outletRun.update({ where: { id: runId }, data: { backup: JSON.stringify(backup), sale: JSON.stringify(sale) } });
+  // `startedAt` too: an order placed from the first lowered price on counts (audit: the `starting` window).
+  await deps.db.outletRun.update({ where: { id: runId }, data: { backup: JSON.stringify(backup), sale: JSON.stringify(sale), startedAt: nowOf(deps) } });
   const flagged = await writeOutletFlag(deps, run.variantId);
   if (flagged) return fail(`flag: ${flagged}`, false);
   const variantError = await writeVariant(transport, run.productId, run.variantId, variant.currency, {
@@ -307,7 +308,7 @@ async function applySale(deps: OutletDeps, runId: string): Promise<OutletResult>
     const listError = await writeFixedPrice(transport, l.id, run.variantId, l.currency, l.price, l.compareAt);
     if (listError) return fail(`price list ${l.id}: ${listError}`, true);
   }
-  await deps.db.outletRun.update({ where: { id: runId }, data: { status: "active", startedAt: nowOf(deps), error: null } });
+  await deps.db.outletRun.update({ where: { id: runId }, data: { status: "active", error: null } });
   await event(deps, runId, "started", { detail: { percent: run.percent, quota: run.quota, before: backup.variant.price, after: sale.variant.price, currency: variant.currency, lists: sale.lists.map((l) => l.id) } });
   for (const id of skippedLists) await event(deps, runId, "price_list_skipped", { detail: { priceListId: id } });
   const storefront = await writeOutletStorefront(deps, [run.productId]);
@@ -499,7 +500,7 @@ export async function recordOutletWebhook(deps: Omit<OutletDeps, "client">, topi
       // The sale the order was placed in: running, or ended after the order was placed (a late webhook: oversold).
       const placed = Number.isNaN(createdAt.getTime()) ? nowOf(d) : createdAt;
       const candidates = await deps.db.outletRun.findMany({ where: { shop: deps.shop, variantId, startedAt: { not: null, lte: placed } }, orderBy: { startedAt: "desc" }, take: 5 });
-      const run = candidates.find((c) => c.status === "active" || c.status === "ending" || (c.status === "ended" && c.endedAt !== null && c.endedAt > placed));
+      const run = candidates.find((c) => c.status === "starting" || c.status === "active" || c.status === "ending" || (c.status === "ended" && c.endedAt !== null && c.endedAt > placed));
       if (!run) continue;
       const lineId = lineIdOf(line.id);
       if (!(await event(d, run.id, "sale", { qty, orderId, lineId, key: `sale:${orderId}:${lineId}` }))) continue;
