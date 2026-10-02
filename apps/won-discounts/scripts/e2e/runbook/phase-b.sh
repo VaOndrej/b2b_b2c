@@ -4,7 +4,7 @@ cd "$(dirname "$0")/../../../../.." || exit 1
 TAG=${1:?tag}; RUN=${WON_RUN_DIR:-${TMPDIR:-/tmp}/won-discounts-runs}; O=$RUN/$TAG; mkdir -p "$O"
 HERE=apps/won-discounts/scripts/e2e/runbook; MC=apps/won-discounts/scripts/e2e/margin-collection.mjs
 log(){ echo "$1" >> "$O/progress.txt"; }
-for spec in "rewards-pro:" "tiers-pro:tiers" "margin-pro:margin" "shapes:"; do
+for spec in "outlet:" "rewards-pro:" "tiers-pro:tiers" "margin-pro:margin" "shapes:"; do
   P=${spec%%:*}; FX=${spec#*:}; mkdir -p "$O/$P"
   if [ -n "$FX" ]; then
     node $MC --fixture "$FX" --out "$O" > "$O/$P/coll-dry.log" 2>&1; log "$P coll-dry exit=$?"

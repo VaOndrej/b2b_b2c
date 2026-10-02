@@ -11,7 +11,12 @@ step seed-dry node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --profile "$P" -
 step seed-live node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --profile "$P" --live --out "$O" || exit 1
 COSTS=0; case $P in margin*|tiers*) COSTS=1;; esac
 if [ $COSTS = 1 ]; then step costs-dry node apps/won-discounts/scripts/e2e/margin-costs.mjs --out "$O" || exit 1; step costs-live node apps/won-discounts/scripts/e2e/margin-costs.mjs --live --out "$O" || exit 1; fi
+# Výprodej (MVP 5): on Pro the fixture's sales start through the app's own code (dry-run first, backup in $O).
+OUTLET=0; case $P in outlet*) [ "$PLAN" = pro ] && OUTLET=1;; esac
+if [ $OUTLET = 1 ]; then step outlet-dry node apps/won-discounts/scripts/e2e/outlet.mjs --start --out "$O" || exit 1; step outlet-live node apps/won-discounts/scripts/e2e/outlet.mjs --start --live --out "$O" || exit 1; fi
 WON_E2E_PROFILE=$P WON_DISCOUNTS_E2E_EVIDENCE_DIR=$E/evidence WON_DISCOUNTS_E2E_SCREENSHOT_DIR=$E step e2e npm run test:e2e:local:all -w won-discounts
+# Prices back before anything else is cleaned up; then the prices = the backup, no flag, no storefront value.
+if [ $OUTLET = 1 ]; then step outlet-end node apps/won-discounts/scripts/e2e/outlet.mjs --end --live --out "$O"; step outlet-verify node apps/won-discounts/scripts/e2e/outlet.mjs --verify-restored --out "$O"; fi
 step cleanup node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --cleanup --live --out "$O"
 [ $COSTS = 1 ] && step costs-clear node apps/won-discounts/scripts/e2e/margin-costs.mjs --clear --live --out "$O"
 WON_PROTO_OUT=$O/verify step verify-clean node apps/won-discounts/scripts/prototypes/verify-clean.mjs --live

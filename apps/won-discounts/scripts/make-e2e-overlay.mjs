@@ -188,9 +188,23 @@ export function cartTemplateOverlays(themeKey, extensionUuid = resolveExtensionU
   throw new Error(`no cart template overlay for theme ${themeKey}`);
 }
 
-/** Every template overlay of a theme copy (e2e.app.config.mjs): the tiers block on the PDP, the rewards block on the cart. */
+/** Stable id of the sale badge block in the theme copies' product template (MVP 5, O9). */
+export const OUTLET_BLOCK_ID = "won_discounts_outlet_badge";
+export const OUTLET_BLOCK_NAME = "outlet_badge";
+
+/** The sale badge on the PDP, right before the quantity tiers block (same anchors). */
+export function outletTemplateOverlays(themeKey, extensionUuid = resolveExtensionUuid()) {
+  const block = { id: OUTLET_BLOCK_ID, type: appBlockType(OUTLET_BLOCK_NAME, extensionUuid), settings: {} };
+  if (themeKey === "horizon") {
+    return [{ template: "templates/product.json", parentBlockTypes: ["_product-details"], block, position: { beforeType: "buy-buttons" } }];
+  }
+  if (themeKey === "dawn") return [{ template: "templates/product.json", block, position: { beforeType: "quantity_selector" } }];
+  throw new Error(`no outlet template overlay for theme ${themeKey}`);
+}
+
+/** Every template overlay of a theme copy (e2e.app.config.mjs): the sale badge and the tiers block on the PDP, the rewards block on the cart. */
 export function e2eTemplateOverlays(themeKey, extensionUuid = resolveExtensionUuid()) {
-  return [...tiersTemplateOverlays(themeKey, extensionUuid), ...cartTemplateOverlays(themeKey, extensionUuid)];
+  return [...outletTemplateOverlays(themeKey, extensionUuid), ...tiersTemplateOverlays(themeKey, extensionUuid), ...cartTemplateOverlays(themeKey, extensionUuid)];
 }
 
 // Theme-editor style numeric key, derived from the block handle so it never
