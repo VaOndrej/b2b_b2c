@@ -14,19 +14,23 @@
 //                  K4 v2 already relies on (= presentmentCurrencyRate, verified
 //                  live in MVP 3);
 //   day            the shop-local date now (schedules, day granularity);
-//   campaigns      not applied yet (MVP 6 adds them): the plan is the one
-//                  without a campaign.
+//   campaign       MVP 6 K6: from the LIVE shop config (its campaignId +
+//                  campaignVarsVersion, active inside the shipped window at the
+//                  shop-local time now) — what a node with the selected
+//                  campaign's vars gets (core campaignInputFromShopConfig).
 // The answer carries no purchase cost, margin or rule internals: only the hint
 // and what the shopper may see. Every Shopify read is cached for CACHE_MS per
 // shop (and per variant), with an injectable clock for tests; the caches hold at
 // most CACHE_MAX entries and a shop's requests that need Shopify are limited a
 // minute (a public endpoint: the ids come from the browser — audit P1/P2).
 
-import type { CartLineInput, CartPlanInput } from "@won/core/discounts/cart";
+import { campaignInputFromShopConfig } from "@won/core/discounts/campaigns";
+import type { CartCampaignInput, CartLineInput, CartPlanInput } from "@won/core/discounts/cart";
 import { shopLocalDates } from "@won/core/discounts/function-payload";
 import { isFunctionConfigPayload, planCart, type CartPlan, type PlanConfig } from "@won/core/discounts/plan";
 
 import type { AdminClient } from "../admin-client.server";
+import { shopLocalDateTime } from "../sync/sync.server";
 import { parseProductRefs } from "./try-cart-plan";
 
 export const CART_PLAN_MAX_LINES = 100;
@@ -120,7 +124,7 @@ const parseJson = (text: string | null): unknown => {
 };
 
 /** The engine's cart, mapped like the function's input adapter (reference-adapter.js `adaptLine`). */
-export function cartPlanInput(request: CartPlanRequest, facts: ReadonlyMap<number, VariantFacts>, today?: string): CartPlanInput {
+export function cartPlanInput(request: CartPlanRequest, facts: ReadonlyMap<number, VariantFacts>, today?: string, campaign?: CartCampaignInput): CartPlanInput {
   const lines: CartLineInput[] = request.lines.map((l) => {
     const variantGid = `gid://shopify/ProductVariant/${l.variantId}`;
     const line: CartLineInput = {
@@ -157,6 +161,7 @@ export function cartPlanInput(request: CartPlanRequest, facts: ReadonlyMap<numbe
     lines,
     enteredCodes: request.codes,
     ...(today ? { today } : {}),
+    ...(campaign ? { campaign } : {}),
     locale: request.locale,
     ...(request.rate !== undefined ? { shopToCartRate: request.rate } : {}),
   };
@@ -321,5 +326,7 @@ export async function runCartPlan(client: AdminClient, shop: string, request: Ca
   if (needsRead) takeRead(shop);
   const { config, timezone } = await readConfig(client, shop);
   const facts = await readVariants(client, shop, request.lines.map((l) => l.variantId));
-  return cartPlanAnswer(planCart(cartPlanInput(request, facts, shopToday(timezone, now())), config));
+  // K6: without a known zone the window cannot be placed: no campaign (never a discount checkout may not give).
+  const campaign = timezone ? campaignInputFromShopConfig(config, shopLocalDateTime(new Date(now()), timezone)) : undefined;
+  return cartPlanAnswer(planCart(cartPlanInput(request, facts, shopToday(timezone, now()), campaign), config));
 }

@@ -235,3 +235,20 @@ test("the route authenticates the app proxy request first, takes the shop from i
   assert.ok(source.indexOf("authenticate.public.appProxy") < source.indexOf("request.json()"), "the signature is checked before the body is read");
   assert.match(source, /"Cache-Control": "no-store"/);
 });
+
+test("MVP 6 K6: the cart plan applies the live config's campaign exactly inside its window (shop time), like the function", async () => {
+  const { config } = sanitizeConfig({
+    modules: { codes: { rules: [{ id: "a", name: "Auto", method: "automatic", value: { kind: "percentage", percent: 10 }, target: { kind: "products", productIds: ["gid://shopify/Product/1"], variantIds: [] } }] } },
+    campaigns: [{ id: "k", name: "Kampaň", window: { start: "2026-10-05T10:00:00", end: "2026-10-05T12:00:00" }, overrides: [{ ruleId: "a", patch: { value: { kind: "percentage", percent: 30 } } }] }],
+  });
+  const json = buildShopFunctionConfig(config, { now: "2026-10-01T12:00:00", shopTimezone: "Europe/Prague", shopCurrency: "CZK" }).json;
+  const saved = async (iso: string) => {
+    setCartPlanClock(() => new Date(iso).getTime());
+    const { client } = fakeAdmin(json, { 11: { product: { ruleIds: ["a"] } } });
+    return (await runCartPlan(client, `k6-${iso}.myshopify.com`, request([{ key: "l", variantId: 11, productId: 1, quantity: 1, unitPrice: 100_00 }]))).saved;
+  };
+  assert.equal(await saved("2026-10-05T07:59:59Z"), 10_00, "09:59:59 Prague: before");
+  assert.equal(await saved("2026-10-05T08:00:00Z"), 30_00, "10:00 Prague: the start is inside");
+  assert.equal(await saved("2026-10-05T09:59:00Z"), 30_00);
+  assert.equal(await saved("2026-10-05T10:00:00Z"), 10_00, "12:00 Prague: the end is outside");
+});
