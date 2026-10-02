@@ -20,6 +20,10 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   `shopify store execute --allow-mutations`, doporučeno ano). Potom: odběr `orders/create`, `orders/cancelled`,
   `refunds/create` → `/webhooks/outlet` do `shopify.app.toml` + `read_orders`, rozšířit spec `storefront.outlet` o
   objednávky do vyčerpání kvóty a storno, živé E2E, uzavřít MVP 5. **MVP 6 nezačínat.**
+  **Ondřej 2026-10-02:** F-O4b ano (storno testovacích objednávek přes `shopify store execute --allow-mutations`
+  smí). F-O1 zatím odložit. Pozn.: 60 dní historie je výchozí rozsah `read_orders` (starší by chtěly `read_all_orders`,
+  ty výprodej nepotřebuje); blok je přístup k chráněným datům zákazníků, který Shopify chce pro objednávky v jakémkoli
+  stáří (sonda: odběr `orders/create` odmítnut).
 - **Ověření MVP 4 (2026-10-02) ✓ — MVP 4 odpovídá checkpointu, 1 nový nález (N1, P3, opraven):**
   - A1 ✓ `git status`: jen cizí `docs/product-roadmap.html`, `docs/won-companion/`, `docs/won-discounts/paralelizace.md`;
     `git log origin/main..HEAD` prázdné; checkpoint MVP 4 je.
