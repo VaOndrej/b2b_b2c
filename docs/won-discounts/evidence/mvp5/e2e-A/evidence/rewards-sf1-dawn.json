@@ -1,0 +1,47 @@
+{
+  "at": "2026-10-02T09:01:59.802Z",
+  "theme": "Dawn",
+  "cart": {
+    "currency": "CZK",
+    "items": [
+      [
+        48468678902001,
+        4,
+        1000
+      ]
+    ]
+  },
+  "plan": {
+    "progress": {
+      "freeShipping": {
+        "threshold": 4000,
+        "remaining": 0,
+        "reached": true
+      },
+      "gifts": [
+        {
+          "tierId": "e2e-gift",
+          "threshold": 5000,
+          "remaining": 1000,
+          "reached": false
+        }
+      ]
+    }
+  },
+  "panel": {
+    "shipping": 100,
+    "gift": 80
+  },
+  "writes": [],
+  "proxy": {
+    "status": 200,
+    "ok": true
+  },
+  "giftFacts": {
+    "48468679164145": {
+      "t": "Won E2E — Spare",
+      "a": true
+    }
+  },
+  "cls": 0.03319885932074653
+}

@@ -1,0 +1,435 @@
+{
+  "at": "2026-10-02T10:15:32.046Z",
+  "theme": "Horizon",
+  "profile": "margin-pro",
+  "collection": "gid://shopify/Collection/492261277937",
+  "code": "WONE2EM60",
+  "codeCarriedIntoCheckout": false,
+  "checkoutRunsLogged": true,
+  "presentmentCurrencyRate": {
+    "checkout": {
+      "raw": "1.0",
+      "jsonType": "string",
+      "value": 1,
+      "significantDigits": 2,
+      "decimals": 1
+    },
+    "cartBeforeCheckout": {
+      "raw": "1.0",
+      "jsonType": "string",
+      "value": 1,
+      "significantDigits": 2,
+      "decimals": 1
+    }
+  },
+  "orderCap": {
+    "cart": {
+      "wanted": 2100,
+      "dMax": 1631
+    },
+    "checkout": {
+      "wanted": 2100,
+      "dMax": 1631
+    }
+  },
+  "fM1": {
+    "rate": {
+      "raw": "1.0",
+      "jsonType": "string",
+      "value": 1,
+      "significantDigits": 2,
+      "decimals": 1
+    },
+    "currency": "CZK",
+    "priceRatio": {
+      "handle": "won-e2e-multiaxis",
+      "shopCurrency": "CZK",
+      "shopPrice": 20,
+      "cartPrice": 2000,
+      "ratio": 1
+    },
+    "rateToPriceRatio": 1,
+    "wonVariantByLine": [
+      {
+        "variant": "gid://shopify/ProductVariant/48468678967537",
+        "label": "won-e2e-two-variants · Small",
+        "wonVariant": {
+          "jsonValue": {
+            "cost": 5,
+            "cur": "CZK"
+          }
+        }
+      },
+      {
+        "variant": "gid://shopify/ProductVariant/48468679033073",
+        "label": "won-e2e-multiaxis · S / Red",
+        "wonVariant": {
+          "jsonValue": {
+            "cost": 8,
+            "cur": "CZK"
+          }
+        }
+      }
+    ],
+    "oracleParityRuns": 8
+  },
+  "cart": {
+    "currency": "CZK",
+    "items_subtotal_price": 3500,
+    "total_price": 1869,
+    "discount_codes": [
+      {
+        "code": "WONE2EM60",
+        "applicable": true
+      }
+    ],
+    "cart_level": [
+      {
+        "type": "discount_code",
+        "key": "9f6602eb-3cd6-4e70-b1c7-c2e2a05fc27c",
+        "title": "WONE2EM60",
+        "description": null,
+        "value": "16.31",
+        "created_at": "2026-10-02T10:14:58.558Z",
+        "value_type": "fixed_amount",
+        "allocation_method": "across",
+        "target_selection": "all",
+        "target_type": "line_item",
+        "total_allocated_amount": 1631
+      }
+    ],
+    "rawItems": [
+      {
+        "id": 48468679033073,
+        "properties": {},
+        "quantity": 1,
+        "variant_id": 48468679033073,
+        "key": "48468679033073:a37a8ff87ff90616f7a7074e56175803",
+        "title": "Won E2E — Multi Axis - S / Red",
+        "price": 2000,
+        "original_price": 2000,
+        "presentment_price": 20,
+        "discounted_price": 1068,
+        "line_price": 1068,
+        "original_line_price": 2000,
+        "total_discount": 932,
+        "discounts": [
+          {
+            "amount": 932,
+            "title": "WONE2EM60"
+          }
+        ],
+        "sku": null,
+        "grams": 0,
+        "vendor": "B2b_b2c_store_development",
+        "taxable": true,
+        "product_id": 9692429156593,
+        "product_has_only_default_variant": false,
+        "gift_card": false,
+        "final_price": 2000,
+        "final_line_price": 2000,
+        "url": "/products/won-e2e-multiaxis?variant=48468679033073",
+        "featured_image": {
+          "aspect_ratio": null,
+          "alt": null,
+          "height": null,
+          "url": null,
+          "width": null
+        },
+        "image": null,
+        "handle": "won-e2e-multiaxis",
+        "requires_shipping": true,
+        "product_type": "",
+        "product_title": "Won E2E — Multi Axis",
+        "product_description": null,
+        "variant_title": "S / Red",
+        "variant_options": [
+          "S",
+          "Red"
+        ],
+        "options_with_values": [
+          {
+            "name": "Size",
+            "value": "S"
+          },
+          {
+            "name": "Color",
+            "value": "Red"
+          }
+        ],
+        "line_level_discount_allocations": [],
+        "line_level_total_discount": 0,
+        "quantity_rule": {
+          "min": 1,
+          "max": null,
+          "increment": 1
+        },
+        "has_components": false
+      },
+      {
+        "id": 48468678967537,
+        "properties": {},
+        "quantity": 1,
+        "variant_id": 48468678967537,
+        "key": "48468678967537:f8b03aff281ebdf76d24d79556776821",
+        "title": "Won E2E — Two Variants - Small",
+        "price": 1500,
+        "original_price": 1500,
+        "presentment_price": 15,
+        "discounted_price": 801,
+        "line_price": 801,
+        "original_line_price": 1500,
+        "total_discount": 699,
+        "discounts": [
+          {
+            "amount": 699,
+            "title": "WONE2EM60"
+          }
+        ],
+        "sku": null,
+        "grams": 0,
+        "vendor": "B2b_b2c_store_development",
+        "taxable": true,
+        "product_id": 9692429123825,
+        "product_has_only_default_variant": false,
+        "gift_card": false,
+        "final_price": 1500,
+        "final_line_price": 1500,
+        "url": "/products/won-e2e-two-variants?variant=48468678967537",
+        "featured_image": {
+          "aspect_ratio": null,
+          "alt": null,
+          "height": null,
+          "url": null,
+          "width": null
+        },
+        "image": null,
+        "handle": "won-e2e-two-variants",
+        "requires_shipping": true,
+        "product_type": "",
+        "product_title": "Won E2E — Two Variants",
+        "product_description": null,
+        "variant_title": "Small",
+        "variant_options": [
+          "Small"
+        ],
+        "options_with_values": [
+          {
+            "name": "Size",
+            "value": "Small"
+          }
+        ],
+        "line_level_discount_allocations": [],
+        "line_level_total_discount": 0,
+        "quantity_rule": {
+          "min": 1,
+          "max": null,
+          "increment": 1
+        },
+        "has_components": false
+      }
+    ]
+  },
+  "lines": [
+    {
+      "handle": "won-e2e-multiaxis",
+      "variantId": "gid://shopify/ProductVariant/48468679033073",
+      "quantity": 1,
+      "unitPrice": 2000,
+      "cost": 8,
+      "floorUnit": 1067,
+      "basis": "cost",
+      "settings": {
+        "minMarginPercent": 25,
+        "maxDiscountPercent": 30,
+        "source": "global"
+      },
+      "plan": {
+        "product": null,
+        "marginCapped": null,
+        "marginTight": false
+      },
+      "emitted": null,
+      "cart": {
+        "allocations": [],
+        "final_line_price": 2000
+      }
+    },
+    {
+      "handle": "won-e2e-two-variants",
+      "variantId": "gid://shopify/ProductVariant/48468678967537",
+      "quantity": 1,
+      "unitPrice": 1500,
+      "cost": 5,
+      "floorUnit": 667,
+      "basis": "cost",
+      "settings": {
+        "minMarginPercent": 25,
+        "maxDiscountPercent": 30,
+        "source": "global"
+      },
+      "plan": {
+        "product": null,
+        "marginCapped": null,
+        "marginTight": false
+      },
+      "emitted": null,
+      "cart": {
+        "allocations": [],
+        "final_line_price": 1500
+      }
+    }
+  ],
+  "plan": {
+    "totals": {
+      "subtotal": 3500,
+      "productDiscount": 0,
+      "orderDiscount": 1631,
+      "total": 1869
+    },
+    "order": {
+      "components": [
+        {
+          "ruleId": "e2e-margin-code-60",
+          "method": "code",
+          "module": "codes",
+          "amount": 1631
+        }
+      ],
+      "amount": 1631,
+      "ownerRuleId": "e2e-margin-code-60",
+      "ownerMethod": "code",
+      "value": {
+        "fixedTotal": 1631
+      },
+      "message": "E2E marže kód 60 %",
+      "base": 3500,
+      "excludedLineIds": [],
+      "marginExcludedLineIds": [],
+      "marginCapped": {
+        "before": 2100,
+        "after": 1631
+      },
+      "marginProtected": true
+    }
+  },
+  "thankYou": {
+    "perLine": [
+      {
+        "handle": "won-e2e-multiaxis",
+        "allocations": [],
+        "originalPrice": null,
+        "finalPrice": 2000
+      },
+      {
+        "handle": "won-e2e-two-variants",
+        "allocations": [],
+        "originalPrice": null,
+        "finalPrice": 1500
+      }
+    ],
+    "subtotal": 3500,
+    "orderDiscount": -1631,
+    "shipping": 64682,
+    "tax": 0,
+    "includedTaxRows": [],
+    "total": 66551,
+    "charged": 66551,
+    "expectedTotal": 66551
+  },
+  "thankYouSummaryRows": [
+    {
+      "label": "Mezisoučet • 2 položek",
+      "value": "35,00 Kč",
+      "amount": 3500
+    },
+    {
+      "label": "Sleva na objednávku",
+      "value": "",
+      "amount": null
+    },
+    {
+      "label": "WONE2EM60",
+      "value": "− 16,31 Kč",
+      "amount": -1631
+    },
+    {
+      "label": "Expedice",
+      "value": "646,82 Kč",
+      "amount": 64682
+    },
+    {
+      "label": "Celkem",
+      "value": "665,51 Kč",
+      "amount": 66551
+    },
+    {
+      "label": "CELKOVÁ ÚSPORA16,31 Kč",
+      "value": "",
+      "amount": null
+    }
+  ],
+  "loggedOrder": {
+    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20261002_101513_928Z_extensions_won-discounts-engine_00476f.json",
+    "candidate": {
+      "message": "E2E marže kód 60 %",
+      "targets": [
+        {
+          "orderSubtotal": {
+            "excludedCartLineIds": []
+          }
+        }
+      ],
+      "value": {
+        "fixedAmount": {
+          "amount": "16.31"
+        }
+      }
+    },
+    "amount": 1631,
+    "excludedVariants": []
+  },
+  "invariant": {
+    "rows": [
+      {
+        "handle": "won-e2e-multiaxis",
+        "basis": "cost",
+        "settings": {
+          "minMarginPercent": 25,
+          "maxDiscountPercent": 30,
+          "source": "global"
+        },
+        "cost": 8,
+        "afterProduct": 2000,
+        "orderShare": 932,
+        "shareRule": "proportional, rounded up (assumed)",
+        "final": 1068,
+        "floor": 1067,
+        "margin": 1,
+        "holds": true
+      },
+      {
+        "handle": "won-e2e-two-variants",
+        "basis": "cost",
+        "settings": {
+          "minMarginPercent": 25,
+          "maxDiscountPercent": 30,
+          "source": "global"
+        },
+        "cost": 5,
+        "afterProduct": 1500,
+        "orderShare": 699,
+        "shareRule": "proportional, rounded up (assumed)",
+        "final": 801,
+        "floor": 667,
+        "margin": 134,
+        "holds": true
+      }
+    ],
+    "totals": {
+      "afterAllDiscounts": 1869,
+      "floors": 1734
+    }
+  },
+  "perLineAllocation": "not observable: the checkout shows an order discount only as a summary row, and orders need read_orders (the app has none); the per-line invariant assumes Shopify's proportional split rounded up"
+}

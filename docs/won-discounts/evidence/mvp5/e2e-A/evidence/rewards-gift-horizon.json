@@ -1,0 +1,71 @@
+{
+  "at": "2026-10-02T08:55:36.788Z",
+  "theme": "Horizon",
+  "withGift": [
+    {
+      "variant": 48468679164145,
+      "quantity": 1,
+      "gift": "e2e-gift",
+      "unitPrice": 19900,
+      "plan": {
+        "ruleIds": [
+          "gift:e2e-gift"
+        ],
+        "amount": 19900
+      }
+    },
+    {
+      "variant": 48468678902001,
+      "quantity": 5,
+      "gift": null,
+      "unitPrice": 1000,
+      "plan": null
+    }
+  ],
+  "plan": {
+    "totals": {
+      "subtotal": 24900,
+      "productDiscount": 19900,
+      "orderDiscount": 0,
+      "total": 5000
+    },
+    "gifts": [
+      {
+        "tierId": "e2e-gift",
+        "lineId": "gid://shopify/CartLine/0",
+        "state": "earned"
+      }
+    ],
+    "shipping": {
+      "ruleId": "reward:shipping",
+      "method": "automatic",
+      "ownerRuleId": "reward:shipping",
+      "ownerMethod": "automatic",
+      "value": {
+        "percent": 100
+      },
+      "amount": null,
+      "message": "Doprava zdarma"
+    }
+  },
+  "drawer": {
+    "shown": true,
+    "state": "in"
+  },
+  "declined": [
+    "e2e-gift"
+  ],
+  "afterAdd": [
+    [
+      48468678902001,
+      6,
+      null
+    ]
+  ],
+  "writes": [
+    "/cart/add.js",
+    "graphql {\"query\":\"mutation($i:ID!,$c:CountryCode!,$l:LanguageCode!,$",
+    "graphql {\"query\":\"mutation($i:ID!,$c:CountryCode!,$l:LanguageCode!,$",
+    "/cart/add.js"
+  ]
+}
