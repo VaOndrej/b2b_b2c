@@ -12,13 +12,14 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > technická pravidla, zakázané věci). **MVP N+1 nezačíná, dokud MVP N není finální** (brána, živé E2E A+B,
 > vizuální QA, audit s opravenými nálezy, checkpoint, push).
 
-- **Aktivní zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md. Krok: B-E2E fáze B (Pro): app dev s
-  WON_DEV_PLAN=pro, `phase-b.sh mvp5-B` (outlet + rewards-pro, tiers-pro, margin-pro, shapes), logy
-  `<scratchpad>/runs/mvp5-B`, evidence `docs/won-discounts/evidence/mvp5/e2e-B`. Hotovo: brána `gate-b` ✓ (7/7),
-  fáze A (Free) ✓ Horizon ✓ Dawn: outlet 4+4, mvp1 5+5, shapes 4+4, margin 6+6 (1 opakování Dawn SK: výpadek doručení
-  logů funkce do app dev 08:35–08:37 UTC, izolovaně 3/3 bez opakování), tiers 7+7, rewards 7+7, rewards-other 3+3;
-  audit `audits/audit-mvp5.md` + opravy `5bad955`. Další: vizuální QA storefrontu, checkpoint, roadmapa, push.
-  **Blokuje živé E2E objednávek:** F-O1, F-O4b (viz plán).
+- **Aktivní zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md — **hotové až na živé E2E objednávek**
+  (checkpoint MVP 5 níž). **Zastaveno, čeká na Ondřeje (F-O1):** povolit appce přístup k chráněným datům zákazníků
+  (Partner Dashboard → Apps → won-discounts → API access requests → Protected customer data access → Request access →
+  „Protected customer data“, bez chráněných polí, důvod „počítání prodaných kusů výprodeje z objednávek“, uložit +
+  Data protection details; pro dev store bez review) a rozhodnout F-O4b (storno testovacích objednávek v E2E přes
+  `shopify store execute --allow-mutations`, doporučeno ano). Potom: odběr `orders/create`, `orders/cancelled`,
+  `refunds/create` → `/webhooks/outlet` do `shopify.app.toml` + `read_orders`, rozšířit spec `storefront.outlet` o
+  objednávky do vyčerpání kvóty a storno, živé E2E, uzavřít MVP 5. **MVP 6 nezačínat.**
 - **Ověření MVP 4 (2026-10-02) ✓ — MVP 4 odpovídá checkpointu, 1 nový nález (N1, P3, opraven):**
   - A1 ✓ `git status`: jen cizí `docs/product-roadmap.html`, `docs/won-companion/`, `docs/won-discounts/paralelizace.md`;
     `git log origin/main..HEAD` prázdné; checkpoint MVP 4 je.
@@ -39,7 +40,8 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
     opakovaných testů**, úklid + `verify-clean` u všech tří exit 0.
   - A6 ✓ shrnutí: brána, audit (17/17 oprav s testem, 3 mutace zachycené), replay a živé E2E sedí s checkpointem.
     Nález N1 (E3 bez unit testu) opraven contract testem `caf990b`.
-- **Fáze: MVP 5 (Výprodej, Pro)** — další krok: plán `docs/plans/<datum>-won-discounts-mvp5.md` s kontrakty (kvóta na
+- **Fáze: MVP 5 (Výprodej, Pro)** — postaveno a ověřeno (checkpoint níž), chybí živé E2E objednávek (F-O1). Původní
+  zadání kroku: plán `docs/plans/<datum>-won-discounts-mvp5.md` s kontrakty (kvóta na
   existující variantě `price` + `compare_at_price`, ceníky trhů vč. pevných cen, storna/vratky, návrat ceny, historie,
   scheduler; zápisy cen jen skriptem s `--dry-run` + zálohou, po E2E vrátit). **První krok MVP 5: přeměřit konstruované
   rodiny rozpočtu instrukcí** (rezerva po MVP 4 < 1 bod, audit R1).
@@ -249,6 +251,57 @@ pro zvednutí stropu 550 B; ve Wasm zbývá ~2,8 kB; formát ceny v bloku vs. t�
 | C6 | kód při přesunu | rozhodnuto: záloha → smazání → vytvoření ve Won | `rozhodnuti.md` |
 
 ## Checkpointy MVP
+
+### MVP 5 — Výprodej (Pro) ⏸ (hotové kromě živého E2E objednávek; badge zůstává `Beta`)
+
+**Hotové a ověřené**
+- **B0 rozpočet** (stop-pravidla předem): MVP 4 Wasm 99,21 % potvrzeno; produktové seznamy `outlet` by dávaly 102,38 %
+  (N = 100 / 50 / 25 stejně, příčina: klíč na každém řádku) → **příznak na variantě** `wonOutlet`; rodiny 99,80 %, s
+  odměnami 99,89 %, 0 ≥ 100 %, 0 DIFF. Rezerva 0,11 bodu (riziko pro MVP 6–7).
+- **Funkce (Rust)**: `wonOutlet` (metafield `outlet` = true) v obou dotazech, delivery dotaz bez `discountClasses`
+  (bod pro nové pole; Shopify delivery target pro uzel bez SHIPPING nespouští), oba dotazy 30/30; 116 fixtures,
+  parita 0 rozdílů, replay 3 392 běhů beze změny, Wasm 245 497 B.
+- **Core** `outlet.ts`: výprodejová cena v celých % (half up), compare-at podle zobrazení, návrat jen nezměněných polí,
+  kvóta (zbývá / přeprodáno), storna a vratky, vratka po konci (Free nikdy neotevře, A6), validace, strop 500 běhů.
+- **Server**: `OutletRun` / `OutletEvent` / `JobState` (migrace), start se zálohou předem → příznak → ceny varianty a
+  ceníků (selhání vrátí, co se zapsalo), konec vrací ceny a pak příznak (cizí změnu nechá), znovuotevření, webhooky
+  objednávek / storen / vratek idempotentně po řádku (route hotová, **odběr čeká F-O1**), fronta per běh + zápůjčka
+  2 min na `ending`, scheduler (konec datem, vyčerpaná kvóta bez session, opakování konce, přerušený start, úklid
+  historie vč. config historie — dluh MVP 1/2), app proxy čte příznak, shop/redact maže výprodeje.
+- **Storefront**: blok `outlet_badge` bez JS (Výprodej / Zbývá X ks, varianty jménem), množstevní blok bez tabulky pro
+  výprodejovou variantu (`ow` = výprodej s dalšími slevami), JS rozpočet beze změny.
+- **Admin**: modul Výprodej (nový, běžící, skončené s otázkou, zobrazení a vratky), Free zamčeno v amber, karta na
+  Přehledu s otázkou; harness + screenshoty 390/1440 `evidence/mvp5/admin/`.
+- **Docs**: concept, 3 tasks, 3 support, limity, Free vs Pro.
+- **Živé E2E (dev store, Bogus)**: fáze A (Free) `outlet` 4+4 (bez výprodeje: obě varianty mají slevy) ✓ ✓; regrese
+  mvp1 5+5, shapes 4+4, margin 6+6, tiers 7+7, rewards 7+7, rewards-other 3+3 ✓ ✓ (1 opakování margin Dawn SK =
+  výpadek doručení logů funkce do app dev 08:35–08:37 UTC, izolovaně 3/3 bez opakování). Fáze B (Pro): `outlet` 5+5
+  ✓ ✓ na finálním kódu (`30f36e5`: PDP cena výprodeje + štítek, pevná cena ceníku česko 199 → 99,50 Kč přeškrtnutá,
+  košík: výprodej bez auto 10 % a mimo základ kódu 20 %, pokladna Bogus 99,50 Kč bez slevy), po E2E konec + ceny =
+  záloha, bez příznaku (`outlet.mjs --verify-restored`); regrese rewards-pro 3+3, tiers-pro 5+5, margin-pro 6+6, shapes
+  Pro 4+4 ✓ ✓. Evidence `evidence/mvp5/e2e-{A,B}/`.
+- **Audit** `docs/won-discounts/audits/audit-mvp5.md`: 0 P0 / 1 P1 (S1, opraveno) / P2 a P3 opravené (S2–S5, A1–A6),
+  otevřená rizika R1 (rezerva 0,11 bodu), R2 (dotazy 30/30).
+
+**Brána MVP 5 final (`gate-final`, kód `30f36e5`)**: core 825 + testing 50 ✓ · guard 301 ✓ · `test:unit` node 1 229 +
+cargo 94 (1 ignored) + vitest 549 ✓ · typecheck ✓ · lint ✓ · build ✓ · validate 0 nálezů ✓.
+
+**Neověřeno / čeká**
+- **F-O1**: počítání kvóty z objednávek, konec vyprodáním, storno a vratka naživo (webhooky bez odběru — Shopify
+  odmítl `orders/create` bez přístupu k chráněným datům). Testy s podepsanými payloady a scheduler hotové.
+- **F-O3 (živý fakt)**: v trhu s ceníkem Shopify u varianty bez pevné ceny přeškrtnutí neukáže (kontextová
+  compare-at null); pevná cena ceníku přeškrtnutí má. Otázka pro Ondřeje: psát kvůli přeškrtnutí pevné ceny i do
+  ceníků ve stejné měně?
+- Vložení adminu do Shopify adminu (picker varianty) — ověří Ondřej.
+
+**Self-audit (co jsem obešel / ošidil)**
+- Spec PDP: u varianty bez pevné ceny už nečeká přeškrtnutí (živý fakt F-O3, doložený sondou `contextualPricing`);
+  přeškrtnutí ověřuje na pevné ceně ceníku. Je to změna očekávání podle platformy, ne podle kódu.
+- Fáze A (Free) běžela na kódu před auditními opravami A1–A6; ty mění jen běžící výprodej, který ve Free neexistuje;
+  dotčený profil `outlet` (Pro) běžel znovu na finálním kódu.
+- Jednou jsem pustil `test:unit` (přestavba Wasm) při běžícím `shopify app dev`; app dev jsem pak restartoval před
+  posledním E2E.
+
 
 ### MVP 4 — Odměny + košík ✅ (badge zůstává `Beta`)
 
