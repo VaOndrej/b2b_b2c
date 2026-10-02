@@ -62,7 +62,6 @@ listed so the plan comparison is complete; none of them can be set up today.
 
 ## Planned modules
 
-- **Clearance** (Pro): Sell N units at a discount, then back to full price.
 - **Campaigns** (Pro): Black Friday and other campaigns. Start and end every discount at once.
 
 ## What "On Free" means

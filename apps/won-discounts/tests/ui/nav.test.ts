@@ -32,13 +32,13 @@ test("goals put their modules first, in the order picked; every module stays", (
   }
 });
 
-test("MVP 2–4: Ochrana marže, Množstevní slevy, Odměny and Vzhled are built — out of the coming-soon list, still in the nav in goal order", () => {
-  for (const built of ["margin", "tiers", "rewards", "appearance"]) {
+test("MVP 2–5: Ochrana marže, Množstevní slevy, Odměny, Výprodej and Vzhled are built — out of the coming-soon list, still in the nav in goal order", () => {
+  for (const built of ["margin", "tiers", "rewards", "outlet", "appearance"]) {
     assert.ok(!(UPCOMING_MODULES as readonly string[]).includes(built), built);
     assert.equal(isUpcomingModule(built), false, built);
   }
-  assert.equal(isUpcomingModule("outlet"), true);
-  assert.deepEqual(orderedUpcomingModules(["margin", "outlet"]), ["outlet", "campaigns"]);
+  assert.equal(isUpcomingModule("campaigns"), true);
+  assert.deepEqual(orderedUpcomingModules(["margin", "outlet"]), ["campaigns"]);
   assert.deepEqual(
     navItems("cs", ["margin"]).map((i) => i.to),
     ["/app/discounts", "/app/try-cart", "/app/margin", "/app/tiers", "/app/rewards", "/app/outlet", "/app/campaigns", "/app/appearance", "/app/settings", "/app/plan"],

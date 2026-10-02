@@ -188,6 +188,8 @@ export interface AdminSignals {
   tiers?: TiersOverviewView;
   /** Odměny card on Přehled (MVP 4). Absent = not known. */
   rewards?: RewardsOverviewView;
+  /** Výprodej card on Přehled (MVP 5). Absent = not known. */
+  outlet?: OutletOverviewView;
 }
 
 // --- Ochrana marže (MVP 2) ------------------------------------------------------------------
@@ -685,3 +687,87 @@ export interface RewardsOverviewView {
   gifts: (number | null)[];
   currency: string;
 }
+
+// --- Výprodej (MVP 5, Pro; contract O10) --------------------------------------------------------------
+// The server (app/lib/integration/outlet-admin.server.ts) words every date in the admin language and the shop's
+// time zone; prices are minor units of the shop currency.
+
+export type OutletRunStatus = "starting" | "active" | "ending" | "ended";
+
+export interface OutletHistoryView {
+  kind: string;
+  /** Shop-local, formatted. */
+  at: string;
+  /** The step as a sentence in the admin language. */
+  text: string;
+}
+
+export interface OutletRunView {
+  id: string;
+  variantId: string;
+  /** "Product — Variant" as Shopify names it now; "" = not found (deleted). */
+  title: string;
+  percent: number;
+  quota: number;
+  sold: number;
+  returned: number;
+  left: number;
+  /** Pieces sold past the quota (a late order webhook): the exact number. */
+  oversold: number;
+  status: OutletRunStatus;
+  endReason: "quota" | "date" | "manual" | null;
+  endsAt: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  /** The variant's price before and during the sale (minor units of `currency`); null = nothing written. */
+  price: { before: number; sale: number; currency: string } | null;
+  /** Price lists whose fixed price the sale changed. */
+  lists: number;
+  /** Pieces returned after the end that wait for the merchant (reopenOnReturnAfterEnd = ask). */
+  returnPending: number;
+  /** The last failed step, worded; null = none. */
+  problem: string | null;
+  /** Newest first, at most 20 steps. */
+  history: OutletHistoryView[];
+}
+
+export interface OutletPriceListView {
+  id: string;
+  /** The catalog (market) title, else the list's name. */
+  title: string;
+  currency: string;
+}
+
+export interface OutletScreenData {
+  plan: "free" | "pro";
+  configVersion: string | null;
+  shopCurrency: string;
+  /** Today in the shop's zone (`YYYY-MM-DD`): the end date input's minimum is the day after. */
+  today: string;
+  display: "silent" | "strike" | "strike_badge" | "strike_badge_left";
+  reopen: "auto" | "ask" | "never";
+  running: OutletRunView[];
+  /** The 20 last ended sales. */
+  ended: OutletRunView[];
+  priceLists: OutletPriceListView[];
+  limits: { percentMin: number; percentMax: number; quotaMax: number; running: number; priceLists: number };
+  /** "Přidat štítek výprodeje" (null when the shop / API key is unknown). */
+  badgeBlockAddUrl: string | null;
+}
+
+export type OutletActionResult =
+  | { ok: true; kind: "started" | "ended" | "reopened" | "kept"; skippedLists?: number; pending?: boolean }
+  | { ok: false; reason: "invalid"; errors: FieldError[] }
+  | { ok: false; reason: "failed"; message: string };
+
+/** Přehled card. */
+export interface OutletOverviewView {
+  running: number;
+  /** Ended sales with returned pieces waiting for "Znovu otevřít" / "Nechat skončené". */
+  pendingReturns: { runId: string; title: string; qty: number }[];
+  /** Sales with pieces sold past the quota. */
+  oversold: number;
+  /** Sales whose start or end failed and is being retried. */
+  problems: number;
+}
+

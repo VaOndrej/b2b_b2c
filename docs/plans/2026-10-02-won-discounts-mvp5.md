@@ -158,6 +158,12 @@ Funkce se nemění, ale MVP 5 začne psát skutečné seznamy `outlet` → přem
   nákupních cen `variant`). TS reference + Rust + fixtures + parita + replay + přeměření rodin s polem `wonOutlet`
   (null / true) na novém Wasm.
 
+- **Přeměření s variantním příznakem (2026-10-02, Wasm 245 497 B, `outlet-flag-variants.mjs`, stop-pravidlo: jeden
+  průchod, žádné stupňování):** rodiny cap 550 × `wonOutlet` null / každý 10. řádek / všechny (9 960 běhů) max
+  **99,80 %** (null na všech řádcích = nejdražší; výprodej řádky zlevní), 0 ≥ 100 %, 0 DIFF; rodiny s odměnami (malý
+  payload, MVP 4 99,32 %) × `wonOutlet` null (6 640 běhů) max **99,89 %**, 0 ≥ 100 %, 0 DIFF. **Riziko (P3): rezerva
+  0,11 bodu** — každé další čtení per řádek v MVP 6–7 nejdřív uvolní instrukce (README funkce). Oba dotazy 30/30 bodů.
+
 ## Úkoly po vrstvách
 
 1. **B0 rozpočet** ✓ (2026-10-02) — HEAD Wasm (245 237 B, = MVP 4) na rodinách cap 550: 3 320 vstupů, max 99,21 %,

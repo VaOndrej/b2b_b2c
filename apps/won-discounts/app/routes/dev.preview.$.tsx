@@ -19,6 +19,7 @@ import { SettingsScreen, type SettingsScreenProps } from "../components/screens/
 import { AppearanceScreen, type AppearanceScreenProps } from "../components/screens/AppearanceScreen";
 import { TiersScreen, type TiersScreenProps } from "../components/screens/TiersScreen";
 import { RewardsScreen, type RewardsScreenProps } from "../components/screens/RewardsScreen";
+import { OutletScreen, type OutletScreenProps } from "../components/screens/OutletScreen";
 import { MarginScreen, type MarginScreenProps } from "../components/screens/MarginScreen";
 import { buildTryCartProps, TryCartScreen, type TryCartScreenProps } from "../components/screens/TryCartScreen";
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
@@ -46,6 +47,9 @@ import {
   devEditorResult,
   devRewardsResult,
   devRewardsScreen,
+  devOutletOverview,
+  devOutletResult,
+  devOutletScreen,
   devMovedResult,
   devNative,
   devNativeMoved,
@@ -110,7 +114,9 @@ import {
 //   /dev/preview/rule-editor     …also &tiers=1 (a product rule competing with a tier set: the tier note)
 //   /dev/preview/onboarding      ?step=1|2|3, ?embed=on
 //   /dev/preview/move-dialog
-//   /dev/preview/coming-soon     ?module=rewards|outlet|campaigns
+//   /dev/preview/outlet          Výprodej (MVP 5): Free by default, ?plan=pro; ?state=empty; ?result=started | ended |
+//                                 invalid | failed. Přehled: ?state=outlet (the card with a question)
+//   /dev/preview/coming-soon     ?module=campaigns
 //   /dev/preview/plan
 //   Any screen: ?locale=en for the English admin.
 //
@@ -138,6 +144,7 @@ export const HARNESS_SCREENS = [
   "margin",
   "tiers",
   "rewards",
+  "outlet",
   "appearance",
 ] as const;
 export type HarnessScreen = (typeof HARNESS_SCREENS)[number];
@@ -197,6 +204,13 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
         return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
           ...wired,
           signals: { ...DEV_SIGNALS, native: devNative(locale), margin: devMarginOverview(card) },
+          ruleSync: DEV_RULE_SYNC_OK,
+        });
+      }
+      if (state === "outlet") {
+        return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
+          ...wired,
+          signals: { ...DEV_SIGNALS, native: devNative(locale), outlet: devOutletOverview() },
           ruleSync: DEV_RULE_SYNC_OK,
         });
       }
@@ -313,6 +327,8 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       };
     case "rewards":
       return { ...devRewardsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale }), result: devRewardsResult(q.get("result")) };
+    case "outlet":
+      return { ...devOutletScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale }), result: devOutletResult(q.get("result")) };
     case "appearance":
       return devAppearanceScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, theme: q.get("theme") });
     case "margin":
@@ -395,6 +411,9 @@ export default function DevPreview() {
       break;
     case "rewards":
       content = <RewardsScreen {...(data as RewardsScreenProps)} result={submitted ?? (data as RewardsScreenProps).result} />;
+      break;
+    case "outlet":
+      content = <OutletScreen {...(data as OutletScreenProps)} result={(data as OutletScreenProps).result} />;
       break;
     case "appearance":
       content = <AppearanceScreen {...(data as AppearanceScreenProps)} result={submitted} />;

@@ -48,7 +48,11 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
   { path: "onboarding?step=3&embed=on", expect: [/Zapnuto. Web je připravený/, /Vytvořit první slevu/] },
   { path: "move-dialog", expect: [/Co se stane/, /Co se ztratí/, /Počítadlo použití \(zatím 42×\) se smazáním slevy v Shopify ztratí/, /Na co myslet/, /zbývajících 58/] },
   { path: "move-dialog?all=1", expect: [/Přesunout 2 slevy do Won/, /LETO15/, /Doprava zdarma nad 2 000 Kč/, /Doplň ji pro EUR/] },
-  { path: "coming-soon?module=outlet", expect: [/Výprodej/, /Přijde v další verzi/, /Přejít na Přehled/] },
+  { path: "coming-soon?module=campaigns", expect: [/Kampaně/, /Přijde v další verzi/, /Přejít na Přehled/] },
+  { path: "outlet", expect: [/Výprodej/, /Výprodej je v tarifu Pro/, /Běžící výprodeje/, /Mikina Won — L/] },
+  { path: "outlet?plan=pro", expect: [/Spustit výprodej/, /Prodáno 7 z 10 ks, vráceno 1, zbývá 4/, /Prodáno o 1 ks víc než kvóta/, /Znovu otevřít/] },
+  { path: "outlet?plan=pro&result=invalid", expect: [/Vyberte variantu/, /Kvóta je celé číslo od 1 do/] },
+  { path: "overview?state=outlet", expect: [/Výprodej/, /Ponožky Won — 39–42: po konci výprodeje se vrátilo 2 ks/, /Znovu otevřít/] },
   // Ochrana marže (MVP 2): the module screen per state, the Přehled card, the editor note, a capped cart line.
   {
     path: "margin",

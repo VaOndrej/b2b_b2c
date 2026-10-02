@@ -21,7 +21,7 @@ What happens when two Won discounts of these kinds could apply to the same cart:
 
 | Discounts | Combine by default? |
 |---|---|
-| Clearance item + any other discount (Clearance is a planned module) | No |
+| Clearance item + any other discount | No |
 | Product discount + another product discount on the same item | No: the better one for the customer wins |
 | Product discount + order discount | Yes, they add up |
 | Product discount + shipping discount | Yes, they add up |

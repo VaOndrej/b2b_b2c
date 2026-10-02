@@ -46,9 +46,12 @@ import type {
   TryCartLineView,
   RewardsScreenData,
   UiResult,
+  OutletActionResult,
+  OutletOverviewView,
+  OutletScreenData,
 } from "../components/model/types";
 import { presetOf } from "../components/model/appearance";
-import { cartBlockAddUrl, tiersBlockAddUrl } from "../components/model/embed";
+import { cartBlockAddUrl, outletBlockAddUrl, tiersBlockAddUrl } from "../components/model/embed";
 import { REWARDS_FIELD } from "../components/model/rewards";
 import { rewardsScreenFacts } from "./integration/rewards.server";
 import { currencyViews } from "../components/model/markets";
@@ -61,6 +64,9 @@ import { wordIssues } from "./integration/issue-copy";
 import { impactRulesOf, impactView } from "./integration/margin-impact-view";
 import { foldMarginCollections } from "./sync/products";
 import { planTryCart } from "./integration/try-cart-plan";
+import { outletOverviewOf, outletRunView } from "./integration/outlet-admin.server";
+import { OUTLET_FIELD } from "../components/model/outlet";
+import { OUTLET_LIMITS } from "@won/core/discounts/outlet";
 
 export function isDevHarnessEnabled(): boolean {
   // eslint-disable-next-line no-undef
@@ -1209,3 +1215,150 @@ export function devTryCartPlanRewards(locale: "cs" | "en", plan: "free" | "pro" 
 export function devTryCartRewardLines(plan: "free" | "pro"): TryCartLineView[] {
   return [{ ...DEV_TRY_CART_LINES[0]!, quantity: plan === "pro" ? 3 : 2 }, DEV_TRY_CART_LINES[1]!];
 }
+
+// --- Výprodej (MVP 5) --------------------------------------------------------------------------------------
+
+const DEV_OUTLET_TITLES = new Map([
+  ["gid://shopify/ProductVariant/7001", "Mikina Won — L"],
+  ["gid://shopify/ProductVariant/7002", "Kšiltovka Won"],
+  ["gid://shopify/ProductVariant/7003", "Ponožky Won — 39–42"],
+  ["gid://shopify/ProductVariant/7004", "Taška Won"],
+]);
+
+type DevRun = Parameters<typeof outletRunView>[0];
+type DevEvent = Parameters<typeof outletRunView>[1][number];
+
+function devRun(id: string, variant: number, over: Partial<DevRun>): DevRun {
+  return {
+    id,
+    shop: DEV_SHOP,
+    productId: `gid://shopify/Product/${variant - 1000}`,
+    variantId: `gid://shopify/ProductVariant/${variant}`,
+    quota: 10,
+    percent: 30,
+    endsAt: null,
+    priceListIds: "[]",
+    status: "active",
+    endReason: null,
+    sold: 0,
+    returned: 0,
+    returnPending: 0,
+    backup: JSON.stringify({ currency: "CZK", variant: { price: 1490_00, compareAt: null }, lists: [] }),
+    sale: JSON.stringify({ currency: "CZK", variant: { price: 1043_00, compareAt: 1490_00 }, lists: [] }),
+    error: null,
+    attempts: 0,
+    nextAttemptAt: null,
+    createdAt: new Date("2026-09-20T08:00:00Z"),
+    startedAt: new Date("2026-09-20T08:00:05Z"),
+    endedAt: null,
+    updatedAt: new Date("2026-09-27T10:00:00Z"),
+    ...over,
+  } as DevRun;
+}
+
+function devEvent(runId: string, kind: string, at: string, qty = 0, detail?: unknown): DevEvent {
+  return { id: `${runId}-${kind}-${at}`, shop: DEV_SHOP, runId, kind, qty, orderId: null, lineId: null, key: `${kind}:${runId}:${at}`, detail: detail === undefined ? null : JSON.stringify(detail), at: new Date(at) } as DevEvent;
+}
+
+const DEV_OUTLET_RUNS: DevRun[] = [
+  devRun("run-hoodie", 7001, {
+    sold: 7,
+    returned: 1,
+    endsAt: new Date("2026-10-05T22:00:00Z"),
+    priceListIds: JSON.stringify(["gid://shopify/PriceList/1"]),
+    backup: JSON.stringify({ currency: "CZK", variant: { price: 1490_00, compareAt: null }, lists: [{ id: "gid://shopify/PriceList/1", currency: "EUR", price: 59_00, compareAt: null }] }),
+  }),
+  devRun("run-cap", 7002, { quota: 5, percent: 50, sold: 6, status: "ending", endReason: "quota", backup: JSON.stringify({ currency: "CZK", variant: { price: 399_00, compareAt: null }, lists: [] }), sale: JSON.stringify({ currency: "CZK", variant: { price: 200_00, compareAt: 399_00 }, lists: [] }), error: "end: HTTP 503", nextAttemptAt: new Date("2026-09-28T12:05:00Z") }),
+  devRun("run-socks", 7003, {
+    quota: 20,
+    percent: 20,
+    sold: 20,
+    status: "ended",
+    endReason: "quota",
+    returnPending: 2,
+    returned: 2,
+    endedAt: new Date("2026-09-25T15:30:00Z"),
+    backup: JSON.stringify({ currency: "CZK", variant: { price: 199_00, compareAt: null }, lists: [] }),
+    sale: JSON.stringify({ currency: "CZK", variant: { price: 159_00, compareAt: 199_00 }, lists: [] }),
+  }),
+  devRun("run-bag", 7004, {
+    quota: 8,
+    percent: 15,
+    sold: 3,
+    status: "ended",
+    endReason: "manual",
+    endedAt: new Date("2026-09-22T09:00:00Z"),
+    backup: JSON.stringify({ currency: "CZK", variant: { price: 890_00, compareAt: null }, lists: [] }),
+    sale: JSON.stringify({ currency: "CZK", variant: { price: 757_00, compareAt: 890_00 }, lists: [] }),
+  }),
+];
+
+const DEV_OUTLET_EVENTS: DevEvent[] = [
+  devEvent("run-hoodie", "started", "2026-09-20T08:00:05Z", 0, { percent: 30, before: 1490_00, after: 1043_00, currency: "CZK" }),
+  devEvent("run-hoodie", "sale", "2026-09-21T10:12:00Z", 3),
+  devEvent("run-hoodie", "sale", "2026-09-23T18:40:00Z", 4),
+  devEvent("run-hoodie", "refund", "2026-09-26T09:00:00Z", 1),
+  devEvent("run-cap", "started", "2026-09-20T08:00:05Z", 0, { percent: 50, before: 399_00, after: 200_00, currency: "CZK" }),
+  devEvent("run-cap", "sale", "2026-09-27T09:58:00Z", 5),
+  devEvent("run-cap", "quota_reached", "2026-09-27T09:58:01Z"),
+  devEvent("run-cap", "oversold", "2026-09-27T10:01:00Z", 1),
+  devEvent("run-cap", "end_failed", "2026-09-27T10:00:00Z"),
+  devEvent("run-socks", "started", "2026-09-20T08:00:05Z", 0, { percent: 20, before: 199_00, after: 159_00, currency: "CZK" }),
+  devEvent("run-socks", "ended", "2026-09-25T15:30:00Z", 0, { reason: "quota" }),
+  devEvent("run-socks", "price_restored", "2026-09-25T15:30:00Z", 0, { field: "price" }),
+  devEvent("run-socks", "return_after_end", "2026-09-26T11:00:00Z", 2),
+];
+
+const devMoney = (locale: "cs" | "en") => (minor: number, currency: string) =>
+  new Intl.NumberFormat(locale === "en" ? "en-US" : "cs-CZ", { style: "currency", currency }).format(minor / 100);
+
+/** Výprodej screen: ?plan=pro, ?state=empty (no sale yet). */
+export function devOutletScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en" }): OutletScreenData {
+  const runs = opts.state === "empty" ? [] : DEV_OUTLET_RUNS;
+  const view = (r: DevRun) =>
+    outletRunView(
+      r,
+      DEV_OUTLET_EVENTS.filter((e) => e.runId === r.id),
+      { locale: opts.locale, timezone: DEV_TIMEZONE, titles: DEV_OUTLET_TITLES, money: devMoney(opts.locale) },
+    );
+  return {
+    plan: opts.plan,
+    configVersion: "dev-config-version",
+    shopCurrency: "CZK",
+    today: "2026-09-28",
+    display: "strike_badge",
+    reopen: "ask",
+    running: runs.filter((r) => r.status !== "ended").map(view),
+    ended: runs.filter((r) => r.status === "ended").map(view),
+    priceLists: [
+      { id: "gid://shopify/PriceList/1", title: "Slovensko", currency: "EUR" },
+      { id: "gid://shopify/PriceList/2", title: "Česko", currency: "CZK" },
+    ],
+    limits: { percentMin: OUTLET_LIMITS.percentMin, percentMax: OUTLET_LIMITS.percentMax, quotaMax: OUTLET_LIMITS.quotaMax, running: OUTLET_LIMITS.running, priceLists: OUTLET_LIMITS.priceLists },
+    badgeBlockAddUrl: outletBlockAddUrl(DEV_SHOP, "dev-api-key"),
+  };
+}
+
+/** Výprodej action results (harness `?result=`). */
+export function devOutletResult(kind: string | null): OutletActionResult | null {
+  if (kind === "started") return { ok: true, kind: "started", skippedLists: 1 };
+  if (kind === "ended") return { ok: true, kind: "ended" };
+  if (kind === "invalid") {
+    return {
+      ok: false,
+      reason: "invalid",
+      errors: [
+        { field: OUTLET_FIELD.variant, key: "outlet.error.variant" },
+        { field: OUTLET_FIELD.quota, key: "outlet.error.quota", params: { max: OUTLET_LIMITS.quotaMax } },
+      ],
+    };
+  }
+  if (kind === "failed") return { ok: false, reason: "failed", message: "HTTP 503" };
+  return null;
+}
+
+/** The Přehled card with a running sale, one waiting for a decision and a failed step. */
+export function devOutletOverview(): OutletOverviewView {
+  return outletOverviewOf(DEV_OUTLET_RUNS, DEV_OUTLET_TITLES);
+}
+
