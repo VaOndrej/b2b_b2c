@@ -115,6 +115,41 @@ test("outlet.due: a failed end is retried only after its next attempt time", asy
   assert.equal(fake.variants.get(variant)!.price, "20.00");
 });
 
+test("outlet.due (audit A5): an end in progress holds a lease — another process's tick does not take it over until it expires", async () => {
+  const { fake, deps, product, variant, due } = setup();
+  const r = await startOutletRun(deps, { variantId: variant, productId: product.id, quota: 5, percent: 25, priceListIds: [] });
+  assert.ok(r.ok);
+  // Another process (a script, a second instance) is ending it right now: status ending, its lease 2 minutes ahead.
+  await db.prisma.outletRun.update({ where: { id: r.runId }, data: { status: "ending", endReason: "manual", nextAttemptAt: new Date(clock.getTime() + 120_000) } });
+  const calls = fake.callsOf("WonOutletVariantUpdate").length;
+  await due();
+  assert.equal(fake.callsOf("WonOutletVariantUpdate").length, calls, "the lease holds: nothing written");
+  clock = new Date(clock.getTime() + 121_000);
+  await due();
+  assert.equal((await db.prisma.outletRun.findUnique({ where: { id: r.runId } }))!.status, "ended", "an expired lease is taken over");
+});
+
+test("audit A5: while an end runs, its row already holds the lease (a tick elsewhere skips it)", async () => {
+  const { fake, deps, product, variant } = setup();
+  const r = await startOutletRun(deps, { variantId: variant, productId: product.id, quota: 5, percent: 25, priceListIds: [] });
+  assert.ok(r.ok);
+  let seen: { status: string; nextAttemptAt: Date | null } | null = null;
+  const client = {
+    graphql: async (query: string, variables?: Record<string, unknown>) => {
+      if (seen === null && query.includes("WonOutletVariant(")) seen = await db.prisma.outletRun.findUnique({ where: { id: r.runId }, select: { status: true, nextAttemptAt: true } });
+      return fake.graphql(query, variables);
+    },
+  };
+  const { endOutletRun } = await import("../../../app/lib/integration/outlet.server.ts");
+  const ended = await endOutletRun({ ...deps, client }, r.runId, "manual");
+  assert.ok(ended.ok);
+  assert.equal(seen!.status, "ending");
+  assert.ok(seen!.nextAttemptAt && seen!.nextAttemptAt > clock, "the lease is set before the first Shopify call");
+  const row = (await db.prisma.outletRun.findUnique({ where: { id: r.runId } }))!;
+  assert.equal(row.status, "ended");
+  assert.equal(row.nextAttemptAt, null, "released at the end");
+});
+
 test("outlet.due: a start interrupted before its backup is closed (nothing was written); after it, prices go back", async () => {
   const { fake, product, variant, due } = setup();
   const stale = await db.prisma.outletRun.create({ data: { shop, productId: product.id, variantId: variant, quota: 1, percent: 10, status: "starting", createdAt: new Date("2026-10-02T09:00:00Z") } });

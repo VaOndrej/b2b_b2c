@@ -24,8 +24,10 @@ import { saveEvidence, saveScreenshot } from "./support/evidence.ts";
 import { E2E_PROFILE, expect, gotoStorefront, test, THEME_LABEL, unlockRealStorefront } from "./support/fixtures.ts";
 
 // SPEC-DRIVEN (MVP 5, contracts O2, O3, O6, O9). Live proof of Výprodej on BOTH shared themes:
-//   - PDP: the sale variant's price is the sale price and the theme strikes the price before (compare_at), the
-//     "Sale badge" block names the sale variant; a variant without a sale shows nothing of it;
+//   - PDP: the sale variant's price is the sale price; the theme strikes the price before where the market's
+//     price list carries a compare-at (a fixed price: the sale writes it; live fact F-O3: a variant priced by the
+//     list's adjustment gets none); the "Sale badge" block names the sale variant; a variant without a sale shows
+//     nothing of it;
 //   - cart (/cart.js, the real discount function): the sale line takes no other Won discount (A1: no product
 //     discount, out of the order subtotal), the variant next to it does;
 //   - checkout (Bogus) in Czechia: the price list's fixed price is the sale one (199 → 99,50 Kč) and the line
@@ -58,16 +60,19 @@ test.describe(`Won Discounts Výprodej: PDP, cart and checkout (MVP 5)${PRO ? " 
     if (page.url().startsWith(new URL(baseURL!).origin)) await clearCartQuietly(page);
   });
 
-  test("PDP: the sale variant shows its sale price struck against the price before, and the badge names it; nothing for the other variant", async ({ page }, testInfo) => {
+  test("PDP: the sale price on the storefront, the struck price where the market's price list carries it (the fixed price), and the badge naming the sale variant", async ({ page }, testInfo) => {
     test.setTimeout(180_000);
     await gotoStorefront(page, `/products/${LARGE.handle}`);
+    await setStorefrontCountry(page, "CZ");
     const p = await product(page, LARGE.handle);
     const large = p.variants.find((v) => v.title === LARGE.variant)!;
     const small = p.variants.find((v) => v.title !== LARGE.variant)!;
     const badge = page.locator("[data-won-discounts-outlet]");
     if (PRO) {
-      expect(large.compare_at_price, "compare_at = the price before the sale").not.toBeNull();
-      expect(large.price, "the sale price").toBe(sale(large.compare_at_price!, LARGE.percent));
+      // Live fact F-O3 (2026-10-02): in a market with a price list Shopify prices a variant without a fixed price by
+      // the list's adjustment and gives it NO compare-at, although the variant has one (contextualPricing
+      // compareAtPrice null, the list's compareAtMode ADJUSTED). The sale price is there; the strike is not.
+      expect(large.price, "the sale price").toBe(sale(LARGE.before, LARGE.percent));
       expect(small.compare_at_price, "the other variant is untouched").toBeNull();
       const row = page.locator(`[data-won-discounts-outlet-variant="${large.id}"]`);
       await expect(row).toBeVisible();
@@ -86,13 +91,20 @@ test.describe(`Won Discounts Výprodej: PDP, cart and checkout (MVP 5)${PRO ? " 
     if (PRO) await badge.scrollIntoViewIfNeeded();
     await saveScreenshot(page, testInfo, `outlet-pdp-${PRO ? "pro" : "free"}-390`, { fullPage: false });
 
-    // A product with one variant: one badge, no variant name.
+    // A product with one variant and a fixed price in the česko list: the list's sale price struck against its
+    // price before (the compare-at the sale wrote on the fixed price), one badge, no variant name.
     await gotoStorefront(page, `/products/${SPARE.handle}`);
     const spare = (await product(page, SPARE.handle)).variants[0]!;
     if (PRO) {
+      expect(spare.price, "the fixed price's sale price").toBe(sale(SPARE.before, SPARE.percent));
+      expect(spare.compare_at_price, "the fixed price before the sale, struck by the theme").toBe(SPARE.before);
       const row = page.locator(`[data-won-discounts-outlet-variant="${spare.id}"]`);
       await expect(row.locator("[data-won-discounts-outlet-badge]")).toHaveText(BADGE);
       await expect(row.locator(".won-outlet__variant")).toHaveCount(0);
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await saveScreenshot(page, testInfo, "outlet-pdp-spare-1440", { fullPage: false });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await saveScreenshot(page, testInfo, "outlet-pdp-spare-390", { fullPage: false });
     } else {
       await expect(page.locator("[data-won-discounts-outlet]")).toHaveCount(0);
     }

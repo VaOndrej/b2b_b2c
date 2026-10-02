@@ -16,9 +16,12 @@ export const OUTLET_RULE_IDS = [OUTLET_AUTO_RULE_ID, OUTLET_CODE_RULE_ID];
 export const OUTLET_AUTO_PERCENT = 10;
 export const OUTLET_CODE_PERCENT = 20;
 
+// `before`: the catalog price the sale starts from (minor units, CZK): the base price of Large, the česko fixed
+// price of the spare. The spec computes the sale prices from it (the storefront shows no compare-at for a variant
+// priced by a market price list's adjustment: live fact F-O3).
 export const OUTLET_SALES = [
-  { handle: "won-e2e-two-variants", variant: "Large", percent: 25, quota: 3, catalogs: [] },
-  { handle: "won-e2e-spare", variant: null, percent: 50, quota: 2, catalogs: ["česko"] },
+  { handle: "won-e2e-two-variants", variant: "Large", percent: 25, quota: 3, catalogs: [], before: 1800 },
+  { handle: "won-e2e-spare", variant: null, percent: 50, quota: 2, catalogs: ["česko"], before: 19900 },
 ];
 
 /** The seeded rules; `ids` maps each handle to its product GID on the store. */

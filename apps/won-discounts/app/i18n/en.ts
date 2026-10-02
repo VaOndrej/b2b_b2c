@@ -1044,7 +1044,7 @@ export const en: Record<keyof typeof cs, string> = {
   "outlet.display.strike": "Struck-through price",
   "outlet.display.strike_badge": "Struck-through price and a “Sale” badge",
   "outlet.display.strike_badge_left": "Struck-through price, badge and “Only X left”",
-  "outlet.display.note": "The theme shows the struck-through price itself. The badge and “Only X left” need the block on the product page.",
+  "outlet.display.note": "The theme shows the struck-through price itself. In a market with a price list Shopify shows it only for a fixed price of the list (the sale lowers and strikes it); a variant without a fixed price there just gets the lower price. The badge and “Only X left” need the block on the product page.",
   "outlet.reopen.label": "A return after the sale ended",
   "outlet.reopen.auto": "Open the sale again",
   "outlet.reopen.ask": "Ask on the Overview",

@@ -94,6 +94,7 @@ export async function runOutletDueOnce(deps: OutletDueDeps): Promise<OutletDueRe
       OR: [
         { status: "active", endsAt: { lte: now } },
         { status: "active", error: { not: null }, nextAttemptAt: { lte: now } },
+        // An end under way holds a lease (nextAttemptAt ahead, outlet.server.ts OUTLET_END_LEASE_MS); null = an old row.
         { status: "ending", OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }] },
         { status: "starting", createdAt: { lte: new Date(now.getTime() - OUTLET_START_STALE_MS) } },
       ],

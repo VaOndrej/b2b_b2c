@@ -195,7 +195,12 @@ Funkce se nemění, ale MVP 5 začne psát skutečné seznamy `outlet` → přem
   execute jen ke čtení. Fallback: storno ověřené jen testy handleru (podepsaný payload).
 - F-O2: `priceListFixedPricesUpdate` mění pevnou cenu a `compareAtPrice` ceníku česko; pokladna v trhu cesko účtuje
   výprodejovou pevnou cenu.
-- F-O3: Horizon i Dawn ukážou přeškrtnutí z `compare_at_price` bez zásahu appky.
+- F-O3: Horizon i Dawn ukážou přeškrtnutí z `compare_at_price` bez zásahu appky. **Ověřeno 2026-10-02 (živé E2E
+  + sonda Admin API `contextualPricing`): platí jen částečně** — v trhu s ceníkem (česko, Slovensko; `compareAtMode`
+  ADJUSTED) Shopify u varianty bez pevné ceny vrací kontextově `compareAtPrice: null`, i když varianta compare-at má;
+  cena výprodeje se propíše (13,50 Kč, 0,56 €). U pevné ceny ceníku přeškrtnutí funguje (výprodej píše compare-at
+  pevné ceny). Rozhodnuto výchozí hodnotou: poctivá věta v adminu a docs, štítek bloku se ukazuje vždy; zápis pevných
+  cen do ceníků ve stejné měně kvůli přeškrtnutí = otázka pro Ondřeje (mění chování ceníku).
 - F-O4: storno objednávky (`orderCancel` s `restock`) pošle `orders/cancelled`; vratka `refunds/create`.
 - F-O5: funkce vyřadí řádek výprodeje z kódu/automatické slevy v pokladně (A1).
 

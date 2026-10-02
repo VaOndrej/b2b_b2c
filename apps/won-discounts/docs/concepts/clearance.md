@@ -56,6 +56,10 @@ Overview (default), or do nothing.
 
 ## On your store
 
+In a market with a **price list**, Shopify shows the struck-through price only for a **fixed price** of that
+list (the sale lowers it and writes its compare-at); a variant priced by the list's adjustment gets the lower
+price but no struck price there — the badge still shows.
+
 How the sale shows is your choice: nothing, a struck-through price, plus a
 "Sale" badge, plus "Only X left" (from the real quota, never below zero). The
 badge needs the **Sale badge** block on the product page, see

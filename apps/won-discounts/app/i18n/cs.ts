@@ -1049,7 +1049,7 @@ export const cs = {
   "outlet.display.strike": "Přeškrtnutá cena",
   "outlet.display.strike_badge": "Přeškrtnutá cena a štítek „Výprodej“",
   "outlet.display.strike_badge_left": "Přeškrtnutá cena, štítek a „Zbývá X ks“",
-  "outlet.display.note": "Přeškrtnutou cenu ukazuje téma samo. Štítek a „Zbývá X ks“ potřebují blok na stránce produktu.",
+  "outlet.display.note": "Přeškrtnutou cenu ukazuje téma samo. V trhu s ceníkem ji Shopify ukáže jen u pevné ceny z ceníku (tu výprodej sníží a přeškrtne); varianta bez pevné ceny má v takovém trhu jen nižší cenu. Štítek a „Zbývá X ks“ potřebují blok na stránce produktu.",
   "outlet.reopen.label": "Vratka po konci výprodeje",
   "outlet.reopen.auto": "Výprodej znovu otevřít",
   "outlet.reopen.ask": "Zeptat se na Přehledu",

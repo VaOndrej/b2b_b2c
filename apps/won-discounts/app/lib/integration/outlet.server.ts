@@ -70,6 +70,8 @@ interface PriceRecord {
 /** Retry back-off of a failed start / end (O5): 1, 5, 15, then every 60 minutes. */
 export const OUTLET_RETRY_MINUTES = [1, 5, 15, 60] as const;
 export const OUTLET_NOT_ENDED = ["starting", "active", "ending"] as const;
+/** How long an end in progress holds its run against another process's scheduler (audit A5). */
+export const OUTLET_END_LEASE_MS = 2 * 60_000;
 
 const quiet: SyncLogger = { info() {}, warn() {}, error() {} };
 const nowOf = (deps: Pick<OutletDeps, "now">) => (deps.now ? deps.now() : new Date());
@@ -414,7 +416,9 @@ async function endNow(deps: OutletDeps, runId: string, reason: OutletEndReason):
   if (!run) return { ok: false, reason: "failed", message: "no such sale" };
   if (run.status === "ended") return { ok: true, runId, skippedLists: [] };
   if (run.status === "starting") return { ok: false, reason: "failed", message: "the sale is still starting", runId };
-  await deps.db.outletRun.update({ where: { id: runId }, data: { status: "ending", endReason: run.endReason ?? reason } });
+  // A lease (audit A5, live E2E): the scheduler of another process (a script next to the app, a second instance)
+  // takes over an `ending` run only after its next attempt time, never while this end is under way.
+  await deps.db.outletRun.update({ where: { id: runId }, data: { status: "ending", endReason: run.endReason ?? reason, nextAttemptAt: new Date(nowOf(deps).getTime() + OUTLET_END_LEASE_MS) } });
   const transport = transportOf(deps);
   if (run.endedAt === null) {
     const restored = await restorePrices(deps, transport, runId);
