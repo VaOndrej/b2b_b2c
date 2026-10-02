@@ -52,14 +52,14 @@ function str(v: unknown): string {
   return typeof v === "string" ? v : "";
 }
 
-export async function pickProducts(selected: readonly string[], opts: { variants?: boolean } = {}): Promise<PickResult<PickedProduct>> {
+export async function pickProducts(selected: readonly string[], opts: { variants?: boolean; multiple?: boolean } = {}): Promise<PickResult<PickedProduct>> {
   const bridge = appBridge();
   if (!bridge?.resourcePicker) return { ok: false, reason: "unavailable" };
   let picked: unknown[] | undefined;
   try {
     picked = await bridge.resourcePicker({
       type: "product",
-      multiple: true,
+      multiple: opts.multiple ?? true,
       selectionIds: selected.map((id) => ({ id })),
       ...(opts.variants === false ? { filter: { variants: false } } : {}),
     });

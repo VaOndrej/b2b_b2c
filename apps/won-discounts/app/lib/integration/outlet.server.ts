@@ -188,6 +188,22 @@ const parseRecord = (text: string | null): PriceRecord | null => {
   }
 };
 
+/**
+ * Steps of ONE sale run one after the other in this process (audit A1): the admin's "Ukončit", a webhook's used-up
+ * quota and the scheduler may end the same sale at the same moment; the second then finds it ended. Single
+ * instance, like the sync (one Fly machine).
+ */
+const runQueues = new Map<string, Promise<unknown>>();
+function serial<T>(runId: string, work: () => Promise<T>): Promise<T> {
+  const previous = runQueues.get(runId) ?? Promise.resolve();
+  const next = previous.catch(() => undefined).then(work);
+  runQueues.set(runId, next);
+  void next.finally(() => {
+    if (runQueues.get(runId) === next) runQueues.delete(runId);
+  }).catch(() => undefined);
+  return next;
+}
+
 /** Variants with a sale not ended (validation: one per variant, OUTLET_LIMITS.running per shop). */
 async function runningOf(deps: OutletDeps) {
   const rows = await deps.db.outletRun.findMany({ where: { shop: deps.shop, status: { in: [...OUTLET_NOT_ENDED] } }, select: { variantId: true } });
@@ -219,12 +235,16 @@ export async function startOutletRun(deps: OutletDeps, raw: unknown): Promise<Ou
     });
   });
   if (!row) return { ok: false, reason: "invalid", errors: [{ field: "variantId", key: "outlet.error.running" }] };
-  return applySale(deps, row.id);
+  return serial(row.id, () => applySale(deps, row.id));
 }
 
 /** O7: run an ended sale again (Pro; the merchant's "Znovu otevřít" or reopenOnReturnAfterEnd = auto). */
 export async function reopenOutletRun(deps: OutletDeps, runId: string): Promise<OutletResult> {
   if ((await planFor(deps)) !== "pro") return { ok: false, reason: "invalid", errors: [{ field: "plan", key: "outlet.error.pro" }] };
+  return serial(runId, () => reopenNow(deps, runId));
+}
+
+async function reopenNow(deps: OutletDeps, runId: string): Promise<OutletResult> {
   const run = await deps.db.outletRun.findFirst({ where: { id: runId, shop: deps.shop } });
   if (!run || run.status !== "ended") return { ok: false, reason: "failed", message: "not an ended sale", runId };
   if (outletLeft(run) === 0) return { ok: false, reason: "invalid", errors: [{ field: "variantId", key: "outlet.error.nothingLeft" }] };
@@ -386,6 +406,10 @@ async function restorePrices(deps: OutletDeps, transport: Transport, runId: stri
 
 /** O5: end a running sale (quota, date, manual) — or finish an end that failed before. Never throws for Shopify. */
 export async function endOutletRun(deps: OutletDeps, runId: string, reason: OutletEndReason): Promise<OutletResult> {
+  return serial(runId, () => endNow(deps, runId, reason));
+}
+
+async function endNow(deps: OutletDeps, runId: string, reason: OutletEndReason): Promise<OutletResult> {
   const run = await deps.db.outletRun.findFirst({ where: { id: runId, shop: deps.shop } });
   if (!run) return { ok: false, reason: "failed", message: "no such sale" };
   if (run.status === "ended") return { ok: true, runId, skippedLists: [] };

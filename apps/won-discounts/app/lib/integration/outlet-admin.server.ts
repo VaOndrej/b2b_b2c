@@ -23,7 +23,7 @@ import { formatShopTime } from "../native/copy";
 import { GQL } from "../sync/graphql";
 import { graphqlOf, nowOf, type ShopCtx } from "./context.server";
 import { GIFT_TITLES_DOCUMENT } from "./rewards.server";
-import { endOutletRun, keepOutletEnded, reopenOutletRun, startOutletRun, type OutletDeps } from "./outlet.server";
+import { endOutletRun, keepOutletEnded, reopenOutletRun, startOutletRun, writeOutletStorefront, type OutletDeps } from "./outlet.server";
 import { readSaveOptions, saveConfigSection } from "./settings.server";
 import { ctxPlan } from "./sync-status.server";
 import { readShopContext } from "./themes.server";
@@ -246,12 +246,19 @@ export async function outletAction(ctx: ShopCtx, form: FormDataLike): Promise<Ou
     case OUTLET_INTENT.settings: {
       const loaded = await loadConfig(ctx.db, ctx.shop);
       const next = readOutletSettings(form, loaded.config.modules.outlet);
-      return saveConfigSection(ctx, {
+      const saved = await saveConfigSection(ctx, {
         ...readSaveOptions(form),
         path: "modules.outlet",
         pick: (config) => config.modules.outlet,
         apply: (config) => ({ ...config, modules: { ...config.modules, outlet: { ...config.modules.outlet, ...next } } }),
       });
+      // Audit A3: the running sales' storefront value takes the new display now (the struck price of a running
+      // sale stays as it started: compare_at is written at the start only).
+      if (saved.ok) {
+        const active = await ctx.db.outletRun.findMany({ where: { shop: ctx.shop, status: "active" }, select: { productId: true } });
+        if (active.length) await writeOutletStorefront(deps, [...new Set(active.map((r) => r.productId))]);
+      }
+      return saved;
     }
     default:
       return { ok: false, reason: "bad_request" };

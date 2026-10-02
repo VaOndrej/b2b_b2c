@@ -189,6 +189,18 @@ test("O5: an end that fails stays `ending` (flag kept, next attempt scheduled) a
   assert.equal(fake.variants.get(large)!.price, "18.00");
 });
 
+test("audit A1: two ends of the same sale at once (the admin's button, a webhook's quota, the scheduler) run one after the other: one history entry, prices back once", async () => {
+  const { fake, deps, product, large } = setup();
+  const r = await startOutletRun(deps, draft(large, product.id));
+  assert.ok(r.ok);
+  const before = fake.callsOf("WonOutletVariantUpdate").length;
+  const [a, b] = await Promise.all([endOutletRun(deps, r.runId, "manual"), endOutletRun(deps, r.runId, "quota")]);
+  assert.ok(a.ok && b.ok);
+  assert.equal(fake.callsOf("WonOutletVariantUpdate").length - before, 1, "the prices are written back once");
+  assert.equal((await events(r.runId)).filter((k) => k === "ended").length, 1);
+  assert.equal((await db.prisma.outletRun.findUnique({ where: { id: r.runId } }))!.endReason, "manual");
+});
+
 test("O7: orders count pieces once per order line; the quota used up ends the sale (prices back); a late order is oversold, exactly", async () => {
   const { fake, deps, product, large } = setup();
   const r = await startOutletRun(deps, draft(large, product.id));

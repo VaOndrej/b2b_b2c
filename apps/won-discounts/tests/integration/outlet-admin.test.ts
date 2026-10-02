@@ -133,6 +133,16 @@ test("module settings: display and return-after-end saved into modules.outlet; a
   assert.equal(stored.reopenOnReturnAfterEnd, "ask");
 });
 
+test("audit A3: a new display level reaches the storefront value of the running sales at once (not with the next order)", async () => {
+  const { fake, ctx, product, variant } = setup("pro");
+  await outletAction(ctx, startForm(variant, product.id));
+  const value = () => JSON.parse(fake.products.get(product.id)!.metafields.get("$app:won_discounts/outlet")!.value) as { d: string };
+  assert.equal(value().d, "strike_badge");
+  const r = await outletAction(ctx, formOf([[F.intent, OUTLET_INTENT.settings], [F.display, "strike_badge_left"], [F.reopen, "ask"]]));
+  assert.ok(r.ok, JSON.stringify(r));
+  assert.equal(value().d, "strike_badge_left");
+});
+
 test("an unknown intent is a bad request", async () => {
   const { ctx } = setup("pro");
   assert.deepEqual(await outletAction(ctx, formOf([[F.intent, "drop-table"]])), { ok: false, reason: "bad_request" });

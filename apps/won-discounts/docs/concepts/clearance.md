@@ -63,6 +63,14 @@ badge needs the **Sale badge** block on the product page, see
 tiers table is not shown for a variant on sale (it would promise a discount
 checkout does not give).
 
+Changing the display later updates the badge and "Only X left" of running sales at once; their struck-through
+price stays as the sale started (the compare-at price is set at the start only).
+
+## Before uninstalling
+
+An uninstalled app can no longer change prices. **End every running sale before you uninstall Won**, or its
+sale price stays in your store. (A one-click "Prepare to uninstall" comes in a later version.)
+
 ## Free plan
 
 Clearance is part of Pro. On Free nothing new starts; sales already running

@@ -137,7 +137,8 @@ export function OutletScreen(props: OutletScreenProps) {
   };
 
   const pick = async () => {
-    const picked = await pickProducts(variant ? [variant.productId] : []);
+    // One variant a sale (audit A2): the picker takes a single product; its first picked variant.
+    const picked = await pickProducts(variant ? [variant.productId] : [], { multiple: false });
     setPickError(!picked.ok && picked.reason === "unavailable");
     if (!picked.ok) return;
     const product = picked.items[0];
