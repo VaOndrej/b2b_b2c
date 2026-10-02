@@ -24,6 +24,10 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   smí). F-O1 zatím odložit. Pozn.: 60 dní historie je výchozí rozsah `read_orders` (starší by chtěly `read_all_orders`,
   ty výprodej nepotřebuje); blok je přístup k chráněným datům zákazníků, který Shopify chce pro objednávky v jakémkoli
   stáří (sonda: odběr `orders/create` odmítnut).
+  **Sonda 2026-10-02 (přímý dotaz):** s `read_orders` (auto-grant na dev storu) dotaz `orders(query:
+  "created_at:>=2026-08-03")` → `ACCESS_DENIED: This app is not approved to access the Order object` — ani 60 dní
+  bez schválených chráněných dat nejde. Scope vrácen, konfigurace dev appky zpět (granted: read_products,
+  read_themes, write_discounts, write_products).
 - **Ověření MVP 4 (2026-10-02) ✓ — MVP 4 odpovídá checkpointu, 1 nový nález (N1, P3, opraven):**
   - A1 ✓ `git status`: jen cizí `docs/product-roadmap.html`, `docs/won-companion/`, `docs/won-discounts/paralelizace.md`;
     `git log origin/main..HEAD` prázdné; checkpoint MVP 4 je.
