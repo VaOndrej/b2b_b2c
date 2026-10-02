@@ -12,14 +12,13 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > technická pravidla, zakázané věci). **MVP N+1 nezačíná, dokud MVP N není finální** (brána, živé E2E A+B,
 > vizuální QA, audit s opravenými nálezy, checkpoint, push).
 
-- **Aktivní zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md (ověření MVP 4 → MVP 5). Krok: B-brána
-  (`<scratchpad>/gate-b`), pak B-E2E: fáze A (Free, app dev bez WON_DEV_PLAN) `profile.sh outlet mvp5 free` + regrese
-  mvp1, shapes, margin, tiers, rewards, rewards-other; fáze B (Pro) `phase-b.sh mvp5` (outlet + rewards-pro, tiers-pro,
-  margin-pro, shapes). Evidence `docs/won-discounts/evidence/mvp5/`, logy `WON_RUN_DIR=<scratchpad>/runs`.
-  Commity MVP 5: plán `01bcf12`/`a404202`, core `b6ace56`, server `163a351`+`55dcdbb`, funkce `8a67d72`, storefront
-  `eaf15da`, admin `c894ff0`, docs `9d1d013`, E2E `ad2ce1a`. **Blokuje živé E2E objednávek (kvóta, storno):** F-O1
-  (Ondřej: chráněná data zákazníků v Partner Dashboardu) a F-O4b (storno v E2E). Po E2E: audit, oprava nálezů,
-  checkpoint, push.
+- **Aktivní zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md. Krok: B-E2E fáze B (Pro): app dev s
+  WON_DEV_PLAN=pro, `phase-b.sh mvp5-B` (outlet + rewards-pro, tiers-pro, margin-pro, shapes), logy
+  `<scratchpad>/runs/mvp5-B`, evidence `docs/won-discounts/evidence/mvp5/e2e-B`. Hotovo: brána `gate-b` ✓ (7/7),
+  fáze A (Free) ✓ Horizon ✓ Dawn: outlet 4+4, mvp1 5+5, shapes 4+4, margin 6+6 (1 opakování Dawn SK: výpadek doručení
+  logů funkce do app dev 08:35–08:37 UTC, izolovaně 3/3 bez opakování), tiers 7+7, rewards 7+7, rewards-other 3+3;
+  audit `audits/audit-mvp5.md` + opravy `5bad955`. Další: vizuální QA storefrontu, checkpoint, roadmapa, push.
+  **Blokuje živé E2E objednávek:** F-O1, F-O4b (viz plán).
 - **Ověření MVP 4 (2026-10-02) ✓ — MVP 4 odpovídá checkpointu, 1 nový nález (N1, P3, opraven):**
   - A1 ✓ `git status`: jen cizí `docs/product-roadmap.html`, `docs/won-companion/`, `docs/won-discounts/paralelizace.md`;
     `git log origin/main..HEAD` prázdné; checkpoint MVP 4 je.
