@@ -254,11 +254,7 @@ listed so the plan comparison is complete; none of them can be set up today.
 |---|---|---|
 ${planned.map(capRow).join("\n")}
 
-## Planned modules
-
-${upcoming.join("\n")}
-
-## What "On Free" means
+${upcoming.length ? `## Planned modules\n\n${upcoming.join("\n")}\n\n` : ""}## What "On Free" means
 
 Pro settings are **never erased**: they stay saved, but the server leaves them
 out of what checkout runs while the shop is on Free. The admin lists each one

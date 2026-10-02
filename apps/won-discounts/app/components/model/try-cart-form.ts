@@ -18,6 +18,8 @@ export interface TryCartInput {
   codes: string[];
   /** Shop-local day `YYYY-MM-DD` the schedules are evaluated on. */
   date: string;
+  /** Shop-local time of day `HH:MM` (campaign windows, MVP 6); null = the time now. */
+  time: string | null;
 }
 
 export function readTryCartForm(
@@ -66,5 +68,12 @@ export function readTryCartForm(
     else errors.push({ field: "date", key: "tryCart.error.date" });
   }
 
-  return { input: { lines, currency, market, codes, date }, errors };
+  const rawTime = str("time");
+  let time: string | null = null;
+  if (rawTime !== "") {
+    if (/^([01]\d|2[0-3]):[0-5]\d$/.test(rawTime)) time = rawTime;
+    else errors.push({ field: "time", key: "tryCart.error.time" });
+  }
+
+  return { input: { lines, currency, market, codes, date, time }, errors };
 }

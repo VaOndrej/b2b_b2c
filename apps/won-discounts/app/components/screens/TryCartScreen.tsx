@@ -41,13 +41,15 @@ export interface TryCartScreenProps {
   currency?: string;
   codes?: string;
   date?: string;
+  /** Shop-local time of day `HH:MM` (MVP 6: "Vyzkoušet košík v době kampaně"); absent = the time now. */
+  time?: string;
   plan: CartPlanView | null;
   result: UiResult | null;
 }
 
 export function buildTryCartProps(
   config: WonDiscountsConfig,
-  opts: { timezone: string | null; shopCurrency?: string | null; marketNames?: MarketNames; now?: Date },
+  opts: { timezone: string | null; shopCurrency?: string | null; marketNames?: MarketNames; now?: Date; date?: string | null; time?: string | null },
 ): TryCartScreenProps {
   return {
     currencies: currencyViews(config.markets, {
@@ -57,6 +59,9 @@ export function buildTryCartProps(
     }),
     timezone: opts.timezone,
     today: shopToday(opts.timezone, opts.now),
+    // MVP 6: a link from a campaign opens the simulation at its time (?date=&time=).
+    ...(opts.date && /^\d{4}-\d{2}-\d{2}$/.test(opts.date) ? { date: opts.date } : {}),
+    ...(opts.time && /^([01]\d|2[0-3]):[0-5]\d$/.test(opts.time) ? { time: opts.time } : {}),
     lines: [],
     plan: null,
     result: null,
@@ -300,6 +305,14 @@ export function TryCartScreen(props: TryCartScreenProps) {
                   value={props.date ?? today}
                   details={timezone ? t("tryCart.dateDetails", { tz: timezone }) : t("tryCart.dateDetailsUtc")}
                   error={errorFor("date")}
+                />
+                <s-text-field
+                  name="time"
+                  label={t("tryCart.time")}
+                  value={props.time ?? ""}
+                  placeholder="HH:MM"
+                  details={t("tryCart.timeDetails")}
+                  error={errorFor("time")}
                 />
               </div>
               <div>

@@ -68,6 +68,7 @@ import {
 } from "./integration/native.server";
 import { loadMarginOverview } from "./integration/margin.server";
 import { loadOutletOverview } from "./integration/outlet-admin.server";
+import { loadCampaignsOverview } from "./integration/campaigns-admin.server";
 import { loadRewardsOverview } from "./integration/rewards.server";
 import { loadTiersOverview } from "./integration/tiers.server";
 import { uiFailureFromSave } from "./integration/results";
@@ -232,7 +233,7 @@ export async function loadStoreSignals(
     nativeDeadlineMs?: number;
   },
 ): Promise<AdminSignals> {
-  const [base, sync, native, margin, tiers, rewards, outlet] = await Promise.all([
+  const [base, sync, native, margin, tiers, rewards, outlet, campaigns] = await Promise.all([
     loadAdminSignals({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql: opts.graphql, fresh: opts.fresh }),
     opts.sync ? overviewSync(ctx, loaded, { timezone: opts.timezone, deadlineMs: opts.syncDeadlineMs }) : Promise.resolve(NOT_WIRED_SIGNALS.sync),
     // `fresh` re-reads the theme only (onboarding's focus re-check); detection keeps its 60 s cache.
@@ -248,6 +249,8 @@ export async function loadStoreSignals(
     opts.sync ? loadRewardsOverview(ctx, loaded, { shopCurrency: opts.shopCurrency }).catch(() => undefined) : Promise.resolve(undefined),
     // Výprodej card (MVP 5, Přehled only): running sales, returned pieces waiting for a decision (one button).
     opts.sync ? loadOutletOverview({ ...ctx, scopes: opts.scopes }).catch(() => undefined) : Promise.resolve(undefined),
+    // Kampaně card (MVP 6, Přehled only): the running and the next campaign.
+    opts.sync ? loadCampaignsOverview(ctx).catch(() => undefined) : Promise.resolve(undefined),
   ]);
   return {
     ...base,
@@ -257,6 +260,7 @@ export async function loadStoreSignals(
     ...(tiers ? { tiers } : {}),
     ...(rewards ? { rewards } : {}),
     ...(outlet ? { outlet } : {}),
+    ...(campaigns ? { campaigns } : {}),
   };
 }
 

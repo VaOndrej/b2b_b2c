@@ -25,6 +25,7 @@ import { NativeDiscountsPanel, nativeSummary } from "../NativeDiscounts";
 import { MarginOverviewCard } from "../margin/MarginOverviewCard";
 import { TiersOverviewCard } from "../tiers/TiersOverviewCard";
 import { OutletOverviewCard } from "../outlet/OutletOverviewCard";
+import { CampaignsOverviewCard } from "../campaigns/CampaignsOverviewCard";
 import { RewardsOverviewCard } from "../rewards/RewardsOverviewCard";
 import { RecipeGrid } from "../RecipeGrid";
 import { RuleRow } from "../RuleRow";
@@ -289,33 +290,37 @@ export function OverviewScreen({
 
         {status.rewards ? <RewardsOverviewCard rewards={status.rewards} /> : null}
         {status.outlet ? <OutletOverviewCard outlet={status.outlet} /> : null}
+        {status.campaigns ? <CampaignsOverviewCard campaigns={status.campaigns} /> : null}
 
         <WonSection title={t("overview.native.title")} glyph="move" summary={nativeSummary(status.native, tr)} anchor="native">
           <NativeDiscountsPanel native={status.native} mode="each" result={nativeResult} />
         </WonSection>
 
+        {/* MVP 6: every module is built; the section returns if a later module ships "coming soon" first. */}
+        {UPCOMING_MODULES.length > 0 ? (
         <WonSection
-          title={t("overview.modules.title")}
-          glyph="layers"
-          summary={t("overview.modules.summary", { modules: tr.tp("count.module", UPCOMING_MODULES.length) })}
-          collapsible
-          defaultOpen={false}
-        >
-          <div>
-            {orderedUpcomingModules(goals).map((key) => {
-              const meta = UPCOMING_MODULE_META[key];
-              return (
-                <WonRow key={key} action={<s-link href={`/app/${key}`}>{t("soon.state")}</s-link>}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <s-text type="strong">{t(meta.title)}</s-text>
-                    {meta.pro ? <PlanBadge tier="pro" /> : null}
-                  </div>
-                  <RowNote>{t(meta.body)}</RowNote>
-                </WonRow>
-              );
-            })}
-          </div>
-        </WonSection>
+            title={t("overview.modules.title")}
+            glyph="layers"
+            summary={t("overview.modules.summary", { modules: tr.tp("count.module", UPCOMING_MODULES.length) })}
+            collapsible
+            defaultOpen={false}
+          >
+            <div>
+              {orderedUpcomingModules(goals).map((key) => {
+                const meta = UPCOMING_MODULE_META[key];
+                return (
+                  <WonRow key={key} action={<s-link href={`/app/${key}`}>{t("soon.state")}</s-link>}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <s-text type="strong">{t(meta.title)}</s-text>
+                      {meta.pro ? <PlanBadge tier="pro" /> : null}
+                    </div>
+                    <RowNote>{t(meta.body)}</RowNote>
+                  </WonRow>
+                );
+              })}
+            </div>
+          </WonSection>
+        ) : null}
 
         <div style={{ fontSize: 12, color: WON_FAINT, padding: "0 4px" }}>
           <s-paragraph color="subdued">

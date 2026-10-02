@@ -5,18 +5,19 @@ import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { shopCtx } from "../lib/integration/context.server";
 import { adminLocale } from "../lib/integration/locale.server";
-import { tryCartAction, tryCartPage } from "../lib/integration/pages.server";
-import { TryCartScreen } from "../components/screens/TryCartScreen";
+import { campaignsAction, loadCampaignsScreen } from "../lib/integration/campaigns-admin.server";
+import { CampaignsScreen } from "../components/screens/CampaignsScreen";
 
-// Vyzkoušet košík. The plan is computed on the server: Shopify prices for the
-// chosen market, then the engine on the discount function's own payload.
+// Kampaně (MVP 6, Pro). A static route: it wins over app.$module.tsx, so /app/campaigns keeps its URL. The screen
+// lives in components/screens/CampaignsScreen.tsx (the dev harness renders the same component); the data and the
+// actions live in app/lib/integration/campaigns-admin.server.ts. The context comes from the SESSION shop (SEC-2);
+// every form is parsed on the server (SEC-1); Pro is checked there (BILL-1, A6).
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const locale = await adminLocale(request, session, db);
   // eslint-disable-next-line no-undef
   const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "", scopes: session.scope });
-  const q = new URL(request.url).searchParams;
-  return tryCartPage(ctx, { scopes: session.scope ?? "", date: q.get("date"), time: q.get("time") });
+  return loadCampaignsScreen(ctx, { edit: new URL(request.url).searchParams.get("edit") });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -24,18 +25,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const locale = await adminLocale(request, session, db);
   // eslint-disable-next-line no-undef
   const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "", scopes: session.scope });
-  return tryCartAction(ctx, await request.formData(), { scopes: session.scope ?? "" });
+  return campaignsAction(ctx, await request.formData());
 };
 
-export default function TryCart() {
+export default function Campaigns() {
   const loaded = useLoaderData<typeof loader>();
   const submitted = useActionData<typeof action>();
-  return (
-    <TryCartScreen
-      {...loaded}
-      lines={submitted?.lines ?? loaded.lines}
-      plan={submitted?.plan ?? loaded.plan}
-      result={submitted ? submitted.result : loaded.result}
-    />
-  );
+  return <CampaignsScreen key={`${loaded.configVersion ?? "none"}-${loaded.editing?.id ?? "new"}`} {...loaded} result={submitted ?? null} />;
 }

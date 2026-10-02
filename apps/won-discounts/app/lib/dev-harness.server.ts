@@ -17,7 +17,8 @@
 // authenticates.
 
 import { codeHash } from "@won/core/discounts/code-hash";
-import { DEFAULT_CONFIG, readStoredConfig, sanitizeConfig, type WonDiscountsConfig } from "@won/core/discounts/config";
+import { CONFIG_LIMITS, DEFAULT_CONFIG, readStoredConfig, sanitizeConfig, type Campaign, type WonDiscountsConfig } from "@won/core/discounts/config";
+import { CAMPAIGN_LIMITS } from "@won/core/discounts/campaigns";
 import type { MarginVariant } from "@won/core/discounts/margin";
 import { explainGate, gateConfigForPlan } from "@won/core/discounts/plan-gate";
 import { productRuleIndex, variantKey } from "@won/core/discounts/targeting";
@@ -49,6 +50,9 @@ import type {
   OutletActionResult,
   OutletOverviewView,
   OutletScreenData,
+  CampaignsActionResult,
+  CampaignsOverviewView,
+  CampaignsScreenData,
 } from "../components/model/types";
 import { presetOf } from "../components/model/appearance";
 import { cartBlockAddUrl, outletBlockAddUrl, tiersBlockAddUrl } from "../components/model/embed";
@@ -66,6 +70,8 @@ import { foldMarginCollections } from "./sync/products";
 import { planTryCart } from "./integration/try-cart-plan";
 import { outletOverviewOf, outletRunView } from "./integration/outlet-admin.server";
 import { OUTLET_FIELD } from "../components/model/outlet";
+import { CAMPAIGN_FIELD } from "../components/model/campaigns";
+import { campaignRuleChoices, campaignsOverviewOf, campaignView, type CampaignViewOptions } from "./integration/campaigns-admin.server";
 import { OUTLET_LIMITS } from "@won/core/discounts/outlet";
 
 export function isDevHarnessEnabled(): boolean {
@@ -1363,3 +1369,74 @@ export function devOutletOverview(orders = false): OutletOverviewView {
   return outletOverviewOf(DEV_OUTLET_RUNS, DEV_OUTLET_TITLES, orders);
 }
 
+
+// --- Kampaně (MVP 6) --------------------------------------------------------------------------------
+
+const DEV_CAMPAIGN_NOW = "2026-09-28T14:00:00";
+
+const DEV_CAMPAIGNS: Campaign[] = [
+  {
+    id: "weekend",
+    name: "Víkend −20 %",
+    window: { start: "2026-09-26T00:00:00", end: "2026-09-29T00:00:00" },
+    overrides: [
+      { ruleId: "dev-fixture-1", patch: { value: { kind: "percentage", percent: 20 } } },
+      { ruleId: "dev-fixture-5", patch: { enabled: true } },
+    ],
+    killed: false,
+  },
+  {
+    id: "bf",
+    name: "Black Friday",
+    window: { start: "2026-11-27T00:00:00", end: "2026-11-30T23:59:00" },
+    overrides: [
+      { ruleId: "dev-fixture-3", patch: { value: { kind: "fixed", amount: { CZK: 400_00, EUR: 16_00 } } } },
+      { ruleId: "dev-fixture-4", patch: { enabled: true } },
+      { ruleId: "dev-tier-set", patch: { breaks: [{ minQty: 2, percent: 20 }] } },
+    ],
+    killed: false,
+  },
+  { id: "summer", name: "Letní výprodej", window: { start: "2026-08-01T00:00:00", end: "2026-08-03T00:00:00" }, overrides: [{ ruleId: "dev-fixture-6", patch: { value: { kind: "percentage", percent: 15 } } }], killed: false },
+  { id: "test", name: "Zkouška", window: { start: "2026-10-05T00:00:00", end: "2026-10-06T00:00:00" }, overrides: [{ ruleId: "dev-fixture-1", patch: { enabled: false } }], killed: true },
+];
+
+/** Kampaně screen: Free by default (?plan=pro), ?state=empty, ?edit=<id>, ?state=finishing (Free, A6). */
+export function devCampaignsScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; edit: string | null }): CampaignsScreenData {
+  const campaigns = opts.state === "empty" ? [] : DEV_CAMPAIGNS;
+  const rules = new Map(DEV_OVERVIEW_FIXTURE.modules.codes.rules.map((r) => [r.id, r]));
+  const viewOpts: CampaignViewOptions = { locale: opts.locale, now: DEV_CAMPAIGN_NOW, rules, finishing: new Set(opts.state === "finishing" ? ["weekend"] : []), plan: opts.plan };
+  const views = campaigns.map((c) => campaignView(c, viewOpts));
+  return {
+    plan: opts.plan,
+    configVersion: "dev-config-version",
+    today: DEV_CAMPAIGN_NOW.slice(0, 10),
+    nowTime: DEV_CAMPAIGN_NOW.slice(11, 16),
+    timezone: DEV_TIMEZONE,
+    campaigns: views,
+    rules: campaignRuleChoices(DEV_OVERVIEW_FIXTURE, opts.locale),
+    editing: opts.edit ? (views.find((v) => v.id === opts.edit && (v.status === "running" || v.status === "scheduled")) ?? null) : null,
+    limits: { campaigns: CONFIG_LIMITS.campaigns, maxDays: CAMPAIGN_LIMITS.maxDays, minLeadMinutes: CAMPAIGN_LIMITS.minLeadMinutes },
+  };
+}
+
+/** Kampaně action results (harness `?result=`). */
+export function devCampaignsResult(kind: string | null): CampaignsActionResult | null {
+  if (kind === "saved") return { ok: true, kind: "saved", sync: { ok: true, problems: [], warnings: [] } };
+  if (kind === "killed") return { ok: true, kind: "killed" };
+  if (kind === "invalid") {
+    return {
+      ok: false,
+      reason: "invalid",
+      errors: [
+        { field: CAMPAIGN_FIELD.startDate, key: "campaign.error.overlap", params: { other: "Black Friday" } },
+        { field: CAMPAIGN_FIELD.use, key: "campaign.error.empty" },
+      ],
+    };
+  }
+  return null;
+}
+
+/** The Přehled card: Víkend running, Black Friday next (?state=campaigns-finishing: Free, A6). */
+export function devCampaignsOverview(opts: { locale: "cs" | "en"; finishing?: boolean }): CampaignsOverviewView {
+  return campaignsOverviewOf(DEV_CAMPAIGNS, { now: DEV_CAMPAIGN_NOW, locale: opts.locale, plan: opts.finishing ? "free" : "pro", finishing: new Set(opts.finishing ? ["weekend"] : []) });
+}

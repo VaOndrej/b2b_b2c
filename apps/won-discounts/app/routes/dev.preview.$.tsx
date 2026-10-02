@@ -20,6 +20,7 @@ import { AppearanceScreen, type AppearanceScreenProps } from "../components/scre
 import { TiersScreen, type TiersScreenProps } from "../components/screens/TiersScreen";
 import { RewardsScreen, type RewardsScreenProps } from "../components/screens/RewardsScreen";
 import { OutletScreen, type OutletScreenProps } from "../components/screens/OutletScreen";
+import { CampaignsScreen, type CampaignsScreenProps } from "../components/screens/CampaignsScreen";
 import { MarginScreen, type MarginScreenProps } from "../components/screens/MarginScreen";
 import { buildTryCartProps, TryCartScreen, type TryCartScreenProps } from "../components/screens/TryCartScreen";
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
@@ -50,6 +51,9 @@ import {
   devOutletOverview,
   devOutletResult,
   devOutletScreen,
+  devCampaignsOverview,
+  devCampaignsResult,
+  devCampaignsScreen,
   devMovedResult,
   devNative,
   devNativeMoved,
@@ -116,7 +120,9 @@ import {
 //   /dev/preview/move-dialog
 //   /dev/preview/outlet          Výprodej (MVP 5): Free by default, ?plan=pro; ?state=empty; ?result=started | ended |
 //                                 invalid | failed. Přehled: ?state=outlet (the card with a question)
-//   /dev/preview/coming-soon     ?module=campaigns
+//   /dev/preview/campaigns       Kampaně (MVP 6): Free by default, ?plan=pro; ?state=empty | finishing; ?edit=<id>;
+//                                 ?result=saved | killed | invalid. Přehled: ?state=campaigns (+ &finishing=1)
+//   /dev/preview/coming-soon     ?module=<a module not built yet> (none since MVP 6)
 //   /dev/preview/plan
 //   Any screen: ?locale=en for the English admin.
 //
@@ -145,6 +151,7 @@ export const HARNESS_SCREENS = [
   "tiers",
   "rewards",
   "outlet",
+  "campaigns",
   "appearance",
 ] as const;
 export type HarnessScreen = (typeof HARNESS_SCREENS)[number];
@@ -204,6 +211,13 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
         return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
           ...wired,
           signals: { ...DEV_SIGNALS, native: devNative(locale), margin: devMarginOverview(card) },
+          ruleSync: DEV_RULE_SYNC_OK,
+        });
+      }
+      if (state === "campaigns") {
+        return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
+          ...wired,
+          signals: { ...DEV_SIGNALS, native: devNative(locale), campaigns: devCampaignsOverview({ locale, finishing: q.get("finishing") === "1" }) },
           ruleSync: DEV_RULE_SYNC_OK,
         });
       }
@@ -327,6 +341,11 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       };
     case "rewards":
       return { ...devRewardsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale }), result: devRewardsResult(q.get("result")) };
+    case "campaigns":
+      return {
+        ...devCampaignsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, edit: q.get("edit") }),
+        result: devCampaignsResult(q.get("result")),
+      };
     case "outlet":
       return { ...devOutletScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, orders: q.get("orders") === "on" }), result: devOutletResult(q.get("result")) };
     case "appearance":
@@ -411,6 +430,9 @@ export default function DevPreview() {
       break;
     case "rewards":
       content = <RewardsScreen {...(data as RewardsScreenProps)} result={submitted ?? (data as RewardsScreenProps).result} />;
+      break;
+    case "campaigns":
+      content = <CampaignsScreen {...(data as CampaignsScreenProps)} result={(data as CampaignsScreenProps).result} />;
       break;
     case "outlet":
       content = <OutletScreen {...(data as OutletScreenProps)} result={(data as OutletScreenProps).result} />;

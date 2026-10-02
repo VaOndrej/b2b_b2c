@@ -40,6 +40,7 @@ test("a valid simulated cart", () => {
     market: null,
     codes: ["VIP10", "LETO"],
     date: "2026-11-27",
+    time: null,
   });
 });
 
@@ -94,4 +95,30 @@ test("bounded: quantities are capped, lines and codes are limited, an empty date
   assert.equal(input.lines[0].quantity, TRY_CART_LIMITS.quantity);
   assert.equal(input.codes.length, TRY_CART_LIMITS.codes);
   assert.equal(input.date, "2026-09-28");
+});
+
+test("MVP 6: a time of day HH:MM (a campaign's window); empty = now, anything else is refused on the field", () => {
+  const base: [string, string][] = [
+    ["variantId", "gid://shopify/ProductVariant/11"],
+    ["productId", "gid://shopify/Product/1"],
+    ["quantity", "1"],
+    ["currency", "CZK"],
+  ];
+  assert.equal(readTryCartForm(form([...base, ["time", "09:30"]]), CTX).input.time, "09:30");
+  assert.equal(readTryCartForm(form(base), CTX).input.time, null);
+  for (const bad of ["9:30", "24:00", "12:60", "noon"]) {
+    assert.deepEqual(readTryCartForm(form([...base, ["time", bad]]), CTX).errors, [{ field: "time", key: "tryCart.error.time" }], bad);
+  }
+});
+
+test("MVP 6: a campaign's link (?date=&time=) opens the simulation at that moment; junk in the URL is ignored", async () => {
+  const { buildTryCartProps } = await import("../../app/components/screens/TryCartScreen.tsx");
+  const { DEFAULT_CONFIG } = await import("@won/core/discounts/config");
+  const config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  const at = buildTryCartProps(config, { timezone: "Europe/Prague", date: "2026-11-27", time: "00:01" });
+  assert.equal(at.date, "2026-11-27");
+  assert.equal(at.time, "00:01");
+  const junk = buildTryCartProps(config, { timezone: "Europe/Prague", date: "zítra", time: "25:00" });
+  assert.equal(junk.date, undefined);
+  assert.equal(junk.time, undefined);
 });

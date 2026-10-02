@@ -253,7 +253,7 @@ export async function ruleEditorAction(ctx: ShopCtx, form: FormData, ruleId: str
 
 // --- Vyzkoušet košík --------------------------------------------------------------------------
 
-export async function tryCartPage(ctx: ShopCtx, opts: PageOptions) {
+export async function tryCartPage(ctx: ShopCtx, opts: PageOptions & { date?: string | null; time?: string | null }) {
   const [{ config }, reads] = await Promise.all([
     loadConfig(ctx.db, ctx.shop),
     readAdminContext({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql: graphql(ctx) }),
@@ -263,6 +263,8 @@ export async function tryCartPage(ctx: ShopCtx, opts: PageOptions) {
     shopCurrency: reads.shopContext.currencyCode,
     marketNames: reads.marketNames,
     now: nowOf(ctx),
+    date: opts.date ?? null,
+    time: opts.time ?? null,
   });
 }
 

@@ -40,6 +40,7 @@ margin protection, Try a cart and moving Shopify discounts work in full on Free.
 |---|---|---|
 | Show a discount only in chosen markets | Discounts & codes | The whole discount does not apply on Free (removing only its targeting would widen it to everyone). |
 | Choose per discount which other discounts it stacks with | Discounts & codes | The Pro setting is left out; the rest keeps working. |
+| Campaigns: start and end many discounts at once (e.g. Black Friday) | Campaigns | The Pro setting is left out; the rest keeps working. |
 | Quantity discount sets for chosen products or collections | Quantity discounts | The Pro setting is left out; the rest keeps working. |
 | More than one quantity discount set | Quantity discounts | The Pro setting is left out; the rest keeps working. |
 | Quantity discounts counted across the whole cart | Quantity discounts | Kept within the Free limit. |
@@ -58,11 +59,6 @@ listed so the plan comparison is complete; none of them can be set up today.
 | Pro capability | Area | On Free |
 |---|---|---|
 | Show a discount only to chosen customer segments | Discounts & codes | The whole discount does not apply on Free (removing only its targeting would widen it to everyone). |
-| Campaigns: start and end many discounts at once (e.g. Black Friday) | Campaigns | The Pro setting is left out; the rest keeps working. |
-
-## Planned modules
-
-- **Campaigns** (Pro): Black Friday and other campaigns. Start and end every discount at once.
 
 ## What "On Free" means
 

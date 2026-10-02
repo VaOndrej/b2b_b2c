@@ -408,9 +408,12 @@ export async function runTryCartPlan(
     return { result: { ok: false, reason: "shopify_unavailable", detail: "shop time zone" }, plan: null };
   }
   try {
-    const time = shopLocalDateTime(nowOf(ctx), opts.timezone).slice(11);
+    // MVP 6: the chosen time of day (a campaign's window), else the time now.
+    const time = input.time ? `${input.time}:00` : shopLocalDateTime(nowOf(ctx), opts.timezone).slice(11);
     const plan0 = await ctxPlan(ctx);
-    const gate = gateConfigForPlan(opts.config, plan0, { now: `${input.date}T${time}` });
+    // K3: on Free the campaigns finishing after a downgrade still run (like the sync's gate).
+    const finishing = (await loadShopSyncFacts(ctx.db, ctx.shop).catch(() => null))?.campaignsFinishing ?? [];
+    const gate = gateConfigForPlan(opts.config, plan0, { now: `${input.date}T${time}`, finishing });
     // What checkout runs: a margin collection too large to read is folded into the whole store's values (P1-1).
     const gated = await foldedForCheckout(ctx.db, ctx.shop, gate.config);
     const { warnings, targetingStale } = await tryCartSyncWarnings(ctx, { plan: plan0, stripped: gate.stripped.length });

@@ -190,6 +190,8 @@ export interface AdminSignals {
   rewards?: RewardsOverviewView;
   /** Výprodej card on Přehled (MVP 5). Absent = not known. */
   outlet?: OutletOverviewView;
+  /** Kampaně card (MVP 6, Přehled only; absent = not known). */
+  campaigns?: CampaignsOverviewView;
 }
 
 // --- Ochrana marže (MVP 2) ------------------------------------------------------------------
@@ -775,3 +777,77 @@ export interface OutletOverviewView {
   ordersCounted: boolean;
 }
 
+
+// --- Kampaně (MVP 6, contract K7) -----------------------------------------------------------------
+
+export type CampaignStatusView = "running" | "scheduled" | "ended" | "killed";
+
+/** A rule the campaign form offers (its value shape decides the value field). */
+export interface CampaignRuleChoice {
+  id: string;
+  name: string;
+  /** "percentage" | "fixed" | "freeShipping". */
+  kind: string;
+  enabled: boolean;
+  method: "automatic" | "code";
+  /** The rule's own value, worded ("10 %", "200 Kč / 8 €"). */
+  valueText: string;
+  /** Fixed rules: the currencies of the rule's amount. */
+  currencies: string[];
+}
+
+export interface CampaignOverrideView {
+  ruleId: string;
+  ruleName: string;
+  /** true / false = switched on / off during the campaign; absent = unchanged. */
+  enabled?: boolean;
+  /** The campaign value worded; absent = unchanged. */
+  valueText?: string;
+  /** Form values for editing. */
+  percent?: number;
+  amount?: Record<string, string>;
+}
+
+export interface CampaignView {
+  id: string;
+  name: string;
+  status: CampaignStatusView;
+  /** Formatted in the shop's zone and the admin language. */
+  startText: string;
+  endText: string;
+  start: { date: string; time: string };
+  end: { date: string; time: string };
+  overrides: CampaignOverrideView[];
+  /** Stored tier set / gift tier overrides: not applied in this version (D1). */
+  unused: number;
+  /** Free: running since the downgrade, it finishes (A6). */
+  finishing: boolean;
+  /** Vyzkoušet košík at the campaign's start + 1 minute. */
+  tryCartUrl: string;
+}
+
+export interface CampaignsScreenData {
+  plan: "free" | "pro";
+  configVersion: string | null;
+  /** Shop-local today (`YYYY-MM-DD`) and now (`HH:MM`): the form's minimums and defaults. */
+  today: string;
+  nowTime: string;
+  timezone: string | null;
+  campaigns: CampaignView[];
+  rules: CampaignRuleChoice[];
+  /** The campaign the form edits (?edit=<id>), when it can be edited. */
+  editing: CampaignView | null;
+  limits: { campaigns: number; maxDays: number; minLeadMinutes: number };
+}
+
+export type CampaignsActionResult =
+  | { ok: true; kind: "saved" | "killed" | "deleted"; sync?: SyncOutcomeView; fixes?: string[] }
+  | { ok: false; reason: "invalid"; errors: FieldError[] };
+
+/** Přehled card. */
+export interface CampaignsOverviewView {
+  running: { name: string; endText: string } | null;
+  next: { name: string; startText: string } | null;
+  /** Free shop with a campaign finishing after the downgrade (A6). */
+  finishing: boolean;
+}

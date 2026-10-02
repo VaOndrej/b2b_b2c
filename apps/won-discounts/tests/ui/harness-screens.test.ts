@@ -48,7 +48,17 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
   { path: "onboarding?step=3&embed=on", expect: [/Zapnuto. Web je připravený/, /Vytvořit první slevu/] },
   { path: "move-dialog", expect: [/Co se stane/, /Co se ztratí/, /Počítadlo použití \(zatím 42×\) se smazáním slevy v Shopify ztratí/, /Na co myslet/, /zbývajících 58/] },
   { path: "move-dialog?all=1", expect: [/Přesunout 2 slevy do Won/, /LETO15/, /Doprava zdarma nad 2 000 Kč/, /Doplň ji pro EUR/] },
-  { path: "coming-soon?module=campaigns", expect: [/Kampaně/, /Přijde v další verzi/, /Přejít na Přehled/] },
+  // Kampaně (MVP 6): Free locked in amber, Pro form + list by status, an edit, the errors, the Přehled card.
+  { path: "campaigns", expect: [/Kampaně jsou v tarifu Pro/, /Víkend −20 %/, /Běží/, /Naplánované/, /Black Friday/, /Ukončit hned/] },
+  {
+    path: "campaigns?plan=pro",
+    expect: [/Naplánovat kampaň/, /Co se v kampani změní/, /Podzimní sleva 10 %: 20\s%/, /Doprava zdarma: zapnutá/, /Sleva 200 Kč \/ 8 €: 400\sKč/, /se v této verzi nepoužijí/, /Vyzkoušet košík v době kampaně/, /Množstevní slevy a dárky běží během kampaně beze změny/, /Europe\/Prague/],
+  },
+  { path: "campaigns?plan=pro&edit=weekend", expect: [/Upravit kampaň/, /Kampaň právě běží/, /Uložit kampaň/, /Zrušit úpravy/] },
+  { path: "campaigns?plan=pro&result=invalid", expect: [/Kampaň se překrývá s „Black Friday“/, /Zaškrtněte aspoň jednu slevu/] },
+  { path: "campaigns?state=finishing", expect: [/Běžela při přechodu na Free, doběhne do konce/] },
+  { path: "overview?state=campaigns", expect: [/Kampaně/, /Běží Víkend −20 % do 29\. 9\. 2026 0:00/, /Další: Black Friday od 27\. 11\. 2026 0:00/, /Otevřít kampaně/] },
+  { path: "overview?state=campaigns&finishing=1", expect: [/doběhne do konce/] },
   { path: "outlet", expect: [/Výprodej/, /Výprodej je v tarifu Pro/, /Běžící výprodeje/, /Mikina Won — L/] },
   { path: "outlet?plan=pro", expect: [/Spustit výprodej/, /Prodáno 7 z 10 ks, vráceno 1, zbývá 4/, /Prodáno o 1 ks víc než kvóta/, /Znovu otevřít/] },
   { path: "outlet?plan=pro&result=invalid", expect: [/Vyberte variantu/, /Kvóta je celé číslo od 1 do/] },
@@ -306,6 +316,7 @@ test("an unknown harness screen is a 404; tiers and appearance are built modules
   const { status } = await render("does-not-exist");
   assert.equal(status, 404);
   assert.equal((await render("coming-soon?module=tiers")).status, 404);
+  assert.equal((await render("coming-soon?module=campaigns")).status, 404, "MVP 6: Kampaně are built");
   assert.equal((await render("coming-soon?module=appearance")).status, 404);
 });
 
