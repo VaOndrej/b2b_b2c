@@ -558,3 +558,19 @@ test("property: the panel's free-shipping and gift progress = planCart's (before
     }
   }
 });
+
+test("tap targets: every panel button and the code input are at least 44 × 44 px, in px, not rem (Dawn's html is 62.5 %) — MVP 4 audit E3", () => {
+  const css = readFileSync(path.join(ASSETS, "won-discounts.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const rule = (selector: string) => {
+    const at = css.indexOf(`${selector} {`);
+    assert.ok(at >= 0, `rule ${selector}`);
+    return css.slice(at, css.indexOf("}", at));
+  };
+  assert.match(rule(".won-cart button"), /min-height: 44px;[\s\S]*min-width: 44px;/);
+  assert.match(rule(".won-cart__code input"), /min-height: 44px;/);
+  for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+    if (/\.won-cart\b/.test(selector!) && /button|input/.test(selector!)) {
+      assert.doesNotMatch(body!, /min-(height|width): [\d.]+rem/, `no rem tap target: ${selector!.trim()}`);
+    }
+  }
+});

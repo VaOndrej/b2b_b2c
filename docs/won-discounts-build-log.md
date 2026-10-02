@@ -12,6 +12,24 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > technická pravidla, zakázané věci). **MVP N+1 nezačíná, dokud MVP N není finální** (brána, živé E2E A+B,
 > vizuální QA, audit s opravenými nálezy, checkpoint, push).
 
+- **Aktivní zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md (ověření MVP 4 → MVP 5). Krok: A5 (živé E2E
+  Free `rewards`, `rewards-other`, pak Pro `rewards-pro`; tag `mvp4-verify`, `EVID` a logy ve scratchpadu session,
+  `WON_RUN_DIR=<scratchpad>/runs`; app dev log `<scratchpad>/appdev-free.log`). Další: A6 shrnutí + commit + push.
+- **Ověření MVP 4 (2026-10-02), průběh:**
+  - A1 ✓ `git status`: jen cizí `docs/product-roadmap.html`, `docs/won-companion/`, `docs/won-discounts/paralelizace.md`;
+    `git log origin/main..HEAD` prázdné; checkpoint MVP 4 je.
+  - A2 ✓ brána `gate-a2`: packages 811 + 50, guard 301, unit node 1 168 + cargo 94 (1 ignored) + vitest 544, typecheck,
+    lint, build, validate (0 nálezů) — vše exit 0, stejné počty jako `gate-mvp4d`.
+  - A3 ✓ všech 17 nálezů auditu má opravu + test (E1 `won-discounts-cart.js:21` / test cache modelu; E2 `:166` / test
+    `event.promise`; E4 `:84` / test „while the code warning waits“; E5 `:91` / 3 testy; F1 fronta `:11,163` / „two cart
+    events“; F2 `detail.won` `:162` / „not swallowed“; P1 `cart-plan.server.ts:35,242` / „audit P1“; P2 `:37,263` / „audit
+    P2“; L1 `limits.ts:42` / `config-bounds.test.ts`; A1 `RewardsScreen.tsx:206` / `rewards.test.ts`; F3, R2, D1 doc; V1
+    MVP 7). Mutační kontrola E1 (12 testů ✗), P1 (1 ✗), L1 (1 ✗) → vráceno, `git diff` čistý. **Nový nález N1 (P3):**
+    E3 (44 px) hlídalo jen živé E2E (`assertResponsiveSane`) — doplněn contract test „tap targets“ (mutace tlačítka i
+    inputu na `rem` → ✗).
+  - A4 ✓ replay 3 308 běhů: HEAD (245 237 B) ≠ log ve 194 = tatáž vysvětlená množina (150 sond MVP 0 z 28. 9. +
+    44 mezibuildů MVP 3 z 1. 10. 05–06 UTC); build MVP 3 (`eadc31e`, 253 170 B) se od HEAD liší ve 219 bězích z 1. 10.,
+    ve všech je HEAD = log (odměny). Žádný nový rozdíl.
 - **Fáze: MVP 5 (Výprodej, Pro)** — další krok: plán `docs/plans/<datum>-won-discounts-mvp5.md` s kontrakty (kvóta na
   existující variantě `price` + `compare_at_price`, ceníky trhů vč. pevných cen, storna/vratky, návrat ceny, historie,
   scheduler; zápisy cen jen skriptem s `--dry-run` + zálohou, po E2E vrátit). **První krok MVP 5: přeměřit konstruované
