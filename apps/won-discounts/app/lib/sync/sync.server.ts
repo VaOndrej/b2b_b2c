@@ -95,8 +95,10 @@
 //     runs one instance]; adopt-before-create keeps it from duplicating nodes.
 
 import { FUNCTION_CONFIG_BUDGET_BYTES } from "@won/core/discounts/function-config";
+import { CONFIG_LIMITS } from "@won/core/discounts/config";
 import { readMarginPayload, type FunctionMarginPayload } from "@won/core/discounts/margin";
 import { gateConfigForPlan, type ShopPlan, type StrippedCapability } from "@won/core/discounts/plan-gate";
+import { campaignBoundary, campaignStatusAt, shopLocalToUtc } from "@won/core/discounts/campaigns";
 
 import { fullPassCovers, startCostJob, type CostJob } from "./cost-lane.server";
 import { pdpMarginKey } from "./costs";
@@ -116,7 +118,14 @@ import {
   type ProductSyncArgs,
 } from "./products";
 import { clearSyncProgress } from "./progress";
-import { recordAppliedPlan, recordProductsSynced, recordShopTimezone } from "./sync-state.server";
+import {
+  loadShopSyncFacts,
+  recordAppliedPlan,
+  recordCampaignBoundary,
+  recordCampaignsFinishing,
+  recordProductsSynced,
+  recordShopTimezone,
+} from "./sync-state.server";
 import { writeStorefrontConfig } from "./storefront";
 import { errorText, setMetafields, Transport } from "./transport";
 import type { ConfigView, PendingWork, ShopConfigBuild, SyncDeps, SyncResult, SyncStep } from "./types";
@@ -468,7 +477,10 @@ async function runProductRefresh(
   try {
     if (lane.cancelled) return null;
     const plan = await deps.plan(shop);
-    const gated = gateConfigForPlan(config, plan).config;
+    // MVP 6 K3: the campaigns finishing after a downgrade keep their refs here too (the zone of the last sync).
+    const facts = await loadShopSyncFacts(deps.db, shop);
+    const laneNow = facts.timezone ? shopLocalDateTime(startedAt, facts.timezone) : undefined;
+    const gated = gateConfigForPlan(config, plan, { ...(laneNow ? { now: laneNow } : {}), finishing: facts.campaignsFinishing ?? [] }).config;
     // Audit fix round 2: a margin collection that grew past the limit must be folded into the LIVE payload,
     // which a products-only refresh does not write — a full sync does it, unless the live config folds it already.
     const limits = await collectionLimits({ transport, config: gated, isCancelled: () => lane.cancelled });
@@ -585,7 +597,8 @@ async function syncSteps({ deps, transport, shop, config: stored, configVersionI
 
   // BILL-1: what this shop's plan may run.
   const plan = await deps.plan(shop);
-  const gate = gateConfigForPlan(stored, plan, { now: nowLocal });
+  const finishing = await campaignsFinishingFor(deps, shop, stored, plan, nowLocal);
+  const gate = gateConfigForPlan(stored, plan, { now: nowLocal, finishing });
   const config: ConfigView = gate.config;
   record({ step: "plan", ok: true, detail: gate.stripped.length > 0 ? gateDetail(plan, gate.stripped) : `plan ${plan}: nothing to gate` });
 
@@ -720,6 +733,9 @@ async function syncSteps({ deps, transport, shop, config: stored, configVersionI
   if (!written.ok) return null;
   // I-2: the plan the LIVE shop config was built for (a change of plan is then a reason to resync).
   await bookkeeping(deps, shop, () => recordAppliedPlan(deps.db, shop, plan));
+  // MVP 6 K4: when the selected campaign changes next (its end) — the scheduler resyncs then.
+  const boundary = campaignBoundary(config, nowLocal);
+  await bookkeeping(deps, shop, () => recordCampaignBoundary(deps.db, shop, boundary ? shopLocalToUtc(boundary, shopTimezone) : null));
   // 4b. The storefront config (MVP 3, K5) from the SAME gated config as the payload, behind it; never fatal.
   // K4 v2: its margin key from the same gated margin and the same shop currency string as the pdp keys (cost lane).
   await writeStorefrontConfig({ deps, transport, shop, config: payloadConfig, stored, configVersionId, shopCurrency: isoCurrency(shopCurrency), record });
@@ -795,6 +811,10 @@ function phaseOnePayload(
   options: { now: string; shopTimezone: string; shopCurrency: string | undefined },
 ): ShopConfigBuild {
   const noCampaign = { ...options, forceNoCampaign: true };
+  // MVP 6 K5 (MVP 2 debt): the LIVE config without its campaign — nothing new (rules, tiers, margin) reaches
+  // checkout before the final write, and a held switch leaves exactly the live settings minus the campaign.
+  const live = storedJson !== null ? liveWithoutCampaign(storedJson) : null;
+  if (live !== null && live.fits) return live;
   const liveMargin = storedJson !== null ? liveMarginPart(storedJson) : undefined;
   if (liveMargin !== undefined) {
     const built = deps.buildShopFunctionConfig(payloadConfig, noCampaign);
@@ -805,6 +825,54 @@ function phaseOnePayload(
   }
   const all = new Set(payloadConfig.modules.margin.perCollection.map((o) => o.collectionId));
   return deps.buildShopFunctionConfig(all.size > 0 ? foldMarginCollections(payloadConfig, all) : payloadConfig, noCampaign);
+}
+
+/** K5: a live shop config JSON with its campaign switched off (null when it is not a function config payload). */
+function liveWithoutCampaign(json: string): ShopConfigBuild | null {
+  let payload: unknown;
+  try {
+    payload = JSON.parse(json);
+  } catch {
+    return null;
+  }
+  // Any shop config this sync wrote carries `campaignId` (core buildShopFunctionConfig); anything else → fallback.
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload) || !("campaignId" in payload)) return null;
+  const out: Record<string, unknown> = { ...(payload as Record<string, unknown>), campaignId: null, campaignVarsVersion: null, campaigns: [] };
+  const next = JSON.stringify(out);
+  const bytes = new TextEncoder().encode(next).length;
+  const tiersBytes = new TextEncoder().encode(JSON.stringify((out.modules as { tiers?: unknown } | undefined)?.tiers ?? null)).length;
+  const tiers = { bytes: tiersBytes, budget: CONFIG_LIMITS.tierPayloadBytes, fits: tiersBytes <= CONFIG_LIMITS.tierPayloadBytes };
+  // The live config already fit when it was written; dropping the campaign only shortens it.
+  return { json: next, bytes, fits: bytes <= FUNCTION_CONFIG_BUDGET_BYTES, tiers };
+}
+
+/**
+ * K3 (A6): the campaigns that finish on Free. On the first Free sync after a Pro one (the live config was built
+ * for Pro), the campaigns running right now are recorded; later Free syncs keep those still running; Pro clears
+ * the list.
+ */
+async function campaignsFinishingFor(deps: SyncDeps, shop: string, stored: ConfigView, plan: ShopPlan, nowLocal: string): Promise<string[]> {
+  let facts;
+  try {
+    facts = await loadShopSyncFacts(deps.db, shop);
+  } catch (error) {
+    deps.logger.warn(`sync ${shop}: could not read the finishing campaigns: ${errorText(error)}`);
+    return [];
+  }
+  if (plan === "pro") {
+    if (facts.campaignsFinishing !== null) await bookkeeping(deps, shop, () => recordCampaignsFinishing(deps.db, shop, null));
+    return [];
+  }
+  const running = (id: string) => {
+    const campaign = stored.campaigns.find((c) => c.id === id);
+    return campaign !== undefined && campaignStatusAt(campaign, nowLocal) === "running";
+  };
+  const known = facts.campaignsFinishing ?? (facts.appliedPlan === "pro" ? stored.campaigns.map((c) => c.id) : []);
+  const still = known.filter(running);
+  if (JSON.stringify(still) !== JSON.stringify(facts.campaignsFinishing ?? [])) {
+    await bookkeeping(deps, shop, () => recordCampaignsFinishing(deps.db, shop, still.length ? still : null));
+  }
+  return still;
 }
 
 /** The raw `modules.margin` of a live shop config JSON (off when it has none); undefined when it is not a config at all. */

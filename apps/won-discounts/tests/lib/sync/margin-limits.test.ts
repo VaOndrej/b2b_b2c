@@ -973,7 +973,8 @@ test("round 4, item 6: a run whose only live write was a campaign switch's phase
   let plan: "free" | "pro" = "pro";
   const deps = makeDeps(fake, db.prisma, { plan: async () => plan });
   const sync = createSync(deps);
-  const bf = { id: "bf", name: "BF", window: { start: "2026-09-28T00:00:00", end: "2026-09-29T00:00:00" }, overrides: [], killed: false };
+  // Scheduled, not running, at the downgrade: Free strips it (MVP 6 K3 lets only a RUNNING campaign finish).
+  const bf = { id: "bf", name: "BF", window: { start: "2026-09-30T00:00:00", end: "2026-10-01T00:00:00" }, overrides: [], killed: false };
   const target = { target: { kind: "products", productIds: [product.id], variantIds: [] } };
   const first = await sync.syncShop(shop, configWith([codeRule("c"), autoRule("r", target)], { campaigns: [bf] }));
   assert.equal(first.ok, true, JSON.stringify(first.errors));

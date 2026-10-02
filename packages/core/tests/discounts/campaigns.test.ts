@@ -10,6 +10,7 @@ import {
   campaignBoundary,
   campaignInputFromShopConfig,
   campaignStatusAt,
+  shopLocalToUtc,
   validateCampaignDraft,
   type CampaignDraft,
 } from "../../src/discounts/campaigns.ts";
@@ -180,4 +181,14 @@ test("a value override must suit the rule: percent 1–100 for a percentage rule
   assert.equal(bad({ ruleId: "s", value: { kind: "percentage", percent: 10 } }), "campaign.error.value");
   assert.equal(bad({ ruleId: "s", enabled: true }), "ok");
   assert.equal(bad({ ruleId: "a" }), "campaign.error.override", "neither a value nor enabled");
+});
+
+test("shop-local time → UTC through the shop's zone, DST included; an unknown zone throws", () => {
+  assert.equal(shopLocalToUtc("2026-09-29T00:00:00", "Europe/Prague").toISOString(), "2026-09-28T22:00:00.000Z");
+  assert.equal(shopLocalToUtc("2026-11-27T00:00:00", "Europe/Prague").toISOString(), "2026-11-26T23:00:00.000Z");
+  assert.equal(shopLocalToUtc("2026-11-27T00:00:00", "America/New_York").toISOString(), "2026-11-27T05:00:00.000Z");
+  assert.equal(shopLocalToUtc("2026-10-02T12:30:00", "UTC").toISOString(), "2026-10-02T12:30:00.000Z");
+  // A wall time the clocks skip (02:30 on the spring-forward night) lands just after the gap.
+  assert.equal(shopLocalToUtc("2027-03-28T02:30:00", "Europe/Prague").toISOString(), "2027-03-28T01:30:00.000Z");
+  assert.throws(() => shopLocalToUtc("2026-10-02T12:30:00", "Mars/Olympus"));
 });

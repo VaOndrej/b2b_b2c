@@ -8,6 +8,11 @@
 //                                 a start interrupted by a crash (`starting` for 10+ minutes) → closed (before its
 //                                 backup: nothing was written) or ended (prices back from the backup); a storefront
 //                                 value that failed → written again.
+//   campaigns.due  every minute   MVP 6 K4: shops whose selected campaign changed (ShopSyncState.campaignBoundaryAt,
+//                                 written by the sync: the end of the current or next campaign) are resynced with
+//                                 their offline session, so the next campaign's variables go out (3 phases) or the
+//                                 ended one is tidied away. Never the critical path: the function itself starts and
+//                                 ends a campaign (C4). A failed resync or a missing session retries in 5 minutes.
 //   history.prune  daily          sale events 400 days after their sale ended (the sale row stays, PRIV-2) and the
 //                                 config history past its retention (pruneExpiredConfigHistory, wired here at last).
 // The cost mirror reconcile (hourly, at most 5 shops a run) and the stale-claim sweep keep their own timers from
@@ -21,6 +26,8 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import type { AdminClient } from "../admin-client.server";
 import { pruneExpiredConfigHistory } from "../config.server";
 import { endOutletRun, writeOutletStorefront, type OutletDeps } from "../integration/outlet.server";
+import { resyncShop } from "../sync/save-and-sync.server";
+import type { Sync } from "../sync/sync.server";
 import { errorText } from "../sync/transport";
 import type { SyncLogger } from "../sync/types";
 
@@ -35,6 +42,10 @@ export const SCHEDULER_FIRST_DELAY_MS = 15_000;
 export const OUTLET_HISTORY_RETENTION_DAYS = 400;
 /** A start still `starting` after this long was interrupted (a crash or a restart mid-start). */
 export const OUTLET_START_STALE_MS = 10 * 60_000;
+/** Shops resynced per campaigns.due run (the rest waits for the next minute). */
+export const CAMPAIGNS_DUE_BATCH = 20;
+/** A failed campaign resync (or no session) is tried again after this long. */
+export const CAMPAIGNS_RETRY_MS = 5 * 60_000;
 /** Sales handled per outlet.due run (the rest waits for the next minute). */
 export const OUTLET_DUE_BATCH = 50;
 
@@ -157,9 +168,59 @@ export async function pruneHistoryOnce(db: PrismaClient, now: Date): Promise<{ o
 }
 
 /** The app's tasks. */
+export interface CampaignsDueDeps {
+  db: PrismaClient;
+  clientFor: (shop: string) => Promise<AdminClient | null>;
+  now?: () => Date;
+  logger?: SyncLogger;
+  /** Tests: the sync the resync uses (default: production). */
+  createSync?: (client: AdminClient, db: PrismaClient) => Sync;
+  /** Tests: the resync itself (default: resyncShop of the stored config). */
+  resync?: (client: AdminClient, shop: string) => Promise<{ ok: boolean }>;
+}
+
+/** K4: one campaigns.due run (see the header). */
+export async function runCampaignsDueOnce(deps: CampaignsDueDeps): Promise<{ synced: string[]; failed: string[]; skippedNoSession: number }> {
+  const now = (deps.now ?? (() => new Date()))();
+  const logger = deps.logger ?? quiet;
+  const out = { synced: [] as string[], failed: [] as string[], skippedNoSession: 0 };
+  const due = await deps.db.shopSyncState.findMany({
+    where: { campaignBoundaryAt: { lte: now } },
+    orderBy: { campaignBoundaryAt: "asc" },
+    take: CAMPAIGNS_DUE_BATCH,
+    select: { shop: true },
+  });
+  const later = new Date(now.getTime() + CAMPAIGNS_RETRY_MS);
+  const retryLater = (shop: string) => deps.db.shopSyncState.update({ where: { shop }, data: { campaignBoundaryAt: later } });
+  for (const { shop } of due) {
+    const client = await deps.clientFor(shop).catch(() => null);
+    if (!client) {
+      out.skippedNoSession += 1;
+      await retryLater(shop);
+      continue;
+    }
+    let ok = false;
+    try {
+      const resync = deps.resync ?? ((c: AdminClient, s: string) => resyncShop({ client: c, db: deps.db, shop: s, ...(deps.createSync ? { createSync: deps.createSync } : {}), ...(deps.now ? { now: deps.now } : {}) }));
+      ok = (await resync(client, shop)).ok;
+    } catch (error) {
+      // A thrown Response (re-auth) or any error: the resync did not happen.
+      logger.warn(`campaigns.due ${shop}: ${error instanceof Response ? `HTTP ${error.status}` : errorText(error)}`);
+    }
+    if (ok) out.synced.push(shop);
+    else {
+      out.failed.push(shop);
+      // The sync records the next boundary when it succeeds; a failure (or a held switch) tries again later.
+      await retryLater(shop);
+    }
+  }
+  return out;
+}
+
 export function appTasks(deps: OutletDueDeps): ScheduledTask[] {
   return [
     { name: "outlet.due", everyMs: 60_000, run: (now) => runOutletDueOnce({ ...deps, now: () => now }) },
+    { name: "campaigns.due", everyMs: 60_000, run: (now) => runCampaignsDueOnce({ db: deps.db, clientFor: deps.clientFor, now: () => now, ...(deps.logger ? { logger: deps.logger } : {}) }) },
     { name: "history.prune", everyMs: 24 * 3_600_000, run: (now) => pruneHistoryOnce(deps.db, now) },
   ];
 }

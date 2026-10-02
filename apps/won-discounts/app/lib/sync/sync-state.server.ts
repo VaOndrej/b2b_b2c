@@ -22,6 +22,10 @@ export interface ShopSyncFacts {
   targetingStaleAt: Date | null;
   targetingStaleNote: string | null;
   marketsCheckedAt: Date | null;
+  /** MVP 6 K4: when the selected campaign changes (UTC); null = no campaign. */
+  campaignBoundaryAt: Date | null;
+  /** MVP 6 K3: campaigns running at the Pro → Free downgrade (they finish); null = none. */
+  campaignsFinishing: string[] | null;
 }
 
 const EMPTY: ShopSyncFacts = {
@@ -31,7 +35,18 @@ const EMPTY: ShopSyncFacts = {
   targetingStaleAt: null,
   targetingStaleNote: null,
   marketsCheckedAt: null,
+  campaignBoundaryAt: null,
+  campaignsFinishing: null,
 };
+
+function idList(text: string | null): string[] | null {
+  try {
+    const value: unknown = text ? JSON.parse(text) : null;
+    return Array.isArray(value) && value.every((v) => typeof v === "string") ? (value as string[]) : null;
+  } catch {
+    return null;
+  }
+}
 
 /** The shop's facts (all null for a shop that never synced). */
 export async function loadShopSyncFacts(db: PrismaClient, shop: string): Promise<ShopSyncFacts> {
@@ -44,10 +59,14 @@ export async function loadShopSyncFacts(db: PrismaClient, shop: string): Promise
     targetingStaleAt: row.targetingStaleAt,
     targetingStaleNote: row.targetingStaleNote,
     marketsCheckedAt: row.marketsCheckedAt,
+    campaignBoundaryAt: row.campaignBoundaryAt,
+    campaignsFinishing: idList(row.campaignsFinishing),
   };
 }
 
-async function upsert(db: PrismaClient, shop: string, data: Partial<ShopSyncFacts>): Promise<void> {
+type Row = Partial<Omit<ShopSyncFacts, "campaignsFinishing">> & { campaignsFinishing?: string | null };
+
+async function upsert(db: PrismaClient, shop: string, data: Row): Promise<void> {
   await db.shopSyncState.upsert({ where: { shop }, create: { shop, ...data }, update: data });
 }
 
@@ -58,6 +77,16 @@ export function recordShopTimezone(db: PrismaClient, shop: string, timezone: str
 /** The shop function config now live in Shopify was built for `plan` (written or verified unchanged). */
 export function recordAppliedPlan(db: PrismaClient, shop: string, plan: ShopPlan): Promise<void> {
   return upsert(db, shop, { appliedPlan: plan });
+}
+
+/** K4: the next campaign boundary (UTC) the scheduler resyncs at; null = no campaign. */
+export function recordCampaignBoundary(db: PrismaClient, shop: string, at: Date | null): Promise<void> {
+  return upsert(db, shop, { campaignBoundaryAt: at });
+}
+
+/** K3: the campaigns that finish after a downgrade (null clears the list). */
+export function recordCampaignsFinishing(db: PrismaClient, shop: string, ids: readonly string[] | null): Promise<void> {
+  return upsert(db, shop, { campaignsFinishing: ids && ids.length ? JSON.stringify(ids) : null });
 }
 
 export function recordMarketsChecked(db: PrismaClient, shop: string, at: Date): Promise<void> {

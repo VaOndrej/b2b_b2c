@@ -52,6 +52,34 @@ export function campaignInputFromShopConfig(payload: unknown, now: string): Cart
   return { id, active: now >= window.start && now < window.end, varsVersion: version };
 }
 
+/** Offset (ms) of `zone` at UTC instant `ms`: local wall clock as UTC minus the instant. */
+function zoneOffsetMs(ms: number, zone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(new Date(ms));
+  const n = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  return Date.UTC(n("year"), n("month") - 1, n("day"), n("hour"), n("minute"), n("second")) - ms;
+}
+
+/**
+ * The UTC instant of a shop-local wall time (`YYYY-MM-DDTHH:MM:SS`) in `zone` (the scheduler's boundary, K4). A wall
+ * time the clocks skip maps to the instant the same distance after the gap starts. Throws on an unknown zone.
+ */
+export function shopLocalToUtc(local: string, zone: string): Date {
+  const wall = Date.parse(`${local}Z`);
+  if (Number.isNaN(wall)) throw new TypeError(`shopLocalToUtc: not a local datetime: ${local}`);
+  let guess = wall - zoneOffsetMs(wall, zone);
+  guess = wall - zoneOffsetMs(guess, zone);
+  return new Date(guess);
+}
+
 // --- The admin draft --------------------------------------------------------------------------------
 
 export interface CampaignDraftOverride {

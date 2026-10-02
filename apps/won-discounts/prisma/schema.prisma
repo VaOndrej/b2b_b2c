@@ -161,6 +161,13 @@ model ShopSyncState {
   /// ("propisujeme nákupní ceny N z M"): {token, since, done, total,
   /// failedAt?, error?}. Null = nothing pending.
   costsPending       String?
+  /// MVP 6 (K4): when the selected campaign changes (its end, UTC), written by
+  /// the sync after the final shop config; the scheduler's campaigns.due
+  /// resyncs at it (a failed try moves it 5 minutes on). Null = no campaign.
+  campaignBoundaryAt DateTime?
+  /// MVP 6 (K3, A6): JSON array of the campaign ids running when the shop went
+  /// Pro → Free; they finish (the gate keeps them until their end). Null = none.
+  campaignsFinishing String?
   updatedAt          DateTime  @updatedAt
 }
 
