@@ -16,15 +16,15 @@ vrátí ceny. Každý krok jde do historie. Web ukáže výprodej podle volby (t
 **Architecture:** Výprodej žije v DB appky (`OutletRun` + `OutletEvent`), ne v configu (config nese jen nastavení
 modulu `display`, `reopenOnReturnAfterEnd`). Logika (výpočet cen, účetnictví kvóty, přechody stavů, rozhodnutí
 při vratce po konci) je čistá v `@won/core/discounts/outlet.ts`; appka ji volá z adminu, webhooků a scheduleru.
-Funkce se **nemění**: příznak `outlet` (seznam GID variant v produktovém metafieldu `product`) už čte (port MVP 1,
-rozpočet měřený) — sync ho jen začne psát. Zápisy cen: `productVariantsBulkUpdate` a `priceListFixedPricesUpdate`.
+Funkce dostane jedno pole navíc: variantní metafield `outlet` = `true` (O6, rozhodnuto měřením B0 — produktové
+seznamy z MVP 1 by na zkonstruovaných tvarech přesáhly limit instrukcí). Zápisy cen: `productVariantsBulkUpdate` a `priceListFixedPricesUpdate`.
 
 ## Global Constraints
 
 - Vše z plánů MVP 0–4 (jen dev store, žádný deploy, povolené cesty, tajné soubory nečíst, dry-run + záloha při mých
   zápisech, žádný prettier).
-- **Funkce beze změny** (Wasm, dotaz, fixtures); kdyby změna byla nutná: TS + Rust + fixtures + parita + replay +
-  rozpočet na rodinách cap 550 (B0).
+- **Funkce:** jen čtení variantního příznaku `wonOutlet` (O6): TS + Rust + fixtures + parita + replay + rozpočet na
+  rodinách cap 550; dotaz ≤ 3 000 znaků a ≤ 30 bodů, Wasm < 256 000 B.
 - **BILL-1 / A6:** nový výprodej jen s Pro (`planOf(shop) === "pro"`, server). Ve Free: založení / znovuotevření /
   prodloužení odmítnuto; běžící výprodej **doběhne** (kvóta / datum / ruční konec vrátí ceny). Příznak `outlet` se
   nikdy neodebere kvůli tarifu (odebrání by slevu rozšířilo — fail closed).
@@ -83,11 +83,12 @@ ze zálohy (`price_restored`); jiné (`price_kept`) nechat → příznak pryč (
 kroku: běh zůstane `ending` s `error`, scheduler to zkusí znovu (backoff 1, 5, 15, 60 min) — výprodejová cena nikdy
 nezůstane bez příznaku (pořadí).
 
-**O6 — Příznak `outlet` v produktovém metafieldu.** `productMetafieldValue` dostane `outlet?: string[]` (GID variant
-s během `starting` | `active` | `ending`, seřazené); produkt s jen příznakem není „prázdný“. Plný sync bere aktivní
-běhy z DB (jinak by příznak smazal). Start/konec zapíše příznak hned („outlet lane“: přepočte hodnotu jen těch
-produktů, zapíše `metafieldsSet`, aktualizuje `ProductTargetIndex`, pod zámkem). Funkce i app proxy už formát čtou
-(`json.rs` `Outlet::Variants`, `cart-plan.server.ts`).
+**O6 — Příznak výprodeje na variantě (upraveno po B0).** Variantní metafield `$app:won_discounts.outlet` = `true`
+(type json) na variantě s během `starting` | `active` | `ending` (dokud ceny nejsou zpět, `endedAt` null); start ho
+zapíše před cenami, konec smaže po návratu cen. Funkce: pole `wonOutlet: metafield(namespace: "$app:won_discounts",
+key: "outlet") { jsonValue }` na `ProductVariant` v obou dotazech; řádek je výprodejový, když `jsonValue === true`
+(nebo podle produktového `outlet` z MVP 1, beze změny). App proxy (`cart-plan.server.ts`) a množstevní blok čtou
+totéž. Produktový metafield `product` se výprodejem nemění.
 
 **O7 — Objednávky (webhooky).** Scope `read_orders`; témata `orders/create`, `orders/cancelled`, `refunds/create` →
 `/webhooks/outlet` (HMAC, rychlá odpověď, idempotentní, chyba DB = 5xx). Pro každý řádek objednávky s variantou běhu
@@ -108,14 +109,16 @@ plus `pruneExpiredConfigHistory` — dluh MVP 1). Při startu procesu se úlohy,
 **Rozhodnuto výchozí hodnotou:** srovnání nákupních cen (hodinově, ≤ 5 obchodů — dluh MVP 2/3 je tím splněný) a
 sweep claimů mají své otestované časovače z MVP 1–2 a zůstávají; scheduler přidává jen úlohy se stavem v DB.
 
-**O9 — Storefront.** Nový blok `outlet_badge` (PDP, Liquid) čte produktový metafield `$app:won_discounts.outlet`
-(JSON, píše ho výprodej, ne sync): `{ "d": "silent" | "strike" | "strike_badge" | "strike_badge_left", "v": {
-"<variant numeric id>": <zbývá ks> } }`, aktualizovaný po každém `sale`/`cancel`/`refund`/konci (smazán, když na
-produktu nic neběží). `silent` a `strike` → blok nic nevykreslí (přeškrtnutí je `compare_at_price` tématu);
-`strike_badge` → štítek „Výprodej“ pro vybranou variantu; `strike_badge_left` → + „Zbývá X ks“ (jen z reálné kvóty,
-nikdy < 0; 0 → nic). Změna varianty: malý skript (data atributy, `variant:change` / změna `input[name=id]`), místo
-v rozpočtu JS uvolnit nejdřív. Množstevní blok: varianta s během nemá tabulku ani živou cenu úrovní (data
-`variants[].o`), pokud `outletWithAnything` není zapnuté. Markery `data-won-discounts-outlet`, `…-outlet-left`.
+**O9 — Storefront.** Nový blok `outlet_badge` (PDP, jen Liquid, **bez skriptu**) čte produktový metafield
+`$app:won_discounts.outlet` (JSON, píše ho výprodej, ne sync): `{ "d": "silent" | "strike" | "strike_badge" |
+"strike_badge_left", "v": { "<variant numeric id>": <zbývá ks> } }`, aktualizovaný po každém `sale`/`cancel`/`refund`/
+konci (smazán, když na produktu nic neběží). `silent` a `strike` → blok nic nevykreslí (přeškrtnutí je
+`compare_at_price` tématu); `strike_badge` → štítek „Výprodej“; `strike_badge_left` → + „Zbývá X ks“ (jen z reálné
+kvóty, nikdy < 0; 0 → nic). Produkt s jedinou variantou = jeden štítek; jinak řádek na každou výprodejovou variantu
+**s jejím názvem** — správně při jakékoli vybrané variantě, bez JS (rozpočet SF-2 zůstává, rozhodnuto výchozí
+hodnotou: přepínací skript by potřeboval ~460 B gz, rezerva je 14 B). Množstevní blok: varianta s příznakem nemá
+tabulku ani živou cenu úrovní (prázdný cap jako varianta bez stropu), pokud `outletWithAnything` není zapnuté
+(storefront config `ow: 1`). Markery `data-won-discounts-outlet`, `…-outlet-variant`, `…-outlet-badge`, `…-outlet-left`.
 
 **O10 — Admin `/app/outlet`.** Seznam běhů (varianta, sleva, kvóta prodáno / vráceno / zbývá, konec, stav, přeprodáno),
 detail s historií kroků, „Nový výprodej“ (výběr varianty Shopify pickerem, kvóta, %, konec, ceníky s pevnou cenou
@@ -142,9 +145,18 @@ Funkce se nemění, ale MVP 5 začne psát skutečné seznamy `outlet` → přem
 - **Kontrakt O6 doplněn:** seznam produktu obsahuje **jen GID variant toho produktu** (jinak by platil přijatý rozdíl).
 - **Stop-pravidlo (pevně předem):** realistický generátor (seznam per produkt z jeho vlastních GID, výplň unikátní
   pro produkt), seznam nese jen prvních **N** různých produktů vstupu; jeden průchod pro každé N ∈ {100, 50, 25}
-  × režimy `miss`/`last`/`every10`. Zvolí se **největší N s max < 100 % a 0 DIFF** → strop neukončených výprodejů
-  na obchod = N (admin nedovolí víc, sync nikdy nezapíše víc produktů se seznamem), zapíše se do specu §4.4 a README
-  funkce. Když ani N = 25 nevyhoví: zastavit se a rozhodnout o úpravě funkce (levnější čtení seznamu, TS + Rust).
+  × režimy `miss`/`last`/`every10`. Zvolí se **největší N s max < 100 % a 0 DIFF**; když ani N = 25 nevyhoví:
+  rozhodnout o úpravě funkce.
+- **Výsledek (2026-10-02):** 0 DIFF ve všech třech, ale max **102,38 %** pro N = 100, 50 i 25 (≥ 100 %: 2 029 / 1 230 /
+  1 230 vstupů). Diagnostika na jednom vstupu (`t-top h136-0000 … keep-t9`, bez seznamu 93,69 %): už **samotný klíč**
+  `outlet` v produktovém metafieldu stojí ~1,7 tis. instrukcí na řádek (každý řádek čte vlastní kopii mapy produktu),
+  seznam o 1 prvku dalších ~2,3 tis. — u 200 řádků ~+9 bodů; počet produktů se seznamem to neřeší.
+- **Rozhodnutí (úprava funkce, spec §4.4 „příznak outlet do variant metafieldu“):** příznak je **variantní metafield
+  `$app:won_discounts.outlet` = `true`** (json), v dotazu funkce pole `wonOutlet` na `ProductVariant` (oba targety);
+  řádek je výprodejový, když `wonOutlet.jsonValue === true` **nebo** (beze změny) podle produktového `outlet`. Sync
+  produktů výprodej neřeší, příznak píše a maže jen výprodej (vlastní klíč, žádný souběh se syncem ani se zrcadlem
+  nákupních cen `variant`). TS reference + Rust + fixtures + parita + replay + přeměření rodin s polem `wonOutlet`
+  (null / true) na novém Wasm.
 
 ## Úkoly po vrstvách
 
