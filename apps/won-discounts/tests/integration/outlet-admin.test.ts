@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
-import { createElement } from "react";
+import { createElement, type ReactElement, type ReactNode } from "react";
 
 import type { ShopPlan } from "@won/core/discounts/plan-gate";
 
@@ -12,6 +12,8 @@ import { OutletScreen } from "../../app/components/screens/OutletScreen.tsx";
 import { devOutletOverview, devOutletScreen } from "../../app/lib/dev-harness.server.ts";
 import { OutletOverviewCard } from "../../app/components/outlet/OutletOverviewCard.tsx";
 import { LocaleProvider } from "../../app/i18n/context.tsx";
+
+const EnProvider = LocaleProvider as unknown as (props: { locale: "en"; children?: ReactNode }) => ReactElement;
 import { WON_AMBER } from "../../app/components/shell/tokens.ts";
 import { FakeShopify } from "../lib/sync/fake-shopify.ts";
 import { createTestDatabase, type TestDatabase } from "../lib/test-db.ts";
@@ -203,7 +205,7 @@ test("screen and card: no order access says the quota is not counted and recomme
   const on = text(await renderPage(createElement(OutletScreen, { ...devOutletScreen({ plan: "pro", state: null, locale: "cs" }), ordersCounted: true })));
   assert.doesNotMatch(on, /Kvóta se zatím neodečítá/);
   assert.doesNotMatch(on, /Bez přístupu k objednávkám/);
-  const en = text(await renderPage(createElement(LocaleProvider, { locale: "en", children: null }, createElement(OutletScreen, { ...devOutletScreen({ plan: "pro", state: null, locale: "en" }), ordersCounted: false }))));
+  const en = text(await renderPage(createElement(EnProvider, { locale: "en" }, createElement(OutletScreen, { ...devOutletScreen({ plan: "pro", state: null, locale: "en" }), ordersCounted: false }))));
   assert.match(en, /The quota is not counted yet — the sale ends by its date or by hand\./);
   const card = text((await renderPage(createElement(OutletOverviewCard, { outlet: { ...devOutletOverview(), ordersCounted: false } }))).replace(/<[^>]+>/g, " "));
   assert.match(card, OFF_TEXT);

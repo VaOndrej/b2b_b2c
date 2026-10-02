@@ -14,8 +14,10 @@
 //   node …/outlet.mjs --end [--live]          ends every fixture sale not ended yet (prices back, flags off).
 //   node …/outlet.mjs --verify-restored       read-only: the current prices = <out>/outlet-backup.json, no flag,
 //                                             no storefront value; prints 3 records; exit 1 on a mismatch.
-//   node …/outlet.mjs --status                read-only: the fixture's sales in the DB + the live prices.
-// Options: --out <dir> (default $WON_E2E_OUT or <tmp>/won-discounts-e2e) · --json.
+//   node …/outlet.mjs --status                read-only: the fixture's sales in the DB (ledger + the last 20 steps)
+//                                             + the live prices (the 5b order specs poll <out>/outlet-status.json).
+// Options: --out <dir> (default $WON_E2E_OUT or <tmp>/won-discounts-e2e) · --json · --only <handle> (--start: just
+// that fixture sale — the 5b quota spec starts the sale it sold out again for the next theme of the matrix).
 // Only the shared dev store; the fixture's products only (won-e2e-*), no product is created.
 import fs from "node:fs";
 import os from "node:os";
@@ -36,7 +38,7 @@ const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(name);
 const option = (name) => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : undefined);
 for (const arg of argv) {
-  if (arg.startsWith("--") && !["--start", "--end", "--status", "--verify-restored", "--live", "--out", "--json"].includes(arg)) {
+  if (arg.startsWith("--") && !["--start", "--end", "--status", "--verify-restored", "--live", "--out", "--json", "--only"].includes(arg)) {
     throw new Error(`unknown argument ${arg}`);
   }
 }
@@ -100,7 +102,13 @@ try {
   const state = await readState();
   if (mode === "status" || mode === "verify") {
     const runs = await db.outletRun.findMany({ where: { shop: STORE, variantId: { in: state.map((s) => s.variantId) } }, orderBy: { createdAt: "desc" } });
-    out.sales = state.map((s) => ({ ...s, runs: runs.filter((r) => r.variantId === s.variantId).map((r) => ({ id: r.id, status: r.status, sold: r.sold, returned: r.returned, endReason: r.endReason, error: r.error })) }));
+    const events = runs.length ? await db.outletEvent.findMany({ where: { shop: STORE, runId: { in: runs.map((r) => r.id) } }, orderBy: { at: "desc" } }) : [];
+    out.sales = state.map((s) => ({
+      ...s,
+      runs: runs
+        .filter((r) => r.variantId === s.variantId)
+        .map((r) => ({ id: r.id, status: r.status, quota: r.quota, sold: r.sold, returned: r.returned, endReason: r.endReason, error: r.error, events: events.filter((e) => e.runId === r.id).slice(0, 20).map((e) => ({ kind: e.kind, qty: e.qty, at: e.at })) })),
+    }));
     if (mode === "verify") {
       const backup = JSON.parse(fs.readFileSync(BACKUP_FILE, "utf8"));
       const problems = [];
@@ -124,7 +132,10 @@ try {
       process.exitCode = problems.length ? 1 : 0;
     }
   } else if (mode === "start") {
-    for (const s of state) {
+    const only = option("--only");
+    if (only && !state.some((s) => s.handle === only)) throw new Error(`--only ${only}: not a fixture sale`);
+    const picked = only ? state.filter((s) => s.handle === only) : state;
+    for (const s of picked) {
       const sale = outletPricesFor({ price: minor(s.price), compareAt: minor(s.compareAt) }, s.percent, "strike_badge");
       const lists = s.lists.map((l) => ({ ...l, sale: l.price === null ? null : outletPricesFor({ price: minor(l.price), compareAt: minor(l.compareAt) }, s.percent, "strike_badge") }));
       out.sales.push({ handle: s.handle, variant: s.variant, before: { price: s.price, compareAt: s.compareAt }, after: sale, lists });
@@ -137,7 +148,7 @@ try {
       if (!fs.existsSync(BACKUP_FILE)) fs.writeFileSync(BACKUP_FILE, JSON.stringify(state.map((s) => ({ handle: s.handle, variantId: s.variantId, price: s.price, compareAt: s.compareAt, lists: s.lists })), null, 2));
       console.log(`# backup: ${BACKUP_FILE}`);
       const lists = (await query(GQL.outletPriceLists)).priceLists.nodes;
-      for (const s of state) {
+      for (const s of picked) {
         const priceListIds = lists.filter((l) => s.catalogs.includes(l.catalog?.title ?? "")).map((l) => l.id);
         const r = await startOutletRun({ shop: STORE, db, client, plan: async () => "pro" }, { variantId: s.variantId, productId: s.productId, quota: s.quota, percent: s.percent, endsAt: null, priceListIds });
         out.sales.push({ handle: s.handle, result: r });

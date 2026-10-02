@@ -204,6 +204,43 @@ Funkce se nemění, ale MVP 5 začne psát skutečné seznamy `outlet` → přem
 - F-O4: storno objednávky (`orderCancel` s `restock`) pošle `orders/cancelled`; vratka `refunds/create`.
 - F-O5: funkce vyřadí řádek výprodeje z kódu/automatické slevy v pokladně (A1).
 
+## Aktivace 5b (po schválení chráněných dat, F-O1)
+
+Stav 2026-10-02 (5a): admin poctivě říká „Kvóta se zatím neodečítá — výprodej skončí datem nebo ručně.“
+(`app/lib/integration/orders-access.server.ts`: scope `read_orders` v session **a** úspěšné `orders(first:1)`,
+cache 60 s, `ACCESS_DENIED` / chyba = nepočítá se). Handler `/webhooks/outlet`, kontrakt O7 a testy s podepsanými
+payloady jsou hotové; E2E testy objednávek jsou ve specu `storefront.outlet` vypnuté (`WON_E2E_ORDERS=1`), storno
+skript `scripts/e2e/outlet-orders.mjs` (dry-run napřed, jen objednávky tohoto běhu: `--since`, e-mail E2E, Bogus
+`test`, řádky jen `won-e2e-*`, nezrušené).
+
+Postup, až Ondřej schválí přístup (každý krok ověřit, než se jde dál):
+
+1. **Sonda** (na začátku každé session): do `[access_scopes] scopes` dočasně přidat `read_orders`, restart
+   `shopify app dev`, jako appka `shopify app execute` dotaz `query { orders(first: 1) { nodes { id } } }`.
+   `ACCESS_DENIED` → toml vrátit, krátký `shopify app dev` (vrátí konfiguraci), zapsat do build logu, konec.
+2. **Toml** (jen po úspěšné sondě): `scopes = "write_discounts,read_products,write_products,read_themes,read_orders"`
+   a odběr (komentář odkazuje na F-O1 a handler):
+   ```toml
+   [[webhooks.subscriptions]]
+   topics = [ "orders/create", "orders/cancelled", "refunds/create" ]
+   uri = "/webhooks/outlet"
+   ```
+   Komentář `# Later MVPs add read_orders` přepsat; v hlavičce `webhooks.outlet.tsx` smazat „NOT SUBSCRIBED YET“.
+   `shopify app dev` musí konfiguraci přijmout (jinak zpět, jako v kroku 1). V adminu (harness i živě) zmizí banner.
+3. **CLI login pro storno (Ondřej, jednou, OAuth v prohlížeči):**
+   `shopify store auth -s b2b-b2c-store-development.myshopify.com --scopes read_orders,write_orders,read_products`
+   (živě 2026-10-02: uložený store auth objednávky nečte — „Access denied for orders field“). Ověření:
+   `node apps/won-discounts/scripts/e2e/outlet-orders.mjs --since <dnes>T00:00:00Z` (dry-run, vypíše objednávky).
+4. **E2E**: `WON_E2E_ORDERS=1 bash apps/won-discounts/scripts/e2e/runbook/profile.sh outlet <tag> pro` (app dev
+   s `WON_DEV_PLAN=pro`); spec prodá kvótu Large dvěma objednávkami (1 + zbytek) → `quota` konec → ceny zpět, pak
+   výprodej Large znovu spustí pro další téma (`outlet.mjs --start --live --only`); spare: objednávka → `sold` +1 →
+   storno s restockem → `returned` +1, krok `cancel`. Matice Horizon + Dawn, Free fáze beze změny
+   (`profile.sh outlet <tag> free`: testy objednávek se přeskočí, Free výprodej nemá).
+5. **Úklid**: `profile.sh` vrátí ceny (`--end`, `--verify-restored`); zbylé objednávky běhu stornovat
+   `outlet-orders.mjs --since <start běhu> --live` (dry-run napřed). Evidence `evidence/mvp5/e2e-5b/`.
+6. Audit dávky do `audit-mvp5.md`, checkpoint „MVP 5 ✅“, docs (`clearance.md` věta „Not counted yet“ +
+   support `clearance-quota-not-counting.md` přepsat na „platí jen bez schváleného přístupu“), commit + push.
+
 ## Rozhodnuto výchozí hodnotou
 
 - Sleva výprodeje = procento (1–90 %), stejné pro základní cenu i pevné ceny ceníků (žádná částka → žádný přepočet).
@@ -211,3 +248,5 @@ Funkce se nemění, ale MVP 5 začne psát skutečné seznamy `outlet` → přem
 - `compareAtPrice` = cena před výprodejem (ne dřívější `compareAt`), `silent` ho nemění.
 - Historie: události běhu se mažou 400 dní po jeho konci.
 - Limity: 1 neukončený běh na variantu; produkty s během na obchod = N z měření rozpočtu.
+- 5a: nezjistitelný přístup k objednávkám (výpadek dotazu) = „nepočítá se“ a nekešuje se (obrazovka nikdy neslíbí
+  počítání, které neumí); fixture spare kvóta 2 → 5 (pokladna i storno 5b po jedné objednávce ho nevyprodají).

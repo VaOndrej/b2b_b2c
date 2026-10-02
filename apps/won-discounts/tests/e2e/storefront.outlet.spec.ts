@@ -22,6 +22,7 @@ import {
 } from "./support/checkout.ts";
 import { saveEvidence, saveScreenshot } from "./support/evidence.ts";
 import { E2E_PROFILE, expect, gotoStorefront, test, THEME_LABEL, unlockRealStorefront } from "./support/fixtures.ts";
+import { cancelLatestOrder, latestRun, restartSale, waitForRun } from "./support/outlet-orders.ts";
 
 // SPEC-DRIVEN (MVP 5, contracts O2, O3, O6, O9). Live proof of Výprodej on BOTH shared themes:
 //   - PDP: the sale variant's price is the sale price; the theme strikes the price before where the market's
@@ -39,8 +40,14 @@ import { E2E_PROFILE, expect, gotoStorefront, test, THEME_LABEL, unlockRealStore
 //   WON_E2E_PROFILE=outlet WON_E2E_PLAN=pro npm run test:e2e:local:all -w won-discounts
 //   node apps/won-discounts/scripts/e2e/outlet.mjs --end --live && … --verify-restored
 // Orders do not reach the app yet (protected customer data, live fact F-O1): the quota is not counted live.
+// 5b (prepared, OFF): with WON_E2E_ORDERS=1 two more Pro tests run — Bogus orders sell the quota out (order
+// webhook → the sale ends → prices back) and a cancelled order (orderCancel with restock through
+// scripts/e2e/outlet-orders.mjs, F-O4b) gives its piece back. Activation: docs/plans/2026-10-02-won-discounts-mvp5.md
+// „Aktivace 5b“.
 
 const PRO = String(process.env.WON_E2E_PLAN ?? "free").trim() === "pro";
+const ORDERS = String(process.env.WON_E2E_ORDERS ?? "").trim() === "1";
+const ORDERS_OFF = "F-O1: Shopify does not let the app read orders yet (protected customer data); run with WON_E2E_ORDERS=1 once approved";
 const [LARGE, SPARE] = OUTLET_SALES as unknown as [(typeof OUTLET_SALES)[number], (typeof OUTLET_SALES)[number]];
 const EMAIL = "won-e2e-outlet@example.com";
 const BADGE = /^(Výprodej|Výpredaj|Sale)$/u;
@@ -167,7 +174,67 @@ test.describe(`Won Discounts Výprodej: PDP, cart and checkout (MVP 5)${PRO ? " 
     await saveScreenshot(page, testInfo, "outlet-thankyou-390");
     await saveEvidence(testInfo, "outlet-checkout", { theme: THEME_LABEL || null, charged: settled.charged, rows, lines });
   });
+
+  test("5b: Bogus orders until the quota is used up → order webhook → the sale ends and the prices come back", async ({ page }, testInfo) => {
+    test.skip(!PRO, "phase B (Pro): a sale runs");
+    test.skip(!ORDERS, ORDERS_OFF);
+    test.setTimeout(900_000);
+    const start = await latestRun(LARGE.handle);
+    expect(start.status, "the Large sale runs (outlet.mjs --start --live)").toBe("active");
+    const left = start.quota - start.sold + start.returned;
+    expect(left, "pieces left to sell out").toBeGreaterThan(1);
+    // Two orders: the first one is counted and the sale goes on; the second sells the rest out.
+    await test.step("order 1: one piece", () => placeOrder(page, { handle: LARGE.handle, quantity: 1, option: LARGE.variant! }));
+    const counted = await waitForRun(LARGE.handle, (r) => r.sold === start.sold + 1);
+    expect(counted.status, "one piece sold: the sale goes on").toBe("active");
+    await test.step(`order 2: the last ${left - 1} piece(s)`, () => placeOrder(page, { handle: LARGE.handle, quantity: left - 1, option: LARGE.variant! }));
+    const ended = await waitForRun(LARGE.handle, (r) => r.status === "ended");
+    expect(ended.endReason, "ended by selling the quota out").toBe("quota");
+    expect(ended.events.map((e) => e.kind)).toEqual(expect.arrayContaining(["sale", "quota_reached", "ended", "price_restored"]));
+    await gotoStorefront(page, `/products/${LARGE.handle}`);
+    await setStorefrontCountry(page, "CZ");
+    const large = (await product(page, LARGE.handle)).variants.find((v) => v.title === LARGE.variant)!;
+    expect(large.price, "the price before the sale is back").toBe(LARGE.before);
+    expect(large.compare_at_price, "no struck price after the end").toBeNull();
+    await expect(page.locator(`[data-won-discounts-outlet-variant="${large.id}"]`), "no badge after the end").toHaveCount(0);
+    await saveScreenshot(page, testInfo, "outlet-quota-ended-1440", { fullPage: false });
+    await saveEvidence(testInfo, "outlet-quota-ended", { theme: THEME_LABEL || null, start, counted, ended, large });
+    // The matrix runs the next theme on the same sales: start this one again (its own backup = the restored prices).
+    await test.step("start the Large sale again for the next theme", () => restartSale(LARGE.handle));
+    expect((await latestRun(LARGE.handle)).status).toBe("active");
+  });
+
+  test("5b: a cancelled order (orderCancel with restock) gives its piece back to the quota, the history says so", async ({ page }, testInfo) => {
+    test.skip(!PRO, "phase B (Pro): a sale runs");
+    test.skip(!ORDERS, ORDERS_OFF);
+    test.setTimeout(600_000);
+    const since = new Date().toISOString();
+    const start = await latestRun(SPARE.handle);
+    expect(start.status, "the spare sale runs").toBe("active");
+    expect(start.quota - start.sold + start.returned, "one order must not sell it out (fixture quota 5)").toBeGreaterThan(1);
+    await test.step("order: one piece", () => placeOrder(page, { handle: SPARE.handle, quantity: 1 }));
+    const sold = await waitForRun(SPARE.handle, (r) => r.sold === start.sold + 1);
+    const cancelled = await test.step("cancel it with restock (shopify store execute --allow-mutations)", () => cancelLatestOrder(since));
+    const back = await waitForRun(SPARE.handle, (r) => r.returned === start.returned + 1);
+    expect(back.status, "still running").toBe("active");
+    expect(back.quota - back.sold + back.returned, "the piece is back in the quota").toBe(start.quota - start.sold + start.returned);
+    expect(back.events.map((e) => e.kind), "the history names the cancellation").toContain("cancel");
+    await saveEvidence(testInfo, "outlet-cancel", { theme: THEME_LABEL || null, start, sold, back, cancelled: cancelled.split("\n").filter(Boolean) });
+  });
 });
+
+/** One Bogus order in Czechia of `quantity` pieces of the variant; the thank-you page settled. */
+async function placeOrder(page: Page, line: { handle: string; quantity: number; option?: string }): Promise<void> {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await unlockRealStorefront(page);
+  await gotoStorefront(page, `/products/${line.handle}`);
+  await setStorefrontCountry(page, "CZ");
+  await freshCartOfVariants(page, [line], []);
+  await openCheckout(page);
+  await fillShippingAddress(page, CZECH_ADDRESS, EMAIL);
+  await payWithBogusCard(page);
+  await settledThankYou(page);
+}
 
 function summary(cart: Cart) {
   return {

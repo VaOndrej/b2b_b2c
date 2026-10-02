@@ -12,7 +12,7 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > technická pravidla, zakázané věci). **MVP N+1 nezačíná, dokud MVP N není finální** (brána, živé E2E A+B,
 > vizuální QA, audit s opravenými nálezy, checkpoint, push).
 
-- **Aktivní zadání:** docs/won-discounts/prompt-mvp5-dokonceni-mvp6.md (5a → 5b po schválení → MVP 6). Krok: 5a-5b-příprava (5a-admin hotové: `orders-access.server.ts`, banner + karta, unit 1 235 + cargo 94 + vitest 549 ✓, screenshoty `evidence/mvp5/admin/*orders*`).
+- **Aktivní zadání:** docs/won-discounts/prompt-mvp5-dokonceni-mvp6.md (5a → 5b po schválení → MVP 6). Krok: 5a-uzavření (5a-admin `5e7417c`; 5b připravené vypnuté: spec `WON_E2E_ORDERS=1`, `outlet-orders.mjs`, postup „Aktivace 5b“ v plánu MVP 5; další: brána → E2E outlet free/pro → audit → checkpoint).
 - **Předchozí zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md — **hotové až na živé E2E objednávek**
   (checkpoint MVP 5 níž). **Zastaveno, čeká na Ondřeje (F-O1):** povolit appce přístup k chráněným datům zákazníků
   (Partner Dashboard → Apps → won-discounts → API access requests → Protected customer data access → Request access →

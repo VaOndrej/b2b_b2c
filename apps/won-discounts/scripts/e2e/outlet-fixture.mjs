@@ -5,7 +5,8 @@
 //   "E2E výprodej kód"        code WONE2EVYP, 20 % on the order
 //   sales (Pro, outlet.mjs --start):
 //     won-e2e-two-variants Large  −25 % (18 Kč → 13,50 Kč), quota 3, no price list — Small stays a normal item
-//     won-e2e-spare               −50 %, quota 2, the price list of the market "česko" (fixed 199 Kč → 99,50 Kč)
+//     won-e2e-spare               −50 %, quota 5, the price list of the market "česko" (fixed 199 Kč → 99,50 Kč);
+//                                 5 so the checkout and the 5b cancel spec (one order each) never sell it out
 // Percentages only: they hold in every currency (cesko CZK, slovensko EUR) with nothing to convert.
 
 export const OUTLET_HANDLES = ["won-e2e-two-variants", "won-e2e-spare"];
@@ -21,7 +22,7 @@ export const OUTLET_CODE_PERCENT = 20;
 // priced by a market price list's adjustment: live fact F-O3).
 export const OUTLET_SALES = [
   { handle: "won-e2e-two-variants", variant: "Large", percent: 25, quota: 3, catalogs: [], before: 1800 },
-  { handle: "won-e2e-spare", variant: null, percent: 50, quota: 2, catalogs: ["česko"], before: 19900 },
+  { handle: "won-e2e-spare", variant: null, percent: 50, quota: 5, catalogs: ["česko"], before: 19900 },
 ];
 
 /** The seeded rules; `ids` maps each handle to its product GID on the store. */
