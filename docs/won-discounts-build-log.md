@@ -12,10 +12,10 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > technická pravidla, zakázané věci). **MVP N+1 nezačíná, dokud MVP N není finální** (brána, živé E2E A+B,
 > vizuální QA, audit s opravenými nálezy, checkpoint, push).
 
-- **Aktivní zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md (ověření MVP 4 → MVP 5). Krok: A5 (živé E2E
-  Free `rewards`, `rewards-other`, pak Pro `rewards-pro`; tag `mvp4-verify`, `EVID` a logy ve scratchpadu session,
-  `WON_RUN_DIR=<scratchpad>/runs`; app dev log `<scratchpad>/appdev-free.log`). Další: A6 shrnutí + commit + push.
-- **Ověření MVP 4 (2026-10-02), průběh:**
+- **Aktivní zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md (ověření MVP 4 → MVP 5). Krok: B0 (rozpočet
+  instrukcí na rodinách cap 550), pak B-plán. Koncept plánu: scratchpad session (`plan-mvp5-draft.md`), do repa jako
+  `docs/plans/2026-10-02-won-discounts-mvp5.md`. `shopify app dev` běží s Pro (log ve scratchpadu).
+- **Ověření MVP 4 (2026-10-02) ✓ — MVP 4 odpovídá checkpointu, 1 nový nález (N1, P3, opraven):**
   - A1 ✓ `git status`: jen cizí `docs/product-roadmap.html`, `docs/won-companion/`, `docs/won-discounts/paralelizace.md`;
     `git log origin/main..HEAD` prázdné; checkpoint MVP 4 je.
   - A2 ✓ brána `gate-a2`: packages 811 + 50, guard 301, unit node 1 168 + cargo 94 (1 ignored) + vitest 544, typecheck,
@@ -30,6 +30,11 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   - A4 ✓ replay 3 308 běhů: HEAD (245 237 B) ≠ log ve 194 = tatáž vysvětlená množina (150 sond MVP 0 z 28. 9. +
     44 mezibuildů MVP 3 z 1. 10. 05–06 UTC); build MVP 3 (`eadc31e`, 253 170 B) se od HEAD liší ve 219 bězích z 1. 10.,
     ve všech je HEAD = log (odměny). Žádný nový rozdíl.
+  - A5 ✓ živé E2E na `main` (`caf990b`), tag `mvp4-verify`, evidence ve scratchpadu (ne v repu): Free `rewards` 7/7
+    Horizon + 7/7 Dawn, `rewards-other` 3/3 + 3/3; restart s Pro, `rewards-pro` 3/3 + 3/3 — ✓ Horizon ✓ Dawn, **0
+    opakovaných testů**, úklid + `verify-clean` u všech tří exit 0.
+  - A6 ✓ shrnutí: brána, audit (17/17 oprav s testem, 3 mutace zachycené), replay a živé E2E sedí s checkpointem.
+    Nález N1 (E3 bez unit testu) opraven contract testem `caf990b`.
 - **Fáze: MVP 5 (Výprodej, Pro)** — další krok: plán `docs/plans/<datum>-won-discounts-mvp5.md` s kontrakty (kvóta na
   existující variantě `price` + `compare_at_price`, ceníky trhů vč. pevných cen, storna/vratky, návrat ceny, historie,
   scheduler; zápisy cen jen skriptem s `--dry-run` + zálohou, po E2E vrátit). **První krok MVP 5: přeměřit konstruované
