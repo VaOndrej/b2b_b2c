@@ -12,9 +12,10 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > technická pravidla, zakázané věci). **MVP N+1 nezačíná, dokud MVP N není finální** (brána, živé E2E A+B,
 > vizuální QA, audit s opravenými nálezy, checkpoint, push).
 
-- **Aktivní zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md (ověření MVP 4 → MVP 5). Krok: B0 (rozpočet
-  instrukcí na rodinách cap 550), pak B-plán. Koncept plánu: scratchpad session (`plan-mvp5-draft.md`), do repa jako
-  `docs/plans/2026-10-02-won-discounts-mvp5.md`. `shopify app dev` běží s Pro (log ve scratchpadu).
+- **Aktivní zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md (ověření MVP 4 → MVP 5). Krok: B0 (měření
+  seznamů `outlet` N ∈ {100, 50, 25}, výstupy `<scratchpad>/b0/o<N>.out`) + B-core. Plán:
+  `docs/plans/2026-10-02-won-discounts-mvp5.md`. **Blokuje živé E2E objednávek:** F-O1 (Ondřej musí v Partner
+  Dashboardu povolit chráněná data zákazníků, viz plán) a F-O4b (storno v E2E). `shopify app dev` neběží.
 - **Ověření MVP 4 (2026-10-02) ✓ — MVP 4 odpovídá checkpointu, 1 nový nález (N1, P3, opraven):**
   - A1 ✓ `git status`: jen cizí `docs/product-roadmap.html`, `docs/won-companion/`, `docs/won-discounts/paralelizace.md`;
     `git log origin/main..HEAD` prázdné; checkpoint MVP 4 je.
