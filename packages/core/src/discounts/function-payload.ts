@@ -474,6 +474,7 @@ function encode(payload: FunctionConfigPayload): EncodedShopFunctionConfig {
 function build(config: ConfigInput, selected: CampaignInput | null, shopTimezone: string, shopCurrency?: string): EncodedShopFunctionConfig {
   formatterFor(shopTimezone, "buildShopFunctionConfig"); // validate the zone once, up front
   const { codes, tiers, rewards, margin } = config.modules;
+  const ruleIds = new Set(codes.rules.map((r) => r.id));
   return encode({
     schemaVersion: config.schemaVersion,
     campaignId: selected ? selected.id : null,
@@ -491,7 +492,11 @@ function build(config: ConfigInput, selected: CampaignInput | null, shopTimezone
           {
             id: selected.id,
             window: { start: selected.window.start, end: selected.window.end },
-            overrides: selected.overrides.map((o) => ({ ruleId: o.ruleId, patch: shipPatch(o.patch) })),
+            // MVP 6 D1/K2: only discount rule overrides reach the function (the engine never applies a tier
+            // set's or a gift tier's: "Campaign overrides never reach a tier"); the rest stays in the stored config.
+            overrides: selected.overrides
+              .filter((o) => ruleIds.has(o.ruleId))
+              .map((o) => ({ ruleId: o.ruleId, patch: shipPatch(o.patch) })),
           },
         ]
       : [],

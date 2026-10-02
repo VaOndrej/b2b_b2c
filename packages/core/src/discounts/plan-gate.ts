@@ -49,8 +49,9 @@
 // "3 ks −20 %, 5 ks −10 %" would otherwise give more on Free for some carts).
 //
 // Downgrade (A6: running sales and campaigns finish, new ones cannot start).
-// Nothing is running at a downgrade in MVP 1 (no campaign or outlet UI yet), so
-// this gate strips campaigns outright. What later MVPs must add:
+// MVP 6 (K3): `opts.finishing` = the campaigns running at the downgrade (the sync
+// records them, ShopSyncState.campaignsFinishing); they stay until their end, any
+// other campaign is stripped. Original MVP 1 notes:
 //   - MVP 5 (Kampaně): the downgrade moment must be recorded (entitlement
 //     history); a campaign whose window had already started at that moment
 //     keeps shipping until its window ends — the gate then needs that list
@@ -111,6 +112,12 @@ export interface StrippedCapability {
 
 export interface GateOptions {
   /**
+   * A6 (MVP 6, K3): ids of the campaigns that were running when the shop went
+   * from Pro to Free — they finish (kept until their end, `now` required to
+   * drop them after it); every other campaign is stripped as before.
+   */
+  finishing?: readonly string[];
+  /**
    * Shop-local `YYYY-MM-DDTHH:MM:SS`. A campaign whose window already ended is
    * not reported (it is not in force on any plan). Without it every campaign
    * that is not killed is reported.
@@ -155,12 +162,17 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
     }
   }
 
-  // Campaigns (killed or ended ones are not in force anyway: dropped silently).
+  // Campaigns (killed or ended ones are not in force anyway: dropped silently). A6: the ones running at the
+  // downgrade (`finishing`) stay until their end — a later edit cannot extend them (the admin refuses on Free).
+  const finishing = new Set(opts.finishing ?? []);
+  const keep: typeof out.campaigns = [];
   for (const campaign of out.campaigns) {
     const ended = opts.now !== undefined && campaign.window.end !== "" && campaign.window.end <= opts.now;
-    if (!campaign.killed && !ended) stripped.push({ capability: "campaigns", reason: "removed", entityId: campaign.id, name: campaign.name });
+    if (campaign.killed || ended) continue;
+    if (finishing.has(campaign.id) && opts.now !== undefined) keep.push(campaign);
+    else stripped.push({ capability: "campaigns", reason: "removed", entityId: campaign.id, name: campaign.name });
   }
-  out.campaigns = [];
+  out.campaigns = keep;
 
   // Quantity tiers (K1): one global set, counted per product at most; scoped
   // sets INERT (no breaks), so their products never fall back to the global set.

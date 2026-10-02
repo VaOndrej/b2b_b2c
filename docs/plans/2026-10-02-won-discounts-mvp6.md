@@ -105,6 +105,19 @@ overrides: {ruleId, ruleName, enabled?, value?}[], unused: number, finishing: bo
 30 %, po konci 10 % (polling po 20 s, Cloudflare tempo), pokladna v okně = 30 %; Free: celý čas 10 % (kampaň
 odříznutá), admin ji nedovolí založit. Horizon i Dawn (dvě okna za sebou, druhé po prvním). Regrese MVP 1–5 profilů.
 
+## Výsledek B0 (2026-10-02, Wasm `main` 245 497 B, beze změny funkce)
+
+| Sada | Běhů | Max | ≥ 100 % | DIFF |
+|---|---|---|---|---|
+| základ (rodiny cap 550 × `wonOutlet` none, tvar dnešního dotazu) | 3 320 | 99,80 % | 0 | 0 |
+| kampaň `none` (platné: config ≤ 9 000 B) | 1 330 | 99,54 % | 0 | 0 |
+| kampaň `value` (0–9 přepisů) | 1 330 | 99,54 % | 0 | 0 |
+| kampaň `retarget` (0–11 přepisů, refy `rule@k`) | 1 330 | **99,86 %** | 0 | 0 |
+| kampaň, config přes 9 000 B (nemožné, informativně) | 5 970 | 99,82 % | 0 | 0 |
+
+**Stop-pravidlo splněno:** max < 100 %, 0 DIFF → kampaně bez nové meze, **funkce se v MVP 6 nemění**. Rezerva pro
+živou kampaň 0,14 bodu (nejhorší re-target), bez kampaně 0,20 (základ), s odměnami 0,11 (MVP 5).
+
 ## Úkoly po vrstvách
 
 0. **B0** rozpočet (níž) → výsledek do tohoto plánu → commit.
