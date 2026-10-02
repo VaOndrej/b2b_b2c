@@ -34,7 +34,7 @@ Try a cart and moving Shopify discounts work in full on Free. Free is not a demo
 - **A ladder of gift thresholds and a choice of up to 3 gifts** in Cart rewards
   ([cart-rewards](cart-rewards)).
 
-Later versions add Pro modules such as Clearance and Campaigns.
+Clearance (Pro) sells a number of pieces of a variant at a discount, see [clearance](clearance). Later versions add Campaigns.
 
 Pro is a flat monthly price with no limit on orders. Pro subscriptions are not on sale
 yet; until they are, every shop runs on Free. Price and the full comparison:

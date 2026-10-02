@@ -904,7 +904,7 @@ export const cs = {
   "combination.orderWithShipping.short": "objednávka s dopravou",
   "combination.outletWithAnything.on": "Zboží ve výprodeji může dostat i další slevy a sleva z objednávky se počítá i z něj.",
   "combination.outletWithAnything.off": "Zboží ve výprodeji další slevy nedostane a sleva z objednávky se z něj nepočítá.",
-  "combination.outletWithAnything.note": "Výprodej přijde v další verzi. Přepínač začne platit s ním.",
+  "combination.outletWithAnything.note": "Platí pro zboží ve výprodeji (modul Výprodej, Pro).",
   "combination.productWithOrder.on": "Obě se sčítají. Sleva z objednávky se počítá z ceny po slevách na produkty, i po množstevních.",
   "combination.productWithOrder.off": "Platí buď slevy na produkty, nebo sleva z objednávky: podle toho, co dá zákazníkovi víc.",
   "combination.productWithShipping.on": "Sleva na dopravu platí i v košíku, kde je sleva na produkt.",

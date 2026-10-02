@@ -69,6 +69,16 @@ many breaks and several currencies can run out of room well before the set or
 break counts above. A save that would not fit is refused with the byte count
 and the budget; nothing is saved.
 
+## Clearance (Pro)
+
+| What | Limit |
+|---|---|
+| Clearance discount | 1–90 %, whole percent |
+| Quota (pieces to sell) | 1–100,000 |
+| Sales not ended at once, per store | 500 |
+| Sales not ended per variant | 1 |
+| Market price lists one sale changes | 10 |
+
 ## Block appearances
 
 4 presets for the quantity-tiers product-page block:

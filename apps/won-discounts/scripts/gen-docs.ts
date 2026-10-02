@@ -16,6 +16,7 @@
  * docs weren't regenerated.
  */
 import { writeFileSync } from "node:fs";
+import { OUTLET_LIMITS } from "@won/core/discounts/outlet";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -329,6 +330,16 @@ All tier sets together share that last, much smaller budget, so many sets with
 many breaks and several currencies can run out of room well before the set or
 break counts above. A save that would not fit is refused with the byte count
 and the budget; nothing is saved.
+
+## Clearance (Pro)
+
+| What | Limit |
+|---|---|
+| Clearance discount | ${OUTLET_LIMITS.percentMin}–${OUTLET_LIMITS.percentMax} %, whole percent |
+| Quota (pieces to sell) | 1–${num(OUTLET_LIMITS.quotaMax)} |
+| Sales not ended at once, per store | ${num(OUTLET_LIMITS.running)} |
+| Sales not ended per variant | 1 |
+| Market price lists one sale changes | ${OUTLET_LIMITS.priceLists} |
 
 ## Block appearances
 

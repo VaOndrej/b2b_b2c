@@ -237,7 +237,7 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
       /Sčítá se: produkty s objednávkou, produkty s dopravou a objednávka s dopravou/,
       /Dvě slevy na stejný produkt se nesčítají, platí výhodnější\. Množstevní sleva se s jinou slevou na stejný produkt nesčítá nikdy\./,
       /Zboží ve výprodeji další slevy nedostane/,
-      /Výprodej přijde v další verzi/,
+      /Platí pro zboží ve výprodeji \(modul Výprodej, Pro\)/,
       /Obě se sčítají\. Sleva z objednávky se počítá z ceny po slevách na produkty/,
       /href="\/app\/try-cart"/,
     ],

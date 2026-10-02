@@ -899,7 +899,7 @@ export const en: Record<keyof typeof cs, string> = {
   "combination.orderWithShipping.short": "order with shipping",
   "combination.outletWithAnything.on": "Clearance items can get other discounts too, and an order discount is taken from them as well.",
   "combination.outletWithAnything.off": "Clearance items get no other discount, and an order discount is not taken from them.",
-  "combination.outletWithAnything.note": "Clearance comes in a later version. The switch applies once it does.",
+  "combination.outletWithAnything.note": "Applies to items on clearance (the Clearance module, Pro).",
   "combination.productWithOrder.on": "Both add up. The order discount is taken from the price after product discounts, quantity discounts included.",
   "combination.productWithOrder.off": "Either the product discounts or the order discount applies, whichever gives the customer more.",
   "combination.productWithShipping.on": "A shipping discount applies even when the cart has a product discount.",
