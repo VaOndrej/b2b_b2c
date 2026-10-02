@@ -6,6 +6,7 @@
 //      quota", the end, the steps, "Ukončit výprodej";
 //   3. Skončené výprodeje — why and when; returned pieces after the end ask "Znovu otevřít" / "Nechat skončený";
 //   4. Zobrazení a vratky — the 4 display levels, the return-after-end setting, the badge block deep link.
+// Without order access (5a, F-O1) a warning says the quota is not counted and the form recommends an end date.
 // Each action is its own small form (one button = one action, §13); the server parses it (outlet-admin.server.ts).
 
 import { useState } from "react";
@@ -125,7 +126,7 @@ function RunCard({ run, pro, money }: { run: OutletRunView; pro: boolean; money:
 export function OutletScreen(props: OutletScreenProps) {
   const tr = useT();
   const { t } = tr;
-  const { plan, result, running, ended, priceLists, limits, display, reopen, today, configVersion, badgeBlockAddUrl } = props;
+  const { plan, result, running, ended, priceLists, limits, display, reopen, today, configVersion, badgeBlockAddUrl, ordersCounted } = props;
   const pro = plan === "pro";
   const money = (minor: number, currency: string) => formatMoney(minor, currency, tr.locale);
   const [variant, setVariant] = useState<{ id: string; productId: string; title: string } | null>(null);
@@ -180,6 +181,7 @@ export function OutletScreen(props: OutletScreenProps) {
           <s-date-field name={F.endsOn} label={t("outlet.new.endsOn")} allow={`${nextDay(today)}--`} error={err(F.endsOn)} disabled={boolAttr(!pro)} />
         </div>
         <RowNote>{t("outlet.new.quotaHint")}</RowNote>
+        {!ordersCounted ? <RowNote tone="attention">{t("outlet.orders.quotaHint")}</RowNote> : null}
         <RowNote>{t("outlet.new.endsOnHint")}</RowNote>
         <s-stack direction="block" gap="small-300">
           <s-text>{t("outlet.new.lists")}</s-text>
@@ -205,6 +207,11 @@ export function OutletScreen(props: OutletScreenProps) {
       <s-stack direction="block" gap="base">
         {isOutletResult(result) ? <OutletBanner result={result} /> : <Notice result={result as UiResult | null | undefined} />}
         <RowNote>{t("outlet.hint")}</RowNote>
+        {!ordersCounted ? (
+          <s-banner tone="warning" heading={t("outlet.orders.off")} data-won-outlet-orders="off">
+            <s-paragraph>{t("outlet.orders.offDetail")}</s-paragraph>
+          </s-banner>
+        ) : null}
         {!pro && running.length > 0 ? <RowNote>{t("outlet.pro.running")}</RowNote> : null}
 
         <WonSection title={t("outlet.new.title")} glyph="tag" pro={!pro} locked={!pro} summary={t("outlet.new.summary")} anchor="new">

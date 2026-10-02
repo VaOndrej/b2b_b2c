@@ -210,7 +210,7 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       if (state === "outlet") {
         return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
           ...wired,
-          signals: { ...DEV_SIGNALS, native: devNative(locale), outlet: devOutletOverview() },
+          signals: { ...DEV_SIGNALS, native: devNative(locale), outlet: devOutletOverview(q.get("orders") === "on") },
           ruleSync: DEV_RULE_SYNC_OK,
         });
       }
@@ -328,7 +328,7 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
     case "rewards":
       return { ...devRewardsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale }), result: devRewardsResult(q.get("result")) };
     case "outlet":
-      return { ...devOutletScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale }), result: devOutletResult(q.get("result")) };
+      return { ...devOutletScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, orders: q.get("orders") === "on" }), result: devOutletResult(q.get("result")) };
     case "appearance":
       return devAppearanceScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, theme: q.get("theme") });
     case "margin":

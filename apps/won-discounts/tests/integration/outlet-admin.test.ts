@@ -9,7 +9,9 @@ import type { ShopCtx } from "../../app/lib/integration/context.server.ts";
 import { loadOutletOverview, loadOutletScreen, outletAction } from "../../app/lib/integration/outlet-admin.server.ts";
 import { OUTLET_FIELD as F, OUTLET_INTENT } from "../../app/components/model/outlet.ts";
 import { OutletScreen } from "../../app/components/screens/OutletScreen.tsx";
-import { devOutletScreen } from "../../app/lib/dev-harness.server.ts";
+import { devOutletOverview, devOutletScreen } from "../../app/lib/dev-harness.server.ts";
+import { OutletOverviewCard } from "../../app/components/outlet/OutletOverviewCard.tsx";
+import { LocaleProvider } from "../../app/i18n/context.tsx";
 import { WON_AMBER } from "../../app/components/shell/tokens.ts";
 import { FakeShopify } from "../lib/sync/fake-shopify.ts";
 import { createTestDatabase, type TestDatabase } from "../lib/test-db.ts";
@@ -158,4 +160,53 @@ test("screen: Free shows the form locked in the amber Pro frame (§16b), never r
   assert.match(pro, /Prodáno o 1 ks víc než kvóta/);
   assert.match(pro, /Po konci se vrátilo 2 ks/);
   assert.doesNotMatch(pro, /gid:\/\/shopify/, "never an id on screen (§4c)");
+});
+
+// 5a (F-O1): until Shopify lets the app read orders, nothing counts the quota — the module and the Přehled card
+// say so, and the form recommends an end date. Access = the read_orders scope in the session AND a successful
+// order read (cached); ACCESS_DENIED = no access; a failed read is not cached and counts as no access.
+const OFF_TEXT = /Kvóta se zatím neodečítá — výprodej skončí datem nebo ručně\./;
+const probes = (fake: FakeShopify) => fake.calls.filter((c) => c.op === "WonDiscountsOrdersProbe").length;
+
+test("orders access: without read_orders in the session nothing is probed and the quota is not counted", async () => {
+  const { fake, ctx } = setup("pro");
+  const screen = await loadOutletScreen({ ...ctx, scopes: "read_products,write_discounts" });
+  assert.equal(screen.ordersCounted, false);
+  assert.equal(probes(fake), 0);
+  const card = await loadOutletOverview({ ...ctx, scopes: "read_products,write_discounts" });
+  assert.equal(card.ordersCounted, false);
+});
+
+test("orders access: read_orders granted but ACCESS_DENIED (protected customer data not approved) = not counted, cached", async () => {
+  const { fake, ctx } = setup("pro");
+  const c = { ...ctx, scopes: "read_products,read_orders" };
+  assert.equal((await loadOutletScreen(c)).ordersCounted, false);
+  assert.equal((await loadOutletOverview(c)).ordersCounted, false);
+  assert.equal(probes(fake), 1, "the answer is cached");
+});
+
+test("orders access: an approved order read = counted; a failed read is not cached", async () => {
+  const { fake, ctx } = setup("pro");
+  const c = { ...ctx, scopes: "read_products,read_orders" };
+  fake.fail("WonDiscountsOrdersProbe", { transport: 503 });
+  fake.ordersApproved = true;
+  assert.equal((await loadOutletScreen(c)).ordersCounted, false, "unknown = say it is not counted");
+  assert.equal((await loadOutletScreen(c)).ordersCounted, true, "the failure was not cached");
+  assert.equal(probes(fake), 2);
+});
+
+test("screen and card: no order access says the quota is not counted and recommends an end date (cs + en)", async () => {
+  const off = text(await renderPage(createElement(OutletScreen, { ...devOutletScreen({ plan: "pro", state: null, locale: "cs" }), ordersCounted: false })));
+  assert.match(off, OFF_TEXT, "the warning banner's heading");
+  assert.match(off, /Shopify appce zatím nepouští objednávky/);
+  assert.match(off, /Bez přístupu k objednávkám kvóta výprodej neukončí — nastavte datum konce\./);
+  const on = text(await renderPage(createElement(OutletScreen, { ...devOutletScreen({ plan: "pro", state: null, locale: "cs" }), ordersCounted: true })));
+  assert.doesNotMatch(on, /Kvóta se zatím neodečítá/);
+  assert.doesNotMatch(on, /Bez přístupu k objednávkám/);
+  const en = text(await renderPage(createElement(LocaleProvider, { locale: "en", children: null }, createElement(OutletScreen, { ...devOutletScreen({ plan: "pro", state: null, locale: "en" }), ordersCounted: false }))));
+  assert.match(en, /The quota is not counted yet — the sale ends by its date or by hand\./);
+  const card = text((await renderPage(createElement(OutletOverviewCard, { outlet: { ...devOutletOverview(), ordersCounted: false } }))).replace(/<[^>]+>/g, " "));
+  assert.match(card, OFF_TEXT);
+  const cardOn = text((await renderPage(createElement(OutletOverviewCard, { outlet: { ...devOutletOverview(), ordersCounted: true } }))).replace(/<[^>]+>/g, " "));
+  assert.doesNotMatch(cardOn, /Kvóta se zatím neodečítá/);
 });

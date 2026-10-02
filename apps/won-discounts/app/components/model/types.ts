@@ -753,6 +753,8 @@ export interface OutletScreenData {
   limits: { percentMin: number; percentMax: number; quotaMax: number; running: number; priceLists: number };
   /** "Přidat štítek výprodeje" (null when the shop / API key is unknown). */
   badgeBlockAddUrl: string | null;
+  /** The app can read orders (5a, F-O1): false = the quota is not counted, the sale ends by its date or by hand. */
+  ordersCounted: boolean;
 }
 
 export type OutletActionResult =
@@ -769,5 +771,7 @@ export interface OutletOverviewView {
   oversold: number;
   /** Sales whose start or end failed and is being retried. */
   problems: number;
+  /** The app can read orders (5a, F-O1): false = the card says the quota is not counted. */
+  ordersCounted: boolean;
 }
 

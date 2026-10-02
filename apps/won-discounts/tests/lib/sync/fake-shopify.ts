@@ -101,6 +101,8 @@ export class FakeShopify implements AdminClient {
   priceLists = new Map<string, { id: string; name: string; currency: string; catalogTitle: string | null; fixed: Map<string, { price: string; compareAt: string | null }> }>();
   /** Page size for every paged connection (the documents ask for 250/100; smaller exercises paging). */
   pageSize = 250;
+  /** Protected customer data approved: orders can be read (5a, F-O1). Default false = ACCESS_DENIED, as live. */
+  ordersApproved = false;
   /** Codes that fail inside an async bulk add (per-code errors). */
   bulkAddFailCodes = new Set<string>();
   /** How many status polls a bulk creation / job reports `done: false`. */
@@ -289,6 +291,12 @@ export class FakeShopify implements AdminClient {
       if ("transport" in failure) throw new AdminTransportError(`HTTP ${failure.transport}`, { status: failure.transport });
       if ("graphqlError" in failure) return { data: null, errors: [{ message: failure.graphqlError }] };
       if ("userErrors" in failure) return { data: this.userErrorResponse(op, failure.userErrors) };
+    }
+    if (op === "WonDiscountsOrdersProbe") {
+      if (!this.ordersApproved) {
+        return { data: { orders: null }, errors: [{ message: "This app is not approved to access the Order object.", extensions: { code: "ACCESS_DENIED" } }] };
+      }
+      return { data: { orders: { nodes: [] } } };
     }
     const data = this.execute(op, variables ?? {});
     if (failure && "transportAfterApply" in failure) {

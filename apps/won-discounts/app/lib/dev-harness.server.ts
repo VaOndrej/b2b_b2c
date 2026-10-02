@@ -1312,8 +1312,8 @@ const DEV_OUTLET_EVENTS: DevEvent[] = [
 const devMoney = (locale: "cs" | "en") => (minor: number, currency: string) =>
   new Intl.NumberFormat(locale === "en" ? "en-US" : "cs-CZ", { style: "currency", currency }).format(minor / 100);
 
-/** Výprodej screen: ?plan=pro, ?state=empty (no sale yet). */
-export function devOutletScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en" }): OutletScreenData {
+/** Výprodej screen: ?plan=pro, ?state=empty (no sale yet), ?orders=on (the app reads orders; default off, F-O1). */
+export function devOutletScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; orders?: boolean }): OutletScreenData {
   const runs = opts.state === "empty" ? [] : DEV_OUTLET_RUNS;
   const view = (r: DevRun) =>
     outletRunView(
@@ -1336,6 +1336,7 @@ export function devOutletScreen(opts: { plan: "free" | "pro"; state: string | nu
     ],
     limits: { percentMin: OUTLET_LIMITS.percentMin, percentMax: OUTLET_LIMITS.percentMax, quotaMax: OUTLET_LIMITS.quotaMax, running: OUTLET_LIMITS.running, priceLists: OUTLET_LIMITS.priceLists },
     badgeBlockAddUrl: outletBlockAddUrl(DEV_SHOP, "dev-api-key"),
+    ordersCounted: opts.orders ?? false,
   };
 }
 
@@ -1358,7 +1359,7 @@ export function devOutletResult(kind: string | null): OutletActionResult | null 
 }
 
 /** The Přehled card with a running sale, one waiting for a decision and a failed step. */
-export function devOutletOverview(): OutletOverviewView {
-  return outletOverviewOf(DEV_OUTLET_RUNS, DEV_OUTLET_TITLES);
+export function devOutletOverview(orders = false): OutletOverviewView {
+  return outletOverviewOf(DEV_OUTLET_RUNS, DEV_OUTLET_TITLES, orders);
 }
 

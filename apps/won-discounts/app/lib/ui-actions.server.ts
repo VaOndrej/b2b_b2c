@@ -247,7 +247,7 @@ export async function loadStoreSignals(
     // Odměny card (MVP 4, Přehled only): free shipping and the gift thresholds the plan runs.
     opts.sync ? loadRewardsOverview(ctx, loaded, { shopCurrency: opts.shopCurrency }).catch(() => undefined) : Promise.resolve(undefined),
     // Výprodej card (MVP 5, Přehled only): running sales, returned pieces waiting for a decision (one button).
-    opts.sync ? loadOutletOverview(ctx).catch(() => undefined) : Promise.resolve(undefined),
+    opts.sync ? loadOutletOverview({ ...ctx, scopes: opts.scopes }).catch(() => undefined) : Promise.resolve(undefined),
   ]);
   return {
     ...base,

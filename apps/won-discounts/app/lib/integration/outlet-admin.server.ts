@@ -7,6 +7,7 @@
 //                              Pro checked there, BILL-1 / A6); intent settings → saveConfigSection on
 //                              modules.outlet (display, return after the end);
 //   outletOverviewOf(...)      the Přehled card and its question (returned pieces waiting for a decision).
+// Both say when the quota is not counted: no order access yet (5a, F-O1, orders-access.server.ts).
 // The session shop only (SEC-2).
 
 import { OUTLET_LIMITS, outletLeft, outletOversold, type OutletDraftError } from "@won/core/discounts/outlet";
@@ -27,6 +28,7 @@ import { endOutletRun, keepOutletEnded, reopenOutletRun, startOutletRun, writeOu
 import { readSaveOptions, saveConfigSection } from "./settings.server";
 import { ctxPlan } from "./sync-status.server";
 import { readShopContext } from "./themes.server";
+import { ordersAccess } from "./orders-access.server";
 
 type RunRow = Awaited<ReturnType<PrismaClient["outletRun"]["findMany"]>>[number];
 type EventRow = Awaited<ReturnType<PrismaClient["outletEvent"]["findMany"]>>[number];
@@ -179,7 +181,13 @@ function moneyOf(locale: Locale) {
 
 export async function loadOutletScreen(ctx: ShopCtx): Promise<OutletScreenData> {
   const graphql = graphqlOf(ctx);
-  const [loaded, plan, shop, priceLists] = await Promise.all([loadConfig(ctx.db, ctx.shop), ctxPlan(ctx), readShopContext(graphql), priceListsOf(ctx)]);
+  const [loaded, plan, shop, priceLists, ordersCounted] = await Promise.all([
+    loadConfig(ctx.db, ctx.shop),
+    ctxPlan(ctx),
+    readShopContext(graphql),
+    priceListsOf(ctx),
+    ordersAccess(ctx),
+  ]);
   const running = await ctx.db.outletRun.findMany({ where: { shop: ctx.shop, status: { not: "ended" } }, orderBy: { createdAt: "desc" } });
   const ended = await ctx.db.outletRun.findMany({ where: { shop: ctx.shop, status: "ended" }, orderBy: { updatedAt: "desc" }, take: ENDED_SHOWN });
   const runs = [...running, ...ended];
@@ -201,6 +209,7 @@ export async function loadOutletScreen(ctx: ShopCtx): Promise<OutletScreenData> 
     priceLists,
     limits: { percentMin: OUTLET_LIMITS.percentMin, percentMax: OUTLET_LIMITS.percentMax, quotaMax: OUTLET_LIMITS.quotaMax, running: OUTLET_LIMITS.running, priceLists: OUTLET_LIMITS.priceLists },
     badgeBlockAddUrl: outletBlockAddUrl(ctx.shop, ctx.apiKey),
+    ordersCounted,
   };
 }
 
@@ -272,17 +281,21 @@ export async function loadOutletOverview(ctx: ShopCtx): Promise<OutletOverviewVi
     where: { shop: ctx.shop, OR: [{ status: { not: "ended" } }, { returnPending: { gt: 0 } }, { error: { not: null } }] },
   });
   const pending = rows.filter((r) => r.status === "ended" && r.returnPending > 0);
-  const titles = pending.length ? await variantTitles(ctx, pending.map((r) => r.variantId)) : new Map<string, string>();
-  return outletOverviewOf(rows, titles);
+  const [titles, ordersCounted] = await Promise.all([
+    pending.length ? variantTitles(ctx, pending.map((r) => r.variantId)) : Promise.resolve(new Map<string, string>()),
+    ordersAccess(ctx),
+  ]);
+  return outletOverviewOf(rows, titles, ordersCounted);
 }
 
 /** The Přehled card from the shop's sales (pure). */
-export function outletOverviewOf(rows: readonly RunRow[], titles: ReadonlyMap<string, string>): OutletOverviewView {
+export function outletOverviewOf(rows: readonly RunRow[], titles: ReadonlyMap<string, string>, ordersCounted: boolean): OutletOverviewView {
   return {
     running: rows.filter((r) => r.status !== "ended").length,
     pendingReturns: rows.filter((r) => r.status === "ended" && r.returnPending > 0).map((r) => ({ runId: r.id, title: titles.get(r.variantId) ?? "", qty: r.returnPending })),
     oversold: rows.filter((r) => outletOversold(r) > 0 && r.status !== "ended").length,
     problems: rows.filter((r) => r.error !== null && r.status !== "ended").length,
+    ordersCounted,
   };
 }
 

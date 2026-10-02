@@ -43,6 +43,14 @@ restock** give the pieces back to the quota. An order can arrive a little late
 (Shopify sends it to Won after checkout); pieces sold past the quota that way are
 shown with their exact number.
 
+**Not counted yet in this version.** Counting needs the orders, and Shopify
+lets an app read orders only after it approves the app's access to protected
+customer data. Until then the Clearance screen and its Overview card say
+*"The quota is not counted yet — the sale ends by its date or by hand."* Sold
+pieces are not subtracted and the sale does not end by selling out, so **set an
+end date** (or end it by hand). See
+[../support/clearance-quota-not-counting.md](../support/clearance-quota-not-counting.md).
+
 ## The end
 
 A sale ends when its quota is sold, at its end date (the start of that day in
