@@ -50,6 +50,8 @@
 //           WONE2EVYP (20 % on the order); the sales are started / ended by scripts/e2e/outlet.mjs.
 //   campaign  scripts/e2e/campaign-fixture.mjs (MVP 6): auto 10 % on won-e2e-simple-a; the campaign (30 % in a
 //           window a few minutes ahead) is scheduled / removed by scripts/e2e/campaign.mjs.
+//   cards     scripts/e2e/cards-fixture.mjs (MVP 7): a global tier set, 2 items −10 %; card prices on; a custom
+//           look that only a Pro shop's storefront gets.
 //   campaign-tiers  scripts/e2e/campaign-tiers-fixture.mjs (MVP 6.1): a global tier set, 2 items −10 %; the
 //           campaign (2 items −20 % in a window) is scheduled by scripts/e2e/campaign.mjs --fixture tiers.
 //   rewards-pro  + a second threshold (80 Kč / 4 €) with a choice of 3 gifts and
@@ -107,6 +109,7 @@ import { ALL_REWARDS_TIER_IDS, REWARDS_CODE_RULE_ID, REWARDS_HANDLES, rewardsMod
 import { OUTLET_HANDLES, OUTLET_RULE_IDS, outletRules } from "./outlet-fixture.mjs";
 import { CAMPAIGN_HANDLES, CAMPAIGN_RULE_ID, campaignRules } from "./campaign-fixture.mjs";
 import { CAMPAIGN_TIERS_HANDLES, CAMPAIGN_TIERS_SET_ID, campaignTiersModule } from "./campaign-tiers-fixture.mjs";
+import { CARDS_HANDLES, CARDS_SET_ID, cardsStorefront, cardsTiersModule } from "./cards-fixture.mjs";
 import { TIERS_COLLECTION_HANDLE, TIERS_COLLECTION_SET_ID, TIERS_GLOBAL_SET_ID, tiersMarginModule, tiersModule } from "./tiers-fixture.mjs";
 
 register();
@@ -242,6 +245,13 @@ const PROFILES = {
     rules: campaignRules,
     label: "Kampaně (MVP 6): auto 10 % on won-e2e-simple-a (the campaign itself, 30 % in a window minutes ahead: scripts/e2e/campaign.mjs)",
   },
+  cards: {
+    handles: CARDS_HANDLES,
+    rules: () => [],
+    tiers: () => cardsTiersModule(),
+    storefront: cardsStorefront,
+    label: "Ceny na kartách BETA + vlastní vzhled (MVP 7): a global tier set, 2 items −10 %, card prices on, a custom look (Pro only)",
+  },
   "campaign-tiers": {
     handles: CAMPAIGN_TIERS_HANDLES,
     rules: () => [],
@@ -254,7 +264,7 @@ if (!Object.hasOwn(PROFILES, PROFILE)) throw new Error(`unknown --profile ${PROF
 /** Every E2E rule id of every profile: what a cleanup without a backup removes, and what "the seed is in it" means. */
 const ALL_E2E_RULE_IDS = [...E2E_RULE_IDS, ...SHAPES_RULE_IDS, ...MARGIN_RULE_IDS, REWARDS_CODE_RULE_ID, ...OUTLET_RULE_IDS, CAMPAIGN_RULE_ID];
 /** Every E2E tier set id (MVP 3): a cleanup without a backup removes them, and they mean "the seed is in it" too. */
-const ALL_E2E_TIER_SET_IDS = [TIERS_GLOBAL_SET_ID, TIERS_COLLECTION_SET_ID, CAMPAIGN_TIERS_SET_ID];
+const ALL_E2E_TIER_SET_IDS = [TIERS_GLOBAL_SET_ID, TIERS_COLLECTION_SET_ID, CAMPAIGN_TIERS_SET_ID, CARDS_SET_ID];
 const tierSetsOf = (config) => (Array.isArray(config?.modules?.tiers?.sets) ? config.modules.tiers.sets : []);
 const giftTiersOf = (config) => (Array.isArray(config?.modules?.rewards?.gifts) ? config.modules.rewards.gifts : []);
 const hasE2eRewards = (config) => giftTiersOf(config).some((tier) => ALL_REWARDS_TIER_IDS.includes(tier.id));
@@ -429,6 +439,8 @@ function seedConfig(previous, productIds, collectionIds, variantIds) {
   if (PROFILES[PROFILE].margin) config.modules.margin = PROFILES[PROFILE].margin(collectionIds);
   if (PROFILES[PROFILE].tiers) config.modules.tiers = PROFILES[PROFILE].tiers(collectionIds);
   if (PROFILES[PROFILE].rewards) config.modules.rewards = PROFILES[PROFILE].rewards(variantIds);
+  // MVP 7: a profile's storefront settings (card prices, the custom look).
+  if (PROFILES[PROFILE].storefront) config.storefront = PROFILES[PROFILE].storefront(config.storefront);
   if (PRESET !== undefined) {
     if (!PROFILES[PROFILE].tiers) throw new Error(`--preset needs a tiers profile (--profile ${PROFILE} has no tier set)`);
     config.storefront.appearancePreset = PRESET;
