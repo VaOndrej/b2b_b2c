@@ -42,6 +42,54 @@
   hidden
 ></div>
 <script type="application/json" id="won-discounts-config">{{ won_discounts_config }}</script>
+{%- comment -%}
+  MVP 7 (contract M7, SEC-3): the Pro custom look. The storefront config carries the stylesheet READY — its
+  variables on the Won block roots and the merchant's CSS scoped under them by the app (core customLookCss; it
+  refuses "<", url(, @import, …), so this text cannot end the element or load anything.
+{%- endcomment -%}
+{%- if won_discounts_config_raw.appearance.css != blank -%}
+  <style id="won-discounts-custom">{{ won_discounts_config_raw.appearance.css }}</style>
+{%- endif -%}
+{%- comment -%}
+  MVP 7 BETA (contract M8): prices by quantity on product cards, for themes whose card takes no app block. On a
+  collection or search page the embed prints {handle: text} for the page's products (at most the first 50 the
+  page object lists; what a card may say: snippets/won-card-tier.liquid) and assets/won-discounts-cards.js places
+  each text under its card's price. A product the page did not list gets nothing.
+{%- endcomment -%}
+{%- if won_discounts_config_raw.cards == 1 -%}
+  {%- liquid
+    assign won_list = nil
+    if template.name == 'collection'
+      assign won_list = collection.products
+    elsif template.name == 'search'
+      assign won_list = search.results
+    endif
+    assign won_lang = request.locale.iso_code | slice: 0, 2 | downcase
+    assign won_langs = 'cs,sk,en' | split: ','
+    unless won_langs contains won_lang
+      assign won_lang = 'en'
+    endunless
+  -%}
+  {%- if won_list != nil -%}
+    {%- capture won_cards -%}
+      {%- assign won_sep = '' -%}
+      {%- for won_p in won_list limit: 50 -%}
+        {%- if won_p.variants != nil -%}
+          {%- capture won_label -%}{%- render 'won-card-tier', p: won_p, cfg: won_discounts_config_raw, cur: cur, lang: won_lang -%}{%- endcapture -%}
+          {%- assign won_label = won_label | strip -%}
+          {%- if won_label != blank -%}
+            {{- won_sep -}}{{ won_p.handle | json }}:{{ won_label | json }}
+            {%- assign won_sep = ',' -%}
+          {%- endif -%}
+        {%- endif -%}
+      {%- endfor -%}
+    {%- endcapture -%}
+    {%- if won_cards != blank -%}
+      <script type="application/json" id="won-discounts-cards">{ {{- won_cards | replace: '</', '<\/' -}} }</script>
+      <script src="{{ 'won-discounts-cards.js' | asset_url }}" defer></script>
+    {%- endif -%}
+  {%- endif -%}
+{%- endif -%}
 
 {%- if rw != blank -%}
   {%- capture won_gift_facts -%}

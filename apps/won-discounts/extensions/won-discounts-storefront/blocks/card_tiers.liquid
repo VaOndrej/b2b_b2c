@@ -1,0 +1,32 @@
+{% comment %}
+  Won Discounts — quantity price on a product card (MVP 7 BETA, contract M8). An app block for themes whose
+  product card takes app blocks (Horizon: the card's block list). Liquid only, no script: the line is in the HTML
+  the card arrives with. The product is the card's (`closest.product`); on a product page, the page's.
+  What it says and when it says nothing: snippets/won-card-tier.liquid. Themes without app blocks in the card
+  get the same line from the embed (assets/won-discounts-cards.js) once the merchant switches cards on.
+{% endcomment %}
+{%- liquid
+  assign cfg = app.metafields.won_discounts.storefront_config.value
+  assign p = closest.product | default: product
+  assign lang = request.locale.iso_code | slice: 0, 2 | downcase
+  assign langs = 'cs,sk,en' | split: ','
+  unless langs contains lang
+    assign lang = 'en'
+  endunless
+-%}
+{%- if p -%}
+  {%- capture won_label -%}{%- render 'won-card-tier', p: p, cfg: cfg, cur: cart.currency.iso_code, lang: lang -%}{%- endcapture -%}
+  {%- assign won_label = won_label | strip -%}
+  {%- if won_label != blank -%}
+    <p class="won-card-tier" data-won-discounts-card="{{ p.handle | escape }}" {{ block.shopify_attributes }}>{{ won_label }}</p>
+  {%- endif -%}
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Quantity price (card)",
+  "target": "section",
+  "stylesheet": "won-discounts.css",
+  "settings": []
+}
+{% endschema %}

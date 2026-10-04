@@ -30,6 +30,10 @@
     "hint": "Pridajte {n} ks {product} a dostanete {value}.",
     "hint_capped": "Pridajte {n} ks {product} a dostanete nižšiu cenu."
   },
+  "cards": {
+    "pct": "Od {min} ks −{pct} %",
+    "off": "Od {min} ks −{amount} za kus"
+  },
   "outlet": {
     "badge": "Výpredaj",
     "left": "Zostáva {{ count }} ks"

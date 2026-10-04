@@ -1,0 +1,98 @@
+{%- comment -%}
+  Won Discounts — the ONE line a product card shows about the product's quantity discount (MVP 7 BETA, contract
+  M8, decision P6): its first break ("Od 3 ks −10 %", "Od 3 ks −5 Kč za kus"), or nothing. Rendered by the card
+  block (blocks/card_tiers.liquid) and by the embed for the cards of a collection or search page.
+  Params: p (product), cfg (the storefront config), cur (cart currency), lang (cs | sk | en).
+  The decision is core cardTier (packages/core/src/discounts/card-tier.ts — the property test against planCart):
+  a card never says more than checkout gives. Nothing unless: cards are on; the product has a set with a first
+  break (K1: tierRef, else the global set; an unusable ref = none); no variant is on sale (unless cfg.ow); margin
+  protection off, or no variant has a purchase cost AND the break is a percent within the product's percent
+  ceiling; an amount break has an amount in this currency, at most the cheapest variant's price. A product with
+  more than 50 variants shows nothing (its variants are not all checked).
+  Text keys cards.*: the extension locales; a merchant text (config texts) wins.
+{%- endcomment -%}
+{%- liquid
+  assign won_ct = ''
+  if cfg.v == 1 and cfg.cards == 1 and p.variants.size <= 50
+    assign pmf = p.metafields['$app:won_discounts'].product.value
+    assign set_id = pmf.tierRef
+    if set_id == nil
+      assign set_id = cfg.tiers.global
+    endif
+    assign b = nil
+    if set_id != nil
+      assign b = cfg.tiers.sets[set_id].breaks.first
+    endif
+    if b != nil
+      assign costed = false
+      assign on_sale = false
+      for v in p.variants
+        assign vmf = v.metafields['$app:won_discounts']
+        if vmf.outlet.value == true
+          assign on_sale = true
+        endif
+        if vmf.variant != nil or vmf.pdp != nil
+          assign costed = true
+        endif
+      endfor
+      assign show = true
+      if on_sale and cfg.ow != 1
+        assign show = false
+      endif
+      assign margin_on = false
+      if cfg.margin.on == true
+        assign margin_on = true
+      endif
+      if margin_on and costed
+        assign show = false
+      endif
+      if show
+        assign tx = cfg.texts[lang]
+        if b.pct != nil
+          # The percent ceiling of a product without a cost: as quantity_tiers.liquid (K5/K6).
+          assign cap = 100
+          if margin_on
+            assign cap = cfg.margin.max | default: 0
+            if pmf.marginRefs.size > 4
+              for pair in cfg.margin.col
+                assign cap = cap | at_most: pair.last
+              endfor
+            else
+              assign matched = false
+              for ref in pmf.marginRefs
+                assign col_max = cfg.margin.col[ref]
+                if col_max != nil
+                  if matched
+                    assign cap = cap | at_most: col_max
+                  else
+                    assign cap = col_max
+                    assign matched = true
+                  endif
+                endif
+              endfor
+            endif
+            assign cap = cap | at_least: 0 | at_most: 100
+          endif
+          if b.pct > 0 and b.pct <= cap
+            assign t_pct = 'cards.pct' | t
+            assign t_pct = tx['cards.pct'] | default: t_pct
+            assign pct = b.pct | append: ''
+            unless lang == 'en'
+              assign pct = pct | replace: '.', ','
+            endunless
+            assign won_ct = t_pct | replace: '{min}', b.min | replace: '{pct}', pct
+          endif
+        elsif margin_on == false
+          assign off = b.off[cur]
+          if off != nil and off > 0 and off <= p.price_min
+            assign t_off = 'cards.off' | t
+            assign t_off = tx['cards.off'] | default: t_off
+            assign amount = off | money
+            assign won_ct = t_off | replace: '{min}', b.min | replace: '{amount}', amount
+          endif
+        endif
+      endif
+    endif
+  endif
+  echo won_ct
+-%}

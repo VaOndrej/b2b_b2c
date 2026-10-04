@@ -76,10 +76,13 @@ test("embed serves the app-data config as an inline JSON script tag", async () =
   assert.match(block, /'\{\}'|"\{\}"/);
 });
 
-test("embed loads storefront JS with defer via the schema; the only <script src> is the cart script, deferred, only with rewards (MVP 4)", async () => {
+test("embed loads storefront JS with defer via the schema; its only <script src> are the cards script (MVP 7, only with cards on, collection / search) and the cart script (MVP 4, only with rewards), both deferred", async () => {
   const block = await readExtension("blocks/won_discounts_embed.liquid");
   const srcs = [...block.matchAll(/<script[^>]+src=[^>]*>/g)].map((m) => m[0]);
-  assert.deepEqual(srcs, [`<script src="{{ 'won-discounts-cart.js' | asset_url }}" defer>`]);
+  assert.deepEqual(srcs, [`<script src="{{ 'won-discounts-cards.js' | asset_url }}" defer>`, `<script src="{{ 'won-discounts-cart.js' | asset_url }}" defer>`]);
+  const cards = block.indexOf("<script src=\"{{ 'won-discounts-cards.js'");
+  assert.ok(block.lastIndexOf("{%- if won_discounts_config_raw.cards == 1 -%}", cards) !== -1, "the cards script only when the storefront config switches cards on");
+  assert.match(block.slice(0, cards), /template\.name == 'collection'[\s\S]*template\.name == 'search'/, "… and only on a collection or search page");
   const at = block.indexOf("<script src=\"{{ 'won-discounts-cart.js'");
   assert.ok(block.lastIndexOf("{%- if rw != blank -%}", at) !== -1 && block.indexOf("{%- endif -%}", at) !== -1, "loaded only when the storefront config offers rewards");
 });
@@ -144,11 +147,11 @@ test("locale files stay valid JSON with identical key sets across en/cs/sk", asy
   }
 });
 
-test("MVP 3–5: the extension ships the embed, the quantity_tiers, cart_rewards and outlet_badge app blocks; every schema asset exists", async () => {
+test("MVP 3–7: the extension ships the embed, the quantity_tiers, cart_rewards, outlet_badge and card_tiers app blocks; every schema asset exists", async () => {
   const blocks = (await readdir(path.join(extensionRoot, "blocks"))).filter((f) => f.endsWith(".liquid")).sort();
   // The handles `quantity_tiers` / `cart_rewards` are the file names: the admin deep links (addAppBlockId,
   // CART_BLOCK_HANDLE) and the theme template's block type `shopify://apps/won-discounts/blocks/<handle>/<uuid>` use them.
-  assert.deepEqual(blocks, ["cart_rewards.liquid", "outlet_badge.liquid", "quantity_tiers.liquid", "won_discounts_embed.liquid"]);
+  assert.deepEqual(blocks, ["card_tiers.liquid", "cart_rewards.liquid", "outlet_badge.liquid", "quantity_tiers.liquid", "won_discounts_embed.liquid"]);
   assert.equal(CART_BLOCK_HANDLE, "cart_rewards");
   const cartSchema = JSON.parse((await readExtension("blocks/cart_rewards.liquid")).match(/\{%\s*schema\s*%\}([\s\S]*?)\{%\s*endschema\s*%\}/)?.[1] ?? "{}");
   assert.deepEqual(cartSchema.enabled_on, { templates: ["cart"] }, "the cart panel block only on the cart template");

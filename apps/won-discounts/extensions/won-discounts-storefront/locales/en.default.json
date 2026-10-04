@@ -30,6 +30,10 @@
     "hint": "Add {n} more {product} to get {value}.",
     "hint_capped": "Add {n} more {product} for a lower price."
   },
+  "cards": {
+    "pct": "From {min} items −{pct}%",
+    "off": "From {min} items −{amount} each"
+  },
   "outlet": {
     "badge": "Sale",
     "left": "Only {{ count }} left"

@@ -15,7 +15,7 @@
  * can diff committed vs. code and fail the gate when a constant changes but the
  * docs weren't regenerated.
  */
-import { writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { OUTLET_LIMITS } from "@won/core/discounts/outlet";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -37,6 +37,7 @@ import {
   type WonDiscountsConfig,
 } from "@won/core/discounts/config";
 import { FUNCTION_CONFIG_BUDGET_BYTES } from "@won/core/discounts/function-config";
+import { CUSTOM_CSS_MAX_LENGTH } from "@won/core/discounts/scope-css";
 import { FUNCTION_METAFIELD_LIMIT_BYTES } from "@won/core/discounts/function-payload";
 import { marginFloorUnit } from "@won/core/discounts/margin";
 import { fromMinorUnits } from "@won/core/discounts/money";
@@ -559,8 +560,108 @@ ${RECIPE_KEYS.map(recipeLine).join("\n")}`,
 }
 
 /** Pure: build the full map of generated docs { path relative to docs/: content }. */
+// --- Storefront contract (MVP 7, "návod pro AI") -----------------------------------------------------------
+
+const EXTENSION_DIR = join(scriptDir, "..", "extensions", "won-discounts-storefront");
+
+/** Every match of `pattern` (its first group, or the whole match) in the extension's files of `dir`, sorted, once each. */
+function scanExtension(dir: "assets" | "blocks", ext: RegExp, pattern: RegExp): string[] {
+  const found = new Set<string>();
+  for (const file of readdirSync(join(EXTENSION_DIR, dir)).sort()) {
+    if (!ext.test(file)) continue;
+    for (const m of readFileSync(join(EXTENSION_DIR, dir, file), "utf8").matchAll(pattern)) found.add(m[1] ?? m[0]);
+  }
+  return [...found].sort();
+}
+
+/**
+ * The contract a custom look is written against: what the Won blocks render (roots, classes, markers), which CSS
+ * variables they read and which events they send — scanned from the theme app extension itself, so it cannot go
+ * stale. The admin's "Zkopírovat zadání pro AI" hands exactly this page to the merchant's AI.
+ */
+function storefrontContractDoc(): string {
+  const variables = scanExtension("assets", /\.css$/, /--won-[a-z-]+/g);
+  const classes = scanExtension("assets", /\.css$/, /\.(won-[a-z]+(?:(?:__|--)[a-z-]+)?)/g);
+  const markers = [...new Set([...scanExtension("assets", /\.js$/, /data-won-discounts-[a-z-]+/g), ...scanExtension("blocks", /\.liquid$/, /data-won-discounts-[a-z-]+/g)])].sort();
+  const events = scanExtension("assets", /\.js$/, /CustomEvent\("(won-discounts:[a-z:]+)"/g);
+  const list = (items: string[]) => items.map((item) => `- \`${item}\``).join("\n");
+  return doc(
+    {
+      title: "Storefront contract for a custom look",
+      slug: "storefront-contract",
+      feature: "appearance",
+      min_plan: "pro",
+      summary: "What the Won storefront blocks render and expose (roots, classes, data markers, CSS variables, events), for writing a custom look by hand or with an AI.",
+      keywords: ["custom look", "custom css", "css variables", "events", "ai prompt", "storefront blocks", "vlastní vzhled", "návod pro ai"],
+    },
+    `# Storefront contract for a custom look
+
+A custom look (Pro) is **CSS only**: colors as CSS variables and your own CSS rules. The app puts every
+rule under the Won blocks automatically, so a rule can never change the rest of your theme. You cannot add
+HTML or JavaScript, load files (\`url(...)\`, \`@import\`, fonts) or define \`@keyframes\`; the admin refuses such
+CSS and says why. At most ${num(CUSTOM_CSS_MAX_LENGTH)} characters.
+
+## Blocks and their roots
+
+| Block | Where | Root element |
+|---|---|---|
+| Quantity discount table | product page (app block) | \`.won-tiers\` with one of \`.won-tiers--default\`, \`--highlight\`, \`--chips\`, \`--tiles\` |
+| Cart panel (progress, gift, code, savings) | cart page and cart drawer | \`.won-cart\` |
+| Sale badge | product page (app block) | \`.won-outlet\` |
+
+Write selectors as you would inside the block: \`.won-tiers__row { … }\`. \`:root\`, \`html\` and \`body\` mean
+the block itself.
+
+## CSS variables
+
+Set them in the admin (Look → Custom look) or in your CSS on the root:
+
+${list(variables)}
+
+## Classes
+
+${list(classes.map((c) => `.${c}`))}
+
+## Data markers
+
+Stable hooks for scripts and tests (do not style by them; classes are for styling):
+
+${list(markers)}
+
+## Events
+
+The blocks send these \`CustomEvent\`s on \`document\` — read-only signals; the blocks never change the cart by
+themselves:
+
+${list(events)}
+
+- \`won-discounts:tiers:update\` — \`detail: { variantId, quantity, count, min, unitCents }\`: the table was
+  recalculated (\`min\` = the reached break's quantity, 0 = none; \`unitCents\` = the price per item shown).
+- \`won-discounts:cart:update\` — \`detail: { base, shipping, gifts }\`: the cart panel was redrawn.
+
+## Example
+
+\`\`\`css
+:root { --won-tiers-accent: #0a7d4f; --won-tiers-radius: 4px; }
+.won-tiers__heading { text-transform: uppercase; letter-spacing: 0.04em; }
+.won-tiers__row[data-active="true"] { font-weight: 700; }
+@media (max-width: 600px) { .won-tiers__unit { display: none; } }
+\`\`\`
+
+## Prompt for an AI
+
+> Write CSS for the Won Discounts storefront blocks of my Shopify store. Use only the classes, CSS variables and
+> roots listed in this document. CSS only: no HTML, no JavaScript, no \`url()\`, no \`@import\`, no
+> \`@font-face\`, no \`@keyframes\`; \`@media\`, \`@supports\` and \`@container\` are allowed. At most
+> ${num(CUSTOM_CSS_MAX_LENGTH)} characters. Selectors are relative to the block (\`:root\` = the block). The
+> look I want: <describe it>.
+`,
+  );
+}
+
 export function buildDocs(): Record<string, string> {
   return {
+    "reference/storefront-contract.generated.md": storefrontContractDoc(),
     "reference/plan-limits.generated.md": planLimitsDoc(),
     "reference/limits.generated.md": limitsDoc(),
     "reference/combination-defaults.generated.md": combinationDoc(),

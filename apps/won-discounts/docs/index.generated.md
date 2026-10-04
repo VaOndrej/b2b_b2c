@@ -16,7 +16,7 @@ summary: Every document in the Won Discounts knowledge base with the metadata th
 
 # Documentation index
 
-63 documents. Chatbot filters: `min_plan` hides Pro-only answers from
+64 documents. Chatbot filters: `min_plan` hides Pro-only answers from
 Free merchants, `status` keeps `planned`/`beta` material out of answers, `lang`
 selects the answer language, `layer` weights concepts over tasks for "how does it
 work" questions.
@@ -85,6 +85,7 @@ Exact values, generated from code. Never hand-edited.
 | [Limits](reference/limits.generated.md) | `limits` | core | free | stable | Exact limits of Won Discounts — discounts per shop, active code discounts, codes, stacking, margin collections and settings size. |
 | [Margin protection settings](reference/margin-settings.generated.md) | `margin-settings` | margin | free | stable | Margin protection defaults, accepted values, the floor formula and a worked example computed by the engine. |
 | [Free vs Pro plans](reference/plan-limits.generated.md) | `plan-limits` | plans | free | stable | What the Free plan includes, which Won Discounts features need Pro, and what happens to Pro settings on Free. |
+| [Storefront contract for a custom look](reference/storefront-contract.generated.md) | `storefront-contract` | appearance | pro | stable | What the Won storefront blocks render and expose (roots, classes, data markers, CSS variables, events), for writing a custom look by hand or with an AI. |
 
 ## Support
 
