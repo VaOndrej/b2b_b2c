@@ -1,7 +1,7 @@
 // MVP 6.1 (plan docs/plans/2026-10-04-won-discounts-mvp6-1.md, contracts L2–L8): a campaign may override the
 // breaks of a quantity tier set — only when the override is at least as generous as the base for every quantity
 // and currency (E2). The function reads the campaign's sets INSTEAD of the base ones while the campaign is live
-// (L4); the storefront shows them from a minute after the start until 3 minutes before the end (L6, L7).
+// (L4); the storefront shows them from a minute after the start until 7 minutes before the end (L6, L7).
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -201,32 +201,32 @@ test("Free with a finishing campaign: overrides of the sets the gate narrowed ar
 
 // --- L6, L7: the storefront and the scheduler ---------------------------------------------------------
 
-test("the table shows the campaign's sets from a minute after the start until 3 minutes before the end", () => {
-  assert.deepEqual(CAMPAIGN_TIERS, { showDelaySeconds: 60, hideLeadSeconds: 180 });
+test("the table shows the campaign's sets from a minute after the start until 7 minutes before the end", () => {
+  assert.deepEqual(CAMPAIGN_TIERS, { showDelaySeconds: 60, hideLeadSeconds: 420 });
   const config = configOf([BF([tierOverride("g", [{ minQty: 2, percent: 20 }])])]);
   assert.equal(campaignTiersShownAt(config, "2026-11-26T12:00:00"), null, "scheduled");
   assert.equal(campaignTiersShownAt(config, "2026-11-27T00:00:59"), null, "the first minute: the base table");
   assert.equal(campaignTiersShownAt(config, "2026-11-27T00:01:00"), "bf");
-  assert.equal(campaignTiersShownAt(config, "2026-11-30T23:55:59"), "bf");
-  assert.equal(campaignTiersShownAt(config, "2026-11-30T23:56:00"), null, "3 minutes before the end: back to the base");
+  assert.equal(campaignTiersShownAt(config, "2026-11-30T23:51:59"), "bf");
+  assert.equal(campaignTiersShownAt(config, "2026-11-30T23:52:00"), null, "7 minutes before the end: back to the base");
   assert.equal(campaignTiersShownAt(config, "2026-12-01T00:00:00"), null);
   assert.equal(campaignTiersShownAt(configOf([BF([{ ruleId: "a", patch: { enabled: false } }])]), "2026-11-28T00:00:00"), null, "no tier override");
   assert.equal(campaignTiersShownAt(configOf([BF([tierOverride("g", [{ minQty: 2, percent: 20 }])], { killed: true })]), "2026-11-28T00:00:00"), null);
-  const short = configOf([{ ...BF([tierOverride("g", [{ minQty: 2, percent: 20 }])]), window: { start: "2026-11-27T00:00:00", end: "2026-11-27T00:04:00" } }]);
-  for (const now of ["2026-11-27T00:00:30", "2026-11-27T00:01:00", "2026-11-27T00:02:00", "2026-11-27T00:03:59"]) assert.equal(campaignTiersShownAt(short, now), null, `4 minutes is too short (${now})`);
+  const short = configOf([{ ...BF([tierOverride("g", [{ minQty: 2, percent: 20 }])]), window: { start: "2026-11-27T00:00:00", end: "2026-11-27T00:08:00" } }]);
+  for (const now of ["2026-11-27T00:00:30", "2026-11-27T00:01:00", "2026-11-27T00:02:00", "2026-11-27T00:07:59"]) assert.equal(campaignTiersShownAt(short, now), null, `8 minutes is too short (${now})`);
 });
 
 test("boundary: a campaign with tier overrides adds the table's switch on and off before its end", () => {
   const config = configOf([BF([tierOverride("g", [{ minQty: 2, percent: 20 }])])]);
   assert.equal(campaignBoundary(config, "2026-11-26T12:00:00"), "2026-11-27T00:01:00");
   assert.equal(campaignBoundary(config, "2026-11-27T00:00:30"), "2026-11-27T00:01:00");
-  assert.equal(campaignBoundary(config, "2026-11-27T00:01:00"), "2026-11-30T23:56:00");
-  assert.equal(campaignBoundary(config, "2026-11-30T23:56:00"), "2026-11-30T23:59:00");
+  assert.equal(campaignBoundary(config, "2026-11-27T00:01:00"), "2026-11-30T23:52:00");
+  assert.equal(campaignBoundary(config, "2026-11-30T23:52:00"), "2026-11-30T23:59:00");
   assert.equal(campaignBoundary(config, "2026-11-30T23:59:00"), null);
   const rulesOnly = configOf([BF([{ ruleId: "a", patch: { enabled: false } }])]);
   assert.equal(campaignBoundary(rulesOnly, "2026-11-26T12:00:00"), "2026-11-30T23:59:00", "no tier override: only the end (MVP 6)");
-  const short = configOf([{ ...BF([tierOverride("g", [{ minQty: 2, percent: 20 }])]), window: { start: "2026-11-27T00:00:00", end: "2026-11-27T00:04:00" } }]);
-  assert.equal(campaignBoundary(short, "2026-11-26T12:00:00"), "2026-11-27T00:04:00", "too short to switch the table");
+  const short = configOf([{ ...BF([tierOverride("g", [{ minQty: 2, percent: 20 }])]), window: { start: "2026-11-27T00:00:00", end: "2026-11-27T00:08:00" } }]);
+  assert.equal(campaignBoundary(short, "2026-11-26T12:00:00"), "2026-11-27T00:08:00", "too short to switch the table");
 });
 
 test("storefront config: with the campaign shown `tiers` are the campaign's sets, `bt` the base and `tc` its id; otherwise neither key", () => {

@@ -41,6 +41,8 @@ export const STOREFRONT_CONFIG_MAX_BYTES = 128 * 1000;
 
 export const STOREFRONT_WRITE_STEP = "storefront_config.write";
 export const STOREFRONT_VERIFY_STEP = "storefront_config.verify";
+/** MVP 6.1: the base tier sets put back on the page ahead of a shop config that changes or drops the campaign. */
+export const STOREFRONT_CAMPAIGN_OFF_STEP = "storefront_config.campaign_off";
 
 /**
  * `cv` of the storefront config: the F12 token of the stored config the run
@@ -74,6 +76,8 @@ export interface StorefrontWriteArgs {
   configVersionId: string | null;
   /** The shop currency (util.ts isoCurrency of `shop.currencyCode`): the margin's K4 v2 key `k` and `cur`; absent = left out. */
   shopCurrency?: string | null;
+  /** MVP 6.1 (L7): the campaign whose tier sets the page shows now (core campaignTiersShownAt); null = the base sets. */
+  campaignId?: string | null;
   record: (step: SyncStep) => void;
 }
 
@@ -131,6 +135,7 @@ export async function writeStorefrontConfig(args: StorefrontWriteArgs): Promise<
       configVersion,
       ...(args.shopCurrency ? { shopCurrency: args.shopCurrency } : {}),
       variantHandles,
+      ...(args.campaignId ? { campaignId: args.campaignId } : {}),
     });
     json = JSON.stringify(value);
   } catch (error) {
@@ -188,6 +193,68 @@ export async function writeStorefrontConfig(args: StorefrontWriteArgs): Promise<
   } catch (error) {
     if (error instanceof Response) throw error;
     fail(STOREFRONT_VERIFY_STEP, `could not read the storefront config back: ${errorText(error)}`);
+  }
+}
+
+export interface CampaignOffArgs {
+  transport: Transport;
+  /** What this run will show once its shop config is in place: the tier part of its storefront config. */
+  next: Pick<StorefrontConfigV1, "tiers" | "tc">;
+  record: (step: SyncStep) => void;
+}
+
+/**
+ * MVP 6.1 (L7, E4): before the run writes a shop config, take a campaign's tier sets off the product page when the
+ * run will not show exactly them again — the campaign was killed, changed, ended, or its window moved (phase 1). The
+ * live storefront config carries its own base sets (`bt`): they go back as `tiers`, everything else stays as it is,
+ * so the page never shows more than the checkout that is about to change. Nothing on show (no `bt`), or the same
+ * campaign with the same sets → no read-modify-write at all. A failure is a failed step and never stops the run
+ * (a kill switch must not wait for the storefront); the storefront config behind the shop config writes the base
+ * sets again. Never throws, except a re-auth Response.
+ */
+export async function takeBackCampaignTiers(args: CampaignOffArgs): Promise<void> {
+  const { transport, record } = args;
+  const fail = (detail: string) => record({ step: STOREFRONT_CAMPAIGN_OFF_STEP, ok: false, detail: `${detail} — the product page may show the campaign's quantity breaks until the storefront config is written again` });
+  let installation: InstallationRead["currentAppInstallation"];
+  try {
+    installation = ((await transport.call("storefrontConfig")) as InstallationRead).currentAppInstallation;
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    fail(`could not read the storefront config: ${errorText(error)}`);
+    return;
+  }
+  let live: Record<string, unknown> | null = null;
+  try {
+    const parsed: unknown = JSON.parse(installation?.metafield?.value ?? "null");
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) live = parsed as Record<string, unknown>;
+  } catch {
+    // unreadable: nothing of ours is on show
+  }
+  if (!installation?.id || !live || typeof live.bt !== "object" || live.bt === null) return;
+  if (live.tc === args.next.tc && canonicalJson(live.tiers) === canonicalJson(args.next.tiers)) return;
+  const { bt, tc: _tc, ...rest } = live;
+  const json = JSON.stringify({ ...rest, tiers: bt });
+  let refused: string | null;
+  try {
+    const data: { metafieldsSet: { userErrors: UserErrorLike[] } } = await transport.call("storefrontConfigSet", {
+      metafields: [{ ownerId: installation.id, namespace: STOREFRONT_NAMESPACE, key: STOREFRONT_CONFIG_KEY, type: "json", value: json }],
+    });
+    refused = userErrorText(data.metafieldsSet.userErrors);
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    refused = errorText(error);
+  }
+  if (refused !== null) {
+    fail(`could not put the base quantity breaks back: ${refused}`);
+    return;
+  }
+  try {
+    const back = ((await transport.call("storefrontConfig")) as InstallationRead).currentAppInstallation;
+    if (sameJson(back?.metafield?.value, json)) record({ step: STOREFRONT_CAMPAIGN_OFF_STEP, ok: true, detail: `the base quantity breaks are back on the product page (campaign ${String(live.tc ?? "")})` });
+    else fail("the storefront config read back differs from the value written");
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    fail(`could not read the storefront config back: ${errorText(error)}`);
   }
 }
 

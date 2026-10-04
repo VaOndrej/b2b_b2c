@@ -42,6 +42,9 @@
 //          the step could not finish) — the previous config stays, so no
 //          product receives a rule's NEW value through a ref it should no
 //          longer have (M1, audit P2-1);
+//   0b. (MVP 6.1) a campaign's tier sets on the product page: when this run will not show exactly them again
+//      (kill switch, another window, other breaks, the end), the base sets go back on the page first
+//      (storefront.ts takeBackCampaignTiers) — the page never promises more than the checkout about to change.
 //   4b. the storefront config (MVP 3, contract K5, storefront.ts): an app-data
 //      metafield built by core buildStorefrontConfig from the SAME gated config
 //      as the payload (`limits.payloadConfig`), `cv` = the stored config's F12
@@ -99,6 +102,7 @@ import { CONFIG_LIMITS } from "@won/core/discounts/config";
 import { readMarginPayload, type FunctionMarginPayload } from "@won/core/discounts/margin";
 import { gateConfigForPlan, type ShopPlan, type StrippedCapability } from "@won/core/discounts/plan-gate";
 import { campaignBoundary, campaignStatusAt, shopLocalToUtc } from "@won/core/discounts/campaigns";
+import { campaignTiersShownAt } from "@won/core/discounts/campaign-tiers";
 
 import { fullPassCovers, startCostJob, type CostJob } from "./cost-lane.server";
 import { pdpMarginKey } from "./costs";
@@ -126,7 +130,7 @@ import {
   recordProductsSynced,
   recordShopTimezone,
 } from "./sync-state.server";
-import { writeStorefrontConfig } from "./storefront";
+import { takeBackCampaignTiers, writeStorefrontConfig } from "./storefront";
 import { errorText, setMetafields, Transport } from "./transport";
 import type { ConfigView, PendingWork, ShopConfigBuild, SyncDeps, SyncResult, SyncStep } from "./types";
 import { foldedIn } from "./margin-fold";
@@ -635,6 +639,14 @@ async function syncSteps({ deps, transport, shop, config: stored, configVersionI
     await bookkeeping(deps, shop, () => recordCampaignBoundary(deps.db, shop, new Date(now.getTime() + CAMPAIGN_HELD_RETRY_MS)));
   };
 
+  // MVP 6.1 (L7, E4): a campaign's tier sets leave the product page before any shop config write that changes
+  // them — only looked at when a campaign with tier sets is in play (the stored config, or the live shop config).
+  const shownCampaign = campaignTiersShownAt(payloadConfig, nowLocal);
+  if (campaignTiersInPlay(stored, storedJson)) {
+    const next = deps.buildStorefrontConfig(payloadConfig, { configVersion: "", campaignId: shownCampaign });
+    await takeBackCampaignTiers({ transport, next: { tiers: next.tiers, ...(next.tc ? { tc: next.tc } : {}) }, record });
+  }
+
   // P1. Campaign switch: no-campaign shop config first; stop if it fails (M2).
   const newVersion = campaignVersionOf(payload.json);
   const oldVersion = storedJson === null ? null : campaignVersionOf(storedJson);
@@ -743,12 +755,14 @@ async function syncSteps({ deps, transport, shop, config: stored, configVersionI
   if (!written.ok) return null;
   // I-2: the plan the LIVE shop config was built for (a change of plan is then a reason to resync).
   await bookkeeping(deps, shop, () => recordAppliedPlan(deps.db, shop, plan));
-  // MVP 6 K4: when the selected campaign changes next (its end) — the scheduler resyncs then.
-  const boundary = campaignBoundary(config, nowLocal);
+  // MVP 6 K4: when the selected campaign changes next (its end; MVP 6.1: or the product page switches to or from
+  // its tier sets) — the scheduler resyncs then.
+  const boundary = campaignBoundary(payloadConfig, nowLocal);
   await bookkeeping(deps, shop, () => recordCampaignBoundary(deps.db, shop, boundary ? shopLocalToUtc(boundary, shopTimezone) : null));
   // 4b. The storefront config (MVP 3, K5) from the SAME gated config as the payload, behind it; never fatal.
   // K4 v2: its margin key from the same gated margin and the same shop currency string as the pdp keys (cost lane).
-  await writeStorefrontConfig({ deps, transport, shop, config: payloadConfig, stored, configVersionId, shopCurrency: isoCurrency(shopCurrency), record });
+  // MVP 6.1: the campaign's tier sets only behind the shop config that runs them, a minute after its start.
+  await writeStorefrontConfig({ deps, transport, shop, config: payloadConfig, stored, configVersionId, shopCurrency: isoCurrency(shopCurrency), campaignId: shownCampaign, record });
   // The pdp floor (MVP 3): did the margin the shop config ships change (also when the product plan did not finish)?
   const nextMargin = liveMarginOf(payload.json);
   const marginChanged = nextMargin.enabled && (shopState.functionConfig === null || canonicalJson(liveMarginOf(shopState.functionConfig)) !== canonicalJson(nextMargin));
@@ -920,6 +934,23 @@ function liveMarginOf(json: string): FunctionMarginPayload {
     return readMarginPayload((JSON.parse(json) as { modules?: { margin?: unknown } } | null)?.modules?.margin);
   } catch {
     return { enabled: false };
+  }
+}
+
+/**
+ * MVP 6.1: could the product page be showing a campaign's tier sets? The stored config has a campaign (running,
+ * killed or ended — a kill switch keeps its overrides) that overrides a tier set, or the live shop config's
+ * campaign carries sets. False for every shop without such a campaign: no storefront read ahead of the run.
+ */
+function campaignTiersInPlay(stored: ConfigView, liveJson: string | null): boolean {
+  const setIds = new Set(stored.modules.tiers.sets.map((set) => set.id));
+  if (stored.campaigns.some((campaign) => campaign.overrides.some((o) => setIds.has(o.ruleId)))) return true;
+  if (liveJson === null) return false;
+  try {
+    const campaigns = (JSON.parse(liveJson) as { campaigns?: unknown } | null)?.campaigns;
+    return Array.isArray(campaigns) && campaigns.some((c) => typeof c === "object" && c !== null && typeof (c as { tiers?: unknown }).tiers === "object" && (c as { tiers?: unknown }).tiers !== null);
+  } catch {
+    return false;
   }
 }
 

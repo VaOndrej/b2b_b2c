@@ -149,6 +149,7 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
         : { key: "sync.problem.config", params: { detail } };
     case "storefront_config.write":
     case "storefront_config.verify":
+    case "storefront_config.campaign_off":
       // MVP 3 (sync/storefront.ts): the product-page table's settings (app-data metafield) — never fatal, checkout unaffected.
       return { key: "sync.problem.storefrontConfig", params: { detail } };
     case "products.tiers": {

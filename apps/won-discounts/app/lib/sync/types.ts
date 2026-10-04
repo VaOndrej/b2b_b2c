@@ -110,11 +110,12 @@ export interface SyncDeps {
    * The storefront config (MVP 3, contract K5: core buildStorefrontConfig) from
    * the SAME gated config as the shop payload; `configVersion` = its `cv`;
    * `shopCurrency` gives its margin the K4 v2 key `k` and `cur` (the same
-   * string the cost mirror's pdp keys are built with).
+   * string the cost mirror's pdp keys are built with); `campaignId` (MVP 6.1) =
+   * the campaign whose tier sets the product page shows right now.
    */
   buildStorefrontConfig: (
     config: ConfigView,
-    options: { configVersion: string; shopCurrency?: string; variantHandles?: Readonly<Record<string, string>> },
+    options: { configVersion: string; shopCurrency?: string; variantHandles?: Readonly<Record<string, string>>; campaignId?: string | null },
   ) => StorefrontConfigV1;
   now: () => Date;
   logger: SyncLogger;

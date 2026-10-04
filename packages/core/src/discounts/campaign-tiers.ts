@@ -3,7 +3,7 @@
 // A campaign override naming a tier set may replace the set's `breaks` — and only with breaks AT LEAST AS GENEROUS
 // as the base ones for every quantity and currency (E2). Then, while the campaign is live, the function reads the
 // campaign's sets INSTEAD of the base ones (function-payload.ts `campaigns[0].tiers`, plan.ts), and the table on the
-// product page may show them: from a minute after the start until 3 minutes before the end (E3), so the page never
+// product page may show them: from a minute after the start until 7 minutes before the end (E3), so the page never
 // promises more than checkout gives — outside that time checkout gives the same or more than the base table says.
 //
 //   tierOverrideIssue(base, breaks)       null, or why the override is refused (the first quantity it fails at);
@@ -23,8 +23,11 @@ import { buildTiersPayload, reachableTierSets, type FunctionTiersPayload } from 
 export const CAMPAIGN_TIERS = {
   /** The product page shows the campaign's sets this long after the campaign started (checkout has them by then). */
   showDelaySeconds: 60,
-  /** … and goes back to the base sets this long before it ends (one scheduler retry, the sync, a cached page). */
-  hideLeadSeconds: 180,
+  /**
+   * … and goes back to the base sets this long before it ends: the scheduler's tick (≤ 60 s late), a failed resync
+   * and its retry 5 minutes on (jobs/scheduler CAMPAIGNS_RETRY_MS), the sync itself.
+   */
+  hideLeadSeconds: 420,
 } as const;
 
 export interface TierOverrideIssue {
