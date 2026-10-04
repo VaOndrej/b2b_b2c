@@ -12,24 +12,29 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > technická pravidla, zakázané věci). **MVP N+1 nezačíná, dokud MVP N není finální** (brána, živé E2E A+B,
 > vizuální QA, audit s opravenými nálezy, checkpoint, push).
 
-- **Aktivní zadání:** docs/won-discounts/prompt-mvp7.md. **MVP 6.1 uzavřené ✅** (checkpoint níž). Krok: MVP 7
-  (plán `docs/plans/2026-10-04-won-discounts-mvp7.md`, M1–M12).
-  - **MVP 7 hotovo a commitnuto:** billing M1 + downgrade M2 + odinstalace M3 + analytika M4 + aktivace objednávek
-    M5 (`744868a`), Postgres + Docker + Fly + DEPLOY + docs corpus + nápověda (`c433af3`, `npm run test:postgres`
-    5/5 ✓), onboarding 4–5 + rozpočet JS za typ stránky (`30ec0a3`). `shopify.app.toml` má navíc jen
-    `app_subscriptions/update` (app dev konfiguraci přijal).
-  - **MVP 7 rozpracováno, NEcommitnuto:** `packages/core/src/discounts/custom-look.ts` + test (M7, hotové, zelené),
-    `card-tier.ts` + test (M8; property test čeká na `cards: 1` ve storefront configu), generovaný
-    `docs/reference/storefront-contract.generated.md` (návod pro AI) + úprava `scripts/gen-docs.ts`; koncepty
-    extension ve scratchpadu `ext-draft/` (`won-card-tier.liquid`, `card_tiers.liquid`, `won-discounts-cards.js`)
-    — **do `extensions/` jen při zastaveném app dev**.
-  - **MVP 7 zbývá:** M7 config `storefront.custom` (sanitizer, gate Free, storefront config `appearance.css`,
-    embed vypíše `<style>`), admin Vzhled Pro (proměnné + CSS + „Zkopírovat zadání pro AI“), editor textů +
-    odmítnutí storefront configu > 128 000 B při uložení; M8 `cards: 1`, snippet + blok + embed + JS + přepínač
-    BETA v adminu; M11 BFS dokument; M12 dluh (formát ceny, mezera V1); `docker build`; **billing naživo čeká na
-    Ondřeje** (schválit testovací předplatné: otevřít appku na dev storu → Tarif → „Vyzkoušet Pro na 14 dní
-    zdarma“ → na stránce Shopify „Approve“; bez `WON_DEV_PLAN`); brána; E2E Free + Pro obě témata + regrese
-    MVP 1–6.1; vizuální QA; audit `audits/audit-mvp7.md`; roadmapa `Shipped`; checkpoint; push; závěrečný report.
+- **Aktivní zadání:** docs/won-discounts/prompt-mvp7.md. **MVP 6.1 uzavřené ✅.** Krok: **MVP 7 — živé E2E
+  (fáze A běží)**. Plán `docs/plans/2026-10-04-won-discounts-mvp7.md` (M1–M12).
+  - **Kód MVP 7 hotový a commitnutý** (HEAD `git log`): billing + Tarif + odinstalace + analytika + aktivace
+    objednávek (`744868a`), Postgres + Docker + Fly + docs corpus (`c433af3`), onboarding 4–5 + rozpočet JS za
+    stránku (`30ec0a3`), core vlastní vzhled + karty (`18ba27d`), storefront karty + `<style>` + návod pro AI
+    (`5260cb8`), admin Vzhled (`15268d0`), E2E profil `cards`, BFS dokument.
+  - **Brána `gate-7-a` (scratchpad) zelená:** core 870 + testing 50 · guard 301 · unit node 1 568 + cargo 95 +
+    vitest 563 · typecheck · lint · build · validate. `npm run test:postgres` 5/5 ✓. `docker build` ✓ (image
+    2,33 GB; migrace na lokální Postgres ✓, `/healthz` 200, bez `.env` / sqlite / `.git`).
+  - **Běží:** `shopify app dev` Free (log `app-dev-free2.log`), `final-a.sh` (scratchpad) = profily `cards mvp1
+    shapes margin tiers rewards rewards-other outlet campaign` → `runs/mvp7-A/progress.txt`, evidence
+    `evidence/mvp7/e2e-A`. Potom: zastavit app dev → restart Pro → `final-b.sh` (`cards`, `phase-b.sh`, `campaign`)
+    → `runs/mvp7-B`. `campaign-tiers` se ve finálním kole znovu nepouští (běžel dnes ✓ ✓ Free i Pro na
+    `fc9567a` + serverové vrstvy MVP 7; do self-auditu).
+  - **Zbývá po E2E:** vizuální QA (screenshoty 390 / 1440 z E2E + harness `evidence/mvp7/admin/`), audit
+    `audits/audit-mvp7.md` s opravami, self-audit, roadmapa `Shipped` (pozor: `docs/product-roadmap.html` má cizí
+    necommitnuté změny — commitnout jen vlastní řádky), checkpoint MVP 7, push, závěrečný report.
+  - **Čeká na Ondřeje (billing naživo):** `npm run dev -w won-discounts` bez `WON_DEV_PLAN` → otevřít appku na dev
+    storu → Tarif → „Vyzkoušet Pro na 14 dní zdarma“ → na stránce Shopify „Approve“ (testovací platba) → zpět
+    v Tarifu má být „Máš Pro na zkoušku do …“; potom „Zrušit Pro“ = živý downgrade A6.
+  - **Dluh, který zůstává:** hustší payload úrovní (P1 plánu: změna funkce při rezervě 0,10 bodu), formát ceny
+    v bloku vs. téma, mezera pod „Zaplatit“ na Horizonu (V1), řádek karet přes embed jen pro prvních 50 produktů
+    první stránky a s posunem layoutu (BFS dokument).
 - **Předchozí zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md — **hotové až na živé E2E objednávek**
   (checkpoint MVP 5 níž). **Zastaveno, čeká na Ondřeje (F-O1):** povolit appce přístup k chráněným datům zákazníků
   (Partner Dashboard → Apps → won-discounts → API access requests → Protected customer data access → Request access →
