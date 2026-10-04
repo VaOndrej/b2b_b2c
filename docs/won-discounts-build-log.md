@@ -14,9 +14,12 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 - **Aktivní zadání:** docs/won-discounts/prompt-mvp7.md — **hotové: MVP 6.1 ✅, MVP 7 ✅, appka je `Shipped`**
   (připravená k nasazení, **nenasazená**). Checkpoint MVP 7 níž, audit `won-discounts/audits/audit-mvp7.md`.
-  - **Čeká na Ondřeje (billing naživo):** `npm run dev -w won-discounts` bez `WON_DEV_PLAN` → otevřít appku na dev
-    storu → Tarif → „Vyzkoušet Pro na 14 dní zdarma“ → na stránce Shopify „Approve“ (testovací platba) → zpět
-    v Tarifu má být „Máš Pro na zkoušku do …“; potom „Zrušit Pro“ = živý downgrade A6.
+  - **Billing naživo: zablokováno distribucí appky (Ondřej zkusil 2026-10-04).** Tarif → „Vyzkoušet Pro“ →
+    Shopify odmítl `appSubscriptionCreate`: „Apps without a public distribution cannot use the Billing API“. Appka
+    chybu ukázala a zůstala na Free (cesta odmítnutí ověřená naživo). Billing půjde otestovat, až appka dostane
+    v Partner Dashboardu veřejnou distribuci (Apps → won-discounts → Distribution → Public); volba distribuce je
+    **nevratná** → rozhodnutí Ondřeje, do té doby Pro jen přes `WON_DEV_PLAN`. Potom: Tarif → „Vyzkoušet Pro na
+    14 dní zdarma“ → „Approve“ → „Zrušit Pro“ (živý A6).
   - **Čeká na Shopify (objednávky):** po schválení chráněných dat `node apps/won-discounts/scripts/activate-orders.mjs`
     (dry-run, potom `--live`) → kvóta výprodeje z objednávek (5b) a živá analytika.
   - **Dluh, který zůstává:** hustší payload úrovní (rezerva funkce 0,10 bodu), M12 (formát ceny v bloku vs. téma,
@@ -311,7 +314,8 @@ corpus), `30ec0a3` (onboarding, rozpočet JS za stránku), `18ba27d` (core vzhle
 unit node 1 569 + cargo 95 (1 ignored) + vitest 563 · typecheck · lint · build · validate — vše exit 0.
 
 **Neověřeno**
-- **Billing naživo** (potvrzovací stránka Shopify, webhook, zkouška, zrušení A6) — čeká na schválení Ondřejem.
+- **Billing naživo** (potvrzovací stránka Shopify, webhook, zkouška, zrušení A6) — Shopify Billing API odmítá
+  appku bez veřejné distribuce (zkoušeno 2026-10-04, viz Aktuální stav); naživo ověřené jen odmítnutí.
 - **Živá analytika a 5b** (doručení `orders/create`) — čeká na přístup appky k objednávkám.
 - Blok `card_tiers` v kartě Horizonu, Lighthouse před / po, `fly deploy`.
 

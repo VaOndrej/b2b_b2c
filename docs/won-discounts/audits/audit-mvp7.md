@@ -56,7 +56,9 @@ Plán určuje jen `storedPlan`: řádek `ShopEntitlement` s `plan = pro`, `statu
 72 h; vše ostatní Free. Zdroje: Tarif (každé načtení), webhook `app_subscriptions/update` (HMAC, idempotentní),
 denní `billing.reconcile`. Selhané čtení řádek nemění. Změna plánu spouští resync. Testy: `billing.test.ts` (9),
 `plan-admin.test.ts` (4, vč. downgradu A6 s doběhem kampaně), `webhooks.billing.test.ts` (4), scheduler.
-**Naživo neověřeno** — čeká na schválení testovacího předplatného.
+**Naživo 2026-10-04:** Shopify založení odmítl („Apps without a public distribution cannot use the Billing API“),
+Tarif chybu ukázal a plán zůstal Free. Úspěšná cesta (potvrzení, webhook, zkouška, zrušení) zůstává neověřená,
+dokud appka nemá veřejnou distribuci. **A16 (P3):** hláška končí „Zkus to znovu“, i když opakování nepomůže.
 
 ## Živé E2E (dev store, Bogus)
 
