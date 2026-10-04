@@ -12,7 +12,7 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > technická pravidla, zakázané věci). **MVP N+1 nezačíná, dokud MVP N není finální** (brána, živé E2E A+B,
 > vizuální QA, audit s opravenými nálezy, checkpoint, push).
 
-- **Aktivní zadání:** docs/won-discounts/prompt-mvp5-dokonceni-mvp6.md — 5a ✅, MVP 6 ✅; **Ondřej 2026-10-04: přístup k chráněným datům schválen → 5b aktivace** (plán MVP 5 „Aktivace 5b“). Krok: **5b zastaveno — sonda 2026-10-04: appka stále `ACCESS_DENIED: This app is not approved to access the Order object`** (s `read_orders` auto-grantem na dev storu); toml vrácen, app dev konfiguraci vrátil. F-O6 ✓ (CLI store auth čte objednávky). Čeká na Ondřeje: ověřit stav žádosti v Partner Dashboardu (viz report).
+- **Aktivní zadání:** docs/won-discounts/prompt-mvp5-dokonceni-mvp6.md — 5a ✅, MVP 6 ✅; **Ondřej 2026-10-04: přístup k chráněným datům schválen → 5b aktivace** (plán MVP 5 „Aktivace 5b“). Krok: **5b zastaveno — sonda 2026-10-04: appka stále `ACCESS_DENIED: This app is not approved to access the Order object`** (s `read_orders` auto-grantem na dev storu); toml vrácen, app dev konfiguraci vrátil. F-O6 ✓ (CLI store auth čte objednávky). **Ondřej 2026-10-04: 5b odložit** (dokončit implementaci, živě netestovat; neblokuje další MVP).
 - **Předchozí zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md — **hotové až na živé E2E objednávek**
   (checkpoint MVP 5 níž). **Zastaveno, čeká na Ondřeje (F-O1):** povolit appce přístup k chráněným datům zákazníků
   (Partner Dashboard → Apps → won-discounts → API access requests → Protected customer data access → Request access →
