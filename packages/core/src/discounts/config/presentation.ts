@@ -1,5 +1,6 @@
 // Storefront settings, locale texts and onboarding: never read by the function.
 
+import { sanitizeCustomLook } from "../custom-look.ts";
 import { DEFAULT_CONFIG } from "./defaults.ts";
 import { APPEARANCE_PRESETS, type AppearancePreset, ONBOARDING_GOALS, type OnboardingGoal } from "./enums.ts";
 import { CONFIG_LIMITS } from "./limits.ts";
@@ -26,9 +27,11 @@ function sanitizeAppearancePreset(v: unknown, fallback: AppearancePreset, issues
 export function sanitizeStorefront(v: unknown, issues: ConfigIssue[]): StorefrontSettings {
   const def = DEFAULT_CONFIG.storefront;
   const rec = isRecord(v) ? v : {};
+  const custom = sanitizeCustomLook(rec.custom, issues);
   return {
     appearancePreset: sanitizeAppearancePreset(rec.appearancePreset, def.appearancePreset, issues),
     cardPricesEnabled: sanitizeBool(rec.cardPricesEnabled, def.cardPricesEnabled),
+    ...(custom ? { custom } : {}),
   };
 }
 

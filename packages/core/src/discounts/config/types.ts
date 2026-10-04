@@ -1,6 +1,7 @@
 // Won Discounts config types (spec §2 catalog). Shapes only; sanitize.ts owns
 // how an arbitrary stored value becomes one of these.
 
+import type { CustomLook } from "../custom-look.ts";
 import type { CurrencyCode, MoneyByCurrency } from "../money.ts";
 import type {
   AppearancePreset,
@@ -179,6 +180,8 @@ export interface StorefrontSettings {
   /** K7: one of APPEARANCE_PRESETS (the sanitizer turns anything else into "default"). */
   appearancePreset: AppearancePreset;
   cardPricesEnabled: boolean; // BETA: quantity prices on cards/search
+  /** MVP 7 (Pro): the custom look — validated variables + the merchant's CSS as typed (custom-look.ts). Absent = none. */
+  custom?: CustomLook;
 }
 
 export type LocaleDictionary = Readonly<Record<LocaleCode, Record<string, string>>>;

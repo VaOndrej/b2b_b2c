@@ -37,6 +37,7 @@ import { fnv1a32Hex } from "./code-hash.ts";
 import { currencyExponent, moneyFor } from "./money.ts";
 import { variantNumber } from "./rewards.ts";
 import { campaignTierSets } from "./campaign-tiers.ts";
+import { customLookCss } from "./custom-look.ts";
 import { globalTierSet, reachableTierSets } from "./tiers.ts";
 
 /** App-data metafield (AppInstallation) the storefront reads. */
@@ -101,7 +102,11 @@ export interface StorefrontConfigV1 {
   /** MVP 6.1: the campaign whose sets `tiers` are; absent = the base sets. */
   tc?: string;
   margin: StorefrontMargin;
-  appearance: { preset: AppearancePreset };
+  /**
+   * `css` (MVP 7, Pro): the custom look's stylesheet — its variables on the block roots and the merchant's CSS
+   * scoped under them (custom-look.ts customLookCss); the embed prints it into a <style>. Absent = none.
+   */
+  appearance: { preset: AppearancePreset; css?: string };
   /** Texts the merchant changed, per locale; the extension's own locales are the fallback. */
   texts: Partial<Record<LocaleCode, Record<string, string>>>;
   /** MVP 4 (contract R7): the cart rewards; absent when nothing is offered (the embed shows no panel). */
@@ -112,6 +117,8 @@ export interface StorefrontConfigV1 {
    * metafield's `outlet` list names the sale variants).
    */
   ow?: 1;
+  /** MVP 7 BETA (contract M8): 1 when product cards show the first quantity break (`storefront.cardPricesEnabled`). */
+  cards?: 1;
 }
 
 /** A gift variant with its product's handle (Liquid renders it through `all_products[h]`). */
@@ -257,15 +264,17 @@ export function buildStorefrontConfig(gated: ReadonlyDeep<WonDiscountsConfig>, o
   const run = campaign ? campaignTierSets(gated.modules.tiers, campaign) : null;
   const shown = campaign && run && run.applied.length > 0 ? { tiers: storefrontTiers(run.sets), bt: base, tc: campaign.id } : { tiers: base };
   const preset = gated.storefront.appearancePreset;
+  const customCss = customLookCss(gated.storefront.custom);
   return {
     v: STOREFRONT_CONFIG_VERSION,
     cv: opts.configVersion,
     ...shown,
     margin: storefrontMargin(gated.modules.margin, opts.shopCurrency),
-    appearance: { preset: (APPEARANCE_PRESETS as readonly string[]).includes(preset) ? preset : "default" },
+    appearance: { preset: (APPEARANCE_PRESETS as readonly string[]).includes(preset) ? preset : "default", ...(customCss ? { css: customCss } : {}) },
     texts: storefrontTexts(gated.locales),
     ...rewardsPart(gated.modules.rewards, opts.variantHandles ?? {}),
     ...(gated.engine.combination.outletWithAnything ? { ow: 1 as const } : {}),
+    ...(gated.storefront.cardPricesEnabled ? { cards: 1 as const } : {}),
   };
 }
 

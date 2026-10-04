@@ -34,6 +34,7 @@
 //     with no break it gives nothing, and the gated payload is never larger
 //     than the stored one's there), see below;
 //   - gift ladder: the first threshold stays, with its first gift only;
+//   - custom look of the storefront blocks (MVP 7): removed (a ready-made look applies);
 //   - margin per collection: folded into the global floor, the STRICTEST value
 //     wins (a larger discount than the Pro setup allowed is never possible).
 //
@@ -196,6 +197,10 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
   // the scoped sets (inert now) and of the further global sets go; the kept global set's override stays.
   const narrowed = new Set(sets.filter((set) => set !== kept).map((set) => set.id));
   for (const campaign of out.campaigns) campaign.overrides = campaign.overrides.filter((o) => !narrowed.has(o.ruleId));
+
+  // MVP 7: the custom look of the storefront blocks is Pro (never checkout data: not reported in `stripped`, the
+  // Vzhled screen shows it locked). The stored config keeps it.
+  delete out.storefront.custom;
 
   // Rewards: one gift threshold, one gift.
   const gifts = out.modules.rewards.gifts;
