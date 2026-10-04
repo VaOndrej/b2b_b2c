@@ -3,17 +3,21 @@
 //
 //   campaignStatusAt(c, now)            scheduled | running (start inclusive, end exclusive) | ended | killed;
 //   campaignBoundary(config, now)       when the selected campaign (the current one, else the next — function-config
-//                                       selectCampaign) changes: its end. The scheduler resyncs then (K4); null = no
-//                                       campaign is selected, nothing to wait for;
+//                                       selectCampaign) changes next: its end, and before it the two times the
+//                                       product page switches to and from its tier sets (MVP 6.1,
+//                                       campaign-tiers.ts). The scheduler resyncs then (K4); null = no campaign
+//                                       is selected, nothing to wait for;
 //   campaignInputFromShopConfig(p, now) the cart plan's campaign from the LIVE shop config (K6): what a node whose
 //                                       vars carry the selected campaign gets (function-payload campaignInputFromVars);
 //   validateCampaignDraft(d, config)    the admin form → a Campaign, or field errors (D2 value + enabled only, D3
 //                                       window, A8 overlap naming the other campaign).
 // The start and the end themselves are the function's (C4): nothing here is on the critical path.
 
+import { campaignTierSwitches, tierOverrideIssue } from "./campaign-tiers.ts";
 import type { CartCampaignInput } from "./cart.ts";
-import { isShopLocalDateTime, type Campaign, type DiscountRule, type ReadonlyDeep, type WonDiscountsConfig } from "./config.ts";
+import { isShopLocalDateTime, type Campaign, type DiscountRule, type ReadonlyDeep, type TierBreak, type WonDiscountsConfig } from "./config.ts";
 import { fnv1a } from "./config/sanitize-helpers.ts";
+import { sanitizeTierSet } from "./config/tiers.ts";
 import { liveCampaigns, selectCampaign } from "./function-config.ts";
 
 export const CAMPAIGN_LIMITS = {
@@ -34,8 +38,11 @@ export function campaignStatusAt(c: CampaignView, now: string): CampaignStatus {
   return now < c.window.end ? "running" : "ended";
 }
 
-export function campaignBoundary(config: ReadonlyDeep<Pick<WonDiscountsConfig, "campaigns">>, now: string): string | null {
-  return selectCampaign(config.campaigns, { now })?.window.end ?? null;
+export function campaignBoundary(config: ReadonlyDeep<Pick<WonDiscountsConfig, "campaigns" | "modules">>, now: string): string | null {
+  const end = selectCampaign(config.campaigns, { now })?.window.end ?? null;
+  if (end === null) return null;
+  // MVP 6.1 (L7): a campaign with tier sets also switches the product page's table on and off before its end.
+  return campaignTierSwitches(config, now)[0] ?? end;
 }
 
 const NO_CAMPAIGN: CartCampaignInput = { id: null, active: false, varsVersion: null };
@@ -97,9 +104,16 @@ export interface CampaignDraft {
   start: string;
   end: string;
   overrides: CampaignDraftOverride[];
+  /** MVP 6.1 (L8): the tier sets the campaign changes — their breaks during the campaign. */
+  tiers?: CampaignDraftTiers[];
 }
 
-export type CampaignDraftField = "name" | "start" | "end" | "overrides";
+export interface CampaignDraftTiers {
+  setId: string;
+  breaks: TierBreak[];
+}
+
+export type CampaignDraftField = "name" | "start" | "end" | "overrides" | "tiers";
 
 export interface CampaignDraftError {
   field: CampaignDraftField;
@@ -116,7 +130,11 @@ export interface CampaignDraftError {
     | "campaign.error.value"
     | "campaign.error.override"
     | "campaign.error.notEditable"
-    | "campaign.error.tooMany";
+    | "campaign.error.tooMany"
+    | "campaign.error.tierSet"
+    | "campaign.error.tierLess"
+    | "campaign.error.tierKind"
+    | "campaign.error.tierEmpty";
   params?: Record<string, string | number>;
 }
 
@@ -172,7 +190,28 @@ export function validateCampaignDraft(
   }
 
   const rules = new Map(config.modules.codes.rules.map((r) => [r.id, r]));
-  if (draft.overrides.length === 0) errors.push({ field: "overrides", key: "campaign.error.empty" });
+  const tierDrafts = draft.tiers ?? [];
+  if (draft.overrides.length === 0 && tierDrafts.length === 0) errors.push({ field: "overrides", key: "campaign.error.empty" });
+  // MVP 6.1 (L8, E2): a set's breaks in the campaign, through the set's own sanitizer, at least as generous as the base.
+  const tierPatches: Campaign["overrides"] = [];
+  for (const t of tierDrafts) {
+    const set = config.modules.tiers.sets.find((s) => s.id === t.setId);
+    if (!set) {
+      errors.push({ field: "tiers", key: "campaign.error.tierSet" });
+      break;
+    }
+    const breaks = sanitizeTierSet({ ...set, breaks: t.breaks }, [], "draft")?.breaks ?? [];
+    const issue = breaks.length === 0 ? ({ kind: "empty" } as const) : tierOverrideIssue(set, breaks);
+    if (issue) {
+      errors.push(
+        issue.kind === "less"
+          ? { field: "tiers", key: "campaign.error.tierLess", params: { set: set.id, qty: issue.minQty, currency: issue.currency ?? "" } }
+          : { field: "tiers", key: issue.kind === "kind" ? "campaign.error.tierKind" : "campaign.error.tierEmpty", params: { set: set.id } },
+      );
+      break;
+    }
+    tierPatches.push({ ruleId: set.id, patch: { breaks } });
+  }
   for (const o of draft.overrides) {
     const rule = rules.get(o.ruleId);
     if (!rule) {
@@ -203,13 +242,16 @@ export function validateCampaignDraft(
       id,
       name,
       window: { start, end },
-      overrides: draft.overrides.map((o) => ({
-        ruleId: o.ruleId,
-        patch: {
-          ...(o.enabled !== undefined ? { enabled: o.enabled } : {}),
-          ...(o.value !== undefined ? { value: o.value } : {}),
-        },
-      })),
+      overrides: [
+        ...draft.overrides.map((o) => ({
+          ruleId: o.ruleId,
+          patch: {
+            ...(o.enabled !== undefined ? { enabled: o.enabled } : {}),
+            ...(o.value !== undefined ? { value: o.value } : {}),
+          },
+        })),
+        ...tierPatches,
+      ],
       killed: false,
     },
   };

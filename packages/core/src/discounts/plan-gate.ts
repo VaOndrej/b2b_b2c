@@ -24,7 +24,9 @@
 //   - market / segment targeting: the rule is switched OFF. Dropping only the
 //     targeting would widen the rule to every market / every customer;
 //   - combinesWith: removed (the rule competes like any other: better one wins);
-//   - campaigns: removed (the base rules apply);
+//   - campaigns: removed (the base rules apply); one finishing after a downgrade
+//     keeps its rule overrides and the kept global tier set's, not those of the
+//     tier sets narrowed below (MVP 6.1);
 //   - tier sets (MVP 3, contract K1): the first global set stays, counting
 //     across the cart becomes per product (fewer items per count); a further
 //     global set goes (under K1 no product reaches it anyway); every SCOPED
@@ -190,6 +192,10 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
   }
   for (const set of scopedSets) set.breaks = [];
   out.modules.tiers.sets = sets.filter((set) => set === kept || set.scope !== "global");
+  // MVP 6.1 (L5): a campaign finishing on Free must not bring back what the gate just narrowed — its overrides of
+  // the scoped sets (inert now) and of the further global sets go; the kept global set's override stays.
+  const narrowed = new Set(sets.filter((set) => set !== kept).map((set) => set.id));
+  for (const campaign of out.campaigns) campaign.overrides = campaign.overrides.filter((o) => !narrowed.has(o.ruleId));
 
   // Rewards: one gift threshold, one gift.
   const gifts = out.modules.rewards.gifts;

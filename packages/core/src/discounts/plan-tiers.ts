@@ -8,7 +8,7 @@
 //
 // Inputs: the cart (cart currency, lines in cart order), each line's product
 // metafield `tierRef` (CartLineInput.tierRef) and the shop config's
-// `modules.tiers` read by tiers.ts readTiersPayload for the cart currency (its
+// `modules.tiers` (or the live campaign's sets, step 8) read by tiers.ts readTiersPayload for the cart currency (its
 // header lists every reading rule).
 //
 // 1. Set of a line (K1). Gift lines have none. Else, by the metafield's
@@ -64,9 +64,16 @@
 //    WITHOUT a value — describe.ts describeCappedTierBreak: cs "Množstevní
 //    sleva od <minQty> ks"; en "Quantity discount from <minQty> item" when
 //    minQty is 1, "… items" otherwise. An uncapped tier keeps step 5's message.
-// Campaign overrides never touch a tier (MVP 3; overrides of tier sets come
-// in MVP 6). Outcomes, groups and the hint below are TS-only (admin,
-// storefront): the function needs steps 1–7 alone.
+// 8. Campaign sets (MVP 6.1, plan 2026-10-04 L4): `modules.tiers` above is
+//    replaced by the live campaign's own `tiers` when plan.ts activeCampaign
+//    finds the campaign (the node's window is live, its id + varsVersion are
+//    the shop config's, the entry is not killed) AND that entry's `tiers` is
+//    an object (not an array, not null) — then readTiersPayload reads THAT
+//    value and `modules.tiers` is not read at all; an object without a `sets`
+//    array gives no sets (fail closed). Otherwise `modules.tiers` is read.
+//    Steps 1–7 are the same on either part.
+// Outcomes, groups and the hint below are TS-only (admin,
+// storefront): the function needs steps 1–8 alone.
 // ===========================================================================================
 
 import type { NormalizedLine, PlanLocale } from "./cart.ts";

@@ -331,25 +331,22 @@ test("Free exclusive switch (product vs order): when the order discount wins, th
   assert.equal(tier(plan, "g").state, "not_combinable");
 });
 
-test("a campaign never changes a tier (campaign overrides of tier sets come in MVP 6)", () => {
-  const extra = {
-    campaigns: [
-      {
-        id: "bf",
-        name: "BF",
-        window: { start: "2026-09-01T00:00:00", end: "2026-12-31T23:59:59" },
-        overrides: [{ ruleId: "g", patch: { breaks: [{ minQty: 1, percent: 90 }] } }],
-      },
-    ],
+test("a live campaign runs its own breaks of a set only when they are at least as generous as the base (MVP 6.1)", () => {
+  const amountWith = (breaks: unknown[]) => {
+    const extra = {
+      campaigns: [{ id: "bf", name: "BF", window: { start: "2026-09-01T00:00:00", end: "2026-12-31T23:59:59" }, overrides: [{ ruleId: "g", patch: { breaks } }] }],
+    };
+    const payload = tiersPayload([GLOBAL], [], extra);
+    assert.equal(payload.campaignId, "bf");
+    const plan = planCart(
+      cartOf([pline("L1", 1, 100_00, 3)], { campaign: { id: "bf", active: true, varsVersion: payload.campaignVarsVersion } }),
+      payload,
+    );
+    assert.equal(plan.campaignId, "bf");
+    return lineOf(plan, "L1").product?.amount;
   };
-  const payload = tiersPayload([GLOBAL], [], extra);
-  assert.equal(payload.campaignId, "bf");
-  const plan = planCart(
-    cartOf([pline("L1", 1, 100_00, 3)], { campaign: { id: "bf", active: true, varsVersion: payload.campaignVarsVersion } }),
-    payload,
-  );
-  assert.equal(plan.campaignId, "bf");
-  assert.equal(lineOf(plan, "L1").product?.amount, 30_00);
+  assert.equal(amountWith([{ minQty: 1, percent: 90 }]), 270_00, "more generous at every quantity: the campaign's break");
+  assert.equal(amountWith([{ minQty: 3, percent: 5 }]), 30_00, "less generous: never shipped, the base 10 % stays");
 });
 
 // --- margin protection ---------------------------------------------------------------------------

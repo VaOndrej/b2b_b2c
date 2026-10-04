@@ -36,6 +36,7 @@ import { buildMarginPayload, costMinorUnits, marginFloorUnit, resolveMargin } fr
 import { fnv1a32Hex } from "./code-hash.ts";
 import { currencyExponent, moneyFor } from "./money.ts";
 import { variantNumber } from "./rewards.ts";
+import { campaignTierSets } from "./campaign-tiers.ts";
 import { globalTierSet, reachableTierSets } from "./tiers.ts";
 
 /** App-data metafield (AppInstallation) the storefront reads. */
@@ -61,6 +62,13 @@ export interface StorefrontTierSet {
   breaks: StorefrontTierBreak[];
 }
 
+export interface StorefrontTiers {
+  /** The global set's id (K1 step 3), null when there is none. */
+  global: string | null;
+  /** Every set a product can reach, by id. */
+  sets: Record<string, StorefrontTierSet>;
+}
+
 export type StorefrontMargin =
   | { on: false }
   | {
@@ -83,12 +91,15 @@ export interface StorefrontConfigV1 {
   v: 1;
   /** The ShopConfig version it was built from (debugging, E2E). */
   cv: string;
-  tiers: {
-    /** The global set's id (K1 step 3), null when there is none. */
-    global: string | null;
-    /** Every set a product can reach, by id. */
-    sets: Record<string, StorefrontTierSet>;
-  };
+  /**
+   * The sets the product page shows. MVP 6.1 (L6): the campaign's sets while a campaign with tier overrides is
+   * shown (`tc`), the base ones otherwise — the extension reads this key alone.
+   */
+  tiers: StorefrontTiers;
+  /** MVP 6.1: the BASE sets, only while `tiers` are a campaign's (the sync puts them back before the campaign goes). */
+  bt?: StorefrontTiers;
+  /** MVP 6.1: the campaign whose sets `tiers` are; absent = the base sets. */
+  tc?: string;
   margin: StorefrontMargin;
   appearance: { preset: AppearancePreset };
   /** Texts the merchant changed, per locale; the extension's own locales are the fallback. */
@@ -147,6 +158,11 @@ export interface StorefrontConfigOptions {
    * reading K4 v2 promises nothing for variants with a purchase cost).
    */
   shopCurrency?: string;
+  /**
+   * MVP 6.1 (L6): the campaign whose tier sets the page shows right now (campaign-tiers.ts campaignTiersShownAt
+   * over the same gated config); null / absent / a campaign without an applied tier override = the base sets.
+   */
+  campaignId?: string | null;
 }
 
 /** A value under a key that may be an Object.prototype name ("__proto__"): always an own, enumerable entry. */
@@ -220,22 +236,31 @@ function storefrontTexts(locales: ReadonlyDeep<WonDiscountsConfig>["locales"]): 
   return texts;
 }
 
+function storefrontTiers(setsOf: ReadonlyDeep<WonDiscountsConfig>["modules"]["tiers"]["sets"]): StorefrontTiers {
+  const reachable = reachableTierSets(setsOf);
+  const sets: Record<string, StorefrontTierSet> = {};
+  for (const set of reachable) setOwn(sets, set.id, storefrontSet(set));
+  return { global: globalTierSet(reachable)?.id ?? null, sets };
+}
+
 /**
  * The storefront config (K5) from the GATED config (plan-gate.ts, BILL-1): the
  * sets a product can reach (tiers.ts reachableTierSets) keyed by id, amounts in
  * Liquid money units per currency, the margin caps (never a cost), the
  * appearance preset (K7) and the texts the merchant changed (non-empty ones).
+ * MVP 6.1: `opts.campaignId` swaps in that campaign's sets (`bt`, `tc`).
  * Pure; never throws.
  */
 export function buildStorefrontConfig(gated: ReadonlyDeep<WonDiscountsConfig>, opts: StorefrontConfigOptions): StorefrontConfigV1 {
-  const reachable = reachableTierSets(gated.modules.tiers.sets);
-  const sets: Record<string, StorefrontTierSet> = {};
-  for (const set of reachable) setOwn(sets, set.id, storefrontSet(set));
+  const base = storefrontTiers(gated.modules.tiers.sets);
+  const campaign = opts.campaignId ? gated.campaigns.find((c) => c.id === opts.campaignId && !c.killed) : undefined;
+  const run = campaign ? campaignTierSets(gated.modules.tiers, campaign) : null;
+  const shown = campaign && run && run.applied.length > 0 ? { tiers: storefrontTiers(run.sets), bt: base, tc: campaign.id } : { tiers: base };
   const preset = gated.storefront.appearancePreset;
   return {
     v: STOREFRONT_CONFIG_VERSION,
     cv: opts.configVersion,
-    tiers: { global: globalTierSet(reachable)?.id ?? null, sets },
+    ...shown,
     margin: storefrontMargin(gated.modules.margin, opts.shopCurrency),
     appearance: { preset: (APPEARANCE_PRESETS as readonly string[]).includes(preset) ? preset : "default" },
     texts: storefrontTexts(gated.locales),

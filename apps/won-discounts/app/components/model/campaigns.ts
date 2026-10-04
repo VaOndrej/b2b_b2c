@@ -3,7 +3,7 @@
 // discount rule, an override (D2): switch it on / off during the campaign and / or give it another value. Core
 // validateCampaignDraft checks the draft (window, overlap, rules, values).
 
-import type { CampaignDraft, CampaignDraftOverride } from "@won/core/discounts/campaigns";
+import type { CampaignDraft, CampaignDraftField, CampaignDraftOverride } from "@won/core/discounts/campaigns";
 
 import type { FormDataLike } from "./rule-form";
 
@@ -28,14 +28,17 @@ export const CAMPAIGN_FIELD = {
   percent: "cp.percent.",
   /** `cp.amount.<ruleId>.<CUR>`: an amount in major units ("" = value unchanged). */
   amount: "cp.amount.",
+  /** MVP 6.1: one value per tier set the campaign changes (its id). */
+  tierUse: "cp.tierUse",
 } as const;
 
 /** The form fields a core draft error lands on. */
-export const CAMPAIGN_ERROR_FIELD: Record<"name" | "start" | "end" | "overrides", string> = {
+export const CAMPAIGN_ERROR_FIELD: Record<CampaignDraftField, string> = {
   name: CAMPAIGN_FIELD.name,
   start: CAMPAIGN_FIELD.startDate,
   end: CAMPAIGN_FIELD.endDate,
   overrides: CAMPAIGN_FIELD.use,
+  tiers: CAMPAIGN_FIELD.tierUse,
 };
 
 const HHMM = /^([01]\d|2[0-3]):([0-5]\d)$/;

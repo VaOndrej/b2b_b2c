@@ -466,6 +466,8 @@ interface EngineFlags {
 interface ActiveCampaign {
   id: string;
   patches: Map<string, Rec>;
+  /** MVP 6.1 (L4): the campaign's own tier sets, when its `tiers` is an object — read INSTEAD of `modules.tiers`. */
+  tiers: Rec | null;
 }
 
 type Rec = Record<string, unknown>;
@@ -658,7 +660,7 @@ function activeCampaign(config: Rec, cart: NormalizedCart): ActiveCampaign | nul
     }
     patches.set(override.ruleId, merged);
   }
-  return { id: node.id, patches };
+  return { id: node.id, patches, tiers: isRecord(campaign.tiers) ? campaign.tiers : null };
 }
 
 function resolveRules(config: Rec, cart: NormalizedCart) {
@@ -1175,8 +1177,9 @@ function buildPlan(cart: NormalizedCart, config: Rec, opts: { hint: boolean } = 
   const codes = matchCodes(rules, cart, readMaxCodeLength(config));
   const { work, cartScope, ruleScopes } = prepareLines(cart, engine, campaign?.id ?? null, retargeted);
   gateRules(rules, { cart, marketCountries: readMarketCountries(config), cartScope }, ruleScopes, codes.enteredByRule);
-  // Campaign overrides never reach a tier (MVP 3): the sets are read as shipped.
-  const tiers = prepareTiers(work, (config.modules as Rec).tiers, locale, currency);
+  // MVP 6.1 (L4): a live campaign that carries tier sets runs THEM, the base sets are not read at all; any other
+  // run reads the base sets as shipped. Exactly one part is read (the function's budget counts on it).
+  const tiers = prepareTiers(work, campaign?.tiers ?? (config.modules as Rec).tiers, locale, currency);
   const byId = new Map(rulesById);
   for (const rule of tiers.rules) byId.set(rule.id, rule);
 

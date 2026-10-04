@@ -77,6 +77,7 @@ import {
 } from "./config.ts";
 import { fnv1a } from "./config/sanitize-helpers.ts";
 import type { NodeRole } from "./emit.ts";
+import { campaignTiersPayload } from "./campaign-tiers.ts";
 import { FUNCTION_CONFIG_BUDGET_BYTES, liveCampaigns, NO_CAMPAIGN_DATETIME, selectCampaign } from "./function-config.ts";
 import { gateConfigForPlan } from "./plan-gate.ts";
 import { buildMarginPayload, type FunctionMarginPayload, type MarginCollectionTuple } from "./margin.ts";
@@ -118,6 +119,11 @@ export interface FunctionCampaign {
   id: string;
   window: { start: string; end: string };
   overrides: { ruleId: string; patch: Record<string, unknown> }[];
+  /**
+   * MVP 6.1 (L3): the tier sets as the campaign runs them (campaign-tiers.ts), only when one of its tier
+   * overrides applies. While the campaign is live the engine reads THESE instead of `modules.tiers`, never both.
+   */
+  tiers?: FunctionTiersPayload;
   /** Never true in a built payload (killed campaigns do not ship); read defensively. */
   killed?: boolean;
 }
@@ -165,7 +171,8 @@ export interface EncodedShopFunctionConfig {
    */
   fits: boolean;
   /**
-   * The quantity tiers' part: UTF-8 bytes of `modules.tiers`, against
+   * The quantity tiers' part: UTF-8 bytes of `modules.tiers` or of the
+   * selected campaign's `tiers` (MVP 6.1), whichever is larger — each against
    * CONFIG_LIMITS.tierPayloadBytes (550 B) — so the admin can say WHY a config
    * does not fit. The worst case reports the largest of its measured states.
    */
@@ -467,7 +474,8 @@ function tierFit(bytes: number): TierPayloadFit {
 function encode(payload: FunctionConfigPayload): EncodedShopFunctionConfig {
   const json = JSON.stringify(payload);
   const bytes = utf8Bytes(json);
-  const tiers = tierFit(utf8Bytes(JSON.stringify(payload.modules.tiers)));
+  const campaignTiers = payload.campaigns[0]?.tiers;
+  const tiers = tierFit(Math.max(utf8Bytes(JSON.stringify(payload.modules.tiers)), campaignTiers ? utf8Bytes(JSON.stringify(campaignTiers)) : 0));
   return { payload, json, bytes, fits: bytes <= FUNCTION_CONFIG_BUDGET_BYTES && tiers.fits, tiers };
 }
 
@@ -475,6 +483,7 @@ function build(config: ConfigInput, selected: CampaignInput | null, shopTimezone
   formatterFor(shopTimezone, "buildShopFunctionConfig"); // validate the zone once, up front
   const { codes, tiers, rewards, margin } = config.modules;
   const ruleIds = new Set(codes.rules.map((r) => r.id));
+  const campaignTiers = selected ? campaignTiersPayload(tiers, selected) : null;
   return encode({
     schemaVersion: config.schemaVersion,
     campaignId: selected ? selected.id : null,
@@ -492,11 +501,12 @@ function build(config: ConfigInput, selected: CampaignInput | null, shopTimezone
           {
             id: selected.id,
             window: { start: selected.window.start, end: selected.window.end },
-            // MVP 6 D1/K2: only discount rule overrides reach the function (the engine never applies a tier
-            // set's or a gift tier's: "Campaign overrides never reach a tier"); the rest stays in the stored config.
+            // MVP 6 D1/K2: `overrides` carry discount rule overrides only. MVP 6.1 (L3): tier set overrides ship
+            // as the campaign's whole sets in `tiers`; a gift tier's never ship (the stored config keeps them).
             overrides: selected.overrides
               .filter((o) => ruleIds.has(o.ruleId))
               .map((o) => ({ ruleId: o.ruleId, patch: shipPatch(o.patch) })),
+            ...(campaignTiers ? { tiers: campaignTiers } : {}),
           },
         ]
       : [],
@@ -542,14 +552,21 @@ export function buildShopFunctionConfigWorstCase(
   const zone = opts.shopTimezone ?? "UTC";
   const currency = opts.shopCurrency ?? "XXX";
   let worst: WorstCaseShopFunctionConfig = { ...build(config, null, zone, currency), campaignId: null };
-  for (const campaign of liveCampaigns(config.campaigns)) {
-    const encoded = build(config, campaign, zone, currency);
-    if (encoded.bytes > worst.bytes) worst = { ...encoded, campaignId: campaign.id };
-  }
-  const free = build(gateConfigForPlan(config, "free").config, null, zone, currency);
-  if (free.bytes > worst.bytes) worst = { ...free, campaignId: null };
   // The tiers' cap holds for every state on its own (the largest tier part need not be the largest config).
-  const tiers = tierFit(Math.max(worst.tiers.bytes, free.tiers.bytes));
+  let tierBytes = worst.tiers.bytes;
+  const measure = (encoded: EncodedShopFunctionConfig, campaignId: string | null) => {
+    tierBytes = Math.max(tierBytes, encoded.tiers.bytes);
+    if (encoded.bytes > worst.bytes) worst = { ...encoded, campaignId };
+  };
+  for (const campaign of liveCampaigns(config.campaigns)) {
+    measure(build(config, campaign, zone, currency), campaign.id);
+    // MVP 6.1: the same campaign finishing on Free (A6) — its sets are built from the gated ones.
+    const finishing = gateConfigForPlan(config, "free", { now: campaign.window.start, finishing: [campaign.id] }).config;
+    const kept = finishing.campaigns.find((c) => c.id === campaign.id);
+    if (kept) measure(build(finishing, kept, zone, currency), campaign.id);
+  }
+  measure(build(gateConfigForPlan(config, "free").config, null, zone, currency), null);
+  const tiers = tierFit(tierBytes);
   return { ...worst, tiers, fits: worst.bytes <= FUNCTION_CONFIG_BUDGET_BYTES && tiers.fits };
 }
 
