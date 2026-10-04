@@ -50,6 +50,8 @@
 //           WONE2EVYP (20 % on the order); the sales are started / ended by scripts/e2e/outlet.mjs.
 //   campaign  scripts/e2e/campaign-fixture.mjs (MVP 6): auto 10 % on won-e2e-simple-a; the campaign (30 % in a
 //           window a few minutes ahead) is scheduled / removed by scripts/e2e/campaign.mjs.
+//   campaign-tiers  scripts/e2e/campaign-tiers-fixture.mjs (MVP 6.1): a global tier set, 2 items −10 %; the
+//           campaign (2 items −20 % in a window) is scheduled by scripts/e2e/campaign.mjs --fixture tiers.
 //   rewards-pro  + a second threshold (80 Kč / 4 €) with a choice of 3 gifts and
 //           the spare as fallback. Run with NODE_ENV=development WON_DEV_PLAN=pro.
 // A seed REPLACES the E2E rules, tier sets, margin and reward settings of the
@@ -104,6 +106,7 @@ import { SHAPES_HANDLES, SHAPES_PRODUCT_B_HANDLE, SHAPES_RULE_IDS, shapesRules }
 import { ALL_REWARDS_TIER_IDS, REWARDS_CODE_RULE_ID, REWARDS_HANDLES, rewardsModule, rewardsRules } from "./rewards-fixture.mjs";
 import { OUTLET_HANDLES, OUTLET_RULE_IDS, outletRules } from "./outlet-fixture.mjs";
 import { CAMPAIGN_HANDLES, CAMPAIGN_RULE_ID, campaignRules } from "./campaign-fixture.mjs";
+import { CAMPAIGN_TIERS_HANDLES, CAMPAIGN_TIERS_SET_ID, campaignTiersModule } from "./campaign-tiers-fixture.mjs";
 import { TIERS_COLLECTION_HANDLE, TIERS_COLLECTION_SET_ID, TIERS_GLOBAL_SET_ID, tiersMarginModule, tiersModule } from "./tiers-fixture.mjs";
 
 register();
@@ -239,13 +242,19 @@ const PROFILES = {
     rules: campaignRules,
     label: "Kampaně (MVP 6): auto 10 % on won-e2e-simple-a (the campaign itself, 30 % in a window minutes ahead: scripts/e2e/campaign.mjs)",
   },
+  "campaign-tiers": {
+    handles: CAMPAIGN_TIERS_HANDLES,
+    rules: () => [],
+    tiers: () => campaignTiersModule(),
+    label: "Kampaně mění úrovně (MVP 6.1): a global tier set, 2 items −10 % (the campaign itself, 2 items −20 % in a window minutes ahead: scripts/e2e/campaign.mjs --fixture tiers)",
+  },
 };
 const PROFILE = option("--profile") ?? "mvp1";
 if (!Object.hasOwn(PROFILES, PROFILE)) throw new Error(`unknown --profile ${PROFILE} (${Object.keys(PROFILES).join(", ")})`);
 /** Every E2E rule id of every profile: what a cleanup without a backup removes, and what "the seed is in it" means. */
 const ALL_E2E_RULE_IDS = [...E2E_RULE_IDS, ...SHAPES_RULE_IDS, ...MARGIN_RULE_IDS, REWARDS_CODE_RULE_ID, ...OUTLET_RULE_IDS, CAMPAIGN_RULE_ID];
 /** Every E2E tier set id (MVP 3): a cleanup without a backup removes them, and they mean "the seed is in it" too. */
-const ALL_E2E_TIER_SET_IDS = [TIERS_GLOBAL_SET_ID, TIERS_COLLECTION_SET_ID];
+const ALL_E2E_TIER_SET_IDS = [TIERS_GLOBAL_SET_ID, TIERS_COLLECTION_SET_ID, CAMPAIGN_TIERS_SET_ID];
 const tierSetsOf = (config) => (Array.isArray(config?.modules?.tiers?.sets) ? config.modules.tiers.sets : []);
 const giftTiersOf = (config) => (Array.isArray(config?.modules?.rewards?.gifts) ? config.modules.rewards.gifts : []);
 const hasE2eRewards = (config) => giftTiersOf(config).some((tier) => ALL_REWARDS_TIER_IDS.includes(tier.id));

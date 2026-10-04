@@ -1,7 +1,7 @@
 // Kampaně (MVP 6, Pro) — the admin module's server side (contract K7).
 //   loadCampaignsScreen(ctx, {edit})  the page: every campaign by status (running, scheduled, ended, killed) with its
-//                                     window worded in the shop's time, its overrides worded, the rules the form can
-//                                     change, the campaign being edited;
+//                                     window worded in the shop's time, its overrides worded, the rules and (MVP
+//                                     6.1) the quantity tier sets the form can change, the campaign being edited;
 //   campaignsAction(ctx, form)        intent save (Pro only: BILL-1; core validateCampaignDraft — window, A8
 //                                     overlap, rules, values) | kill (any plan: the kill switch is never a Pro
 //                                     feature) | delete (a campaign that is not running); every change is a config
@@ -9,14 +9,27 @@
 //   loadCampaignsOverview(ctx)        the Přehled card: the running and the next campaign.
 // The session shop only (SEC-2). Times are shop-local wall times (the window the function checks, C4).
 
+import { campaignTierSets } from "@won/core/discounts/campaign-tiers";
 import { CAMPAIGN_LIMITS, addLocalMinutes, campaignStatusAt, validateCampaignDraft, type CampaignDraftError } from "@won/core/discounts/campaigns";
-import { CONFIG_LIMITS, type Campaign, type DiscountRule, type ReadonlyDeep, type WonDiscountsConfig } from "@won/core/discounts/config";
+import { CONFIG_LIMITS, type Campaign, type DiscountRule, type ReadonlyDeep, type TierBreak, type TierSet, type WonDiscountsConfig } from "@won/core/discounts/config";
 import { formatAmounts, formatPercent } from "@won/core/discounts/describe";
+import { currencyExponent, fromMinorUnits } from "@won/core/discounts/money";
+import { reachableTierSets } from "@won/core/discounts/tiers";
 
 import { t, type Locale } from "../../i18n";
 import { CAMPAIGN_ERROR_FIELD, CAMPAIGN_FIELD, CAMPAIGN_INTENT, readCampaignForm } from "../../components/model/campaigns";
 import type { FormDataLike } from "../../components/model/rule-form";
-import type { CampaignRuleChoice, CampaignsActionResult, CampaignsOverviewView, CampaignsScreenData, CampaignView, FieldError, UiResult } from "../../components/model/types";
+import type {
+  CampaignRuleChoice,
+  CampaignsActionResult,
+  CampaignsOverviewView,
+  CampaignsScreenData,
+  CampaignTierChoice,
+  CampaignTierRow,
+  CampaignView,
+  FieldError,
+  UiResult,
+} from "../../components/model/types";
 import { loadConfig } from "../config.server";
 import { formatShopTime } from "../native/copy";
 import { loadShopSyncFacts } from "../sync/sync-state.server";
@@ -45,10 +58,66 @@ function majorText(minor: number): string {
   return Number.isInteger(minor / 100) ? String(minor / 100) : (minor / 100).toFixed(2);
 }
 
+// --- Quantity tier sets in a campaign (MVP 6.1, L8) --------------------------------------------------------
+
+type SetLike = ReadonlyDeep<TierSet>;
+type BreakLike = ReadonlyDeep<TierBreak>;
+
+/** A set has no name: "Celý obchod", or how many products and collections it selects. */
+function tierSetLabel(set: SetLike, locale: Locale): string {
+  if (set.scope === "global") return t(locale, "tiers.scope.global");
+  return t(locale, "campaign.tiers.scoped", { n: (set.scope.productIds?.length ?? 0) + (set.scope.collectionIds?.length ?? 0) });
+}
+
+/** Minor units as the form shows them: "10", "0.40", JPY "300". */
+function majorOf(minor: number, currency: string): string {
+  const text = fromMinorUnits(minor, currency);
+  return text.replace(/\.0+$/, "");
+}
+
+const tierKind = (breaks: readonly BreakLike[]): "percent" | "amount" => (breaks.length > 0 && typeof breaks[0]!.percent !== "number" ? "amount" : "percent");
+const tierCurrencies = (breaks: readonly BreakLike[]): string[] => [...new Set(breaks.flatMap((b) => Object.keys(b.amountOff ?? {})))].sort();
+
+function tierRows(breaks: readonly BreakLike[]): CampaignTierRow[] {
+  return [...breaks]
+    .sort((a, b) => a.minQty - b.minQty)
+    .map((b) =>
+      typeof b.percent === "number"
+        ? { qty: String(b.minQty), percent: String(b.percent) }
+        : { qty: String(b.minQty), amount: Object.fromEntries(Object.entries(b.amountOff ?? {}).map(([cur, minor]) => [cur, majorOf(minor, cur)])) },
+    );
+}
+
+/** "od 2 ks −10 %, od 5 ks −15 %" / "od 3 ks −10 Kč / 0,40 € za kus". */
+function tierBreaksText(breaks: readonly BreakLike[], locale: Locale): string {
+  return [...breaks]
+    .sort((a, b) => a.minQty - b.minQty)
+    .map((b) =>
+      typeof b.percent === "number"
+        ? t(locale, "campaign.tiers.break", { qty: b.minQty, value: formatPercent(b.percent, locale) })
+        : t(locale, "campaign.tiers.breakAmount", { qty: b.minQty, value: formatAmounts(b.amountOff ?? {}, Object.keys(b.amountOff ?? {}).sort(), locale) }),
+    )
+    .join(", ");
+}
+
+/** The tier sets the form can change: the ones a product can reach, in the stored order. */
+export function campaignTierChoices(config: ReadonlyDeep<WonDiscountsConfig>, locale: Locale): CampaignTierChoice[] {
+  return reachableTierSets(config.modules.tiers.sets).map((set) => ({
+    id: set.id,
+    label: tierSetLabel(set, locale),
+    kind: tierKind(set.breaks),
+    currencies: tierCurrencies(set.breaks),
+    baseText: set.breaks.length > 0 ? tierBreaksText(set.breaks, locale) : t(locale, "campaign.tiers.noBreaks"),
+    rows: tierRows(set.breaks),
+  }));
+}
+
 export interface CampaignViewOptions {
   locale: Locale;
   now: string;
   rules: ReadonlyMap<string, ReadonlyDeep<DiscountRule>>;
+  /** MVP 6.1: the stored tier sets (the campaign's tier overrides are worded against them); absent = none. */
+  tiers?: ReadonlyDeep<WonDiscountsConfig>["modules"]["tiers"];
   finishing: ReadonlySet<string>;
   plan: "free" | "pro";
 }
@@ -72,6 +141,13 @@ export function campaignView(c: ReadonlyDeep<Campaign>, opts: CampaignViewOption
           : {}),
       };
     });
+  // MVP 6.1: the tier set overrides that apply (at least as generous as the base, a set a product can reach).
+  const run = opts.tiers ? campaignTierSets(opts.tiers, c) : null;
+  const tiers = (run?.applied ?? []).map((setId) => {
+    const set = run!.sets.find((x) => x.id === setId)!;
+    const base = opts.tiers!.sets.find((x) => x.id === setId)!;
+    return { setId, label: tierSetLabel(base, opts.locale), text: tierBreaksText(set.breaks, opts.locale), rows: tierRows(set.breaks) };
+  });
   const split = (local: string) => ({ date: local.slice(0, 10), time: local.slice(11, 16) });
   const at = addLocalMinutes(c.window.start, 1);
   return {
@@ -83,7 +159,8 @@ export function campaignView(c: ReadonlyDeep<Campaign>, opts: CampaignViewOption
     start: split(c.window.start),
     end: split(c.window.end),
     overrides,
-    unused: c.overrides.length - overrides.length,
+    tiers,
+    unused: c.overrides.length - overrides.length - tiers.length,
     finishing: opts.plan === "free" && status === "running" && opts.finishing.has(c.id),
     tryCartUrl: `/app/try-cart?date=${at.slice(0, 10)}&time=${at.slice(11, 16)}`,
   };
@@ -120,7 +197,7 @@ export async function loadCampaignsScreen(ctx: ShopCtx, opts: { edit?: string | 
   const [loaded, plan, { now, timezone }, finishing] = await Promise.all([loadConfig(ctx.db, ctx.shop), ctxPlan(ctx), shopNow(ctx), finishingOf(ctx)]);
   const config = loaded.config;
   const rules = new Map(config.modules.codes.rules.map((r) => [r.id, r]));
-  const viewOpts: CampaignViewOptions = { locale: ctx.locale, now, rules, finishing, plan };
+  const viewOpts: CampaignViewOptions = { locale: ctx.locale, now, rules, tiers: config.modules.tiers, finishing, plan };
   const campaigns = config.campaigns
     .map((c) => campaignView(c, viewOpts))
     .sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || (a.start.date + a.start.time).localeCompare(b.start.date + b.start.time));
@@ -133,13 +210,25 @@ export async function loadCampaignsScreen(ctx: ShopCtx, opts: { edit?: string | 
     timezone,
     campaigns,
     rules: campaignRuleChoices(config, ctx.locale),
+    tierSets: campaignTierChoices(config, ctx.locale),
     editing,
     limits: { campaigns: CONFIG_LIMITS.campaigns, maxDays: CAMPAIGN_LIMITS.maxDays, minLeadMinutes: CAMPAIGN_LIMITS.minLeadMinutes },
   };
 }
 
-const fieldErrors = (errors: readonly CampaignDraftError[]): FieldError[] =>
-  errors.map((e) => ({ field: CAMPAIGN_ERROR_FIELD[e.field], key: e.key, ...(e.params ? { params: e.params } : {}) }));
+/** Core's draft errors on the form's fields; a tier set is named by its label (it has no name), a currency as " (EUR)". */
+function fieldErrors(errors: readonly CampaignDraftError[], config: ReadonlyDeep<WonDiscountsConfig>, locale: Locale): FieldError[] {
+  return errors.map((e) => {
+    if (!e.params) return { field: CAMPAIGN_ERROR_FIELD[e.field], key: e.key };
+    const params = { ...e.params };
+    if (e.field === "tiers" && typeof params.set === "string") {
+      const set = config.modules.tiers.sets.find((x) => x.id === params.set);
+      if (set) params.set = tierSetLabel(set, locale);
+      if (typeof params.currency === "string") params.currency = params.currency ? ` (${params.currency})` : "";
+    }
+    return { field: CAMPAIGN_ERROR_FIELD[e.field], key: e.key, params };
+  });
+}
 
 function saved(result: UiResult, kind: "saved" | "killed" | "deleted"): CampaignsActionResult | UiResult {
   if (!result.ok) return result;
@@ -152,7 +241,10 @@ export async function campaignsAction(ctx: ShopCtx, form: FormDataLike): Promise
   const kinds = new Map(
     loaded.config.modules.codes.rules.map((r) => [r.id, { kind: r.value.kind, currencies: r.value.kind === "fixed" ? Object.keys(r.value.amount) : [] }]),
   );
-  const { intent, id, draft } = readCampaignForm(form, kinds);
+  const sets = new Map(
+    loaded.config.modules.tiers.sets.map((set) => [set.id, { kind: tierKind(set.breaks), currencies: tierCurrencies(set.breaks), exponent: currencyExponent }]),
+  );
+  const { intent, id, draft } = readCampaignForm(form, kinds, sets);
   const pick = (config: WonDiscountsConfig) => config.campaigns;
   const options = readSaveOptions(form);
   switch (intent) {
@@ -161,7 +253,7 @@ export async function campaignsAction(ctx: ShopCtx, form: FormDataLike): Promise
       if ((await ctxPlan(ctx)) !== "pro") return { ok: false, reason: "invalid", errors: [{ field: CAMPAIGN_FIELD.name, key: "campaign.error.pro" }] };
       const { now } = await shopNow(ctx);
       const r = validateCampaignDraft(draft, loaded.config, { now, maxCampaigns: CONFIG_LIMITS.campaigns });
-      if (!r.ok) return { ok: false, reason: "invalid", errors: fieldErrors(r.errors) };
+      if (!r.ok) return { ok: false, reason: "invalid", errors: fieldErrors(r.errors, loaded.config, ctx.locale) };
       const campaign = r.campaign;
       const result = await saveConfigSection(ctx, {
         ...options,
@@ -169,9 +261,10 @@ export async function campaignsAction(ctx: ShopCtx, form: FormDataLike): Promise
         pick,
         apply: (config) => {
           const existing = config.campaigns.find((c) => c.id === campaign.id);
-          // D1: stored overrides of tier sets / gift tiers (not applied in this version) are kept as they were.
-          const ruleIds = new Set(config.modules.codes.rules.map((rule) => rule.id));
-          const kept = existing ? existing.overrides.filter((o) => !ruleIds.has(o.ruleId)) : [];
+          // The form owns the overrides of rules and (MVP 6.1) of tier sets; stored gift tier overrides (never
+          // applied: dárky kampaň nemění) are kept as they were.
+          const owned = new Set([...config.modules.codes.rules.map((rule) => rule.id), ...config.modules.tiers.sets.map((set) => set.id)]);
+          const kept = existing ? existing.overrides.filter((o) => !owned.has(o.ruleId)) : [];
           const next = { ...campaign, overrides: [...campaign.overrides, ...kept] };
           return { ...config, campaigns: existing ? config.campaigns.map((c) => (c.id === campaign.id ? next : c)) : [...config.campaigns, next] };
         },

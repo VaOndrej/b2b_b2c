@@ -52,9 +52,23 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
   { path: "campaigns", expect: [/Kampaně jsou v tarifu Pro/, /Víkend −20 %/, /Běží/, /Naplánované/, /Black Friday/, /Ukončit hned/] },
   {
     path: "campaigns?plan=pro",
-    expect: [/Naplánovat kampaň/, /Co se v kampani změní/, /Podzimní sleva 10 %: 20\s%/, /Doprava zdarma: zapnutá/, /Sleva 200 Kč \/ 8 €: 400\sKč/, /se v této verzi nepoužijí/, /Vyzkoušet košík v době kampaně/, /Množstevní slevy a dárky běží během kampaně beze změny/, /Europe\/Prague/],
+    expect: [/Naplánovat kampaň/, /Co se v kampani změní/, /Podzimní sleva 10 %: 20\s%/, /Doprava zdarma: zapnutá/, /Sleva 200 Kč \/ 8 €: 400\sKč/, /Uložené změny, které se nepoužijí: 1\./, /Vyzkoušet košík v době kampaně/, /Kampaň mění slevy, kódy a množstevní slevy\. Dárky běží během kampaně beze změny/, /Europe\/Prague/],
   },
   { path: "campaigns?plan=pro&edit=weekend", expect: [/Upravit kampaň/, /Kampaň právě běží/, /Uložit kampaň/, /Zrušit úpravy/] },
+  // MVP 6.1: the tier sets a campaign can change, the campaign's own breaks on its card and in the form.
+  {
+    path: "campaigns?plan=pro&edit=bf",
+    expect: [
+      /Množstevní slevy v kampani/,
+      /Celý obchod/,
+      /Běžně: od 3 ks −10\s%, od 5 ks −15\s%, od 10 ks −20\s%/,
+      /Vybrané produkty a kolekce \(2\)/,
+      /Množstevní slevy \(Celý obchod\): od 3 ks −15\s%, od 5 ks −20\s%, od 10 ks −30\s%/,
+      /Tabulka na stránce produktu se přepne minutu po začátku a 7 minut před koncem/,
+      /Dárky běží během kampaně beze změny/,
+      /Uložené změny, které se nepoužijí: 1\./,
+    ],
+  },
   { path: "campaigns?plan=pro&result=invalid", expect: [/Kampaň se překrývá s „Black Friday“/, /Zaškrtněte aspoň jednu slevu/] },
   { path: "campaigns?state=finishing", expect: [/Běžela při přechodu na Free, doběhne do konce/] },
   { path: "overview?state=campaigns", expect: [/Kampaně/, /Běží Víkend −20 % do 29\. 9\. 2026 0:00/, /Další: Black Friday od 27\. 11\. 2026 0:00/, /Otevřít kampaně/] },

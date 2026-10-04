@@ -1335,3 +1335,23 @@ test("MVP 5 (contracts O6, O9): a sale variant (its metafield `outlet` = true) g
   assert.match(liquid, /if no_outlet and variant\.metafields\['\$app:won_discounts'\]\.outlet\.value == true\s+assign path = 'none'/);
   assert.match(liquid, /if no_outlet and v\.metafields\['\$app:won_discounts'\]\.outlet\.value == true\s+assign v_cap = ''/);
 });
+
+// MVP 6.1 (plan docs/plans/2026-10-04-won-discounts-mvp6-1.md, L6): while a campaign's tier sets are on show the
+// storefront config carries them as `tiers` and the base ones beside them (`bt`, with the campaign's id `tc`) for
+// the SYNC to put back. The extension must read `tiers` alone — a block reading `bt` would show the base table
+// in a campaign, one preferring `tc`-anything would outlive the sync's take-back.
+test("MVP 6.1: no file of the theme extension reads the storefront config's `bt` or `tc` — `tiers` is what the page shows", async () => {
+  const { readdir } = await import("node:fs/promises");
+  const files: string[] = [];
+  for (const dir of ["blocks", "snippets", "assets"]) {
+    for (const name of await readdir(path.join(extensionRoot, dir)).catch(() => [] as string[])) {
+      if (/\.(liquid|js)$/.test(name)) files.push(`${dir}/${name}`);
+    }
+  }
+  assert.ok(files.includes(BLOCK) && files.includes(SCRIPT));
+  for (const file of files) {
+    const source = await read(file);
+    assert.doesNotMatch(source, /\bcfg\.(bt|tc)\b|\.bt\.(sets|global)\b|\[["'](bt|tc)["']\]/, `${file} reads the base sets or the campaign id of the storefront config`);
+  }
+  assert.match(await read(BLOCK), /cfg\.tiers\.sets\[set_id\]/);
+});

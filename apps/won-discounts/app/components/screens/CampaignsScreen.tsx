@@ -4,14 +4,16 @@
 //      on its own (C4); two campaigns never overlap (A8). Free (amber, §16): the form is shown locked (BILL-1);
 //   2. Kampaně — running, scheduled, ended, ended by hand: the window, what changes, "Vyzkoušet košík v době kampaně",
 //      "Upravit", "Ukončit hned" (the kill switch, any plan), "Smazat" (not while running).
-// Množstevní slevy and dárky run unchanged during a campaign (D1) — the screen says so.
+// MVP 6.1: a campaign also changes the breaks of quantity tier sets — only to the same or more (the server refuses
+// less); the table on the product page follows a minute after the start and goes back 7 minutes before the end.
+// Dárky run unchanged during a campaign — the screen says so.
 // Each action is its own small form; the server parses it (campaigns-admin.server.ts).
 
 import { Form } from "react-router";
 
 import { useT } from "../../i18n/context";
-import { CAMPAIGN_FIELD as F, CAMPAIGN_INTENT } from "../model/campaigns";
-import type { CampaignsActionResult, CampaignsScreenData, CampaignView, UiResult } from "../model/types";
+import { CAMPAIGN_FIELD as F, CAMPAIGN_INTENT, CAMPAIGN_TIER_ROWS } from "../model/campaigns";
+import type { CampaignsActionResult, CampaignsScreenData, CampaignTierChoice, CampaignTierRow, CampaignView, UiResult } from "../model/types";
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
 import { ProFrame } from "../shell/ProFrame";
@@ -45,7 +47,7 @@ function CampaignCard({ c, pro }: { c: CampaignView; pro: boolean }) {
         <s-text>
           {t(`campaign.status.${c.status}` as "campaign.status.running")} · {t("campaign.card.window", { start: c.startText, end: c.endText })}
         </s-text>
-        {c.overrides.length === 0 ? <RowNote>{t("campaign.card.noOverrides")}</RowNote> : null}
+        {c.overrides.length === 0 && c.tiers.length === 0 ? <RowNote>{t("campaign.card.noOverrides")}</RowNote> : null}
         {c.overrides.map((o) => (
           <RowNote key={o.ruleId}>
             {o.enabled === false
@@ -54,6 +56,9 @@ function CampaignCard({ c, pro }: { c: CampaignView; pro: boolean }) {
                 ? t(o.enabled ? "campaign.card.onValue" : "campaign.card.value", { rule: o.ruleName, value: o.valueText })
                 : t("campaign.card.on", { rule: o.ruleName })}
           </RowNote>
+        ))}
+        {c.tiers.map((x) => (
+          <RowNote key={x.setId}>{t("campaign.card.tier", { set: x.label, breaks: x.text })}</RowNote>
         ))}
         {c.unused > 0 ? <RowNote tone="attention">{t("campaign.card.unused", { n: c.unused })}</RowNote> : null}
         {c.finishing ? <RowNote>{t("campaign.card.finishing")}</RowNote> : null}
@@ -92,10 +97,55 @@ function CampaignCard({ c, pro }: { c: CampaignView; pro: boolean }) {
   );
 }
 
+/** Extra empty rows under a set's breaks, for a break only the campaign has. */
+const EXTRA_TIER_ROWS = 2;
+
+/** One quantity tier set in the form (MVP 6.1): tick it, then its breaks during the campaign. */
+function TierSetFields({ set, rows, used, disabled }: { set: CampaignTierChoice; rows: CampaignTierRow[]; used: boolean; disabled: boolean }) {
+  const { t } = useT();
+  const all: CampaignTierRow[] = [...rows, ...Array.from({ length: Math.max(0, Math.min(CAMPAIGN_TIER_ROWS - rows.length, EXTRA_TIER_ROWS)) }, () => ({ qty: "" }))];
+  return (
+    <s-box padding="small-300" border="base" borderRadius="base">
+      <s-stack direction="block" gap="small-300">
+        <s-checkbox name={F.tierUse} value={set.id} label={set.label} checked={boolAttr(used)} disabled={boolAttr(disabled)} />
+        <RowNote>{t("campaign.tiers.base", { breaks: set.baseText })}</RowNote>
+        {all.map((row, i) => (
+          <s-grid key={i} gridTemplateColumns="minmax(0, 1fr) minmax(0, 2fr)" gap="base" alignItems="start">
+            <s-number-field
+              name={`${F.tierQty}${set.id}.${i}`}
+              label={t(i < rows.length ? "campaign.tiers.qty" : "campaign.tiers.qtyExtra")}
+              value={row.qty}
+              min={1}
+              step={1}
+              inputMode="numeric"
+              disabled={boolAttr(disabled)}
+            />
+            {set.kind === "percent" ? (
+              <s-text-field name={`${F.tierPercent}${set.id}.${i}`} label={t("campaign.tiers.percent")} value={row.percent ?? ""} suffix="%" disabled={boolAttr(disabled)} />
+            ) : (
+              <s-stack direction="block" gap="small-300">
+                {set.currencies.map((cur) => (
+                  <s-text-field
+                    key={cur}
+                    name={`${F.tierAmount}${set.id}.${i}.${cur}`}
+                    label={t("campaign.tiers.amount", { currency: cur })}
+                    value={row.amount?.[cur] ?? ""}
+                    disabled={boolAttr(disabled)}
+                  />
+                ))}
+              </s-stack>
+            )}
+          </s-grid>
+        ))}
+      </s-stack>
+    </s-box>
+  );
+}
+
 export function CampaignsScreen(props: CampaignsScreenProps) {
   const tr = useT();
   const { t } = tr;
-  const { plan, result, campaigns, rules, editing, today, nowTime, timezone, configVersion, limits } = props;
+  const { plan, result, campaigns, rules, tierSets, editing, today, nowTime, timezone, configVersion, limits } = props;
   const pro = plan === "pro";
   const err = (field: string) => {
     if (!result || result.ok || result.reason !== "invalid" || !("errors" in result)) return undefined;
@@ -103,6 +153,7 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
     return e ? t(e.key, e.params) : undefined;
   };
   const ov = new Map((editing?.overrides ?? []).map((o) => [o.ruleId, o]));
+  const tv = new Map((editing?.tiers ?? []).map((x) => [x.setId, x]));
 
   const form = (
     <Form method="post" data-won-campaign-form>
@@ -188,6 +239,16 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
             );
           })}
           {err(F.use) ? <RowNote tone="attention">{err(F.use)}</RowNote> : null}
+        </s-stack>
+        <s-stack direction="block" gap="small-300" data-won-campaign-tiers>
+          <s-text>{t("campaign.tiers.title")}</s-text>
+          <RowNote>{t("campaign.tiers.hint")}</RowNote>
+          {tierSets.length === 0 ? <RowNote>{t("campaign.tiers.none")}</RowNote> : null}
+          {tierSets.map((set) => (
+            <TierSetFields key={set.id} set={set} rows={tv.get(set.id)?.rows ?? set.rows} used={tv.has(set.id)} disabled={!pro} />
+          ))}
+          {err(F.tierUse) ? <RowNote tone="attention">{err(F.tierUse)}</RowNote> : null}
+          {tierSets.length > 0 ? <RowNote>{t("campaign.tiers.timing")}</RowNote> : null}
         </s-stack>
         <RowNote>{t("campaign.scope")}</RowNote>
         <s-stack direction="inline" gap="small-300">

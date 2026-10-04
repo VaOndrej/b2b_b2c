@@ -15,7 +15,7 @@
 
 import { campaignTierSwitches, tierOverrideIssue } from "./campaign-tiers.ts";
 import type { CartCampaignInput } from "./cart.ts";
-import { isShopLocalDateTime, type Campaign, type DiscountRule, type ReadonlyDeep, type TierBreak, type WonDiscountsConfig } from "./config.ts";
+import { isShopLocalDateTime, type Campaign, type ConfigIssue, type DiscountRule, type ReadonlyDeep, type TierBreak, type WonDiscountsConfig } from "./config.ts";
 import { fnv1a } from "./config/sanitize-helpers.ts";
 import { sanitizeTierSet } from "./config/tiers.ts";
 import { liveCampaigns, selectCampaign } from "./function-config.ts";
@@ -134,7 +134,8 @@ export interface CampaignDraftError {
     | "campaign.error.tierSet"
     | "campaign.error.tierLess"
     | "campaign.error.tierKind"
-    | "campaign.error.tierEmpty";
+    | "campaign.error.tierEmpty"
+    | "campaign.error.tierBreaks";
   params?: Record<string, string | number>;
 }
 
@@ -200,7 +201,14 @@ export function validateCampaignDraft(
       errors.push({ field: "tiers", key: "campaign.error.tierSet" });
       break;
     }
-    const breaks = sanitizeTierSet({ ...set, breaks: t.breaks }, [], "draft")?.breaks ?? [];
+    // Anything the set's own sanitizer would change (a value that falls as the quantity grows, a percent over 100,
+    // an unreadable number) is refused, never silently repaired: the merchant sees what will run.
+    const issues: ConfigIssue[] = [];
+    const breaks = sanitizeTierSet({ ...set, breaks: t.breaks }, issues, "draft")?.breaks ?? [];
+    if (issues.length > 0) {
+      errors.push({ field: "tiers", key: "campaign.error.tierBreaks", params: { set: set.id } });
+      break;
+    }
     const issue = breaks.length === 0 ? ({ kind: "empty" } as const) : tierOverrideIssue(set, breaks);
     if (issue) {
       errors.push(

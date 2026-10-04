@@ -12,7 +12,8 @@
 //       whole minute) and lasting <for> minutes; writes <out>/campaign-window.json {start, end, startUtc, endUtc}.
 //   node …/campaign.mjs --remove [--live]       removes the E2E campaign (the seed's cleanup removes it too).
 //   node …/campaign.mjs --status                read-only: the live function_config's campaign + the shop time now.
-// Options: --out <dir> (default $WON_E2E_OUT or <tmp>/won-discounts-e2e) · --json. Needs the `campaign` seed
+// Options: --fixture rules|tiers (MVP 6.1: `tiers` = the campaign changes the seeded tier set's break, seed
+// `campaign-tiers`) · --out <dir> (default $WON_E2E_OUT or <tmp>/won-discounts-e2e) · --json. Needs the `campaign` seed
 // (seed-mvp1.mjs --profile campaign --live). Only the shared dev store; nothing but the stored config is written.
 import fs from "node:fs";
 import os from "node:os";
@@ -20,6 +21,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { register } from "tsx/esm/api";
 import { CAMPAIGN_ID, CAMPAIGN_RULE_ID, e2eCampaign } from "./campaign-fixture.mjs";
+import { CAMPAIGN_TIERS_SET_ID, e2eTierCampaign } from "./campaign-tiers-fixture.mjs";
 
 register();
 
@@ -33,10 +35,13 @@ const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(name);
 const option = (name) => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : undefined);
 for (const arg of argv) {
-  if (arg.startsWith("--") && !["--schedule", "--remove", "--status", "--in", "--for", "--live", "--out", "--json"].includes(arg)) throw new Error(`unknown argument ${arg}`);
+  if (arg.startsWith("--") && !["--schedule", "--remove", "--status", "--in", "--for", "--fixture", "--live", "--out", "--json"].includes(arg)) throw new Error(`unknown argument ${arg}`);
 }
 const live = flag("--live");
 const mode = flag("--remove") ? "remove" : flag("--status") ? "status" : "schedule";
+// --fixture rules (default, MVP 6: the rule at 30 %) | tiers (MVP 6.1: the tier set's break at 20 %, seed campaign-tiers).
+const FIXTURE = option("--fixture") ?? "rules";
+if (!["rules", "tiers"].includes(FIXTURE)) throw new Error("--fixture: rules | tiers");
 const inMinutes = Number(option("--in") ?? 2);
 const forMinutes = Number(option("--for") ?? 4);
 if (!Number.isInteger(inMinutes) || inMinutes < 1 || !Number.isInteger(forMinutes) || forMinutes < 1) throw new Error("--in / --for: whole minutes ≥ 1");
@@ -80,7 +85,12 @@ try {
     console.log(`shop time ${shop.now} (${shop.timezone}); live campaign ${shop.live?.campaignId ?? "none"}${shop.live?.window ? ` ${shop.live.window.start} → ${shop.live.window.end}` : ""}`);
   } else {
     const loaded = await loadConfig(db, STORE);
-    if (!loaded.exists || !loaded.config.modules.codes.rules.some((r) => r.id === CAMPAIGN_RULE_ID)) throw new Error("no campaign seed: run seed-mvp1.mjs --profile campaign --live first");
+    const seeded =
+      loaded.exists &&
+      (FIXTURE === "tiers" ? loaded.config.modules.tiers.sets.some((set) => set.id === CAMPAIGN_TIERS_SET_ID) : loaded.config.modules.codes.rules.some((r) => r.id === CAMPAIGN_RULE_ID));
+    // --remove works without the seed too (a cleanup after a failed run).
+    if (!seeded && mode === "schedule") throw new Error(`no campaign seed: run seed-mvp1.mjs --profile ${FIXTURE === "tiers" ? "campaign-tiers" : "campaign"} --live first`);
+    if (!loaded.exists) throw new Error("no stored config");
     const others = loaded.config.campaigns.filter((c) => c.id !== CAMPAIGN_ID);
     let campaigns = others;
     if (mode === "schedule") {
@@ -88,7 +98,7 @@ try {
       const nextMinute = `${addLocalMinutes(shop.now, 1).slice(0, 16)}:00`;
       const start = addLocalMinutes(nextMinute, inMinutes - 1);
       const end = addLocalMinutes(start, forMinutes);
-      campaigns = [...others, e2eCampaign(start, end)];
+      campaigns = [...others, FIXTURE === "tiers" ? e2eTierCampaign(CAMPAIGN_ID, start, end) : e2eCampaign(start, end)];
       out.window = { start, end, startUtc: shopLocalToUtc(start, shop.timezone).toISOString(), endUtc: shopLocalToUtc(end, shop.timezone).toISOString(), timezone: shop.timezone };
       console.log(`shop time ${shop.now} (${shop.timezone}) → campaign ${CAMPAIGN_ID} ${start} → ${end} (UTC ${out.window.startUtc} → ${out.window.endUtc})`);
     } else {

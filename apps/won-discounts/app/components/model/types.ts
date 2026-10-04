@@ -808,6 +808,38 @@ export interface CampaignOverrideView {
   amount?: Record<string, string>;
 }
 
+/** One break row of a tier set in the campaign form: the quantity and the value as typed. */
+export interface CampaignTierRow {
+  qty: string;
+  /** Percent sets. */
+  percent?: string;
+  /** Amount sets: per currency, major units. */
+  amount?: Record<string, string>;
+}
+
+/** A quantity tier set the campaign form can change (MVP 6.1). */
+export interface CampaignTierChoice {
+  id: string;
+  /** "Celý obchod" / "Vybrané produkty a kolekce (3)" — a set has no name. */
+  label: string;
+  kind: "percent" | "amount";
+  currencies: string[];
+  /** The set's own breaks, worded ("od 2 ks −10 %, od 5 ks −15 %"). */
+  baseText: string;
+  /** The set's own breaks as rows: the form's defaults. */
+  rows: CampaignTierRow[];
+}
+
+/** A tier set as a campaign runs it (an override that applies). */
+export interface CampaignTierView {
+  setId: string;
+  label: string;
+  /** The campaign's breaks, worded. */
+  text: string;
+  /** Form values for editing. */
+  rows: CampaignTierRow[];
+}
+
 export interface CampaignView {
   id: string;
   name: string;
@@ -818,7 +850,9 @@ export interface CampaignView {
   start: { date: string; time: string };
   end: { date: string; time: string };
   overrides: CampaignOverrideView[];
-  /** Stored tier set / gift tier overrides: not applied in this version (D1). */
+  /** MVP 6.1: the tier sets the campaign changes (overrides that apply). */
+  tiers: CampaignTierView[];
+  /** Stored overrides that do not apply: gift tiers (never), tier sets whose breaks give less than the base. */
   unused: number;
   /** Free: running since the downgrade, it finishes (A6). */
   finishing: boolean;
@@ -835,6 +869,8 @@ export interface CampaignsScreenData {
   timezone: string | null;
   campaigns: CampaignView[];
   rules: CampaignRuleChoice[];
+  /** MVP 6.1: the quantity tier sets a campaign can change (the sets a product can reach). */
+  tierSets: CampaignTierChoice[];
   /** The campaign the form edits (?edit=<id>), when it can be edited. */
   editing: CampaignView | null;
   limits: { campaigns: number; maxDays: number; minLeadMinutes: number };

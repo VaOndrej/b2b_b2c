@@ -71,7 +71,7 @@ import { planTryCart } from "./integration/try-cart-plan";
 import { outletOverviewOf, outletRunView } from "./integration/outlet-admin.server";
 import { OUTLET_FIELD } from "../components/model/outlet";
 import { CAMPAIGN_FIELD } from "../components/model/campaigns";
-import { campaignRuleChoices, campaignsOverviewOf, campaignView, type CampaignViewOptions } from "./integration/campaigns-admin.server";
+import { campaignRuleChoices, campaignsOverviewOf, campaignTierChoices, campaignView, type CampaignViewOptions } from "./integration/campaigns-admin.server";
 import { OUTLET_LIMITS } from "@won/core/discounts/outlet";
 
 export function isDevHarnessEnabled(): boolean {
@@ -1392,6 +1392,9 @@ const DEV_CAMPAIGNS: Campaign[] = [
     overrides: [
       { ruleId: "dev-fixture-3", patch: { value: { kind: "fixed", amount: { CZK: 400_00, EUR: 16_00 } } } },
       { ruleId: "dev-fixture-4", patch: { enabled: true } },
+      // MVP 6.1: the whole-store set's breaks in the campaign (more generous than DEV_TIERS_FIXTURE's 10 / 15 / 20 %).
+      { ruleId: "global", patch: { breaks: [{ minQty: 3, percent: 15 }, { minQty: 5, percent: 20 }, { minQty: 10, percent: 30 }] } },
+      // An override of something that is gone: counted as unused.
       { ruleId: "dev-tier-set", patch: { breaks: [{ minQty: 2, percent: 20 }] } },
     ],
     killed: false,
@@ -1404,7 +1407,7 @@ const DEV_CAMPAIGNS: Campaign[] = [
 export function devCampaignsScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; edit: string | null }): CampaignsScreenData {
   const campaigns = opts.state === "empty" ? [] : DEV_CAMPAIGNS;
   const rules = new Map(DEV_OVERVIEW_FIXTURE.modules.codes.rules.map((r) => [r.id, r]));
-  const viewOpts: CampaignViewOptions = { locale: opts.locale, now: DEV_CAMPAIGN_NOW, rules, finishing: new Set(opts.state === "finishing" ? ["weekend"] : []), plan: opts.plan };
+  const viewOpts: CampaignViewOptions = { locale: opts.locale, now: DEV_CAMPAIGN_NOW, rules, tiers: DEV_TIERS_FIXTURE.modules.tiers, finishing: new Set(opts.state === "finishing" ? ["weekend"] : []), plan: opts.plan };
   const views = campaigns.map((c) => campaignView(c, viewOpts));
   return {
     plan: opts.plan,
@@ -1414,6 +1417,7 @@ export function devCampaignsScreen(opts: { plan: "free" | "pro"; state: string |
     timezone: DEV_TIMEZONE,
     campaigns: views,
     rules: campaignRuleChoices(DEV_OVERVIEW_FIXTURE, opts.locale),
+    tierSets: campaignTierChoices(DEV_TIERS_FIXTURE, opts.locale),
     editing: opts.edit ? (views.find((v) => v.id === opts.edit && (v.status === "running" || v.status === "scheduled")) ?? null) : null,
     limits: { campaigns: CONFIG_LIMITS.campaigns, maxDays: CAMPAIGN_LIMITS.maxDays, minLeadMinutes: CAMPAIGN_LIMITS.minLeadMinutes },
   };

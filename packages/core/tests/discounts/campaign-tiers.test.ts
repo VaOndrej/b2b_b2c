@@ -271,12 +271,15 @@ test("draft errors of tier overrides: unknown set, less generous (quantity and c
   assert.deepEqual(errors(undefined), [{ field: "overrides", key: "campaign.error.empty", params: undefined }]);
 });
 
-test("a draft's breaks go through the tier sanitizer: junk values never reach the stored campaign", () => {
-  const r = validateCampaignDraft(
-    draft({ tiers: [{ setId: "g", breaks: [{ minQty: 2, percent: 2000 }, { minQty: 5, percent: 1 }] as TierBreak[] }] }),
-    configOf([]),
-    { now: NOW },
-  );
-  assert.ok(r.ok, JSON.stringify(r));
-  assert.deepEqual(r.campaign.overrides[0]!.patch.breaks, [{ minQty: 2, percent: 100 }], "clamped to 100 %, the falling break dropped");
+test("a draft the set's own sanitizer would change is refused, never silently repaired: a falling value, a percent over 100, junk", () => {
+  const key = (breaks: unknown[]) => {
+    const r = validateCampaignDraft(draft({ tiers: [{ setId: "g", breaks: breaks as TierBreak[] }] }), configOf([]), { now: NOW });
+    return r.ok ? "ok" : `${r.errors[0]!.key} ${JSON.stringify(r.errors[0]!.params)}`;
+  };
+  assert.equal(key([{ minQty: 2, percent: 20 }, { minQty: 5, percent: 12 }]), 'campaign.error.tierBreaks {"set":"g"}', "12 % from 5 items would be dropped (20 % from 2 covers it)");
+  assert.equal(key([{ minQty: 2, percent: 2000 }]), 'campaign.error.tierBreaks {"set":"g"}');
+  assert.equal(key([{ minQty: Number.NaN, percent: 20 }]), 'campaign.error.tierBreaks {"set":"g"}');
+  assert.equal(key([{ minQty: 2, percent: Number.NaN }]), 'campaign.error.tierBreaks {"set":"g"}');
+  assert.equal(key([{ minQty: 2, percent: 20 }, { minQty: 2, percent: 30 }]), 'campaign.error.tierBreaks {"set":"g"}', "the same quantity twice");
+  assert.equal(key([{ minQty: 5, percent: 25 }, { minQty: 2, percent: 20 }]), "ok", "any order");
 });

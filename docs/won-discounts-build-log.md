@@ -12,7 +12,15 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > technická pravidla, zakázané věci). **MVP N+1 nezačíná, dokud MVP N není finální** (brána, živé E2E A+B,
 > vizuální QA, audit s opravenými nálezy, checkpoint, push).
 
-- **Aktivní zadání:** docs/won-discounts/prompt-mvp7.md. Krok: 6.1-B0. (MVP 6.1 kampaně + úrovně, pak MVP 7; rozhodnutí Ondřeje 2026-10-04 jsou v zadání: 5b odložit, kampaně i úrovně / dárky ne, JS rozpočet za stránku, ceny na kartách Horizon + Dawn automaticky, analytika s mocky, billing schválí. Předchozí zadání prompt-mvp5-dokonceni-mvp6.md hotové: 5a ✅, MVP 6 ✅, 5b odloženo.)
+- **Aktivní zadání:** docs/won-discounts/prompt-mvp7.md. Krok: 6.1 brána + živé E2E.
+  Plán `docs/plans/2026-10-04-won-discounts-mvp6-1.md` (L1–L10, E1–E5, výsledek B0). Hotovo a commitnuto: core
+  (`fc949f1`), Rust + B0 (`d7d6f63`, max 99,90 %, 0 DIFF, Wasm 249 111 B), sync (`dc28dcb`, předstih návratu
+  tabulky 7 min). Hotovo, necommitnuto (čeká na bránu `gate-61-a` ve scratchpadu): admin (sekce „Množstevní slevy
+  v kampani“, screenshoty `evidence/mvp6-1/admin/`), docs, E2E profil `campaign-tiers`
+  (`scripts/e2e/campaign-tiers-fixture.mjs`, `campaign.mjs --fixture tiers`, spec `storefront.campaign-tiers`).
+  Další kroky: commit admin + docs + E2E → `shopify app dev` Free → `profile.sh campaign-tiers mvp6-1/e2e-A free`
+  + regrese `campaign`, `tiers` → restart Pro → `campaign-tiers`, `campaign`, `tiers-pro` → audit (sekce 6.1 v
+  `audit-mvp6.md`) → checkpoint → push → MVP 7 (plán s kontrakty napřed).
 - **Předchozí zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md — **hotové až na živé E2E objednávek**
   (checkpoint MVP 5 níž). **Zastaveno, čeká na Ondřeje (F-O1):** povolit appce přístup k chráněným datům zákazníků
   (Partner Dashboard → Apps → won-discounts → API access requests → Protected customer data access → Request access →

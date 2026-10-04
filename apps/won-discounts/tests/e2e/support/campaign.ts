@@ -27,9 +27,12 @@ function run(args: string[]): Promise<string> {
   });
 }
 
-/** Schedule the E2E campaign `inMinutes` ahead for `forMinutes` (live); its window. */
-export async function scheduleCampaign(inMinutes: number, forMinutes: number): Promise<CampaignWindow> {
-  await run(["--schedule", "--in", String(inMinutes), "--for", String(forMinutes), "--live"]);
+/**
+ * Schedule the E2E campaign `inMinutes` ahead for `forMinutes` (live); its window. `fixture`: "rules" (MVP 6, the
+ * rule at 30 %) or "tiers" (MVP 6.1, the tier set's break at 20 %).
+ */
+export async function scheduleCampaign(inMinutes: number, forMinutes: number, fixture: "rules" | "tiers" = "rules"): Promise<CampaignWindow> {
+  await run(["--schedule", "--in", String(inMinutes), "--for", String(forMinutes), "--fixture", fixture, "--live"]);
   return JSON.parse(await readFile(path.join(OUT_DIR, "campaign-window.json"), "utf8")) as CampaignWindow;
 }
 

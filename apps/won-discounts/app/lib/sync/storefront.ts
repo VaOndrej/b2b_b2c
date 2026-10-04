@@ -232,8 +232,10 @@ export async function takeBackCampaignTiers(args: CampaignOffArgs): Promise<void
   }
   if (!installation?.id || !live || typeof live.bt !== "object" || live.bt === null) return;
   if (live.tc === args.next.tc && canonicalJson(live.tiers) === canonicalJson(args.next.tiers)) return;
-  const { bt, tc: _tc, ...rest } = live;
-  const json = JSON.stringify({ ...rest, tiers: bt });
+  const base: Record<string, unknown> = { ...live, tiers: live.bt };
+  delete base.bt;
+  delete base.tc;
+  const json = JSON.stringify(base);
   let refused: string | null;
   try {
     const data: { metafieldsSet: { userErrors: UserErrorLike[] } } = await transport.call("storefrontConfigSet", {

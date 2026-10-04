@@ -9,9 +9,9 @@ app_version: MVP6
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-10-02
-keywords: [campaign, black friday, cyber monday, time window, start and end, kill switch, overlap, schedule discounts, kampaň, kampaně, černý pátek]
-summary: A named time window that changes your discounts and codes for a while; it starts and ends by itself, at the exact minute, for every discount at once.
+updated: 2026-10-04
+keywords: [campaign, quantity discounts in a campaign, tier table during a campaign, black friday, cyber monday, time window, start and end, kill switch, overlap, schedule discounts, kampaň, kampaně, černý pátek]
+summary: A named time window that changes your discounts, codes and quantity discounts for a while; it starts and ends by itself, at the exact minute, for every discount at once.
 ---
 
 # Campaigns
@@ -33,11 +33,28 @@ nothing to undo.
 A discount that should only exist during the campaign: create it switched **off**
 and let the campaign switch it **on**.
 
-## What a campaign changes (this version)
+## What a campaign changes
 
 A campaign changes **discounts and codes** (Discounts & codes: percent and amount
-discounts, free shipping, codes). **Quantity tiers and gifts run unchanged** during
-a campaign. Margin protection applies inside a campaign too.
+discounts, free shipping, codes) and **quantity discounts**: for a set of quantity
+breaks you tick, the campaign has its own breaks. **Gifts run unchanged** during a
+campaign. Margin protection applies inside a campaign too.
+
+### Quantity discounts in a campaign
+
+A campaign can only **improve** a set's breaks: for every quantity the campaign
+gives the same or a higher discount than the set usually does, in the same kind
+(a percent stays a percent, an amount per item stays an amount, in every currency
+the set has). The admin refuses anything less and says from which quantity. If
+you later raise the usual breaks above the campaign's, the campaign's breaks stop
+applying and its card says so.
+
+Checkout gives the campaign's breaks from the first second of the campaign to its
+end. **The table on the product page** switches to them **a minute after the
+start** and goes back to the usual breaks **7 minutes before the end**. In those
+minutes the page shows the usual (lower) breaks while checkout already or still
+gives the campaign's, so the page never promises more than checkout gives. A
+campaign shorter than 8 minutes does not switch the table at all.
 
 ## Rules
 

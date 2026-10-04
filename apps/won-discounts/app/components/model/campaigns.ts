@@ -1,9 +1,11 @@
 // Kampaně (MVP 6, Pro; contract K7) — the form model shared by the screen and the server (SEC-1: the action parses
 // exactly these fields). A campaign: a name, a window in the shop's time (a date and HH:MM for each end) and, per
-// discount rule, an override (D2): switch it on / off during the campaign and / or give it another value. Core
-// validateCampaignDraft checks the draft (window, overlap, rules, values).
+// discount rule, an override (D2): switch it on / off during the campaign and / or give it another value; MVP 6.1
+// (L8): per quantity tier set, its breaks during the campaign (rows of a quantity and a value). Core
+// validateCampaignDraft checks the draft (window, overlap, rules, values, breaks at least as generous as the base).
 
-import type { CampaignDraft, CampaignDraftField, CampaignDraftOverride } from "@won/core/discounts/campaigns";
+import type { CampaignDraft, CampaignDraftField, CampaignDraftOverride, CampaignDraftTiers } from "@won/core/discounts/campaigns";
+import type { TierBreak } from "@won/core/discounts/config";
 
 import type { FormDataLike } from "./rule-form";
 
@@ -30,7 +32,16 @@ export const CAMPAIGN_FIELD = {
   amount: "cp.amount.",
   /** MVP 6.1: one value per tier set the campaign changes (its id). */
   tierUse: "cp.tierUse",
+  /** `cp.tq.<setId>.<row>`: the row's quantity ("" = the row is not used). */
+  tierQty: "cp.tq.",
+  /** `cp.tp.<setId>.<row>`: a percent set's value in the campaign. */
+  tierPercent: "cp.tp.",
+  /** `cp.ta.<setId>.<row>.<CUR>`: an amount set's value per item in major units. */
+  tierAmount: "cp.ta.",
 } as const;
+
+/** Rows a set's breaks take in the form (core CONFIG_LIMITS.breaksPerTierSet). */
+export const CAMPAIGN_TIER_ROWS = 10;
 
 /** The form fields a core draft error lands on. */
 export const CAMPAIGN_ERROR_FIELD: Record<CampaignDraftField, string> = {
@@ -65,6 +76,7 @@ export function minorFromInput(text: string, exponent = 2): number | null {
 export function readCampaignForm(
   form: FormDataLike,
   kinds: ReadonlyMap<string, { kind: string; currencies: readonly string[] }>,
+  sets: ReadonlyMap<string, { kind: "percent" | "amount"; currencies: readonly string[]; exponent?: (currency: string) => number }> = new Map(),
 ): { intent: string; id: string | null; draft: CampaignDraft } {
   const text = (name: string) => String(form.get(name) ?? "").trim();
   const id = text(CAMPAIGN_FIELD.id) || null;
@@ -91,6 +103,33 @@ export function readCampaignForm(
     }
     overrides.push(o);
   }
+  // MVP 6.1: the ticked tier sets' rows. A row without a value is not used; an unreadable quantity or value stays
+  // an impossible one (NaN / −1), which core refuses on the set's field.
+  const tiers: CampaignDraftTiers[] = [];
+  for (const setId of [...new Set(form.getAll(CAMPAIGN_FIELD.tierUse).map(String))].slice(0, 50)) {
+    const set = sets.get(setId);
+    const breaks: TierBreak[] = [];
+    for (let row = 0; set && row < CAMPAIGN_TIER_ROWS; row += 1) {
+      const qtyText = text(`${CAMPAIGN_FIELD.tierQty}${setId}.${row}`);
+      const minQty = /^\d{1,5}$/.test(qtyText) ? Number(qtyText) : Number.NaN;
+      if (set.kind === "percent") {
+        const p = text(`${CAMPAIGN_FIELD.tierPercent}${setId}.${row}`);
+        if (p === "") continue;
+        breaks.push({ minQty, percent: /^\d{1,3}(?:[.,]\d{1,2})?$/.test(p) ? Number(p.replace(",", ".")) : Number.NaN });
+      } else {
+        const amountOff: Record<string, number> = {};
+        let any = false;
+        for (const currency of set.currencies) {
+          const raw = text(`${CAMPAIGN_FIELD.tierAmount}${setId}.${row}.${currency}`);
+          if (raw === "") continue;
+          any = true;
+          amountOff[currency] = minorFromInput(raw, set.exponent?.(currency) ?? 2) ?? -1;
+        }
+        if (any) breaks.push({ minQty, amountOff });
+      }
+    }
+    tiers.push({ setId, breaks });
+  }
   return {
     intent: text(CAMPAIGN_FIELD.intent),
     id,
@@ -100,6 +139,7 @@ export function readCampaignForm(
       start: localDateTime(text(CAMPAIGN_FIELD.startDate), text(CAMPAIGN_FIELD.startTime)),
       end: localDateTime(text(CAMPAIGN_FIELD.endDate), text(CAMPAIGN_FIELD.endTime)),
       overrides,
+      ...(tiers.length > 0 ? { tiers } : {}),
     },
   };
 }
