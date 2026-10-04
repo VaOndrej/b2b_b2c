@@ -12,32 +12,24 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > technická pravidla, zakázané věci). **MVP N+1 nezačíná, dokud MVP N není finální** (brána, živé E2E A+B,
 > vizuální QA, audit s opravenými nálezy, checkpoint, push).
 
-- **Aktivní zadání:** docs/won-discounts/prompt-mvp7.md. Krok: 6.1 živé E2E (fáze A hotová, zbývá fáze B Pro) +
-  rozpracované MVP 7 (plán `docs/plans/2026-10-04-won-discounts-mvp7.md`, M1–M12, commitnutý).
-  - **6.1 commitnuto:** core `fc949f1`, Rust + B0 `d7d6f63` (max 99,90 %, 0 DIFF, Wasm 249 111 B), sync `dc28dcb`
-    (tabulka kampaňová start + 60 s až konec − 420 s), admin + docs + E2E `07995a3`. Brána `gate-61-a` zelená.
-  - **6.1 E2E fáze A (Free, scratchpad `runs/mvp6-1-A`, evidence `evidence/mvp6-1/e2e-A`):** `campaign-tiers`
-    ✓ Horizon ✓ Dawn (3 + 3, tabulka i košík 10 % celou dobu), `tiers` ✓ ✓ (7 + 7), `campaign` Dawn ✓, Horizon:
-    spec kampaně ✓, ale 2 testy embedu dostaly 401 z theme dev (přechodné?) → běží opakování `runs/mvp6-1-A2`.
-  - **Další kroky 6.1:** vyhodnotit `mvp6-1-A2` → zastavit app dev → `prisma generate` + `prisma:migrate:deploy`
-    (nové modely MVP 7 už jsou ve schématu) → restart `NODE_ENV=development WON_DEV_PLAN=pro npm run dev -w
-    won-discounts` → `profile.sh campaign-tiers mvp6-1-B pro`, `campaign`, `tiers-pro` (přes `margin-collection.mjs
-    --fixture tiers`) → audit (sekce 6.1 v `audit-mvp6.md`) → checkpoint 6.1 → push.
-  - **MVP 7 rozpracováno, NEcommitnuto (nové soubory, psané během E2E; typecheck projde až po `prisma generate`):**
-    `app/lib/billing.server.ts` + `tests/lib/billing.test.ts` (M1, dotazy ověřené Shopify MCP);
-    `app/lib/analytics/{order-facts,analytics.server}.ts` + testy (M4); `app/lib/integration/uninstall-prep.server.ts`
-    + test (M3); `scripts/activate-orders.mjs` + test (M5, jeden odběr → `/webhooks/outlet`);
-    `packages/core/src/discounts/scope-css.ts` + test (M7); `scripts/gen-docs-index.ts`, `export-docs.ts`,
-    `tests/docs/docs-corpus.test.ts`, `docs/index.generated.md`, `docs/dist/corpus.jsonl` (M9; po změně docs
-    `npm run docs:gen -w won-discounts`); Prisma `ShopEntitlement`, `OrderDiscountFact` + migrace
-    `20261004120000_billing_analytics`; Postgres: `scripts/make-postgres-schema.mjs`, `prisma/postgres/**`,
-    `scripts/test-postgres.mjs`, `tests/postgres/postgres.pgtest.ts` (`npm run test:postgres` 5/5 ✓ na lokálním
-    Dockeru), `Dockerfile` (+ `Dockerfile.dockerignore`), `fly.toml` (health `/healthz` — route ještě chybí),
-    `docker-compose.yml`, `DEPLOY.md` (M10; `docker build` ještě neproběhl).
-  - **MVP 7 zbývá:** napojit billing (plan.server → `storedPlan`, Tarif, webhook `app_subscriptions/update` do
-    toml, scheduler `billing.reconcile`), Tarif + odinstalace UI, analytika (webhook v `/webhooks/outlet`,
-    obrazovka Přehledy, karta na Přehledu), onboarding 4–5, vzhled Pro + texty + návod pro AI, karty (M8),
-    perf contract per stránka, docs stránky, BFS, brána, E2E, audit, roadmapa, checkpoint, report.
+- **Aktivní zadání:** docs/won-discounts/prompt-mvp7.md. **MVP 6.1 uzavřené ✅** (checkpoint níž). Krok: MVP 7
+  (plán `docs/plans/2026-10-04-won-discounts-mvp7.md`, M1–M12).
+  - **MVP 7 hotovo a commitnuto:** billing M1 + downgrade M2 + odinstalace M3 + analytika M4 + aktivace objednávek
+    M5 (`744868a`), Postgres + Docker + Fly + DEPLOY + docs corpus + nápověda (`c433af3`, `npm run test:postgres`
+    5/5 ✓), onboarding 4–5 + rozpočet JS za typ stránky (`30ec0a3`). `shopify.app.toml` má navíc jen
+    `app_subscriptions/update` (app dev konfiguraci přijal).
+  - **MVP 7 rozpracováno, NEcommitnuto:** `packages/core/src/discounts/custom-look.ts` + test (M7, hotové, zelené),
+    `card-tier.ts` + test (M8; property test čeká na `cards: 1` ve storefront configu), generovaný
+    `docs/reference/storefront-contract.generated.md` (návod pro AI) + úprava `scripts/gen-docs.ts`; koncepty
+    extension ve scratchpadu `ext-draft/` (`won-card-tier.liquid`, `card_tiers.liquid`, `won-discounts-cards.js`)
+    — **do `extensions/` jen při zastaveném app dev**.
+  - **MVP 7 zbývá:** M7 config `storefront.custom` (sanitizer, gate Free, storefront config `appearance.css`,
+    embed vypíše `<style>`), admin Vzhled Pro (proměnné + CSS + „Zkopírovat zadání pro AI“), editor textů +
+    odmítnutí storefront configu > 128 000 B při uložení; M8 `cards: 1`, snippet + blok + embed + JS + přepínač
+    BETA v adminu; M11 BFS dokument; M12 dluh (formát ceny, mezera V1); `docker build`; **billing naživo čeká na
+    Ondřeje** (schválit testovací předplatné: otevřít appku na dev storu → Tarif → „Vyzkoušet Pro na 14 dní
+    zdarma“ → na stránce Shopify „Approve“; bez `WON_DEV_PLAN`); brána; E2E Free + Pro obě témata + regrese
+    MVP 1–6.1; vizuální QA; audit `audits/audit-mvp7.md`; roadmapa `Shipped`; checkpoint; push; závěrečný report.
 - **Předchozí zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md — **hotové až na živé E2E objednávek**
   (checkpoint MVP 5 níž). **Zastaveno, čeká na Ondřeje (F-O1):** povolit appce přístup k chráněným datům zákazníků
   (Partner Dashboard → Apps → won-discounts → API access requests → Protected customer data access → Request access →
@@ -285,6 +277,52 @@ pro zvednutí stropu 550 B; ve Wasm zbývá ~2,8 kB; formát ceny v bloku vs. t�
 | C6 | kód při přesunu | rozhodnuto: záloha → smazání → vytvoření ve Won | `rozhodnuti.md` |
 
 ## Checkpointy MVP
+
+### MVP 6.1 — Kampaně mění i množstevní slevy ✅ (badge zůstává `Beta`)
+
+Plán `docs/plans/2026-10-04-won-discounts-mvp6-1.md` (L1–L10, E1–E5), audit `audits/audit-mvp6.md` (sekce 6.1),
+evidence `evidence/mvp6-1/`. Commity `fc949f1` (core), `d7d6f63` (Rust + B0), `dc28dcb` (sync), `07995a3` (admin +
+docs + E2E), `fc9567a` (oprava z živého E2E).
+
+**Hotové a ověřené**
+- **B0** (stop-pravidlo předem, 19 920 běhů na buildu 6.1): základ 99,83 %, živá kampaň `retarget` **99,90 %**,
+  sady kampaně 98,77 %, sady + `retarget` 99,31 %; 0 ≥ 100 %, 0 DIFF → bez nové meze. Rezerva živé kampaně
+  **0,10 bodu**, Wasm **249 111 B** (+3 614 B), dotazy 30/30.
+- **Core + Rust**: přepis sady smí úrovně jen zlepšit (pro každé množství a měnu, stejný druh slevy); živá kampaň
+  čte `campaigns[0].tiers` místo `modules.tiers` (nikdy obojí), každá část ≤ 550 B; přepis, který nevyhoví, se
+  nepošle (platí základ). Parita 1 200 košíků 0 rozdílů, dvojče unit testu, 3 fixtures.
+- **Sync + scheduler**: tabulka na PDP je kampaňová od `start + 60 s` do `konec − 420 s` (hranice
+  `campaignBoundary`), před zápisem configu, který kampaň ruší nebo mění, se na web vrátí základ
+  (`storefront_config.campaign_off`). Rozšíření tématu beze změny (čte jen `tiers`).
+- **Admin**: sekce „Množstevní slevy v kampani“ (řádky množství + hodnota, chyba u pole s množstvím a měnou),
+  karta kampaně, cs + en, harness, screenshoty 390/1440 `evidence/mvp6-1/admin/`. Docs: koncept, postup, support.
+- **Živé E2E** (`storefront.campaign-tiers`, okno 12 min, plánuje spec): Free ✓ Horizon ✓ Dawn (10 % celou dobu);
+  Pro ✓ Horizon ✓ Dawn — košík 20 % od startu, tabulka 20 % ~2 min po startu, pokladna Bogus 16,00 Kč místo
+  20,00 Kč, tabulka zpět 7 min před koncem (košík dál 20 %), po konci 10 %; v každém čtení tabulka ≤ košík.
+  Regrese: Free `tiers` 7 + 7, `campaign` 3 + 3; Pro `campaign` 3 + 3, `tiers-pro` 5 + 5 — vše ✓ ✓, úklid +
+  `verify-clean` exit 0.
+- **Audit**: 0 P0; **P1 T1** (produkční wiring zahazoval kampaň pro storefront config — našlo živé E2E) a P2 T2–T4
+  opravené s testy; P3 T5–T8 přijaté.
+
+**Brána** `gate-61-a` (před opravou `fc9567a`): core 855 + testing 50 · guard 301 · unit node 1 282 + cargo 95 +
+vitest 563 · typecheck · lint · build · validate — zelená. Po opravě a vrstvách MVP 7 celý `test:unit` znovu
+(node 1 532 + cargo 95 + vitest 563 ✓ po odstranění `WON_DEV_PLAN` z textů). Úplná brána znovu na konci MVP 7.
+
+**Neověřeno**
+- Kill switch s kampaňovou tabulkou a doběh kampaně se sadami po downgradu naživo (jen testy).
+- Přesný okamžik přepnutí tabulky závisí na taktu scheduleru (naměřeno ~100–120 s po startu).
+
+**Self-audit (co jsem obešel / ošidil)**
+- Testy syncu a adminu jsem psal těsně před implementací, ne vždy je nejdřív pustil červené (sync: červené jen
+  chybějícím importem). Chybu wiringu T1 unit testy nechytily — doplněn test přes `productionSyncDeps`.
+- První běh Free regrese `campaign` měl 2 selhané testy embedu na Horizonu (401 z theme dev); opakování čisté.
+  První běh fáze B jsem přerušil (`pkill`) a smazal jeho složku se zálohou seedu → úklid bez zálohy přes
+  `seed-mvp1.mjs --cleanup` (dry-run napřed), `verify-clean` exit 0.
+- Během čekání na E2E 6.1 jsem psal nové soubory MVP 7 (plán MVP 7 byl commitnutý předem); kód 6.1 se tím neměnil,
+  fáze B ale běžela na HEAD s vrstvami MVP 7 (billing, analytika — bez vlivu na testované cesty, plán Pro přes
+  `WON_DEV_PLAN`).
+- `scripts/make-postgres-schema.mjs` a `test-postgres.mjs` volají `npx prisma` s vlastním `--schema` (pravidlo
+  repa říká používat npm skripty; ty neumí jiné schéma).
 
 ### MVP 6 — Kampaně (Pro) ✅ (badge zůstává `Beta`)
 

@@ -1,0 +1,109 @@
+{
+  "at": "2026-10-04T10:52:47.859Z",
+  "theme": "Dawn",
+  "small": {
+    "id": "gid://shopify/ProductVariant/48468678967537",
+    "price": 1500,
+    "pdp": {
+      "f": 715,
+      "k": "22b4f9e0"
+    },
+    "at3": {
+      "unitCents": 1350,
+      "rows": [
+        {
+          "min": 3,
+          "active": true,
+          "hidden": false,
+          "qty": "Od 3 ks",
+          "save": "−10 %",
+          "unit": "13,50 Kč/ks"
+        },
+        {
+          "min": 5,
+          "active": false,
+          "hidden": false,
+          "qty": "Od 5 ks",
+          "save": "−15 %",
+          "unit": "12,75 Kč/ks"
+        }
+      ],
+      "plan": 450
+    }
+  },
+  "large": {
+    "id": "gid://shopify/ProductVariant/48468679000305",
+    "price": 1800,
+    "pdp": null,
+    "switched": {
+      "event": {
+        "at": 1791111165820,
+        "variantId": 48468679000305,
+        "quantity": 1,
+        "count": 1,
+        "min": 0,
+        "unitCents": 1800
+      },
+      "exp": {
+        "unitCents": 1800,
+        "discount": 0
+      }
+    },
+    "at5": {
+      "unitCents": 1530,
+      "rows": [
+        {
+          "min": 3,
+          "active": false,
+          "hidden": false,
+          "qty": "Od 3 ks",
+          "save": "−10 %",
+          "unit": "16,20 Kč/ks"
+        },
+        {
+          "min": 5,
+          "active": true,
+          "hidden": false,
+          "qty": "Od 5 ks",
+          "save": "−15 %",
+          "unit": "15,30 Kč/ks"
+        }
+      ],
+      "plan": 1350
+    }
+  },
+  "events": [
+    {
+      "at": 1791111164924,
+      "variantId": 48468678967537,
+      "quantity": 1,
+      "count": 1,
+      "min": 0,
+      "unitCents": 1500
+    },
+    {
+      "at": 1791111165002,
+      "variantId": 48468678967537,
+      "quantity": 3,
+      "count": 3,
+      "min": 3,
+      "unitCents": 1350
+    },
+    {
+      "at": 1791111165820,
+      "variantId": 48468679000305,
+      "quantity": 1,
+      "count": 1,
+      "min": 0,
+      "unitCents": 1800
+    },
+    {
+      "at": 1791111165883,
+      "variantId": 48468679000305,
+      "quantity": 5,
+      "count": 5,
+      "min": 5,
+      "unitCents": 1530
+    }
+  ]
+}

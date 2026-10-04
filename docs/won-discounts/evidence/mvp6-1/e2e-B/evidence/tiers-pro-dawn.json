@@ -1,0 +1,473 @@
+{
+  "at": "2026-10-04T12:58:55.121Z",
+  "theme": "Dawn",
+  "profile": "tiers-pro",
+  "storefrontConfig": {
+    "v": 1,
+    "cv": "ee9e4196d00e3ec09b93086e5983ff29",
+    "tiers": {
+      "global": "e2e-tiers-global",
+      "sets": {
+        "e2e-tiers-col": {
+          "count": "cart",
+          "breaks": [
+            {
+              "min": 2,
+              "pct": 20
+            }
+          ]
+        },
+        "e2e-tiers-global": {
+          "count": "product",
+          "breaks": [
+            {
+              "min": 3,
+              "pct": 10
+            },
+            {
+              "min": 5,
+              "pct": 15
+            }
+          ]
+        }
+      }
+    },
+    "margin": {
+      "on": true,
+      "max": 30,
+      "k": "22b4f9e0",
+      "cur": "CZK"
+    },
+    "appearance": {
+      "preset": "default"
+    },
+    "texts": {}
+  },
+  "refs": {
+    "won-e2e-simple-a": {},
+    "won-e2e-simple-b": {
+      "ruleIds": [],
+      "variantRuleIds": {},
+      "tierRef": "e2e-tiers-col"
+    },
+    "won-e2e-spare": {
+      "ruleIds": [],
+      "variantRuleIds": {},
+      "tierRef": "e2e-tiers-col"
+    }
+  },
+  "pdp": {
+    "alone": {
+      "initial": {
+        "state": "ready",
+        "hidden": false,
+        "setId": "e2e-tiers-col",
+        "countMode": "cart",
+        "preset": "default",
+        "heading": "Množstevní sleva",
+        "rows": [
+          {
+            "min": 2,
+            "active": false,
+            "hidden": false,
+            "qty": "Od 2 ks",
+            "save": "−20 %",
+            "unit": "9,60 Kč/ks"
+          }
+        ],
+        "liveUnitCents": 1200,
+        "liveText": "1 ks za 12,00 Kč (12,00 Kč/ks)",
+        "next": {
+          "hidden": false,
+          "text": "Ještě 1 ks a zaplatíte 9,60 Kč/ks."
+        },
+        "data": {
+          "v": 1,
+          "product": 9692429091057,
+          "set": "e2e-tiers-col",
+          "count": "cart",
+          "cur": "CZK",
+          "sc": "CZK",
+          "ms": "1.234.567,89 Kč",
+          "fmt": "{{amount_with_comma_separator}} Kč",
+          "lang": "cs",
+          "sel": 48468678934769,
+          "breaks": [
+            {
+              "min": 2,
+              "pct": 20
+            }
+          ],
+          "cart": {
+            "p": 0,
+            "s": 0
+          },
+          "variants": [
+            {
+              "id": 48468678934769,
+              "p": 1200,
+              "c": 0,
+              "m": 30
+            }
+          ],
+          "t": {
+            "save_pct": "−{pct} %",
+            "save_off": "−{amount}",
+            "unit": "{price}/ks",
+            "live": "{qty} ks za {total} ({price}/ks)",
+            "live_cart": "{qty} ks za {total} ({price}/ks). Počítáme i {cart} ks v košíku.",
+            "next": "Ještě {count} ks a zaplatíte {price}/ks."
+          }
+        },
+        "wrapperId": "shopify-block-ASklFajFpbXZObGpkM__won_discounts_quantity_tiers",
+        "wrapperClass": "shopify-block shopify-app-block"
+      },
+      "at2": {
+        "state": "ready",
+        "hidden": false,
+        "setId": "e2e-tiers-col",
+        "countMode": "cart",
+        "preset": "default",
+        "heading": "Množstevní sleva",
+        "rows": [
+          {
+            "min": 2,
+            "active": true,
+            "hidden": false,
+            "qty": "Od 2 ks",
+            "save": "−20 %",
+            "unit": "9,60 Kč/ks"
+          }
+        ],
+        "liveUnitCents": 960,
+        "liveText": "2 ks za 19,20 Kč (9,60 Kč/ks)",
+        "next": {
+          "hidden": true,
+          "text": "Ještě 1 ks a zaplatíte 9,60 Kč/ks."
+        },
+        "data": {
+          "v": 1,
+          "product": 9692429091057,
+          "set": "e2e-tiers-col",
+          "count": "cart",
+          "cur": "CZK",
+          "sc": "CZK",
+          "ms": "1.234.567,89 Kč",
+          "fmt": "{{amount_with_comma_separator}} Kč",
+          "lang": "cs",
+          "sel": 48468678934769,
+          "breaks": [
+            {
+              "min": 2,
+              "pct": 20
+            }
+          ],
+          "cart": {
+            "p": 0,
+            "s": 0
+          },
+          "variants": [
+            {
+              "id": 48468678934769,
+              "p": 1200,
+              "c": 0,
+              "m": 30
+            }
+          ],
+          "t": {
+            "save_pct": "−{pct} %",
+            "save_off": "−{amount}",
+            "unit": "{price}/ks",
+            "live": "{qty} ks za {total} ({price}/ks)",
+            "live_cart": "{qty} ks za {total} ({price}/ks). Počítáme i {cart} ks v košíku.",
+            "next": "Ještě {count} ks a zaplatíte {price}/ks."
+          }
+        },
+        "wrapperId": "shopify-block-ASklFajFpbXZObGpkM__won_discounts_quantity_tiers",
+        "wrapperClass": "shopify-block shopify-app-block"
+      }
+    },
+    "withSpare": {
+      "state": {
+        "state": "ready",
+        "hidden": false,
+        "setId": "e2e-tiers-col",
+        "countMode": "cart",
+        "preset": "default",
+        "heading": "Množstevní sleva",
+        "rows": [
+          {
+            "min": 2,
+            "active": true,
+            "hidden": false,
+            "qty": "Od 2 ks",
+            "save": "−20 %",
+            "unit": "9,60 Kč/ks"
+          }
+        ],
+        "liveUnitCents": 960,
+        "liveText": "1 ks za 9,60 Kč (9,60 Kč/ks). Počítáme i 1 ks v košíku.",
+        "next": {
+          "hidden": true,
+          "text": ""
+        },
+        "data": {
+          "v": 1,
+          "product": 9692429091057,
+          "set": "e2e-tiers-col",
+          "count": "cart",
+          "cur": "CZK",
+          "sc": "CZK",
+          "ms": "1.234.567,89 Kč",
+          "fmt": "{{amount_with_comma_separator}} Kč",
+          "lang": "cs",
+          "sel": 48468678934769,
+          "breaks": [
+            {
+              "min": 2,
+              "pct": 20
+            }
+          ],
+          "cart": {
+            "p": 0,
+            "s": 1
+          },
+          "variants": [
+            {
+              "id": 48468678934769,
+              "p": 1200,
+              "c": 0,
+              "m": 30
+            }
+          ],
+          "t": {
+            "save_pct": "−{pct} %",
+            "save_off": "−{amount}",
+            "unit": "{price}/ks",
+            "live": "{qty} ks za {total} ({price}/ks)",
+            "live_cart": "{qty} ks za {total} ({price}/ks). Počítáme i {cart} ks v košíku.",
+            "next": "Ještě {count} ks a zaplatíte {price}/ks."
+          }
+        },
+        "wrapperId": "shopify-block-ASklFajFpbXZObGpkM__won_discounts_quantity_tiers",
+        "wrapperClass": "shopify-block shopify-app-block"
+      },
+      "plan": {
+        "components": [
+          {
+            "ruleId": "tier:e2e-tiers-col",
+            "method": "automatic",
+            "module": "tiers",
+            "amount": 240
+          }
+        ],
+        "amount": 240,
+        "ownerRuleId": "tier:e2e-tiers-col",
+        "ownerMethod": "automatic",
+        "value": {
+          "percent": 20
+        },
+        "message": "Od 2 ks −20 %"
+      }
+    }
+  },
+  "cart": {
+    "lines": [
+      {
+        "variant": 48468678902001,
+        "quantity": 1,
+        "unitPrice": 1000,
+        "plan": {
+          "components": [],
+          "amount": 0,
+          "message": null,
+          "value": null,
+          "marginCapped": null
+        },
+        "cart": {
+          "allocations": [],
+          "final_line_price": 1000
+        }
+      },
+      {
+        "variant": 48468679164145,
+        "quantity": 1,
+        "unitPrice": 19900,
+        "plan": {
+          "components": [
+            "tier:e2e-tiers-col"
+          ],
+          "amount": 3980,
+          "message": "Od 2 ks −20 %",
+          "value": {
+            "percent": 20
+          },
+          "marginCapped": null
+        },
+        "cart": {
+          "allocations": [
+            [
+              "Od 2 ks −20 %",
+              3980
+            ]
+          ],
+          "final_line_price": 15920
+        }
+      },
+      {
+        "variant": 48468678934769,
+        "quantity": 1,
+        "unitPrice": 1200,
+        "plan": {
+          "components": [
+            "tier:e2e-tiers-col"
+          ],
+          "amount": 240,
+          "message": "Od 2 ks −20 %",
+          "value": {
+            "percent": 20
+          },
+          "marginCapped": null
+        },
+        "cart": {
+          "allocations": [
+            [
+              "Od 2 ks −20 %",
+              240
+            ]
+          ],
+          "final_line_price": 960
+        }
+      }
+    ],
+    "total_price": 17880,
+    "planTotals": {
+      "subtotal": 22100,
+      "productDiscount": 4220,
+      "orderDiscount": 0,
+      "total": 17880
+    },
+    "planTiers": [
+      {
+        "setId": "e2e-tiers-col",
+        "ruleId": "tier:e2e-tiers-col",
+        "countAcross": "cart",
+        "state": "applied",
+        "amount": 4220,
+        "lineIds": [
+          "gid://shopify/CartLine/1",
+          "gid://shopify/CartLine/2"
+        ],
+        "groups": [
+          {
+            "lineIds": [
+              "gid://shopify/CartLine/1",
+              "gid://shopify/CartLine/2"
+            ],
+            "count": 2,
+            "reached": {
+              "minQty": 2,
+              "percent": 20,
+              "amount": null
+            },
+            "next": null
+          }
+        ]
+      },
+      {
+        "setId": "e2e-tiers-global",
+        "ruleId": "tier:e2e-tiers-global",
+        "countAcross": "product",
+        "state": "below_tier",
+        "amount": 0,
+        "lineIds": [],
+        "groups": [
+          {
+            "lineIds": [
+              "gid://shopify/CartLine/0"
+            ],
+            "count": 1,
+            "reached": null,
+            "next": {
+              "minQty": 3,
+              "percent": 10,
+              "amount": null
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "checkout": {
+    "plan": {
+      "subtotal": 22100,
+      "productDiscount": 4220,
+      "orderDiscount": 0,
+      "total": 17880
+    },
+    "thankYou": {
+      "perLine": [
+        {
+          "title": "Won E2E — Simple A",
+          "quantity": 1,
+          "allocations": [],
+          "originalPrice": null,
+          "finalPrice": 1000
+        },
+        {
+          "title": "Won E2E — Spare",
+          "quantity": 1,
+          "allocations": [
+            {
+              "title": "OD 2 KS −20 %",
+              "amount": -3980
+            }
+          ],
+          "originalPrice": 19900,
+          "finalPrice": 15920
+        },
+        {
+          "title": "Won E2E — Simple B",
+          "quantity": 1,
+          "allocations": [
+            {
+              "title": "OD 2 KS −20 %",
+              "amount": -240
+            }
+          ],
+          "originalPrice": 1200,
+          "finalPrice": 960
+        }
+      ],
+      "rows": [
+        {
+          "label": "Mezisoučet • 3 položek",
+          "value": "178,80 Kč",
+          "amount": 17880
+        },
+        {
+          "label": "Expedice",
+          "value": "651,51 Kč",
+          "amount": 65151
+        },
+        {
+          "label": "Celkem",
+          "value": "830,31 Kč",
+          "amount": 83031
+        },
+        {
+          "label": "CELKOVÁ ÚSPORA42,20 Kč",
+          "value": "",
+          "amount": null
+        }
+      ],
+      "subtotal": 17880,
+      "shipping": 65151,
+      "tax": 0,
+      "includedTaxRows": [],
+      "total": 83031,
+      "charged": 83031,
+      "checkoutPath": "/checkouts/cn/<token>/cs-cz/thank-you"
+    }
+  }
+}

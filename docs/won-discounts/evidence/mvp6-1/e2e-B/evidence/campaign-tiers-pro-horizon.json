@@ -1,0 +1,82 @@
+{
+  "theme": "Horizon",
+  "window": {
+    "start": "2026-10-04T07:59:00",
+    "end": "2026-10-04T08:11:00",
+    "startUtc": "2026-10-04T11:59:00.000Z",
+    "endUtc": "2026-10-04T12:11:00.000Z",
+    "timezone": "America/New_York"
+  },
+  "readings": [
+    {
+      "at": "2026-10-04T11:57:55.501Z",
+      "where": "before",
+      "table": 10,
+      "cart": 10
+    },
+    {
+      "at": "2026-10-04T11:59:11.400Z",
+      "where": "first minute",
+      "table": 10,
+      "cart": 20
+    },
+    {
+      "at": "2026-10-04T11:59:17.828Z",
+      "where": "shown",
+      "table": 10,
+      "cart": 20
+    },
+    {
+      "at": "2026-10-04T11:59:43.906Z",
+      "where": "shown",
+      "table": 10,
+      "cart": 20
+    },
+    {
+      "at": "2026-10-04T12:00:09.904Z",
+      "where": "shown",
+      "table": 10,
+      "cart": 20
+    },
+    {
+      "at": "2026-10-04T12:00:36.143Z",
+      "where": "shown",
+      "table": 10,
+      "cart": 20
+    },
+    {
+      "at": "2026-10-04T12:01:02.780Z",
+      "where": "shown",
+      "table": 20,
+      "cart": 20
+    },
+    {
+      "at": "2026-10-04T12:04:11.485Z",
+      "where": "table back",
+      "table": 20,
+      "cart": 20
+    },
+    {
+      "at": "2026-10-04T12:04:37.600Z",
+      "where": "table back",
+      "table": 20,
+      "cart": 20
+    },
+    {
+      "at": "2026-10-04T12:05:03.921Z",
+      "where": "table back",
+      "table": 10,
+      "cart": 20
+    },
+    {
+      "at": "2026-10-04T12:11:11.364Z",
+      "where": "after",
+      "table": 10,
+      "cart": 10
+    }
+  ],
+  "charged": {
+    "lineFinal": 1600,
+    "original": 2000
+  }
+}
