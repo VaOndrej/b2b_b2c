@@ -192,3 +192,14 @@ test("history.prune: sale events go 400 days after the sale ended (the sale row 
   assert.equal(await db.prisma.outletEvent.count({ where: { runId: recent.id } }), 1);
   assert.equal(await db.prisma.outletRun.count({ where: { id: ended.id } }), 1);
 });
+
+test("runDueTasks: a tick that fires a few ms early still runs an every-minute task (timer jitter never halves the cadence)", async () => {
+  const ran: number[] = [];
+  const tasks = [{ name: "jitter", everyMs: 60_000, run: async (now: Date) => void ran.push(now.getTime()) }];
+  const t0 = new Date("2026-10-04T10:00:00.000Z");
+  await runDueTasks(db.prisma, tasks, t0);
+  await runDueTasks(db.prisma, tasks, new Date(t0.getTime() + 59_990));
+  await runDueTasks(db.prisma, tasks, new Date(t0.getTime() + 59_990 + 30_000));
+  await runDueTasks(db.prisma, tasks, new Date(t0.getTime() + 2 * 59_990));
+  assert.deepEqual(ran.map((ms) => ms - t0.getTime()), [0, 59_990, 119_980], "every tick a minute apart runs; one half a minute later does not");
+});

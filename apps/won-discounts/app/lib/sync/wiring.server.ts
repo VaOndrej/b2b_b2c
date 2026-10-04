@@ -32,6 +32,8 @@ export function productionSyncDeps(client: AdminClient, db: PrismaClient, logger
         configVersion: options.configVersion,
         ...(options.shopCurrency ? { shopCurrency: options.shopCurrency } : {}),
         ...(options.variantHandles ? { variantHandles: options.variantHandles } : {}),
+        // MVP 6.1: the campaign whose tier sets the product page shows now (live E2E found this option dropped here).
+        ...(options.campaignId ? { campaignId: options.campaignId } : {}),
       }),
     now: () => new Date(),
     logger,

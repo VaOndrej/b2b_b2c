@@ -5,6 +5,7 @@ import { sanitizeConfig, type WonDiscountsConfig } from "@won/core/discounts/con
 
 import { STOREFRONT_CAMPAIGN_OFF_STEP } from "../../../app/lib/sync/storefront.ts";
 import { createSync } from "../../../app/lib/sync/sync.server.ts";
+import { productionSyncDeps } from "../../../app/lib/sync/wiring.server.ts";
 import { loadShopSyncFacts } from "../../../app/lib/sync/sync-state.server.ts";
 import { createTestDatabase, type TestDatabase } from "../test-db.ts";
 import { FakeShopify } from "./fake-shopify.ts";
@@ -193,4 +194,26 @@ test("the admin words a failed take-back like any storefront config failure", as
   const { syncProblems } = await import("../../../app/lib/integration/sync-copy.ts");
   const problems = syncProblems([{ step: STOREFRONT_CAMPAIGN_OFF_STEP, ok: false, detail: "refused" }], new Map());
   assert.deepEqual(problems.map((p) => p.key), ["sync.problem.storefrontConfig"]);
+});
+
+// Found by the live E2E (Pro, 2026-10-04): the PRODUCTION wiring built the storefront config without the campaign,
+// so the page never switched while every test above (the test builders) passed.
+test("production wiring: the storefront config shows the campaign's sets a minute after the start, the base sets before and 7 minutes before the end", async () => {
+  const fake = new FakeShopify();
+  const clock = { now: at("14:00:30") };
+  const quiet = { info() {}, warn() {}, error() {} };
+  const sync = createSync({ ...productionSyncDeps(fake, db.prisma, quiet), plan: async () => "pro", sleep: async () => {}, now: () => clock.now });
+  const first = await sync.syncShop(shop, configWith([bf()]));
+  assert.equal(first.ok, true, JSON.stringify(first.errors));
+  assert.equal(percent(fake), 10);
+  clock.now = at("14:01:10");
+  await sync.syncShop(shop, configWith([bf()]));
+  assert.equal(percent(fake), 20);
+  assert.equal(shown(fake).tc, "bf");
+  const live = JSON.parse(fake.shopMetafieldValue("function_config")!) as { campaigns: { tiers?: { sets: unknown[] } }[] };
+  assert.deepEqual(live.campaigns[0]!.tiers!.sets[0], ["g", "line", [], [[2, 20]]], "the function config carries the campaign's sets");
+  clock.now = at("17:53:10");
+  await sync.syncShop(shop, configWith([bf()]));
+  assert.equal(percent(fake), 10);
+  assert.equal("bt" in shown(fake), false);
 });

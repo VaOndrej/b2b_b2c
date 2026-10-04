@@ -39,6 +39,8 @@ export interface ScheduledTask {
 
 export const SCHEDULER_TICK_MS = 60_000;
 export const SCHEDULER_FIRST_DELAY_MS = 15_000;
+/** A task counts as due this much before its interval passed (timer jitter; see runDueTasks). */
+export const DUE_SLACK_MS = 5_000;
 export const OUTLET_HISTORY_RETENTION_DAYS = 400;
 /** A start still `starting` after this long was interrupted (a crash or a restart mid-start). */
 export const OUTLET_START_STALE_MS = 10 * 60_000;
@@ -57,7 +59,9 @@ export async function runDueTasks(db: PrismaClient, tasks: readonly ScheduledTas
   const out: { name: string; ran: boolean; error?: string }[] = [];
   for (const task of tasks) {
     const last = states.get(task.name)?.lastRunAt;
-    if (last && now.getTime() - last.getTime() < task.everyMs) {
+    // A tick comes every SCHEDULER_TICK_MS give or take a few ms: without the slack a task due "every minute" would
+    // be skipped by every tick that fires a hair early and run only every second minute (found live, MVP 6.1).
+    if (last && now.getTime() - last.getTime() < task.everyMs - DUE_SLACK_MS) {
       out.push({ name: task.name, ran: false });
       continue;
     }
