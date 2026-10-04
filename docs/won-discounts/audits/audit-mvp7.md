@@ -22,6 +22,7 @@ Plán `docs/plans/2026-10-04-won-discounts-mvp7.md` (M1–M12, P1–P6). Postup 
 | A12 | P3 | Tržby u slev v Přehledech se mezi řádky překrývají (objednávka se dvěma slevami je v obou). | `analytics.server.ts` `loadAnalytics` | přijato; věta pod tabulkou |
 | A13 | P3 | Plán Pro vyprší, když ho Shopify 72 h nepotvrdí (denní reconcile bez offline session). | `billing.server.ts` `ENTITLEMENT_STALE_MS` | přijato (BILL-1: nejistota = Free); Tarif ho při otevření obnoví |
 | A14 | P3 | Image má 2,33 GB (celý workspace s devDependencies). | `Dockerfile` | přijato (A13: připravit, nenasazovat) |
+| A17 | **P1** | Návrat ze stránky „Schválit předplatné“ vedl na adresu appky mimo admin (bez session → přihlašovací stránka `/auth/login`). Unit testy hlídaly jen tvar URL. | živý billing 2026-10-04 (Ondřej); `plan-admin.server.ts` `planAction` | **opraveno**: návrat do adminu `admin.shopify.com/store/<obchod>/apps/<client id>/app/plan` + test; naživo znovu neověřeno |
 | A15 | P3 | `scripts/make-postgres-schema.mjs` a `test-postgres.mjs` volají `npx prisma` s vlastním `--schema`. | pravidlo repa (npm skripty) | přijato: npm skripty neumí druhé schéma |
 
 0 × P0. P1 a opravitelné P2 opravené s testy.

@@ -74,13 +74,22 @@ export async function loadPlanScreen(ctx: ShopCtx, opts: { env?: Readonly<Record
   };
 }
 
-export async function planAction(ctx: ShopCtx, form: FormDataLike, opts: { appUrl: string; env?: Readonly<Record<string, string | undefined>> }): Promise<PlanActionResult> {
+/**
+ * Where Shopify sends the merchant after the confirmation page: Tarif INSIDE the admin. The app's own URL would
+ * open outside the admin with no session (the login page) — live finding 2026-10-04.
+ */
+function billingReturnUrl(shop: string, apiKey: string): string | null {
+  const store = /^([a-z0-9][a-z0-9-]*)\.myshopify\.com$/.exec(shop)?.[1];
+  return store && apiKey ? `https://admin.shopify.com/store/${store}/apps/${encodeURIComponent(apiKey)}/app/plan?billing=return` : null;
+}
+
+export async function planAction(ctx: ShopCtx, form: FormDataLike, opts: { env?: Readonly<Record<string, string | undefined>> } = {}): Promise<PlanActionResult> {
   const intent = String(form.get("intent") ?? "");
   switch (intent) {
     case PLAN_INTENT.subscribe: {
-      const base = opts.appUrl.replace(/\/+$/, "");
-      if (!/^https:\/\//.test(base)) return { ok: false, kind: "subscribe", detail: "the app URL is not configured" };
-      const result = await requestProSubscription(ctx.client, `${base}/app/plan?billing=return`, { test: isTestCharge(opts.env) });
+      const returnUrl = billingReturnUrl(ctx.shop, ctx.apiKey);
+      if (!returnUrl) return { ok: false, kind: "subscribe", detail: "the app's client id is not configured" };
+      const result = await requestProSubscription(ctx.client, returnUrl, { test: isTestCharge(opts.env) });
       return result.ok ? { ok: true, kind: "subscribe", confirmationUrl: result.confirmationUrl } : { ok: false, kind: "subscribe", detail: result.detail };
     }
     case PLAN_INTENT.cancel: {

@@ -100,11 +100,14 @@ test("load: no subscription = Free with the offer; an active subscription = Pro 
 
 test("subscribe: returns Shopify's confirmation page for a test charge with the return URL into Tarif; nothing is Pro before the merchant accepts", async () => {
   const { ctx, state } = setup([]);
-  const result = await planAction(ctx, formOf([["intent", PLAN_INTENT.subscribe]]), { appUrl: "https://won.example/", env: ENV });
+  const result = await planAction(ctx, formOf([["intent", PLAN_INTENT.subscribe]]), { env: ENV });
   assert.deepEqual(result, { ok: true, kind: "subscribe", confirmationUrl: "https://admin.shopify.com/confirm/1" });
-  assert.deepEqual(state.creates, [{ name: "Won Discounts Pro", returnUrl: "https://won.example/app/plan?billing=return", test: true, trialDays: 14, amount: "29.00", currency: "USD" }]);
+  // The return lands in the embedded admin (the app's own URL has no session outside it: live finding 2026-10-04).
+  const returnUrl = `https://admin.shopify.com/store/${shop.replace(".myshopify.com", "")}/apps/${ctx.apiKey}/app/plan?billing=return`;
+  assert.ok(ctx.apiKey, "the fixture has a client id");
+  assert.deepEqual(state.creates, [{ name: "Won Discounts Pro", returnUrl, test: true, trialDays: 14, amount: "29.00", currency: "USD" }]);
   assert.equal(await storedPlan(db.prisma, shop, NOW), "free");
-  assert.deepEqual(await planAction(ctx, formOf([["intent", PLAN_INTENT.subscribe]]), { appUrl: "", env: ENV }), { ok: false, kind: "subscribe", detail: "the app URL is not configured" });
+  assert.deepEqual(await planAction({ ...ctx, apiKey: "" }, formOf([["intent", PLAN_INTENT.subscribe]]), { env: ENV }), { ok: false, kind: "subscribe", detail: "the app's client id is not configured" });
   assert.equal(state.creates.length, 1);
 });
 
@@ -122,7 +125,7 @@ test("the plan follows Shopify: accepted → Pro and the live config is built fo
   assert.equal((await loadShopSyncFacts(db.prisma, shop)).appliedPlan, "pro", "the load resynced for the new plan");
   assert.equal(live().campaignId, "bf");
 
-  const cancelled = await planAction(ctx, formOf([["intent", PLAN_INTENT.cancel]]), { appUrl: "https://won.example", env: ENV });
+  const cancelled = await planAction(ctx, formOf([["intent", PLAN_INTENT.cancel]]), { env: ENV });
   assert.deepEqual(cancelled, { ok: true, kind: "cancel", synced: true });
   assert.equal(await storedPlan(db.prisma, shop, NOW), "free");
   assert.equal((await loadShopSyncFacts(db.prisma, shop)).appliedPlan, "free");
@@ -132,6 +135,6 @@ test("the plan follows Shopify: accepted → Pro and the live config is built fo
 
 test("uninstall prep through the action: nothing to do is a clean result; an unknown intent is refused", async () => {
   const { ctx } = setup([]);
-  assert.deepEqual(await planAction(ctx, formOf([["intent", PLAN_INTENT.uninstallPrep]]), { appUrl: "https://won.example", env: ENV }), { ok: true, kind: "uninstall_prep", ended: 0, restored: 0, failed: [] });
-  assert.deepEqual(await planAction(ctx, formOf([["intent", "nope"]]), { appUrl: "https://won.example", env: ENV }), { ok: false, kind: "unknown", detail: "bad request" });
+  assert.deepEqual(await planAction(ctx, formOf([["intent", PLAN_INTENT.uninstallPrep]]), { env: ENV }), { ok: true, kind: "uninstall_prep", ended: 0, restored: 0, failed: [] });
+  assert.deepEqual(await planAction(ctx, formOf([["intent", "nope"]]), { env: ENV }), { ok: false, kind: "unknown", detail: "bad request" });
 });

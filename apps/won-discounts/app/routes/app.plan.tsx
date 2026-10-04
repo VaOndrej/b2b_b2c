@@ -25,7 +25,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   // eslint-disable-next-line no-undef
   const env = process.env;
   const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: env.SHOPIFY_API_KEY || "", scopes: session.scope });
-  return planAction(ctx, await request.formData(), { appUrl: env.SHOPIFY_APP_URL || "" });
+  return planAction(ctx, await request.formData());
 };
 
 export default function Plan() {
