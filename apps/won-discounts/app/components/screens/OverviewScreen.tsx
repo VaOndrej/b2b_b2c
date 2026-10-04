@@ -25,6 +25,7 @@ import { NativeDiscountsPanel, nativeSummary } from "../NativeDiscounts";
 import { MarginOverviewCard } from "../margin/MarginOverviewCard";
 import { TiersOverviewCard } from "../tiers/TiersOverviewCard";
 import { OutletOverviewCard } from "../outlet/OutletOverviewCard";
+import { AnalyticsOverviewCard } from "../analytics/AnalyticsOverviewCard";
 import { CampaignsOverviewCard } from "../campaigns/CampaignsOverviewCard";
 import { RewardsOverviewCard } from "../rewards/RewardsOverviewCard";
 import { RecipeGrid } from "../RecipeGrid";
@@ -291,6 +292,7 @@ export function OverviewScreen({
         {status.rewards ? <RewardsOverviewCard rewards={status.rewards} /> : null}
         {status.outlet ? <OutletOverviewCard outlet={status.outlet} /> : null}
         {status.campaigns ? <CampaignsOverviewCard campaigns={status.campaigns} /> : null}
+        {status.analytics ? <AnalyticsOverviewCard analytics={status.analytics} /> : null}
 
         <WonSection title={t("overview.native.title")} glyph="move" summary={nativeSummary(status.native, tr)} anchor="native">
           <NativeDiscountsPanel native={status.native} mode="each" result={nativeResult} />

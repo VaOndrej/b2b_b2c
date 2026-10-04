@@ -40,7 +40,7 @@ test("MVP 2–6: Ochrana marže, Množstevní slevy, Odměny, Výprodej, Kampan�
   assert.deepEqual(orderedUpcomingModules(["margin", "outlet"]), []);
   assert.deepEqual(
     navItems("cs", ["margin"]).map((i) => i.to),
-    ["/app/discounts", "/app/try-cart", "/app/margin", "/app/tiers", "/app/rewards", "/app/outlet", "/app/campaigns", "/app/appearance", "/app/settings", "/app/plan"],
+    ["/app/discounts", "/app/try-cart", "/app/margin", "/app/tiers", "/app/rewards", "/app/outlet", "/app/campaigns", "/app/appearance", "/app/analytics", "/app/settings", "/app/plan"],
   );
 });
 
@@ -48,7 +48,7 @@ test("nav: Slevy a kódy and Vyzkoušet košík first, modules by goals, Tarif l
   const items = navItems("cs", ["rewards"]);
   assert.deepEqual(
     items.map((i) => i.label),
-    ["Slevy a kódy", "Vyzkoušet košík", "Odměny", "Množstevní slevy", "Výprodej (Pro)", "Ochrana marže", "Kampaně (Pro)", "Vzhled", "Nastavení", "Tarif"],
+    ["Slevy a kódy", "Vyzkoušet košík", "Odměny", "Množstevní slevy", "Výprodej (Pro)", "Ochrana marže", "Kampaně (Pro)", "Vzhled", "Přehledy", "Nastavení", "Tarif"],
   );
   assert.equal(items[2].to, "/app/rewards");
   assert.equal(navItems("en", [])[0].label, "Discounts & codes");

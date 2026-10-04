@@ -203,3 +203,33 @@ test("runDueTasks: a tick that fires a few ms early still runs an every-minute t
   await runDueTasks(db.prisma, tasks, new Date(t0.getTime() + 2 * 59_990));
   assert.deepEqual(ran.map((ms) => ms - t0.getTime()), [0, 59_990, 119_980], "every tick a minute apart runs; one half a minute later does not");
 });
+
+test("billing.reconcile (MVP 7): shops on Pro are checked against Shopify; an ended subscription makes the shop Free and resyncs it; no session = left alone", async () => {
+  const { runBillingReconcileOnce } = await import("../../../app/lib/jobs/scheduler.server.ts");
+  const { storedPlan } = await import("../../../app/lib/billing.server.ts");
+  const now = new Date("2026-10-04T10:00:00Z");
+  const pro = (shop: string) => db.prisma.shopEntitlement.create({ data: { shop, plan: "pro", status: "ACTIVE", subscriptionId: "gid://shopify/AppSubscription/1", checkedAt: new Date(now.getTime() - 3_600_000) } });
+  await pro("still-pro.myshopify.com");
+  await pro("ended.myshopify.com");
+  await pro("no-session.myshopify.com");
+  await db.prisma.shopEntitlement.create({ data: { shop: "free.myshopify.com", plan: "free", checkedAt: now } });
+  const subs = (shop: string) => (shop === "still-pro.myshopify.com" ? [{ id: "gid://shopify/AppSubscription/1", name: "Won Discounts Pro", status: "ACTIVE" }] : []);
+  const asked: string[] = [];
+  const resynced: string[] = [];
+  const result = await runBillingReconcileOnce({
+    db: db.prisma,
+    now: () => now,
+    clientFor: async (shop) => {
+      if (shop === "no-session.myshopify.com") return null;
+      asked.push(shop);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return { graphql: async (): Promise<any> => ({ data: { currentAppInstallation: { activeSubscriptions: subs(shop) } } }) };
+    },
+    resync: async (_client, shop) => void resynced.push(shop),
+  });
+  assert.deepEqual(asked.sort(), ["ended.myshopify.com", "still-pro.myshopify.com"], "a Free shop is not asked about");
+  assert.deepEqual(result, { checked: 2, changed: ["ended.myshopify.com"], skippedNoSession: 1 });
+  assert.deepEqual(resynced, ["ended.myshopify.com"]);
+  assert.equal(await storedPlan(db.prisma, "ended.myshopify.com", now), "free");
+  assert.equal(await storedPlan(db.prisma, "still-pro.myshopify.com", now), "pro");
+});

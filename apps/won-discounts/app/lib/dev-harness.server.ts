@@ -16,6 +16,11 @@
 // instead of the shop's stored ones. It never reads the database and never
 // authenticates.
 
+import type { AnalyticsScreenData } from "../components/model/analytics";
+import type { AnalyticsSummary } from "./analytics/analytics.server";
+import { analyticsScreenOf } from "./integration/analytics-admin.server";
+import type { PlanActionResult, PlanScreenData } from "../components/model/plan";
+import { codeRuleLimit } from "./ui-actions.server";
 import { codeHash } from "@won/core/discounts/code-hash";
 import { CONFIG_LIMITS, DEFAULT_CONFIG, readStoredConfig, sanitizeConfig, type Campaign, type WonDiscountsConfig } from "@won/core/discounts/config";
 import { CAMPAIGN_LIMITS } from "@won/core/discounts/campaigns";
@@ -1443,4 +1448,68 @@ export function devCampaignsResult(kind: string | null): CampaignsActionResult |
 /** The Přehled card: Víkend running, Black Friday next (?state=campaigns-finishing: Free, A6). */
 export function devCampaignsOverview(opts: { locale: "cs" | "en"; finishing?: boolean }): CampaignsOverviewView {
   return campaignsOverviewOf(DEV_CAMPAIGNS, { now: DEV_CAMPAIGN_NOW, locale: opts.locale, plan: opts.finishing ? "free" : "pro", finishing: new Set(opts.finishing ? ["weekend"] : []) });
+}
+
+// --- Tarif (MVP 7, contracts M1–M3) --------------------------------------------------------------------------
+
+/** Tarif: Free by default; ?plan=pro = a subscription on trial; ?state=dev | unknown | clean; ?result=<kind>. */
+export function devPlanScreen(opts: { plan: "free" | "pro"; state: string | null; result: string | null }): PlanScreenData & { result: PlanActionResult | null } {
+  const pro = opts.plan === "pro";
+  const results: Record<string, PlanActionResult> = {
+    subscribe_failed: { ok: false, kind: "subscribe", detail: "Shop cannot accept charges" },
+    cancelled: { ok: true, kind: "cancel", synced: true },
+    cancel_pending: { ok: true, kind: "cancel", synced: false },
+    uninstall_done: { ok: true, kind: "uninstall_prep", ended: 2, restored: 1, failed: [] },
+    uninstall_partial: { ok: false, kind: "uninstall_prep", ended: 1, restored: 1, failed: [{ what: "outlet", detail: "cena se nezapsala" }] },
+  };
+  return {
+    plan: opts.plan,
+    subscribed: pro && opts.state !== "dev",
+    devOverride: opts.state === "dev",
+    billingKnown: opts.state !== "unknown",
+    trialEndsText: pro && opts.state !== "dev" ? "18. 10. 2026 14:00" : null,
+    test: true,
+    price: { amount: "29", currency: "USD", trialDays: 14 },
+    codeRules: codeRuleLimit(DEV_OVERVIEW_FIXTURE),
+    maxRules: CONFIG_LIMITS.rules,
+    finishing: pro ? { campaigns: ["Víkend −20 %"], outlets: 2 } : { campaigns: [], outlets: 0 },
+    uninstall: opts.state === "clean" ? { outlets: 0, natives: [] } : { outlets: 2, natives: ["LETO15", "Doprava zdarma nad 2 000 Kč"] },
+    result: opts.result ? (results[opts.result] ?? null) : null,
+  };
+}
+
+// --- Přehledy (MVP 7, contract M4) ---------------------------------------------------------------------------
+
+/** Přehledy: Free by default; ?plan=pro; ?state=empty | unavailable. The same analyticsScreenOf the loader runs. */
+export function devAnalyticsScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en" }): AnalyticsScreenData {
+  const empty = opts.state === "empty" || opts.state === "unavailable";
+  const days = Array.from({ length: 30 }, (_, i) => {
+    const day = new Date(Date.UTC(2026, 8, 5 + i)).toISOString().slice(0, 10);
+    const orders = empty ? 0 : 2 + ((i * 7) % 6);
+    return { day, orders, cost: orders * (9_000 + ((i * 13) % 5) * 2_500), revenue: orders * 118_000 };
+  });
+  const sum = (pick: (d: (typeof days)[number]) => number) => days.reduce((total, d) => total + pick(d), 0);
+  const orders = sum((d) => d.orders);
+  const summary: AnalyticsSummary = {
+    days: 30,
+    currency: empty ? null : "CZK",
+    otherCurrencyOrders: empty ? 0 : 3,
+    orders,
+    discountedOrders: Math.round(orders * 0.6),
+    discountCost: sum((d) => d.cost),
+    revenue: sum((d) => d.revenue),
+    averageOrder: orders ? Math.round(sum((d) => d.revenue) / orders) : 0,
+    series: days,
+    rules: empty
+      ? []
+      : [
+          { key: "dev-fixture-1", kind: "rule", orders: 61, cost: 742_000, revenue: 7_198_000 },
+          { key: "tiers", kind: "tier", orders: 24, cost: 318_500, revenue: 3_410_000 },
+          { key: "gift", kind: "gift", orders: 12, cost: 119_000, revenue: 2_260_000 },
+          { key: "other", kind: "other", orders: 4, cost: 21_000, revenue: 380_000 },
+        ],
+    gifts: empty ? 0 : 12,
+    outletItems: empty ? 0 : 31,
+  };
+  return analyticsScreenOf(summary, { plan: opts.plan, available: opts.state !== "unavailable", locale: opts.locale, config: DEV_OVERVIEW_FIXTURE });
 }

@@ -4,8 +4,11 @@
 // is not in force, explainGate) and the editor (which Pro fields are writable).
 //
 // Pro only from a verified subscription, Free on ANY uncertainty
-// (@won/app-kit/entitlement). Billing (spec §7, Tarif) is not built yet, so
-// there is no subscription to verify: production always resolves Free.
+// (@won/app-kit/entitlement). MVP 7: the subscription is Shopify Billing's,
+// mirrored in ShopEntitlement (billing.server.ts storedPlan: an ACTIVE
+// subscription of our plan, checked recently). The app's database is handed in
+// once on boot (setPlanDatabase, entry.server.tsx); without one — unit tests,
+// scripts — and for a call without a shop there is nothing to verify: Free.
 //
 // Dev-only override (testing Pro on the dev store): an env variable (see
 // devPlanOverride) honoured ONLY in a development build AND when NODE_ENV is
@@ -22,7 +25,16 @@
 import { resolveEntitlement } from "@won/app-kit/entitlement";
 import type { ShopPlan } from "@won/core/discounts/plan-gate";
 
+import type { PrismaClient } from "../generated/prisma/client";
+import { storedPlan } from "./billing.server";
 import { isDevHarnessEnvironment } from "./dev-harness-env";
+
+let planDb: PrismaClient | null = null;
+
+/** The database resolvePlan reads the shop's subscription from (entry.server.tsx; null = none: always Free). */
+export function setPlanDatabase(db: PrismaClient | null): void {
+  planDb = db;
+}
 
 export type { ShopPlan };
 
@@ -39,15 +51,15 @@ export function devPlanOverride(env: Readonly<Record<string, string | undefined>
 }
 
 /**
- * The plan in force for `shop` (the shop is unused until billing reads its
- * subscription). `env` is injectable for tests.
+ * The plan in force for `shop`: the dev override, else the shop's verified
+ * subscription (storedPlan). `env` and `db` are injectable for tests.
  */
 export async function resolvePlan(
   shop?: string,
   env: Readonly<Record<string, string | undefined>> = process.env,
+  db: PrismaClient | null = planDb,
 ): Promise<ResolvedPlan> {
-  void shop;
-  const entitlement = await resolveEntitlement(async () => devPlanOverride(env));
+  const entitlement = await resolveEntitlement(async () => devPlanOverride(env) ?? (shop && db ? await storedPlan(db, shop) : null));
   return { plan: entitlement.pro ? "pro" : "free", pro: entitlement.pro };
 }
 

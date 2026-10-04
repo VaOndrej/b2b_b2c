@@ -492,5 +492,7 @@ export async function deleteShopData(db: PrismaClient, shop: string): Promise<vo
     db.shopSyncState.deleteMany({ where: { shop } }),
     db.outletRun.deleteMany({ where: { shop } }),
     db.outletEvent.deleteMany({ where: { shop } }),
+    db.shopEntitlement.deleteMany({ where: { shop } }),
+    db.orderDiscountFact.deleteMany({ where: { shop } }),
   ]);
 }

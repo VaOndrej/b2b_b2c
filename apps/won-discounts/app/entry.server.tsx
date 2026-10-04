@@ -5,8 +5,12 @@ import { offlineClient } from "./lib/integration/costs.server";
 import { ensureCostReconcileJob } from "./lib/jobs/cost-reconcile.server";
 import { startScheduler } from "./lib/jobs/scheduler.server";
 import { startStaleClaimJob } from "./lib/jobs/stale-claims.server";
+import { setPlanDatabase } from "./lib/plan.server";
 
 export { streamTimeout };
+
+// Billing (MVP 7): the plan resolver reads the shop's verified subscription from the app's database (BILL-1).
+setPlanDatabase(db);
 
 // Native move audit follow-up: without this, a `moving` / `undoing` claim a
 // dead process left (a double discount, native + Won rule both live) is only

@@ -28,6 +28,12 @@ api_version = "2026-10"
   topics = [ "app/uninstalled" ]
   uri = "/webhooks/app/uninstalled"
 
+  # Billing (MVP 7, BILL-1): the shop's Pro subscription changed (approved, cancelled, expired, frozen) → the plan
+  # follows at once and the shop is resynced (app/routes/webhooks.app_subscriptions.update.tsx). No scope needed.
+  [[webhooks.subscriptions]]
+  topics = [ "app_subscriptions/update" ]
+  uri = "/webhooks/app_subscriptions/update"
+
   # Collection / product targeting freshness (MVP 1 audit P1-2, F2 item 2):
   # a change to a targeted collection (products added or removed by hand, new
   # rules) or to any product (it may join or leave a smart collection — Shopify

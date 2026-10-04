@@ -68,6 +68,7 @@ import {
 } from "./integration/native.server";
 import { loadMarginOverview } from "./integration/margin.server";
 import { loadOutletOverview } from "./integration/outlet-admin.server";
+import { loadAnalyticsOverview } from "./integration/analytics-admin.server";
 import { loadCampaignsOverview } from "./integration/campaigns-admin.server";
 import { loadRewardsOverview } from "./integration/rewards.server";
 import { loadTiersOverview } from "./integration/tiers.server";
@@ -233,7 +234,7 @@ export async function loadStoreSignals(
     nativeDeadlineMs?: number;
   },
 ): Promise<AdminSignals> {
-  const [base, sync, native, margin, tiers, rewards, outlet, campaigns] = await Promise.all([
+  const [base, sync, native, margin, tiers, rewards, outlet, campaigns, analytics] = await Promise.all([
     loadAdminSignals({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql: opts.graphql, fresh: opts.fresh }),
     opts.sync ? overviewSync(ctx, loaded, { timezone: opts.timezone, deadlineMs: opts.syncDeadlineMs }) : Promise.resolve(NOT_WIRED_SIGNALS.sync),
     // `fresh` re-reads the theme only (onboarding's focus re-check); detection keeps its 60 s cache.
@@ -251,6 +252,8 @@ export async function loadStoreSignals(
     opts.sync ? loadOutletOverview({ ...ctx, scopes: opts.scopes }).catch(() => undefined) : Promise.resolve(undefined),
     // Kampaně card (MVP 6, Přehled only): the running and the next campaign.
     opts.sync ? loadCampaignsOverview(ctx).catch(() => undefined) : Promise.resolve(undefined),
+    // Přehledy card (MVP 7, Přehled only): the basic numbers of the last 30 days.
+    opts.sync ? loadAnalyticsOverview({ ...ctx, scopes: opts.scopes }).catch(() => undefined) : Promise.resolve(undefined),
   ]);
   return {
     ...base,
@@ -261,6 +264,7 @@ export async function loadStoreSignals(
     ...(rewards ? { rewards } : {}),
     ...(outlet ? { outlet } : {}),
     ...(campaigns ? { campaigns } : {}),
+    ...(analytics ? { analytics } : {}),
   };
 }
 

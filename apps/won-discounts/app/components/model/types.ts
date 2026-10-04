@@ -8,6 +8,7 @@
 // (§12) instead of pretending or hiding the block. The harness may still render
 // the `not_wired` states (v0 overview contract).
 
+import type { AnalyticsOverviewView } from "./analytics";
 import type { MessageKey } from "../../i18n";
 
 /** A Won market as the merchant knows it: its Shopify name (the handle when the name is unknown). */
@@ -192,6 +193,8 @@ export interface AdminSignals {
   outlet?: OutletOverviewView;
   /** Kampaně card (MVP 6, Přehled only; absent = not known). */
   campaigns?: CampaignsOverviewView;
+  /** Přehledy card (MVP 7, Přehled only; absent = not known). */
+  analytics?: AnalyticsOverviewView;
 }
 
 // --- Ochrana marže (MVP 2) ------------------------------------------------------------------

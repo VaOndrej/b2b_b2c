@@ -20,10 +20,10 @@ import { AppearanceScreen, type AppearanceScreenProps } from "../components/scre
 import { TiersScreen, type TiersScreenProps } from "../components/screens/TiersScreen";
 import { RewardsScreen, type RewardsScreenProps } from "../components/screens/RewardsScreen";
 import { OutletScreen, type OutletScreenProps } from "../components/screens/OutletScreen";
+import { AnalyticsScreen, type AnalyticsScreenProps } from "../components/screens/AnalyticsScreen";
 import { CampaignsScreen, type CampaignsScreenProps } from "../components/screens/CampaignsScreen";
 import { MarginScreen, type MarginScreenProps } from "../components/screens/MarginScreen";
 import { buildTryCartProps, TryCartScreen, type TryCartScreenProps } from "../components/screens/TryCartScreen";
-import { CONFIG_LIMITS } from "@won/core/discounts/config";
 
 import { codeRuleLimit } from "../lib/ui-actions.server";
 import {
@@ -53,6 +53,7 @@ import {
   devOutletScreen,
   devCampaignsOverview,
   devCampaignsResult,
+  devAnalyticsScreen,
   devCampaignsScreen,
   devMovedResult,
   devNative,
@@ -66,6 +67,7 @@ import {
   DEV_TRY_CART_MARGIN_LINES,
   DEV_TIERS_FIXTURE,
   devAppearanceScreen,
+  devPlanScreen,
   devSettingsScreen,
   devTiersOverview,
   devTiersResult,
@@ -146,6 +148,7 @@ export const HARNESS_SCREENS = [
   "move-dialog",
   "coming-soon",
   "plan",
+  "analytics",
   "settings",
   "margin",
   "tiers",
@@ -331,7 +334,9 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       return { module };
     }
     case "plan":
-      return { pro: q.get("plan") === "pro", codeRules: codeRuleLimit(DEV_OVERVIEW_FIXTURE), maxRules: CONFIG_LIMITS.rules };
+      // Tarif (MVP 7): Free by default; ?plan=pro (subscribed, on trial), ?state=dev (the dev override alone),
+      // ?state=unknown (Shopify did not answer), ?state=clean (nothing to put back), ?result=<kind>.
+      return devPlanScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, result: q.get("result") });
     case "settings":
       return devSettingsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state });
     case "tiers":
@@ -346,6 +351,9 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
         ...devCampaignsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, edit: q.get("edit") }),
         result: devCampaignsResult(q.get("result")),
       };
+    case "analytics":
+      // Přehledy (MVP 7): Free by default (?plan=pro), ?state=empty (no order yet), ?state=unavailable (no access to orders).
+      return devAnalyticsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale });
     case "outlet":
       return { ...devOutletScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, orders: q.get("orders") === "on" }), result: devOutletResult(q.get("result")) };
     case "appearance":
@@ -433,6 +441,9 @@ export default function DevPreview() {
       break;
     case "campaigns":
       content = <CampaignsScreen {...(data as CampaignsScreenProps)} result={(data as CampaignsScreenProps).result} />;
+      break;
+    case "analytics":
+      content = <AnalyticsScreen {...(data as AnalyticsScreenProps)} />;
       break;
     case "outlet":
       content = <OutletScreen {...(data as OutletScreenProps)} result={(data as OutletScreenProps).result} />;

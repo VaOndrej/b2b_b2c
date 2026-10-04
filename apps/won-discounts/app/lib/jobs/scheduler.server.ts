@@ -13,8 +13,11 @@
 //                                 their offline session, so the next campaign's variables go out (3 phases) or the
 //                                 ended one is tidied away. Never the critical path: the function itself starts and
 //                                 ends a campaign (C4). A failed resync or a missing session retries in 5 minutes.
-//   history.prune  daily          sale events 400 days after their sale ended (the sale row stays, PRIV-2) and the
-//                                 config history past its retention (pruneExpiredConfigHistory, wired here at last).
+//   history.prune  daily          sale events 400 days after their sale ended (the sale row stays, PRIV-2), the
+//                                 config history past its retention (pruneExpiredConfigHistory, wired here at last)
+//                                 and (MVP 7) order facts 400 days after their order.
+//   billing.reconcile  daily      MVP 7 M1: shops on Pro are checked against Shopify's active subscriptions; a
+//                                 changed plan resyncs the shop (a lost app_subscriptions/update webhook).
 // The cost mirror reconcile (hourly, at most 5 shops a run) and the stale-claim sweep keep their own timers from
 // MVP 1–2 (jobs/cost-reconcile.server.ts, jobs/stale-claims.server.ts) — they already run with nobody looking.
 // Disabled under NODE_ENV=test unless forced; tests call runDueTasks / the *Once functions with an injected clock.
@@ -24,6 +27,8 @@ import { outletDue, outletExhausted } from "@won/core/discounts/outlet";
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import type { AdminClient } from "../admin-client.server";
+import { pruneOrderFacts } from "../analytics/analytics.server";
+import { reconcilePlan } from "../billing.server";
 import { pruneExpiredConfigHistory } from "../config.server";
 import { endOutletRun, writeOutletStorefront, type OutletDeps } from "../integration/outlet.server";
 import { resyncShop } from "../sync/save-and-sync.server";
@@ -159,7 +164,7 @@ export async function runOutletDueOnce(deps: OutletDueDeps): Promise<OutletDueRe
 }
 
 /** O8: history.prune (see the header). */
-export async function pruneHistoryOnce(db: PrismaClient, now: Date): Promise<{ outletEvents: number; configVersions: number }> {
+export async function pruneHistoryOnce(db: PrismaClient, now: Date): Promise<{ outletEvents: number; configVersions: number; orderFacts: number }> {
   const cutoff = new Date(now.getTime() - OUTLET_HISTORY_RETENTION_DAYS * 86_400_000);
   const old = await db.outletRun.findMany({ where: { status: "ended", endedAt: { lt: cutoff } }, select: { id: true } });
   let outletEvents = 0;
@@ -168,7 +173,50 @@ export async function pruneHistoryOnce(db: PrismaClient, now: Date): Promise<{ o
     outletEvents += count;
   }
   const configVersions = await pruneExpiredConfigHistory(db, now);
-  return { outletEvents, configVersions };
+  // MVP 7: order facts past their retention (analytics.server.ts ANALYTICS_RETENTION_DAYS).
+  const orderFacts = await pruneOrderFacts(db, now);
+  return { outletEvents, configVersions, orderFacts };
+}
+
+/** Shops reconciled per billing.reconcile run. */
+export const BILLING_RECONCILE_BATCH = 50;
+
+export interface BillingReconcileDeps {
+  db: PrismaClient;
+  clientFor: (shop: string) => Promise<AdminClient | null>;
+  now?: () => Date;
+  logger?: SyncLogger;
+  /** Tests: the resync after a changed plan (default: resyncShop of the stored config). */
+  resync?: (client: AdminClient, shop: string) => Promise<unknown>;
+}
+
+/**
+ * MVP 7 (M1): billing.reconcile, daily — every shop whose row says Pro is checked against Shopify (a lost
+ * app_subscriptions/update webhook must not leave Pro on, nor let a paying shop's row go stale). A plan that
+ * changed resyncs the shop. No session → left as it is: the row goes stale and the shop Free by itself.
+ */
+export async function runBillingReconcileOnce(deps: BillingReconcileDeps): Promise<{ checked: number; changed: string[]; skippedNoSession: number }> {
+  const now = (deps.now ?? (() => new Date()))();
+  const logger = deps.logger ?? quiet;
+  const out = { checked: 0, changed: [] as string[], skippedNoSession: 0 };
+  const rows = await deps.db.shopEntitlement.findMany({ where: { plan: "pro" }, orderBy: { checkedAt: "asc" }, take: BILLING_RECONCILE_BATCH, select: { shop: true } });
+  for (const { shop } of rows) {
+    const client = await deps.clientFor(shop).catch(() => null);
+    if (!client) {
+      out.skippedNoSession += 1;
+      continue;
+    }
+    const result = await reconcilePlan(deps.db, client, shop, now);
+    out.checked += 1;
+    if (!result.changed) continue;
+    out.changed.push(shop);
+    try {
+      await (deps.resync ?? ((c: AdminClient, s: string) => resyncShop({ client: c, db: deps.db, shop: s })))(client, shop);
+    } catch (error) {
+      logger.warn(`billing.reconcile ${shop}: resync after a plan change failed: ${error instanceof Response ? `HTTP ${error.status}` : errorText(error)}`);
+    }
+  }
+  return out;
 }
 
 /** The app's tasks. */
@@ -226,6 +274,7 @@ export function appTasks(deps: OutletDueDeps): ScheduledTask[] {
     { name: "outlet.due", everyMs: 60_000, run: (now) => runOutletDueOnce({ ...deps, now: () => now }) },
     { name: "campaigns.due", everyMs: 60_000, run: (now) => runCampaignsDueOnce({ db: deps.db, clientFor: deps.clientFor, now: () => now, ...(deps.logger ? { logger: deps.logger } : {}) }) },
     { name: "history.prune", everyMs: 24 * 3_600_000, run: (now) => pruneHistoryOnce(deps.db, now) },
+    { name: "billing.reconcile", everyMs: 24 * 3_600_000, run: (now) => runBillingReconcileOnce({ db: deps.db, clientFor: deps.clientFor, now: () => now, ...(deps.logger ? { logger: deps.logger } : {}) }) },
   ];
 }
 

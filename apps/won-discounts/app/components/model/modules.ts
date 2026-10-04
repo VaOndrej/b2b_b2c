@@ -72,12 +72,13 @@ export function orderedUpcomingModules(goals: readonly OnboardingGoal[]): Upcomi
   return orderedModules(goals).filter(isUpcomingModule);
 }
 
-/** The admin nav after the home link: Slevy a kódy, Vyzkoušet košík, modules (goal order), Nastavení, Tarif last. */
+/** The admin nav after the home link: Slevy a kódy, Vyzkoušet košík, modules (goal order), Přehledy, Nastavení, Tarif last. */
 export function navItems(locale: Locale, goals: readonly OnboardingGoal[]): { to: string; label: string }[] {
   return [
     { to: "/app/discounts", label: t(locale, "nav.discounts") },
     { to: "/app/try-cart", label: t(locale, "nav.tryCart") },
     ...orderedModules(goals).map((key) => ({ to: `/app/${key}`, label: t(locale, MODULE_META[key].nav) })),
+    { to: "/app/analytics", label: t(locale, "nav.analytics") },
     { to: "/app/settings", label: t(locale, "nav.settings") },
     { to: "/app/plan", label: t(locale, "nav.plan") },
   ];

@@ -3,6 +3,7 @@ import type { ActionFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { offlineClient } from "../lib/integration/costs.server";
+import { recordOrderWebhook } from "../lib/analytics/analytics.server";
 import { recordOutletWebhook, settleOutletWebhook } from "../lib/integration/outlet.server";
 
 // Výprodej (MVP 5, contract O7): orders/create, orders/cancelled, refunds/create → the sale ledger
@@ -16,6 +17,9 @@ import { recordOutletWebhook, settleOutletWebhook } from "../lib/integration/out
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { shop, topic, payload } = await authenticate.webhook(request);
   const outcome = await recordOutletWebhook({ shop, db }, String(topic), payload);
+  // MVP 7 (M4): the same delivery feeds the reports — one fact per order, no personal data. Never fatal for the
+  // sale ledger above: a fact that failed to save is only a missing number.
+  await recordOrderWebhook(db, shop, String(topic), payload).catch((error: unknown) => console.error(`[won-analytics] ${shop}: ${error instanceof Error ? error.message : String(error)}`));
   if (outcome.recorded > 0) console.log(`[won-outlet] ${topic} ${shop}: ${outcome.recorded} step(s)`);
   if (outcome.end.length + outcome.reopen.length + outcome.storefront.length > 0) {
     void offlineClient(shop)
