@@ -11,7 +11,7 @@ import type { NativeDiscountView } from "../components/model/types";
 import { WonSection } from "../components/shell/WonSection";
 import { ComingSoonScreen } from "../components/screens/ComingSoonScreen";
 import { buildDiscountsProps, DiscountsScreen, type DiscountsScreenProps } from "../components/screens/DiscountsScreen";
-import { buildOnboardingProps, OnboardingScreen, type OnboardingScreenProps } from "../components/screens/OnboardingScreen";
+import { buildOnboardingProps, OnboardingScreen, type OnboardingScreenProps, onboardingStep } from "../components/screens/OnboardingScreen";
 import { buildOverviewProps, OverviewScreen, type OverviewScreenProps } from "../components/screens/OverviewScreen";
 import { PlanScreen, type PlanScreenProps } from "../components/screens/PlanScreen";
 import { buildRuleEditorProps, RuleEditorScreen, type RuleEditorScreenProps } from "../components/screens/RuleEditorScreen";
@@ -322,7 +322,8 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
         embed: q.get("embed") === "on" ? DEV_EMBED_ON : DEV_EMBED_OFF,
         readOnly,
       });
-      return { ...props, step: Math.min(3, Math.max(1, Number.isFinite(step) ? step : 1)) };
+      // The shown step follows the state as on the real page (embed on → 4, a first discount → 5).
+      return { ...props, step: onboardingStep(Number.isFinite(step) ? step : 1, { embedOn: q.get("embed") === "on", rules: props.rules }) };
     }
     case "move-dialog": {
       const discounts = devNative(locale).discounts.filter((d) => d.movable);

@@ -378,7 +378,9 @@ interface CartPlan {
 ## 6. Storefront (theme app extension, Horizon + Dawn)
 
 - App embed `won-discounts` (jeden malý raw JS + CSS, SF-1 izolace, SF-2 rozpočet
-  ≤ 10 kB gz JS [spec]), bloky `quantity-tiers` (PDP) a `outlet-badge`.
+  **≤ 10 kB gz JS na typ stránky** — PDP, košík, kolekce / vyhledávání; každý soubor ≤ 10 000 B raw
+  (rozhodnutí Ondřeje 2026-10-04; dřív „všechno JS dohromady“; hlídá `perf-budget.contract.test.ts`)),
+  bloky `quantity-tiers` (PDP) a `outlet-badge`.
 - Config z app-data metafieldu v Liquidu (žádný fetch na kritické cestě); měna z
   `cart.currency` / `/cart.js`.
 - Vlastní markery pro E2E (`data-won-discounts-*`), ne DOM tématu (nova-aplikace §6).

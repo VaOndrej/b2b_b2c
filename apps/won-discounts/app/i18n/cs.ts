@@ -690,7 +690,7 @@ export const cs = {
 
   // --- Onboarding -------------------------------------------------------------------------
   "onboarding.title": "Nastavení Won Discounts",
-  "onboarding.subtitle": "3 kroky, zhruba 3 minuty",
+  "onboarding.subtitle": "5 kroků, zhruba 3 minuty",
   "onboarding.goals.title": "1. Co chceš řešit?",
   "onboarding.goals.none": "Zatím nic nevybráno",
   "onboarding.goals.picked": "Vybráno: {goals}",
@@ -1273,4 +1273,18 @@ export const cs = {
   "plan.uninstall.partial": "Část se nepovedla. Ukončené výprodeje: {ended}, obnovené slevy: {restored}. Nepovedlo se: {failed}. Zkus to znovu, než appku odinstaluješ.",
   "plan.uninstall.failed.outlet": "výprodej ({detail})",
   "plan.uninstall.failed.native": "sleva ({detail})",
+  "onboarding.first.title": "4. První sleva",
+  "onboarding.first.none": "Vyber recept, hodnoty předvyplníme",
+  "onboarding.first.body": "Vyber, čím začít. Otevře se sleva s předvyplněnými hodnotami, stačí ji zkontrolovat a uložit.",
+  "onboarding.first.done.one": "Máš {n} slevu",
+  "onboarding.first.done.few": "Máš {n} slevy",
+  "onboarding.first.done.other": "Máš {n} slev",
+  "onboarding.done.title": "5. Hotovo",
+  "onboarding.done.all": "Všechno běží",
+  "onboarding.done.left": "Ještě něco zbývá",
+  "onboarding.done.open": "Otevřít Přehled",
+  "onboarding.check.embed.on": "Web je zapnutý.",
+  "onboarding.check.embed.off": "Web ještě není zapnutý. Slevy v pokladně platí i tak, košík je jen neukáže předem.",
+  "onboarding.check.first.off": "Zatím žádná sleva.",
+  "onboarding.check.tryCart": "Vyzkoušej košík: uvidíš přesně to, co dá pokladna.",
 } satisfies Record<string, string>;

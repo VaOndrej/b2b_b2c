@@ -1,11 +1,16 @@
-// Onboarding steps 1–3 (docs/won-discounts/rozhodnuti.md, "Onboarding"; goal: the
+// Onboarding steps 1–5 (docs/won-discounts/rozhodnuti.md, "Onboarding"; goal: the
 // first working discount in under 3 minutes):
 //   1. "Co chceš řešit?" — goals only ORDER the modules; all stay visible.
 //   2. Shopify discounts found → ONE "Přesunout" button (only when there are any).
 //   3. App embed: a button opens the theme editor with the embed switched on; the
 //      app detects it by itself when the merchant comes back (focus → revalidate).
+//   4. The first discount from a recipe with its values pre-filled (MVP 7): the recipes
+//      right here; done as soon as the shop has a discount.
+//   5. "Hotovo" (MVP 7): a checklist of what is REALLY done (signals, never a stored
+//      tick) with one button for each thing that is not.
 // Each step is a WonSection whose state line tells the truth when collapsed (§17d);
-// the current step is open. Step 4 (first rule from a recipe) is the editor.
+// the current step is open. Steps 4 and 5 open by themselves from the shop's state
+// (embed on → 4, a first discount → 5): nothing to click through.
 
 import { useEffect, useRef } from "react";
 import { Form, useNavigate } from "react-router";
@@ -15,17 +20,19 @@ import { ONBOARDING_GOALS, type OnboardingGoal, type WonDiscountsConfig } from "
 import { useT } from "../../i18n/context";
 import type { MessageKey } from "../../i18n";
 import { NativeDiscountsPanel, nativeSummary } from "../NativeDiscounts";
-import { recipeHref } from "../RecipeGrid";
+import { RecipeGrid, recipeHref } from "../RecipeGrid";
 import type { RecipeKey } from "../model/rule-form";
 import { embedText } from "../model/signals";
 import type { EmbedView, NativeView, UiResult } from "../model/types";
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
-import { WonSection } from "../shell/WonSection";
+import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 
 export interface OnboardingScreenProps {
-  /** Current step 1–3 (config.onboarding.step, clamped). */
+  /** Current step 1–5: the stored step (1–3), moved on by the shop's state (onboardingStep). */
   step: number;
+  /** Discounts the shop has (step 4 is done with the first one). */
+  rules: number;
   goals: OnboardingGoal[];
   native: NativeView;
   embed: EmbedView;
@@ -37,14 +44,27 @@ export function buildOnboardingProps(
   config: WonDiscountsConfig,
   opts: { native: NativeView; embed: EmbedView; readOnly: boolean; result?: UiResult | null },
 ): OnboardingScreenProps {
+  const rules = config.modules.codes.rules.length;
   return {
-    step: Math.min(3, Math.max(1, config.onboarding.step)),
+    step: onboardingStep(config.onboarding.step, { embedOn: opts.embed.state === "on", rules }),
+    rules,
     goals: [...config.onboarding.goals],
     native: opts.native,
     embed: opts.embed,
     readOnly: opts.readOnly,
     result: opts.result ?? null,
   };
+}
+
+/**
+ * The step to show: the stored one (1–3, what the merchant clicked through), then by what is really there —
+ * past step 3 with the embed on → 4 (the first discount), with a discount → 5 (done). The merchant can always
+ * open any earlier step; nothing is locked.
+ */
+export function onboardingStep(stored: number, state: { embedOn: boolean; rules: number }): number {
+  const step = Math.min(3, Math.max(1, Math.floor(stored) || 1));
+  if (step < 3 || !state.embedOn) return step;
+  return state.rules > 0 ? 5 : 4;
 }
 
 const GOAL_KEYS: Record<OnboardingGoal, MessageKey> = {
@@ -62,7 +82,7 @@ export function firstRecipe(goals: readonly OnboardingGoal[]): RecipeKey {
 
 const RECHECK_MIN_MS = 3000;
 
-export function OnboardingScreen({ step, goals, native, embed, readOnly, result }: OnboardingScreenProps) {
+export function OnboardingScreen({ step, rules, goals, native, embed, readOnly, result }: OnboardingScreenProps) {
   const tr = useT();
   const { t } = tr;
   const embedOn = embed.state === "on";
@@ -168,13 +188,7 @@ export function OnboardingScreen({ step, goals, native, embed, readOnly, result 
         >
           <s-stack direction="block" gap="base">
             <s-text color="subdued">{t("onboarding.embed.body")}</s-text>
-            {embedOn ? (
-              <div>
-                <s-button variant="primary" href={recipeHref(firstRecipe(goals))}>
-                  {t("onboarding.finish")}
-                </s-button>
-              </div>
-            ) : (
+            {embedOn ? null : (
               <s-stack direction="block" gap="small-200">
                 <div>
                   {embed.activateUrl ? (
@@ -190,6 +204,74 @@ export function OnboardingScreen({ step, goals, native, embed, readOnly, result 
               </s-stack>
             )}
           </s-stack>
+        </WonSection>
+
+        <WonSection
+          key={`first-${step}`}
+          title={t("onboarding.first.title")}
+          glyph="tag"
+          summary={rules > 0 ? tr.tp("onboarding.first.done", rules) : t("onboarding.first.none")}
+          on={rules > 0}
+          collapsible
+          defaultOpen={step === 4}
+        >
+          <s-stack direction="block" gap="base">
+            <s-text color="subdued">{t("onboarding.first.body")}</s-text>
+            <RecipeGrid />
+          </s-stack>
+        </WonSection>
+
+        <WonSection
+          key={`done-${step}`}
+          title={t("onboarding.done.title")}
+          glyph="check"
+          summary={t(embedOn && rules > 0 ? "onboarding.done.all" : "onboarding.done.left")}
+          on={embedOn && rules > 0}
+          collapsible
+          defaultOpen={step === 5}
+        >
+          <div data-won-onboarding-checklist>
+            <WonRow
+              action={
+                embedOn || !embed.activateUrl ? undefined : (
+                  <s-button href={embed.activateUrl} target="_blank" variant="secondary">
+                    {t("onboarding.embed.open")}
+                  </s-button>
+                )
+              }
+            >
+              <RowNote tone={embedOn ? undefined : "attention"}>{t(embedOn ? "onboarding.check.embed.on" : "onboarding.check.embed.off")}</RowNote>
+            </WonRow>
+            <WonRow
+              action={
+                rules > 0 ? undefined : (
+                  <s-button href={recipeHref(firstRecipe(goals))} variant="secondary">
+                    {t("onboarding.finish")}
+                  </s-button>
+                )
+              }
+            >
+              <RowNote tone={rules > 0 ? undefined : "attention"}>{rules > 0 ? tr.tp("onboarding.first.done", rules) : t("onboarding.check.first.off")}</RowNote>
+            </WonRow>
+            <WonRow
+              action={
+                <s-button href="/app/try-cart" variant="secondary">
+                  {t("nav.tryCart")}
+                </s-button>
+              }
+            >
+              <RowNote>{t("onboarding.check.tryCart")}</RowNote>
+            </WonRow>
+            <WonRow
+              action={
+                <s-button href="/app" variant={embedOn && rules > 0 ? "primary" : "secondary"}>
+                  {t("onboarding.done.open")}
+                </s-button>
+              }
+            >
+              {null}
+            </WonRow>
+          </div>
         </WonSection>
       </s-stack>
     </s-page>

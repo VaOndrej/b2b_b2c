@@ -45,7 +45,9 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
   { path: "try-cart", expect: [/Mikina Won × 2/, /Kód VIP10/, /Celkem/, /CZK · Česko/, /Ceny a země z trhu Česko/, /Podzimní sleva 10/] },
   { path: "try-cart?state=not-wired", expect: [/Výpočet košíku zatím není zapojený/] },
   { path: "onboarding", expect: [/Co chceš řešit/, /Doprava zdarma nebo dárek/, /na první místo/] },
-  { path: "onboarding?step=3&embed=on", expect: [/Zapnuto. Web je připravený/, /Vytvořit první slevu/] },
+  { path: "onboarding?step=3&embed=on", expect: [/Zapnuto. Web je připravený/, /4\. První sleva/, /5\. Hotovo/] },
+  // MVP 7: steps 4 and 5 — the recipes in the onboarding itself, the checklist from real signals.
+  { path: "onboarding", expect: [/5 kroků, zhruba 3 minuty/, /4\. První sleva/, /Sleva na všechno|% na vše/, /5\. Hotovo/, /Ještě něco zbývá/, /Web ještě není zapnutý/, /Vyzkoušej košík/] },
   { path: "move-dialog", expect: [/Co se stane/, /Co se ztratí/, /Počítadlo použití \(zatím 42×\) se smazáním slevy v Shopify ztratí/, /Na co myslet/, /zbývajících 58/] },
   { path: "move-dialog?all=1", expect: [/Přesunout 2 slevy do Won/, /LETO15/, /Doprava zdarma nad 2 000 Kč/, /Doplň ji pro EUR/] },
   // Kampaně (MVP 6): Free locked in amber, Pro form + list by status, an edit, the errors, the Přehled card.

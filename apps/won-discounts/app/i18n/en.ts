@@ -685,7 +685,7 @@ export const en: Record<keyof typeof cs, string> = {
 
   // --- Onboarding -------------------------------------------------------------------------
   "onboarding.title": "Set up Won Discounts",
-  "onboarding.subtitle": "3 steps, about 3 minutes",
+  "onboarding.subtitle": "5 steps, about 3 minutes",
   "onboarding.goals.title": "1. What do you want to solve?",
   "onboarding.goals.none": "Nothing picked yet",
   "onboarding.goals.picked": "Picked: {goals}",
@@ -1268,4 +1268,18 @@ export const en: Record<keyof typeof cs, string> = {
   "plan.uninstall.partial": "Part of it failed. Sales ended: {ended}, discounts restored: {restored}. Failed: {failed}. Try again before you uninstall.",
   "plan.uninstall.failed.outlet": "a sale ({detail})",
   "plan.uninstall.failed.native": "a discount ({detail})",
+  "onboarding.first.title": "4. The first discount",
+  "onboarding.first.none": "Pick a recipe, the values are pre-filled",
+  "onboarding.first.body": "Pick what to start with. A discount opens with its values pre-filled; check it and save.",
+  "onboarding.first.done.one": "You have {n} discount",
+  "onboarding.first.done.few": "You have {n} discounts",
+  "onboarding.first.done.other": "You have {n} discounts",
+  "onboarding.done.title": "5. Done",
+  "onboarding.done.all": "Everything is running",
+  "onboarding.done.left": "Something is left",
+  "onboarding.done.open": "Open the Overview",
+  "onboarding.check.embed.on": "The storefront is switched on.",
+  "onboarding.check.embed.off": "The storefront is not switched on yet. Discounts apply at checkout anyway; the cart just does not show them beforehand.",
+  "onboarding.check.first.off": "No discount yet.",
+  "onboarding.check.tryCart": "Try a cart: you see exactly what checkout gives.",
 };

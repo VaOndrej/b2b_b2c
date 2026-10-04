@@ -353,3 +353,14 @@ test("readShopContext degrades to nulls (REL-1)", async () => {
   assert.deepEqual(await readShopContext(ok), { currencyCode: "CZK", timezone: "Europe/Prague" });
   assert.deepEqual(await readShopContext(async () => ({ errors: [{}] })), { currencyCode: null, timezone: null });
 });
+
+test("MVP 7 onboarding: the shown step follows the shop's state — embed on opens step 4, a first discount step 5; earlier steps stay as stored", async () => {
+  const { onboardingStep } = await import("../../app/components/screens/OnboardingScreen.tsx");
+  assert.equal(onboardingStep(1, { embedOn: true, rules: 3 }), 1, "the merchant has not been through steps 1–2 yet");
+  assert.equal(onboardingStep(2, { embedOn: true, rules: 0 }), 2);
+  assert.equal(onboardingStep(3, { embedOn: false, rules: 5 }), 3, "the embed is still off");
+  assert.equal(onboardingStep(3, { embedOn: true, rules: 0 }), 4);
+  assert.equal(onboardingStep(3, { embedOn: true, rules: 1 }), 5);
+  assert.equal(onboardingStep(99, { embedOn: true, rules: 1 }), 5);
+  assert.equal(onboardingStep(Number.NaN, { embedOn: false, rules: 0 }), 1);
+});
