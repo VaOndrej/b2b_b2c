@@ -957,7 +957,7 @@
           <div class="bq-slot now">
             <p class="lab">Build fronta · teď</p>
             <h3>Won Discounts</h3>
-            <p>Autonomní stavba MVP 0–7 na dev storu (Tiers + Rewards + Outlet + MarginGuard v jedné appce). Stav <strong>Beta</strong>: MVP 0–6 hotové (engine, Slevy a kódy, přesun nativních slev, Rust discount funkce, ochrana marže, množstevní slevy s tabulkou a živou cenou na stránce produktu ve 4 vzhledech, odměny za košík — doprava zdarma a dárek per měna, Pro žebřík a výběr ze 3, panel v košíku s kódem a „Ušetříte“, výprodej na existující variantě s kvótou, ceníky trhů, návratem cen a štítkem; pokladna přes Bogus = plán na Horizon i Dawn ve Free i Pro, CZK i EUR; MVP 5a uzavřené: admin poctivě říká, že kvóta se zatím neodečítá; MVP 5b — počítání kvóty, storna a vratky z objednávek — je připravené vypnuté a čeká na přístup k chráněným datům zákazníků; kampaně (Pro) s oknem na minutu v čase obchodu, přepisy slev a kódů, kill switchem, zákazem překryvu a náhledem košíku v době kampaně — start a konec dělá sama funkce), další MVP 7 (Dotažení: onboarding, Přehled, billing, docs, Shipped), nic nasazené. „Hotovo“ = MVP 0–7 zelené na bráně i živém E2E Horizon + Dawn, připravené k nasazení, nenasazené. Vzor a harness: pilot Won Toasts (Beta).</p>
+            <p>MVP 0–7 postavené na dev storu (Tiers + Rewards + Outlet + MarginGuard v jedné appce). Stav <strong>Shipped</strong> = připravené k nasazení, <strong>nenasazené</strong>: brána i živé E2E Horizon + Dawn (Free i Pro) zelené. MVP 6.1: kampaně mění i množstevní slevy (jen k lepšímu, tabulka na webu se přepíná se zpožděním, aby neslíbila víc než pokladna). MVP 7: onboarding v 5 krocích, Přehledy (analytika bez osobních údajů), billing Pro 29 USD s 14denní zkouškou, zrušení s doběhem, „Připravit na odinstalaci“, vlastní vzhled Pro s návodem pro AI, ceny na kartách (BETA), nápověda pro chatbota, Dockerfile + fly.toml, Postgres. Čeká na Shopify / Ondřeje: přístup k objednávkám (kvóta výprodeje z objednávek 5b, živá analytika), schválení testovacího předplatného (billing naživo). Vzor a harness: pilot Won Toasts (Beta).</p>
           </div>
           <div class="bq-slot">
             <p class="lab">Build fronta · další (gated)</p>
@@ -2280,7 +2280,7 @@
                 </span>
                 <span class="app-code">WON·DISC</span>
               </span>
-              <span class="mvp-badge mvp-beta">Beta</span>
+              <span class="mvp-badge mvp-shipped">Shipped</span>
               <span class="price">$29/mo</span>
             </div>
             <h3>Won Discounts</h3>
@@ -2317,7 +2317,7 @@
             <details class="app-guide">
               <summary>Návod k implementaci (MVP 0–7)</summary>
               <p class="guide-idea">
-                <strong>Stav (2026-10-01): Beta, MVP 0–3 hotové (množstevní slevy + PDP blok ověřené živě na Horizon i Dawn, Free i Pro, CZK i EUR), další MVP 4 Odměny + košík.</strong>
+                <strong>Stav (2026-10-04): Shipped — MVP 0–7 hotové a ověřené živě na Horizon i Dawn (Free i Pro), připravené k nasazení, nenasazené. Otevřené: přístup k objednávkám (5b, živá analytika) a billing naživo.</strong>
                 Kostra <code>apps/won-discounts</code> stojí: config v0, discount
                 funkce, app embed ověřený živým E2E na Horizon i Dawn, dev harness
                 adminu. Nic není nasazené. Staví se autonomně podle
@@ -2520,7 +2520,7 @@
                   jako předtím.
                 </li>
                 <li>
-                  <strong>MVP 7 · plánované:</strong> onboarding do 3 minut,
+                  <strong>MVP 7 · hotové:</strong> onboarding do 3 minut,
                   Přehled, Vzhled (Pro vlastní vzhled + návod pro AI), analytika
                   Free/Pro, billing + downgrade, „Připravit na odinstalaci“, BETA
                   ceny na kartách, support/chatbot docs, <code>Dockerfile</code> +

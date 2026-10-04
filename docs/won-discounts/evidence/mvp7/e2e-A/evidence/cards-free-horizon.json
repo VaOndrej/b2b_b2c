@@ -1,0 +1,10 @@
+{
+  "theme": "Horizon",
+  "text": "Od 2 ks −10 %",
+  "map": {
+    "won-e2e-simple-a": "Od 2 ks −10 %",
+    "won-e2e-simple-b": "Od 2 ks −10 %"
+  },
+  "cartOff": 200,
+  "original": 2000
+}

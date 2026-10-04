@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-04T14:32:26.304Z",
+  "theme": "Dawn",
+  "currency": "EUR",
+  "rows": [
+    {
+      "variant": 48468679164145,
+      "quantity": 1,
+      "gift": "e2e-gift",
+      "unitPrice": 37,
+      "plan": {
+        "ruleIds": [
+          "gift:e2e-gift"
+        ],
+        "amount": 37
+      }
+    },
+    {
+      "variant": 48468678902001,
+      "quantity": 8,
+      "gift": null,
+      "unitPrice": 42,
+      "plan": null
+    }
+  ],
+  "plan": {
+    "totals": {
+      "subtotal": 373,
+      "productDiscount": 37,
+      "orderDiscount": 0,
+      "total": 336
+    },
+    "progress": {
+      "freeShipping": {
+        "threshold": 200,
+        "remaining": 0,
+        "reached": true
+      },
+      "gifts": [
+        {
+          "tierId": "e2e-gift",
+          "threshold": 300,
+          "remaining": 0,
+          "reached": true
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,183 @@
+{
+  "at": "2026-10-04T14:10:43.425Z",
+  "theme": "Dawn",
+  "profile": "tiers",
+  "pdp": {
+    "quantity": 5,
+    "unitCents": 858,
+    "liveText": "5 ks za 42,90 Kč (8,58 Kč/ks)",
+    "activeRow": {
+      "min": 5,
+      "active": true,
+      "hidden": false,
+      "qty": "Od 5 ks",
+      "save": "−14,2 %",
+      "unit": "8,58 Kč/ks"
+    }
+  },
+  "lines": [
+    {
+      "variant": 48468678934769,
+      "quantity": 1,
+      "unitPrice": 1200,
+      "plan": {
+        "components": [],
+        "amount": 0,
+        "message": null,
+        "value": null,
+        "marginCapped": null
+      },
+      "cart": {
+        "allocations": [],
+        "final_line_price": 1200
+      }
+    },
+    {
+      "variant": 48468679000305,
+      "quantity": 2,
+      "unitPrice": 1800,
+      "plan": {
+        "components": [
+          "tier:e2e-tiers-global"
+        ],
+        "amount": 360,
+        "message": "Od 3 ks −10 %",
+        "value": {
+          "percent": 10
+        },
+        "marginCapped": null
+      },
+      "cart": {
+        "allocations": [
+          [
+            "Od 3 ks −10 %",
+            360
+          ]
+        ],
+        "final_line_price": 3240
+      }
+    },
+    {
+      "variant": 48468678967537,
+      "quantity": 1,
+      "unitPrice": 1500,
+      "plan": {
+        "components": [
+          "tier:e2e-tiers-global"
+        ],
+        "amount": 150,
+        "message": "Od 3 ks −10 %",
+        "value": {
+          "percent": 10
+        },
+        "marginCapped": null
+      },
+      "cart": {
+        "allocations": [
+          [
+            "Od 3 ks −10 %",
+            150
+          ]
+        ],
+        "final_line_price": 1350
+      }
+    },
+    {
+      "variant": 48468678902001,
+      "quantity": 5,
+      "unitPrice": 1000,
+      "plan": {
+        "components": [
+          "tier:e2e-tiers-global"
+        ],
+        "amount": 710,
+        "message": "Množstevní sleva od 5 ks",
+        "value": {
+          "fixedTotal": 710
+        },
+        "marginCapped": {
+          "before": 750,
+          "after": 710,
+          "floorUnit": 858,
+          "basis": "cost",
+          "minMarginPercent": 30,
+          "source": "global"
+        }
+      },
+      "cart": {
+        "allocations": [
+          [
+            "Množstevní sleva od 5 ks",
+            710
+          ]
+        ],
+        "final_line_price": 4290
+      }
+    }
+  ],
+  "items_subtotal_price": 10080,
+  "total_price": 10080,
+  "planTotals": {
+    "subtotal": 11300,
+    "productDiscount": 1220,
+    "orderDiscount": 0,
+    "total": 10080
+  },
+  "planTiers": [
+    {
+      "setId": "e2e-tiers-global",
+      "ruleId": "tier:e2e-tiers-global",
+      "countAcross": "product",
+      "state": "applied",
+      "amount": 1220,
+      "lineIds": [
+        "gid://shopify/CartLine/1",
+        "gid://shopify/CartLine/2",
+        "gid://shopify/CartLine/3"
+      ],
+      "groups": [
+        {
+          "lineIds": [
+            "gid://shopify/CartLine/0"
+          ],
+          "count": 1,
+          "reached": null,
+          "next": {
+            "minQty": 3,
+            "percent": 10,
+            "amount": null
+          }
+        },
+        {
+          "lineIds": [
+            "gid://shopify/CartLine/1",
+            "gid://shopify/CartLine/2"
+          ],
+          "count": 3,
+          "reached": {
+            "minQty": 3,
+            "percent": 10,
+            "amount": null
+          },
+          "next": {
+            "minQty": 5,
+            "percent": 15,
+            "amount": null
+          }
+        },
+        {
+          "lineIds": [
+            "gid://shopify/CartLine/3"
+          ],
+          "count": 5,
+          "reached": {
+            "minQty": 5,
+            "percent": 15,
+            "amount": null
+          },
+          "next": null
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "theme": "Dawn",
+  "css": ":is(.won-tiers,.won-cart,.won-cart-slot,.won-outlet){--won-tiers-accent:#0a7d4f}:is(.won-tiers,.won-cart,.won-cart-slot,.won-outlet) .won-tiers__heading{letter-spacing: 0.05em;}:is(.won-tiers,.won-cart,.won-cart-slot,.won-outlet) .won-card-tier{color: #0a7d4f;}",
+  "accent": "#0a7d4f",
+  "accentRgb": "rgb(10, 125, 79)"
+}

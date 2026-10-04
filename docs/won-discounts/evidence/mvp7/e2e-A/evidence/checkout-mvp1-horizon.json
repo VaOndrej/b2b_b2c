@@ -1,0 +1,98 @@
+{
+  "at": "2026-10-04T13:42:00.402Z",
+  "theme": "Horizon",
+  "checkoutPath": "/checkouts/cn/<token>/cs-cz/thank-you",
+  "codeCarriedIntoCheckout": false,
+  "cart": {
+    "currency": "CZK",
+    "original_total_price": 1000,
+    "items_subtotal_price": 900,
+    "total_price": 765,
+    "discount_codes": [
+      {
+        "code": "WONE2E15",
+        "applicable": true
+      }
+    ]
+  },
+  "expected": {
+    "lineDiscount": 100,
+    "orderDiscount": 135,
+    "subtotalAfterLines": 900,
+    "total": 765,
+    "planTotals": {
+      "subtotal": 1000,
+      "productDiscount": 100,
+      "orderDiscount": 135,
+      "total": 765
+    },
+    "rules": [
+      {
+        "ruleId": "e2e-mvp1-auto-10",
+        "state": "applied",
+        "amount": 100
+      },
+      {
+        "ruleId": "e2e-mvp1-code-15",
+        "state": "applied",
+        "amount": 135
+      }
+    ]
+  },
+  "thankYou": {
+    "lineDiscount": -100,
+    "lineOriginal": 1000,
+    "lineFinal": 900,
+    "subtotal": 900,
+    "orderDiscount": -135,
+    "shipping": 65151,
+    "tax": 0,
+    "total": 65916,
+    "charged": 65916
+  },
+  "thankYouLines": [
+    {
+      "title": "Won E2E — Simple A",
+      "allocations": [
+        {
+          "title": "E2E AUTO 10 %",
+          "amount": -100
+        }
+      ],
+      "originalPrice": 1000,
+      "finalPrice": 900
+    }
+  ],
+  "thankYouSummaryRows": [
+    {
+      "label": "Mezisoučet",
+      "value": "9,00 Kč",
+      "amount": 900
+    },
+    {
+      "label": "Sleva na objednávku",
+      "value": "",
+      "amount": null
+    },
+    {
+      "label": "WONE2E15",
+      "value": "− 1,35 Kč",
+      "amount": -135
+    },
+    {
+      "label": "Expedice",
+      "value": "651,51 Kč",
+      "amount": 65151
+    },
+    {
+      "label": "Celkem",
+      "value": "659,16 Kč",
+      "amount": 65916
+    },
+    {
+      "label": "CELKOVÁ ÚSPORA2,35 Kč",
+      "value": "",
+      "amount": null
+    }
+  ]
+}

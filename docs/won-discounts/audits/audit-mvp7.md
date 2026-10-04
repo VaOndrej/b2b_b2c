@@ -60,7 +60,24 @@ denní `billing.reconcile`. Selhané čtení řádek nemění. Změna plánu spo
 
 ## Živé E2E (dev store, Bogus)
 
-Doplní checkpoint MVP 7 v build logu (`runs/mvp7-A`, `runs/mvp7-B`, evidence `evidence/mvp7/`).
+Počty = testy Horizon + Dawn; u každého profilu seed (dry-run napřed) → matice → úklid → `verify-clean` exit 0.
+
+**Fáze A — Free** (15:35–17:10, HEAD `95d8588`, evidence `evidence/mvp7/e2e-A`): `cards` 4 + 4 (řádek na kartě ve
+vyhledávání, vlastní vzhled se ve Free nepošle), `mvp1` 5 + 5, `shapes` 4 + 4, `margin` 6 + 6, `tiers` 7 + 7,
+`rewards` 7 + 7, `rewards-other` 3 + 3, `outlet` 4 + 4, `campaign` 3 + 3 — vše ✓ Horizon ✓ Dawn, bez opakování.
+První běh `cards` (před opravou A1) ✘ ✘.
+
+**Fáze B — Pro** (17:12–18:30, `WON_DEV_PLAN=pro`, evidence `evidence/mvp7/e2e-B`): `cards` 4 + 4 (karta +
+vlastní vzhled: jeden `style#won-discounts-custom`, proměnná jen na bloku), `outlet` 5 + 5 (výprodeje spuštěné a
+ukončené kódem appky, ceny po konci = záloha), `rewards-pro` 3 + 3, `tiers-pro` 5 + 5, `margin-pro` 6 + 6, `shapes`
+4 + 4, `campaign` 3 + 3 — vše ✓ Horizon ✓ Dawn. Dvě přechodné chyby Shopify, žádná v kódu appky:
+- `outlet` napoprvé spadl před testy (dry-run `outlet.mjs --start`: Shopify CLI zůstalo viset na „Authenticating“,
+  `shopify app execute: network failure`); nic nezapsal, samostatné opakování profilu čisté.
+- `campaign` Horizon: první pokus ✘ (`POST /cart/update.js` → 500 Internal Server Error ze storefrontu), retry
+  Playwrightu ✓ celým oknem kampaně (8 min).
+
+`campaign-tiers` (6.1) se ve finálním kole nepouštěl: běžel téhož dne ✓ ✓ Free i Pro na `fc9567a` se serverovými
+vrstvami MVP 7; změny po něm se týkají vzhledu, karet a adminu.
 
 ## Testing gaps
 

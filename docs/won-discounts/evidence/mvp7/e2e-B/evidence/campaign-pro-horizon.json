@@ -1,0 +1,28 @@
+{
+  "theme": "Horizon",
+  "window": {
+    "start": "2026-10-04T12:06:00",
+    "end": "2026-10-04T12:11:00",
+    "startUtc": "2026-10-04T16:06:00.000Z",
+    "endUtc": "2026-10-04T16:11:00.000Z",
+    "timezone": "America/New_York"
+  },
+  "readings": [
+    {
+      "at": "2026-10-04T16:04:52.887Z",
+      "percent": 10
+    },
+    {
+      "at": "2026-10-04T16:06:10.147Z",
+      "percent": 30
+    },
+    {
+      "at": "2026-10-04T16:11:10.164Z",
+      "percent": 10
+    }
+  ],
+  "charged": {
+    "lineFinal": 700,
+    "original": 1000
+  }
+}
