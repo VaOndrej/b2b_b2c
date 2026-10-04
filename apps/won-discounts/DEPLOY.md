@@ -1,8 +1,11 @@
 # Won Discounts — deploy to production (Fly.io + Postgres)
 
-**Prepared, not deployed** (mezery A13). Nothing in this file has been run against a real Fly account; the image
-builds locally (`docker build`, see the build log) and the Postgres migrations apply to a local Postgres
-(`npm run test:postgres -w won-discounts`). Hosting files: `Dockerfile`, `fly.toml`, `docker-compose.yml`.
+**Prepared, not deployed** (mezery A13). Nothing in this file has been run against a real Fly account. Verified
+locally on 2026-10-04: `docker build -f apps/won-discounts/Dockerfile .` builds (image 2.33 GB: the whole workspace
+with devDependencies), `prisma migrate deploy` in the image applies the baseline to a local Postgres, the server
+starts and `/healthz` answers `ok`; the image holds no `.env`, no SQLite file and no `.git`
+(`Dockerfile.dockerignore`). `npm run test:postgres -w won-discounts` runs the app's own code on Postgres (5/5).
+Hosting files: `Dockerfile`, `fly.toml`, `docker-compose.yml`.
 
 ## What runs where
 
