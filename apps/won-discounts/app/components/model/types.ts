@@ -631,6 +631,18 @@ export interface AppearanceScreenData {
   product: PreviewProductView | null;
   block: TiersBlockView;
   embed: EmbedView;
+  /** MVP 7 BETA: prices by quantity on product cards (storefront.cardPricesEnabled). */
+  cardPrices: boolean;
+  /** MVP 7 (Pro): the stored custom look as the form shows it ("" = not set). */
+  custom: { accent: string; line: string; tint: string; radius: string; css: string };
+  /** The stored custom CSS cannot be used (a hand-made config): why, for the notice. */
+  customIssue: string | null;
+  /** MVP 7: the storefront texts — the extension's own per language and what the merchant changed ("" = unchanged). */
+  texts: { key: string; defaults: Record<"cs" | "sk" | "en", string>; values: Record<"cs" | "sk" | "en", string> }[];
+  /** The deep link that adds the card block to the theme's product card (themes whose card takes app blocks). */
+  cardBlockUrl: string | null;
+  /** MVP 7 (Pro): the brief for an AI — the storefront contract a custom look is written against. */
+  aiPrompt: string;
 }
 
 /** Free per-category combination switches (A1, engine.combination). */

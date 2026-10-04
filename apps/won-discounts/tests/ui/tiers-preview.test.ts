@@ -141,6 +141,12 @@ test("the look cards: each radio is named by its look only and described by its 
       product: null,
       block: { state: "no_scope" },
       embed: { state: "on", activateUrl: null },
+      cardPrices: false,
+      custom: { accent: "", line: "", tint: "", radius: "", css: "" },
+      customIssue: null,
+      texts: [],
+      cardBlockUrl: null,
+      aiPrompt: "",
     }),
   );
   const handler = createStaticHandler([{ path: "/", Component: () => element }]);

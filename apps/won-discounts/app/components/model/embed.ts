@@ -42,3 +42,15 @@ export function outletBlockAddUrl(shop: string, apiKey: string): string | null {
   if (!SHOP_DOMAIN.test(shop) || !apiKey) return null;
   return `https://${shop}/admin/themes/current/editor?template=product&addAppBlockId=${encodeURIComponent(apiKey)}/${OUTLET_BLOCK_HANDLE}&target=mainSection`;
 }
+
+/** The card block's handle (blocks/card_tiers.liquid, MVP 7 BETA). */
+export const CARD_BLOCK_HANDLE = "card_tiers";
+
+/**
+ * MVP 7 (M8): the theme editor on the collection template with the card block ready to add. Themes whose product
+ * card takes app blocks (Horizon) let the merchant drop it into the card; others get the line from the embed.
+ */
+export function cardBlockAddUrl(shop: string, apiKey: string): string | null {
+  if (!SHOP_DOMAIN.test(shop) || !apiKey) return null;
+  return `https://${shop}/admin/themes/current/editor?template=collection&addAppBlockId=${encodeURIComponent(apiKey)}/${CARD_BLOCK_HANDLE}&target=mainSection`;
+}

@@ -16,7 +16,7 @@ summary: Every document in the Won Discounts knowledge base with the metadata th
 
 # Documentation index
 
-64 documents. Chatbot filters: `min_plan` hides Pro-only answers from
+67 documents. Chatbot filters: `min_plan` hides Pro-only answers from
 Free merchants, `status` keeps `planned`/`beta` material out of answers, `lang`
 selects the answer language, `layer` weights concepts over tasks for "how does it
 work" questions.
@@ -29,11 +29,13 @@ How it works and why — the answers to most support questions. Stable across UI
 |---|---|---|---|---|---|
 | [Billing, the trial and going back to Free](concepts/billing-and-downgrade.md) | `billing-and-downgrade` | plans | free | beta | Pro is billed by Shopify at 29 USD a month after a 14-day trial; cancelling makes the store Free at once, running campaigns and sales finish, and Pro settings stay saved. |
 | [Campaigns](concepts/campaigns.md) | `campaigns` | campaigns | pro | beta | A named time window that changes your discounts, codes and quantity discounts for a while; it starts and ends by itself, at the exact minute, for every discount at once. |
+| [Prices by quantity on product cards (BETA)](concepts/card-prices.md) | `card-prices` | tiers | free | beta | With card prices on, product cards in collections and search show the first quantity break; a card shows nothing where checkout might give less, so it never over-promises. |
 | [Cart rewards](concepts/cart-rewards.md) | `cart-rewards` | rewards | free | beta | Free shipping and a free gift from an order amount per currency. The cart on your store shows the progress and adds the gift; checkout always makes the gift free. |
 | [Clearance](concepts/clearance.md) | `clearance` | outlet | pro | beta | Sell a number of pieces of an existing variant at a discount; the price comes back by itself when the quota is sold, at the end date or by hand. |
 | [Codes vs automatic discounts](concepts/codes-vs-automatic-discounts.md) | `codes-vs-automatic-discounts` | discounts | free | stable | Automatic discounts apply by themselves; code discounts apply when a customer enters one of their codes. How codes behave and why active code discounts are limited. |
 | [How Won discounts combine](concepts/combining-discounts.md) | `combining-discounts` | engine | free | stable | The default combining rules. Product discounts on the same item compete (the better one wins); product, order and shipping discounts add up. |
 | [Cost prices in margin protection](concepts/cost-prices.md) | `cost-prices` | margin | free | stable | Where margin protection gets cost prices, the percentage ceiling for products without one (also used while costs load), and how other currencies are handled. |
+| [A custom look of the storefront blocks](concepts/custom-look.md) | `custom-look` | appearance | pro | beta | On Pro you can set colours, the corner radius and your own CSS for the Won blocks; the app confines every rule to the blocks, so the rest of the theme never changes. |
 | [Discounts outside Won](concepts/discounts-outside-won.md) | `discounts-outside-won` | native-discounts | free | stable | Discounts created in Shopify or by other apps run outside Won's engine. Why that matters, what the Overview shows, and which of them can be moved into Won. |
 | [How Won decides which discounts apply](concepts/how-won-plans-discounts.md) | `how-won-plans-discounts` | engine | free | stable | One engine plans the discounts for a cart; Try a cart, the editor preview and checkout all run it, so checkout takes off what the admin shows. |
 | [Margin settings per collection (Pro)](concepts/margin-per-collection.md) | `margin-per-collection` | margin | pro | stable | With Pro, chosen collections get their own minimum margin or ceiling; the strictest value wins. Where protection steps in shows which discounts it lowers and by how much. |
@@ -56,6 +58,7 @@ Step-by-step: how do I set X up.
 | [Show the rewards in the cart](tasks/add-the-cart-panel-to-the-cart-page.md) | `add-the-cart-panel-to-the-cart-page` | rewards | free | beta | The app embed shows the rewards in the cart drawer by itself; on the cart page you place them with the Rewards and code block. |
 | [Add the sale badge to the product page](tasks/add-the-sale-badge.md) | `add-the-sale-badge` | outlet | pro | beta | Add the Sale badge app block to the product page so the badge and Only X left show for a variant on sale. |
 | [Add the quantity-tiers table to the product page](tasks/add-tiers-to-the-product-page.md) | `add-tiers-to-the-product-page` | tiers | free | stable | One click adds the quantity-tiers block to the active theme's product page; the admin shows whether the block is already there. |
+| [Change the texts on the storefront](tasks/change-storefront-texts.md) | `change-storefront-texts` | appearance | free | beta | Open Look, expand Storefront texts, type your own wording per language and save; an empty field keeps the default, and the parts in curly braces must stay. |
 | [Choose an appearance for the quantity-tiers block](tasks/choose-an-appearance.md) | `choose-an-appearance` | tiers | free | stable | Pick one of four ready-made looks for the quantity-tiers block; colors and fonts follow the theme automatically. |
 | [Schedule a campaign](tasks/create-a-campaign.md) | `create-a-campaign` | campaigns | pro | beta | Name the campaign, set its start and end in the store's time, tick the discounts and quantity sets it changes and how, then schedule it and try a cart at its start. |
 | [Create a discount code](tasks/create-a-discount-code.md) | `create-a-discount-code` | discounts | free | stable | Set up a discount that applies only with a code, add several codes to it, and set usage limits. |

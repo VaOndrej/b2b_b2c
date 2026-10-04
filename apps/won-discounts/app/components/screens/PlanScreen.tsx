@@ -69,7 +69,6 @@ export function PlanScreen(props: PlanScreenProps) {
         <WonSection
           title={t("plan.free.title")}
           glyph="check"
-          on={!pro}
           summary={t("plan.free.summary", { rules: maxRules, codes: codeRules.limit })}
           hint={[pro ? "" : t("plan.current"), t("plan.codeLimit", { codes: codeRules.limit, shopify: codeRules.shopifyLimit })].filter(Boolean).join(" · ")}
         />

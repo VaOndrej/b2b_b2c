@@ -71,6 +71,10 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
       /Uložené změny, které se nepoužijí: 1\./,
     ],
   },
+  // Vzhled (MVP 7): the custom look (locked amber on Free), card prices BETA, the storefront texts, the AI brief.
+  { path: "appearance", expect: [/Vlastní vzhled/, /Vlastní vzhled je v tarifu Pro/, /Ceny podle množství na kartách produktů · BETA/, /Texty na webu/, /Výchozí texty/, /Zkopírovat zadání pro AI/] },
+  { path: "appearance?plan=pro&state=custom", expect: [/Vlastní barvy nebo CSS jsou nastavené/, /Zapnuto: karty ukazují první úroveň/, /Upravených textů: 1/, /Přidat blok do karty produktu/, /--won-tiers-accent/] },
+  { path: "appearance?plan=pro&state=issue", expect: [/Uložené vlastní CSS nejde použít/] },
   // Tarif (MVP 7): the plan in force, the Pro offer with its price and trial, cancel with what runs on, uninstall prep.
   { path: "plan", expect: [/Máš tarif Free\./, /Pro · 29 USD měsíčně/, /Vyzkoušet Pro na 14 dní zdarma/, /14 dní zdarma, potom 29 USD měsíčně/, /Testovací platba/, /Připravit na odinstalaci/, /Obnoví v Shopify slevy: LETO15, Doprava zdarma nad 2 000 Kč/, /vrátí jejich ceny: 2/] },
   { path: "plan?plan=pro", expect: [/Máš Pro na zkoušku do 18\. 10\. 2026 14:00/, /Zrušit Pro/, /Doběhne do konce: Víkend −20 %, běžící výprodeje \(2\)/] },
@@ -266,7 +270,7 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
       /won-tiers--tiles/,
       /Kompaktní štítky v řádku/,
       /Uloženo/,
-      /Vlastní vzhled bude v tarifu Pro v další verzi/,
+      /Vlastní vzhled je v tarifu Pro/,
       /Vložení aplikace do tématu/,
     ],
   },
@@ -332,7 +336,9 @@ for (const screen of SCREENS) {
     for (const re of screen.expect) assert.match(html, re, `${screen.path}: expected ${re}`);
     // §4c: nothing machine-shaped leaks into the page text (the serialized
     // loader data in <script> is data, not text, so it is left out).
-    const text = html.replace(/<script[\s\S]*?<\/script>/g, "");
+    // MVP 7: the storefront text editor shows the extension's own texts as input placeholders — those DO contain
+    // the storefront's `{n}` / `{value}` slots (the merchant must keep them), so placeholder attributes are data too.
+    const text = html.replace(/<script[\s\S]*?<\/script>/g, "").replace(/ placeholder="[^"]*"/g, "");
     assert.doesNotMatch(text, /\{(n|name|value|currency|rule|currencies|date|count)\}/, `${screen.path}: leftover placeholder`);
     assert.doesNotMatch(text, />[^<]*\bundefined\b[^<]*</, `${screen.path}: "undefined" in text`);
     assert.doesNotMatch(text, />[^<]*\b(freeShipping|percentage|not_wired|draft_only|not_synced|max_percent|rateEstimated|linesWithoutCost)\b[^<]*</, `${screen.path}: raw enum in text`);

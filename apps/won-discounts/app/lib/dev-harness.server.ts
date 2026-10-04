@@ -65,7 +65,7 @@ import { REWARDS_FIELD } from "../components/model/rewards";
 import { rewardsScreenFacts } from "./integration/rewards.server";
 import { currencyViews } from "../components/model/markets";
 import { TIERS_FIELD } from "../components/model/tiers";
-import { sampleSet } from "./integration/appearance.server";
+import { aiPrompt, sampleSet, storefrontTextDefaults, storefrontTextKeys } from "./integration/appearance.server";
 import { tiersOverviewOf, tiersScreenFacts } from "./integration/tiers.server";
 import { lossText, undoCostTexts, warningText } from "./native/copy";
 import { isDevHarnessEnvironment } from "./dev-harness-env";
@@ -1044,6 +1044,23 @@ export function devAppearanceScreen(opts: { plan: "free" | "pro"; state: string 
     product: DEV_PREVIEW_PRODUCT,
     block: devBlock(opts.state),
     embed: opts.state === "empty" ? DEV_EMBED_OFF : DEV_EMBED_ON,
+    // MVP 7: ?state=custom = a custom look, card prices on and a changed text; ?state=issue = stored CSS that cannot be used.
+    cardPrices: opts.state === "custom",
+    custom:
+      opts.state === "custom" || opts.state === "issue"
+        ? { accent: "#0a7d4f", line: "", tint: "#f2fbf6", radius: "4", css: opts.state === "issue" ? ".a{background:url(x)}" : ".won-tiers__heading { text-transform: uppercase; }" }
+        : { accent: "", line: "", tint: "", radius: "", css: "" },
+    customIssue: opts.state === "issue" ? "forbidden" : null,
+    texts: storefrontTextKeys().map((key) => {
+      const d = storefrontTextDefaults();
+      return {
+        key,
+        defaults: { cs: d.cs[key] ?? "", sk: d.sk[key] ?? "", en: d.en[key] ?? "" },
+        values: { cs: opts.state === "custom" && key === "tiers.heading" ? "Kup víc, plať míň" : "", sk: "", en: "" },
+      };
+    }),
+    cardBlockUrl: "https://won-dev.myshopify.com/admin/themes/current/editor?template=collection&addAppBlockId=dev/card_tiers&target=mainSection",
+    aiPrompt: aiPrompt(),
   };
 }
 

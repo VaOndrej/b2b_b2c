@@ -177,3 +177,19 @@ test("cards.js: text goes in as text (never markup), junk data and a missing dat
   await assert.doesNotReject(runCards("{not json", [junk.link]));
   assert.equal(lines(junk.c).length, 0);
 });
+
+test("the AI brief's class list is exactly the classes of the extension's stylesheets; its variables are the ones the custom look sets", async () => {
+  const { readdir } = await import("node:fs/promises");
+  const { STOREFRONT_CLASSES, aiPrompt } = await import("../../app/lib/integration/appearance.server.ts");
+  const { CUSTOM_LOOK_VARS } = await import("@won/core/discounts/custom-look");
+  const found = new Set<string>();
+  for (const file of (await readdir(path.join(extensionRoot, "assets"))).filter((f) => f.endsWith(".css"))) {
+    for (const m of (await read(`assets/${file}`)).matchAll(/\.(won-[a-z]+(?:(?:__|--)[a-z-]+|-[a-z]+)?)/g)) found.add(`.${m[1]}`);
+  }
+  assert.deepEqual([...STOREFRONT_CLASSES].sort(), [...found].sort());
+  const css = await read("assets/won-discounts-tiers.css");
+  for (const variable of Object.values(CUSTOM_LOOK_VARS)) {
+    assert.ok(css.includes(`var(${variable}`), `${variable} is read by the tiers stylesheet`);
+    assert.ok(aiPrompt().includes(variable));
+  }
+});

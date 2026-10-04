@@ -5,11 +5,9 @@ každém MVP**, obsah je rozvrstvený podle _stability_, volatilní věci se **g
 z kódu** a drift hlídá test. Kanonický princip: [`docs/nova-aplikace.md` §9](../../../docs/nova-aplikace.md).
 Vzor: [`apps/won-toasts/docs/`](../../won-toasts/docs/).
 
-Stav: pokrývá **MVP 0–3** (Slevy a kódy, engine a kombinování + přepínání kategorií
-v Nastavení, přesun nativních slev s undo, Vyzkoušet košík, Ochrana marže, Množstevní
-slevy + vzhledy bloku). Moduly MVP 4+ (odměny, výprodej, kampaně, vlastní vzhled) tu
-záměrně nejsou; dokumenty k nim přibydou po ustálení MVP, do té doby je zmiňují jen
-jako „not built yet“.
+Stav: pokrývá **MVP 0–7** (slevy a kódy, engine a kombinování, přesun nativních slev, Vyzkoušet košík, ochrana
+marže, množstevní slevy a vzhledy bloku, odměny v košíku, výprodej, kampaně vč. úrovní v kampani, billing a
+downgrade, příprava na odinstalaci, přehledy, vlastní vzhled, texty na webu, ceny na kartách BETA).
 
 ## Vrstvy
 
@@ -30,7 +28,8 @@ Stejný jako won-toasts: `title`, `slug` (== název souboru), `layer`, `feature`
 `keywords`, `summary`. `title` a `summary` bez „: “ (validní YAML).
 
 `feature` v téhle appce: `core` · `engine` · `discounts` · `native-discounts` ·
-`margin` · `markets` · `plans` · `try-cart` · `sync` · `tiers`.
+`margin` · `markets` · `plans` · `try-cart` · `sync` · `tiers` · `rewards` · `outlet` · `campaigns` ·
+`appearance` · `analytics`.
 
 `min_plan: pro` mají jen Pro featury (kombinace per sleva, marže per kolekce).
 
@@ -53,7 +52,8 @@ regeneruje referenci v paměti a porovná s commitnutými soubory, a u všech do
 hlídá povinný frontmatter (`min_plan`, `status` …), `slug` == název souboru, složku
 podle vrstvy, unikátní slugy a mrtvé odkazy.
 
-Není tu (oproti won-toasts): `index.generated.md` a export `dist/corpus.jsonl`.
+`index.generated.md` (rejstřík pro chatbota) a `dist/corpus.jsonl` (úryvky pro RAG) generuje stejný příkaz
+`npm run docs:gen -w won-discounts`; drift hlídá `tests/docs/docs-corpus.test.ts`.
 
 ## Přidání dokumentu
 
