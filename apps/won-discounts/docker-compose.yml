@@ -1,0 +1,24 @@
+# Local Postgres for the Postgres port's tests (`npm run test:postgres -w won-discounts`) and for trying the
+# production image. Dev (`shopify app dev`) and the unit tests stay on SQLite.
+#   docker compose -f apps/won-discounts/docker-compose.yml up -d db
+#   DATABASE_URL="postgresql://won:won@localhost:5433/won_discounts?schema=public"
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: won
+      POSTGRES_PASSWORD: won
+      POSTGRES_DB: won_discounts
+    ports:
+      - "5433:5432"   # 5432 is Won Toasts' local Postgres
+    volumes:
+      - won_discounts_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U won -d won_discounts"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  won_discounts_pgdata:

@@ -19,8 +19,10 @@
     "pretypecheck": "prisma generate",
     "typecheck": "react-router typegen && tsc --noEmit",
     "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
-    "docs:gen": "tsx scripts/gen-docs.ts",
+    "docs:gen": "tsx scripts/gen-docs.ts && tsx scripts/gen-docs-index.ts && tsx scripts/export-docs.ts",
+    "docs:export": "tsx scripts/export-docs.ts",
     "test:unit": "node ./scripts/run-unit-tests.mjs",
+    "test:postgres": "node ./scripts/test-postgres.mjs",
     "test:unit:node": "tsx --test 'tests/**/*.test.ts'",
     "test:e2e": "node ./scripts/require-e2e-contract.mjs",
     "test:e2e:local:all": "node ./scripts/make-e2e-overlay.mjs --check && node ./scripts/require-e2e-contract.mjs --local-matrix"

@@ -12,15 +12,32 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > technická pravidla, zakázané věci). **MVP N+1 nezačíná, dokud MVP N není finální** (brána, živé E2E A+B,
 > vizuální QA, audit s opravenými nálezy, checkpoint, push).
 
-- **Aktivní zadání:** docs/won-discounts/prompt-mvp7.md. Krok: 6.1 brána + živé E2E.
-  Plán `docs/plans/2026-10-04-won-discounts-mvp6-1.md` (L1–L10, E1–E5, výsledek B0). Hotovo a commitnuto: core
-  (`fc949f1`), Rust + B0 (`d7d6f63`, max 99,90 %, 0 DIFF, Wasm 249 111 B), sync (`dc28dcb`, předstih návratu
-  tabulky 7 min). Hotovo, necommitnuto (čeká na bránu `gate-61-a` ve scratchpadu): admin (sekce „Množstevní slevy
-  v kampani“, screenshoty `evidence/mvp6-1/admin/`), docs, E2E profil `campaign-tiers`
-  (`scripts/e2e/campaign-tiers-fixture.mjs`, `campaign.mjs --fixture tiers`, spec `storefront.campaign-tiers`).
-  Další kroky: commit admin + docs + E2E → `shopify app dev` Free → `profile.sh campaign-tiers mvp6-1/e2e-A free`
-  + regrese `campaign`, `tiers` → restart Pro → `campaign-tiers`, `campaign`, `tiers-pro` → audit (sekce 6.1 v
-  `audit-mvp6.md`) → checkpoint → push → MVP 7 (plán s kontrakty napřed).
+- **Aktivní zadání:** docs/won-discounts/prompt-mvp7.md. Krok: 6.1 živé E2E (fáze A hotová, zbývá fáze B Pro) +
+  rozpracované MVP 7 (plán `docs/plans/2026-10-04-won-discounts-mvp7.md`, M1–M12, commitnutý).
+  - **6.1 commitnuto:** core `fc949f1`, Rust + B0 `d7d6f63` (max 99,90 %, 0 DIFF, Wasm 249 111 B), sync `dc28dcb`
+    (tabulka kampaňová start + 60 s až konec − 420 s), admin + docs + E2E `07995a3`. Brána `gate-61-a` zelená.
+  - **6.1 E2E fáze A (Free, scratchpad `runs/mvp6-1-A`, evidence `evidence/mvp6-1/e2e-A`):** `campaign-tiers`
+    ✓ Horizon ✓ Dawn (3 + 3, tabulka i košík 10 % celou dobu), `tiers` ✓ ✓ (7 + 7), `campaign` Dawn ✓, Horizon:
+    spec kampaně ✓, ale 2 testy embedu dostaly 401 z theme dev (přechodné?) → běží opakování `runs/mvp6-1-A2`.
+  - **Další kroky 6.1:** vyhodnotit `mvp6-1-A2` → zastavit app dev → `prisma generate` + `prisma:migrate:deploy`
+    (nové modely MVP 7 už jsou ve schématu) → restart `NODE_ENV=development WON_DEV_PLAN=pro npm run dev -w
+    won-discounts` → `profile.sh campaign-tiers mvp6-1-B pro`, `campaign`, `tiers-pro` (přes `margin-collection.mjs
+    --fixture tiers`) → audit (sekce 6.1 v `audit-mvp6.md`) → checkpoint 6.1 → push.
+  - **MVP 7 rozpracováno, NEcommitnuto (nové soubory, psané během E2E; typecheck projde až po `prisma generate`):**
+    `app/lib/billing.server.ts` + `tests/lib/billing.test.ts` (M1, dotazy ověřené Shopify MCP);
+    `app/lib/analytics/{order-facts,analytics.server}.ts` + testy (M4); `app/lib/integration/uninstall-prep.server.ts`
+    + test (M3); `scripts/activate-orders.mjs` + test (M5, jeden odběr → `/webhooks/outlet`);
+    `packages/core/src/discounts/scope-css.ts` + test (M7); `scripts/gen-docs-index.ts`, `export-docs.ts`,
+    `tests/docs/docs-corpus.test.ts`, `docs/index.generated.md`, `docs/dist/corpus.jsonl` (M9; po změně docs
+    `npm run docs:gen -w won-discounts`); Prisma `ShopEntitlement`, `OrderDiscountFact` + migrace
+    `20261004120000_billing_analytics`; Postgres: `scripts/make-postgres-schema.mjs`, `prisma/postgres/**`,
+    `scripts/test-postgres.mjs`, `tests/postgres/postgres.pgtest.ts` (`npm run test:postgres` 5/5 ✓ na lokálním
+    Dockeru), `Dockerfile` (+ `Dockerfile.dockerignore`), `fly.toml` (health `/healthz` — route ještě chybí),
+    `docker-compose.yml`, `DEPLOY.md` (M10; `docker build` ještě neproběhl).
+  - **MVP 7 zbývá:** napojit billing (plan.server → `storedPlan`, Tarif, webhook `app_subscriptions/update` do
+    toml, scheduler `billing.reconcile`), Tarif + odinstalace UI, analytika (webhook v `/webhooks/outlet`,
+    obrazovka Přehledy, karta na Přehledu), onboarding 4–5, vzhled Pro + texty + návod pro AI, karty (M8),
+    perf contract per stránka, docs stránky, BFS, brána, E2E, audit, roadmapa, checkpoint, report.
 - **Předchozí zadání:** docs/won-discounts/prompt-mvp4-overeni-mvp5.md — **hotové až na živé E2E objednávek**
   (checkpoint MVP 5 níž). **Zastaveno, čeká na Ondřeje (F-O1):** povolit appce přístup k chráněným datům zákazníků
   (Partner Dashboard → Apps → won-discounts → API access requests → Protected customer data access → Request access →

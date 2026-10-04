@@ -72,7 +72,7 @@ jedním tlačítkem; výsledek jako seznam.
   gifts Int, outletItems Int, cancelledAt?}` + `@@unique([shop, orderId])`. `parts` = `[{key, kind: "rule" |
   "tier" | "gift" | "shipping" | "other", amountMinor}]`. Retence 400 dní (`history.prune`), `shop/redact` maže.
 - `app/lib/analytics/order-facts.ts` `orderFactFromWebhook(payload, config)` (čistá funkce, P2);
-  `/webhooks/orders` (`orders/create` uloží, `orders/cancelled` označí) — route hotová, **odběr není v toml**.
+  `/webhooks/outlet` navíc uloží fakt (`orders/create`) a označí storno (`orders/cancelled`) — **odběr není v toml**.
 - `loadAnalytics(ctx, {days: 30})` → `AnalyticsView {available, range, free: {orders, discountedOrders,
   discountCost, averageOrder}, pro?: {rules: {name, orders, cost, revenue}[], gifts, outlet: {name, sold,
   quota}[], marginCapped}, series: {day, cost, revenue}[]}` — částky v měně obchodu; objednávky v jiné měně se
@@ -82,9 +82,9 @@ jedním tlačítkem; výsledek jako seznam.
   karta se třemi čísly a odkazem.
 
 **M5 — aktivace objednávek jedním krokem (rozhodnutí 1 a 5).** `scripts/activate-orders.mjs`: dry-run vypíše diff
-`shopify.app.toml` (scope `read_orders` + odběry `orders/create`, `orders/cancelled`, `refunds/create` →
-`/webhooks/outlet`, `orders/create`, `orders/cancelled` → `/webhooks/orders`) a docs k přepnutí; `--live` je
-zapíše. Unit test nad kopií toml. Do toml se v MVP 7 **nezapisuje**.
+`shopify.app.toml` (scope `read_orders` + **jeden** odběr `orders/create`, `orders/cancelled`, `refunds/create` →
+`/webhooks/outlet`; route krmí kvótu výprodeje i fakta analytiky, téma se neodebírá dvakrát), `--live` ho zapíše a
+nechá kopii. Unit test nad textem skutečného toml. Do toml se v MVP 7 **nezapisuje**.
 
 **M6 — onboarding kroky 4–5.** Krok 4: recepty s předvyplněnou hodnotou (stávající `RecipeGrid`) přímo v
 onboardingu; uložení první slevy posune na krok 5. Krok 5 „Hotovo“: checklist ze skutečných signálů (sleva běží,

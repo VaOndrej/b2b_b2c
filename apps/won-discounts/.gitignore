@@ -16,3 +16,7 @@
 .shopify.lock
 .react-router/
 test-results
+
+# Postgres port tooling (scripts/make-postgres-schema.mjs, scripts/test-postgres.mjs): temp folders
+prisma/.pg-*/
+prisma/.pgtest-*/

@@ -1,0 +1,25 @@
+# The ignore file of apps/won-discounts/Dockerfile (BuildKit reads `<Dockerfile>.dockerignore` next to the
+# Dockerfile; the build context is the REPO ROOT). Secrets and local state never enter the image.
+.git
+**/.env
+**/.env.*
+**/shpat.md
+**/.auth
+**/.shopify
+**/*.sqlite
+**/*.sqlite-journal
+**/node_modules
+**/build
+**/target
+**/dist/function.wasm
+**/test-results
+**/playwright-report
+**/.superpowers
+.superpowers
+docs
+**/docs/evidence
+**/tests/e2e
+**/e2e
+*.png
+*.jpeg
+*.jpg

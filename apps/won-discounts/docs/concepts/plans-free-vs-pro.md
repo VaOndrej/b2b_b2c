@@ -9,8 +9,8 @@ app_version: MVP2
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-10-01
-keywords: [free, pro, plan, pricing, upgrade, downgrade, difference, pro settings on free, tarif]
+updated: 2026-10-04
+keywords: [free, pro, plan, pricing, 29 usd, trial, upgrade, downgrade, difference, pro settings on free, tarif]
 summary: Free limits scope, never quality. What Pro adds today, and what happens to Pro settings on a Free shop (kept, but not applied at checkout).
 ---
 
@@ -36,8 +36,11 @@ Try a cart and moving Shopify discounts work in full on Free. Free is not a demo
 
 Clearance (Pro) sells a number of pieces of a variant at a discount, see [clearance](clearance). Campaigns (Pro) change your discounts for a time window, see [campaigns](campaigns); a campaign running when the store moves to Free finishes.
 
-Pro is a flat monthly price with no limit on orders. Pro subscriptions are not on sale
-yet; until they are, every shop runs on Free. Price and the full comparison:
+Pro is a flat **29 USD a month** with no limit on orders, with a **14-day free trial**
+and no yearly plan. You start it, and cancel it, on the **Plan** page; the charge
+goes through Shopify (see [start-the-pro-trial](../tasks/start-the-pro-trial.md),
+[billing-and-downgrade](billing-and-downgrade)). Reports per discount and a custom
+look of the storefront blocks are Pro too. The full comparison:
 [reference/plan-limits](../reference/plan-limits.generated.md).
 
 ## Pro settings on a Free shop
