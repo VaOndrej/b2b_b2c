@@ -492,6 +492,26 @@ function allScenarios() {
     expected: out(products(pc("Letní sleva", [1], percent(10)))),
   }),
 
+  // --- campaign tier sets (MVP 6.1, plan-tiers.ts step 8) -------------------------------------
+  campaignTiers(
+    "lines-campaign-tiers-live",
+    "A live campaign that carries tier sets: the function reads the campaign's sets instead of the base ones. The global set is 2 items −10 % in the base and 2 items −20 %, 4 items −30 % in the campaign: line 1 (2 items) gets 20 %, line 2 (4 items) 30 %. The Pro set of product 3 has no override: its 2 items −5 % ships in the campaign's sets too (line 3).",
+    { active: true, expected: out(products(pc(fromPct(2, 20), [1], percent(20)), pc(fromPct(4, 30), [2], percent(30)), pc(fromPct(2, 5), [3], percent(5)))) },
+  ),
+  campaignTiers("lines-campaign-tiers-inactive", "The same config outside the campaign's window (dateTimeBetween false): the base sets, 2 items −10 % on lines 1 and 2.", {
+    active: false,
+    expected: out(products(pc(fromPct(2, 10), [1, 2], percent(10)), pc(fromPct(2, 5), [3], percent(5)))),
+  }),
+  campaignTiers(
+    "lines-campaign-tiers-version-mismatch",
+    "The campaign is live but the node's varsVersion is stale (mid-sync): the base sets apply, as for a rule override.",
+    {
+      active: true,
+      varsPatch: (vars) => ({ ...vars, varsVersion: "vstale000" }),
+      expected: out(products(pc(fromPct(2, 10), [1, 2], percent(10)), pc(fromPct(2, 5), [3], percent(5)))),
+    },
+  ),
+
   // --- a big variant outlet list on many lines of one product --------------------------------
   outletListShared(),
 
@@ -1448,6 +1468,45 @@ function campaign(name, description, opts) {
     campaignActive: opts.active,
     ...(opts.varsPatch ? { varsPatch: opts.varsPatch } : {}),
     lines: [{ n: 1, price: "100.0", won: won("summer") }],
+    expected: opts.expected,
+  };
+}
+
+/**
+ * MVP 6.1: a campaign overriding the global tier set's breaks (more generous: campaign-tiers.ts).
+ * @param {string} name @param {string} description
+ * @param {{ active: boolean, expected: { operations: unknown[] }, varsPatch?: Scenario["varsPatch"] }} opts
+ * @returns {Scenario}
+ */
+function campaignTiers(name, description, opts) {
+  return {
+    name,
+    description,
+    target: "lines",
+    rules: [],
+    tiers: tiers(
+      tierSet("mnozstvi", "line", [{ minQty: 2, percent: 10 }]),
+      tierSet("vyber", "line", [{ minQty: 2, percent: 5 }], { productIds: [productId(3)] }),
+    ),
+    configExtra: {
+      campaigns: [
+        {
+          id: "bf",
+          name: "Black Friday",
+          window: { start: "2026-09-30T00:00:00", end: "2026-10-05T23:59:59" },
+          overrides: [{ ruleId: "mnozstvi", patch: { breaks: [{ minQty: 2, percent: 20 }, { minQty: 4, percent: 30 }] } }],
+          killed: false,
+        },
+      ],
+    },
+    role: AUTO,
+    campaignActive: opts.active,
+    ...(opts.varsPatch ? { varsPatch: opts.varsPatch } : {}),
+    lines: [
+      { n: 1, price: "100.0", qty: 2, won: won() },
+      { n: 2, price: "100.0", qty: 4, won: won() },
+      { n: 3, price: "100.0", qty: 2, won: { ruleIds: [], tierRef: "vyber" } },
+    ],
     expected: opts.expected,
   };
 }

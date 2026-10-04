@@ -1196,6 +1196,30 @@ const TWINS = {
     expect(productOf(tie, "l2")).toEqual(["tier:g", { percent: 10 }, 1000]);
   },
 
+  a_live_campaigns_tier_sets_are_read_instead_of_the_base_ones() {
+    const run = (campaigns, id, active, varsVersion) => {
+      const c = tcfg([], { global: "g", sets: [["g", "line", [], [[2, 10]]]] }, { campaignId: "bf", campaignVarsVersion: "v1", campaigns });
+      const plan = planCart(cart([tline("l1", 2, 10000, "P1")], [], { campaign: { id, active, varsVersion } }), c);
+      return plan.lines.find((l) => l.lineId === "l1")?.product?.amount ?? null;
+    };
+    const withTiers = (more) => [{ id: "bf", overrides: [], ...more }];
+    const twenty = withTiers({ tiers: { global: "g", sets: [["g", "line", [], [[2, 20]]]] } });
+    expect(run(twenty, "bf", true, "v1")).toBe(4000);
+    expect(run(twenty, "bf", true, "stale")).toBe(2000);
+    expect(run(twenty, "bf", false, "v1")).toBe(2000);
+    expect(run(twenty, "xx", true, "v1")).toBe(2000);
+    expect(run(twenty, null, true, null)).toBe(2000);
+    for (const junk of [{}, { tiers: null }, { tiers: [1] }, { tiers: "x" }]) expect(run(withTiers(junk), "bf", true, "v1")).toBe(2000);
+    for (const broken of [{ tiers: {} }, { tiers: { sets: 7, global: "g" } }, { tiers: { sets: [["g", "line", [], [[2, 30]]]] } }]) {
+      expect(run(withTiers(broken), "bf", true, "v1")).toBeNull();
+    }
+    const two = [
+      { id: "bf", killed: true, tiers: { global: "g", sets: [["g", "line", [], [[2, 50]]]] } },
+      { id: "bf", tiers: { global: "g", sets: [["g", "line", [], [[2, 30]]]] } },
+      { id: "bf", tiers: { global: "g", sets: [["g", "line", [], [[2, 40]]]] } },
+    ];
+    expect(run(two, "bf", true, "v1")).toBe(6000);
+  },
   the_tier_payload_is_read_tolerantly() {
     const tiers = {
       global: "g",

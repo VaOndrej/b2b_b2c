@@ -193,7 +193,7 @@ const vid = (n) => `gid://shopify/ProductVariant/${n}`;
 
 /**
  * @param {number} seed
- * @param {boolean | "mesh" | "tied" | "many" | "long" | "tiers"} [onlySearch] true: only margin order-search carts (searchCase); "mesh": only Pro mesh carts (meshCase); "tied": only order-search carts with many tied lines (tiedCase); "many": many markets and entered codes (manyCase); "long": entered codes of any length against the longest Won code (longCase); "tiers": quantity tiers (tierCase)
+ * @param {boolean | "mesh" | "tied" | "many" | "long" | "tiers" | "campaign-tiers"} [onlySearch] true: only margin order-search carts (searchCase); "mesh": only Pro mesh carts (meshCase); "tied": only order-search carts with many tied lines (tiedCase); "many": many markets and entered codes (manyCase); "long": entered codes of any length against the longest Won code (longCase); "tiers": quantity tiers (tierCase); "campaign-tiers": a campaign's own tier sets (campaignTierCase)
  */
 function generator(seed, onlySearch = false) {
   const rnd = prng(seed);
@@ -1124,6 +1124,37 @@ function generator(seed, onlySearch = false) {
     };
   }
 
+  /**
+   * MVP 6.1 (plan-tiers.ts step 8): a tier cart whose shop config carries a
+   * campaign with its own tier sets — a second payload as the sync ships it or
+   * junk — on a node that is live and matching, stale, outside the window, or
+   * of another campaign; `tiers` an object, absent, or not an object; a killed
+   * entry of the same id before the live one.
+   */
+  function campaignTierCase() {
+    const c = tierCase();
+    const config = c.input.shop.config.jsonValue;
+    const productGids = Array.from({ length: 8 }, (_, k) => `gid://shopify/Product/${k + 1}`);
+    const own = () => tierPayload(some(["akce", "vyprodej", "t_9"], 0.35), productGids).payload;
+    const r = rnd();
+    const mode = r < 0.5 ? "live" : r < 0.6 ? "junk" : r < 0.68 ? "broken" : r < 0.76 ? "absent" : r < 0.84 ? "stale" : r < 0.92 ? "inactive" : "killed-first";
+    const entry = { id: "bf", window: { start: "2026-09-30T00:00:00", end: "2026-10-05T23:59:59" }, overrides: [] };
+    if (mode === "junk") entry.tiers = pick([null, [1], "x", 5, true]);
+    else if (mode === "broken") entry.tiers = pick([{}, { sets: 7, global: "g" }, { sets: "x" }]);
+    else if (mode !== "absent") entry.tiers = own();
+    config.campaignId = "bf";
+    config.campaignVarsVersion = "v1";
+    config.campaigns = mode === "killed-first" ? [{ ...entry, killed: true, tiers: own() }, entry, { ...entry, tiers: own() }] : [entry];
+    Object.assign(c.input.discount.vars.jsonValue, {
+      campaignId: "bf",
+      campaignStart: entry.window.start,
+      campaignEnd: entry.window.end,
+      varsVersion: mode === "stale" ? "vstale" : "v1",
+    });
+    c.input.shop.localTime.campaignActive = mode !== "inactive";
+    return { ...c, mode };
+  }
+
   // MVP 4 rewards (R1–R3): free shipping and gift tiers in every shape the
   // reader must survive — valid compact payloads (as the sync writes them, Free
   // gated or Pro ladders), junk entries, the pre-MVP 4 shape — against carts with
@@ -1220,6 +1251,11 @@ function generator(seed, onlySearch = false) {
       hostile = false;
       large = false;
       return tierCase();
+    }
+    if (onlySearch === "campaign-tiers") {
+      hostile = false;
+      large = false;
+      return campaignTierCase();
     }
     if (onlySearch === "mesh") {
       hostile = false;
@@ -1905,6 +1941,79 @@ describe("Wasm (function-runner)", () => {
       "a tier blocks shipping (Free switch)",
       "50+ line cart with tiers",
       "hand-made junk tier payload",
+    ];
+    const thin = BRANCHES.filter((b) => (hits.get(b) ?? 0) < MIN_HITS);
+    expect(thin, `branches hit fewer than ${MIN_HITS} times:\n${table}`).toEqual([]);
+    expect(maxMemory).toBeLessThanOrEqual(MEMORY_BOUND_KB);
+  }, 900_000);
+
+  // MVP 6.1: a live campaign's own tier sets are read INSTEAD of the base ones (plan-tiers.ts step 8) — the
+  // tier carts above with a campaign in the shop config, every way the choice between the two parts can go.
+  const CAMPAIGN_TIER_CASES = Number(process.env.PARITY_CAMPAIGN_TIER_CASES ?? 1200);
+  test(`campaign tier sets, seed 20261004 × ${CAMPAIGN_TIER_CASES}: Wasm = TS reference, every way the sets are chosen hit`, async () => {
+    const next = generator(20261004, "campaign-tiers");
+    const cases = Array.from({ length: CAMPAIGN_TIER_CASES }, next);
+    const failures = [];
+    /** @type {Map<string, number>} */
+    const hits = new Map();
+    const hit = (branch) => hits.set(branch, (hits.get(branch) ?? 0) + 1);
+    let maxMemory = 0;
+    /** The reference output of the same input with the campaign's sets taken away (the base sets). */
+    const baseOutput = (c) => {
+      const input = JSON.parse(JSON.stringify(c.input));
+      for (const entry of input.shop.config.jsonValue.campaigns) delete entry.tiers;
+      return referenceOutput(c.exportName, input);
+    };
+    const tierOps = (output) => output.operations.some((op) => op.productDiscountsAdd?.candidates.some((x) => /^(Od|From) \d/.test(x.message) || /^(Množstevní sleva|Quantity discount)/.test(x.message)));
+    for (let i = 0; i < cases.length; i += 8) {
+      const batch = cases.slice(i, i + 8);
+      const results = await Promise.all(batch.map((c) => runWasm(runnerPath, wasmPath, c.exportName, c.input)));
+      results.forEach((result, j) => {
+        const c = batch[j];
+        const expected = referenceOutput(c.exportName, c.input);
+        const base = baseOutput(c);
+        const same = isDeepStrictEqual(expected, base);
+        if (c.mode === "live" || c.mode === "killed-first") {
+          hit(`${c.mode}: the campaign's sets are read`);
+          if (!same) hit(`${c.mode}: the output differs from the base sets'`);
+          if (!same && tierOps(expected)) hit(`${c.mode}: a campaign tier emitted`);
+        } else if (c.mode === "broken") {
+          hit("an object without usable sets: no tier");
+          if (!same) hit("an object without usable sets: the base sets would have given a tier");
+        } else {
+          // junk, absent, stale, inactive: exactly the base sets.
+          if (!same) failures.push({ index: i + j, exportName: c.exportName, got: expected, logs: `mode ${c.mode}: the TS reference left the base sets`, expected: base, input: c.input });
+          hit(`${c.mode}: the base sets`);
+          if (tierOps(expected)) hit(`${c.mode}: a base tier emitted`);
+        }
+        if (!result.success || !isDeepStrictEqual(result.output, expected)) failures.push({ index: i + j, exportName: c.exportName, got: result.output, logs: result.logs, expected, input: c.input });
+        maxMemory = Math.max(maxMemory, result.memory_usage ?? Number.POSITIVE_INFINITY);
+      });
+    }
+    if (failures.length > 0) {
+      const first = failures[0];
+      throw new Error(
+        `${failures.length}/${CAMPAIGN_TIER_CASES} campaign tier cases differ; first #${first.index} ${first.exportName}\ngot      ${JSON.stringify(first.got)}\nexpected ${JSON.stringify(first.expected)}\nlogs ${first.logs}\ninput    ${JSON.stringify(first.input)}`,
+      );
+    }
+    const table = [...hits].sort((a, b) => a[1] - b[1]).map(([b, n]) => `${n}\t${b}`).join("\n");
+    console.info(`campaign tier parity: ${CAMPAIGN_TIER_CASES} cases, 0 differ, largest memory ${maxMemory} KB\n${table}`);
+    const BRANCHES = [
+      "live: the campaign's sets are read",
+      "live: the output differs from the base sets'",
+      "live: a campaign tier emitted",
+      "killed-first: the campaign's sets are read",
+      "killed-first: the output differs from the base sets'",
+      "an object without usable sets: no tier",
+      "an object without usable sets: the base sets would have given a tier",
+      "junk: the base sets",
+      "junk: a base tier emitted",
+      "absent: the base sets",
+      "absent: a base tier emitted",
+      "stale: the base sets",
+      "stale: a base tier emitted",
+      "inactive: the base sets",
+      "inactive: a base tier emitted",
     ];
     const thin = BRANCHES.filter((b) => (hits.get(b) ?? 0) < MIN_HITS);
     expect(thin, `branches hit fewer than ${MIN_HITS} times:\n${table}`).toEqual([]);

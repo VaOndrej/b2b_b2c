@@ -6,7 +6,7 @@
 
 **Goal:** Kampaň (Pro) smí přepsat úrovně sady množstevních slev. Přepis je pro každé množství a měnu **stejně nebo
 víc štědrý** než základ (jinak admin neuloží, sync nepošle). V okně kampaně dává pokladna kampaňové úrovně; tabulka na
-stránce produktu se přepne na kampaňové **minutu po startu** a zpět na základní **3 minuty před koncem**, takže web
+stránce produktu se přepne na kampaňové **minutu po startu** a zpět na základní **7 minut před koncem**, takže web
 nikdy neslíbí víc než pokladna. Dárky kampaň nemění (admin to říká).
 
 **Architecture:** Funkce pro živou kampaň (handshake `campaignId` + `varsVersion` + okno) čte kompaktní sady z
@@ -32,10 +32,11 @@ nemění (JS rozpočet beze změny). Přepíná scheduler `campaigns.due` přes 
   částek“) v každém bodě zlomu obou sad: dosažená úroveň základu `B(q)` a přepisu `C(q)`. `B(q)` žádná → v pořádku.
   Jinak `C(q)` musí být a být stejného druhu: procenta ≥ procenta, částka ≥ částka v té měně. Procenta proti částce
   se neporovnávají (záleží na ceně) → chyba „stejný druh slevy jako základ“.
-- **E3 — zpoždění a předstih:** tabulka na PDP kampaňová od `start + 60 s` do `end − 180 s` (scheduler běží po
-  minutě; 3 min = jedno zopakování po chybě + sync + cache stránky). Kampaň kratší než 4 min tabulku nepřepne.
-  Zbytkové riziko: sync selhává déle než 3 min před koncem (výpadek Shopify) → tabulka zůstane kampaňová; admin
-  ukazuje selhaný sync.
+- **E3 — zpoždění a předstih:** tabulka na PDP kampaňová od `start + 60 s` do `end − 420 s`. Předstih 7 min =
+  takt scheduleru (≤ 60 s) + selhaný resync a jeho zopakování za 5 min (`CAMPAIGNS_RETRY_MS`) + sync. (První návrh
+  byl 180 s; `campaigns.due` ale selhaný resync opakuje až za 5 min, takže by se jedno zopakování nevešlo —
+  opraveno před implementací syncu.) Kampaň kratší než 8 min tabulku nepřepne. Zbytkové riziko: sync selhává déle
+  než 7 min před koncem (výpadek Shopify) → tabulka zůstane kampaňová; admin ukazuje selhaný sync.
 - **E4 — kill switch a přepnutí verze kampaně:** než sync zapíše shop config, který kampaň ruší nebo mění, vrátí
   na webu základní tabulku (krok `storefront_config.campaign_off`: živý storefront config s `tiers := bt`). Selhání
   kroku kill switch nezastaví (záznam v běhu).
@@ -54,8 +55,8 @@ nemění (JS rozpočet beze změny). Přepíná scheduler `campaigns.due` přes 
   `tierOverrideIssue` = null); `unused` = id sad, jejichž přepis se nepoužil.
 - `campaignTiersPayload(tiers, campaign): FunctionTiersPayload | null` — `buildTiersPayload` nad `sets`; `null`, když
   se nepoužil žádný přepis (kampaň pak `tiers` nenese).
-- `CAMPAIGN_TIERS = {showDelaySeconds: 60, hideLeadSeconds: 180}`, `campaignTiersShownAt(config, now): string | null`
-  — id vybrané kampaně, když má použitý přepis a `start + 60 s ≤ now < end − 180 s`, jinak `null`.
+- `CAMPAIGN_TIERS = {showDelaySeconds: 60, hideLeadSeconds: 420}`, `campaignTiersShownAt(config, now): string | null`
+  — id vybrané kampaně, když má použitý přepis a `start + 60 s ≤ now < end − 420 s`, jinak `null`.
 
 **L3 — payload (`function-payload.ts`).** `FunctionCampaign.tiers?: FunctionTiersPayload` (jen s použitým přepisem).
 `EncodedShopFunctionConfig.tiers.bytes` = větší z obou částí; `fits` vyžaduje obě ≤ 550 B;
@@ -74,7 +75,7 @@ nad gated configem). S kampaní: `tiers` = sady kampaně, `bt` = základní `{gl
 kampaně `bt` ani `tc` nejsou. Liquid ani JS se nemění.
 
 **L7 — sync + scheduler.** `campaignBoundary(config, now)` = nejbližší z {`end`; u kampaně s použitým přepisem navíc
-`start + 60 s` a `end − 180 s`, pokud jsou v budoucnu a `start + 60 s < end − 180 s`}. Krok 4b staví storefront
+`start + 60 s` a `end − 420 s`, pokud jsou v budoucnu a `start + 60 s < end − 420 s`}. Krok 4b staví storefront
 config s `campaignId = campaignTiersShownAt(payloadConfig, nowLocal)`. Nový krok před P1 / finálním zápisem
 (`storefront_config.campaign_off`, E4): živý storefront config má `bt` a tento běh by ukázal jiné `tiers` nebo
 jinou / žádnou kampaň → zápis živého configu s `tiers := bt` bez `bt` a `tc`, read-back.
@@ -82,7 +83,7 @@ jinou / žádnou kampaň → zápis živého configu s `tiers := bt` bez `bt` a 
 **L8 — admin.** Editor kampaně: sekce „Množstevní slevy v kampani“ — u každé dosažitelné sady přepínač a úrovně
 (množství + hodnota, předvyplněné základem); chyby u pole (`campaign.error.tierLess` s množstvím a měnou,
 `tierKind`, `tierEmpty`, `tierSet`); kampaň smí mít jen přepisy sad (bez pravidel). Věta „Dárky kampaň nemění.“ a
-„Tabulka na stránce produktu se přepne minutu po začátku a 3 minuty před koncem zpět.“ `CampaignView` +
+„Tabulka na stránce produktu se přepne minutu po začátku a 7 minut před koncem zpět.“ `CampaignView` +
 `tiers: {setId, label, breaks: string[]}[]`, `unused` počítá i nepoužité přepisy sad. Draft
 `CampaignDraft.tiers?: {setId: string; breaks: TierBreak[]}[]`.
 
@@ -90,8 +91,8 @@ jinou / žádnou kampaň → zápis živého configu s `tiers := bt` bez `bt` a 
 se přepíná se zpožděním), Free vs Pro beze změny.
 
 **L10 — E2E.** Profil `campaign-tiers` (Pro): globální sada „od 2 ks −10 %“, kampaň „od 2 ks −20 %“, okno
-`teď + 3 min` až `teď + 11 min`. Před startem: PDP tabulka 10 %, `/cart.js` 2 ks = 10 %. Start + 90 s: tabulka
-20 %, `/cart.js` 20 %, pokladna Bogus 20 %. `end − 2 min`: tabulka 10 %, `/cart.js` stále 20 %. Po konci: 10 %.
+`teď + 3 min` až `teď + 15 min`. Před startem: PDP tabulka 10 %, `/cart.js` 2 ks = 10 %. Start + 90 s: tabulka
+20 %, `/cart.js` 20 %, pokladna Bogus 20 %. `end − 5 min`: tabulka 10 %, `/cart.js` stále 20 %. Po konci: 10 %.
 Free: celý čas 10 %. Horizon i Dawn. Regrese `campaign`, `tiers`, `tiers-pro`.
 
 ## Rozpočet — B0 (stop-pravidlo zapsané před měřením)
@@ -111,6 +112,25 @@ Vstupy, jejichž config by přesáhl 9 000 B, nejsou možné a do brány se nepo
 `bajty(modules.tiers) + bajty(campaigns[0].tiers) ≤ 550` (společný strop místo dvou), zapsat do specu a přeměřit jen
 `tiers*` jednou. Max ≥ 100 % v `none` / `value` / `retarget` (regrese proti MVP 6: 99,86 %) → vrátit výběr části do
 tvaru bez nákladu pro kampaň bez sad a přeměřit. DIFF → chyba enginu, opravit dřív než cokoli dalšího.
+
+## Výsledek B0 (2026-10-04, build MVP 6.1, Wasm 249 111 B, sha1 2bdc0c27…)
+
+| Sada | Běhů | Platných | Max | ≥ 100 % | DIFF |
+|---|---|---|---|---|---|
+| základ (rodiny cap 550 × `wonOutlet` none, tvar dnešního dotazu) | 3 320 | 3 320 | 99,83 % | 0 | 0 |
+| kampaň `none` | 3 320 | 1 330 | 99,58 % | 0 | 0 |
+| kampaň `value` (0–9 přepisů) | 3 320 | 1 330 | 99,58 % | 0 | 0 |
+| kampaň `retarget` (0–11 přepisů) | 3 320 | 1 330 | **99,90 %** | 0 | 0 |
+| kampaň `tiers` (sady kampaně ≤ 544 B místo základních) | 3 320 | 3 269 | 98,77 % | 0 | 0 |
+| kampaň `tiers-retarget` (sady + 0–6 přepisů `target`) | 3 320 | 3 269 | 99,31 % | 0 | 0 |
+
+„Platných“ = config ≤ 9 000 B (ostatní admin neuloží; informativně max 99,86 %). Režimy `tiers*` berou místo pro
+sady kampaně z `marketCountries` (59 090 odebraných položek), proto mají víc platných vstupů a nižší maximum.
+
+**Stop-pravidlo splněno:** max < 100 %, 0 DIFF → **bez nové meze**, dva samostatné stropy 550 B zůstávají. Proti
+buildu MVP 6 stojí stejné vstupy o 0,03–0,04 bodu víc (základ 99,80 → 99,83 %, `retarget` 99,86 → 99,90 %): výběr
+části se sadami při čtení configu. Rezerva živé kampaně je **0,10 bodu** (byla 0,14), bez kampaně 0,17. Velikost
+Wasm +3 614 B (245 497 → 249 111 B, zbývá 6 889 B do 256 000 B).
 
 ## Úkoly po vrstvách
 

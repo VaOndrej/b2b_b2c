@@ -288,6 +288,9 @@ impl Tiers {
     }
 }
 
+/// A node's campaign id and varsVersion while its campaign window is live; none otherwise.
+pub type NodeCampaign<'a> = Option<(&'a str, &'a str)>;
+
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Config {
     /// `config.campaignId` when a string (compared with `===` to the node's campaign).
@@ -305,7 +308,7 @@ pub struct Config {
     /// Won code, UTF-16 units; an entered code longer than it after trimming is
     /// never upper-cased or matched (it cannot be a Won code).
     pub max_code_length: usize,
-    /// `modules.tiers` (MVP 3): the quantity tier sets.
+    /// The quantity tier sets (MVP 3): `modules.tiers`, or the live campaign's own (MVP 6.1, `read_in`).
     pub tiers: Tiers,
     /// `modules.rewards` (MVP 4, R5): free shipping and the gift tiers.
     pub rewards: Rewards,
@@ -730,7 +733,13 @@ impl Config {
     /// accepts (a record with `modules.codes.rules` an array); everything inside
     /// is read tolerantly, junk rules are skipped one by one.
     pub fn read(value: &Value) -> Option<Config> {
-        Self::read_with(value, None, None)
+        Self::read_with(value, None, None, None)
+    }
+
+    /// `read` for a node whose campaign window is live (`node`, see `read_in`).
+    #[cfg(test)]
+    pub fn read_for(value: &Value, node: NodeCampaign) -> Option<Config> {
+        Self::read_with(value, None, None, node)
     }
 
     /// `read` for a cart in currency `cur` whose country is `country` (the
@@ -743,11 +752,17 @@ impl Config {
     /// `[]`), and a rule's `markets` is read until one of those (`read_markets`).
     /// Every decision `markets_here` / `in_market` make is the same as on the
     /// whole lists.
-    pub fn read_in(value: &Value, cur: Option<&str>, country: Option<&str>) -> Option<Config> {
-        Self::read_with(value, cur, Some(country))
+    ///
+    /// `node` = the node's campaign id and varsVersion while its window is live
+    /// (plan-tiers.ts step 8, MVP 6.1): when they are the config's and the
+    /// campaign's entry (the first of that id, not killed — plan.rs
+    /// `active_campaign`) has a `tiers` that is an object, the tier sets are read
+    /// from THAT value and `modules.tiers` is not read at all.
+    pub fn read_in(value: &Value, cur: Option<&str>, country: Option<&str>, node: NodeCampaign) -> Option<Config> {
+        Self::read_with(value, cur, Some(country), node)
     }
 
-    fn read_with(value: &Value, cur: Option<&str>, country: Option<Option<&str>>) -> Option<Config> {
+    fn read_with(value: &Value, cur: Option<&str>, country: Option<Option<&str>>, node: NodeCampaign) -> Option<Config> {
         if !value.is_obj() {
             return None;
         }
@@ -775,20 +790,33 @@ impl Config {
         }
         let here: Vec<String> = market_countries.iter().filter(|(_, list)| !list.is_empty()).map(|(h, _)| h.clone()).collect();
         let markets = if country.is_some() { HandleRead::Here(&here) } else { HandleRead::All };
+        let campaign_id = string(&prop(value, Key::CampaignId));
+        let campaign_vars_version = string(&prop(value, Key::CampaignVarsVersion));
+        // The live campaign of this node, if the config was built for it (the handshake of `active_campaign`).
+        let mut live = node.filter(|(id, version)| campaign_id.as_deref() == Some(*id) && campaign_vars_version.as_deref() == Some(*version)).map(|(id, _)| id);
+        let mut campaign_tiers: Option<Value> = None;
         let campaigns_value = prop(value, Key::Campaigns);
-        let campaigns =
-            (0..campaigns_value.array_len().unwrap_or(0)).filter_map(|i| read_campaign(&campaigns_value.get_at_index(i), cur, markets)).collect();
+        let mut campaigns = Vec::new();
+        for i in 0..campaigns_value.array_len().unwrap_or(0) {
+            let entry = campaigns_value.get_at_index(i);
+            let Some(campaign) = read_campaign(&entry, cur, markets) else { continue };
+            if live.is_some() && campaign.id.as_deref() == live && !campaign.killed {
+                live = None;
+                campaign_tiers = Some(prop(&entry, Key::Tiers)).filter(Value::is_obj);
+            }
+            campaigns.push(campaign);
+        }
 
         Some(Config {
-            campaign_id: string(&prop(value, Key::CampaignId)),
-            campaign_vars_version: string(&prop(value, Key::CampaignVarsVersion)),
+            campaign_id,
+            campaign_vars_version,
             engine: read_engine(value),
             market_countries,
             rules: (0..rule_count).filter_map(|i| read_rule(&rules.get_at_index(i), cur, markets)).collect(),
             campaigns,
             margin: read_margin_payload(&prop(&modules, Key::Margin)),
             max_code_length: read_max_code_length(&prop(&codes, Key::MaxCodeLength)),
-            tiers: read_tiers(&prop(&modules, Key::Tiers), cur),
+            tiers: read_tiers(&campaign_tiers.unwrap_or_else(|| prop(&modules, Key::Tiers)), cur),
             rewards: read_rewards(&prop(&modules, Key::Rewards), cur),
         })
     }
@@ -805,7 +833,7 @@ mod tests {
     }
 
     fn read_for(json: &str, country: Option<&str>) -> Option<Config> {
-        run_function_with_input(|v: Value| Ok(Config::read_in(&v, None, country)), json).unwrap()
+        run_function_with_input(|v: Value| Ok(Config::read_in(&v, None, country, None)), json).unwrap()
     }
 
     /// Read for the cart's country (audit round 7), markets decide exactly as on

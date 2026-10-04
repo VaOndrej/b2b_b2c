@@ -7,6 +7,13 @@
 //             9 000 B config budget;
 //   retarget  overrides patch `target` (same kind) of the most-referenced rules, as many as fit; every line's refs to
 //             those rules become campaign-scoped (`rule@k`, targeting.ts) — the per-line ref matching of a campaign.
+// MVP 6.1 (plan docs/plans/2026-10-04-won-discounts-mvp6-1.md, B0; `MODES=tiers,tiers-retarget`): the campaign carries
+// its own tier sets, which the function then reads INSTEAD of `modules.tiers`:
+//   tiers           `campaigns[0].tiers` = the input's `modules.tiers` with every value raised (a percent +1, an
+//                   amount +1: the same sets, breaks and currencies, so the same read; values that win the same or
+//                   more lines), no rule override. Its room in the 9 000 B config comes from `marketCountries`,
+//                   entry by entry (the families' own room source, as rewards-variants.mjs takes it);
+//   tiers-retarget  the same, then `target` overrides of the most-referenced rules, as many as still fit.
 // The input is trimmed back to the MessagePack limit like outlet-flag-variants.mjs (entered codes past 25, then the
 // longest product ruleIds) so it stays a possible input.
 //   node campaign-variants.mjs <outDir> <familyDir>...
@@ -26,7 +33,20 @@ const bytes = (v) => Buffer.byteLength(JSON.stringify(v));
 const refsOf = (l) => l.merchandise?.product?.wonProduct?.jsonValue?.ruleIds;
 
 let made = 0, skipped = 0;
-const stats = { value: [], retarget: [] };
+const stats = { value: [], retarget: [], "tiers-retarget": [] };
+let tierBytes = 0, roomTaken = 0;
+/** `modules.tiers` with every value raised by one (same shape and size, unless a digit is added). */
+const raised = (tiers) => {
+  const out = structuredClone(tiers);
+  for (const set of Array.isArray(out?.sets) ? out.sets : []) {
+    for (const b of Array.isArray(set?.[3]) ? set[3] : []) {
+      if (!Array.isArray(b)) continue;
+      if (typeof b[1] === "number") b[1] = Math.min(100, b[1] + 1);
+      else if (Array.isArray(b[1])) b[1] = b[1].map((v) => (typeof v === "number" ? v + 1 : v));
+    }
+  }
+  return out;
+};
 for (const dir of dirs) {
   for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".input.json"))) {
     const src = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"));
@@ -48,7 +68,19 @@ for (const dir of dirs) {
       for (const l of lines) for (const r of refsOf(l) ?? []) freq.set(r, (freq.get(r) ?? 0) + 1);
       const rules = [...cfg.modules.codes.rules].sort((a, b) => (freq.get(b.id) ?? 0) - (freq.get(a.id) ?? 0));
       const retargeted = new Set();
-      if (mode !== "none") {
+      const withTiers = mode.startsWith("tiers");
+      if (withTiers) {
+        if (!cfg.modules.tiers || typeof cfg.modules.tiers !== "object") { skipped++; continue; }
+        campaign.tiers = raised(cfg.modules.tiers);
+        tierBytes = Math.max(tierBytes, bytes(campaign.tiers));
+        const mc = cfg.marketCountries;
+        if (mc && typeof mc === "object") {
+          const keys = Object.keys(mc);
+          const trimmed = { ...mc };
+          while (bytes(cfg) > BUDGET && keys.length) { delete trimmed[keys.pop()]; cfg.marketCountries = trimmed; roomTaken++; }
+        }
+      }
+      if (mode !== "none" && mode !== "tiers") {
         for (const rule of rules) {
           const patch =
             mode === "value"
@@ -56,7 +88,7 @@ for (const dir of dirs) {
               : { target: { kind: rule.target?.kind ?? "products" } };
           campaign.overrides.push({ ruleId: rule.id, patch });
           if (bytes(cfg) > BUDGET) { campaign.overrides.pop(); break; }
-          if (mode === "retarget") retargeted.add(rule.id);
+          if (mode !== "value") retargeted.add(rule.id);
         }
         stats[mode].push(campaign.overrides.length);
       }
@@ -87,4 +119,4 @@ for (const dir of dirs) {
   }
 }
 const range = (a) => (a.length ? `${Math.min(...a)}–${Math.max(...a)}` : "-");
-console.log(`made ${made}, skipped ${skipped}; overrides value ${range(stats.value)}, retarget ${range(stats.retarget)}`);
+console.log(`made ${made}, skipped ${skipped}; overrides value ${range(stats.value)}, retarget ${range(stats.retarget)}, tiers-retarget ${range(stats["tiers-retarget"])}; campaign tiers ≤ ${tierBytes} B, market entries removed for room ${roomTaken}`);

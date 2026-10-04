@@ -294,6 +294,17 @@ constructed and mesh ones. On the fix-round build 64 → 65 moves as 63 → 64 a
 60-rule Pro shop 78.29 → 78.52 %, the top constructed base 99.14 → 99.41 %, a
 39-rule constructed base 96.31 → 96.40 %, the mesh cart 77.90 → 78.15 %.
 
+**MVP 6.1 (a campaign's own tier sets), measured.** A live campaign whose shop-config entry has `tiers` (an
+object) runs THOSE sets and `modules.tiers` is not read at all (plan-tiers.ts step 8; `Config::read_in` picks the
+part before it reads a set), so the tier read stays within one 550 B cap; the unread base part costs the input
+provider's walk and displaces filler at the input limit. One pass over the cap-550 families on today's query shape
+(docs/plans/2026-10-04-won-discounts-mvp6-1.md, B0; build sha1 2bdc0c27…; every output equal to the TS reference):
+base 99.83 % (MVP 6 build: 99.80 %), a live campaign without sets 99.58 %, value overrides 99.58 %, re-target
+overrides **99.90 %** (99.86 %), campaign sets 98.77 %, campaign sets + re-target 99.31 %; none ≥ 100 %.
+**The reserve of a live campaign is 0.10 point** — the function has no room for new per-line work.
+
+Wasm size (MVP 6.1): **249 111 B** of 256 000 B (+3 614 B: the choice of the tier part in the config reader).
+
 Wasm size (MVP 5): **245 497 B** of 256 000 B (the committed `src` through the CLI pipeline, 2026-10-02; MVP 4: 245 237 B, the variant sale flag added 260 B). Rewards added ~4.9 kB; the float printing of `core::fmt` (~15 kB) gave way to `js::number_to_string`'s own digit search (see "Accepted edge differences", Number text). The CLI pipeline is `cargo build` (opt-level 3) → `wasm-opt -Oz` → trampoline; measured alternatives (105 fixtures, outputs equal): opt-level `s` 221 kB but +4.3 points of the instruction limit, `z` 188 kB +13.9, `-C llvm-args=-inline-threshold=150` −10.2 kB +0.9, `=100` −16.9 kB +1.1 — kept in reserve.
 
 Wasm size before MVP 4: 253 170 B of Shopify's 256 000 B (MVP 2: 234 856 B; MVP 3 before

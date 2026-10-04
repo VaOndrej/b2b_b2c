@@ -1788,6 +1788,45 @@ fn the_exclusive_switch_drops_a_tier_like_a_product_discount() {
     assert_eq!(product_of(&plan, "l2"), Some(("tier:g", &EmittedValue::Percent(10.0), 1000)));
 }
 
+// MVP 6.1 (plan-tiers.ts step 8): a live campaign's own tier sets are read INSTEAD of `modules.tiers`.
+#[test]
+fn a_live_campaigns_tier_sets_are_read_instead_of_the_base_ones() {
+    let run = |campaigns: &str, id: Option<&'static str>, active: bool, version: Option<&'static str>| -> Option<i64> {
+        let json = format!(
+            r#"{{"campaignId": "bf", "campaignVarsVersion": "v1", "campaigns": {campaigns},
+                "modules": {{"codes": {{"rules": []}}, "tiers": {{"global": "g", "sets": [["g", "line", [], [[2, 10]]]]}}}}}}"#
+        );
+        let node = if active { id.zip(version) } else { None };
+        let c = run_function_with_input(|v: shopify_function::wasm_api::Value| Ok(Config::read_for(&v, node)), &json).unwrap().expect("a valid config");
+        let lines = [tier_line("l1", 2, 10000, "P1", None, &[])];
+        let mut input = tcart(&lines, &[], &c);
+        input.campaign = CampaignInput { id, active, vars_version: version };
+        let plan = plan_cart(input, Some(&c));
+        product_of(&plan, "l1").map(|p| p.2)
+    };
+    let with = |tiers: &str| format!(r#"[{{"id": "bf", "overrides": []{tiers}}}]"#);
+    let twenty = with(r#", "tiers": {"global": "g", "sets": [["g", "line", [], [[2, 20]]]]}"#);
+    // Live and matching: the campaign's 20 %; anything else: the base 10 %.
+    assert_eq!(run(&twenty, Some("bf"), true, Some("v1")), Some(4000));
+    assert_eq!(run(&twenty, Some("bf"), true, Some("stale")), Some(2000));
+    assert_eq!(run(&twenty, Some("bf"), false, Some("v1")), Some(2000));
+    assert_eq!(run(&twenty, Some("xx"), true, Some("v1")), Some(2000));
+    assert_eq!(run(&twenty, None, true, None), Some(2000));
+    // `tiers` counts only when it is an object: absent, null, an array, a string → the base.
+    for junk in ["", r#", "tiers": null"#, r#", "tiers": [1]"#, r#", "tiers": "x""#] {
+        assert_eq!(run(&with(junk), Some("bf"), true, Some("v1")), Some(2000), "{junk}");
+    }
+    // An object that holds no usable set gives no tier at all (fail closed), never the base.
+    for broken in [r#", "tiers": {}"#, r#", "tiers": {"sets": 7, "global": "g"}"#, r#", "tiers": {"sets": [["g", "line", [], [[2, 30]]]]}"#] {
+        assert_eq!(run(&with(broken), Some("bf"), true, Some("v1")), None, "{broken}");
+    }
+    // The campaign's entry is the first of its id that is not killed.
+    let two = r#"[{"id": "bf", "killed": true, "tiers": {"global": "g", "sets": [["g", "line", [], [[2, 50]]]]}},
+        {"id": "bf", "tiers": {"global": "g", "sets": [["g", "line", [], [[2, 30]]]]}},
+        {"id": "bf", "tiers": {"global": "g", "sets": [["g", "line", [], [[2, 40]]]]}}]"#;
+    assert_eq!(run(two, Some("bf"), true, Some("v1")), Some(6000));
+}
+
 #[test]
 fn the_tier_payload_is_read_tolerantly() {
     let tiers = r#"{"global": "g", "sets": [
@@ -1841,7 +1880,7 @@ fn the_tier_payload_is_read_tolerantly() {
     // Read for the cart currency (the function run): the same reading.
     for currency in ["CZK", "EUR", "USD", ""] {
         let json = format!(r#"{{"modules": {{"codes": {{"rules": []}}, "tiers": {tiers}}}}}"#);
-        let cut = run_function_with_input(|v: shopify_function::wasm_api::Value| Ok(Config::read_in(&v, Some(currency), None)), &json).unwrap().unwrap();
+        let cut = run_function_with_input(|v: shopify_function::wasm_api::Value| Ok(Config::read_in(&v, Some(currency), None, None)), &json).unwrap().unwrap();
         assert_eq!(tiers_read(&cut, currency), tiers_read(&c, currency), "{currency}");
     }
     // `global` must name a set that was read; anything but a record with a `sets` array has no set.

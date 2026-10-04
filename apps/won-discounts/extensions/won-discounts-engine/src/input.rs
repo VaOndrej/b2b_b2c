@@ -269,10 +269,14 @@ impl RunInput {
         let country_code = iso_code(Key::Country).filter(|c| !c.is_empty());
         // The cart's country as normalizeCart makes it: the config's markets are read only as far as it decides them.
         let country = country_code.as_deref().map(|c| js::upper(js::trim(c))).filter(|c| is_country(c));
+        let local_time = field(&shop, Key::LocalTime);
+        let campaign_active = local_time.and_then(|t| field(&t, Key::CampaignActive)).is_some_and(|v| is_true(&v));
+        let vars = vars.unwrap_or_default();
+        // The node's campaign while its window is live: the config's tier sets are then the campaign's (MVP 6.1).
+        let node = if campaign_active { vars.campaign_id.as_deref().zip(vars.vars_version.as_deref()) } else { None };
         let config = field(&shop, Key::Config)
             .and_then(|metafield| sole(&metafield, Key::JsonValue))
-            .and_then(|json| Config::read_in(&json, Some(&currency), country.as_deref()))?;
-        let vars = vars.unwrap_or_default();
+            .and_then(|json| Config::read_in(&json, Some(&currency), country.as_deref(), node))?;
 
         let margin_on = config.margin.is_some();
         // A ref matters only when some collection has a setting (resolveMargin).
@@ -392,14 +396,13 @@ impl RunInput {
                 entered_codes.push(sole(&entered.get_at_index(i), Key::Code).and_then(|code| string(&code)).unwrap_or_default());
             }
         }
-        let local_time = field(&shop, Key::LocalTime);
         Some(Self {
             role,
             triggering_code,
             config,
             campaign_id: vars.campaign_id,
             vars_version: vars.vars_version,
-            campaign_active: local_time.and_then(|t| field(&t, Key::CampaignActive)).is_some_and(|v| is_true(&v)),
+            campaign_active,
             today: local_time.and_then(|t| field(&t, Key::Date)).and_then(|d| non_empty(&d)),
             currency,
             country_code,
