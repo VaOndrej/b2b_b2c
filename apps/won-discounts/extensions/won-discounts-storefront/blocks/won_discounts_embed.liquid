@@ -76,7 +76,8 @@
       {%- for won_p in won_list limit: 50 -%}
         {%- if won_p.variants != nil -%}
           {%- capture won_label -%}{%- render 'won-card-tier', p: won_p, cfg: won_discounts_config_raw, cur: cur, lang: won_lang -%}{%- endcapture -%}
-          {%- assign won_label = won_label | strip -%}
+          {%- comment -%} Shopify wraps an app snippet's output in HTML comments ("BEGIN / END app snippet"): keep the text between them. {%- endcomment -%}
+          {%- assign won_label = won_label | split: '<!-- END' | first | split: '-->' | last | strip -%}
           {%- if won_label != blank -%}
             {{- won_sep -}}{{ won_p.handle | json }}:{{ won_label | json }}
             {%- assign won_sep = ',' -%}

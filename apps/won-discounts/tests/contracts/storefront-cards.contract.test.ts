@@ -193,3 +193,18 @@ test("the AI brief's class list is exactly the classes of the extension's styles
     assert.ok(aiPrompt().includes(variable));
   }
 });
+
+// Found by the live E2E (2026-10-04): Shopify wraps the output of an app snippet in HTML comments
+// ("<!-- BEGIN app snippet: won-card-tier -->…<!-- END app snippet -->"), which the captured label carried onto the
+// card as text. Both callers keep only the text between the comments.
+test("the card label is taken from between Shopify's app-snippet comments, in the block and in the embed", async () => {
+  const strip = /assign won_label = won_label \| split: '<!-- END' \| first \| split: '-->' \| last \| strip/;
+  assert.match(await read("blocks/card_tiers.liquid"), strip);
+  assert.match(await read("blocks/won_discounts_embed.liquid"), strip);
+  // The same filters in JS: with the comments, without them (production), and an empty snippet.
+  const label = (captured: string) => captured.split("<!-- END")[0]!.split("-->").pop()!.trim();
+  assert.equal(label("<!-- BEGIN app snippet: won-card-tier -->Od 2 ks −10 %<!-- END app snippet -->"), "Od 2 ks −10 %");
+  assert.equal(label("Od 2 ks −10 %"), "Od 2 ks −10 %");
+  assert.equal(label("<!-- BEGIN app snippet: won-card-tier --><!-- END app snippet -->"), "");
+  assert.equal(label(""), "");
+});
