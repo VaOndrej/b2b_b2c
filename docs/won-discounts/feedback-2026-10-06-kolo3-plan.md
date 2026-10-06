@@ -302,7 +302,7 @@ Zapisuje se po bodech během práce.
 | 5 | hotovo, naživo neověřeno | `WonSection placement / action`, `themePlacementsIn()`; tabulka, Won v šabloně, blok v košíku, průběh odměn, pruh nahoře, banner kampaně, štítek výprodeje. |
 | 6 | hotovo | `shell/pro-marked.ts`; Pro značí hlavička sekce, uvnitř nic jantarového. Platí pro všechny sekce Pro najednou. |
 | 15 | hotovo | „Vlastní sleva“ / „Custom discount“ s větou, čárkovaná karta. |
-| 4 | nezačato | dávka B |
+| 4 | v kódu, brána zelená, **chybí E2E na Horizonu a Dawnu** (čeká na „go“) | `extensions/won-discounts-storefront/assets/won-discounts-tiers.js` (`refresh`); na živém tématu dev obchodu ověřeno. |
 | 7 | nezačato | dávka C, čeká na schválení nákresu |
 | 9, 10 | nezačato | dávka D |
 | 11, 12, 13, 14 | nezačato | dávka E |
@@ -325,3 +325,29 @@ Zapisuje se po bodech během práce.
 **Brána dávky A a důkazy:** viz build log `docs/won-discounts-build-log.md`, sekce „Třetí kolo feedbacku“. Screenshoty před / po: `Apps/.playwright-mcp/kolo3/a/before` a `…/after` (390 a 1440 px).
 
 **Neověřeno naživo (dávka A):** nic jsem neklikal v Shopify adminu ani nečetl skutečné téma. Čtení šablon `templates/index.json` a `templates/cart.json` a nastavení pruhu nahoře je ověřené jen testem na vzorových souborech.
+
+## Rozpis a stav dávky B (bod 4)
+
+**Zopakováno naživo 6. 10.** (dev obchod, živé téma „test-data“, produkt `won-e2e-simple-a`, úrovně od 3 ks −3 Kč, od 5 ks −4 Kč; jen čtení a košík prohlížeče, žádný zápis do obchodu):
+
+| Krok | Před opravou | Po opravě |
+|---|---|---|
+| Prázdný košík, načtená stránka | „1 ks za 10,00 Kč“, „Ještě 2 ks“ | stejně |
+| Přidán 1 ks z produktu, bez načtení stránky | „Ještě 2 ks“ (**chyba**) | „Počítáme i 1 ks v košíku“, „Ještě 1 ks“ |
+| Po načtení stránky | „Počítáme i 1 ks v košíku“, „Ještě 1 ks“ | stejně |
+
+Závěr: první vykreslení bylo správně, chyba byla jen po změně košíku. Příčina z plánu platí (skript po změně košíku počty vynuloval).
+
+**Co se změnilo**
+- Skript po signálu tématu o změně košíku načte čerstvé vykreslení **vlastní sekce** (`?section_id=…`, stejný Liquid jako při načtení stránky) a vezme z něj jen svá data. Při načtení stránky žádný dotaz navíc. Nikdy nevolá košík.
+- Počká na dokončení požadavku tématu, staré počty nechá do odpovědi, starší odpověď zahodí. Když sekci přečíst nejde, počty vynuluje jako dřív (nikdy neslíbí víc než pokladna).
+- Data pro web, nastavení ani data pro pokladnu se nemění.
+- Limit skriptů stránky produktu: 10 240 B → 12 288 B (rozhodnutí 8). **Váha: 10 226 B před, 10 800 B po** (po kompresi, všechny čtyři skripty stránky produktu).
+
+**Testy:** `tests/contracts/storefront-tiers.contract.test.ts` (+5: nové počty po změně košíku, po kusech, čekání a pořadí odpovědí, selhání, Dawn), `perf-budget.contract.test.ts`, E2E `tests/e2e/storefront.tiers.spec.ts` („bod 4“, kliká na tlačítko tématu; **zatím neběžel**).
+
+**Neověřeno**
+- Horizon a Dawn naživo: náhled nepublikovaných témat mi obchod odmítl (HTTP 429, ochrana proti robotům). Potřebuje běh E2E přes `shopify theme dev`, který přepisuje nastavení dev obchodu, proto čeká na „go“.
+- Rychlost stránky před a po není změřená (stejný důvod). Při načtení stránky se nic nepřidalo kromě 574 B skriptu.
+- Počítání „celý košík“ a výjimky naživo (v testech ano).
+- Rozšíření se měnilo za běhu `shopify app dev`; do dev obchodu se propsalo samo. Podle runbooku může být potřeba `shopify app dev` restartovat.

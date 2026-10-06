@@ -148,7 +148,8 @@
   endif
 
   # K6 (amended): items already in the cart, read at render. The script never
-  # loads the cart; on the theme's cart-change signal it zeroes these counts.
+  # loads the cart; on the theme's cart-change signal it re-reads this section
+  # (so these counts are computed here again) and zeroes them only if it cannot.
   # Gift lines (_won_gift) never count. `line` counts only the line an add
   # merges into: same variant, no properties, no selling plan (none at all when
   # the product has selling plans). One pass over the product's lines; `merge`

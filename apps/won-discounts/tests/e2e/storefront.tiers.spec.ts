@@ -381,6 +381,44 @@ test.describe(`Won Discounts quantity tiers: PDP, cart and checkout (MVP 3)${PRO
     });
   });
 
+  // Feedback 3 (6 Oct 2026), bod 4: the table counts what is in the cart and follows the cart WITHOUT a page load.
+  // The test clicks the theme's own add-to-cart button; nothing is posted to the cart by the test itself.
+  test("bod 4: adding from the product page moves the table — one piece in the cart says how many are missing, the next one makes the tier active; a reload agrees", async ({ page }, testInfo) => {
+    test.setTimeout(240_000);
+    const [low] = TIERS_BREAKS;
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await emptyCartAndOpen(page, TIERS_PRODUCT_HANDLE);
+    expect(activeMin(await readBlock(page)), "empty cart, 1 in the field: no tier").toBe(0);
+    const add = page.locator('form[action*="/cart/add"] [name="add"], form[action*="/cart/add"] button[type="submit"]').first();
+
+    for (let inCart = 1; inCart < low!.minQty; inCart += 1) {
+      await add.click();
+      // The block re-reads its own section after the theme's cart signal: its data now carry the cart.
+      await expect.poll(async () => (await readBlock(page)).data?.cart.p, { message: `${inCart} in the cart, read without a page load`, timeout: 30_000 }).toBe(inCart);
+      const state = await readBlock(page);
+      const count = inCart + 1; // + the quantity field
+      const missing = low!.minQty - count;
+      expect(activeMin(state), `${inCart} in the cart + 1 chosen`).toBe(missing > 0 ? 0 : low!.minQty);
+      if (missing > 0) {
+        expect(state.next.hidden).toBe(false);
+        expect(state.next.text, `"Ještě ${missing} ks"`).toMatch(new RegExp(`\\b${missing}\\b`));
+      }
+      // The theme's cart drawer / notification must not cover the button for the next click.
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(600);
+    }
+    const before = await readBlock(page);
+    expect(activeMin(before), `${low!.minQty - 1} in the cart + 1 chosen = the "od ${low!.minQty} ks" tier`).toBe(low!.minQty);
+    await pdpShots(page, testInfo, "bod4-pdp-follows-cart");
+
+    // What the script shows after the cart change is what Liquid renders on a fresh page load.
+    await gotoStorefront(page, `/products/${TIERS_PRODUCT_HANDLE}`);
+    const after = await readBlock(page);
+    expect(activeMin(after)).toBe(activeMin(before));
+    expect(after.liveText).toBe(before.liveText);
+    expect(after.next).toEqual(before.next);
+  });
+
   test("PDP two-variants: switching Small → Large re-prices the table and the live price (= planCart)", async ({ page }, testInfo) => {
     test.setTimeout(180_000);
     const inputs = await readTierInputs(TIERS_HANDLES, COLLECTIONS);

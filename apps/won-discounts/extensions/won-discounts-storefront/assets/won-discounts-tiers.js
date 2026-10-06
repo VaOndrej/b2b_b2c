@@ -145,11 +145,48 @@
     schedule(0);
   }
 
+  // The cart changed: take the block's data from a fresh render of its own section (the Liquid that counts
+  // the cart). Old counts stay until the answer; when it cannot be read, zero() (never more than checkout).
+  var DATA = /<script type="application\/json" data-won-discounts-tiers-data>([\s\S]*?)<\/script>/g;
+  var turn = 0;
+  function refresh(event) {
+    var n = ++turn;
+    var wait = event && event.promise;
+    if (wait && typeof wait.then === "function") wait.then(go, go);
+    else go();
+    function go() {
+      if (n !== turn) return;
+      var roots = doc.querySelectorAll(ROOT);
+      var section = roots.length ? roots[0].closest(".shopify-section") : null;
+      var id = section ? String(section.getAttribute("id") || "").replace("shopify-section-", "") : "";
+      var loc = w.location;
+      if (!id || !loc || typeof w.fetch !== "function") return zero();
+      var variant = /[?&]variant=(\d+)/.exec(loc.search || "");
+      w.fetch(loc.pathname + "?section_id=" + encodeURIComponent(id) + (variant ? "&variant=" + variant[1] : "")).then(function (res) {
+        return res.ok ? res.text() : null;
+      }).then(function (html) {
+        if (n !== turn) return;
+        var texts = [];
+        var m;
+        DATA.lastIndex = 0;
+        while (html && (m = DATA.exec(html))) texts.push(m[1]);
+        if (!texts.length) return zero();
+        for (var i = 0; i < roots.length; i++) {
+          var node = roots[i].querySelector("[data-won-discounts-tiers-data]");
+          if (node && texts[i] != null) node.textContent = texts[i];
+        }
+        schedule(0);
+      }).catch(function () {
+        if (n === turn) zero();
+      });
+    }
+  }
+
   var hooked = false;
   function hookDawn() {
     if (!hooked && typeof w.subscribe === "function") {
       hooked = true;
-      w.subscribe("cart-update", zero);
+      w.subscribe("cart-update", function () { refresh(); });
     }
   }
 
@@ -176,7 +213,7 @@
       doc.addEventListener(name, now, true);
     });
     ["shopify:cart:lines-update", "cart:update"].forEach(function (name) {
-      doc.addEventListener(name, zero, true);
+      doc.addEventListener(name, refresh, true);
     });
     doc.addEventListener("shopify:product:select", function (event) {
       if (event && event.promise && typeof event.promise.then === "function") event.promise.then(now, now);

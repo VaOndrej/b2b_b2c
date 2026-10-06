@@ -38,6 +38,12 @@ const PAGES: Record<string, string[]> = {
  */
 const OPT_IN: Record<string, number> = { "won-discounts-blocks.js": 2048 };
 const GZIP_BUDGET_BYTES = 10 * 1024; // 10240 B ceiling (SF-2), per page type
+/**
+ * Feedback 3 (Ondřej 2026-10-06, bod 4 + rozhodnutí 8): the product page's ceiling is 12 kB. The quantity table
+ * now follows the cart without a page load (it re-reads its own section after a cart change), which did not fit
+ * into the 14 B left under 10 240 B. Measured: 10 226 B before, 10 800 B after.
+ */
+const PAGE_BUDGET_BYTES: Record<string, number> = { "product page": 12 * 1024 };
 const RAW_THEME_CHECK_BYTES = 10_000; // AssetSizeAppBlockJavaScript default, per file
 const present = (file: string) => existsSync(path.join(ASSETS, file));
 
@@ -45,7 +51,8 @@ for (const [page, files] of Object.entries(PAGES)) {
   test(`storefront JS on a ${page} stays within the SF-2 gzip budget`, () => {
     const sizes = files.filter(present).map((file) => ({ file, gz: gzipSync(readFileSync(path.join(ASSETS, file))).length }));
     const total = sizes.reduce((sum, { gz }) => sum + gz, 0);
-    assert.ok(total <= GZIP_BUDGET_BYTES, `${page}: ${total} B gzipped (${sizes.map(({ file, gz }) => `${file} ${gz} B`).join(", ")}), over the ${GZIP_BUDGET_BYTES} B budget.`);
+    const budget = PAGE_BUDGET_BYTES[page] ?? GZIP_BUDGET_BYTES;
+    assert.ok(total <= budget, `${page}: ${total} B gzipped (${sizes.map(({ file, gz }) => `${file} ${gz} B`).join(", ")}), over the ${budget} B budget.`);
   });
 }
 

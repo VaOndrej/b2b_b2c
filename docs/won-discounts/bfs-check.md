@@ -12,7 +12,7 @@ Legenda: ✅ splněno s důkazem · 🟡 připraveno, ověří se až po nasazen
 | Požadavek | Stav | Důkaz / co chybí |
 |---|---|---|
 | Storefront: Lighthouse skóre neklesne o víc než 10 bodů (vážený průměr: home 17 %, produkt 40 %, kolekce 43 %) | 🟡 | Lighthouse před / po se měří na čistém tématu bez dalších appek — na sdíleném dev storu neproveditelné poctivě. Lokálně změřená váha níž. |
-| JS na stránku ≤ 10 kB gz (interní SF-2) | ✅ | `tests/contracts/perf-budget.contract.test.ts` (měří `gzipSync`): stránka produktu **10 226 B z 10 240 B** (rezerva 14 B — další JS na PDP se nevejde), košík 5 635 B, kolekce / vyhledávání 6 734 B; každý soubor ≤ 10 000 B raw (Theme Check). |
+| JS na stránku ≤ 10 kB gz, stránka produktu ≤ 12 kB (interní SF-2) | ✅ | `tests/contracts/perf-budget.contract.test.ts` (měří `gzipSync`): stránka produktu **10 800 B z 12 288 B** (limit pro stránku produktu zvednut 6. 10. 2026 z 10 240 B na 12 kB: tabulka po změně košíku znovu načte svou sekci; před změnou 10 226 B), košík 5 635 B, kolekce / vyhledávání 6 734 B; každý soubor ≤ 10 000 B raw (Theme Check). |
 | Skripty `defer`, žádný blokující | ✅ | `theme-extension.contract.test.ts` (schema `javascript` + 2 × `<script … defer>`). |
 | Embed nemění košík bez akce zákazníka, žádné globální styly | ✅ | SF-1 contract testy; vlastní CSS vždy pod kořenem bloků (`scope-css.test.ts`). |
 | Posun layoutu (CLS) na storefrontu | 🟡 | Tabulka na PDP, panel košíku a blok karty jsou v HTML ze serveru. **Řádek na kartách přes embed (BETA) se vkládá skriptem po načtení → posune kartu.** Bez posunu je blok do karty (Horizon). |

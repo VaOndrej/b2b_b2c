@@ -560,7 +560,14 @@ test("SF-1: neither the block nor its script can change the cart", async () => {
     const source = await read(file);
     // (Reading the product form via the selector form[action*="/cart/add"] is fine; posting is not.)
     assert.doesNotMatch(source, /\/cart\/(add|change|update|clear)\.js/, `${file} names a cart AJAX endpoint`);
-    assert.doesNotMatch(source, /\bfetch\s*\(|XMLHttpRequest|sendBeacon/, `${file} makes a request`);
+    // Feedback 3, bod 4: the script may GET a fresh render of its own section after a cart change — nothing else.
+    assert.doesNotMatch(source, /XMLHttpRequest|sendBeacon/, `${file} makes a request`);
+    if (file !== SCRIPT) assert.doesNotMatch(source, /\bfetch\s*\(/, `${file} makes a request`);
+    else {
+      assert.equal((source.match(/\bfetch\s*\(/g) ?? []).length, 1, "one request: the section render");
+      assert.match(source, /\?section_id=/);
+      assert.doesNotMatch(source, /method\s*:|body\s*:|\/cart\.js|\/cart\?/, "a plain GET, never a cart endpoint");
+    }
     assert.doesNotMatch(source, /\.submit\s*\(|requestSubmit|dispatchEvent\([^)]*submit/, `${file} submits a form`);
   }
 });
@@ -993,6 +1000,9 @@ test("review 3: a cart change zeroes the cart counts (Horizon standard event, ol
     assert.equal(activeMin(page.block), "3");
     assert.match(liveOf(page.block).textContent, /Počítáme i 2/);
     page.document.fire(signal, { promise: Promise.resolve() });
+    // (bod 4: the theme's own cart request is awaited first; this page has no fetch, so the counts are zeroed)
+    await Promise.resolve();
+    await Promise.resolve();
     flush();
     assert.equal(activeMin(page.block), null, `${signal}: count = the chosen quantity only`);
     assert.equal(liveOf(page.block).textContent, "1 ks za 10,00 Kč (10,00 Kč/ks)", `${signal}: the cart note is gone`);
@@ -1027,6 +1037,147 @@ test("review 3: after zeroing, a fresh Liquid render of the block brings its own
   const script = page.block.querySelector("[data-won-discounts-tiers-data]") as FakeElement;
   script.textContent = JSON.stringify(globalSetData({ cart: { p: 4, s: 0 } }));
   page.document.fire("shopify:section:load");
+  flush();
+  assert.equal(activeMin(page.block), "5");
+});
+
+// --- Feedback 3, bod 4: the table follows the cart without a page load -------------------------------------
+// After a cart change the block asks Shopify for a fresh render of ITS OWN section (the same Liquid that counted
+// the cart at page load: one source of truth) and takes only its data from it. No request at page load.
+
+/** A fake `fetch` of the section render: records the URLs, answers when the test says so. */
+function sectionFetch() {
+  const calls: { url: string; init: unknown; answer: (data: BlockData | null, ok?: boolean) => Promise<void> }[] = [];
+  const fetch = (url: string, init?: unknown) =>
+    new Promise((resolve) => {
+      calls.push({
+        url,
+        init,
+        answer: async (data, ok = true) => {
+          const html = data ? `<div data-won-discounts-tiers><script type="application/json" data-won-discounts-tiers-data>${JSON.stringify(data)}</script></div>` : "<div></div>";
+          resolve({ ok, status: ok ? 200 : 500, text: async () => html });
+          // Let the script's promise chain run.
+          for (let i = 0; i < 6; i += 1) await Promise.resolve();
+        },
+      });
+    });
+  return { fetch, calls };
+}
+const productWindow = (fetch: unknown): Record<string, unknown> => ({ fetch, location: { pathname: "/products/mikina", search: "?variant=901" } });
+
+test("bod 4: after a cart change the block re-reads its own section and counts the items now in the cart (no page load)", async () => {
+  for (const signal of ["shopify:cart:lines-update", "cart:update"]) {
+    const { fetch, calls } = sectionFetch();
+    const page = horizonPage(globalSetData());
+    const { flush, events } = await boot(page.document, { window: productWindow(fetch) });
+    assert.equal(calls.length, 0, "no request at page load");
+    assert.match(nextOf(page.block).textContent, /^Ještě\s2\sks\sa\szaplatíte\s9,00\sKč\/ks\.$/);
+
+    // 2 pieces added from the product page: the theme says the cart changed.
+    page.document.fire(signal);
+    flush();
+    assert.equal(calls.length, 1, signal);
+    assert.equal(calls[0].url, "/products/mikina?section_id=template--main&variant=901", "its own section, the chosen variant");
+    assert.equal(calls[0].init, undefined, "a plain GET");
+    await calls[0].answer(globalSetData({ cart: { p: 2, s: 0 }, variants: [{ id: 901, p: 1000, m: 30, c: 2 }, { id: 902, p: 2000, m: 12.5, c: 0 }] }));
+    flush();
+    assert.equal(activeMin(page.block), "3", "1 chosen + 2 in the cart reach 'od 3 ks'");
+    assert.match(liveOf(page.block).textContent, /Počítáme i 2/);
+    assert.match(nextOf(page.block).textContent, /^Ještě\s2\sks\sa\szaplatíte\s8,50\sKč\/ks\.$/, "to the next tier, from the cart + the quantity field");
+    assert.deepEqual(events().at(-1), { variantId: 901, quantity: 1, count: 3, min: 3, unitCents: 900 });
+  }
+});
+
+test("bod 4: piece by piece — 1 in the cart says 'Ještě 1 ks', 2 in the cart make 'od 3 ks' active, an emptied cart goes back", async () => {
+  const { fetch, calls } = sectionFetch();
+  const page = horizonPage(globalSetData());
+  const { flush } = await boot(page.document, { window: productWindow(fetch) });
+  const withCart = (n: number) => globalSetData({ cart: { p: n, s: 0 }, variants: [{ id: 901, p: 1000, m: 30, c: n }, { id: 902, p: 2000, m: 12.5, c: 0 }] });
+  page.document.fire("cart:update");
+  flush();
+  await calls[0].answer(withCart(1));
+  flush();
+  assert.equal(activeMin(page.block), null);
+  assert.match(nextOf(page.block).textContent, /^Ještě\s1\sks\sa\szaplatíte\s9,00\sKč\/ks\.$/);
+  page.document.fire("cart:update");
+  flush();
+  await calls[1].answer(withCart(2));
+  flush();
+  assert.equal(activeMin(page.block), "3");
+  // Removed in the cart drawer: back to the quantity field alone.
+  page.document.fire("cart:update");
+  flush();
+  await calls[2].answer(withCart(0));
+  flush();
+  assert.equal(activeMin(page.block), null);
+  assert.match(liveOf(page.block).textContent, /^1\sks\sza\s10,00\sKč\s\(10,00\sKč\/ks\)$/);
+});
+
+test("bod 4: the theme's own cart request is awaited (event.promise); the old counts stay until the answer; only the latest answer counts", async () => {
+  const { fetch, calls } = sectionFetch();
+  const page = horizonPage(globalSetData({ cart: { p: 2, s: 0 }, variants: [{ id: 901, p: 1000, m: 30, c: 2 }, { id: 902, p: 2000, m: 12.5, c: 0 }] }));
+  const { flush } = await boot(page.document, { window: productWindow(fetch) });
+  assert.equal(activeMin(page.block), "3");
+  let done: () => void = () => undefined;
+  page.document.fire("shopify:cart:lines-update", { promise: new Promise<void>((resolve) => (done = resolve)) });
+  flush();
+  assert.equal(calls.length, 0, "not before the theme's cart request finished");
+  assert.equal(activeMin(page.block), "3", "nothing flickers to a wrong state meanwhile");
+  done();
+  for (let i = 0; i < 4; i += 1) await Promise.resolve();
+  assert.equal(calls.length, 1);
+  // A second change before the first answer: the first answer is stale and is dropped.
+  page.document.fire("cart:update");
+  flush();
+  assert.equal(calls.length, 2);
+  await calls[0].answer(globalSetData({ cart: { p: 9, s: 0 }, variants: [{ id: 901, p: 1000, m: 30, c: 9 }, { id: 902, p: 2000, m: 12.5, c: 0 }] }));
+  flush();
+  assert.equal(activeMin(page.block), "3", "a stale answer changes nothing");
+  await calls[1].answer(globalSetData({ cart: { p: 4, s: 0 }, variants: [{ id: 901, p: 1000, m: 30, c: 4 }, { id: 902, p: 2000, m: 12.5, c: 0 }] }));
+  flush();
+  assert.equal(activeMin(page.block), "5");
+});
+
+test("bod 4: when the section cannot be read (a failed request, no section id, no fetch) the cart counts are zeroed — never more than checkout gives", async () => {
+  const stored = () => globalSetData({ cart: { p: 2, s: 0 }, variants: [{ id: 901, p: 1000, m: 30, c: 2 }, { id: 902, p: 2000, m: 12.5, c: 0 }] });
+  // A failed request.
+  const { fetch, calls } = sectionFetch();
+  const page = horizonPage(stored());
+  const { flush } = await boot(page.document, { window: productWindow(fetch) });
+  page.document.fire("cart:update");
+  flush();
+  await calls[0].answer(null, false);
+  flush();
+  assert.equal(activeMin(page.block), null);
+  // The fresh render has no table for this product any more (the set was removed meanwhile).
+  const gone = sectionFetch();
+  const page2 = horizonPage(stored());
+  const run2 = await boot(page2.document, { window: productWindow(gone.fetch) });
+  page2.document.fire("cart:update");
+  run2.flush();
+  await gone.calls[0].answer(null);
+  run2.flush();
+  assert.equal(activeMin(page2.block), null);
+  // Dawn-like page whose section has no id: nothing to ask for.
+  const none = sectionFetch();
+  const dawn = dawnPage(stored());
+  const run3 = await boot(dawn.document, { window: productWindow(none.fetch) });
+  dawn.document.fire("cart:update");
+  run3.flush();
+  assert.equal(none.calls.length, 0);
+  assert.equal(activeMin(dawn.block), null);
+});
+
+test("bod 4: Dawn's pubsub cart-update re-reads the section too", async () => {
+  const { fetch, calls } = sectionFetch();
+  const subscribers: Record<string, Array<() => void>> = {};
+  const window = { ...productWindow(fetch), subscribe: (name: string, cb: () => void) => (subscribers[name] ??= []).push(cb) };
+  const page = horizonPage(globalSetData());
+  const { flush } = await boot(page.document, { window });
+  subscribers["cart-update"][0]();
+  flush();
+  assert.equal(calls.length, 1);
+  await calls[0].answer(globalSetData({ cart: { p: 4, s: 0 }, variants: [{ id: 901, p: 1000, m: 30, c: 4 }, { id: 902, p: 2000, m: 12.5, c: 0 }] }));
   flush();
   assert.equal(activeMin(page.block), "5");
 });

@@ -22,7 +22,14 @@ celý). Práce výhradně inline. Pořadí A → B → C → D → E → F, dal�
   - Naživo neověřeno: Shopify admin, čtení skutečného tématu (šablony úvodní stránky a košíku, pruh nahoře).
   - Poučení: v loaderu Ochrany marže nesmí být žádné čekání až za dotazem na zásahy (jinak se výpočet na pozadí
     stihne spustit „uvnitř požadavku“ a test P3-5 selže); stav zápisu se proto čte dřív, souběžně s nákupními cenami.
-- **Další krok:** nákres bodu 7 Ondřejovi ke schválení (dávka C čeká), mezitím dávka B (bod 4, nejdřív zopakovat naživo).
+- **Dávka B (bod 4): v kódu a commitnuto, NEUZAVŘENO — chybí E2E na Horizonu a Dawnu (čeká na Ondřejovo „go“).**
+  - Brána 6. 10.: `test:packages` exit 0, `test:unit` node 1 706 / 1 706 + cargo 101 + vitest 599, `typecheck`, `lint`, `build`,
+    `validate:shopify` (0 nálezů) — vše exit 0. Stránka produktu 10 800 B z 12 288 B (před 10 226 B).
+  - Naživo na živém tématu dev obchodu zopakováno před i po opravě (`Apps/.playwright-mcp/kolo3-live-probe.mjs`, jen čtení).
+  - Dev obchod po desítkách dotazů vrací 429; mezi běhy dělat pauzy, náhled nepublikovaných témat přes
+    `?preview_theme_id=` z headless prohlížeče neprojde.
+- **Další krok:** (1) „go“ na E2E profil `tiers` (Horizon + Dawn; přepíše nastavení dev obchodu, proto nejdřív dry-run),
+  (2) schválení nákresu bodu 7 (`won-discounts/nakres-bod7-vyjimky.md`), potom dávka C, D, E, F.
 - `shopify app dev` Ondřejovi běží (Vite na proměnlivém portu, 6. 10. `localhost:51571`); dev náhled `/dev/preview/*`
   z něj jde číst, úpravy kódu se v něm projeví hned.
 
