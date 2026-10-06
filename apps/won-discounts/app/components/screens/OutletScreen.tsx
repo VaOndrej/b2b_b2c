@@ -15,7 +15,7 @@
 // and errors are rendered beside the fields (never through `error`, which resets a Polaris field).
 // Each action is its own small form (one button = one action, §13); the server parses it (outlet-admin.server.ts).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Form, useSubmit } from "react-router";
 
 import { formatMoney } from "@won/core/discounts/describe";
@@ -28,6 +28,7 @@ import { useRefusedSeed } from "../model/submitted";
 import type { OutletActionResult, OutletRunView, OutletScreenData, UiResult } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
 import { boolAttr } from "../shell/attrs";
+import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
 import { Notice } from "../shell/Notice";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
@@ -40,6 +41,11 @@ const DISPLAYS = ["silent", "strike", "strike_badge", "strike_badge_left"] as co
 const REOPENS = ["ask", "auto", "never"] as const;
 /** Where the "sold pieces are not counted" warning points: the end-date field of the new sale. */
 const ENDS_ANCHOR = "outlet-ends";
+
+/** The three panels of the page (the tiles on top switch between them). */
+type OutletView = "sales" | "new" | "info";
+/** Deep links of the sections → the panel that holds them. */
+const HASH_VIEW: Readonly<Record<string, OutletView>> = { running: "sales", ended: "sales", new: "new", [ENDS_ANCHOR]: "new", combine: "info", badge: "info", settings: "info" };
 const endDialogId = (runId: string) => `won-outlet-end-${runId.replace(/[^A-Za-z0-9_-]/g, "")}`;
 
 export interface OutletScreenProps extends OutletScreenData {
@@ -375,26 +381,115 @@ export function OutletScreen(props: OutletScreenProps) {
     </Form>
   );
 
+  // Which panel is open: a result decides first (a sale just started or ended → the sales; a refused start → the
+  // form with what was typed; a refused setting → the settings), then a deep link (#running, #new, #combine…),
+  // else the sales when something runs and the form when nothing does.
+  const viewFor = (): OutletView => {
+    if (isOutletResult(result)) {
+      if (result.ok) return "sales";
+      if (result.reason === "invalid" && result.errors.some((e) => e.field === F.display || e.field === F.reopen)) return "info";
+      return "new";
+    }
+    return running.length > 0 || (!pro && ended.length > 0) ? "sales" : "new";
+  };
+  const [view, setView] = useState<OutletView>(viewFor);
+  useEffect(() => {
+    setView(viewFor());
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new result moves the page
+  }, [result]);
+  useEffect(() => {
+    const fromHash = HASH_VIEW[window.location.hash.slice(1)];
+    if (fromHash && !isOutletResult(result)) setView(fromHash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a deep link is read once
+  }, []);
+
   // B15: on Free the settings matter only while earlier sales still run (the server refuses the save the same way).
   const settingsShown = pro || running.length > 0;
   const badge = placementOf(props.placed?.outletBadge);
   const activeRuns = running.filter((r) => r.status === "active");
+
+  // The page is three tiles and ONE panel at a time (feedback 6 Oct 2026: no long scroll; a running sale is the
+  // first thing seen, a sale just started is shown, not hidden under the form).
+  const panel = (key: OutletView, children: ReactNode) => (
+    <div data-won-view-panel={key} style={{ display: view === key ? "block" : "none" }}>
+      <s-stack direction="block" gap="base">{children}</s-stack>
+    </div>
+  );
+  const runningTitles = running.map((r) => r.title).filter(Boolean);
+  const salesActive =
+    running.length > 0
+      ? runningTitles.length > 0
+        ? t("overview.outlet.runningNamed", { names: tr.list(runningTitles) })
+        : tr.tp("overview.outlet.running", running.length)
+      : ended.length > 0
+        ? t("outlet.view.sales.endedOnly", { n: ended.length })
+        : t("overview.outlet.none");
 
   return (
     <s-page heading={t("module.outlet")}>
       <DiscountsSubNav active="outlet" />
       <s-stack direction="block" gap="base">
         {isOutletResult(result) ? <OutletBanner result={result} /> : <Notice result={result as UiResult | null | undefined} />}
-        <RowNote>{t("outlet.hint")}</RowNote>
         {!ordersCounted && (pro || running.length > 0) ? (
           <s-banner tone="warning" heading={t("outlet.orders.off")} data-won-outlet-orders="off">
             <s-paragraph>
-              {t("outlet.orders.offDetail")} {pro ? <s-link href={`#${ENDS_ANCHOR}`}>{t("outlet.orders.link")}</s-link> : null}
+              {t("outlet.orders.offDetail")}{" "}
+              {pro ? (
+                <s-link href={`#${ENDS_ANCHOR}`} onClick={() => setView("new")}>
+                  {t("outlet.orders.link")}
+                </s-link>
+              ) : null}
             </s-paragraph>
           </s-banner>
         ) : null}
         {!pro && running.length > 0 ? <RowNote>{t("outlet.pro.running")}</RowNote> : null}
 
+        <ModuleTiles label={t("outlet.view.label")}>
+          <ViewTile id="sales" title={t("outlet.view.sales.title")} glyph="calendar" about={t("outlet.view.sales.about")} active={salesActive} status={running.length > 0 ? props.status : undefined} selected={view === "sales"} onPick={() => setView("sales")} />
+          <ViewTile id="new" title={t("outlet.view.new.title")} glyph="tag" about={t("outlet.view.new.about")} active={pro ? undefined : t("overview.outlet.locked")} pro={!pro} locked={!pro} selected={view === "new"} onPick={() => setView("new")} />
+          <ViewTile id="info" title={t("outlet.view.info.title")} glyph="sliders" about={t("outlet.view.info.about")} active={t(withOthers ? "outlet.combine.summary.on" : "outlet.combine.summary.off")} selected={view === "info"} onPick={() => setView("info")} />
+        </ModuleTiles>
+
+        {panel(
+          "sales",
+          <>
+            {running.length === 0 && ended.length === 0 ? (
+              <WonSection
+                title={t("outlet.view.sales.title")}
+                glyph="calendar"
+                summary={t("outlet.sales.empty")}
+                action={
+                  <s-button variant="primary" onClick={() => setView("new")}>
+                    {t("outlet.view.new.title")}
+                  </s-button>
+                }
+              />
+            ) : null}
+        {running.length > 0 ? (
+          <WonSection title={t("outlet.running.title")} glyph="calendar" state={props.status} summary={tr.tp("overview.outlet.running", running.length)} anchor="running">
+            <s-stack direction="block" gap="base">
+              {running.map((run) => (
+                <RunCard key={run.id} run={run} pro={pro} money={money} />
+              ))}
+            </s-stack>
+          </WonSection>
+        ) : null}
+
+            {/* Ended sales are the last thing of the panel. */}
+        {ended.length > 0 ? (
+          <WonSection title={t("outlet.ended.title")} glyph="receipt" summary={t("outlet.ended.count", { n: ended.length })} anchor="ended">
+            <s-stack direction="block" gap="base">
+              {ended.map((run) => (
+                <RunCard key={run.id} run={run} pro={pro} money={money} />
+              ))}
+            </s-stack>
+          </WonSection>
+        ) : null}
+
+          </>,
+        )}
+
+        {panel("new", <>
         <WonSection title={t("outlet.new.title")} glyph="tag" pro={!pro} locked={!pro} summary={pro ? summary : undefined} anchor="new">
           {pro ? (
             form
@@ -406,6 +501,11 @@ export function OutletScreen(props: OutletScreenProps) {
           )}
         </WonSection>
 
+        </>)}
+
+        {panel(
+          "info",
+          <>
         {/* What a clearance item combines with: said here in full, computed from the one switch in Nastavení (never left to guesswork). */}
         <WonSection title={t("outlet.combine.title")} glyph="sliders" summary={t(withOthers ? "outlet.combine.summary.on" : "outlet.combine.summary.off")} anchor="combine">
           <div>
@@ -423,26 +523,6 @@ export function OutletScreen(props: OutletScreenProps) {
             </WonRow>
           </div>
         </WonSection>
-        {running.length > 0 ? (
-          <WonSection title={t("outlet.running.title")} glyph="calendar" state={props.status} summary={tr.tp("overview.outlet.running", running.length)} anchor="running">
-            <s-stack direction="block" gap="base">
-              {running.map((run) => (
-                <RunCard key={run.id} run={run} pro={pro} money={money} />
-              ))}
-            </s-stack>
-          </WonSection>
-        ) : null}
-
-        {ended.length > 0 ? (
-          <WonSection title={t("outlet.ended.title")} glyph="receipt" summary={t("outlet.ended.count", { n: ended.length })} anchor="ended">
-            <s-stack direction="block" gap="base">
-              {ended.map((run) => (
-                <RunCard key={run.id} run={run} pro={pro} money={money} />
-              ))}
-            </s-stack>
-          </WonSection>
-        ) : null}
-
         {/* Bod 5: the sale badge in the theme — the same label and header button as every placement. */}
         {settingsShown && badgeBlockAddUrl && display.startsWith("strike_badge") ? (
           <WonSection
@@ -489,6 +569,8 @@ export function OutletScreen(props: OutletScreenProps) {
             </Form>
           </WonSection>
         ) : null}
+          </>,
+        )}
       </s-stack>
 
       {/* "Ukončit výprodej" asks first (the confirm pattern of the rule editor's delete). */}

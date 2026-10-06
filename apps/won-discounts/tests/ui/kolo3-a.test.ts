@@ -194,3 +194,49 @@ test("bod 15: 'Prázdná sleva' is 'Vlastní sleva', with what it is, set apart 
   assert.match(en, /Custom discount/);
   assert.match(en, /You start with a clean form and set everything yourself\./);
 });
+
+// --- Feedback 6 Oct 2026 (after dávka A): what a tile covers + what is active; Výprodej as tiles ---------------
+
+test("home tiles: each says what is under it, and below that what is active now", async () => {
+  const html = await render("overview?state=modules&plan=pro");
+  for (const key of ["codes", "tiers", "rewards", "outlet", "campaigns", "margin", "analytics", "appearance", "tryCart", "settings"]) {
+    assert.match(tile(html, key), /data-won-tile-about/, `${key}: what the part is for`);
+  }
+  const rewards = tile(html, "rewards");
+  assert.match(rewards, /data-won-tile-about[^>]*>[^<]*doprava zdarma[^<]*dárek/i, "Odměny: what it covers");
+  assert.match(rewards, /data-won-tile-active[^>]*>[^<]*Doprava zdarma od 1\s000\sKč/, "…and what is set");
+  assert.ok(rewards.indexOf("data-won-tile-about") < rewards.indexOf("data-won-tile-active"), "the explanation first, the state under it");
+  assert.match(tile(html, "tiers"), /data-won-tile-about[^>]*>[^<]*podle počtu kusů/);
+  assert.match(tile(html, "tiers"), /data-won-tile-active[^>]*>[^<]*Od 3 ks/);
+  // Nothing set up: the explanation stays, the state line says so.
+  const off = await render("overview?state=modules-off");
+  assert.match(tile(off, "rewards"), /data-won-tile-about/);
+  assert.match(tile(off, "rewards"), /data-won-tile-active[^>]*>[^<]*Žádná doprava zdarma ani dárek/);
+});
+
+test("Výprodej: three tiles instead of one long page — the sales (with their state), a new sale, how it works; one panel at a time", async () => {
+  const html = await render("outlet?plan=pro&orders=on");
+  assert.equal(count(html, /data-won-view-tile="/g), 3);
+  for (const key of ["sales", "new", "info"]) assert.match(html, new RegExp(`data-won-view-tile="${key}"`));
+  // The sales tile carries the module's state; a shop with running sales lands on them, not on the form.
+  assert.match(html, /data-won-view-tile="sales"[^>]*aria-pressed="true"/);
+  const panel = (key: string) => new RegExp(`data-won-view-panel="${key}"[^>]*style="display:(block|none)"`).exec(html)?.[1];
+  assert.equal(panel("sales"), "block");
+  assert.equal(panel("new"), "none");
+  assert.equal(panel("info"), "none");
+  // Inside the sales panel the running ones come first, the ended ones last.
+  assert.ok(html.indexOf('<section id="running"') < html.indexOf('<section id="ended"'));
+  assert.ok(html.indexOf('data-won-view-panel="sales"') < html.indexOf('<section id="running"'));
+  // A sale just started: the page shows the sales (the new one on top), not the empty form again.
+  const started = await render("outlet?plan=pro&result=started");
+  assert.match(started, /data-won-view-tile="sales"[^>]*aria-pressed="true"/);
+  // A refused start stays on the form with what was typed.
+  const invalid = await render("outlet?plan=pro&result=invalid");
+  assert.match(invalid, /data-won-view-tile="new"[^>]*aria-pressed="true"/);
+  // Nothing yet: the form.
+  const empty = await render("outlet?plan=pro&state=empty");
+  assert.match(empty, /data-won-view-tile="new"[^>]*aria-pressed="true"/);
+  // Free: the new-sale tile is the one Pro marker of the row.
+  const free = await render("outlet");
+  assert.match(free, /data-won-view-tile="new"[^>]*data-won-tile-locked/);
+});

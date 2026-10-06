@@ -31,7 +31,6 @@ import { NativeDiscountsPanel, nativeSummary } from "../NativeDiscounts";
 import { collectWarnings, type RuleWarning } from "../model/describe";
 import { currencyCodes, currencyViews } from "../model/markets";
 import { embedPlacement } from "../model/embed";
-import { MODULE_META } from "../model/modules";
 import { moduleStatuses, type ModuleStatus } from "../model/module-status";
 import { shopToday } from "../model/rule-form";
 import { needsAttention, ruleStatus, ruleStatusSummary, type RuleStatus, type RuleStatusKind } from "../model/rule-status";
@@ -159,22 +158,22 @@ export function ruleFix(ruleId: string, status: RuleStatus, warnings: readonly R
 const reload = () => window.location.reload();
 
 /**
- * One sentence per tile, from the real settings (P5). A part whose state the signals do not know says what
- * it is for (the module's one-sentence description) — never an invented state (§12).
+ * What is active under each tile, one sentence from the real settings (P5). A part whose state the signals
+ * do not know has no such line — the tile then only says what the part is for, never an invented state (§12).
  */
-function tileBodies(signals: AdminSignals, opts: { codes: string; plan?: "free" | "pro" }, tr: Translator): Record<"codes" | "tiers" | "rewards" | "outlet" | "campaigns" | "margin" | "analytics", string> {
+function tileBodies(signals: AdminSignals, opts: { codes: string; plan?: "free" | "pro" }, tr: Translator): Record<"codes", string> & Partial<Record<"tiers" | "rewards" | "outlet" | "campaigns" | "margin" | "analytics", string>> {
   const { t } = tr;
   const free = opts.plan === "free";
   const { tiers, rewards, outlet, campaigns, margin, analytics } = signals;
 
-  let tiersBody = t(MODULE_META.tiers.body);
+  let tiersBody: string | undefined;
   if (tiers) {
     const names = (tiers.setNames ?? []).filter(Boolean);
     const sets = names.length > 0 ? t("overview.tiers.setsNamed", { names: tr.list(names) }) : t("overview.tiers.sets", { sets: tr.tp("count.tierSet", tiers.sets) });
     tiersBody = tiers.global ? tierSummary(tiers.global, tr) : tiers.sets > 0 ? sets : t("overview.tiers.none");
   }
 
-  let rewardsBody = t(MODULE_META.rewards.body);
+  let rewardsBody: string | undefined;
   if (rewards) {
     const money = (minor: number) => formatMoney(minor, rewards.currency, tr.locale);
     const lines: string[] = [];
@@ -187,21 +186,21 @@ function tileBodies(signals: AdminSignals, opts: { codes: string; plan?: "free" 
     rewardsBody = lines.length > 0 ? lines.join(" · ") : t("overview.rewards.none");
   }
 
-  let outletBody = t(MODULE_META.outlet.body);
+  let outletBody: string | undefined;
   if (outlet) {
     const titles = (outlet.runningTitles ?? []).filter(Boolean);
     if (outlet.running > 0) outletBody = titles.length > 0 ? t("overview.outlet.runningNamed", { names: tr.list(titles) }) : tr.tp("overview.outlet.running", outlet.running);
     else outletBody = free && outlet.pendingReturns.length === 0 ? t("overview.outlet.locked") : t("overview.outlet.none");
   }
 
-  let campaignsBody = t(MODULE_META.campaigns.body);
+  let campaignsBody: string | undefined;
   if (campaigns) {
     if (campaigns.running) campaignsBody = t("overview.campaigns.running", { name: campaigns.running.name, end: campaigns.running.endText });
     else if (free) campaignsBody = t("overview.campaigns.locked");
     else campaignsBody = campaigns.next ? t("overview.campaigns.next", { name: campaigns.next.name, start: campaigns.next.startText }) : t("overview.campaigns.none");
   }
 
-  let marginBody = t(MODULE_META.margin.body);
+  let marginBody: string | undefined;
   if (margin) {
     const settings = describeMarginSettings(
       { enabled: margin.enabled, global: { maxDiscountPercent: margin.maxDiscountPercent, ...(margin.minMarginPercent !== null ? { minMarginPercent: margin.minMarginPercent } : {}) }, perCollection: [] },
@@ -214,7 +213,7 @@ function tileBodies(signals: AdminSignals, opts: { codes: string; plan?: "free" 
   const analyticsBody =
     analytics && analytics.available && !analytics.empty
       ? analytics.tiles.map((tile) => `${t(`analytics.tile.${tile.id}` as "analytics.tile.cost")}: ${tile.value}`).join(" · ")
-      : t("tile.analytics.none");
+      : undefined;
 
   return { codes: opts.codes, tiers: tiersBody, rewards: rewardsBody, outlet: outletBody, campaigns: campaignsBody, margin: marginBody, analytics: analyticsBody };
 }
@@ -384,16 +383,16 @@ export function OverviewScreen({
         ) : null}
 
         <ModuleTiles label={t("overview.tiles.label")}>
-          <ModuleTile id="codes" href="/app/discounts" title={t("nav.discounts")} glyph="tag" body={bodies.codes} status={states.codes} />
-          <ModuleTile id="tiers" href="/app/tiers" title={t("module.tiers")} glyph="layers" body={bodies.tiers} status={states.tiers} />
-          <ModuleTile id="rewards" href="/app/rewards" title={t("nav.rewards")} glyph="spark" body={bodies.rewards} status={states.rewards} />
-          <ModuleTile id="outlet" href="/app/outlet" title={t("module.outlet")} glyph="receipt" body={bodies.outlet} status={states.outlet} pro locked={lockedTile("outlet") || (free && !states.outlet)} />
-          <ModuleTile id="campaigns" href="/app/campaigns" title={t("module.campaigns")} glyph="calendar" body={bodies.campaigns} status={states.campaigns} pro locked={lockedTile("campaigns") || (free && !states.campaigns)} />
-          <ModuleTile id="margin" href="/app/margin" title={t("module.margin")} glyph="shield" body={bodies.margin} status={states.margin} />
-          <ModuleTile id="analytics" href="/app/analytics" title={t("nav.analytics")} glyph="check" body={bodies.analytics} />
-          <ModuleTile id="appearance" href="/app/appearance" title={t("nav.appearance")} glyph="store" body={t("tile.appearance.body")} />
-          <ModuleTile id="tryCart" href="/app/try-cart" title={t("nav.tryCart")} glyph="cart" body={t(free ? "tile.tryCart.locked" : "tile.tryCart.body")} pro locked={free} />
-          <ModuleTile id="settings" href="/app/settings" title={t("nav.settings")} glyph="sliders" body={t(plan === "pro" ? "tile.settings.plan.pro" : plan === "free" ? "tile.settings.plan.free" : "tile.settings.body")} />
+          <ModuleTile id="codes" href="/app/discounts" title={t("nav.discounts")} glyph="tag" about={t("tile.about.codes")} active={bodies.codes} status={states.codes} />
+          <ModuleTile id="tiers" href="/app/tiers" title={t("module.tiers")} glyph="layers" about={t("tile.about.tiers")} active={bodies.tiers} status={states.tiers} />
+          <ModuleTile id="rewards" href="/app/rewards" title={t("nav.rewards")} glyph="spark" about={t("tile.about.rewards")} active={bodies.rewards} status={states.rewards} />
+          <ModuleTile id="outlet" href="/app/outlet" title={t("module.outlet")} glyph="receipt" about={t("tile.about.outlet")} active={bodies.outlet} status={states.outlet} pro locked={lockedTile("outlet") || (free && !states.outlet)} />
+          <ModuleTile id="campaigns" href="/app/campaigns" title={t("module.campaigns")} glyph="calendar" about={t("tile.about.campaigns")} active={bodies.campaigns} status={states.campaigns} pro locked={lockedTile("campaigns") || (free && !states.campaigns)} />
+          <ModuleTile id="margin" href="/app/margin" title={t("module.margin")} glyph="shield" about={t("tile.about.margin")} active={bodies.margin} status={states.margin} />
+          <ModuleTile id="analytics" href="/app/analytics" title={t("nav.analytics")} glyph="check" about={t("tile.about.analytics")} active={bodies.analytics} />
+          <ModuleTile id="appearance" href="/app/appearance" title={t("nav.appearance")} glyph="store" about={t("tile.about.appearance")} />
+          <ModuleTile id="tryCart" href="/app/try-cart" title={t("nav.tryCart")} glyph="cart" about={t("tile.about.tryCart")} active={free ? t("tile.tryCart.locked") : undefined} pro locked={free} />
+          <ModuleTile id="settings" href="/app/settings" title={t("nav.settings")} glyph="sliders" about={t("tile.about.settings")} active={plan ? t(plan === "pro" ? "tile.settings.pro" : "tile.settings.free") : undefined} />
         </ModuleTiles>
       </s-stack>
     </s-page>
