@@ -1,52 +1,48 @@
-// Přehled v1 — the admin home (doctrine A3: status first, "what's running and
-// what could I turn on next?"). A presentational component rendered by the
-// embedded route (app/routes/app._index.tsx, the shop's config + store signals)
-// and by the dev harness (app/routes/dev.preview.$.tsx, fixtures), so the harness
-// screenshots the real screen (audit P2-5). Props are plain serializable data
-// built by buildOverviewProps(); every word comes from i18n + the core formatter.
+// Přehled — the admin home (doctrine A3: status first; §19d: a signpost of tiles).
+// A presentational component rendered by the embedded route
+// (app/routes/app._index.tsx, the shop's config + store signals) and by the dev
+// harness (app/routes/dev.preview.$.tsx, fixtures), so the harness screenshots
+// the real screen (audit P2-5). Props are plain serializable data built by
+// buildOverviewProps(); every word comes from i18n + the core formatter.
 //
-// Ochrana marže (MVP 2) and Množstevní slevy (MVP 3) have their own cards once
-// the signals know their state (AdminSignals.margin / .tiers; absent = not
-// known, no card).
+// Feedback 3 (6 Oct 2026), body 2 a 3: the page is a GRID OF TILES, one per part
+// of the app, each a single link to its page. A tile says the part's state with
+// the same label the page itself shows (model/module-status.ts) and one sentence
+// with the real settings; the detailed rows (the list of discounts, the table in
+// the theme, the cost prices, returned pieces of a sale) live on the pages. The
+// page does not grow when a module is added.
 //
-// "Běží" is green only for a rule that really runs (model/rule-status.ts):
-// switched on, inside its schedule, evaluable at checkout, and THIS version of
-// it written to Shopify (per-rule sync facts). The sync line shows what did
-// not reach Shopify, with "Synchronizovat znovu".
-// P2 (plan 6 Oct 2026): nothing without content or action. "Slevy mimo Won" is
-// rendered only when there is something to do (model/signals nativeNeedsSection);
-// "Stav v obchodě" lists only what the app really checks (website + sync, B10);
-// every row that says something is wrong carries the action that fixes it (P3):
-// a rule that does not run links to its field in the editor, the embed row can
-// be re-checked, a blocked sync says where it is fixed.
-// With only { schemaVersion, ruleCount, readOnly } the screen still renders every
-// section, each stating honestly what is not known yet (§12). No router hook runs
-// at this level, so the component also renders outside a router (unit renders).
+// Above the grid sits only what is not a module and has something to say (P2):
+// the setup guide, "Vyžaduje pozornost" (every row links to the field that fixes
+// it, P3), the store status (collapsed to one line while everything is fine) and
+// the discounts outside Won (only while there is something to do about them).
+// With only { schemaVersion, ruleCount, readOnly } the screen still renders: a
+// tile whose state is not known says what the part is for and shows no label
+// (§12). No router hook runs at this level, so the component also renders
+// outside a router (unit renders).
 
 import type { DiscountRule, OnboardingGoal, WonDiscountsConfig } from "@won/core/discounts/config";
 
 import { useT } from "../../i18n/context";
 import type { Translator } from "../../i18n";
+import { describeMarginSettings, formatMoney } from "@won/core/discounts/describe";
+
 import { NativeDiscountsPanel, nativeSummary } from "../NativeDiscounts";
-import { MarginOverviewCard } from "../margin/MarginOverviewCard";
-import { TiersOverviewCard } from "../tiers/TiersOverviewCard";
-import { OutletOverviewCard } from "../outlet/OutletOverviewCard";
-import { AnalyticsOverviewCard } from "../analytics/AnalyticsOverviewCard";
-import { CampaignsOverviewCard } from "../campaigns/CampaignsOverviewCard";
-import { RewardsOverviewCard } from "../rewards/RewardsOverviewCard";
-import { RecipeGrid } from "../RecipeGrid";
-import { RuleRow } from "../RuleRow";
 import { collectWarnings, type RuleWarning } from "../model/describe";
 import { currencyCodes, currencyViews } from "../model/markets";
+import { embedPlacement } from "../model/embed";
+import { MODULE_META } from "../model/modules";
+import { moduleStatuses, type ModuleStatus } from "../model/module-status";
 import { shopToday } from "../model/rule-form";
 import { needsAttention, ruleStatus, ruleStatusSummary, type RuleStatus, type RuleStatusKind } from "../model/rule-status";
+import { tierSummary } from "../model/tiers";
 import { uiText } from "../model/result-copy";
-import { NOT_WIRED_SIGNALS, embedText, nativeNeedsSection, nativeOutsideCount, statusAllGood, statusSummary, syncNeedsRetry, syncText, targetingText } from "../model/signals";
+import { NOT_WIRED_SIGNALS, embedText, nativeNeedsSection, statusAllGood, statusSummary, syncNeedsRetry, syncText, targetingText } from "../model/signals";
 import type { AdminSignals, CurrencyView, GateNoteView, RuleSyncMap, UiResult } from "../model/types";
 import { GateNotes } from "../shell/GateNotes";
+import { ModuleTile, ModuleTiles } from "../shell/ModuleTile";
 import { RefreshTargetingButton, ResyncButton } from "../shell/Notice";
-import { PlanBadge } from "../shell/PlanBadge";
-import { RowNote, WonRow, WonSection } from "../shell/WonSection";
+import { PlacementPill, RowNote, WonRow, WonSection } from "../shell/WonSection";
 import { WON_ATTENTION } from "../shell/tokens";
 import { onboardingHasNative, onboardingProgress } from "./OnboardingScreen";
 
@@ -121,8 +117,6 @@ export function buildOverviewProps(
   return props;
 }
 
-const RUNNING_SHOWN = 5;
-
 function warningText(w: RuleWarning, tr: Translator): string {
   const rule = w.ruleName.trim() || tr.t("common.untitled");
   if (w.kind === "unsupported") return tr.t("overview.warning.unsupported", { rule });
@@ -164,13 +158,73 @@ export function ruleFix(ruleId: string, status: RuleStatus, warnings: readonly R
 
 const reload = () => window.location.reload();
 
+/**
+ * One sentence per tile, from the real settings (P5). A part whose state the signals do not know says what
+ * it is for (the module's one-sentence description) — never an invented state (§12).
+ */
+function tileBodies(signals: AdminSignals, opts: { codes: string; plan?: "free" | "pro" }, tr: Translator): Record<"codes" | "tiers" | "rewards" | "outlet" | "campaigns" | "margin" | "analytics", string> {
+  const { t } = tr;
+  const free = opts.plan === "free";
+  const { tiers, rewards, outlet, campaigns, margin, analytics } = signals;
+
+  let tiersBody = t(MODULE_META.tiers.body);
+  if (tiers) {
+    const names = (tiers.setNames ?? []).filter(Boolean);
+    const sets = names.length > 0 ? t("overview.tiers.setsNamed", { names: tr.list(names) }) : t("overview.tiers.sets", { sets: tr.tp("count.tierSet", tiers.sets) });
+    tiersBody = tiers.global ? tierSummary(tiers.global, tr) : tiers.sets > 0 ? sets : t("overview.tiers.none");
+  }
+
+  let rewardsBody = t(MODULE_META.rewards.body);
+  if (rewards) {
+    const money = (minor: number) => formatMoney(minor, rewards.currency, tr.locale);
+    const lines: string[] = [];
+    if (rewards.shipping !== null) lines.push(t("overview.rewards.ship", { amount: money(rewards.shipping) }));
+    rewards.gifts.forEach((g, i) => {
+      const name = rewards.giftNames?.[i]?.trim();
+      if (g === null) lines.push(t("overview.rewards.giftNoCurrency", { currency: rewards.currency }));
+      else lines.push(name ? t("overview.rewards.giftNamed", { name, amount: money(g) }) : t("overview.rewards.gift", { amount: money(g) }));
+    });
+    rewardsBody = lines.length > 0 ? lines.join(" · ") : t("overview.rewards.none");
+  }
+
+  let outletBody = t(MODULE_META.outlet.body);
+  if (outlet) {
+    const titles = (outlet.runningTitles ?? []).filter(Boolean);
+    if (outlet.running > 0) outletBody = titles.length > 0 ? t("overview.outlet.runningNamed", { names: tr.list(titles) }) : tr.tp("overview.outlet.running", outlet.running);
+    else outletBody = free && outlet.pendingReturns.length === 0 ? t("overview.outlet.locked") : t("overview.outlet.none");
+  }
+
+  let campaignsBody = t(MODULE_META.campaigns.body);
+  if (campaigns) {
+    if (campaigns.running) campaignsBody = t("overview.campaigns.running", { name: campaigns.running.name, end: campaigns.running.endText });
+    else if (free) campaignsBody = t("overview.campaigns.locked");
+    else campaignsBody = campaigns.next ? t("overview.campaigns.next", { name: campaigns.next.name, start: campaigns.next.startText }) : t("overview.campaigns.none");
+  }
+
+  let marginBody = t(MODULE_META.margin.body);
+  if (margin) {
+    const settings = describeMarginSettings(
+      { enabled: margin.enabled, global: { maxDiscountPercent: margin.maxDiscountPercent, ...(margin.minMarginPercent !== null ? { minMarginPercent: margin.minMarginPercent } : {}) }, perCollection: [] },
+      tr.locale,
+    );
+    // §12: until the costs are read once, unread products have only the ceiling.
+    marginBody = margin.enabled && margin.productsWithoutCost === null ? `${settings} · ${t("tile.margin.costsUnknown")}` : settings;
+  }
+
+  const analyticsBody =
+    analytics && analytics.available && !analytics.empty
+      ? analytics.tiles.map((tile) => `${t(`analytics.tile.${tile.id}` as "analytics.tile.cost")}: ${tile.value}`).join(" · ")
+      : t("tile.analytics.none");
+
+  return { codes: opts.codes, tiers: tiersBody, rewards: rewardsBody, outlet: outletBody, campaigns: campaignsBody, margin: marginBody, analytics: analyticsBody };
+}
+
 export function OverviewScreen({
   ruleCount,
   readOnly,
   rules,
   currencies = [],
   onboardingStep,
-  goals = [],
   today,
   timezone = null,
   signals,
@@ -191,7 +245,6 @@ export function OverviewScreen({
   const targeting = status.targeting;
   const syncAttention = status.sync.state === "ok" ? (status.sync.attention ?? []) : [];
   const statuses = (rules ?? []).map((rule) => ruleStatus(rule, statusCtx));
-  const liveCount = statuses.filter((s) => s.kind === "live").length;
   // B16: the same step and the same number of steps as the guide itself shows.
   const progress = onboardingProgress(onboardingStep ?? 1, { embedOn: status.embed.state === "on", rules: ruleCount, hasNative: onboardingHasNative(status.native) });
   const showOnboarding = onboardingStep !== undefined && ruleCount === 0;
@@ -210,6 +263,12 @@ export function OverviewScreen({
   const showNative = nativeNeedsSection(status.native);
   const summary =
     ruleCount === 0 ? t("overview.running.none") : rules ? ruleStatusSummary(statuses, tr) : tr.tp("count.discount", ruleCount);
+  const allGood = statusAllGood(status);
+  // The same function the module pages call (model/module-status.ts): a tile and its page cannot disagree.
+  const states: Partial<Record<string, ModuleStatus>> = moduleStatuses(status, { plan: plan ?? "pro", rules: statuses });
+  const bodies = tileBodies(status, { codes: summary, plan }, tr);
+  const free = plan === "free";
+  const lockedTile = (key: "outlet" | "campaigns") => states[key]?.state === "locked";
 
   return (
     <s-page heading="Won Discounts">
@@ -225,61 +284,13 @@ export function OverviewScreen({
             title={t("overview.onboarding.title")}
             glyph="spark"
             summary={t("overview.onboarding.summary", { step: progress.position, total: progress.total })}
-          >
-            <s-button variant="primary" href="/app/onboarding">
-              {t("overview.onboarding.cta")}
-            </s-button>
-          </WonSection>
+            action={
+              <s-button variant="primary" href="/app/onboarding">
+                {t("overview.onboarding.cta")}
+              </s-button>
+            }
+          />
         ) : null}
-
-        <WonSection
-          title={t("overview.running.title")}
-          glyph="tag"
-          summary={summary}
-          // Green only when something really runs; otherwise the summary says what is going on.
-          on={liveCount > 0 ? true : undefined}
-        >
-          {ruleCount === 0 ? (
-            // §15: the empty state teaches — the shape of success + one next step.
-            <s-stack direction="block" gap="base">
-              <s-paragraph>{t("overview.running.emptyBody")}</s-paragraph>
-              <RecipeGrid />
-            </s-stack>
-          ) : (
-            <div>
-              {(rules ?? []).slice(0, RUNNING_SHOWN).map((rule, i) => {
-                const fix = ruleFix(rule.id, statuses[i], warnings, tr);
-                return (
-                  <RuleRow
-                    key={rule.id}
-                    rule={rule}
-                    status={statuses[i]}
-                    currencies={codes}
-                    timezone={timezone}
-                    action={
-                      fix ? (
-                        <s-button href={fix.href} variant="secondary">
-                          {fix.label}
-                        </s-button>
-                      ) : undefined
-                    }
-                  />
-                );
-              })}
-              <WonRow
-                action={
-                  <s-button href="/app/discounts" variant="secondary">
-                    {t("overview.running.manage")}
-                  </s-button>
-                }
-              >
-                {rules && rules.length > RUNNING_SHOWN ? (
-                  <s-text color="subdued">{t("overview.running.more", { n: rules.length - RUNNING_SHOWN })}</s-text>
-                ) : null}
-              </WonRow>
-            </div>
-          )}
-        </WonSection>
 
         {gate.length > 0 ? <GateNotes notes={gate} pending={gatePending} /> : null}
 
@@ -305,10 +316,23 @@ export function OverviewScreen({
           </WonSection>
         ) : null}
 
-        <WonSection title={t("overview.status.title")} glyph="store" summary={statusSummary(status, tr)} {...(statusAllGood(status) ? { on: true } : {})}>
+        {/* One line while everything is fine (the green label says it); open with its fixes when something is not. */}
+        <WonSection
+          key={allGood ? "status-ok" : "status-open"}
+          title={t("overview.status.title")}
+          glyph="store"
+          summary={statusSummary(status, tr)}
+          {...(allGood ? { on: true } : {})}
+          collapsible
+          defaultOpen={!allGood}
+          anchor="status"
+        >
           <div>
             <WonRow action={embedAction}>
-              <s-text type="strong">{t("overview.embed.label")}</s-text>
+              <span style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                <s-text type="strong">{t("overview.embed.label")}</s-text>
+                <PlacementPill placement={embedPlacement(status.embed.state)} />
+              </span>
               <RowNote>{embedText(status.embed.state, tr)}</RowNote>
             </WonRow>
             <WonRow
@@ -353,20 +377,24 @@ export function OverviewScreen({
           </div>
         </WonSection>
 
-        {status.margin ? <MarginOverviewCard margin={status.margin} sync={status.sync} nativeOutside={nativeOutsideCount(status.native)} /> : null}
-
-        {status.tiers ? <TiersOverviewCard tiers={status.tiers} /> : null}
-
-        {status.rewards ? <RewardsOverviewCard rewards={status.rewards} /> : null}
-        {status.outlet ? <OutletOverviewCard outlet={status.outlet} plan={plan} /> : null}
-        {status.campaigns ? <CampaignsOverviewCard campaigns={status.campaigns} plan={plan} /> : null}
-        {status.analytics ? <AnalyticsOverviewCard analytics={status.analytics} /> : null}
-
         {showNative ? (
           <WonSection title={t("overview.native.title")} glyph="move" summary={nativeSummary(status.native, tr)} anchor="native">
             <NativeDiscountsPanel native={status.native} mode="each" result={nativeResult} readOnly={readOnly} />
           </WonSection>
         ) : null}
+
+        <ModuleTiles label={t("overview.tiles.label")}>
+          <ModuleTile id="codes" href="/app/discounts" title={t("nav.discounts")} glyph="tag" body={bodies.codes} status={states.codes} />
+          <ModuleTile id="tiers" href="/app/tiers" title={t("module.tiers")} glyph="layers" body={bodies.tiers} status={states.tiers} />
+          <ModuleTile id="rewards" href="/app/rewards" title={t("nav.rewards")} glyph="spark" body={bodies.rewards} status={states.rewards} />
+          <ModuleTile id="outlet" href="/app/outlet" title={t("module.outlet")} glyph="receipt" body={bodies.outlet} status={states.outlet} pro locked={lockedTile("outlet") || (free && !states.outlet)} />
+          <ModuleTile id="campaigns" href="/app/campaigns" title={t("module.campaigns")} glyph="calendar" body={bodies.campaigns} status={states.campaigns} pro locked={lockedTile("campaigns") || (free && !states.campaigns)} />
+          <ModuleTile id="margin" href="/app/margin" title={t("module.margin")} glyph="shield" body={bodies.margin} status={states.margin} />
+          <ModuleTile id="analytics" href="/app/analytics" title={t("nav.analytics")} glyph="check" body={bodies.analytics} />
+          <ModuleTile id="appearance" href="/app/appearance" title={t("nav.appearance")} glyph="store" body={t("tile.appearance.body")} />
+          <ModuleTile id="tryCart" href="/app/try-cart" title={t("nav.tryCart")} glyph="cart" body={t(free ? "tile.tryCart.locked" : "tile.tryCart.body")} pro locked={free} />
+          <ModuleTile id="settings" href="/app/settings" title={t("nav.settings")} glyph="sliders" body={t(plan === "pro" ? "tile.settings.plan.pro" : plan === "free" ? "tile.settings.plan.free" : "tile.settings.body")} />
+        </ModuleTiles>
       </s-stack>
     </s-page>
   );

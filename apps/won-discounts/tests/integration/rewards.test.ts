@@ -193,7 +193,10 @@ test("screen: Free shows the first gift editable and the Pro threshold as stored
   // P5: the state lines say the real values.
   assert.match(free, /Doprava zdarma od 1 000 Kč \/ 40 €/);
   assert.match(free, /Ponožky Won — M od 1 500 Kč/);
-  assert.doesNotMatch(free, /Aktivní/, "never a green pill from this page's own form");
+  // The green label is the stored state the loader hands over (the same as the home tile); without it there is none.
+  assert.match(free, /Aktivní/);
+  const noStatus = { ...devRewardsScreen({ plan: "free", state: null, locale: "cs" }), status: undefined };
+  assert.doesNotMatch(text(await renderPage(createElement(RewardsScreen, noStatus))), /Aktivní/, "never a green pill from this page's own form");
   const pro = text(await renderPage(createElement(RewardsScreen, devRewardsScreen({ plan: "pro", state: null, locale: "cs" }))));
   assert.match(pro, /2\. práh/);
   assert.match(pro, /Dárek \(na výběr až 3\)/);
@@ -208,7 +211,7 @@ test("screen: Free shows the first gift editable and the Pro threshold as stored
   assert.match(empty, /Žádný dárek/);
   // Every state of the app embed check has its own sentence and action.
   const embed = async (state: string) => text(await renderPage(createElement(RewardsScreen, devRewardsScreen({ plan: "free", state, locale: "cs" }))));
-  assert.match(await embed("embed-draft"), /Won je zapnutý jen v nepublikovaném tématu.*Zapněte Won i v živém tématu.*Zapnout v tématu/);
+  assert.match(await embed("embed-draft"), /Chybí v tématu.*Won je zapnutý jen v nepublikovaném tématu.*Zapnout v tématu.*Zapněte Won i v živém tématu/);
   assert.match(await embed("embed-unknown"), /Nepodařilo se ověřit, jestli je Won v tématu zapnutý.*Otevřít editor tématu/);
   assert.match(await embed("embed-no-scope"), /Won nemá přístup k tématu.*Otevřít editor tématu/);
   // B12: the limit of thresholds is said, and the server's refusal is rendered.

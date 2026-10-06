@@ -113,7 +113,8 @@ test("BILL-1: on Free, Přehled / Slevy a kódy / the editor say which Pro setti
   const html = text(await renderPage(createElement(OverviewScreen, overview)));
   assert.match(html, /Pro funkce není aktivní — v pokladně se neuplatní/);
   assert.match(html, /Sleva „Jen Slovensko“ cílí na vybrané trhy/);
-  assert.match(html, /Neaktivní: používá funkci Pro, kterou váš tarif v pokladně nespouští/);
+  // The home tile counts the discount among what needs attention; the list of discounts says why.
+  assert.match(html, /1 neaktivní/);
   // The shop config Shopify runs has the market rule off and no per-rule combination.
   const shipped = JSON.parse(store.sync.shopMetafieldValue("function_config")!);
   assert.doesNotMatch(JSON.stringify(shipped), /combinesWith/);
@@ -207,7 +208,8 @@ test("item 2: a targeting marked stale by a webhook → the product rule 'Propis
   assert.equal(props.ruleSync?.c, "refreshing");
   assert.equal(props.signals?.targeting?.state, "refreshing");
   const html = text(await renderPage(createElement(OverviewScreen, props)));
-  assert.match(html, /Propisuje se/);
+  // The targeting line says it; the discount itself counts as running (the home tile is green).
+  assert.match(html, /Propisuje se do Shopify|Právě se obnovuje/);
   assert.match(html, /Cílení na produkty a kolekce/);
   assert.match(html, /Obnovit cílení/);
 });

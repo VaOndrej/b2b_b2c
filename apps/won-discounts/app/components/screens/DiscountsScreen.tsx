@@ -15,6 +15,7 @@ import { RuleRow } from "../RuleRow";
 import { missingCurrencies, ruleName } from "../model/describe";
 import { currencyCodes, currencyViews, type MarketNames } from "../model/markets";
 import { shopToday } from "../model/rule-form";
+import { codesStatus } from "../model/module-status";
 import { ruleEditHref, ruleStatus, ruleStatusSummary, type RuleStatus } from "../model/rule-status";
 import { codeLimitNear } from "../rule-editor/ApplySection";
 import { syncText } from "../model/signals";
@@ -173,6 +174,9 @@ export function DiscountsScreen({
         <WonSection
           title={t("discounts.list.title")}
           glyph="tag"
+          // The same function as the home tile (model/module-status.ts).
+          state={rules.length > 0 ? codesStatus(statuses) : undefined}
+          anchor="list"
           summary={summary}
           hint={hints.join(" ") || undefined}
           // §13a: a failed sync carries its fix right here.

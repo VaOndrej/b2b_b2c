@@ -17,12 +17,12 @@ summary: Every status a Won discount can show in the admin (English and Czech la
 
 # Discount statuses
 
-Each discount in the list shows one status. Only **Live** and
+Each discount in the list shows one status. Only **Active** and
 **Syncing** mean it applies at checkout right now.
 
 | Status (EN) | Status (CS) | What it means |
 |---|---|---|
-| Live | Aktivní | Switched on, inside its dates, and this version is in Shopify: it applies at checkout. |
+| Active | Aktivní | Switched on, inside its dates, and this version is in Shopify: it applies at checkout. |
 | Off | Vypnuto | Switched off. It does not apply. |
 | Scheduled | Naplánováno | Scheduled from ‹date› |
 | Ended | Skončilo | Ended ‹date› |
@@ -30,9 +30,9 @@ Each discount in the list shows one status. Only **Live** and
 | Not synced | Nezapsáno | Saved, not written to Shopify yet |
 | Not synced | Nezapsáno | Not in Shopify: the sync failed. |
 | Syncing | Propisuje se | Running, but its product targeting is being written to Shopify right now. New products get the discount within minutes. |
-| Not running | Neaktivní | Not running: this code discount has no code yet |
-| Not running | Neaktivní | Not running: no products or collections are picked. |
-| Not running | Neaktivní | Not running: it has no value in any of the store's currencies. |
-| Not running | Neaktivní | Not running: it targets only markets that are switched off in Won. |
-| Not running | Neaktivní | Not running: it uses a Pro feature your plan does not run at checkout. |
-| Not running | Neaktivní | Not running: segment targeting isn't applied at checkout yet |
+| Inactive | Neaktivní | Inactive: this code discount has no code yet |
+| Inactive | Neaktivní | Inactive: no products or collections are picked. |
+| Inactive | Neaktivní | Inactive: it has no value in any of the store's currencies. |
+| Inactive | Neaktivní | Inactive: it targets only markets that are switched off in Won. |
+| Inactive | Neaktivní | Inactive: it uses a Pro feature your plan does not run at checkout. |
+| Inactive | Neaktivní | Inactive: segment targeting isn't applied at checkout yet |

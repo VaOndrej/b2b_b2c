@@ -18,13 +18,14 @@ import { cartBlockAddUrl, placementLinks, REWARDS_PROGRESS_BLOCK_HANDLE } from "
 import { currencyCodes, currencyViews } from "../../components/model/markets";
 import { giftTierView, readRewardsForm, REWARDS_FIELD, REWARDS_INTENT } from "../../components/model/rewards";
 import type { FormDataLike } from "../../components/model/rule-form";
-import type { GateNoteView, RewardsOverviewView, RewardsScreenData, UiResult } from "../../components/model/types";
+import { rewardsGiftStatus, rewardsShippingStatus } from "../../components/model/module-status";
+import type { GateNoteView, RewardsOverviewView, RewardsScreenData, SyncView, UiResult } from "../../components/model/types";
 import { loadConfig } from "../config.server";
 import { loadAdminSignals } from "../ui-actions.server";
 import { graphqlOf, type ShopCtx } from "./context.server";
 import { readSaveOptions, saveConfigSection } from "./settings.server";
-import { ctxPlan } from "./sync-status.server";
-import { readMarketNames, readShopContext } from "./themes.server";
+import { ctxPlan, loadSyncView } from "./sync-status.server";
+import { readMarketNames, readShopContext, readThemeLook } from "./themes.server";
 import { resourceLabels } from "./titles.server";
 
 const REWARD_CAPABILITIES: readonly ProCapability[] = ["gift_ladder", "gift_choices"];
@@ -91,22 +92,33 @@ export async function loadRewardsScreen(ctx: ShopCtx, opts: { scopes: string; fr
   const graphql = graphqlOf(ctx);
   const loaded = await loadConfig(ctx.db, ctx.shop);
   const stored = loaded.config;
-  const [plan, shopContext, marketNames, titles, signals] = await Promise.all([
+  const [plan, shopContext, marketNames, titles, signals, look] = await Promise.all([
     ctxPlan(ctx),
     readShopContext(graphql),
     readMarketNames(graphql, ctx.shop, opts.scopes),
     giftTitles(ctx, giftIds(stored)),
     loadAdminSignals({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql, fresh: opts.fresh }),
+    // Which placements the live theme already has (the read Množstevní slevy shares, cached 60 s).
+    readThemeLook(ctx, { scopes: opts.scopes, fresh: opts.fresh }),
   ]);
+  const sync = await loadSyncView(ctx, loaded, shopContext.timezone);
   return {
     plan,
     configVersion: loaded.version ?? null,
     currencies: currencyViews(stored.markets, { shopCurrency: shopContext.currencyCode, marketNames }),
     ...rewardsScreenFacts(stored, { plan, locale: ctx.locale, titles }),
+    status: rewardsSectionStatus(stored, plan, shopContext.currencyCode || stored.markets.find((m) => m.enabled)?.currency || "", sync),
     embed: signals.embed,
     cartBlockAddUrl: cartBlockAddUrl(ctx.shop, ctx.apiKey),
     placements: placementLinks(ctx.shop, ctx.apiKey, REWARDS_PROGRESS_BLOCK_HANDLE),
+    placed: look.placements,
   };
+}
+
+/** The state of "Doprava zdarma" and "Dárek": the same functions, on the same view, as the home tile (model/module-status.ts). */
+export function rewardsSectionStatus(config: WonDiscountsConfig, plan: "free" | "pro", currency: string, sync: SyncView): NonNullable<RewardsScreenData["status"]> {
+  const overview = rewardsOverviewOf(config, plan, currency);
+  return { shipping: rewardsShippingStatus(overview, sync), gift: rewardsGiftStatus(overview, sync) };
 }
 
 /** Stored amounts in currencies whose market is off: kept (§14a). */

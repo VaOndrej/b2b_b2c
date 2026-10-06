@@ -111,7 +111,8 @@ export function TierSetEditor({
           options={TIER_COUNT_MODES.map((mode) => ({
             value: mode,
             label: countLabel(mode, tr),
-            ...(mode === "cart" ? { pro: true, disabled: cartLocked, proHref: "/app/plan" } : {}),
+            // The Pro marker only where the shop does not have it (a Pro shop sees a plain choice).
+            ...(mode === "cart" && !pro ? { pro: true, disabled: cartLocked, proHref: "/app/plan" } : {}),
           }))}
         />
         <RowNote>{t(countNow === "line" ? "tiers.count.line.details" : countNow === "product" ? "tiers.count.product.details" : "tiers.count.cart.details")}</RowNote>

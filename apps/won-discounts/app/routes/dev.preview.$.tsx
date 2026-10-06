@@ -58,6 +58,7 @@ import {
   devNativeMoved,
   devTryCartPlan,
   devMarginOverview,
+  devModuleSignals,
   devMarginResult,
   devMarginScreen,
   devRuleMarginImpact,
@@ -283,6 +284,15 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
           ...wired,
           signals: { ...DEV_SIGNALS, native: devNative(locale), tiers: devTiersOverview(state === "tiers" ? "off" : "empty") },
           ruleSync: DEV_RULE_SYNC_OK,
+        });
+      }
+      // Every module from the fixtures the module pages render: a tile and its page say the same state.
+      if (state === "modules" || state === "modules-off" || state === "modules-failed") {
+        const mode = state === "modules" ? "on" : state === "modules-off" ? "off" : "failed";
+        return buildOverviewProps(mode === "off" ? DEV_EMPTY_FIXTURE : DEV_OVERVIEW_FIXTURE, {
+          ...wired,
+          signals: devModuleSignals({ mode, plan: wired.plan, locale }),
+          ruleSync: mode === "failed" ? DEV_RULE_SYNC_FAILED : DEV_RULE_SYNC_OK,
         });
       }
       if (state === "empty") return buildOverviewProps(DEV_EMPTY_FIXTURE, { readOnly, timezone: DEV_TIMEZONE, now: DEV_NOW });

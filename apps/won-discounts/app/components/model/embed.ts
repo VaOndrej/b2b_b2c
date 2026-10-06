@@ -82,3 +82,24 @@ export function placementLinks(shop: string, apiKey: string, handle: string): Pl
     topBar: embedActivationUrl(shop, apiKey),
   };
 }
+
+// --- Where a piece stands in the live theme (feedback 3, bod 5; doctrine §19c) --------------------------------
+// Three states, the same for every placement: in the theme (green), missing (red, with the button that adds it)
+// and not verified (grey, with "Zkontrolovat znovu"). Local types on purpose: this file imports nothing.
+
+type Placement = "in_theme" | "missing" | "unknown";
+
+/** A block the theme read looked for: found, not found, or not read (absent). */
+export function placementOf(found: boolean | undefined): Placement {
+  return found === undefined ? "unknown" : found ? "in_theme" : "missing";
+}
+
+/** Won switched on in the theme (the app embed). On only in an unpublished theme = missing in the live one. */
+export function embedPlacement(state: "on" | "off" | "draft_only" | "unknown" | "no_scope"): Placement {
+  return state === "on" ? "in_theme" : state === "off" || state === "draft_only" ? "missing" : "unknown";
+}
+
+/** The quantity table on the product page. */
+export function blockPlacement(state: "on" | "off" | "unknown" | "no_scope"): Placement {
+  return state === "on" ? "in_theme" : state === "off" ? "missing" : "unknown";
+}

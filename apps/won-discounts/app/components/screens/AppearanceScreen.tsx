@@ -31,6 +31,7 @@ import {
   textLabel,
   textLangLabel,
 } from "../model/appearance";
+import { embedPlacement } from "../model/embed";
 import { embedText } from "../model/signals";
 import type { AppearancePresetView, AppearanceScreenData, PreviewLookView, UiResult } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
@@ -195,15 +196,19 @@ export function AppearanceScreen(props: AppearanceScreenProps) {
         <s-stack direction="block" gap="base">
           <Notice result={result} onReplace={replaceUnreadable} />
           {embedAction ? (
-            <WonSection title={t("appearance.embed")} glyph="store" summary={embedText(embed.state, tr)} anchor="embed">
-              <WonRow
-                tone="attention"
-                action={
-                  <s-button href={embedAction} target="_blank" variant="primary">
-                    {t("overview.embed.activate")}
-                  </s-button>
-                }
-              >
+            <WonSection
+              title={t("appearance.embed")}
+              glyph="store"
+              summary={embedText(embed.state, tr)}
+              anchor="embed"
+              placement={embedPlacement(embed.state)}
+              action={
+                <s-button href={embedAction} target="_blank" variant="primary">
+                  {t("overview.embed.activate")}
+                </s-button>
+              }
+            >
+              <WonRow tone="attention">
                 <RowNote tone="attention">{t("appearance.embed.needed")}</RowNote>
               </WonRow>
             </WonSection>

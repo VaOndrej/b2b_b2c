@@ -38,8 +38,9 @@ import { loadShopSyncFacts } from "../sync/sync-state.server";
 import { shopLocalDateTime } from "../sync/sync.server";
 import { graphqlOf, nowOf, type ShopCtx } from "./context.server";
 import { readSaveOptions, saveConfigSection } from "./settings.server";
-import { ctxPlan } from "./sync-status.server";
-import { readShopContext } from "./themes.server";
+import { campaignsStatus } from "../../components/model/module-status";
+import { ctxPlan, loadSyncView } from "./sync-status.server";
+import { readShopContext, readThemeLook } from "./themes.server";
 
 const STATUS_ORDER = { running: 0, scheduled: 1, ended: 2, killed: 3 } as const;
 
@@ -211,8 +212,11 @@ export async function loadCampaignsScreen(ctx: ShopCtx, opts: { edit?: string | 
     .map((c) => campaignView(c, viewOpts))
     .sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || (a.start.date + a.start.time).localeCompare(b.start.date + b.start.time));
   const editing = opts.edit ? (campaigns.find((c) => c.id === opts.edit && (c.status === "running" || c.status === "scheduled")) ?? null) : null;
+  const [sync, look] = await Promise.all([loadSyncView(ctx, loaded, timezone), readThemeLook(ctx, { scopes: ctx.scopes })]);
   return {
     plan,
+    // The same function, on the same view, as the home tile (model/module-status.ts).
+    status: campaignsStatus(campaignsOverviewOf(config.campaigns, { now, locale: ctx.locale, plan, finishing }), plan, sync),
     configVersion: loaded.version ?? null,
     today: now.slice(0, 10),
     nowTime: now.slice(11, 16),
@@ -223,6 +227,7 @@ export async function loadCampaignsScreen(ctx: ShopCtx, opts: { edit?: string | 
     editing,
     limits: { campaigns: CONFIG_LIMITS.campaigns, maxDays: CAMPAIGN_LIMITS.maxDays, minLeadMinutes: CAMPAIGN_LIMITS.minLeadMinutes },
     placements: placementLinks(ctx.shop, ctx.apiKey, CAMPAIGN_BLOCK_HANDLE),
+    placed: look.placements,
   };
 }
 

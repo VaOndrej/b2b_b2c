@@ -1,4 +1,7 @@
+import { useContext } from "react";
+
 import { useT } from "../../i18n/context";
+import { ProMarked } from "./pro-marked";
 import { WON_AMBER, WON_AMBER_TEXT, WON_AMBER_TINT } from "./tokens";
 
 // The single plan marker (doctrine §16b, one component, not three look-alikes).
@@ -7,12 +10,16 @@ import { WON_AMBER, WON_AMBER_TEXT, WON_AMBER_TINT } from "./tokens";
 // `locked` (merchant on Free, feature is Pro) turns the label into a nudge
 // without changing the amber identity. `href` (optional) makes the pill a link
 // — "Pro · odemknout" then really leads to the plan (§13b: a lock is never a dead end).
-export function PlanBadge({ tier, locked = false, href }: { tier: "pro" | "free"; locked?: boolean; href?: string }) {
+// Inside a section that already says Pro (§19b) the Pro marker is not repeated; `force` is for the section's own header.
+export function PlanBadge({ tier, locked = false, href, force = false }: { tier: "pro" | "free"; locked?: boolean; href?: string; force?: boolean }) {
   const { t } = useT();
+  const marked = useContext(ProMarked);
   const isPro = tier === "pro";
+  if (isPro && marked && !force) return null;
   const text = isPro ? (locked ? t("common.proLocked") : t("common.pro")) : t("common.free");
   const pill = (
     <span
+      data-won-plan-badge={tier}
       style={{
         display: "inline-flex",
         alignItems: "center",

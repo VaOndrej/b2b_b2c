@@ -255,3 +255,73 @@ A, B a C jsou na sobě nezávislé. D mění nastavení i web, proto před E a F
 11. **Výchozí bod:** stav po prvních dvou kolech commitnutý na větvi `won-discounts-feedback-2026-10-06`.
 
 Otevřené otázky nejsou. Další krok: nákres bodu 7 a rozpis dávky A.
+
+---
+
+## Rozpis dávky A (body 1, 2, 3, 5, 6, 8, 15)
+
+Cesty relativní k `apps/won-discounts/`. Nastavení, data pro pokladnu ani data pro web se v dávce A nemění; mění se jen admin a jedno čtení tématu.
+
+**Stav modulu (body 1 a 8)**
+- Nový `app/components/model/module-status.ts`: `moduleState()` vrací `active` / `inactive` / `attention` / `locked` a počet věcí k řešení. Vstupem jsou fakta, která už appka má (uložené nastavení po tarifu, stav zápisu do Shopify, tarif). Jedna sada funkcí pro Slevy a kódy, Množstevní slevy, Odměny (zvlášť doprava a dárek), Výprodej, Kampaně, Ochranu marže.
+- `WonSection` dostane `state` (štítek podle stavu modulu). Úvodní stránka i stránky modulů volají stejnou funkci nad uloženým stavem, takže neuložený přepínač štítek nemění.
+- Stránky modulů potřebují stav zápisu do Shopify: loadery Odměn, Výprodeje, Kampaní a Ochrany marže ho nově čtou (`loadSyncView`, bez dotazu do Shopify navíc; čte se z databáze appky).
+- Texty: „Aktivní“ / „Active“ (anglicky dnes „Live“), „Neaktivní“ / „Inactive“, „Vyžaduje pozornost“ / „Needs attention“.
+- Testy: `tests/ui/module-status.test.ts` (každý modul zapnuto / vypnuto / na Free / selhaný zápis → stav), `harness-screens` (stejný štítek na úvodní stránce i na stránce modulu).
+
+**Úvodní stránka (body 2 a 3)**
+- Nový `app/components/shell/ModuleTile.tsx` (dlaždice = jeden odkaz) a mřížka: 2 sloupce, od 900 px šířky stránky 3.
+- `OverviewScreen.tsx`: nad mřížkou jen pruhy, které mají co říct (průvodce, „Vyžaduje pozornost“, stav v obchodě, slevy mimo Won). Karty modulů (`*OverviewCard.tsx`) zanikají, jejich řádky už na stránkách modulů jsou.
+- Dlaždice: Slevy a kódy · Množstevní slevy · Odměny · Výprodej · Kampaně · Ochrana marže · Přehledy · Vzhled · Vyzkoušet košík · Nastavení. „Odměny“ se přejmenují na Milníky v dávce D, „Vzhled“ na Překlady v dávce E.
+- Testy: `harness-screens` (dlaždice jsou odkazy, žádné tlačítko „Upravit“, věta se skutečným nastavením), `overview-model`.
+
+**Umístění na webu (bod 5)**
+- `WonSection` dostane `placement` (zelený „V tématu“ / červený „Chybí v tématu“ / šedý „Neověřeno“) a `action` (tlačítko v hlavičce).
+- Čtení tématu (`app/lib/integration/themes.server.ts`) nově pozná i blok průběhu odměn, banner kampaně, štítek výprodeje, blok v košíku a pruh nahoře (nastavení Won v šabloně). Stejné oprávnění jako dnes (`read_themes`), jeden dotaz, o tři soubory šablon víc.
+- Použití: tabulka (Množstevní slevy), Won v šabloně, košík a „Odměny jinde na webu“ (Odměny), „Kampaň na webu“ (Kampaně), štítek výprodeje (Výprodej).
+- Testy: `tests/integration` čtení tématu (blok je / není / bez oprávnění), `harness-screens` (štítek a tlačítko v hlavičce pro každý stav).
+
+**Pro jen jednou (bod 6)**
+- `WonSection pro` předá dolů, že sekce už Pro značí. `WonBlock`, `ProFrame`, `PlanBadge` a `SegmentedChoice` uvnitř jsou pak neutrální (bílá, šedá linka, bez štítku). Zamčený formulář na Free zůstává zašedlý, jantar nese hlavička a věta s odkazem na tarif.
+- Projít: výjimky, editor slevy (Cílení a kombinace), Výprodej, Kampaně, Ochrana marže (kolekce, zásahy), Přehledy, Tarif, Vyzkoušet košík.
+- Test: `harness-screens` (v sekci Pro je štítek Pro právě jednou a žádný jantarový rámeček uvnitř).
+
+**Vlastní sleva (bod 15)**
+- `app/i18n/cs.ts`, `en.ts`, `RecipeGrid.tsx`: karta „Vlastní sleva“ s větou, čárkovaný okraj, odlišená od receptů.
+
+**Pravidla pro všechny Won appky:** doktrína §19 (štítky stavu, Pro jednou za sekci, umístění na webu) + `docs/nova-aplikace.md`. Šablona `apps/_template` nemá vlastní komponenty adminu, pravidla tam jdou do README.
+
+## Stav implementace
+
+Zapisuje se po bodech během práce.
+
+| Bod | Stav | Poznámka |
+|---|---|---|
+| 1, 8 | hotovo, naživo neověřeno | `app/components/model/module-status.ts`; štítek na dlaždici i na stránce modulu z jedné funkce. Odměny: „Doprava zdarma“ i „Dárek“ mají štítek. Anglicky „Active“. |
+| 2, 3 | hotovo, naživo neověřeno | `OverviewScreen.tsx`, `shell/ModuleTile.tsx`; 10 dlaždic, 2 sloupce do 900 px šířky stránky, pak 3. Šest karet modulů zrušeno. |
+| 5 | hotovo, naživo neověřeno | `WonSection placement / action`, `themePlacementsIn()`; tabulka, Won v šabloně, blok v košíku, průběh odměn, pruh nahoře, banner kampaně, štítek výprodeje. |
+| 6 | hotovo | `shell/pro-marked.ts`; Pro značí hlavička sekce, uvnitř nic jantarového. Platí pro všechny sekce Pro najednou. |
+| 15 | hotovo | „Vlastní sleva“ / „Custom discount“ s větou, čárkovaná karta. |
+| 4 | nezačato | dávka B |
+| 7 | nezačato | dávka C, čeká na schválení nákresu |
+| 9, 10 | nezačato | dávka D |
+| 11, 12, 13, 14 | nezačato | dávka E |
+| 16 | nezačato | dávka F |
+
+**Zjištěno při čtení kódu (liší se od návrhu):**
+- Bod 1, Ochrana marže: karta štítek posílá jen tehdy, když je zápis do Shopify v pořádku **a** nákupní ceny už byly jednou celé načtené (`MarginOverviewCard.tsx:41`). Jinak neposílá nic, proto štítek chybí. Stránka modulu štítek „Aktivní“ neposílá nikdy (`MarginScreen.tsx:231`). Nově: zapnutá ochrana se zápisem v Shopify je „Aktivní“ (strop slevy platí hned); nenačtené nákupní ceny jsou věc k řešení s vlastní větou, štítek neschovávají. Naživo neověřeno.
+- Anglický štítek je dnes „Live“, ne „Active“.
+
+**Rozhodl jsem sám (drobnosti, dávka A):**
+- Uloženo, ale ještě nezapsáno do Shopify = „Neaktivní“ (ne červený štítek); selhaný zápis = „Vyžaduje pozornost“.
+- Věci k řešení se na dlaždici píšou jako počet pod větou („3 věci k vyřešení“) a zelený štítek neberou, dokud modul běží.
+- „Stav v obchodě“ je na úvodní stránce jeden sbalený řádek, dokud je vše v pořádku; s problémem se otevře sám.
+- „Slevy mimo Won“ zůstávají nad dlaždicemi celé (ne sbalené), protože mají vlastní tlačítka na přesun.
+- Štítek výprodeje má vlastní sekci „Štítek výprodeje na stránce produktu“ a ukazuje se jen u zobrazení se štítkem.
+- U nepřístupného tématu se sekce tabulky nově ukáže se štítkem „Neověřeno“ (dřív se skryla); mění to pravidlo z prvního kola.
+- Sekce bez oprávnění k tématu a pruh nahoře: tlačítko vede do nastavení Won v šabloně, blok tam nejde přidat odkazem.
+- V češtině byl od druhého kola překlep „aktivnící“ u počtu kampaní, opraveno.
+
+**Brána dávky A a důkazy:** viz build log `docs/won-discounts-build-log.md`, sekce „Třetí kolo feedbacku“. Screenshoty před / po: `Apps/.playwright-mcp/kolo3/a/before` a `…/after` (390 a 1440 px).
+
+**Neověřeno naživo (dávka A):** nic jsem neklikal v Shopify adminu ani nečetl skutečné téma. Čtení šablon `templates/index.json` a `templates/cart.json` a nastavení pruhu nahoře je ověřené jen testem na vzorových souborech.

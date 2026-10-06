@@ -26,7 +26,8 @@ import { presetOf, readAppearanceForm } from "../../components/model/appearance"
 import { currencyCodes, currencyViews } from "../../components/model/markets";
 import type { FormDataLike } from "../../components/model/rule-form";
 import { readTiersForm, tierPayloadUse, tierSetToConfig, tierSetView, TIERS_FIELD, TIERS_INTENT } from "../../components/model/tiers";
-import type { AppearancePresetView, FieldError, GateNoteView, TierSetView, TiersOverviewView, TiersScreenData, UiResult } from "../../components/model/types";
+import { tiersGlobalStatus, tiersSetsStatus } from "../../components/model/module-status";
+import type { AppearancePresetView, FieldError, GateNoteView, SyncView, TierSetView, TiersOverviewView, TiersScreenData, UiResult } from "../../components/model/types";
 import { previewLookOf, withAppearancePreset } from "./appearance.server";
 import { loadConfig, type LoadedConfig } from "../config.server";
 import { MAX_COLLECTION_PRODUCTS } from "../sync/products";
@@ -160,11 +161,18 @@ export async function loadTiersScreen(ctx: ShopCtx, opts: { scopes: string; fres
     currencies: currencyViews(stored.markets, { shopCurrency: shopContext.currencyCode, marketNames }),
     ...tiersScreenFacts(stored, { plan, locale: ctx.locale, titles, syncable }),
     block: look.block,
+    status: tiersSectionStatus(stored, plan, look.block, sync),
     storefront,
     preview: { tokens: look.tokens, preset: presetOf(stored.storefront.appearancePreset), product, look: previewLookOf(stored, plan) },
     productsWithSets: counts,
     outletWithAnything: stored.engine.combination.outletWithAnything === true,
   };
+}
+
+/** The state of the page's two sections: the same functions, on the same view, as the home tile (model/module-status.ts). */
+export function tiersSectionStatus(config: WonDiscountsConfig, plan: "free" | "pro", block: TiersOverviewView["block"], sync: SyncView): NonNullable<TiersScreenData["status"]> {
+  const overview = tiersOverviewOf(config, plan, block);
+  return { global: tiersGlobalStatus(overview, sync), sets: tiersSetsStatus(overview, sync, plan) };
 }
 
 /**

@@ -7,6 +7,26 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
+### Třetí kolo feedbacku (6. 10. 2026, 16 bodů) — větev `won-discounts-feedback-2026-10-06`
+
+Zadání: [`won-discounts/prompt-kolo3.md`](won-discounts/prompt-kolo3.md). Plán, rozpisy dávek a stav po bodech:
+[`won-discounts/feedback-2026-10-06-kolo3-plan.md`](won-discounts/feedback-2026-10-06-kolo3-plan.md) (po kompakci číst
+celý). Práce výhradně inline. Pořadí A → B → C → D → E → F, další dávka až po zelené bráně a commitu.
+
+- **Dávka A (body 1, 2, 3, 5, 6, 8, 15) ✅ commitnuto, nepushnuto, nenasazeno.**
+  - Brána 6. 10.: `test:packages` 899 + 50, `test:unit -w won-discounts` node 1 701 / 1 701 + cargo 101 (1 ignored) +
+    vitest 599, `typecheck`, `lint` (0 chyb, 2 starší varování), `build`, `validate:shopify` (0 nálezů) — vše exit 0.
+  - Nové testy: `tests/ui/module-status.test.ts` (9), `tests/ui/kolo3-a.test.ts` (7), `tests/integration/themes.test.ts` (+2).
+  - Screenshoty 390 a 1440 px, před a po: `Apps/.playwright-mcp/kolo3/a/before` (56) a `…/after` (72), skript
+    `Apps/.playwright-mcp/kolo3-shots.mjs`. Žádná obrazovka se neposouvá do strany.
+  - Naživo neověřeno: Shopify admin, čtení skutečného tématu (šablony úvodní stránky a košíku, pruh nahoře).
+  - Poučení: v loaderu Ochrany marže nesmí být žádné čekání až za dotazem na zásahy (jinak se výpočet na pozadí
+    stihne spustit „uvnitř požadavku“ a test P3-5 selže); stav zápisu se proto čte dřív, souběžně s nákupními cenami.
+- **Další krok:** nákres bodu 7 Ondřejovi ke schválení (dávka C čeká), mezitím dávka B (bod 4, nejdřív zopakovat naživo).
+- `shopify app dev` Ondřejovi běží (Vite na proměnlivém portu, 6. 10. `localhost:51571`); dev náhled `/dev/preview/*`
+  z něj jde číst, úpravy kódu se v něm projeví hned.
+
+
 > **Severka inline běhu (Ondřej 2026-10-01):** po každé kompakci kontextu znovu přečti tenhle build log a celý
 > [`won-discounts/prompt-pokracovani-inline.md`](won-discounts/prompt-pokracovani-inline.md) (zadání MVP 3 → 7,
 > technická pravidla, zakázané věci). **MVP N+1 nezačíná, dokud MVP N není finální** (brána, živé E2E A+B,

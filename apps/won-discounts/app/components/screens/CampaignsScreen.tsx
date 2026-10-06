@@ -527,10 +527,11 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
           <WonSection title={t("campaign.places.title")} glyph="store" summary={t("campaign.places.summary")} anchor="places">
             <StorefrontPlacements
               links={props.placements}
+              placed={props.placed}
               rows={[
-                { place: "home", text: "campaign.places.home", action: "placements.addHome" },
-                { place: "product", text: "campaign.places.product", action: "placements.addProduct" },
-                { place: "topBar", text: "campaign.places.topBar", action: "placements.openEmbed" },
+                { place: "home", key: "campaignHome", text: "campaign.places.home" },
+                { place: "product", key: "campaignProduct", text: "campaign.places.product" },
+                { place: "topBar", key: "topBarCampaign", text: "campaign.places.topBar", action: "placements.openEmbed" },
               ]}
             />
           </WonSection>
@@ -540,7 +541,8 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
           <WonSection
             title={t("campaign.list.title")}
             glyph="tag"
-            on={campaigns.some((c) => c.status === "running") ? true : undefined}
+            // Running → the module's state (the same as the home tile); only scheduled or past ones → no label.
+            state={campaigns.some((c) => c.status === "running") ? props.status : undefined}
             summary={liveCount > 0 ? tr.tp("campaign.list.live", liveCount) : undefined}
             anchor="list"
           >

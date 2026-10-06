@@ -23,7 +23,7 @@
 // patterns below (hex / rgb() colors, font handles of letters and digits).
 // Queries validated against Admin API 2026-04 with the Shopify dev MCP.
 
-import { tiersBlockAddUrl } from "../../components/model/embed";
+import { CAMPAIGN_BLOCK_HANDLE, CART_BLOCK_HANDLE, EMBED_BLOCK_HANDLE, OUTLET_BLOCK_HANDLE, REWARDS_PROGRESS_BLOCK_HANDLE, tiersBlockAddUrl } from "../../components/model/embed";
 import type { MarketNames } from "../../components/model/markets";
 import { toMinorUnits } from "@won/core/discounts/money";
 
@@ -31,6 +31,8 @@ import type {
   PreviewProductView,
   StorefrontSyncView,
   SyncView,
+  PlacementKey,
+  ThemePlacements,
   ThemeTokensView,
   TiersBlockView,
   TierScopeView,
@@ -259,6 +261,64 @@ function blockInTemplate(content: string | null): { accent: string | null } | nu
 
 const MAIN_PRODUCT_TEMPLATE = "templates/product.json";
 
+/** Is an enabled app block of this handle (in an enabled section) in the template's JSON? null = the file is not readable JSON. */
+function hasBlock(content: string | null, handle: string): boolean | null {
+  const data = parseThemeJson(content);
+  if (!isRec(data) || !isRec(data.sections)) return null;
+  const type = `/blocks/${handle}/`;
+  for (const section of Object.values(data.sections)) {
+    if (!isRec(section) || section.disabled === true) continue;
+    for (const block of enabledBlocks(section)) if (typeof block.type === "string" && block.type.includes(type)) return true;
+  }
+  return false;
+}
+
+/** The app embed's own settings in config/settings_data.json (`current.blocks`); null = the embed is not there or is off. */
+function embedSettingsIn(content: string | null): Rec | null | undefined {
+  const data = parseThemeJson(content);
+  if (!isRec(data)) return undefined;
+  // `current` is the name of a preset in a theme nobody customised yet: no app embed can be in it.
+  if (!isRec(data.current) || !isRec(data.current.blocks)) return null;
+  for (const block of Object.values(data.current.blocks)) {
+    if (!isRec(block) || typeof block.type !== "string" || !block.type.includes(`/blocks/${EMBED_BLOCK_HANDLE}/`)) continue;
+    if (block.disabled === true) return null;
+    return isRec(block.settings) ? block.settings : {};
+  }
+  return null;
+}
+
+const TEMPLATE_PLACEMENTS: readonly { filename: string; blocks: readonly [PlacementKey, string][] }[] = [
+  { filename: MAIN_PRODUCT_TEMPLATE, blocks: [["rewardsProduct", REWARDS_PROGRESS_BLOCK_HANDLE], ["campaignProduct", CAMPAIGN_BLOCK_HANDLE], ["outletBadge", OUTLET_BLOCK_HANDLE]] },
+  { filename: "templates/index.json", blocks: [["rewardsHome", REWARDS_PROGRESS_BLOCK_HANDLE], ["campaignHome", CAMPAIGN_BLOCK_HANDLE]] },
+  { filename: "templates/cart.json", blocks: [["cartBlock", CART_BLOCK_HANDLE]] },
+];
+
+/**
+ * Where the app's pieces sit in the theme's files (feedback 3, bod 5): each block by the template it belongs to,
+ * the top bar by the embed's two switches. Only what was read is answered — a missing or unreadable file leaves
+ * its keys out ("not verified"), it never says "missing".
+ */
+export function themePlacementsIn(files: readonly { filename: string; content: string | null }[]): ThemePlacements {
+  const out: ThemePlacements = {};
+  for (const { filename, blocks } of TEMPLATE_PLACEMENTS) {
+    const file = files.find((f) => f.filename === filename);
+    if (!file) continue;
+    for (const [key, handle] of blocks) {
+      const found = hasBlock(file.content, handle);
+      if (found !== null) out[key] = found;
+    }
+  }
+  const settings = files.find((f) => f.filename === "config/settings_data.json");
+  if (settings) {
+    const embed = embedSettingsIn(settings.content);
+    if (embed !== undefined) {
+      out.topBarRewards = embed?.top_bar_rewards === true;
+      out.topBarCampaign = embed?.top_bar_campaign === true;
+    }
+  }
+  return out;
+}
+
 /**
  * Is the quantity_tiers app block (type `shopify://apps/<app>/blocks/
  * quantity_tiers/<uuid>`, contract F-T3; enabled, in an enabled section) on
@@ -301,7 +361,7 @@ query WonTiersThemeLook {
     nodes {
       id
       name
-      files(filenames: ["config/settings_data.json", "templates/product*.json"], first: 50) {
+      files(filenames: ["config/settings_data.json", "templates/product*.json", "templates/index.json", "templates/cart.json"], first: 50) {
         nodes {
           filename
           body {
@@ -318,6 +378,8 @@ query WonTiersThemeLook {
 export interface ThemeLook {
   tokens: ThemeTokensView | null;
   block: TiersBlockView;
+  /** The other placements, from the same read ({} = nothing read). */
+  placements: ThemePlacements;
 }
 
 interface LookCtx {
@@ -340,7 +402,7 @@ async function loadThemeLook(ctx: LookCtx): Promise<ThemeLook> {
       themes?: { nodes?: { name?: string; files?: { nodes?: { filename?: string; body?: { content?: string } | null }[] } }[] };
     }>(THEME_LOOK_DOCUMENT);
     const theme = result.data?.themes?.nodes?.[0];
-    if (!theme) return { tokens: null, block: { state: "unknown", addUrl } };
+    if (!theme) return { tokens: null, block: { state: "unknown", addUrl }, placements: {} };
     const files = (theme.files?.nodes ?? [])
       .filter((f): f is { filename: string; body?: { content?: string } | null } => typeof f?.filename === "string")
       .map((f) => ({ filename: f.filename, content: typeof f.body?.content === "string" ? f.body.content : null }));
@@ -350,18 +412,19 @@ async function loadThemeLook(ctx: LookCtx): Promise<ThemeLook> {
     const mainTemplate = templates.find((f) => f.filename === (found.template ?? "templates/product.json"))?.content ?? null;
     const themeName = typeof theme.name === "string" ? theme.name : null;
     const tokens = themeTokensFrom({ themeName, settingsData: settings, productTemplate: mainTemplate, blockAccent: found.accent });
-    if (templates.length === 0) return { tokens, block: { state: "unknown", addUrl } };
+    const placements = themePlacementsIn(files);
+    if (templates.length === 0) return { tokens, block: { state: "unknown", addUrl }, placements };
     const alternates = found.alternates.length > 0 ? { alternates: found.alternates } : {};
-    return { tokens, block: found.on ? { state: "on", themeName: themeName ?? "", ...alternates } : { state: "off", addUrl, ...alternates } };
+    return { tokens, block: found.on ? { state: "on", themeName: themeName ?? "", ...alternates } : { state: "off", addUrl, ...alternates }, placements };
   } catch (error) {
     if (error instanceof Response) throw error;
-    return { tokens: null, block: { state: "unknown", addUrl } };
+    return { tokens: null, block: { state: "unknown", addUrl }, placements: {} };
   }
 }
 
 /** The live theme's look + the block (see the header). Without read_themes: nothing is read. */
 export async function readThemeLook(ctx: LookCtx, opts: { scopes: string | null | undefined; fresh?: boolean }): Promise<ThemeLook> {
-  if (!hasScope(opts.scopes, "read_themes")) return { tokens: null, block: { state: "no_scope" } };
+  if (!hasScope(opts.scopes, "read_themes")) return { tokens: null, block: { state: "no_scope" }, placements: {} };
   return cachedRead(`theme-look:${ctx.shop}`, () => loadThemeLook(ctx), { fresh: opts.fresh });
 }
 

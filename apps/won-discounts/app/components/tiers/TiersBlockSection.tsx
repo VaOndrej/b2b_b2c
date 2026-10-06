@@ -5,11 +5,13 @@
 // there and saves it. The storefront's settings get a row only when something
 // is wrong (P2): the last change is not on the site yet, or writing it failed —
 // then with "Synchronizovat znovu" right there (P3). "Zobrazit na mém webu"
-// opens a real product the set applies to. Without access to the theme the
-// check has nothing to say and nothing to offer, so it says nothing; a section
-// left without any row is not drawn. Shared by Množstevní slevy and Vzhled.
+// opens a real product the set applies to. Shared by Množstevní slevy and Vzhled.
+// Feedback 3, bod 5: the header carries the placement label (green "V tématu",
+// red "Chybí v tématu", grey "Neověřeno") and the one button that fixes it —
+// the same pattern as every other placement on the storefront (§19c).
 
 import { useT } from "../../i18n/context";
+import { blockPlacement } from "../model/embed";
 import { blockAlternatesText, blockText, storefrontSyncText } from "../model/tiers";
 import { uiText } from "../model/result-copy";
 import type { PreviewProductView, StorefrontSyncView, TiersBlockView } from "../model/types";
@@ -33,20 +35,30 @@ export function TiersBlockSection({
   const alternates = blockAlternatesText(block, tr);
   // Only a problem gets a row: "everything is current" is not news.
   const sync = storefront && (storefront.state === "pending" || storefront.state === "failed") ? storefront : null;
-  // No access to the theme: the check cannot say anything and there is no fix to offer here.
-  const blockKnown = block.state !== "no_scope";
-  if (!blockKnown && !sync && !product?.url) return null;
+  // Bod 5: the label says where the table stands; a missing one has "Přidat do tématu" in the header, one that
+  // could not be checked has "Zkontrolovat znovu".
+  const placement = blockPlacement(block.state);
+  const action =
+    placement === "missing" && addUrl ? (
+      <s-button href={addUrl} target="_blank" variant="primary">
+        {t("placement.add")}
+      </s-button>
+    ) : placement === "unknown" ? (
+      <s-button variant="secondary" onClick={() => window.location.reload()}>
+        {t("placement.recheck")}
+      </s-button>
+    ) : undefined;
   return (
-    <WonSection title={t("tiers.block.title")} glyph="store" summary={blockKnown ? blockText(block, tr) : undefined} anchor="block">
+    <WonSection title={t("tiers.block.title")} glyph="store" summary={blockText(block, tr)} anchor="block" placement={placement} action={action}>
       <div>
         {needsAction ? (
-          // The state is in the header; the row carries the one fix (§13a).
+          // The state and the button are in the header; the row says what the button does (§13a).
           <WonRow
             tone={block.state === "off" ? "attention" : undefined}
             action={
-              addUrl ? (
-                <s-button href={addUrl} target="_blank" variant={block.state === "off" ? "primary" : "secondary"}>
-                  {t("tiers.block.add")}
+              block.state === "unknown" && addUrl ? (
+                <s-button href={addUrl} target="_blank" variant="secondary">
+                  {t("placement.add")}
                 </s-button>
               ) : undefined
             }

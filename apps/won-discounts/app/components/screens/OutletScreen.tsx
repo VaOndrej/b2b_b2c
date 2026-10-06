@@ -32,6 +32,7 @@ import { Notice } from "../shell/Notice";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
 import { DiscountsSubNav } from "../shell/SubNav";
+import { placementOf } from "../model/embed";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 
 const F = OUTLET_FIELD;
@@ -376,6 +377,7 @@ export function OutletScreen(props: OutletScreenProps) {
 
   // B15: on Free the settings matter only while earlier sales still run (the server refuses the save the same way).
   const settingsShown = pro || running.length > 0;
+  const badge = placementOf(props.placed?.outletBadge);
   const activeRuns = running.filter((r) => r.status === "active");
 
   return (
@@ -422,7 +424,7 @@ export function OutletScreen(props: OutletScreenProps) {
           </div>
         </WonSection>
         {running.length > 0 ? (
-          <WonSection title={t("outlet.running.title")} glyph="calendar" on summary={tr.tp("overview.outlet.running", running.length)} anchor="running">
+          <WonSection title={t("outlet.running.title")} glyph="calendar" state={props.status} summary={tr.tp("overview.outlet.running", running.length)} anchor="running">
             <s-stack direction="block" gap="base">
               {running.map((run) => (
                 <RunCard key={run.id} run={run} pro={pro} money={money} />
@@ -441,6 +443,22 @@ export function OutletScreen(props: OutletScreenProps) {
           </WonSection>
         ) : null}
 
+        {/* Bod 5: the sale badge in the theme — the same label and header button as every placement. */}
+        {settingsShown && badgeBlockAddUrl && display.startsWith("strike_badge") ? (
+          <WonSection
+            title={t("outlet.badge.title")}
+            glyph="store"
+            summary={t("outlet.badge.hint")}
+            anchor="badge"
+            placement={badge}
+            action={
+              <s-button href={badgeBlockAddUrl} target="_top" variant={badge === "missing" ? "primary" : "secondary"}>
+                {t(badge === "in_theme" ? "placement.open" : "placement.add")}
+              </s-button>
+            }
+          />
+        ) : null}
+
         {settingsShown ? (
           <WonSection title={t("outlet.settings.title")} glyph="sliders" summary={t(`outlet.display.${display}` as "outlet.display.strike")} hint={t("outlet.settings.summary")}>
             <Form method="post">
@@ -455,17 +473,6 @@ export function OutletScreen(props: OutletScreenProps) {
                   ))}
                 </s-select>
                 <RowNote>{t("outlet.display.note")}</RowNote>
-                {badgeBlockAddUrl ? (
-                  <WonRow
-                    action={
-                      <s-button href={badgeBlockAddUrl} target="_top" variant="secondary">
-                        {t("outlet.badge.add")}
-                      </s-button>
-                    }
-                  >
-                    <RowNote>{t("outlet.badge.hint")}</RowNote>
-                  </WonRow>
-                ) : null}
                 <s-select name={F.reopen} label={t("outlet.reopen.label")} value={reopen}>
                   {REOPENS.map((r) => (
                     <s-option key={r} value={r} selected={boolAttr(r === reopen)}>

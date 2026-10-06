@@ -45,6 +45,7 @@ import type {
   RuleSyncMap,
   SettingsScreenData,
   StorefrontSyncView,
+  SyncView,
   ThemeTokensView,
   TiersBlockView,
   TiersOverviewView,
@@ -62,11 +63,12 @@ import type {
 import { presetOf } from "../components/model/appearance";
 import { CAMPAIGN_BLOCK_HANDLE, cartBlockAddUrl, outletBlockAddUrl, placementLinks, REWARDS_PROGRESS_BLOCK_HANDLE, tiersBlockAddUrl } from "../components/model/embed";
 import { REWARDS_FIELD } from "../components/model/rewards";
-import { rewardsScreenFacts } from "./integration/rewards.server";
+import { rewardsOverviewOf, rewardsScreenFacts, rewardsSectionStatus } from "./integration/rewards.server";
+import { campaignsStatus, marginStatus, outletStatus } from "../components/model/module-status";
 import { currencyViews } from "../components/model/markets";
 import { TIERS_FIELD } from "../components/model/tiers";
 import { aiPrompt, previewLookOf, sampleSet, storefrontTextDefaults, storefrontTextKeys } from "./integration/appearance.server";
-import { tiersOverviewOf, tiersScreenFacts } from "./integration/tiers.server";
+import { tiersOverviewOf, tiersScreenFacts, tiersSectionStatus } from "./integration/tiers.server";
 import { lossText, undoCostTexts, warningText } from "./native/copy";
 import { isDevHarnessEnvironment } from "./dev-harness-env";
 import { wordIssues } from "./integration/issue-copy";
@@ -282,6 +284,10 @@ export const DEV_SIGNALS: AdminSignals = {
   sync: { state: "ok", at: "2026-09-28T16:20:00" },
   native: DEV_NATIVE,
 };
+
+/** The stored settings are the ones Shopify runs / the last write failed (the module pages' state labels). */
+const DEV_SYNC_OK: SyncView = { state: "ok", at: "2026-09-28T16:20:00" };
+const DEV_SYNC_FAILED: SyncView = { state: "error", at: "2026-09-28T16:20:00", problems: [] };
 
 /** Every fixture rule in Shopify as it is now (the per-rule facts after a clean sync). */
 export const DEV_RULE_SYNC_OK: RuleSyncMap = Object.fromEntries(
@@ -650,6 +656,17 @@ const DEV_MANY_VARIANTS: DevCostVariant[] = [
  * `focusRuleId` = `?rule=`, narrowed like the server does); Free gets `impact: null` (BILL-1).
  */
 export function devMarginScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; focusRuleId?: string | null }): MarginScreenData {
+  const data = devMarginScreenData(opts);
+  const { settings } = data;
+  // The same function as the home tile, on the screen's own facts.
+  const status = marginStatus(
+    { enabled: settings.enabled, minMarginPercent: settings.minMarginPercent, maxDiscountPercent: settings.maxDiscountPercent, productsWithoutCost: data.coverage ? data.coverage.productsWithoutCost : null, mirror: data.mirror, ...(data.tooLarge.length > 0 ? { tooLarge: data.tooLarge } : {}) },
+    DEV_SYNC_OK,
+  );
+  return { ...data, status };
+}
+
+function devMarginScreenData(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; focusRuleId?: string | null }): MarginScreenData {
   const { plan, state } = opts;
   const pro = plan === "pro";
   const collections = pro || state === "gate";
@@ -1008,6 +1025,8 @@ export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | nul
     currencies: currencyViews(config.markets, { marketNames: DEV_MARKET_NAMES }),
     ...tiersScreenFacts(config, { plan: opts.plan, locale: opts.locale, titles: DEV_TIER_TITLES, syncable: true }),
     block: devBlock(opts.state),
+    // ?state=sync-failed: the last write to Shopify failed — the section says "Vyžaduje pozornost", as the home tile does.
+    status: tiersSectionStatus(config, opts.plan, devBlock(opts.state), opts.state === "sync-failed" ? DEV_SYNC_FAILED : DEV_SYNC_OK),
     storefront: devStorefront(opts.state),
     preview: {
       tokens: devTokens(opts.theme === "dawn" || opts.state === "dawn" ? "dawn" : opts.theme, devBlock(opts.state)),
@@ -1194,6 +1213,7 @@ export function devRewardsScreen(opts: { plan: "free" | "pro"; state: string | n
     configVersion: "dev-config-version",
     currencies: currencyViews(config.markets, { marketNames: DEV_MARKET_NAMES }),
     ...rewardsScreenFacts(config, { plan: opts.plan, locale: opts.locale, titles: DEV_GIFT_TITLES }),
+    status: rewardsSectionStatus(config, opts.plan, "CZK", DEV_SYNC_OK),
     embed:
       opts.state === "empty"
         ? DEV_EMBED_OFF
@@ -1206,6 +1226,9 @@ export function devRewardsScreen(opts: { plan: "free" | "pro"; state: string | n
               : DEV_EMBED_ON,
     cartBlockAddUrl: cartBlockAddUrl(DEV_SHOP, "dev-api-key"),
     placements: placementLinks(DEV_SHOP, "dev-api-key", REWARDS_PROGRESS_BLOCK_HANDLE),
+    // The cart block and the top bar are there, the progress block is on no page yet; a new shop has nothing; the
+    // theme could not be read (no scope) → nothing is known.
+    placed: opts.state === "embed-no-scope" ? {} : opts.state === "empty" ? { cartBlock: false, rewardsProduct: false, rewardsHome: false, topBarRewards: false } : { cartBlock: true, rewardsProduct: false, rewardsHome: false, topBarRewards: true },
   };
 }
 
@@ -1387,6 +1410,7 @@ export function devOutletScreen(opts: { plan: "free" | "pro"; state: string | nu
     );
   return {
     plan: opts.plan,
+    status: outletStatus(outletOverviewOf(runs, DEV_OUTLET_TITLES, opts.orders ?? false), opts.plan),
     configVersion: "dev-config-version",
     shopCurrency: "CZK",
     today: "2026-09-28",
@@ -1400,6 +1424,7 @@ export function devOutletScreen(opts: { plan: "free" | "pro"; state: string | nu
     ],
     limits: { percentMin: OUTLET_LIMITS.percentMin, percentMax: OUTLET_LIMITS.percentMax, quotaMax: OUTLET_LIMITS.quotaMax, running: OUTLET_LIMITS.running, priceLists: OUTLET_LIMITS.priceLists },
     badgeBlockAddUrl: outletBlockAddUrl(DEV_SHOP, "dev-api-key"),
+    placed: { outletBadge: false },
     ordersCounted: opts.orders ?? false,
   };
 }
@@ -1487,6 +1512,7 @@ export function devCampaignsScreen(opts: { plan: "free" | "pro"; state: string |
   const views = campaigns.map((c) => campaignView(c, viewOpts));
   return {
     plan: opts.plan,
+    status: campaignsStatus(campaignsOverviewOf(campaigns, { now: DEV_CAMPAIGN_NOW, locale: opts.locale, plan: opts.plan, finishing: viewOpts.finishing }), opts.plan, DEV_SYNC_OK),
     configVersion: "dev-config-version",
     today: DEV_CAMPAIGN_NOW.slice(0, 10),
     nowTime: DEV_CAMPAIGN_NOW.slice(11, 16),
@@ -1497,6 +1523,7 @@ export function devCampaignsScreen(opts: { plan: "free" | "pro"; state: string |
     editing: opts.edit ? (views.find((v) => v.id === opts.edit && (v.status === "running" || v.status === "scheduled")) ?? null) : null,
     limits: { campaigns: CONFIG_LIMITS.campaigns, maxDays: CAMPAIGN_LIMITS.maxDays, minLeadMinutes: CAMPAIGN_LIMITS.minLeadMinutes },
     placements: placementLinks(DEV_SHOP, "dev-api-key", CAMPAIGN_BLOCK_HANDLE),
+    placed: { campaignHome: true, campaignProduct: false, topBarCampaign: false },
   };
 }
 
@@ -1613,4 +1640,34 @@ export function devAnalyticsScreen(opts: { plan: "free" | "pro"; state: string |
     shopCurrency: "CZK",
     otherCurrencies: empty ? [] : ["EUR"],
   });
+}
+
+// --- Přehled: every module at once (feedback 3, body 1 až 3) -------------------------------------------------
+
+/**
+ * The home page's signals built from the SAME fixtures the module pages render (`/dev/preview/tiers`, `rewards`,
+ * `margin`, `outlet`, `campaigns`), so a tile and its page can be compared:
+ *   on      everything set up and written; a Pro shop also has a sale and a campaign running;
+ *   off     a shop with nothing set up yet;
+ *   failed  everything set up, the last write to Shopify failed.
+ */
+export function devModuleSignals(opts: { mode: "on" | "off" | "failed"; plan: "free" | "pro"; locale: "cs" | "en" }): AdminSignals {
+  const { mode, plan, locale } = opts;
+  const off = mode === "off";
+  const pro = plan === "pro";
+  const rewardsView = rewardsOverviewOf(off ? DEV_EMPTY_FIXTURE : DEV_REWARDS_FIXTURE, plan, "CZK");
+  const firstGift = gateConfigForPlan(DEV_REWARDS_FIXTURE, plan).config.modules.rewards.gifts.map((g) => DEV_GIFT_TITLES.get(g.choices[0] ?? "") ?? null);
+  return {
+    ...DEV_SIGNALS,
+    embed: DEV_EMBED_ON,
+    sync: mode === "failed" ? DEV_SIGNALS_SYNC_FAILED.sync : DEV_SYNC_OK,
+    native: { state: "ok", discounts: [], moved: [], conflicts: [] },
+    tiers: tiersOverviewOf(off ? DEV_EMPTY_FIXTURE : DEV_TIERS_FIXTURE, plan, devBlock(null)),
+    rewards: off ? rewardsView : { ...rewardsView, giftNames: firstGift },
+    margin: devMarginOverview(off ? "off" : "fresh"),
+    // A Free shop has no sale and no campaign: the tiles say they are Pro.
+    outlet: pro && !off ? devOutletOverview(true) : { running: 0, pendingReturns: [], oversold: 0, problems: 0, ordersCounted: true },
+    campaigns: pro && !off ? devCampaignsOverview({ locale }) : { running: null, next: null, finishing: false },
+    analytics: { available: true, empty: true, days: 30, tiles: [] },
+  };
 }

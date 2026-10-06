@@ -17,11 +17,13 @@
 //
 // Collapsing NEVER unmounts the body: hidden fields must still submit (§17d).
 
-import { useEffect, useId, useState, type CSSProperties, type ReactNode } from "react";
+import { useContext, useEffect, useId, useState, type CSSProperties, type ReactNode } from "react";
 
 import { useT } from "../../i18n/context";
+import { moduleStateLabel, type ModuleState, type ModuleStatus } from "../model/module-status";
 import { needsAttention, statusLabel, type RuleStatus } from "../model/rule-status";
 import { PlanBadge } from "./PlanBadge";
+import { ProMarked } from "./pro-marked";
 import {
   WON_AMBER,
   WON_ATTENTION,
@@ -54,6 +56,10 @@ export type SectionGlyphName =
   | "shield";
 
 /** Small neutral line glyphs: identity, not meaning (§17e). */
+export function SectionGlyph({ name }: { name: SectionGlyphName }) {
+  return <Glyph name={name} />;
+}
+
 function Glyph({ name }: { name: SectionGlyphName }) {
   const common = {
     width: 16,
@@ -181,19 +187,23 @@ function Glyph({ name }: { name: SectionGlyphName }) {
   }
 }
 
-/**
- * State legible at rest (§11d). Green ONLY for "really running" — `on` for a
- * switch-like thing (the embed), `status` for a rule (model/rule-status.ts:
- * Běží / Naplánováno / Skončilo / Nezapsáno / Neběží / Vypnuto).
- */
-export function StatusPill({ on, status }: { on?: boolean; status?: RuleStatus }) {
-  const tr = useT();
-  const live = status ? status.kind === "live" : on === true;
-  const attention = status ? needsAttention(status) : false;
-  const label = status ? statusLabel(status, tr) : on ? tr.t("common.live") : tr.t("common.off");
-  const color = live ? WON_LIVE : attention ? WON_ATTENTION : "#5f6b78";
+/** Is a module's piece on the storefront in the live theme? (feedback 3, bod 5; doctrine §19c) */
+export type PlacementState = "in_theme" | "missing" | "unknown";
+
+type PillTone = "live" | "attention" | "neutral";
+
+const PILL_COLOR: Readonly<Record<PillTone, { text: string; dot: string; background: string; border: string }>> = {
+  live: { text: WON_LIVE, dot: WON_LIVE, background: "rgba(26,143,75,.10)", border: "rgba(26,143,75,.28)" },
+  attention: { text: WON_ATTENTION, dot: WON_ATTENTION, background: "rgba(180,35,24,.07)", border: "rgba(180,35,24,.3)" },
+  neutral: { text: "#5f6b78", dot: "#c3cad2", background: WON_WASH, border: WON_LINE },
+};
+
+/** The one pill shape (A7): a dot and a word. `marker` is the data attribute the tests read. */
+function Pill({ tone, label, marker }: { tone: PillTone; label: string; marker?: Record<string, string> }) {
+  const color = PILL_COLOR[tone];
   return (
     <span
+      {...marker}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -204,18 +214,41 @@ export function StatusPill({ on, status }: { on?: boolean; status?: RuleStatus }
         padding: "2px 9px 2px 7px",
         borderRadius: 999,
         whiteSpace: "nowrap",
-        color,
-        background: live ? "rgba(26,143,75,.10)" : attention ? "rgba(180,35,24,.07)" : WON_WASH,
-        border: `1px solid ${live ? "rgba(26,143,75,.28)" : attention ? "rgba(180,35,24,.3)" : WON_LINE}`,
+        color: color.text,
+        background: color.background,
+        border: `1px solid ${color.border}`,
       }}
     >
-      <span
-        aria-hidden="true"
-        style={{ width: 6, height: 6, borderRadius: 999, background: live ? WON_LIVE : attention ? WON_ATTENTION : "#c3cad2", flex: "0 0 auto" }}
-      />
+      <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: 999, background: color.dot, flex: "0 0 auto" }} />
       {label}
     </span>
   );
+}
+
+/**
+ * State legible at rest (§11d). Green ONLY for "really running" — `state` for a
+ * module or a section of it (model/module-status.ts: Aktivní / Neaktivní /
+ * Vyžaduje pozornost; "locked" is said by the Pro marker, so no pill), `status`
+ * for a rule (model/rule-status.ts), `on` for a switch-like thing.
+ */
+export function StatusPill({ on, status, state }: { on?: boolean; status?: RuleStatus; state?: ModuleState }) {
+  const tr = useT();
+  if (state) {
+    if (state === "locked") return null;
+    return <Pill tone={state === "active" ? "live" : state === "attention" ? "attention" : "neutral"} label={moduleStateLabel(state, tr)} marker={{ "data-won-state": state }} />;
+  }
+  const live = status ? status.kind === "live" : on === true;
+  const attention = status ? needsAttention(status) : false;
+  const label = status ? statusLabel(status, tr) : on ? tr.t("common.live") : tr.t("common.off");
+  return <Pill tone={live ? "live" : attention ? "attention" : "neutral"} label={label} />;
+}
+
+/** Green "V tématu" / red "Chybí v tématu" / grey "Neověřeno": the same three everywhere a piece sits in the theme. */
+export function PlacementPill({ placement }: { placement: PlacementState }) {
+  const { t } = useT();
+  const tone: PillTone = placement === "in_theme" ? "live" : placement === "missing" ? "attention" : "neutral";
+  const label = t(placement === "in_theme" ? "placement.inTheme" : placement === "missing" ? "placement.missing" : "placement.unknown");
+  return <Pill tone={tone} label={label} marker={{ "data-won-placement": placement }} />;
 }
 
 /** The collapse affordance: a clear chevron in a ring, pointing down when open. */
@@ -274,6 +307,12 @@ export interface WonSectionProps {
   on?: boolean;
   /** A rule's real state (model/rule-status.ts); wins over `on`. */
   status?: RuleStatus;
+  /** A module's state (model/module-status.ts), the same on the home tile and here; wins over `status` and `on`. */
+  state?: ModuleState | ModuleStatus;
+  /** Where the section's piece of the storefront stands in the live theme. */
+  placement?: PlacementState;
+  /** The section's one action, in the header (the fix of a missing placement). */
+  action?: ReactNode;
   /** Pro-gated section: amber edge + marker; `locked` sells it. */
   pro?: boolean;
   locked?: boolean;
@@ -295,6 +334,9 @@ export function WonSection({
   hint,
   on,
   status,
+  state,
+  placement,
+  action,
   pro,
   locked = false,
   proof,
@@ -308,6 +350,7 @@ export function WonSection({
   useHashOpen(anchor, setOpen);
   const bodyId = useId();
   const expanded = collapsible ? open : true;
+  const moduleState = typeof state === "string" ? state : state?.state;
 
   const header: ReactNode = (
     <>
@@ -332,7 +375,8 @@ export function WonSection({
         <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: WON_INK, letterSpacing: "-0.01em" }}>{title}</span>
           {pro ? <PlanBadge tier="pro" locked={locked} /> : null}
-          {status ? <StatusPill status={status} /> : on !== undefined ? <StatusPill on={on} /> : null}
+          {moduleState ? <StatusPill state={moduleState} /> : status ? <StatusPill status={status} /> : on !== undefined ? <StatusPill on={on} /> : null}
+          {placement ? <PlacementPill placement={placement} /> : null}
         </span>
         {summary ? (
           <span style={{ display: "block", marginTop: 3, fontSize: 12.5, lineHeight: 1.35, color: WON_MUTED }}>
@@ -379,24 +423,39 @@ export function WonSection({
           {header}
         </button>
       ) : (
-        <div style={headerRow}>{header}</div>
-      )}
-
-      {proof ? <div style={{ marginTop: 12 }}>{proof}</div> : null}
-
-      {hasBody || aside ? (
-        // display:none, never unmounted — hidden fields must still submit (§17d).
-        <div id={bodyId} style={{ display: expanded ? "block" : "none", marginTop: 14 }}>
-          {aside ? (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 18, alignItems: "flex-start" }}>
-              <div style={{ flex: "1 1 320px", minWidth: 0 }}>{children}</div>
-              <div style={{ flex: "1 1 220px", maxWidth: 360, minWidth: 0 }}>{aside}</div>
+        <div style={{ ...headerRow, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flex: "1 1 240px", minWidth: 0 }}>{header}</div>
+          {action ? (
+            <div data-won-section-action style={{ flex: "0 0 auto" }}>
+              {action}
             </div>
-          ) : (
-            children
-          )}
+          ) : null}
+        </div>
+      )}
+      {collapsible && action ? (
+        <div data-won-section-action style={{ marginTop: 10 }}>
+          {action}
         </div>
       ) : null}
+
+      {/* Pro is marked once, on the header above (§19b): everything below knows and stays neutral. */}
+      <ProMarked.Provider value={pro === true}>
+        {proof ? <div style={{ marginTop: 12 }}>{proof}</div> : null}
+
+        {hasBody || aside ? (
+          // display:none, never unmounted — hidden fields must still submit (§17d).
+          <div id={bodyId} style={{ display: expanded ? "block" : "none", marginTop: 14 }}>
+            {aside ? (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 18, alignItems: "flex-start" }}>
+                <div style={{ flex: "1 1 320px", minWidth: 0 }}>{children}</div>
+                <div style={{ flex: "1 1 220px", maxWidth: 360, minWidth: 0 }}>{aside}</div>
+              </div>
+            ) : (
+              children
+            )}
+          </div>
+        ) : null}
+      </ProMarked.Provider>
     </section>
   );
 }
@@ -429,13 +488,16 @@ export function WonBlock({
   useHashOpen(anchor, setOpen);
   const bodyId = useId();
   const expanded = collapsible ? open : true;
+  // Inside a section that already says Pro the block is neutral: white, a grey line, no marker (§19b).
+  const marked = useContext(ProMarked);
+  const amber = pro === true && !marked;
 
   const head = (
     <>
       <span style={{ flex: "1 1 auto", minWidth: 0, textAlign: "left" }}>
         <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontSize: 13.5, fontWeight: 700, color: WON_INK }}>{title}</span>
-          {pro ? <PlanBadge tier="pro" locked={locked} /> : null}
+          {amber ? <PlanBadge tier="pro" locked={locked} /> : null}
         </span>
         {summary ? (
           <span style={{ display: "block", marginTop: 2, fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED }}>{summary}</span>
@@ -450,15 +512,16 @@ export function WonBlock({
   return (
     <div
       id={anchor}
+      data-won-block={amber ? "pro" : "plain"}
       style={{
         fontFamily: WON_FONT,
         border: `1px solid ${WON_LINE}`,
         borderRadius: 11,
         padding: 12,
-        background: WON_WASH,
+        background: marked ? WON_SURFACE : WON_WASH,
         minWidth: 0,
         scrollMarginTop: 16,
-        ...(pro ? { borderColor: WON_AMBER, background: "rgba(217,168,58,.05)" } : null),
+        ...(amber ? { borderColor: WON_AMBER, background: "rgba(217,168,58,.05)" } : null),
       }}
     >
       {collapsible ? (

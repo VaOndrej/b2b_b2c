@@ -225,10 +225,8 @@ export function MarginScreen(props: MarginScreenProps) {
             title={t("module.margin")}
             glyph="shield"
             summary={marginSummary(draft, plan, tr)}
-            // §11d/§12: green "Běží" only where the sync facts say it runs (the
-            // Přehled card knows them); this screen has none, so "on" shows no
-            // pill — the state line says it — and "off" shows "Vypnuto".
-            on={draft.enabled ? undefined : false}
+            // The stored state, the same as the home tile says (an unsaved switch does not change it).
+            state={props.status}
             hint={t("soon.margin")}
             anchor="settings"
             aside={<MarginProof settings={inForce} currency={shopCurrency} />}

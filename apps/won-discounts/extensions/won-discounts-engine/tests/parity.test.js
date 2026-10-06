@@ -1708,7 +1708,7 @@ function itemBatchGenerator(seed) {
     const at = code.length - 1 - int(4);
     return code.slice(0, at) + (code[at] === "2" ? "3" : "2") + code.slice(at + 1);
   };
-  const dress = (code) => pick([code, code, code.toLowerCase(), ` ${code}\n`, ` ${code.toLowerCase()}\t`]);
+  const dress = (code) => pick([code, code, code.toLowerCase(), ` ${code}\n`, `\u00a0${code.toLowerCase()}\t`]);
 
   return () => {
     const ids = IDS.filter(() => chance(0.6));

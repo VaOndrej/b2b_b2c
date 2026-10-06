@@ -57,7 +57,7 @@ not a second source of truth.
 
 # PART I — PRODUCT & ADMIN-UX
 
-## The principles (§1–§18)
+## The principles (§1–§19)
 
 ### §1 — Preview-first `[INV]`
 Every merchant-editable surface shows a **live preview** of the real result, not an
@@ -309,6 +309,46 @@ tunnel and the route never hydrates (serve such imports from another URL in
 dev). And a screen that re-renders from a native `input` listener on the form
 must keep its native inputs **uncontrolled**: the listener runs before React's
 own handler, so a controlled value is put back and the keystroke is lost.
+
+### §19 — Four rules from the third round of the walkthrough `[WON]`
+Written after the owner's third pass through Won Discounts (6 Oct 2026). Same
+form as §18: each rule names its symptom.
+
+- **§19a — One function says whether a thing runs.** A module's state is one
+  of four — *Aktivní / Active* (green), *Neaktivní / Inactive*, *Vyžaduje
+  pozornost / Needs attention* (red), *Pro* (amber, the plan marker) — computed
+  by ONE pure function from what is **stored**, **written to Shopify** and
+  **run by the plan**. The home tile, the module page and the sections inside
+  it call that function on the same facts; an unsaved switch never changes the
+  label. Things to resolve are a count beside the label and never take the
+  green away while the module runs. *Extends §11d / §17c. Symptom:* a module
+  that runs with no green label, or two screens that disagree about it.
+  *Example:* `model/module-status.ts` + `WonSection state` (Won Discounts).
+- **§19b — Pro is marked once per section.** The section header carries the
+  amber edge and the one marker. Nothing inside repeats it: nested blocks are
+  white with a grey line, a frame around an unlocked Pro form is not drawn, a
+  frame around a locked one is grey, and a Pro shop sees no marker on a choice
+  it already has. The shell enforces it (a context set by the section), so a
+  screen cannot stack amber on amber by accident. *Tightens §16b. Symptom:* an
+  amber box inside an amber box, or "Pro" twice in one card.
+  *Example:* `shell/pro-marked.ts`, `ProFrame`, `PlanBadge` (Won Discounts).
+- **§19c — Every piece on the storefront says where it stands in the theme.**
+  Three labels, the same for every placement (the app embed, each app block,
+  each embed switch): green *V tématu*, red *Chybí v tématu* with the primary
+  button that adds it **in the section header**, grey *Neověřeno* with
+  *Zkontrolovat znovu*. "Not read" is never shown as "missing". *Extends §13.
+  Symptom:* a placement whose state is only a sentence, or an add button
+  buried in a row. *Example:* `WonSection placement / action`,
+  `themePlacementsIn()` (Won Discounts).
+- **§19d — The home page is a signpost of tiles.** One tile per part of the
+  app: glyph, name, the §19a label, one sentence computed from the real
+  settings (§18e), the count of things to resolve. The whole tile is one link;
+  nothing inside it is a control. Detail rows live on the module pages. Above
+  the grid sits only what is not a module and has something to say (§18b).
+  Two columns on a phone, three on a desktop; adding a module adds a tile, not
+  a screenful. *Replaces the stacked overview cards of A3. Symptom:* a home
+  page that grows with every module, or a card whose only link is "Upravit".
+  *Example:* `shell/ModuleTile.tsx` (Won Discounts).
 
 ## Architecture decisions (cross-cutting) `[WON]` unless tagged
 

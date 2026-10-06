@@ -105,7 +105,9 @@ test("a failed sync: the problem in words + 'Synchronizovat znovu'; the button r
   assert.match(html, /Synchronizace selhala/);
   assert.match(html, /Nové nastavení slev se do pokladny zatím nezapsalo, platí předchozí \(could not write the shop config/);
   assert.match(html, /Synchronizovat znovu/);
-  assert.match(html, /Nezapsáno/);
+  // The home tile of Slevy a kódy: nothing runs, one discount did not reach Shopify.
+  assert.match(html, /1 nezapsaná/);
+  assert.match(html, /Vyžaduje pozornost/);
 
   // Still failing → an honest refusal with the problems.
   const again = await overviewAction(ctx, formOf([["intent", "resync"]]));

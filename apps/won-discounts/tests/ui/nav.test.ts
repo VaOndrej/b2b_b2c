@@ -98,6 +98,7 @@ async function renderSubNav(active: (typeof DISCOUNT_PAGES)[number], goals?: str
   const context = await handler.query(new Request("http://localhost/page"));
   if (context instanceof Response) throw new Error(`unexpected response ${context.status}`);
   const router = createStaticRouter(handler.dataRoutes, context);
+  // eslint-disable-next-line react/no-children-prop -- LocaleProvider types `children` as a required prop
   return renderToStaticMarkup(createElement(LocaleProvider, { locale: "cs", children: createElement(StaticRouterProvider, { router, context }) }));
 }
 

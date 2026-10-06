@@ -27,8 +27,9 @@ import { graphqlOf, nowOf, type ShopCtx } from "./context.server";
 import { GIFT_TITLES_DOCUMENT } from "./rewards.server";
 import { endOutletRun, keepOutletEnded, reopenOutletRun, startOutletRun, writeOutletStorefront, type OutletDeps } from "./outlet.server";
 import { readSaveOptions, saveConfigSection } from "./settings.server";
+import { outletStatus } from "../../components/model/module-status";
 import { ctxPlan } from "./sync-status.server";
-import { readShopContext } from "./themes.server";
+import { readShopContext, readThemeLook } from "./themes.server";
 import { ordersAccess } from "./orders-access.server";
 
 type RunRow = Awaited<ReturnType<PrismaClient["outletRun"]["findMany"]>>[number];
@@ -188,12 +189,16 @@ function moneyOf(locale: Locale) {
 
 export async function loadOutletScreen(ctx: ShopCtx): Promise<OutletScreenData> {
   const graphql = graphqlOf(ctx);
-  const [loaded, plan, shop, priceLists, ordersCounted] = await Promise.all([
+  const [loaded, plan, shop, priceLists, ordersCounted, overview, look] = await Promise.all([
     loadConfig(ctx.db, ctx.shop),
     ctxPlan(ctx),
     readShopContext(graphql),
     priceListsOf(ctx),
     ordersAccess(ctx),
+    // The home tile's own view: the page says the same state (model/module-status.ts).
+    loadOutletOverview(ctx).catch(() => null),
+    // Is the sale badge on the live theme's product page (the read Množstevní slevy shares, cached 60 s).
+    readThemeLook(ctx, { scopes: ctx.scopes }),
   ]);
   const running = await ctx.db.outletRun.findMany({ where: { shop: ctx.shop, status: { not: "ended" } }, orderBy: { createdAt: "desc" } });
   const ended = await ctx.db.outletRun.findMany({ where: { shop: ctx.shop, status: "ended" }, orderBy: { updatedAt: "desc" }, take: ENDED_SHOWN });
@@ -206,6 +211,7 @@ export async function loadOutletScreen(ctx: ShopCtx): Promise<OutletScreenData> 
   const view = (r: RunRow) => outletRunView(r, events.filter((e) => e.runId === r.id), opts);
   return {
     plan,
+    ...(overview ? { status: outletStatus(overview, plan) } : {}),
     configVersion: loaded.version ?? null,
     shopCurrency: shop.currencyCode ?? "",
     today: shopToday(shop.timezone, nowOf(ctx)),
@@ -217,6 +223,7 @@ export async function loadOutletScreen(ctx: ShopCtx): Promise<OutletScreenData> 
     priceLists,
     limits: { percentMin: OUTLET_LIMITS.percentMin, percentMax: OUTLET_LIMITS.percentMax, quotaMax: OUTLET_LIMITS.quotaMax, running: OUTLET_LIMITS.running, priceLists: OUTLET_LIMITS.priceLists },
     badgeBlockAddUrl: outletBlockAddUrl(ctx.shop, ctx.apiKey),
+    placed: look.placements,
     ordersCounted,
   };
 }

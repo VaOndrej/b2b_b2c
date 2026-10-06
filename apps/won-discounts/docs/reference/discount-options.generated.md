@@ -68,4 +68,4 @@ until you fill it in.
 | Amount off the order (A fixed amount per currency, above a minimum spend) | Fixed amount 100.00 CZK, 4.00 EUR, 4.00 GBP, 20.00 PLN, 5.00 USD · Applies to: Whole order · Automatically · Minimum order: 1000.00 CZK, 40.00 EUR, 40.00 GBP, 200.00 PLN, 50.00 USD |
 | Free shipping (Above an amount you set per market) | Free shipping · Applies to: Shipping · Automatically · Minimum order: 1500.00 CZK, 60.00 EUR, 60.00 GBP, 300.00 PLN, 75.00 USD |
 | Welcome code (A newsletter code, once per customer) | Percentage 10 % · Applies to: Whole order · With a code: WELCOME10 · Once per customer |
-| Blank discount | Percentage 10 % · Applies to: Whole order · Automatically |
+| Custom discount | Percentage 10 % · Applies to: Whole order · Automatically |

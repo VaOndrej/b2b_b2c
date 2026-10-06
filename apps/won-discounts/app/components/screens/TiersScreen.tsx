@@ -248,8 +248,8 @@ export function TiersScreen(props: TiersScreenProps) {
             glyph="layers"
             summary={globalSummary}
             hint={t("tiers.global.hint")}
-            // Green only where the sync facts say it runs (this page has none): off = "Vypnuto", on = no pill.
-            on={hasTiers ? undefined : false}
+            // The stored state, the same as the home tile says (an unsaved row does not change it).
+            state={props.status?.global}
             anchor="global"
             aside={
               <div style={{ display: "grid", gap: 10 }}>
@@ -267,7 +267,7 @@ export function TiersScreen(props: TiersScreenProps) {
                 {/* Pro: colours, corners and the shop's own CSS live on Vzhled; the preview above already shows them. */}
                 <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
                   <s-link href="/app/appearance#custom">{t("tiers.preview.customLink")}</s-link>
-                  <PlanBadge tier="pro" locked={!pro} href={pro ? undefined : "/app/plan"} />
+                  {pro ? null : <PlanBadge tier="pro" locked href="/app/plan" />}
                 </div>
               </div>
             }
@@ -295,6 +295,7 @@ export function TiersScreen(props: TiersScreenProps) {
             storedIds={storedIds}
             capacity={capacity}
             capacityError={capacityError}
+            status={props.status?.sets}
           />
           {/* One save for the whole form, last on the page (plus the App Bridge save bar). */}
           <div>

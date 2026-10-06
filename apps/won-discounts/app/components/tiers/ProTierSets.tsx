@@ -20,6 +20,7 @@ import { CONFIG_LIMITS } from "@won/core/discounts/config";
 
 import { useT } from "../../i18n/context";
 import { scopeSummary, tierCapacityShown, TIERS_FIELD, tierSummary, type TierPayloadUse } from "../model/tiers";
+import type { ModuleStatus } from "../model/module-status";
 import type { CurrencyView, TierSetView } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
 import { ProFrame } from "../shell/ProFrame";
@@ -75,6 +76,7 @@ export function ProTierSets({
   storedIds,
   capacity,
   capacityError,
+  status,
 }: {
   pro: boolean;
   /** The Pro sets as the page holds them (stored ones + added ones, with picked scopes). */
@@ -98,6 +100,8 @@ export function ProTierSets({
   capacity?: TierPayloadUse;
   /** The save's "the tiers do not fit at checkout" refusal, shown at the room-for-tiers line. */
   capacityError?: string;
+  /** The stored exceptions' state (model/module-status.ts); "locked" on Free is said by the Pro marker. */
+  status?: ModuleStatus;
 }) {
   const tr = useT();
   const { t } = tr;
@@ -107,7 +111,7 @@ export function ProTierSets({
   const summary = sets.length === 0 ? t("tiers.pro.none") : pro ? tr.tp("count.tierSet", sets.length) : tr.tp("tiers.pro.storedFree", sets.length);
   const capacityLine = capacity && (tierCapacityShown(capacity) || capacityError !== undefined);
   return (
-    <WonSection title={t("tiers.pro.title")} glyph="target" pro locked={!pro} summary={summary} anchor="pro">
+    <WonSection title={t("tiers.pro.title")} glyph="target" pro locked={!pro} state={sets.length > 0 ? status : undefined} summary={summary} anchor="pro">
       <s-stack direction="block" gap="base">
         {!pro ? <ProSell benefit={t("tiers.pro.benefit")} /> : null}
         {capacity && capacityLine ? (
@@ -126,7 +130,7 @@ export function ProTierSets({
               const draft = drafts.find((d) => d.id === set.id) ?? set;
               const sid = set.id;
               return (
-                <WonBlock key={sid} title={t("tiers.pro.set", { n: i + 1 })} summary={`${scopeSummary(set.scope, tr)} · ${tierSummary(draft, tr, codes)}`} pro>
+                <WonBlock key={sid} title={t("tiers.pro.set", { n: i + 1 })} summary={`${scopeSummary(set.scope, tr)} · ${tierSummary(draft, tr, codes)}`}>
                   <input type="hidden" name={F.set} value={sid} />
                   <s-stack direction="block" gap="base">
                     {set.scope.kind === "global" ? <RowNote tone="attention">{t("tiers.pro.extraGlobal")}</RowNote> : null}

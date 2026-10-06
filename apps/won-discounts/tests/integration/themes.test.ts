@@ -5,6 +5,7 @@ import {
   parseThemeJson,
   readThemeLook,
   storefrontSyncViewOf,
+  themePlacementsIn,
   themeTokensFrom,
   tiersBlockIn,
 } from "../../app/lib/integration/themes.server.ts";
@@ -228,7 +229,7 @@ test("readThemeLook: no block → off with the deep link; no read_themes → no_
 
   const noScope = themeStore([]);
   const none = await readThemeLook({ shop: "look-3.myshopify.com", client: noScope, apiKey: "key-3" }, { scopes: "write_discounts" });
-  assert.deepEqual(none, { tokens: null, block: { state: "no_scope" } });
+  assert.deepEqual(none, { tokens: null, block: { state: "no_scope" }, placements: {} });
   assert.equal(noScope.ops.length, 0);
 
   const down = new FakeStore();
@@ -249,4 +250,53 @@ test("readThemeLook: an auth failure (a thrown Response) is never swallowed — 
     readThemeLook({ shop: "look-5.myshopify.com", client: store, apiKey: "k" }, { scopes: "read_themes" }),
     (e: unknown) => e instanceof Response,
   );
+});
+
+// --- Feedback 3, bod 5: every placement on the storefront, from the same one read --------------------------
+
+const APP = "shopify://apps/won-discounts/blocks";
+const template = (...types: string[]) =>
+  JSON.stringify({ sections: { main: { type: "main", blocks: Object.fromEntries(types.map((type, i) => [`b${i}`, { type: `${APP}/${type}/019a` }])) } }, order: ["main"] });
+const embedSettings = (settings: Record<string, unknown>, disabled = false) =>
+  HEADER + JSON.stringify({ current: { blocks: { "123": { type: `${APP}/won_discounts_embed/019a`, disabled, settings } } } });
+
+test("themePlacementsIn: each block by its template; the top bar from the embed's own settings; an unread file is 'not known', never 'missing'", () => {
+  const all = themePlacementsIn([
+    { filename: "config/settings_data.json", content: embedSettings({ top_bar_rewards: true, top_bar_campaign: false }) },
+    { filename: "templates/product.json", content: template("quantity_tiers", "rewards_progress", "outlet_badge") },
+    { filename: "templates/index.json", content: template("campaign_banner") },
+    { filename: "templates/cart.json", content: template("cart_rewards") },
+  ]);
+  assert.deepEqual(all, {
+    rewardsProduct: true,
+    campaignProduct: false,
+    outletBadge: true,
+    rewardsHome: false,
+    campaignHome: true,
+    cartBlock: true,
+    topBarRewards: true,
+    topBarCampaign: false,
+  });
+  // A disabled block or a disabled embed does not count.
+  const disabled = JSON.stringify({ sections: { main: { type: "main", blocks: { a: { type: `${APP}/outlet_badge/1`, disabled: true } } } } });
+  assert.equal(themePlacementsIn([{ filename: "templates/product.json", content: disabled }]).outletBadge, false);
+  assert.equal(themePlacementsIn([{ filename: "config/settings_data.json", content: embedSettings({ top_bar_rewards: true }, true) }]).topBarRewards, false);
+  // Only what was read is answered: no cart template (a Liquid one) → the cart block is not known.
+  const partial = themePlacementsIn([{ filename: "templates/product.json", content: template() }]);
+  assert.deepEqual(partial, { rewardsProduct: false, campaignProduct: false, outletBadge: false });
+  assert.equal("cartBlock" in partial, false);
+  assert.deepEqual(themePlacementsIn([]), {});
+});
+
+test("readThemeLook hands the placements over with the same read (no extra request)", async () => {
+  const store = themeStore([
+    { filename: "config/settings_data.json", content: HORIZON_SETTINGS },
+    { filename: "templates/product.json", content: HORIZON_PRODUCT },
+    { filename: "templates/cart.json", content: template("cart_rewards") },
+  ]);
+  const look = await readThemeLook({ shop: "look-9.myshopify.com", client: store, apiKey: "key-9" }, { scopes: "read_themes" });
+  assert.equal(look.placements.cartBlock, true);
+  assert.equal(look.placements.rewardsProduct, false);
+  assert.equal("rewardsHome" in look.placements, false, "templates/index.json was not read");
+  assert.equal(store.ops.filter((op) => op === "WonTiersThemeLook").length, 1);
 });

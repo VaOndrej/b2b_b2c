@@ -51,7 +51,8 @@ import { impactConfigOf, impactView, readMarginImpact } from "./margin-impact.se
 
 export { clearMarginImpactCache, marginCatalogueReads, marginImpactIdle } from "./margin-impact.server";
 export { marginTooLargeOf as marginTooLarge } from "../sync/margin-fold";
-import { ctxPlan } from "./sync-status.server";
+import { marginStatus } from "../../components/model/module-status";
+import { ctxPlan, loadSyncView } from "./sync-status.server";
 
 /**
  * Form error keys (app/i18n, cs + en):
@@ -291,10 +292,13 @@ export async function loadMarginScreen(ctx: ShopCtx, opts: { focusRuleId?: strin
   const { stored, plan, gate, gated, enabled, syncable } = margin;
   const titles = await collectionTitles(ctx, stored.config.modules.margin.perCollection.map((o) => o.collectionId));
   if (syncable) await ensureCostsFresh(ctx.shop, laneDeps(ctx), enabled).catch(() => undefined);
-  const [mirror, coverage, tooLarge] = await Promise.all([
+  const [mirror, coverage, tooLarge, sync] = await Promise.all([
     costMirrorView({ db: ctx.db, shop: ctx.shop, now: ctx.now }, { enabled, timezone }),
     costCoverage(ctx.db, ctx.shop, shopCurrency || null),
     plan === "pro" && enabled ? marginTooLargeOf(ctx.db, ctx.shop) : Promise.resolve([]),
+    // Is the stored setting the one Shopify runs (the state label; read here, before the impact is looked up, so
+    // nothing is awaited after the background computation is scheduled).
+    loadSyncView(ctx, loaded, timezone),
   ]);
   const gateNotes = explainGate(
     gate.stripped.filter((s) => s.capability === "margin_per_collection"),
@@ -311,6 +315,11 @@ export async function loadMarginScreen(ctx: ShopCtx, opts: { focusRuleId?: strin
     plan,
     shopCurrency,
     configVersion: loaded.version ?? null,
+    // The same function, on the same facts, as the home tile (model/module-status.ts).
+    status: marginStatus(
+      { enabled, minMarginPercent: gated.modules.margin.global.minMarginPercent ?? null, maxDiscountPercent: gated.modules.margin.global.maxDiscountPercent, productsWithoutCost: coverage ? coverage.productsWithoutCost : null, mirror, ...(tooLarge.length > 0 ? { tooLarge } : {}) },
+      sync,
+    ),
     settings: toSettings(stored.config.modules.margin, titles),
     mirror,
     coverage,

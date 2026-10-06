@@ -37,7 +37,8 @@ import { Notice } from "../shell/Notice";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
 import { DiscountsSubNav } from "../shell/SubNav";
-import { RowNote, WonRow, WonSection } from "../shell/WonSection";
+import { embedPlacement, placementOf } from "../model/embed";
+import { PlacementPill, RowNote, WonRow, WonSection } from "../shell/WonSection";
 
 const F = REWARDS_FIELD;
 
@@ -202,6 +203,7 @@ export function RewardsScreen(props: RewardsScreenProps) {
   const maxTiers = CONFIG_LIMITS.giftTiers;
   const tiersFull = tiers.length + kept.length >= maxTiers;
   const embedCopy = embed.state === "on" ? null : EMBED_COPY[embed.state];
+  const cartBlock = placementOf(props.placed?.cartBlock);
 
   return (
     <s-page heading={t("module.rewards")}>
@@ -213,7 +215,7 @@ export function RewardsScreen(props: RewardsScreenProps) {
           <Notice result={result} onReplace={replaceUnreadable} />
           <GateNotes notes={gateNotes} />
 
-          <WonSection title={t("rewards.ship.title")} glyph="receipt" on={shipOn ? undefined : false} summary={shipSummary} hint={t("rewards.ship.hint")} anchor="shipping">
+          <WonSection title={t("rewards.ship.title")} glyph="receipt" state={props.status?.shipping} summary={shipSummary} hint={t("rewards.ship.hint")} anchor="shipping">
             <s-stack direction="block" gap="base">
               {/* `checked` is what is STORED; the live state is read from the form (never React's onChange on an s-* element). */}
               <s-switch name={F.shipOn} value="1" label={t("rewards.ship.on")} checked={boolAttr(shipping !== null)} />
@@ -227,7 +229,7 @@ export function RewardsScreen(props: RewardsScreenProps) {
             </s-stack>
           </WonSection>
 
-          <WonSection title={t("rewards.gift.title")} glyph="spark" on={tiers.length > 0 ? undefined : false} summary={giftLine} hint={t("rewards.gift.hint")} anchor="gift">
+          <WonSection title={t("rewards.gift.title")} glyph="spark" state={props.status?.gift} summary={giftLine} hint={t("rewards.gift.hint")} anchor="gift">
             <s-stack direction="block" gap="base">
               {tiers.map((tier, i) => {
                 const choiceError = err(F.choice(tier.id));
@@ -316,31 +318,38 @@ export function RewardsScreen(props: RewardsScreenProps) {
             </s-stack>
           </WonSection>
 
-          <WonSection title={t("rewards.cart.title")} glyph="cart" summary={t(embedCopy ? embedCopy.summary : "rewards.cart.on")} anchor="cart">
+          <WonSection
+            title={t("rewards.cart.title")}
+            glyph="cart"
+            summary={t(embedCopy ? embedCopy.summary : "rewards.cart.on")}
+            anchor="cart"
+            // Bod 5: Won in the theme — the label, and the fix in the header when it is not there.
+            placement={embedPlacement(embed.state)}
+            action={
+              embedCopy && embed.activateUrl ? (
+                <s-button href={embed.activateUrl} target="_top" variant={embedCopy.primary ? "primary" : "secondary"}>
+                  {t(embedCopy.action)}
+                </s-button>
+              ) : undefined
+            }
+          >
             <s-stack direction="block" gap="small-300">
               {embedCopy ? (
-                // Every state of the check has its own sentence (the header) and its fix (this row).
-                <WonRow
-                  tone={embedCopy.primary ? "attention" : undefined}
-                  action={
-                    embed.activateUrl ? (
-                      <s-button href={embed.activateUrl} target="_top" variant={embedCopy.primary ? "primary" : "secondary"}>
-                        {t(embedCopy.action)}
-                      </s-button>
-                    ) : undefined
-                  }
-                >
+                // Every state of the check has its own sentence (the header) and what to do about it (this row).
+                <WonRow tone={embedCopy.primary ? "attention" : undefined}>
                   <RowNote tone={embedCopy.primary ? "attention" : undefined}>{t(embed.activateUrl ? embedCopy.fix : "rewards.cart.noLink")}</RowNote>
                 </WonRow>
               ) : null}
               {cartBlockAddUrl ? (
                 <WonRow
+                  tone={cartBlock === "missing" ? "attention" : undefined}
                   action={
-                    <s-button href={cartBlockAddUrl} target="_top" variant="secondary">
-                      {t("rewards.cart.addBlock")}
+                    <s-button href={cartBlockAddUrl} target="_top" variant={cartBlock === "missing" ? "primary" : "secondary"}>
+                      {t(cartBlock === "in_theme" ? "placement.open" : "placement.add")}
                     </s-button>
                   }
                 >
+                  <PlacementPill placement={cartBlock} />
                   <RowNote>{t("rewards.cart.blockHint")}</RowNote>
                 </WonRow>
               ) : null}
@@ -354,10 +363,11 @@ export function RewardsScreen(props: RewardsScreenProps) {
             <WonSection title={t("rewards.places.title")} glyph="store" summary={t("rewards.places.summary")} anchor="places">
               <StorefrontPlacements
                 links={props.placements}
+                placed={props.placed}
                 rows={[
-                  { place: "product", text: "rewards.places.product", action: "placements.addProduct" },
-                  { place: "home", text: "rewards.places.home", action: "placements.addHome" },
-                  { place: "topBar", text: "rewards.places.topBar", action: "placements.openEmbed" },
+                  { place: "product", key: "rewardsProduct", text: "rewards.places.product" },
+                  { place: "home", key: "rewardsHome", text: "rewards.places.home" },
+                  { place: "topBar", key: "topBarRewards", text: "rewards.places.topBar", action: "placements.openEmbed" },
                 ]}
               />
             </WonSection>

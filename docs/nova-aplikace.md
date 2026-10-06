@@ -6,7 +6,7 @@ existují** — hlavně E2E témata a produkty.
 
 > **Povinná četba před návrhem:** [`won-app-design-doctrine.md`](won-app-design-doctrine.md)
 > — kompletní **Won App Doctrine** platná pro **všechny** `won-*` appky:
-> **Part I** Product/Admin-UX (`§1–§18`, `A1–A7`) **a Part II** Engineering/Platform
+> **Part I** Product/Admin-UX (`§1–§19`, `A1–A7`) **a Part II** Engineering/Platform
 > (SEC/WBH/BILL/DATA/API/REL/SF/PERF/PRIV/TEST/DEPLOY/OBS/MKT/…). Nová appka ji dědí;
 > cituj sekce (`doctrine §7b`, `WBH-3`) v kódu i PR. **Compliant-by-construction
 > (STORE-1):** scaffold z `apps/_template` už splňuje WBH-3 (compliance webhooky),
@@ -73,6 +73,12 @@ eventy/pravidla nešly proti breaking migracím. Badge appky v roadmapě postupu
   vybírat místo psaní; pod rozbalovačkou jen vzácné volby; Pro funkce hotová,
   nebo neviditelná; ovládací prvek dělá, co říká. Každá obrazovka se proti nim
   projde před uzavřením MVP a má test, který na ni v adminu kliká.
+- **Čtyři pravidla ze třetího průchodu (doktrína §19):** stav modulu říká jedna
+  funkce a stejný štítek („Aktivní“ / „Neaktivní“ / „Vyžaduje pozornost“) je na
+  úvodní dlaždici i na stránce modulu; Pro se značí jednou za sekci, nic uvnitř
+  ho neopakuje; každé umístění na webu má štítek „V tématu“ / „Chybí v tématu“ /
+  „Neověřeno“ a tlačítko na přidání v hlavičce sekce; úvodní stránka je rozcestník
+  z dlaždic, celá dlaždice je odkaz.
 - **Rozhraní vyká** a nepoužívá vývojářský žargon („engine“, „propsat“, „appka“).
 
 ### d) Výstupy gate

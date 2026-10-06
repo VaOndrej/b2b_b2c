@@ -10,6 +10,7 @@
 
 import type { PlacementLinks } from "./embed";
 import type { AnalyticsOverviewView } from "./analytics";
+import type { ModuleStatus } from "./module-status";
 import type { MessageKey } from "../../i18n";
 
 /** A Won market as the merchant knows it: its Shopify name (the handle when the name is unknown). */
@@ -305,6 +306,8 @@ export interface MarginTooLargeView {
 }
 
 export interface MarginScreenData {
+  /** The module's state from what is stored (model/module-status.ts, the same as its home tile; absent = not known). */
+  status?: ModuleStatus;
   plan: "free" | "pro";
   shopCurrency: string;
   /** F12 expected-version token for the save. */
@@ -553,6 +556,14 @@ export type TiersBlockView =
   | { state: "no_scope" };
 
 /**
+ * Where the app's pieces sit in the LIVE theme besides the quantity table (feedback 3, bod 5): the blocks by
+ * the template they are in and the top bar by the embed's own settings. A key that is absent was not read
+ * (no access to the theme, a Liquid template): "not verified", never "missing".
+ */
+export type PlacementKey = "cartBlock" | "rewardsProduct" | "rewardsHome" | "topBarRewards" | "campaignHome" | "campaignProduct" | "topBarCampaign" | "outletBadge";
+export type ThemePlacements = Partial<Record<PlacementKey, boolean>>;
+
+/**
  * The storefront config metafield (K5) as the last sync left it: `cv` (the
  * config version it was built from, app/lib/config.server.ts configVersionToken)
  * is the stored config's → synced; another version → pending; the last sync
@@ -635,6 +646,8 @@ export interface TiersScreenData {
   /** Active product rules that compete with tiers on the same lines (A1: the better one wins). */
   competingRules: number;
   block: TiersBlockView;
+  /** The state of the page's two sections, from what is stored (model/module-status.ts; absent = not known). */
+  status?: { global: ModuleStatus; sets: ModuleStatus };
   storefront: StorefrontSyncView;
   preview: TiersPreviewView;
   /**
@@ -723,6 +736,8 @@ export interface GiftTierView {
 }
 
 export interface RewardsScreenData {
+  /** The module's state from what is stored (model/module-status.ts, the same as its home tile; absent = not known). */
+  status?: { shipping: ModuleStatus; gift: ModuleStatus };
   plan: "free" | "pro";
   configVersion: string | null;
   currencies: CurrencyView[];
@@ -739,6 +754,8 @@ export interface RewardsScreenData {
   cartBlockAddUrl: string | null;
   /** Feedback 2, bod 5: where else the progress to a reward can show (the "Rewards progress" block, the top bar). */
   placements?: PlacementLinks;
+  /** Which of those places the live theme already has (absent key = not verified). */
+  placed?: ThemePlacements;
 }
 
 /** Přehled card. */
@@ -807,6 +824,8 @@ export interface OutletPriceListView {
 }
 
 export interface OutletScreenData {
+  /** The module's state from what is stored (model/module-status.ts, the same as its home tile; absent = not known). */
+  status?: ModuleStatus;
   plan: "free" | "pro";
   configVersion: string | null;
   shopCurrency: string;
@@ -823,6 +842,8 @@ export interface OutletScreenData {
   limits: { percentMin: number; percentMax: number; quotaMax: number; running: number; priceLists: number };
   /** "Přidat štítek výprodeje" (null when the shop / API key is unknown). */
   badgeBlockAddUrl: string | null;
+  /** Is the sale badge on the live theme's product page (absent key = not verified). */
+  placed?: ThemePlacements;
   /** The app can read orders (5a, F-O1): false = the quota is not counted, the sale ends by its date or by hand. */
   ordersCounted: boolean;
 }
@@ -933,6 +954,8 @@ export interface CampaignView {
 }
 
 export interface CampaignsScreenData {
+  /** The module's state from what is stored (model/module-status.ts, the same as its home tile; absent = not known). */
+  status?: ModuleStatus;
   plan: "free" | "pro";
   configVersion: string | null;
   /** Shop-local today (`YYYY-MM-DD`) and now (`HH:MM`): the form's minimums and defaults. */
@@ -948,6 +971,8 @@ export interface CampaignsScreenData {
   limits: { campaigns: number; maxDays: number; minLeadMinutes: number };
   /** Feedback 2, bod 7: where the running campaign can show on the storefront (the "Campaign banner" block, the top bar). */
   placements?: PlacementLinks;
+  /** Which of those places the live theme already has (absent key = not verified). */
+  placed?: ThemePlacements;
 }
 
 export type CampaignsActionResult =

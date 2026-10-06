@@ -9,8 +9,7 @@ import type { ShopCtx } from "../../app/lib/integration/context.server.ts";
 import { loadOutletOverview, loadOutletScreen, outletAction } from "../../app/lib/integration/outlet-admin.server.ts";
 import { OUTLET_FIELD as F, OUTLET_INTENT } from "../../app/components/model/outlet.ts";
 import { OutletScreen } from "../../app/components/screens/OutletScreen.tsx";
-import { devOutletOverview, devOutletScreen } from "../../app/lib/dev-harness.server.ts";
-import { OutletOverviewCard } from "../../app/components/outlet/OutletOverviewCard.tsx";
+import { devOutletScreen } from "../../app/lib/dev-harness.server.ts";
 import { LocaleProvider } from "../../app/i18n/context.tsx";
 
 const EnProvider = LocaleProvider as unknown as (props: { locale: "en"; children?: ReactNode }) => ReactElement;
@@ -259,12 +258,4 @@ test("screen and card: no order access says the quota is not counted and recomme
   assert.doesNotMatch(on, /Bez přístupu k objednávkám/);
   const en = text(await renderPage(createElement(EnProvider, { locale: "en" }, createElement(OutletScreen, { ...devOutletScreen({ plan: "pro", state: null, locale: "en" }), ordersCounted: false }))));
   assert.match(en, /Sold pieces are not counted yet\. The sale ends by its date or by hand\./);
-  const card = text((await renderPage(createElement(OutletOverviewCard, { outlet: { ...devOutletOverview(), ordersCounted: false } }))).replace(/<[^>]+>/g, " "));
-  assert.match(card, OFF_TEXT);
-  const idle = text(
-    (await renderPage(createElement(OutletOverviewCard, { outlet: { running: 0, pendingReturns: [], oversold: 0, problems: 0, ordersCounted: false } }))).replace(/<[^>]+>/g, " "),
-  );
-  assert.doesNotMatch(idle, /Prodané kusy se zatím nepočítají/, "audit B4: no sale running, no warning on the card (Free noise)");
-  const cardOn = text((await renderPage(createElement(OutletOverviewCard, { outlet: { ...devOutletOverview(), ordersCounted: true } }))).replace(/<[^>]+>/g, " "));
-  assert.doesNotMatch(cardOn, /Prodané kusy se zatím nepočítají/);
 });

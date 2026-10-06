@@ -30,7 +30,7 @@ import {
   tooManyDecimals,
 } from "../../app/components/model/margin.ts";
 import type { CostMirrorView, MarginImpactView, MarginOverviewView, MarginSettingsView, SyncView, UiResult } from "../../app/components/model/types.ts";
-import { MarginOverviewCard } from "../../app/components/margin/MarginOverviewCard.tsx";
+import { marginStatus } from "../../app/components/model/module-status.ts";
 import { Notice } from "../../app/components/shell/Notice.tsx";
 import { LocaleProvider } from "../../app/i18n/context.tsx";
 import { translator } from "../../app/i18n/index.ts";
@@ -205,16 +205,13 @@ test("before the first complete read of the costs, the screen and the card say o
   // The max-discount field says the ceiling is also the fallback.
   assert.match(cs.t("margin.max.details"), /nákupní cenu jsme ještě nenačetli/);
 
-  // The Přehled card: no green "Běží" before the first read finished; the sentence is on the card.
-  const Provider = LocaleProvider as unknown as (props: { locale: "cs" | "en"; children?: ReactNode }) => ReactElement;
+  // The home tile and the page (feedback 3, bod 1): switched on and written = "Aktivní" from the first moment —
+  // the ceiling already applies; the sentence about the costs still being read is on the page (above) and the tile.
   const sync: SyncView = { state: "ok", at: "2026-09-28T16:20:00" };
-  const card = (margin: MarginOverviewView) => renderToStaticMarkup(createElement(Provider, { locale: "cs" }, createElement(MarginOverviewCard, { margin, sync })));
-  const first = card({ enabled: true, minMarginPercent: 20, maxDiscountPercent: 40, productsWithoutCost: null, mirror: running });
-  assert.doesNotMatch(first, /Aktivní/);
-  assert.match(first, /Dokud nenačteme nákupní ceny \(340 z 1\u00a0240\)/);
-  const read = card({ enabled: true, minMarginPercent: 20, maxDiscountPercent: 40, productsWithoutCost: 3, mirror: { state: "fresh", at: "2026-09-28T06:10:00" } });
-  assert.match(read, /Aktivní/);
-  assert.doesNotMatch(read, /Dokud nenačteme/);
+  const first: MarginOverviewView = { enabled: true, minMarginPercent: 20, maxDiscountPercent: 40, productsWithoutCost: null, mirror: running };
+  assert.equal(marginStatus(first, sync).state, "active");
+  assert.equal(marginStatus({ ...first, productsWithoutCost: 3, mirror: { state: "fresh", at: "2026-09-28T06:10:00" } }, sync).state, "active");
+  assert.equal(marginStatus(first, { state: "pending" }).state, "inactive", "saved, not in Shopify yet: never green");
   // The promise is not absolute any more (P3-3).
   assert.equal(cs.t("soon.margin"), "Sleva ve Won nikdy nesrazí cenu pod hranici, kterou tu nastavíte.");
   assert.match(cs.t("margin.never"), /neklesla pod hranici/);
