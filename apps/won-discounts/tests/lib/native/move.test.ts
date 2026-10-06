@@ -222,13 +222,13 @@ test("refused before any change: code already on a Won rule, BXGY, missing disco
   const r1 = await moveNative({ ...common, nativeId: taken });
   assert.ok(!r1.ok);
   assert.equal(r1.code, "code_taken");
-  assert.equal(r1.error, "Kód LETO už má Won pravidlo „Léto Won“. Nic se nezměnilo. Změň kód ve Won a zkus to znovu.");
+  assert.equal(r1.error, "Kód LETO už má Won pravidlo „Léto Won“. Nic se nezměnilo. Změňte kód ve Won a zkuste to znovu.");
 
   const bxgy = shopify.add(otherNode("DiscountCodeBxgy", { title: "2+1", codes: ["DVAJEDNA"] }));
   const r2 = await moveNative({ ...common, nativeId: bxgy });
   assert.ok(!r2.ok);
   assert.equal(r2.code, "not_movable");
-  assert.equal(r2.error, "Won Discounts nemá Kup X, dostaneš Y. Pokryjí to množstevní slevy. Nic se nezměnilo.");
+  assert.equal(r2.error, "Won Discounts nemá Kupte X, dostanete Y. Pokryjí to množstevní slevy. Nic se nezměnilo.");
 
   const r3 = await moveNative({ ...common, nativeId: "gid://shopify/DiscountCodeNode/404", locale: "en" });
   assert.ok(!r3.ok);

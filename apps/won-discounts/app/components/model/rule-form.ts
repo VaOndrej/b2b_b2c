@@ -18,15 +18,19 @@ import {
   type DiscountRule,
   type DiscountTarget,
   type DiscountTargetKind,
+  type ItemMinimum,
+  type CodeBatch,
+  CODE_BATCH_ALPHABETS,
   type DiscountValueKind,
   type MinimumScope,
 } from "@won/core/discounts/config";
+import { listBatchCodes, removeBatchCodes, type CodeBatchError, type CodeBatchSpec, type CreateCodeBatchResult } from "@won/core/discounts/code-batch";
 import { shopDayStart } from "@won/core/discounts/function-payload";
 
 import { fromMinorUnits, toMinorUnits } from "@won/core/discounts/money";
 
 import { translator, type Locale } from "../../i18n";
-import { ruleDays, writtenDays } from "./describe";
+import { autoRuleName, ruleDays, writtenDays } from "./describe";
 import { COLLECTION_GID, PRODUCT_GID, VARIANT_GID, splitCodes } from "./ids";
 import type { FieldError } from "./types";
 
@@ -35,6 +39,12 @@ export const NAME_MAX = 200;
 /** Form field names. Per-currency fields carry the ISO code: `amount_CZK`, `min_EUR`. */
 export const FIELD = {
   name: "name",
+  /**
+   * "1" = the name is generated from the settings (model/describe autoRuleName):
+   * the parser derives and stores it, whatever the name field holds. Absent or
+   * "0" = the merchant's own name.
+   */
+  nameAuto: "nameAuto",
   enabled: "enabled",
   valueKind: "valueKind",
   percent: "percent",
@@ -42,9 +52,28 @@ export const FIELD = {
   target: "target",
   productIds: "productIds",
   variantIds: "variantIds",
+  /** Explicit removal of stored variant ids (the picker chooses whole products, B4). */
+  dropVariants: "dropVariants",
   collectionIds: "collectionIds",
+  /** Pro: the minimum quantity of ONE selected product / collection (plan 2026-10-06, bod 8). Empty = the common minimum. */
+  itemMin: (id: string) => `itemMin:${id}`,
+  /** Free only: remove the stored per-item minimums the plan does not run. */
+  dropItemMinimums: "dropItemMinimums",
   method: "method",
   codes: "codes",
+  /**
+   * The code generator (plan 2026-10-06, bod 6): `batchCount` filled in = generate that many codes on
+   * save (the server draws the seed; core code-batch.ts). The pattern fields are Pro. `dropBatch` =
+   * ids of generated batches to delete, `dropBatchCode` = single generated codes to delete ("<batchId>|<CODE>").
+   */
+  batchCount: "batchCount",
+  batchPrefix: "batchPrefix",
+  batchMiddle: "batchMiddle",
+  batchSuffix: "batchSuffix",
+  batchLength: "batchLength",
+  batchAlphabet: "batchAlphabet",
+  dropBatch: "dropBatch",
+  dropBatchCode: "dropBatchCode",
   minimum: (currency: string) => `min_${currency}`,
   minQty: "minQty",
   /** Where the minimum is measured: "cart" (the whole cart) or "entitled" (the rule's products). */
@@ -57,6 +86,11 @@ export const FIELD = {
   oncePerCustomer: "oncePerCustomer",
   markets: "markets",
   combinesWith: "combinesWith",
+  /** Explicit removal of stored segment targeting (checkout cannot evaluate it, B9). Any plan. */
+  dropSegments: "dropSegments",
+  /** Free only: remove the stored market targeting / combinations the plan does not run. */
+  dropMarkets: "dropMarkets",
+  dropCombines: "dropCombines",
   /** A stored value in a currency whose market is off: kept unless listed here (§14a). */
   dropCurrency: "dropCurrency",
 } as const;
@@ -95,8 +129,15 @@ export interface RuleFormContext {
   pro: boolean;
   /** The stored rule being edited (keeps fields the form does not own). */
   existing?: DiscountRule | null;
-  /** Won market handles (Pro market targeting). */
+  /** Handles of the ENABLED Won markets (Pro market targeting). A stored market that is off is kept while the form still sends it (B3). */
   marketHandles?: readonly string[];
+  /** Admin language of the generated name (FIELD.nameAuto); "cs" when not given. */
+  locale?: Locale;
+  /**
+   * Makes a generated batch (the server only: it draws the seed and knows the shop's other codes).
+   * Absent (the editor's live draft): the spec is validated and returned as `pendingBatch`.
+   */
+  createBatch?: (spec: CodeBatchSpec, existingIds: readonly string[]) => CreateCodeBatchResult;
   /** Every OTHER rule: code uniqueness and Pro combinations. */
   otherRules?: readonly { id: string; name: string; codes?: readonly string[] }[];
 }
@@ -105,7 +146,22 @@ export interface RuleFormResult {
   /** Always a complete rule (the live summary renders drafts too); save only when errors is empty. */
   rule: DiscountRule;
   errors: FieldError[];
+  /** The live draft only: codes will be generated on save (the rule has codes although none are listed yet). */
+  pendingBatch?: CodeBatchSpec;
 }
+
+/** Where a generator refusal is shown (core CodeBatchError → the field it is about) and its sentence. */
+const BATCH_PATTERN_FIELD: Record<string, string> = { prefix: FIELD.batchPrefix, middle: FIELD.batchMiddle, suffix: FIELD.batchSuffix, length: FIELD.batchLength, alphabet: FIELD.batchAlphabet };
+const BATCH_ERRORS: Record<CodeBatchError, [string | ((params?: Record<string, string | number>) => string), FieldError["key"]]> = {
+  count: [FIELD.batchCount, "editor.error.batchCount"],
+  pro_required: [(params) => BATCH_PATTERN_FIELD[String(params?.field)] ?? FIELD.batchCount, "editor.error.batchPro"],
+  prefix_invalid: [FIELD.batchPrefix, "editor.error.batchPrefix"],
+  prefix_taken: [FIELD.batchPrefix, "editor.error.batchPrefixTaken"],
+  literal_invalid: [(params) => BATCH_PATTERN_FIELD[String(params?.field)] ?? FIELD.batchMiddle, "editor.error.batchLiteral"],
+  alphabet: [FIELD.batchAlphabet, "result.invalid"],
+  length: [FIELD.batchLength, "editor.error.batchLength"],
+  collision: [FIELD.batchCount, "editor.error.batchCollision"],
+};
 
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const INT_RE = /^\d{1,9}$/;
@@ -208,8 +264,10 @@ export function readRuleForm(form: FormDataLike, ctx: RuleFormContext): RuleForm
   };
 
   // Name
+  // Name: the merchant's own, or generated from the settings below (nameAuto).
+  const nameAuto = checked(FIELD.nameAuto);
   const name = str(FIELD.name).trim().slice(0, NAME_MAX);
-  if (!name) err(FIELD.name, "editor.error.name");
+  if (!nameAuto && !name) err(FIELD.name, "editor.error.name");
 
   // Value
   const kindRaw = str(FIELD.valueKind) || "percentage";
@@ -239,12 +297,28 @@ export function readRuleForm(form: FormDataLike, ctx: RuleFormContext): RuleForm
     if (existing?.value.kind === "fixed") Object.assign(amount, keptOutside(existing.value.amount));
     value = { kind: "fixed", amount };
   } else {
-    // "Zadej 1 až 100 %": the copy and the parser agree (decimals like 12,5 are fine).
+    // "Zadejte 1 až 100 %": the copy and the parser agree (decimals like 12,5 are fine).
     const percent = Number(str(FIELD.percent).trim().replace(",", "."));
     const valid = str(FIELD.percent).trim() !== "" && Number.isFinite(percent) && percent >= 1 && percent <= 100;
     if (!valid) err(FIELD.percent, "editor.error.percent");
     value = { kind: "percentage", percent: valid ? Math.round(percent * 100) / 100 : 0 };
   }
+
+  // Per-item minimum quantities (Pro, bod 8): one optional whole number per selected product / collection.
+  // On Pro the form owns them (an empty field = no own minimum); on Free the stored ones stay for the
+  // items still selected (§14a) unless removed explicitly — the plan gate keeps such a rule off.
+  const readItemMinimums = (ids: readonly string[], stored: readonly ItemMinimum[] | undefined): ItemMinimum[] => {
+    if (!ctx.pro) return checked(FIELD.dropItemMinimums) ? [] : (stored ?? []).filter((m) => ids.includes(m.id)).map((m) => ({ ...m }));
+    const out: ItemMinimum[] = [];
+    for (const id of ids) {
+      const raw = str(FIELD.itemMin(id)).trim();
+      if (raw === "" || raw === "0") continue;
+      const quantity = Number(raw);
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > CONFIG_LIMITS.itemMinQty) err(FIELD.itemMin(id), "editor.error.itemMin", { max: CONFIG_LIMITS.itemMinQty });
+      else out.push({ id, quantity });
+    }
+    return out;
+  };
 
   // Target (free shipping always targets shipping)
   let target: DiscountTarget = { kind: "order" };
@@ -257,13 +331,19 @@ export function readRuleForm(form: FormDataLike, ctx: RuleFormContext): RuleForm
     else err(FIELD.target, "result.invalid");
     if (kind === "products") {
       const productIds = [...new Set(all(FIELD.productIds).filter((id) => PRODUCT_GID.test(id)))].slice(0, CONFIG_LIMITS.listItems);
-      const variantIds = [...new Set(all(FIELD.variantIds).filter((id) => VARIANT_GID.test(id)))].slice(0, CONFIG_LIMITS.listItems);
+      // Variant ids are never picked in the editor (B4: the picker chooses whole
+      // products); stored ones stay until the merchant removes them explicitly.
+      const variantIds = checked(FIELD.dropVariants)
+        ? []
+        : [...new Set(all(FIELD.variantIds).filter((id) => VARIANT_GID.test(id)))].slice(0, CONFIG_LIMITS.listItems);
       if (productIds.length === 0 && variantIds.length === 0) err(FIELD.target, "editor.error.products");
-      target = { kind: "products", productIds, variantIds };
+      const itemMinimums = readItemMinimums(productIds, existing?.target.kind === "products" ? existing.target.itemMinimums : undefined);
+      target = { kind: "products", productIds, variantIds, ...(itemMinimums.length > 0 ? { itemMinimums } : {}) };
     } else if (kind === "collections") {
       const ids = [...new Set(all(FIELD.collectionIds).filter((id) => COLLECTION_GID.test(id)))].slice(0, CONFIG_LIMITS.listItems);
       if (ids.length === 0) err(FIELD.target, "editor.error.collections");
-      target = { kind: "collections", ids };
+      const itemMinimums = readItemMinimums(ids, existing?.target.kind === "collections" ? existing.target.itemMinimums : undefined);
+      target = { kind: "collections", ids, ...(itemMinimums.length > 0 ? { itemMinimums } : {}) };
     } else {
       target = { kind };
     }
@@ -276,13 +356,56 @@ export function readRuleForm(form: FormDataLike, ctx: RuleFormContext): RuleForm
   else err(FIELD.method, "result.invalid");
 
   const rule: DiscountRule = { id: ctx.id, enabled: checked(FIELD.enabled), name, method, value, target };
+  let pendingBatch: CodeBatchSpec | undefined;
 
   if (method === "code") {
     const codes = splitCodes(str(FIELD.codes));
     const tooLong = codes.find((c) => c.length > CONFIG_LIMITS.codeLength);
     const taken = new Set((ctx.otherRules ?? []).flatMap((r) => (r.codes ?? []).map((c) => c.toUpperCase())));
     const clash = codes.find((c) => taken.has(c));
-    if (codes.length === 0) err(FIELD.codes, "editor.error.codes");
+
+    // Generated batches: the stored ones minus what the merchant deleted, plus the one asked for now.
+    const droppedBatches = new Set(all(FIELD.dropBatch));
+    const droppedCodes = new Map<string, string[]>();
+    for (const entry of all(FIELD.dropBatchCode)) {
+      const cut = entry.indexOf("|");
+      if (cut > 0) droppedCodes.set(entry.slice(0, cut), [...(droppedCodes.get(entry.slice(0, cut)) ?? []), entry.slice(cut + 1)]);
+    }
+    const batches: CodeBatch[] = (existing?.codeBatches ?? [])
+      .filter((batch) => !droppedBatches.has(batch.id))
+      .map((batch) => (droppedCodes.has(batch.id) ? removeBatchCodes(batch, droppedCodes.get(batch.id)!) : structuredCloneJson(batch)))
+      .filter((batch) => listBatchCodes(batch).length > 0);
+    const countRaw = str(FIELD.batchCount).trim();
+    if (countRaw !== "" && countRaw !== "0") {
+      const max = ctx.pro ? CONFIG_LIMITS.codeBatchSize : CONFIG_LIMITS.codeBatchSizeFree;
+      const lengthRaw = str(FIELD.batchLength).trim();
+      const alphabetRaw = str(FIELD.batchAlphabet);
+      const literal = (name: string) => str(name).trim().toUpperCase();
+      // The pattern is Pro: on Free its fields are never read (BILL-1), whatever the form sends.
+      const spec: CodeBatchSpec = {
+        count: Number(countRaw),
+        ...(ctx.pro && literal(FIELD.batchPrefix) ? { prefix: literal(FIELD.batchPrefix) } : {}),
+        ...(ctx.pro && literal(FIELD.batchMiddle) ? { middle: literal(FIELD.batchMiddle) } : {}),
+        ...(ctx.pro && literal(FIELD.batchSuffix) ? { suffix: literal(FIELD.batchSuffix) } : {}),
+        ...(ctx.pro && lengthRaw ? { length: Number(lengthRaw) } : {}),
+        ...(ctx.pro && isOneOf(alphabetRaw, CODE_BATCH_ALPHABETS) ? { alphabet: alphabetRaw } : {}),
+      };
+      if (!Number.isInteger(spec.count) || spec.count < 1 || spec.count > max) err(FIELD.batchCount, "editor.error.batchCount", { max });
+      else if (batches.length >= CONFIG_LIMITS.codeBatchesPerRule) err(FIELD.batchCount, "editor.error.batchTooMany", { max: CONFIG_LIMITS.codeBatchesPerRule });
+      else if (ctx.createBatch) {
+        const made = ctx.createBatch(spec, batches.map((batch) => batch.id));
+        if (made.ok) batches.push(made.batch);
+        else {
+          const [field, key] = BATCH_ERRORS[made.error];
+          err(typeof field === "string" ? field : field(made.params), key, made.params);
+        }
+      } else pendingBatch = spec;
+    }
+    if (batches.length > 0) rule.codeBatches = batches;
+
+    // A generator that was asked for codes and refused says so at its own field: not also "add a code".
+    const generatorAsked = countRaw !== "" && countRaw !== "0";
+    if (codes.length === 0 && batches.length === 0 && !generatorAsked) err(FIELD.codes, "editor.error.codes");
     else if (tooLong) err(FIELD.codes, "editor.error.codeLength", { max: CONFIG_LIMITS.codeLength });
     else if (codes.length > CONFIG_LIMITS.codesPerRule) err(FIELD.codes, "editor.error.tooManyCodes", { max: CONFIG_LIMITS.codesPerRule });
     else if (clash) err(FIELD.codes, "editor.error.codeTaken", { code: clash });
@@ -313,8 +436,11 @@ export function readRuleForm(form: FormDataLike, ctx: RuleFormContext): RuleForm
     if (quantity > 0) rule.minimum.quantity = quantity;
     // Where it is measured (F1 concern 3): the form's choice, else what was
     // stored (an edit never resets "z vybraných produktů" to the cart), else cart.
+    // B8: only a product / collection rule has the choice; for the order and
+    // shipping the field is ignored and the minimum is the cart's.
     const scopeRaw = str(FIELD.minScope);
-    const scope: MinimumScope = isOneOf(scopeRaw, MINIMUM_SCOPES) ? scopeRaw : (existing?.minimum?.scope ?? "cart");
+    const lineTarget = target.kind === "products" || target.kind === "collections";
+    const scope: MinimumScope = !lineTarget ? "cart" : isOneOf(scopeRaw, MINIMUM_SCOPES) ? scopeRaw : (existing?.minimum?.scope ?? "cart");
     rule.minimum.scope = scope;
   }
 
@@ -346,29 +472,38 @@ export function readRuleForm(form: FormDataLike, ctx: RuleFormContext): RuleForm
 
   // Pro: targeting + per-rule combinations. Writable only with entitlement
   // (BILL-1, the UI lock is a courtesy); otherwise the stored values stay as
-  // they are — turning Pro off never erases the setup (§14a).
+  // they are — turning Pro off never erases the setup (§14a). REMOVING a stored
+  // Pro setting is allowed on any plan, and only explicitly (B9, P3).
+  const storedMarkets = existing?.targeting?.markets ?? [];
+  const segments = checked(FIELD.dropSegments) ? [] : [...(existing?.targeting?.segments ?? [])];
+  let markets: string[];
   if (ctx.pro) {
-    const known = new Set(ctx.marketHandles ?? []);
-    const markets = [...new Set(all(FIELD.markets).filter((h) => known.has(h)))];
-    const segments = existing?.targeting?.segments;
-    if (markets.length > 0 || (segments && segments.length > 0)) {
-      rule.targeting = {};
-      if (segments && segments.length > 0) rule.targeting.segments = [...segments];
-      if (markets.length > 0) rule.targeting.markets = markets;
-    }
+    // B3: a stored market that is switched off is still a row of the form
+    // (checked, with a note); it stays until the merchant unchecks it.
+    const known = new Set([...(ctx.marketHandles ?? []), ...storedMarkets]);
+    markets = [...new Set(all(FIELD.markets).filter((h) => known.has(h)))];
     const others = new Set((ctx.otherRules ?? []).map((r) => r.id).filter((id) => id !== ctx.id));
     const ruleIds = [...new Set(all(FIELD.combinesWith).filter((id) => others.has(id)))];
     if (ruleIds.length > 0) rule.combinesWith = { ruleIds };
   } else {
-    if (existing?.targeting) rule.targeting = structuredCloneJson(existing.targeting);
-    if (existing?.combinesWith) rule.combinesWith = structuredCloneJson(existing.combinesWith);
+    markets = checked(FIELD.dropMarkets) ? [] : [...storedMarkets];
+    if (existing?.combinesWith && !checked(FIELD.dropCombines)) rule.combinesWith = structuredCloneJson(existing.combinesWith);
+  }
+  if (markets.length > 0 || segments.length > 0) {
+    rule.targeting = {};
+    if (segments.length > 0) rule.targeting.segments = segments;
+    if (markets.length > 0) rule.targeting.markets = markets;
   }
 
   // Fields the form does not own survive an edit.
   if (existing?.priority !== undefined) rule.priority = existing.priority;
   if (existing?.origin) rule.origin = { nativeId: existing.origin.nativeId };
 
-  return { rule, errors };
+  // P5: the generated name is derived HERE, from the rule as parsed (so what is
+  // stored — and shown at checkout — always matches the settings saved with it).
+  if (nameAuto) rule.name = autoRuleName(rule, translator(ctx.locale ?? "cs"), ctx.currencies).slice(0, NAME_MAX);
+
+  return pendingBatch ? { rule, errors, pendingBatch } : { rule, errors };
 }
 
 function structuredCloneJson<T>(v: T): T {
@@ -387,6 +522,8 @@ export interface OutsideCurrencyValue {
 
 export interface RuleFormDefaults {
   name: string;
+  /** The stored name is the generated one (or empty): the editor keeps generating it until the merchant types their own. */
+  nameAuto: boolean;
   enabled: boolean;
   valueKind: DiscountValueKind;
   percent: string;
@@ -396,6 +533,8 @@ export interface RuleFormDefaults {
   productIds: string[];
   variantIds: string[];
   collectionIds: string[];
+  /** Per-item minimum quantities by product / collection id (Pro), as field text. */
+  itemMinimums: Record<string, string>;
   method: DiscountMethod;
   codes: string;
   minimums: Record<string, string>;
@@ -407,6 +546,8 @@ export interface RuleFormDefaults {
   usageLimit: string;
   oncePerCustomer: boolean;
   markets: string[];
+  /** How many customer segments the rule has stored (checkout cannot evaluate them; the editor offers to remove them, B9). */
+  segments: number;
   combinesWith: string[];
   /** Stored values in currencies whose market is off: shown read-only, kept on save (§14a). */
   outside: OutsideCurrencyValue[];
@@ -415,10 +556,20 @@ export interface RuleFormDefaults {
 }
 
 /**
+ * Is the rule's name the generated one? No flag is stored: a name equal to
+ * what the settings generate (in the admin language, for the shop's
+ * currencies) — or an empty one — is automatic; anything else is the merchant's.
+ */
+export function isAutoName(rule: DiscountRule, currencies: readonly string[], locale: Locale = "cs"): boolean {
+  const name = rule.name.trim();
+  return name === "" || name === autoRuleName(rule, translator(locale), currencies).slice(0, NAME_MAX);
+}
+
+/**
  * Field values for a rule. `timezone` (the shop's) turns the stored schedule into
  * shop-local days exactly like the sync does; without it, the written days.
  */
-export function ruleFormDefaults(rule: DiscountRule, currencies: readonly string[], timezone?: string | null): RuleFormDefaults {
+export function ruleFormDefaults(rule: DiscountRule, currencies: readonly string[], timezone?: string | null, locale: Locale = "cs"): RuleFormDefaults {
   const amount = rule.value.kind === "fixed" ? rule.value.amount : {};
   const subtotal = rule.minimum?.subtotal ?? {};
   const amounts: Record<string, string> = {};
@@ -437,6 +588,7 @@ export function ruleFormDefaults(rule: DiscountRule, currencies: readonly string
   const target = rule.target;
   const d: Omit<RuleFormDefaults, "fields"> = {
     name: rule.name,
+    nameAuto: isAutoName(rule, currencies, locale),
     enabled: rule.enabled,
     valueKind: rule.value.kind,
     percent: rule.value.kind === "percentage" ? String(rule.value.percent) : "10",
@@ -445,6 +597,7 @@ export function ruleFormDefaults(rule: DiscountRule, currencies: readonly string
     productIds: target.kind === "products" ? [...target.productIds] : [],
     variantIds: target.kind === "products" ? [...target.variantIds] : [],
     collectionIds: target.kind === "collections" ? [...target.ids] : [],
+    itemMinimums: Object.fromEntries(((target.kind === "products" || target.kind === "collections" ? target.itemMinimums : undefined) ?? []).map((m) => [m.id, String(m.quantity)])),
     method: rule.method,
     codes: (rule.codes ?? []).join("\n"),
     minimums,
@@ -455,11 +608,13 @@ export function ruleFormDefaults(rule: DiscountRule, currencies: readonly string
     usageLimit: rule.limits?.usageLimit ? String(rule.limits.usageLimit) : "",
     oncePerCustomer: rule.limits?.oncePerCustomer === true,
     markets: [...(rule.targeting?.markets ?? [])],
+    segments: rule.targeting?.segments?.length ?? 0,
     combinesWith: [...(rule.combinesWith?.ruleIds ?? [])],
     outside,
   };
   const fields: RuleFormDefaults["fields"] = {
     [FIELD.name]: d.name,
+    [FIELD.nameAuto]: d.nameAuto,
     [FIELD.enabled]: d.enabled,
     [FIELD.valueKind]: d.valueKind,
     [FIELD.percent]: d.percent,
@@ -507,29 +662,33 @@ function pick(table: Readonly<Record<string, number>>, currencies: readonly stri
   return out;
 }
 
-/** A pre-filled, valid draft for a recipe (onboarding step 4, "Nová sleva z receptu"). */
+/**
+ * A pre-filled, valid draft for a recipe (onboarding step 4, "Nová sleva z
+ * receptu"). P5: the name is the generated one (the editor keeps it following
+ * the settings); only the welcome code keeps a name of its own ("Uvítací
+ * sleva" says what the code is for, which the settings cannot).
+ */
 export function recipeRule(recipe: RecipeKey, opts: { id: string; locale: Locale; currencies: readonly string[] }): DiscountRule {
   const tr = translator(opts.locale);
-  const base = { id: opts.id, enabled: true } as const;
+  const base = { id: opts.id, enabled: true, name: "" } as const;
+  const named = (rule: DiscountRule): DiscountRule => ({ ...rule, name: autoRuleName(rule, tr, opts.currencies).slice(0, NAME_MAX) });
   switch (recipe) {
     case "amountOff":
-      return {
+      return named({
         ...base,
-        name: tr.t("recipe.amountOff.name"),
         method: "automatic",
         value: { kind: "fixed", amount: pick(AMOUNT_OFF, opts.currencies) },
         target: { kind: "order" },
         minimum: { subtotal: pick(AMOUNT_OFF_MIN, opts.currencies) },
-      };
+      });
     case "freeShipping":
-      return {
+      return named({
         ...base,
-        name: tr.t("recipe.freeShipping.name"),
         method: "automatic",
         value: { kind: "freeShipping" },
         target: { kind: "shipping" },
         minimum: { subtotal: pick(FREE_SHIPPING_MIN, opts.currencies) },
-      };
+      });
     case "welcomeCode":
       return {
         ...base,
@@ -541,22 +700,14 @@ export function recipeRule(recipe: RecipeKey, opts: { id: string; locale: Locale
         limits: { oncePerCustomer: true },
       };
     case "blank":
-      return {
-        ...base,
-        name: tr.t("recipe.blank.name"),
-        method: "automatic",
-        value: { kind: "percentage", percent: 10 },
-        target: { kind: "order" },
-      };
     case "percentAll":
     default:
-      return {
+      return named({
         ...base,
-        name: tr.t("recipe.percentAll.name"),
         method: "automatic",
         value: { kind: "percentage", percent: 10 },
         target: { kind: "order" },
-      };
+      });
   }
 }
 

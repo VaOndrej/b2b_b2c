@@ -21,7 +21,7 @@ summary: Margin protection defaults, accepted values, the floor formula and a wo
 |---|---|---|
 | Turn on margin protection | off | on / off |
 | Minimum margin | empty (= never below the cost price) | 0–95 %, one decimal, rounded up |
-| Products without a cost price: discount at most | 50 % | 0–100 %, one decimal, rounded down |
+| Discount ceiling for products without a cost price | 50 % | 0–100 %, one decimal, rounded down |
 | Settings per collection (Pro) | none | up to 50 collections |
 
 Rounding always goes the stricter way, so a saved value never allows a larger

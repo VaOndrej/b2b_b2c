@@ -14,6 +14,9 @@
 //                   (country), segment (unsupported), currency, targets,
 //                   minimum (the WHOLE cart, [spec] „minimum košíku“, or the
 //                   rule's own lines when its minimum scope is "entitled");
+//   applyItemMinimums  (Pro, plan 2026-10-06 bod 8; "Per-item minimum" below)
+//                   a product rule with per-item minimums keeps only the
+//                   lines whose item reached its own minimum;
 //   prepareTiers    (MVP 3, plan-tiers.ts, its header is the port spec) each
 //                   line's quantity-tier candidate `tier:<setId>`: its set (K1:
 //                   `tierRef`, else the global set), counted per line / product
@@ -61,6 +64,33 @@
 // discount at all). Margin protection is unaffected: it caps what the stack
 // search picked.
 //
+// Per-item minimum (Pro; the port spec of plan.rs `collect_item_refs` +
+// `apply_item_minimums`). A
+// product or collection rule may give a selected product / collection its own
+// minimum quantity; each item is judged on its own (owner's decision):
+//   1. A line's refs say, per rule, whether it lists the rule plainly and
+//      which item groups of the rule it is in, each with that item's minimum
+//      (targeting.ts lineTargeting: a ref `ruleId[@campaign]#key:min` whose
+//      base names an existing rule; each (rule, group) once a line). Gift
+//      lines are outside all of it.
+//   2. A group's count = the quantities of every non-gift line that names it
+//      (outlet lines count, as for every minimum): the pieces of one product
+//      (its variants together), or of one collection, in the cart.
+//   3. Only a PRODUCT-class rule some non-gift line names by an item ref is an
+//      "item rule". Its common `minimum.quantity` then never fails the rule as
+//      a whole: it is measured as always (the cart, or all the rule's lines
+//      when "entitled") and decides for the lines that list the rule plainly.
+//      Every other gate, the subtotal minimum included, is unchanged.
+//   4. A line keeps an eligible item rule when it lists the rule plainly and
+//      the common quantity minimum is reached, OR one of its groups of the rule
+//      has a count ≥ that group's minimum. So a product in two targeted
+//      collections qualifies when ANY of them does, and a product that is also
+//      in a collection without its own minimum follows the common one there.
+//      A line that does not keep it is not the rule's line any more.
+//   5. An eligible item rule that keeps no non-gift line is `below_minimum`.
+// Example: 10 % on A (from 3), B (from 4), C (no own minimum, no common one);
+// cart 3×A, 1×B, 2×C → A's and C's lines get it, B's does not.
+//
 // Performance: O(lines × rules-per-line) + one sort per line; the Pro stacking
 // search only runs on lines that actually have combinable candidates, over at
 // most MAX_STACK_CANDIDATES of them. Margin protection of the order discount is
@@ -70,6 +100,7 @@
 // orderSetLimit), which is what lets the Rust function do O(lines × 16).
 
 import { type CartPlanInput, ENTERED_CODE_PADDING, type NormalizedCart, type NormalizedLine, normalizeCart, type PlanLocale } from "./cart.ts";
+import { matchesCodeBatch, readCodeBatch, type ReadCodeBatch } from "./code-batch.ts";
 import { codeHash } from "./code-hash.ts";
 import type { DiscountMethod, DiscountRuleValue, DiscountTargetKind, MinimumScope, ReadonlyDeep, TierCountAcross } from "./config.ts";
 import { DEFAULT_CONFIG } from "./config/defaults.ts";
@@ -93,7 +124,7 @@ import { applyMarginProtection, computeFloors, markTightLines, protectOrder } fr
 import { planGifts, rewardBase, rewardsProgress, SHIPPING_REWARD_ID, SHIPPING_REWARD_LABEL, shippingReward } from "./plan-rewards.ts";
 import { readRewardsPayload } from "./rewards.ts";
 import { prepareTiers, TIER_CANDIDATE_PREFIX, tierCandidateId, TIER_LABEL, tierHint, tierOutcomes, tierStepBreak } from "./plan-tiers.ts";
-import { lineRuleIds } from "./targeting.ts";
+import { lineTargeting } from "./targeting.ts";
 
 export { TIER_CANDIDATE_PREFIX, tierCandidateId, TIER_LABEL, tierStepBreak };
 
@@ -237,6 +268,22 @@ export interface PlanShipping {
   message: string;
 }
 
+/**
+ * One item group of a rule with per-item minimums (plan 2026-10-06 bod 8): the
+ * pieces of one selected product (products target) or collection (collections
+ * target) in the cart against that item's own minimum.
+ */
+export interface ItemMinimumOutcome {
+  /** The tail of the item's GID (its number): the product's or the collection's, by the rule's target kind. */
+  key: string;
+  minimum: number;
+  /** Pieces of the item in the cart (non-gift lines, outlet included). */
+  count: number;
+  reached: boolean;
+  /** The cart lines that count toward it, cart order. */
+  lineIds: string[];
+}
+
 export interface RuleOutcome {
   ruleId: string;
   name: string;
@@ -256,6 +303,12 @@ export interface RuleOutcome {
    * `scope: "entitled"` when only the rule's own lines count (absent = the cart).
    */
   missing?: { subtotal?: number; quantity?: number; minimumSubtotal?: number; minimumQuantity?: number; scope?: "entitled" };
+  /**
+   * Per-item minimums: the rule's item groups in this cart, in the order the
+   * cart lines name them — set whenever the rule got as far as its minimums
+   * (applied or not), so explain can say "Produkt B: v košíku 1 ks, sleva platí od 4 ks".
+   */
+  items?: ItemMinimumOutcome[];
   /** Schedule at day granularity (shop dates, inclusive). */
   startsOn?: string;
   endsOn?: string;
@@ -366,7 +419,7 @@ export interface TierOutcome {
   betterRuleIds?: string[];
 }
 
-/** "Přidej 1 ks a dostaneš −15 %": the counting group closest to its next break (plan-tiers.ts tierHint). */
+/** "Přidejte 1 ks a dostanete −15 %": the counting group closest to its next break (plan-tiers.ts tierHint). */
 export interface TierHint {
   setId: string;
   lineIds: string[];
@@ -376,7 +429,7 @@ export interface TierHint {
   next: TierStep;
   /**
    * MVP 4: margin protection lowers the next tier on the first hinted line, so
-   * the hint must not promise its value ("přidej 1 ks → nižší cena").
+   * the hint must not promise its value ("přidejte 1 ks → nižší cena").
    */
   marginCapped?: true;
 }
@@ -532,6 +585,12 @@ function readRule(raw: Rec, currency: string): Rule | null {
     valueKind === "freeShipping" || target === "shipping" ? "shipping" : target === "order" ? "order" : "product";
   const method: DiscountMethod = raw.method === "code" ? "code" : "automatic";
   const codeHashes = method === "code" ? (stringList(raw.codeHashes) ?? []) : [];
+  // A generated batch travels as one more text of `codeHashes` (code-batch.ts): a text that reads as one is one.
+  const codeBatches: ReadCodeBatch[] = [];
+  for (const entry of codeHashes) {
+    const batch = readCodeBatch(entry);
+    if (batch) codeBatches.push(batch);
+  }
 
   const minimum = isRecord(raw.minimum) ? raw.minimum : {};
   const subtotalMap = minimum.subtotal;
@@ -568,6 +627,7 @@ function readRule(raw: Rec, currency: string): Rule | null {
     fixed,
     priority: typeof raw.priority === "number" && Number.isFinite(raw.priority) ? Math.floor(raw.priority) : 0,
     codeHashes,
+    codeBatches,
     minSubtotal,
     minSubtotalMissing: hasSubtotal && minSubtotal === null,
     minQuantity,
@@ -684,8 +744,14 @@ function resolveRules(config: Rec, cart: NormalizedCart) {
 // --- Stage: codes ------------------------------------------------------------------------------
 
 /**
- * Entered codes → code rules by hash; the first entered code of a rule is the
- * one that counts. Only the first MAX_ENTERED_CODES entries are matched (cart.ts
+ * Entered codes → code rules: by hash (a hand-typed code; the first rule
+ * listing the hash), else by generated batch (code-batch.ts matchesCodeBatch;
+ * the first batch in rule order, then batch order — the sanitizer lets no
+ * batch's prefix start another's, so at most one can match). Only an entry
+ * that is all ASCII once trimmed is tried against the batches (cart.ts
+ * `ascii`): every character of a generated code is, and the function compares
+ * bytes (ı → I and ſ → S upper-case INTO ASCII; such an entry is not taken).
+ * The first entered code of a rule is the one that counts. Only the first MAX_ENTERED_CODES entries are matched (cart.ts
  * `consideredEntries`), and of those only an entry that can be a Won code
  * (audit rounds 6 and 7; UTF-16 units, the longest Won code = `readMaxCodeLength`):
  * - at most the longest Won code + ENTERED_CODE_PADDING long as entered, white
@@ -702,11 +768,13 @@ function matchCodes(rules: Rule[], cart: NormalizedCart, maxCodeLength: number) 
     if (rule.method !== "code") continue;
     for (const hash of rule.codeHashes) if (!ownerByHash.has(hash)) ownerByHash.set(hash, rule);
   }
+  const batchOwners = rules.filter((rule) => rule.method === "code" && rule.codeBatches.length > 0);
+  const ownerByBatch = (code: string) => batchOwners.find((rule) => rule.codeBatches.some((batch) => matchesCodeBatch(batch, code)));
   const ownerOfCode = new Map<string, Rule>();
   const enteredByRule = new Map<string, string[]>();
-  for (const { code, rawLength } of cart.consideredEntries) {
+  for (const { code, rawLength, ascii } of cart.consideredEntries) {
     if (code === "" || rawLength > maxCodeLength + ENTERED_CODE_PADDING || code.length > maxCodeLength) continue;
-    const rule = ownerByHash.get(codeHash(code));
+    const rule = ownerByHash.get(codeHash(code)) ?? (ascii && batchOwners.length > 0 ? ownerByBatch(code) : undefined);
     if (!rule) continue;
     ownerOfCode.set(code, rule);
     const list = enteredByRule.get(rule.id);
@@ -720,19 +788,31 @@ function matchCodes(rules: Rule[], cart: NormalizedCart, maxCodeLength: number) 
 
 const emptyScope = (): Scope => ({ subtotal: 0, quantity: 0, lines: 0, discountable: 0 });
 
-function prepareLines(cart: NormalizedCart, engine: EngineFlags, campaignId: string | null, retargeted: ReadonlySet<string>) {
-  const work: WorkLine[] = cart.lines.map((line) => ({
-    line,
-    excluded: line.gift ? "gift" : line.outlet && !engine.outletWithAnything ? "outlet" : null,
-    ruleSet: lineRuleIds(line, campaignId, retargeted),
-    product: null,
-    floor: null,
-    tier: null,
-  }));
+function prepareLines(cart: NormalizedCart, engine: EngineFlags, campaignId: string | null, retargeted: ReadonlySet<string>, known: ReadonlyMap<string, Rule>) {
+  const work: WorkLine[] = cart.lines.map((line) => {
+    const targeting = lineTargeting(line, campaignId, retargeted, known);
+    return {
+      line,
+      excluded: line.gift ? "gift" : line.outlet && !engine.outletWithAnything ? "outlet" : null,
+      ruleSet: targeting.ruleIds,
+      plain: targeting.plain,
+      items: targeting.items,
+      product: null,
+      floor: null,
+      tier: null,
+    };
+  });
   const cartScope = emptyScope();
   const ruleScopes = new Map<string, Scope>();
+  // Per-item minimum (step 2): each item group's pieces, and the rules some non-gift line names by an item ref.
+  const groupCounts = new Map<string, number>();
+  const itemRuleIds = new Set<string>();
   for (const w of work) {
     if (w.excluded === "gift") continue;
+    for (const ref of w.items) {
+      groupCounts.set(ref.group, (groupCounts.get(ref.group) ?? 0) + w.line.quantity);
+      itemRuleIds.add(ref.ruleId);
+    }
     const discountable = w.excluded === null ? 1 : 0;
     cartScope.subtotal += w.line.subtotal;
     cartScope.quantity += w.line.quantity;
@@ -747,7 +827,7 @@ function prepareLines(cart: NormalizedCart, engine: EngineFlags, campaignId: str
       s.discountable += discountable;
     }
   }
-  return { work, cartScope, ruleScopes };
+  return { work, cartScope, ruleScopes, groupCounts, itemRuleIds };
 }
 
 // --- Stage: eligibility ---------------------------------------------------------------------------
@@ -766,7 +846,7 @@ function inMarket(rule: Rule, ctx: GateContext): boolean {
 }
 
 /** Rule gate, in the order a merchant would ask "why not?". Returns null when eligible. */
-function gate(rule: Rule, ctx: GateContext, targetScope: Scope, entered: boolean): RuleState | null {
+function gate(rule: Rule, ctx: GateContext, targetScope: Scope, entered: boolean, itemRule: boolean): RuleState | null {
   const { cart, cartScope } = ctx;
   if (!rule.enabled) return "disabled";
   if (rule.method === "code" && !entered) return "code_not_entered";
@@ -791,7 +871,9 @@ function gate(rule: Rule, ctx: GateContext, targetScope: Scope, entered: boolean
   const scope = entitled ? targetScope : cartScope;
   const missingSubtotal = rule.minSubtotal !== null ? Math.max(0, rule.minSubtotal - scope.subtotal) : 0;
   const missingQuantity = rule.minQuantity > 0 ? Math.max(0, rule.minQuantity - scope.quantity) : 0;
-  if (missingSubtotal > 0 || missingQuantity > 0) {
+  // Per-item minimum (step 3): the common quantity minimum of an item rule decides line by line, later.
+  if (itemRule) rule.commonQuantityMissing = missingQuantity;
+  if (missingSubtotal > 0 || (missingQuantity > 0 && !itemRule)) {
     rule.missing = {
       ...(missingSubtotal > 0 ? { subtotal: missingSubtotal, minimumSubtotal: rule.minSubtotal as number } : {}),
       ...(missingQuantity > 0 ? { quantity: missingQuantity, minimumQuantity: rule.minQuantity } : {}),
@@ -807,11 +889,55 @@ function gateRules(
   ctx: GateContext,
   ruleScopes: Map<string, Scope>,
   enteredByRule: Map<string, string[]>,
+  itemRuleIds: ReadonlySet<string>,
 ): void {
   const none = emptyScope();
   for (const rule of rules) {
     const targetScope = rule.cls === "product" ? (ruleScopes.get(rule.id) ?? none) : ctx.cartScope;
-    rule.state = gate(rule, ctx, targetScope, enteredByRule.has(rule.id));
+    rule.state = gate(rule, ctx, targetScope, enteredByRule.has(rule.id), rule.cls === "product" && itemRuleIds.has(rule.id));
+  }
+}
+
+/**
+ * Per-item minimum, steps 4 and 5 (the header's port spec): every eligible
+ * item rule keeps only the lines whose item reached its minimum (or that list
+ * it plainly while the common quantity minimum is reached); one that keeps no
+ * line is below its minimum. Also records each item rule's groups for explain.
+ */
+function applyItemMinimums(rules: Rule[], work: WorkLine[], groupCounts: ReadonlyMap<string, number>, itemRuleIds: ReadonlySet<string>): void {
+  if (itemRuleIds.size === 0) return;
+  for (const rule of rules) {
+    if (rule.cls !== "product" || !itemRuleIds.has(rule.id)) continue;
+    const evaluated = rule.state === null || rule.state === "below_minimum";
+    const commonMissing = rule.commonQuantityMissing ?? 0;
+    const groups = new Map<string, ItemMinimumOutcome>();
+    let kept = 0;
+    let plainLines = 0;
+    for (const w of work) {
+      if (w.excluded === "gift" || !w.ruleSet.has(rule.id)) continue;
+      const plain = w.plain.has(rule.id);
+      if (plain) plainLines += 1;
+      let reached = plain && commonMissing === 0;
+      for (const ref of w.items) {
+        if (ref.ruleId !== rule.id) continue;
+        const count = groupCounts.get(ref.group) ?? 0;
+        if (count >= ref.minimum) reached = true;
+        const outcome = groups.get(ref.group);
+        if (outcome) outcome.lineIds.push(w.line.id);
+        else groups.set(ref.group, { key: ref.key, minimum: ref.minimum, count, reached: count >= ref.minimum, lineIds: [w.line.id] });
+      }
+      if (rule.state !== null) continue;
+      if (reached) kept += 1;
+      else w.ruleSet.delete(rule.id);
+    }
+    if (evaluated) rule.items = [...groups.values()];
+    if (rule.state === null && kept === 0) {
+      rule.state = "below_minimum";
+      // What the plain lines lack (the item groups say the rest, `items`).
+      if (plainLines > 0 && commonMissing > 0) {
+        rule.missing = { quantity: commonMissing, minimumQuantity: rule.minQuantity, ...(rule.minEntitled ? { scope: "entitled" as const } : {}) };
+      }
+    }
   }
 }
 
@@ -1150,6 +1276,7 @@ function buildOutcomes(
       describable: rule.method === "code" ? { ...rule.describable, codes: codes.enteredByRule.get(rule.id) ?? [] } : rule.describable,
     };
     if (state === "below_minimum" && rule.missing) out.missing = rule.missing;
+    if (rule.items && rule.items.length > 0) out.items = rule.items;
     if (rule.startsOn) out.startsOn = rule.startsOn;
     if (rule.endsOn) out.endsOn = rule.endsOn;
     if (state === "outranked" && rule.lostTo.length > 0) out.betterRuleIds = [...rule.lostTo];
@@ -1175,8 +1302,9 @@ function buildPlan(cart: NormalizedCart, config: Rec, opts: { hint: boolean } = 
   const engine = readEngine(config);
   const { campaign, rules, retargeted, byId: rulesById } = resolveRules(config, cart);
   const codes = matchCodes(rules, cart, readMaxCodeLength(config));
-  const { work, cartScope, ruleScopes } = prepareLines(cart, engine, campaign?.id ?? null, retargeted);
-  gateRules(rules, { cart, marketCountries: readMarketCountries(config), cartScope }, ruleScopes, codes.enteredByRule);
+  const { work, cartScope, ruleScopes, groupCounts, itemRuleIds } = prepareLines(cart, engine, campaign?.id ?? null, retargeted, rulesById);
+  gateRules(rules, { cart, marketCountries: readMarketCountries(config), cartScope }, ruleScopes, codes.enteredByRule, itemRuleIds);
+  applyItemMinimums(rules, work, groupCounts, itemRuleIds);
   // MVP 6.1 (L4): a live campaign that carries tier sets runs THEM, the base sets are not read at all; any other
   // run reads the base sets as shipped. Exactly one part is read (the function's budget counts on it).
   const tiers = prepareTiers(work, campaign?.tiers ?? (config.modules as Rec).tiers, locale, currency);

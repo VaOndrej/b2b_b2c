@@ -1,7 +1,8 @@
 // Přehled card "Odměny za košík" (MVP 4, A3 status first): free shipping and
 // the gift thresholds the PLAN runs (§17c), in the shop currency, one line
 // each; a threshold without a value in that currency says so (MKT-1).
-// `rewards` absent = not known: the card is not rendered (§12).
+// `rewards` absent = not known: the card is not rendered (§12). A gift is named when the loader read its
+// title (`giftNames`, P4).
 
 import { formatMoney } from "@won/core/discounts/describe";
 
@@ -16,12 +17,16 @@ export function RewardsOverviewCard({ rewards }: { rewards: RewardsOverviewView 
   const has = rewards.shipping !== null || rewards.gifts.length > 0;
   const lines: string[] = [];
   if (rewards.shipping !== null) lines.push(t("overview.rewards.ship", { amount: money(rewards.shipping) }));
-  for (const g of rewards.gifts) lines.push(g === null ? t("overview.rewards.giftNoCurrency", { currency: rewards.currency }) : t("overview.rewards.gift", { amount: money(g) }));
+  rewards.gifts.forEach((g, i) => {
+    const name = rewards.giftNames?.[i]?.trim();
+    if (g === null) lines.push(t("overview.rewards.giftNoCurrency", { currency: rewards.currency }));
+    else lines.push(name ? t("overview.rewards.giftNamed", { name, amount: money(g) }) : t("overview.rewards.gift", { amount: money(g) }));
+  });
   return (
     <WonSection title={t("module.rewards")} glyph="spark" on={has} summary={has ? lines[0] : t("overview.rewards.none")} anchor="rewards">
       <div>
-        {lines.slice(1).map((line) => (
-          <WonRow key={line}>
+        {lines.slice(1).map((line, i) => (
+          <WonRow key={`${i}-${line}`}>
             <RowNote>{line}</RowNote>
           </WonRow>
         ))}

@@ -8,6 +8,11 @@
 // Shopify must never hide "Vrátit zpět"). "Vrátit zpět" asks first and says
 // what the undo changes (F11); moved discounts carry how they now stack with
 // the discounts that stayed in Shopify (F4) and the uninstall warning.
+// The section is shown only when there is something to do (model/signals.ts
+// nativeNeedsSection, P2). A discount that cannot be moved links to itself in
+// Shopify admin; a discount fighting a Won one links to that discount's codes.
+// `readOnly` (a newer app version owns the config, B11): nothing can be moved
+// or returned, so the buttons are disabled; the server refuses it as well.
 
 import { useState } from "react";
 import { useFetcher } from "react-router";
@@ -15,7 +20,7 @@ import { useFetcher } from "react-router";
 import { useT } from "../i18n/context";
 import type { Translator } from "../i18n";
 import { MoveDialog, UndoDialog, type UndoableBackup } from "./MoveDialog";
-import { formatDateTime } from "./model/signals";
+import { formatDateTime, nativeAdminUrl } from "./model/signals";
 import type { NativeBlockedReason, NativeDiscountView, NativeView, UiResult } from "./model/types";
 import { boolAttr } from "./shell/attrs";
 import { Notice } from "./shell/Notice";
@@ -27,12 +32,13 @@ const BLOCKED_KEYS: Record<NativeBlockedReason, "overview.native.blocked.bxgy" |
   other: "overview.native.blocked.other",
 };
 
-/** Section state line (§17): "Zatím nezkontrolováno" / "Žádné…" / "3 slevy mimo Won. Engine s nimi nepočítá." */
+/** Section state line (§17): what is outside Won, else what can be returned. Never a count alone when nothing is outside. */
 export function nativeSummary(native: NativeView | undefined, tr: Translator): string {
   if (!native || native.state === "not_wired") return tr.t("overview.native.notWired");
-  if (native.state === "loading") return tr.t("overview.native.loading");
   if (native.state === "error") return tr.t("overview.native.error");
-  if (native.discounts.length === 0) return tr.t("overview.native.none");
+  const moved = (native.moved ?? []).length;
+  if (native.state === "loading") return moved > 0 ? tr.tp("overview.native.movedCount", moved) : tr.t("overview.native.loading");
+  if (native.discounts.length === 0) return moved > 0 ? tr.tp("overview.native.movedCount", moved) : tr.t("overview.native.none");
   return `${tr.tp("count.native", native.discounts.length)}. ${tr.t("overview.native.someSuffix")}`;
 }
 
@@ -48,25 +54,30 @@ export function NativeDiscountsPanel({
   native,
   mode,
   result,
+  readOnly = false,
 }: {
   native: NativeView;
   mode: "each" | "all";
   /** A move / undo result the page already has (the section's own fetcher result wins). */
   result?: UiResult | null;
+  /** The config is read-only (B11): "Přesunout" and "Vrátit zpět" are disabled. */
+  readOnly?: boolean;
 }) {
-  const tr = useT();
-  if (native.state === "not_wired") return <s-paragraph color="subdued">{tr.t("overview.native.notWiredBody")}</s-paragraph>;
-  return <NativeList native={native} mode={mode} result={result ?? null} />;
+  // Not checked = nothing to show and nothing to do (P2).
+  if (native.state === "not_wired") return null;
+  return <NativeList native={native} mode={mode} result={result ?? null} readOnly={readOnly} />;
 }
 
 function NativeList({
   native,
   mode,
   result,
+  readOnly,
 }: {
   native: Exclude<NativeView, { state: "not_wired" }>;
   mode: "each" | "all";
   result: UiResult | null;
+  readOnly: boolean;
 }) {
   const tr = useT();
   const fetcher = useFetcher<UiResult>();
@@ -80,8 +91,10 @@ function NativeList({
   const attention = backups.filter((m) => m.state === "attention");
   const movable = discounts.filter((d) => d.movable);
   const busy = fetcher.state !== "idle";
+  const locked = busy || readOnly;
 
   const submit = (intent: "move" | "undo", values: string[]) => {
+    if (readOnly) return;
     const fd = new FormData();
     fd.append("intent", intent);
     fd.append("locale", tr.locale);
@@ -94,7 +107,7 @@ function NativeList({
       variant={primary ? "primary" : "secondary"}
       commandFor={DIALOG_ID}
       command="--show"
-      disabled={boolAttr(busy)}
+      disabled={boolAttr(locked)}
       onClick={() => setPending(items)}
     >
       {label}
@@ -110,7 +123,7 @@ function NativeList({
           variant={m.state === "attention" ? "secondary" : "tertiary"}
           commandFor={UNDO_DIALOG_ID}
           command="--show"
-          disabled={boolAttr(busy)}
+          disabled={boolAttr(locked)}
           onClick={() => setPendingUndo(m)}
         >
           {tr.t("overview.native.undo")}
@@ -135,13 +148,34 @@ function NativeList({
     <s-stack direction="block" gap="base">
       <Notice result={fetcher.data ?? result} />
       {native.state === "loading" ? <s-paragraph color="subdued">{tr.t("overview.native.loading")}</s-paragraph> : null}
-      {native.state === "error" ? <s-paragraph>{native.message ?? tr.t("overview.native.error")}</s-paragraph> : null}
+      {native.state === "error" ? (
+        <WonRow
+          tone="attention"
+          action={
+            // The detection is read again with the page (§13a: the failure carries its retry).
+            <s-button variant="secondary" onClick={() => window.location.reload()}>
+              {tr.t("overview.native.retry")}
+            </s-button>
+          }
+        >
+          <RowNote tone="attention">{native.message ?? tr.t("overview.native.error")}</RowNote>
+        </WonRow>
+      ) : null}
       {discounts.length > 0 ? (
         <div>
           {discounts.map((d) => (
             <WonRow
               key={d.id}
-              action={mode === "each" && d.movable ? moveButton([d], tr.t("overview.native.move")) : undefined}
+              action={
+                d.movable ? (
+                  mode === "each" ? (
+                    moveButton([d], tr.t("overview.native.move"))
+                  ) : undefined
+                ) : nativeAdminUrl(d.id) ? (
+                  // It stays in Shopify: the one place it can be changed (P3).
+                  <s-link href={nativeAdminUrl(d.id) ?? undefined}>{tr.t("overview.native.openInShopify")}</s-link>
+                ) : undefined
+              }
             >
               <s-text type="strong">{d.title}</s-text>
               <RowNote>{d.movable ? describeNative(d, tr) : (d.reason ?? tr.t(BLOCKED_KEYS[d.blockedReason ?? "other"]))}</RowNote>
@@ -159,7 +193,18 @@ function NativeList({
         <div>
           <s-text type="strong">{tr.t("overview.native.conflictsTitle")}</s-text>
           {conflicts.map((c, i) => (
-            <WonRow key={`${i}-${c.nativeTitle}-${c.ruleName}`} tone="attention">
+            <WonRow
+              key={`${i}-${c.nativeTitle}-${c.ruleName}`}
+              tone="attention"
+              action={
+                c.ruleId ? (
+                  // The clash is settled in the Won discount's codes (§13c: the field, not the page).
+                  <s-button href={`/app/discounts/${encodeURIComponent(c.ruleId)}#codes`} variant="secondary">
+                    {tr.t("overview.native.conflictFix", { rule: c.ruleName })}
+                  </s-button>
+                ) : undefined
+              }
+            >
               <s-text>{c.nativeTitle}</s-text>
               <RowNote tone="attention">{c.message}</RowNote>
             </WonRow>

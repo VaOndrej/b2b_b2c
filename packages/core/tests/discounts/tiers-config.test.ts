@@ -188,7 +188,7 @@ test("the tier sanitizer is idempotent: a sanitized config sanitizes to itself w
 
 // --- appearance preset (K7) --------------------------------------------------------------------
 
-test("K7: the appearance preset is one of APPEARANCE_PRESETS; an unknown one becomes default with an issue", () => {
+test("K7: the appearance preset is one of APPEARANCE_PRESETS; an unknown one becomes the table with an issue; only a config without storefront settings gets the new-shop look", () => {
   assert.deepEqual([...APPEARANCE_PRESETS], ["default", "highlight", "chips", "tiles"]);
   for (const preset of APPEARANCE_PRESETS) {
     const { config, issues } = sanitizeConfig({ storefront: { appearancePreset: preset } });
@@ -198,6 +198,9 @@ test("K7: the appearance preset is one of APPEARANCE_PRESETS; an unknown one bec
   const { config, issues } = sanitizeConfig({ storefront: { appearancePreset: "neon", cardPricesEnabled: true } });
   assert.equal(config.storefront.appearancePreset, "default");
   assert.equal(config.storefront.cardPricesEnabled, true);
+  // A stored config that has storefront settings but no look keeps the table; a config with none is a new shop.
+  assert.equal(sanitizeConfig({ storefront: { cardPricesEnabled: true } }).config.storefront.appearancePreset, "default");
+  assert.equal(sanitizeConfig({}).config.storefront.appearancePreset, "highlight");
   assert.deepEqual(issues, [
     {
       path: "storefront.appearancePreset",
@@ -209,7 +212,7 @@ test("K7: the appearance preset is one of APPEARANCE_PRESETS; an unknown one bec
   const junk = sanitizeConfig({ storefront: { appearancePreset: 7 } });
   assert.equal(junk.config.storefront.appearancePreset, "default");
   assert.equal(junk.issues[0]?.code, "unknown_appearance_preset");
-  // Left out: the default, silently.
+  // Left out: the default (a new shop's look: highlight), silently.
   assert.deepEqual(sanitizeConfig({ storefront: {} }).issues, []);
-  assert.equal(sanitizeConfig({}).config.storefront.appearancePreset, "default");
+  assert.equal(sanitizeConfig({}).config.storefront.appearancePreset, "highlight");
 });

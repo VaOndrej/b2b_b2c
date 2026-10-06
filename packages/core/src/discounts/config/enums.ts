@@ -23,6 +23,13 @@ export type ProductWithProductMode = (typeof PRODUCT_WITH_PRODUCT_MODES)[number]
 export const DISCOUNT_METHODS = ["automatic", "code"] as const;
 export type DiscountMethod = (typeof DISCOUNT_METHODS)[number];
 
+/**
+ * What the random part of a generated code is made of (code-batch.ts): never
+ * 0 / O, 1 / I / L (they read alike). "both" = letters and digits.
+ */
+export const CODE_BATCH_ALPHABETS = ["both", "letters", "digits"] as const;
+export type CodeBatchAlphabet = (typeof CODE_BATCH_ALPHABETS)[number];
+
 export const DISCOUNT_VALUE_KINDS = ["percentage", "fixed", "freeShipping"] as const;
 export type DiscountValueKind = (typeof DISCOUNT_VALUE_KINDS)[number];
 

@@ -4,25 +4,51 @@
 // exact number is on the module screen. The whole module is Pro: the amber marker always (§16).
 // `outlet` absent = not known: the card is not rendered (§12). Without order access (5a, F-O1) the card says the
 // quota is not counted while a sale runs (audit 5a B4: no warning without a sale).
+// On Free with nothing running and nothing waiting the card says it is a Pro feature (ProSell) instead of
+// offering "Založit výprodej" (P8). Running sales are named when the loader read their titles (P4); the
+// attention rows link to the list they are fixed in (/app/outlet#running, P3).
 
 import { Form } from "react-router";
 
 import { useT } from "../../i18n/context";
 import { OUTLET_ACTION, OUTLET_FIELD, OUTLET_INTENT } from "../model/outlet";
 import type { OutletOverviewView } from "../model/types";
+import { ProSell } from "../shell/ProSell";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 
-export function OutletOverviewCard({ outlet }: { outlet: OutletOverviewView }) {
+const RUNNING_HREF = "/app/outlet#running";
+
+export function OutletOverviewCard({ outlet, plan = "pro" }: { outlet: OutletOverviewView; plan?: "free" | "pro" }) {
   const tr = useT();
   const { t } = tr;
   const has = outlet.running > 0 || outlet.pendingReturns.length > 0;
+  const free = plan === "free";
+  const titles = (outlet.runningTitles ?? []).filter(Boolean);
+  if (free && !has) {
+    return (
+      <WonSection title={t("module.outlet")} glyph="tag" pro locked summary={t("overview.outlet.locked")} anchor="outlet">
+        <ProSell benefit={t("overview.outlet.benefit")} />
+      </WonSection>
+    );
+  }
+  const showRunning = (
+    <s-button href={RUNNING_HREF} variant="secondary">
+      {t("overview.outlet.show")}
+    </s-button>
+  );
   return (
     <WonSection
       title={t("module.outlet")}
       glyph="tag"
       on={outlet.running > 0}
       pro
-      summary={outlet.running > 0 ? tr.tp("overview.outlet.running", outlet.running) : t("overview.outlet.none")}
+      summary={
+        outlet.running > 0
+          ? titles.length > 0
+            ? t("overview.outlet.runningNamed", { names: tr.list(titles) })
+            : tr.tp("overview.outlet.running", outlet.running)
+          : t("overview.outlet.none")
+      }
       anchor="outlet"
     >
       <div>
@@ -58,19 +84,19 @@ export function OutletOverviewCard({ outlet }: { outlet: OutletOverviewView }) {
           </WonRow>
         ))}
         {outlet.oversold > 0 ? (
-          <WonRow>
+          <WonRow tone="attention" action={showRunning}>
             <RowNote tone="attention">{t("overview.outlet.oversold")}</RowNote>
           </WonRow>
         ) : null}
         {outlet.problems > 0 ? (
-          <WonRow>
+          <WonRow tone="attention" action={showRunning}>
             <RowNote tone="attention">{t("overview.outlet.problems")}</RowNote>
           </WonRow>
         ) : null}
         <WonRow
           action={
             <s-button href="/app/outlet" variant="secondary">
-              {t(has ? "overview.outlet.open" : "overview.outlet.setup")}
+              {t(has || free ? "overview.outlet.open" : "overview.outlet.setup")}
             </s-button>
           }
         >

@@ -25,6 +25,7 @@ test("app client: returns data and passes variables through", async () => {
       seen.push({ query, variables });
       return new Response(JSON.stringify({ data: { shop: { id: "gid://shopify/Shop/1" } } }));
     }),
+    "t.myshopify.com",
   );
   const result = await client.graphql("query X { shop { id } }", { a: 1 });
   assert.deepEqual(result, { data: { shop: { id: "gid://shopify/Shop/1" } } });
@@ -39,6 +40,7 @@ test("app client: a GraphqlQueryError (THROTTLED) becomes a result with errors, 
       });
       throw error;
     }),
+    "t.myshopify.com",
   );
   const result = await client.graphql("query X { shop { id } }");
   assert.equal(isThrottled(result), true);
@@ -50,6 +52,7 @@ test("app client: HTTP 429 / 5xx become AdminTransportError with the status", as
     appAdmin(async () => {
       throw Object.assign(new Error("Shopify is throttling requests"), { response: { code: 429, retryAfter: 2 } });
     }),
+    "t.myshopify.com",
   );
   await assert.rejects(throttled.graphql("query X { shop { id } }"), (error: unknown) => {
     assert.ok(error instanceof AdminTransportError);
@@ -62,6 +65,7 @@ test("app client: HTTP 429 / 5xx become AdminTransportError with the status", as
     appAdmin(async () => {
       throw Object.assign(new Error("Internal"), { response: { code: 503 } });
     }),
+    "t.myshopify.com",
   );
   await assert.rejects(internal.graphql("query X { shop { id } }"), (error: unknown) => {
     assert.ok(error instanceof AdminTransportError);
@@ -73,6 +77,7 @@ test("app client: HTTP 429 / 5xx become AdminTransportError with the status", as
     appAdmin(async () => {
       throw new TypeError("fetch failed");
     }),
+    "t.myshopify.com",
   );
   await assert.rejects(network.graphql("query X { shop { id } }"), (error: unknown) => {
     assert.ok(error instanceof AdminTransportError);
@@ -87,6 +92,7 @@ test("app client: a thrown Response (re-auth redirect) is passed through untouch
     appAdmin(async () => {
       throw redirect;
     }),
+    "t.myshopify.com",
   );
   await assert.rejects(client.graphql("query X { shop { id } }"), (error: unknown) => error === redirect);
 });

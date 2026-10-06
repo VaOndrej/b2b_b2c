@@ -58,6 +58,11 @@ export const TIERS_FIELD = {
    * keeps the STORED set by its id, exactly as stored (§14a; audit P3-4).
    */
   kept: (sid: string) => `set.${sid}.kept`,
+  /**
+   * The look of the table on the storefront (config.storefront.appearancePreset), picked in the preview on this
+   * page. The same field name and parser as Vzhled (model/appearance.ts readAppearanceForm); absent = unchanged.
+   */
+  preset: "preset",
 } as const;
 
 export const TIERS_INTENT = { save: "save" } as const;
@@ -74,6 +79,50 @@ const PERCENT = /^\d{1,3}(?:[.,]\d{1,2})?$/;
 /** A fresh tier set id, valid for the config (`[A-Za-z0-9_-]{1,64}`). */
 export function newTierSetId(): string {
   return `t_${globalThis.crypto.randomUUID().replace(/-/g, "").slice(0, 20)}`;
+}
+
+/**
+ * The id of the whole-store set a shop without one edits on this page: "global", or the first free
+ * "global-2", "global-3"… when a Pro set already has that id. Deterministic — the server render and
+ * the browser's first render must agree on it (a random id in a state initialiser would not).
+ */
+export function freeGlobalSetId(sets: readonly { id: string }[]): string {
+  const taken = new Set(sets.map((s) => s.id));
+  if (!taken.has("global")) return "global";
+  for (let n = 2; ; n += 1) if (!taken.has(`global-${n}`)) return `global-${n}`;
+}
+
+/** Ready-made percent tiers offered for an empty set (one click fills the rows; every value stays editable). */
+export const TIER_PRESETS: readonly { id: string; breaks: readonly { minQty: number; percent: number }[] }[] = [
+  { id: "3-5-10", breaks: [{ minQty: 3, percent: 5 }, { minQty: 5, percent: 10 }, { minQty: 10, percent: 15 }] },
+  { id: "2-4-6", breaks: [{ minQty: 2, percent: 5 }, { minQty: 4, percent: 10 }, { minQty: 6, percent: 15 }] },
+  { id: "6-12-24", breaks: [{ minQty: 6, percent: 5 }, { minQty: 12, percent: 10 }, { minQty: 24, percent: 15 }] },
+];
+
+/** "3 / 5 / 10 ks → 5 / 10 / 15 %" (computed from the preset, a decimal comma except in English). */
+export function tierPresetLabel(preset: (typeof TIER_PRESETS)[number], tr: Translator): string {
+  const pct = (n: number) => (tr.locale === "en" ? String(n) : String(n).replace(".", ","));
+  return tr.t("tiers.preset.label", { mins: preset.breaks.map((b) => b.minQty).join(" / "), percents: preset.breaks.map((b) => pct(b.percent)).join(" / ") });
+}
+
+/**
+ * What a typed row still lacks before it counts (the summary, the preview and a save take complete rows only):
+ * "min" = no usable "od X ks", "value" = no usable percent / no amount in any currency; null = complete.
+ * The same grammar as readTiersForm, so the mark at the row and the parser never disagree.
+ */
+export function tierRowGap(kind: "percent" | "amount", row: { min: string; percent: string; amounts: readonly string[] }): "min" | "value" | null {
+  const min = row.min.trim();
+  if (!(MIN_QTY.test(min) && Number(min) >= 1 && Number(min) <= TIER_MIN_QTY_MAX)) return "min";
+  if (kind === "percent") return readPercent(row.percent.trim()) === null ? "value" : null;
+  return row.amounts.some((a) => a.trim() !== "") ? null : "value";
+}
+
+/** The share of the checkout's room for tiers from which the page starts showing it (below it there is nothing to do). */
+export const TIER_CAPACITY_WARN_PERCENT = 80;
+
+/** Is the room for tiers worth a line on the page: close to the limit, or over it? */
+export function tierCapacityShown(use: Pick<TierPayloadUse, "percent" | "fits">): boolean {
+  return !use.fits || use.percent >= TIER_CAPACITY_WARN_PERCENT;
 }
 
 export interface TiersFormContext {

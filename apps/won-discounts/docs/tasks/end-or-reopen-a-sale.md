@@ -18,7 +18,7 @@ summary: End a running sale by hand, or decide what happens with pieces returned
 
 ## End a running sale
 
-1. Open **Clearance**, find the sale under **Running sales**.
+1. Open **Discounts → Clearance**, find the sale under **Running sales**.
 2. Click **End the sale**. The prices come back and the sale mark is removed.
 
 ## Pieces returned after the end

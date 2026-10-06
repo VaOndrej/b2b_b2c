@@ -16,7 +16,7 @@ summary: The app embed shows the rewards in the cart drawer by itself; on the ca
 
 # Show the rewards in the cart
 
-1. Open **Cart rewards**. **The cart on your store** says whether the app embed
+1. Open **Discounts → Cart rewards**. **The cart on your store** says whether the app embed
    is on. If it is off, click **Turn on in theme** and save in the theme editor.
 2. The cart drawer now shows the progress, the gift and the code field by
    itself.

@@ -118,8 +118,15 @@ test("save: errors land on the form's fields; Free is refused before anything is
   assert.deepEqual((bad as { errors: { field: string; key: string }[] }).errors.map((e) => `${e.field}:${e.key}`), [`${F.endDate}:campaign.error.order`]);
   const wrongValue = await campaignsAction(pro.ctx, await saveForm([[`${F.percent}auto`, "150"]]));
   assert.ok(!wrongValue.ok && (wrongValue as { errors: { key: string }[] }).errors[0]!.key === "campaign.error.value");
+  // The error names the discount it is about (`at`), and the refusal returns what the form posted (B14).
+  assert.equal((wrongValue as { errors: { at?: string }[] }).errors[0]!.at, "auto");
+  assert.deepEqual((wrongValue as { values?: Record<string, string[]> }).values?.[`${F.percent}auto`], ["150"]);
+  assert.deepEqual((wrongValue as { values?: Record<string, string[]> }).values?.[F.name], ["Black Friday"]);
+  // A time that cannot be read lands on the time control; a missing date on the date.
   const badTime = await campaignsAction(pro.ctx, await saveForm([[F.startTime, "25:00"]]));
-  assert.ok(!badTime.ok && (badTime as { errors: { field: string }[] }).errors[0]!.field === F.startDate);
+  assert.deepEqual((badTime as { errors: { field: string; key: string }[] }).errors[0], { field: F.startTime, key: "campaign.error.time" });
+  const noDate = await campaignsAction(pro.ctx, await saveForm([[F.endDate, ""]]));
+  assert.deepEqual((noDate as { errors: { field: string; key: string }[] }).errors[0], { field: F.endDate, key: "campaign.error.date" });
 
   shop = `${shop}-free`;
   const free = await setup("free");
@@ -226,4 +233,25 @@ test("audit C2: editing a running campaign does not restrict its (past) start da
   assert.doesNotMatch(startField, /allow=/, "the running campaign's start (26. 9.) stays valid");
   const fresh = await renderPage(createElement(CampaignsScreen, devCampaignsScreen({ plan: "pro", state: null, locale: "cs", edit: null })));
   assert.match(/<s-date-field[^>]*name="cp\.startDate"[^>]*>/.exec(fresh)![0], /allow="2026-09-28--"/);
+});
+
+test("form model: an unticked discount's fields are never read (B7); the times are picked from a list; the form's values are computed for the seed", async () => {
+  const { campaignFieldNames, campaignFormValues, campaignTimeOptions, readCampaignForm } = await import("../../app/components/model/campaigns.ts");
+  const kinds = new Map([["auto", { kind: "percentage", currencies: [] as string[] }]]);
+  // The percent is posted, the box is not ticked: nothing of it reaches the draft (the screen shows the field only when ticked).
+  const unticked = readCampaignForm(formOf([[F.name, "X"], [`${F.percent}auto`, "30"]]), kinds);
+  assert.deepEqual(unticked.draft.overrides, []);
+  const ticked = readCampaignForm(formOf([[F.name, "X"], [F.use, "auto"], [`${F.percent}auto`, "30"]]), kinds);
+  assert.deepEqual(ticked.draft.overrides, [{ ruleId: "auto", value: { kind: "percentage", percent: 30 } }]);
+
+  const times = campaignTimeOptions();
+  assert.equal(times.length, 24 * 4 + 1);
+  assert.deepEqual([times[0], times[1], times.at(-2), times.at(-1)], ["00:00", "00:15", "23:45", "23:59"]);
+  assert.ok(campaignTimeOptions("08:07").includes("08:07"), "a stored time off the grid stays selectable");
+
+  const rules = [{ id: "auto", name: "Podzim", kind: "percentage", enabled: true, method: "automatic" as const, valueText: "10 %", currencies: [] }];
+  const sets = [{ id: "g", label: "Celý obchod", kind: "percent" as const, currencies: [], baseText: "", rows: [{ qty: "3", percent: "10" }] }];
+  assert.deepEqual(campaignFormValues(null, rules, sets), { [F.startTime]: ["00:00"], [F.endTime]: ["23:59"], [`${F.tierQty}g.0`]: ["3"], [`${F.tierPercent}g.0`]: ["10"] });
+  const names = campaignFieldNames(rules, sets);
+  assert.ok(names.includes(`${F.percent}auto`) && names.includes(`${F.tierQty}g.9`) && names.includes(F.endTime));
 });

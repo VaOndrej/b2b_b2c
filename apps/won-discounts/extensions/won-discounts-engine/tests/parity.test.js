@@ -39,6 +39,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { buildFunction, getFunctionInfo } from "@shopify/shopify-function-test-helpers";
+import { codeBatchCheckKey, codeBatchPayload, generateBatchCodes } from "@won/core/discounts/code-batch";
 import { codeHash } from "@won/core/discounts/code-hash";
 import { beforeAll, describe, expect, test } from "vitest";
 
@@ -1676,6 +1677,155 @@ function rawOutputText(stdout) {
   throw new Error("no output in the runner's result");
 }
 
+/**
+ * Carts for per-item minimums and generated code batches (plan 2026-10-06, body 8 a 6): hand-made shop configs
+ * (junk batch tuples included) with rules whose ids hold "@" and "#", lines whose refs are plain, item refs
+ * (`rule#key:min`, campaign-scoped ones, junk after the "#"), repeated on the next line (the reader's shortcut),
+ * in the variant's refs; gift and outlet lines; common minimums of both scopes; entered codes that are real
+ * batch codes (any case, padded), made-up ones of the batch's shape, look-alikes with ſ / ı / fullwidth letters.
+ */
+function itemBatchGenerator(seed) {
+  const rand = prng(seed);
+  const int = (n) => Math.floor(rand() * n);
+  const pick = (list) => list[int(list.length)];
+  const chance = (p) => rand() < p;
+  const IDS = ["r0", "r1", "a@b", "h#x", "ř2", "k0", "k1", "o0"];
+  const KEYS = ["1", "2", "8841234500007", "k:1", "x#y", "ž"];
+  const MINS = ["1", "2", "3", "4", "6", "0", "x", "0003", "1234567", "", "-1", "2.5", " 2"];
+  const seedHex = (n) => (n + 1).toString(16).padStart(32, "0");
+  const BATCHES = [
+    { prefix: "BF-", count: 30, seed: seedHex(1), length: 10, alphabet: "both" },
+    { prefix: "SI", count: 30, seed: seedHex(2), length: 9, alphabet: "letters", suffix: "-KIS" },
+    { prefix: "VIP", count: 30, seed: seedHex(3), length: 13, alphabet: "digits", middle: "-X-", suffix: "_24" },
+    { prefix: "Q_", count: 30, seed: seedHex(4), length: 5, alphabet: "both" },
+  ].map((b) => ({ ...b, codes: generateBatchCodes(b), tuple: codeBatchPayload(b) }));
+  const KEY0 = codeBatchCheckKey(BATCHES[0].seed);
+  // Texts that are no batch: not a text, too short, a lower-case or junk prefix, a wrong alphabet or length,
+  // a key that is not ASCII (the function reads the key's bytes), a length past 64.
+  const JUNK_TUPLES = ["junk", null, [], 7, [KEY0, "BF-", 10, 0], "", KEY0, `${KEY0}0=0`, `${KEY0}0=0bf-`, `${KEY0}070BF-`, `${KEY0}3=0BF-`, `${KEY0}0/0BF-`, `${KEY0}0q0BF-`, `${KEY0}0=7BF-`, `${KEY0}0=0BF-é`, `é${KEY0.slice(1)}0=0BF-`, `${KEY0.slice(1)}0=0BF-`, `${KEY0}0=0BF-\n`];
+  const lookalike = (code) => pick([code.replace("S", "ſ"), code.replace("I", "ı"), code.replace("K", "K"), code.replace("B", "Ｂ"), `${code}ſ`, code.replace("F", "ƒ")]);
+  const flip = (code) => {
+    const at = code.length - 1 - int(4);
+    return code.slice(0, at) + (code[at] === "2" ? "3" : "2") + code.slice(at + 1);
+  };
+  const dress = (code) => pick([code, code, code.toLowerCase(), ` ${code}\n`, ` ${code.toLowerCase()}\t`]);
+
+  return () => {
+    const ids = IDS.filter(() => chance(0.6));
+    if (ids.length === 0) ids.push("r0");
+    const used = [];
+    const rules = ids.map((id) => {
+      const codeRule = id.startsWith("k") || chance(0.15);
+      const order = id === "o0";
+      const rule = {
+        id,
+        enabled: !chance(0.05),
+        name: chance(0.7) ? `Sleva ${id}` : "",
+        method: codeRule ? "code" : "automatic",
+        value: chance(0.75) ? { kind: "percentage", percent: pick([5, 10, 12.5, 20, 33]) } : { kind: "fixed", amount: { CZK: pick([500, 1500, 9900]) } },
+        target: { kind: order ? "order" : pick(["products", "collections"]) },
+      };
+      if (chance(0.45)) rule.minimum = { ...(chance(0.8) ? { quantity: int(9) } : {}), ...(chance(0.3) ? { scope: "entitled" } : {}), ...(chance(0.2) ? { subtotal: { CZK: pick([10000, 60000, 400000]) } } : {}) };
+      if (chance(0.15)) rule.priority = int(5);
+      if (chance(0.2)) rule.combinesWith = { ruleIds: [pick(ids)] };
+      if (codeRule) {
+        // A generated batch is one more text among the rule's code hashes.
+        const hashes = chance(0.5) ? [codeHash(`HAND${id}`), ...(chance(0.2) ? [codeHash(pick(BATCHES).codes[0])] : [])] : [];
+        if (chance(0.85)) {
+          const mine = BATCHES.filter(() => chance(0.5));
+          hashes.push(...(chance(0.3) ? [pick(JUNK_TUPLES)] : []), ...mine.map((b) => b.tuple), ...(chance(0.2) ? [pick(JUNK_TUPLES)] : []));
+          for (const b of mine) used.push({ rule: id, batch: b });
+        }
+        if (hashes.length > 0 || chance(0.5)) rule.codeHashes = chance(0.1) ? hashes.reverse() : hashes;
+      }
+      return rule;
+    });
+    const withCampaign = chance(0.25);
+    const retarget = withCampaign ? pick(ids) : null;
+    const version = "v1abc";
+    const longest = Math.max(8, ...BATCHES.map((b) => b.codes[0].length));
+    const config = {
+      schemaVersion: 1,
+      campaignId: withCampaign ? "bf" : null,
+      campaignVarsVersion: withCampaign ? version : null,
+      engine: { combination: { outletWithAnything: chance(0.2), productWithProduct: "best", productWithOrder: !chance(0.15), productWithShipping: true, orderWithShipping: true } },
+      marketCountries: {},
+      modules: { codes: { rules, ...(chance(0.85) ? { maxCodeLength: pick([longest, longest, 64, 12]) } : {}) }, tiers: { sets: [] }, rewards: { g: [] }, margin: { enabled: false } },
+      campaigns: withCampaign ? [{ id: "bf", window: { start: "2026-10-01T00:00:00", end: "2026-10-05T00:00:00" }, overrides: [{ ruleId: retarget, patch: { target: { kind: "products" }, ...(chance(0.3) ? { minimum: { quantity: int(5) } } : {}) } }] }] : [],
+    };
+    const campaignActive = withCampaign && chance(0.7);
+
+    const ref = () => {
+      const id = pick(chance(0.9) ? ids : IDS);
+      const base = chance(0.2) ? `${id}@${pick(["bf", "bf", "other"])}` : id;
+      const roll = rand();
+      if (roll < 0.35) return base;
+      if (roll < 0.9) return `${base}#${pick(KEYS)}:${pick(MINS)}`;
+      return pick([`${base}#`, `#1:2`, `${base}#:3`, `${base}##1:2`, `${base}#1`, `${base}#1:2#3`]);
+    };
+    const lineCount = 1 + int(chance(0.1) ? 40 : 9);
+    const lines = [];
+    let previous = null;
+    for (let n = 1; n <= lineCount; n += 1) {
+      const won = previous && chance(0.25) ? previous : chance(0.08) ? null : { ruleIds: Array.from({ length: int(5) }, ref), ...(chance(0.15) ? { variantRuleIds: { [String(1000 + n)]: Array.from({ length: 1 + int(2) }, ref) } } : {}), ...(chance(0.08) ? { outlet: true } : {}) };
+      previous = won;
+      lines.push({
+        id: `gid://shopify/CartLine/${n}`,
+        quantity: chance(0.05) ? 0 : 1 + int(5),
+        cost: { amountPerQuantity: { amount: pick(["100.0", "49.9", "250.0", "10.05", "1999.0"]) } },
+        gift: chance(0.06) ? { value: "tier-1" } : null,
+        merchandise: {
+          __typename: "ProductVariant",
+          id: `gid://shopify/ProductVariant/${1000 + n}`,
+          wonVariant: null,
+          wonOutlet: null,
+          product: { id: `gid://shopify/Product/${n}`, wonProduct: won ? { jsonValue: won } : null },
+        },
+      });
+    }
+
+    const entered = [];
+    const kinds = [];
+    for (let k = int(4); k > 0; k -= 1) {
+      const roll = rand();
+      const target = used.length > 0 ? pick(used) : { rule: null, batch: pick(BATCHES) };
+      const real = pick(target.batch.codes);
+      if (roll < 0.45) {
+        entered.push(dress(real));
+        kinds.push("real");
+      } else if (roll < 0.65) {
+        entered.push(dress(flip(real)));
+        kinds.push("made-up");
+      } else if (roll < 0.8) {
+        entered.push(lookalike(real));
+        kinds.push("look-alike");
+      } else if (roll < 0.9) {
+        entered.push(dress(`HAND${pick(ids)}`));
+        kinds.push("hand");
+      } else {
+        entered.push(pick([`${target.batch.prefix}ANYTHING`, target.batch.prefix, "", `${real}2`, real.slice(1)]));
+        kinds.push("made-up");
+      }
+    }
+    const codeRules = rules.filter((r) => r.method === "code");
+    const asCode = codeRules.length > 0 && entered.length > 0 && chance(0.4);
+    const vars = asCode ? { role: "code", ruleId: pick(codeRules).id } : { role: "automatic" };
+    const input = {
+      triggeringDiscountCode: asCode ? pick(entered) : null,
+      enteredDiscountCodes: entered.map((code) => ({ code })),
+      discount: {
+        discountClasses: ["PRODUCT", "ORDER", "SHIPPING"],
+        vars: { jsonValue: { ...vars, campaignId: withCampaign ? "bf" : null, campaignStart: "2026-10-01T00:00:00", campaignEnd: "2026-10-05T00:00:00", varsVersion: withCampaign ? pick([version, version, "stale"]) : null } },
+      },
+      shop: { config: { jsonValue: config }, localTime: { date: "2026-10-02", campaignActive } },
+      localization: { country: { isoCode: "CZ" }, language: { isoCode: pick(["CS", "EN"]) } },
+      presentmentCurrencyRate: "1.0",
+      cart: { cost: { subtotalAmount: { currencyCode: "CZK" } }, lines },
+    };
+    return { exportName: LINES, input, kinds };
+  };
+}
+
 /** JSON.stringify with every object's keys sorted (how the runner prints JSON). */
 function sortedJson(value) {
   const sort = (v) =>
@@ -2252,5 +2402,76 @@ describe("Wasm (function-runner)", () => {
     console.info(`margin order search over tied lines: ${TIED_CASES} cases, 0 differ, largest memory ${maxMemory} KB\n${table}`);
     expect(TIED_BRANCHES.filter((b) => (hits.get(b) ?? 0) < MIN_HITS), table).toEqual([]);
     expect(maxMemory).toBeLessThanOrEqual(MEMORY_BOUND_KB);
+  }, 900_000);
+
+  // Per-item minimum quantities and generated code batches (plan 2026-10-06, body 8 a 6): plan.ts "Per-item
+  // minimum" / code-batch.ts against plan.rs `apply_item_minimums` / batch.rs. Wasm = the TS reference, and
+  // every way a line or a code is decided ≥ 20 times.
+  const ITEM_BATCH_CASES = Number(process.env.PARITY_ITEM_BATCH_CASES ?? 3000);
+  test(`per-item minimums and generated batches, seed 20261008 × ${ITEM_BATCH_CASES}: Wasm = TS reference, every way hit`, async () => {
+    const next = itemBatchGenerator(20261008);
+    const cases = Array.from({ length: ITEM_BATCH_CASES }, next);
+    const failures = [];
+    const seen = {
+      "an item group reached": 0,
+      "an item group not reached": 0,
+      "a rule applied to some of its lines only": 0,
+      "a rule below its minimum through its items": 0,
+      "a line kept by its plain ref while its item group is not reached": 0,
+      "a plain line dropped by the common minimum of an item rule": 0,
+      "a campaign's item ref counted": 0,
+      "a repeated line with item refs": 0,
+      "a batch code entered its rule": 0,
+      "a made-up code of the batch's shape refused": 0,
+      "a look-alike (non-ASCII) refused": 0,
+      "a code node emitted for a batch code": 0,
+      "a hand-typed code beside batches": 0,
+    };
+    for (let i = 0; i < cases.length; i += 8) {
+      const batch = cases.slice(i, i + 8);
+      const results = await Promise.all(batch.map((c) => runWasm(runnerPath, wasmPath, c.exportName, c.input)));
+      results.forEach((result, j) => {
+        const c = batch[j];
+        const expected = referenceOutput(c.exportName, c.input);
+        if (!result.success || !isDeepStrictEqual(result.output, expected)) failures.push({ index: i + j, got: result.output, expected, input: c.input });
+        const adapted = adaptInput(c.input);
+        const { plan } = emissionFor(adapted);
+        if (!plan) return;
+        const items = plan.rules.flatMap((r) => r.items ?? []);
+        if (items.some((g) => g.reached)) seen["an item group reached"] += 1;
+        if (items.some((g) => !g.reached)) seen["an item group not reached"] += 1;
+        const refsOf = (line) => [...(line.merchandise.product.wonProduct?.jsonValue.ruleIds ?? [])];
+        for (const rule of plan.rules) {
+          if (!rule.items) continue;
+          const mine = c.input.cart.lines.filter((l) => !l.gift && refsOf(l).some((r) => r === rule.ruleId || r.startsWith(`${rule.ruleId}#`) || r.startsWith(`${rule.ruleId}@`)));
+          if (["applied", "combined", "outranked"].includes(rule.state) && rule.items.some((g) => !g.reached) && rule.lineIds.length > 0 && rule.lineIds.length < mine.length) seen["a rule applied to some of its lines only"] += 1;
+          if (rule.state === "below_minimum" && !rule.missing?.subtotal) seen["a rule below its minimum through its items"] += 1;
+          const unreached = new Set(rule.items.filter((g) => !g.reached).flatMap((g) => g.lineIds));
+          const reachedLines = new Set(rule.items.filter((g) => g.reached).flatMap((g) => g.lineIds));
+          if (rule.lineIds.some((id) => unreached.has(id) && !reachedLines.has(id))) seen["a line kept by its plain ref while its item group is not reached"] += 1;
+          const raw = c.input.shop.config.jsonValue.modules.codes.rules.find((r) => r.id === rule.ruleId);
+          if (rule.state === "applied" && (raw?.minimum?.quantity ?? 0) > 0 && rule.lineIds.length < mine.length) seen["a plain line dropped by the common minimum of an item rule"] += 1;
+        }
+        if (plan.campaignId && c.input.cart.lines.some((l) => refsOf(l).some((r) => /@bf#[^:]+:[1-6]$/.test(r))) && items.length > 0) seen["a campaign's item ref counted"] += 1;
+        const wonOf = (l) => l.merchandise.product.wonProduct?.jsonValue ?? null;
+        if (c.input.cart.lines.some((l, k) => k > 0 && wonOf(l) !== null && wonOf(l) === wonOf(c.input.cart.lines[k - 1]) && items.some((g) => g.lineIds.includes(l.id)))) seen["a repeated line with item refs"] += 1;
+        const byCode = new Map(plan.codes.map((x) => [x.code, x]));
+        c.input.enteredDiscountCodes.forEach(({ code }, k) => {
+          const outcome = byCode.get(code.trim().toUpperCase());
+          if (c.kinds[k] === "real" && outcome?.ruleId) seen["a batch code entered its rule"] += 1;
+          if (c.kinds[k] === "made-up" && outcome && outcome.ruleId === null) seen["a made-up code of the batch's shape refused"] += 1;
+          if (c.kinds[k] === "look-alike" && outcome && outcome.ruleId === null) seen["a look-alike (non-ASCII) refused"] += 1;
+          if (c.kinds[k] === "hand" && outcome?.ruleId) seen["a hand-typed code beside batches"] += 1;
+        });
+        const trigger = c.input.triggeringDiscountCode;
+        if (trigger && c.kinds[c.input.enteredDiscountCodes.findIndex((e) => e.code === trigger)] === "real" && expected.operations.length > 0) seen["a code node emitted for a batch code"] += 1;
+      });
+    }
+    if (failures.length > 0) {
+      const first = failures[0];
+      throw new Error(`${failures.length}/${ITEM_BATCH_CASES} cases differ; first #${first.index}\ngot      ${JSON.stringify(first.got)}\nexpected ${JSON.stringify(first.expected)}\ninput    ${JSON.stringify(first.input).slice(0, 4000)}`);
+    }
+    console.info(`per-item minimums and generated batches: ${ITEM_BATCH_CASES} cases, 0 differ ${JSON.stringify(seen, null, 1)}`);
+    for (const [k, v] of Object.entries(seen)) expect(v, k).toBeGreaterThanOrEqual(MIN_HITS);
   }, 900_000);
 });

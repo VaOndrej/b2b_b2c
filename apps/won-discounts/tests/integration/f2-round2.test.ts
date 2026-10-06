@@ -8,7 +8,7 @@ import type { AdminClient } from "../../app/lib/admin-client.server.ts";
 import { loadConfig, saveConfig } from "../../app/lib/config.server.ts";
 import { ConfigLockBusy, configLockIdle, isConfigLocked, withConfigLock } from "../../app/lib/integration/lock.server.ts";
 import { clearDetectionCache, createSaveAndSync, moveNativeDiscounts } from "../../app/lib/integration/native.server.ts";
-import { discountsPage, overviewAction, overviewPage, ruleEditorAction, ruleEditorPage, tryCartAction } from "../../app/lib/integration/pages.server.ts";
+import { discountsPage, overviewAction, overviewPage, ruleEditorAction, ruleEditorPage, tryCartCompute } from "../../app/lib/integration/pages.server.ts";
 import { clearResyncDebounce, loadRuleSync, whenOverviewIdle } from "../../app/lib/integration/sync-status.server.ts";
 import { createTargetingRefresher } from "../../app/lib/integration/targeting.server.ts";
 import { clearMarketCountryCache } from "../../app/lib/integration/try-cart.server.ts";
@@ -138,7 +138,7 @@ test("I-1: rule save, delete, onboarding and a native move answer 'busy' after t
   const page = await ruleEditorPage(ctx, { ...PAGE, ruleId: "a1", recipe: null, saved: false });
   const { RuleEditorScreen } = await import("../../app/components/screens/RuleEditorScreen.tsx");
   const html = text(await renderPage(createElement(RuleEditorScreen, { ...page!, result: { ok: false, reason: "busy" } })));
-  assert.match(html, /Nastavení se právě propisuje do Shopify\. Zkus to za chvíli, nic se neuložilo\./);
+  assert.match(html, /Nastavení se právě zapisuje do Shopify\. Zkuste to za chvíli, nic se neuložilo\./);
 });
 
 // --- I-1: the refresh paths never hold the lock for a product pass -----------------------------------
@@ -277,16 +277,16 @@ test("I-2: a pre-F2 Pro config on a Free shop — the admin and Try Cart say che
   const discounts = await discountsPage(ctx, { ...PAGE, deleted: false });
   assert.equal(discounts.gatePending, true);
   const html = text(await renderPage(createElement(DiscountsScreen, discounts)));
-  assert.match(html, /V pokladně zatím běží starší nastavení s Pro funkcemi — propisujeme…/);
+  assert.match(html, /V pokladně zatím běží starší nastavení s Pro funkcemi — zapisujeme…/);
   assert.doesNotMatch(html, /Pro funkce není aktivní/);
-  assert.equal(discounts.ruleSync?.stack, "pending", "the combined rule is not 'Běží' as the plan wants it");
+  assert.equal(discounts.ruleSync?.stack, "pending", "the combined rule is not 'Aktivní' as the plan wants it");
 
   const editor = await ruleEditorPage(ctx, { ...PAGE, ruleId: "stack", recipe: null, saved: false });
   assert.equal(editor?.gatePending, true);
 
   store.sync.addProduct(9);
   store.prices.set("gid://shopify/ProductVariant/901", { CZK: "100.00" });
-  const run = await tryCartAction(
+  const run = await tryCartCompute(
     ctx,
     formOf([["intent", "run"], ["variantId", "gid://shopify/ProductVariant/901"], ["productId", "gid://shopify/Product/9"], ["quantity", "1"], ["currency", "CZK"]]),
     PAGE,
@@ -337,7 +337,7 @@ test("M-2: a change that lands while a pass runs keeps the targeting stale (the 
   assert.equal((await loadShopSyncFacts(db.prisma, shop)).targetingStaleAt, null);
 });
 
-test("M-3: a stale mark makes only collection rules 'Propisuje se'; a rule on a product list stays 'Běží'", async () => {
+test("M-3: a stale mark makes only collection rules 'Zapisuje se'; a rule on a product list stays 'Běží'", async () => {
   const store = new FakeStore();
   const p = store.sync.addProduct(1);
   const collection = store.sync.addCollection(7, [p.id]);
@@ -451,14 +451,14 @@ const cartOf = (variantId: string, productId: string) =>
 
 test("Try Cart: a cart of product-list products only gets NO 'cílení se obnovuje' warning while the targeting is stale", async () => {
   const { ctx, onList } = await mixedTargetingShop();
-  const run = await tryCartAction(ctx, cartOf("gid://shopify/ProductVariant/201", onList.id), PAGE);
+  const run = await tryCartCompute(ctx, cartOf("gid://shopify/ProductVariant/201", onList.id), PAGE);
   assert.equal(run.plan?.lines[0]?.discount, 25_00, "the list rule applies");
   assert.ok(!(run.plan?.warnings ?? []).some((w) => w.key === "tryCart.warning.targeting"), JSON.stringify(run.plan?.warnings));
 });
 
 test("Try Cart: a cart with a product a collection rule targets gets the warning while the targeting is stale", async () => {
   const { ctx, inCollection } = await mixedTargetingShop();
-  const run = await tryCartAction(ctx, cartOf("gid://shopify/ProductVariant/101", inCollection.id), PAGE);
+  const run = await tryCartCompute(ctx, cartOf("gid://shopify/ProductVariant/101", inCollection.id), PAGE);
   assert.equal(run.plan?.lines[0]?.discount, 200_00, "the collection rule applies");
   assert.ok((run.plan?.warnings ?? []).some((w) => w.key === "tryCart.warning.targeting"), JSON.stringify(run.plan?.warnings));
 });
@@ -469,7 +469,7 @@ test("Try Cart: a FRESH JOINER — live in a targeted collection but without the
   const { ctx, store, collection, inCollection, onList } = await mixedTargetingShop();
   // In Shopify, the list product has just joined the targeted collection; checkout has no ref for it yet.
   store.sync.collections.set(collection, [inCollection.id, onList.id]);
-  const run = await tryCartAction(ctx, cartOf("gid://shopify/ProductVariant/201", onList.id), PAGE);
+  const run = await tryCartCompute(ctx, cartOf("gid://shopify/ProductVariant/201", onList.id), PAGE);
   assert.equal(run.plan?.lines[0]?.discount, 25_00, "checkout gives only the list rule for now");
   const warnings = run.plan?.warnings ?? [];
   assert.ok(warnings.some((w) => w.key === "tryCart.warning.membership"), JSON.stringify(warnings));
@@ -479,7 +479,7 @@ test("Try Cart: a FRESH JOINER — live in a targeted collection but without the
 test("Try Cart: a LEAVER — carries a collection ref but has left the collection — gets the membership warning too", async () => {
   const { ctx, store, collection, inCollection } = await mixedTargetingShop();
   store.sync.collections.set(collection, []);
-  const run = await tryCartAction(ctx, cartOf("gid://shopify/ProductVariant/101", inCollection.id), PAGE);
+  const run = await tryCartCompute(ctx, cartOf("gid://shopify/ProductVariant/101", inCollection.id), PAGE);
   assert.equal(run.plan?.lines[0]?.discount, 200_00, "checkout still has the ref");
   assert.ok((run.plan?.warnings ?? []).some((w) => w.key === "tryCart.warning.membership"), JSON.stringify(run.plan?.warnings));
 });
@@ -487,7 +487,7 @@ test("Try Cart: a LEAVER — carries a collection ref but has left the collectio
 test("Try Cart: targeting fresh → no live collection read, no membership warning", async () => {
   const { ctx, store, onList } = await mixedTargetingShop();
   await db.prisma.shopSyncState.update({ where: { shop }, data: { targetingStaleAt: null } });
-  const run = await tryCartAction(ctx, cartOf("gid://shopify/ProductVariant/201", onList.id), PAGE);
+  const run = await tryCartCompute(ctx, cartOf("gid://shopify/ProductVariant/201", onList.id), PAGE);
   assert.ok(!(run.plan?.warnings ?? []).some((w) => w.key === "tryCart.warning.membership" || w.key === "tryCart.warning.targeting"));
   assert.equal(store.calls.find((c) => c.op === "WonTryCartVariants")?.variables.withCollections, false);
 });

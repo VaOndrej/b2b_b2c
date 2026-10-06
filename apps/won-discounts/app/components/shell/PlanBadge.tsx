@@ -5,12 +5,13 @@ import { WON_AMBER, WON_AMBER_TEXT, WON_AMBER_TINT } from "./tokens";
 // Pro = brand amber outline; Free = quiet neutral. Polaris s-badge can't be
 // amber, so this small styled pill is the ONLY place a plan is rendered.
 // `locked` (merchant on Free, feature is Pro) turns the label into a nudge
-// without changing the amber identity.
-export function PlanBadge({ tier, locked = false }: { tier: "pro" | "free"; locked?: boolean }) {
+// without changing the amber identity. `href` (optional) makes the pill a link
+// — "Pro · odemknout" then really leads to the plan (§13b: a lock is never a dead end).
+export function PlanBadge({ tier, locked = false, href }: { tier: "pro" | "free"; locked?: boolean; href?: string }) {
   const { t } = useT();
   const isPro = tier === "pro";
   const text = isPro ? (locked ? t("common.proLocked") : t("common.pro")) : t("common.free");
-  return (
+  const pill = (
     <span
       style={{
         display: "inline-flex",
@@ -29,4 +30,5 @@ export function PlanBadge({ tier, locked = false }: { tier: "pro" | "free"; lock
       {text}
     </span>
   );
+  return href ? <s-link href={href}>{pill}</s-link> : pill;
 }

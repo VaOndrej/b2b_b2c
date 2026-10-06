@@ -21,9 +21,10 @@ import { navItems } from "../components/model/modules";
 // session; the first value is also kept in component state, so a revalidation
 // never flips the language mid-session.
 //
-// Nav: the shared Won structure (@won/app-kit/admin-nav: home first, Plan last).
-// Modules that are not built yet stay visible (Admin IA: all modules always
-// shown) in the order of the onboarding goals, and open a page that says so.
+// Nav: the shared Won structure (@won/app-kit/admin-nav: home first, at most five
+// items after it, the plan lives in Nastavení). The discount pages share the item
+// "Slevy" and a sub-navigation on the page (components/shell/SubNav.tsx), which
+// reads `goals` from this loader (useRouteLoaderData("routes/app")) for its order.
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const [{ config }, locale] = await Promise.all([loadConfig(db, session.shop), adminLocale(request, session, db)]);
@@ -35,7 +36,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   };
 };
 
-// Re-read after a form submission (e.g. onboarding goals reorder the nav) or a new
+// Re-read after a form submission (e.g. onboarding goals reorder the sub-navigation) or a new
 // ?locale=; plain in-app navigations keep the layout's data.
 export const shouldRevalidate: ShouldRevalidateFunction = ({ nextUrl, formMethod, defaultShouldRevalidate }) =>
   formMethod || nextUrl.searchParams.has("locale") ? defaultShouldRevalidate : false;
@@ -46,7 +47,7 @@ export default function App() {
 
   return (
     <AppProvider embedded apiKey={data.apiKey}>
-      <WonNavMenu homeLabel={t(locale, "nav.overview")} items={navItems(locale, data.goals)} />
+      <WonNavMenu homeLabel={t(locale, "nav.overview")} items={navItems(locale)} />
       <LocaleProvider locale={locale}>
         <Outlet />
       </LocaleProvider>

@@ -76,6 +76,8 @@ export interface StorefrontWriteArgs {
   configVersionId: string | null;
   /** The shop currency (util.ts isoCurrency of `shop.currencyCode`): the margin's K4 v2 key `k` and `cur`; absent = left out. */
   shopCurrency?: string | null;
+  /** The shop's IANA time zone: the storefront config lists campaigns as instants (feedback 2, bod 7). */
+  shopTimezone?: string | null;
   /** MVP 6.1 (L7): the campaign whose tier sets the page shows now (core campaignTiersShownAt); null = the base sets. */
   campaignId?: string | null;
   record: (step: SyncStep) => void;
@@ -134,6 +136,7 @@ export async function writeStorefrontConfig(args: StorefrontWriteArgs): Promise<
     const value: StorefrontConfigV1 = args.deps.buildStorefrontConfig(args.config, {
       configVersion,
       ...(args.shopCurrency ? { shopCurrency: args.shopCurrency } : {}),
+      ...(args.shopTimezone ? { shopTimezone: args.shopTimezone } : {}),
       variantHandles,
       ...(args.campaignId ? { campaignId: args.campaignId } : {}),
     });

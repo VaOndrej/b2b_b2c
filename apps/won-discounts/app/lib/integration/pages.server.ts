@@ -8,13 +8,20 @@ import type { WonDiscountsConfig } from "@won/core/discounts/config";
 import { explainGate, gateConfigForPlan } from "@won/core/discounts/plan-gate";
 
 import type { LoadedConfig } from "../config.server";
+import { codeBatchPattern, isProCodeBatch, listBatchCodes } from "@won/core/discounts/code-batch";
+
+import type { GeneratedBatchView } from "../../components/model/types";
+import { resourceLabels } from "./titles.server";
 import { loadConfig } from "../config.server";
 import { canReadMarkets, loadSyncStatus } from "../sync/save-and-sync.server";
 import { syncProgress } from "../sync/progress";
 import { isSyncRunning, shopLocalDateTime } from "../sync/sync.server";
 import { resolveLocale } from "../../i18n";
+import { currencyCodes, currencyViews } from "../../components/model/markets";
 import { isRecipeKey, shopToday } from "../../components/model/rule-form";
-import type { GateNoteView, UiResult } from "../../components/model/types";
+import { ruleStatus } from "../../components/model/rule-status";
+import { resolveRuleCodes } from "../../components/model/try-cart-form";
+import type { GateNoteView, NativeView, UiResult } from "../../components/model/types";
 import { buildDiscountsProps } from "../../components/screens/DiscountsScreen";
 import { buildOnboardingProps } from "../../components/screens/OnboardingScreen";
 import { buildOverviewProps } from "../../components/screens/OverviewScreen";
@@ -132,7 +139,9 @@ export async function overviewData(ctx: ShopCtx, opts: PageOptions) {
     config: loaded.config,
     options: {
       readOnly: loaded.readOnly,
-      signals: { ...signals, sync, targeting },
+      // The Pro cards (Kampaně, Výprodej) say so on Free instead of offering their setup.
+      plan: gate.pro ? ("pro" as const) : ("free" as const),
+      signals: { ...signals, sync, targeting, native: withConflictRules(signals.native, loaded.config) },
       ruleSync,
       gate: gate.gate,
       gateOff: gate.gateOff,
@@ -142,6 +151,23 @@ export async function overviewData(ctx: ShopCtx, opts: PageOptions) {
       marketNames: reads.marketNames,
       now: nowOf(ctx),
     },
+  };
+}
+
+/**
+ * "Střetává se s Won" rows link to the Won discount they fight. The detection names that discount; its id
+ * is looked up here by that name (only an unambiguous match), until the native view carries the id itself.
+ */
+function withConflictRules(native: NativeView, config: WonDiscountsConfig): NativeView {
+  if (native.state !== "ok" || !native.conflicts || native.conflicts.length === 0) return native;
+  const rules = config.modules.codes.rules;
+  return {
+    ...native,
+    conflicts: native.conflicts.map((conflict) => {
+      if (conflict.ruleId) return conflict;
+      const named = rules.filter((rule) => rule.name === conflict.ruleName);
+      return named.length === 1 ? { ...conflict, ruleId: named[0]!.id } : conflict;
+    }),
   };
 }
 
@@ -223,8 +249,21 @@ export async function ruleEditorPage(
     now: nowOf(ctx),
   });
   if (!props) return null;
-  const result = opts.saved ? await landingResult(ctx, loaded, "saved") : null;
-  return { ...props, result };
+  const target = props.rule?.target;
+  const targetIds = target?.kind === "products" ? [...target.productIds, ...target.variantIds] : target?.kind === "collections" ? target.ids : [];
+  const [result, labels] = await Promise.all([
+    opts.saved ? landingResult(ctx, loaded, "saved") : null,
+    // P4: the editor lists what the rule targets by name.
+    targetIds.length > 0 ? resourceLabels(ctx, targetIds) : {},
+  ]);
+  // Bod 6: the generated batches with their codes (rebuilt from the seed here; the seed stays on the server).
+  const batches: GeneratedBatchView[] = (props.rule?.codeBatches ?? []).map((batch) => ({
+    id: batch.id,
+    pattern: codeBatchPattern(batch),
+    codes: listBatchCodes(batch),
+    pro: isProCodeBatch(batch),
+  }));
+  return { ...props, labels, batches, result };
 }
 
 export type RuleEditorOutcome = { redirect: string } | { result: UiResult };
@@ -254,11 +293,14 @@ export async function ruleEditorAction(ctx: ShopCtx, form: FormData, ruleId: str
 // --- Vyzkoušet košík --------------------------------------------------------------------------
 
 export async function tryCartPage(ctx: ShopCtx, opts: PageOptions & { date?: string | null; time?: string | null }) {
-  const [{ config }, reads] = await Promise.all([
+  const [{ config }, reads, plan] = await Promise.all([
     loadConfig(ctx.db, ctx.shop),
     readAdminContext({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql: graphql(ctx) }),
+    ctxPlan(ctx),
   ]);
   return buildTryCartProps(config, {
+    // Vyzkoušet košík is Pro (BILL-1): Free sees the locked frame, and tryCartAction refuses a run.
+    pro: plan === "pro",
     timezone: reads.shopContext.timezone,
     shopCurrency: reads.shopContext.currencyCode,
     marketNames: reads.marketNames,
@@ -268,18 +310,35 @@ export async function tryCartPage(ctx: ShopCtx, opts: PageOptions & { date?: str
   });
 }
 
-/** `intent=run`: validate the cart (SEC-1), price it in Shopify, plan it with the engine. */
+/**
+ * The page's action. Vyzkoušet košík is a Pro tool: the server is the authority (SEC-1, BILL-1), so a Free
+ * shop's run is refused here whatever the page showed; nothing is read from Shopify for it.
+ */
 export async function tryCartAction(ctx: ShopCtx, form: FormData, opts: PageOptions): Promise<TryCartRun> {
+  if (form.get("intent") !== "run") return { result: { ok: false, reason: "bad_request" }, plan: null };
+  if ((await ctxPlan(ctx)) !== "pro") {
+    return { result: { ok: false, reason: "invalid", errors: [{ field: "plan", key: "tryCart.error.pro" }] }, plan: null };
+  }
+  return tryCartCompute(ctx, form, opts);
+}
+
+/**
+ * `intent=run`: validate the cart (SEC-1), price it in Shopify, plan it with the engine — on whatever plan
+ * the shop has (the engine tests of every module run their carts through this; the page goes through
+ * tryCartAction, which adds the plan check). The ticked discounts (`ruleId`) become their first codes here.
+ */
+export async function tryCartCompute(ctx: ShopCtx, form: FormData, opts: PageOptions): Promise<TryCartRun> {
   if (form.get("intent") !== "run") return { result: { ok: false, reason: "bad_request" }, plan: null };
   const [{ config }, reads] = await Promise.all([
     loadConfig(ctx.db, ctx.shop),
     readAdminContext({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql: graphql(ctx) }),
   ]);
-  const { input, errors } = readTryCart(form, config, {
+  const { input: read, errors } = readTryCart(form, config, {
     shopCurrency: reads.shopContext.currencyCode,
     today: shopToday(reads.shopContext.timezone, nowOf(ctx)),
   });
   if (errors.length > 0) return { result: { ok: false, reason: "invalid", errors }, plan: null };
+  const input = { ...read, codes: resolveRuleCodes(read.ruleIds, config.modules.codes.rules, read.codes) };
   const locale = resolveLocale(typeof form.get("locale") === "string" ? String(form.get("locale")) : ctx.locale);
   return runTryCart(ctx, { ...input, locale }, {
     config,
@@ -293,15 +352,41 @@ export async function tryCartAction(ctx: ShopCtx, form: FormData, opts: PageOpti
 
 export async function onboardingPage(ctx: ShopCtx, opts: PageOptions & { fresh: boolean }) {
   const [loaded, shopContext] = await Promise.all([loadConfig(ctx.db, ctx.shop), readShopContext(graphql(ctx))]);
-  const signals = await loadStoreSignals(ctx, loaded, {
-    scopes: opts.scopes,
-    graphql: graphql(ctx),
+  const rules = loaded.config.modules.codes.rules;
+  const [signals, liveRules] = await Promise.all([
+    loadStoreSignals(ctx, loaded, {
+      scopes: opts.scopes,
+      graphql: graphql(ctx),
+      timezone: shopContext.timezone,
+      sync: false,
+      fresh: opts.fresh,
+      nativeDeadlineMs: opts.nativeDeadlineMs,
+    }),
+    // "Všechno je aktivní" comes from the discounts' real statuses, never from how many there are (B16).
+    rules.length > 0 ? liveRuleCount(ctx, loaded, shopContext).catch(() => 0) : Promise.resolve(0),
+  ]);
+  return buildOnboardingProps(loaded.config, { native: signals.native, embed: signals.embed, readOnly: loaded.readOnly, liveRules });
+}
+
+/** How many discounts really run right now: the same judgement as the list and Přehled (model/rule-status "live"). */
+async function liveRuleCount(ctx: ShopCtx, loaded: LoadedConfig, shopContext: { timezone: string | null; currencyCode: string | null }): Promise<number> {
+  const { config } = loaded;
+  const rules = config.modules.codes.rules;
+  const [sync, ruleSync, gate] = await Promise.all([
+    loadSyncView(ctx, loaded, shopContext.timezone),
+    loadRuleSync(ctx, config),
+    planGateFor(ctx, config, shopContext.timezone),
+  ]);
+  const statusCtx = {
+    today: shopToday(shopContext.timezone, nowOf(ctx)),
     timezone: shopContext.timezone,
-    sync: false,
-    fresh: opts.fresh,
-    nativeDeadlineMs: opts.nativeDeadlineMs,
-  });
-  return buildOnboardingProps(loaded.config, { native: signals.native, embed: signals.embed, readOnly: loaded.readOnly });
+    sync,
+    ruleSync,
+    gateOff: gate.gateOff,
+    currencies: currencyCodes(currencyViews(config.markets, { shopCurrency: shopContext.currencyCode, rules })),
+    enabledMarkets: config.markets.filter((m) => m.enabled).map((m) => m.handle),
+  };
+  return rules.filter((rule) => ruleStatus(rule, statusCtx).kind === "live").length;
 }
 
 export async function onboardingAction(ctx: ShopCtx, form: FormData): Promise<UiResult> {

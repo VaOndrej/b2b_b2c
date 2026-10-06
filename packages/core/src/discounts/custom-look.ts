@@ -15,7 +15,7 @@ import type { ConfigIssue } from "./config/types.ts";
 import { CUSTOM_CSS_MAX_LENGTH, scopeCss, type ScopeCssReason } from "./scope-css.ts";
 
 /** The block roots a custom look applies to (theme app extension: tiers table, cart panel and its slot, sale badge). */
-export const WON_BLOCK_ROOT = ":is(.won-tiers,.won-cart,.won-cart-slot,.won-outlet)";
+export const WON_BLOCK_ROOT = ":is(.won-tiers,.won-cart,.won-cart-slot,.won-outlet,.won-progress,.won-campaign,.won-topbar)";
 
 /** Variable name in the config → the CSS custom property the blocks read (won-discounts-tiers.css). */
 export const CUSTOM_LOOK_VARS = {

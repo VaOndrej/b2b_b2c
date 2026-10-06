@@ -8,6 +8,7 @@
 // (§12) instead of pretending or hiding the block. The harness may still render
 // the `not_wired` states (v0 overview contract).
 
+import type { PlacementLinks } from "./embed";
 import type { AnalyticsOverviewView } from "./analytics";
 import type { MessageKey } from "../../i18n";
 
@@ -27,6 +28,17 @@ export interface CurrencyView {
  * Active code rules vs. the cap (C2: each active code rule is its own Shopify
  * discount; Shopify runs at most 25 discount functions per store, Won keeps 20).
  */
+/** A generated batch of codes as the editor lists it (the seed never leaves the server). */
+export interface GeneratedBatchView {
+  id: string;
+  /** "BF-XXXXX-XXXXX": the pattern with X for every random character. */
+  pattern: string;
+  /** The codes in force (deleted ones left out). */
+  codes: string[];
+  /** Made with a Pro pattern (the plan gate removes it on Free). */
+  pro: boolean;
+}
+
 export interface CodeRuleLimit {
   active: number;
   limit: number;
@@ -70,7 +82,7 @@ export type SyncView =
   | { state: "pending" }
   /**
    * A sync is running (the page did not wait, REL-1). `products` = product
-   * metafields being written right now (item 7: "propisuje se na N produktů").
+   * metafields being written right now (item 7: "zapisuje se na N produktů").
    */
   | { state: "running"; products?: number }
   /**
@@ -152,6 +164,8 @@ export interface MovedDiscountView {
 export interface NativeConflictView {
   nativeTitle: string;
   ruleName: string;
+  /** The Won discount it fights (the row links to its codes); absent = not known. */
+  ruleId?: string;
   /** The detector's sentence, with its fix. */
   message: string;
 }
@@ -345,7 +359,15 @@ export interface FieldError {
   field: string;
   key: MessageKey;
   params?: Record<string, string | number>;
+  /** Kampaně: the discount or tier set the message belongs to (shown at that row, not under the whole list). */
+  at?: string;
 }
+
+/**
+ * What a refused form posted, by field name (B14): the screen seeds its fields from it on the re-render, so
+ * nothing typed is lost. Display only: the server never trusts it back.
+ */
+export type SubmittedValues = Record<string, string[]>;
 
 export type UiFailure =
   | { ok: false; reason: "not_wired"; what: "move" | "undo" | "tryCart" }
@@ -375,7 +397,7 @@ export type UiFailure =
   | { ok: false; reason: "prices_unavailable"; currency: string; products: string[] }
   /** Shopify could not be read (Vyzkoušet košík); `detail` is technical. */
   | { ok: false; reason: "shopify_unavailable"; detail?: string }
-  | { ok: false; reason: "invalid"; errors: FieldError[] }
+  | { ok: false; reason: "invalid"; errors: FieldError[]; values?: SubmittedValues }
   /** Saving would make more code rules active than Shopify can run (C2). */
   | { ok: false; reason: "too_many_code_rules"; count: number; limit: number; shopifyLimit: number }
   /** Codes the discount function cannot tell apart (8-hex code hashes). */
@@ -452,6 +474,8 @@ export interface ExplainView {
   tone: "success" | "info" | "warning";
   text: string;
   lineIds?: string[];
+  /** The Won discount the sentence is about (it won or lost): the sentence links to it. Absent = not about one discount. */
+  ruleId?: string;
 }
 
 /** The engine's plan for the simulated cart, already computed (planCart + explainPlan). */
@@ -578,6 +602,19 @@ export interface TiersPreviewView {
   tokens: ThemeTokensView | null;
   preset: AppearancePresetView;
   product: PreviewProductView | null;
+  /** What the stored config adds to the preview (the Pro custom look, the merchant's texts). Additive (plan 2026-10-06). */
+  look?: PreviewLookView;
+}
+
+/**
+ * What the storefront gets on top of the ready-made look, for the faithful preview (plan 2026-10-06, dávka 5):
+ * `customCss` = the Pro custom look exactly as the storefront config carries it (core customLookCss: the variables
+ * and the CSS scoped under the Won blocks; null on Free or when none is stored); `texts` = the storefront texts the
+ * merchant changed, per language, by the extension's key (`tiers.heading`).
+ */
+export interface PreviewLookView {
+  customCss: string | null;
+  texts: Partial<Record<"cs" | "sk" | "en", Record<string, string>>>;
 }
 
 /** Mirrors core APPEARANCE_PRESETS (K7). */
@@ -616,6 +653,8 @@ export interface TiersScreenData {
 /** Přehled card. */
 export interface TiersOverviewView {
   sets: number;
+  /** What the own sets are for, by name (product / collection titles), when the loader read them (P4). */
+  setNames?: string[];
   /** The global set's breaks, for one sentence ("Od 3 ks −10 %, od 5 ks −15 %"); null = no global set. */
   global: TierSetView | null;
   block: TiersBlockView;
@@ -643,6 +682,10 @@ export interface AppearanceScreenData {
   cardBlockUrl: string | null;
   /** MVP 7 (Pro): the brief for an AI — the storefront contract a custom look is written against. */
   aiPrompt: string;
+  /** The stored custom look and texts as the storefront gets them, for the previews. Additive (plan 2026-10-06). */
+  previewLook?: PreviewLookView;
+  /** The shop's storefront languages when the loader knows them (absent = all three are offered). Additive (plan 2026-10-06). */
+  languages?: ("cs" | "sk" | "en")[];
 }
 
 /** Free per-category combination switches (A1, engine.combination). */
@@ -694,6 +737,8 @@ export interface RewardsScreenData {
   embed: EmbedView;
   /** "Přidat blok košíku": the theme editor on the cart template (null when the shop / API key is unknown). */
   cartBlockAddUrl: string | null;
+  /** Feedback 2, bod 5: where else the progress to a reward can show (the "Rewards progress" block, the top bar). */
+  placements?: PlacementLinks;
 }
 
 /** Přehled card. */
@@ -703,6 +748,8 @@ export interface RewardsOverviewView {
   /** Gift thresholds the PLAN runs, in the shop currency (minor units, config order); null = none in that currency. */
   gifts: (number | null)[];
   currency: string;
+  /** The gift of each threshold by name (same order as `gifts`), when the loader read the titles (P4). */
+  giftNames?: (string | null)[];
 }
 
 // --- Výprodej (MVP 5, Pro; contract O10) --------------------------------------------------------------
@@ -740,6 +787,10 @@ export interface OutletRunView {
   price: { before: number; sale: number; currency: string } | null;
   /** Price lists whose fixed price the sale changed. */
   lists: number;
+  /** Their names (the catalog's title, else the list's name; a list Shopify no longer returns is named by its currency). */
+  listNames: string[];
+  /** The server can retry the failed step now ("Zkusit znovu"): a failed end, or the value for the web of a running sale. */
+  retry: boolean;
   /** Pieces returned after the end that wait for the merchant (reopenOnReturnAfterEnd = ask). */
   returnPending: number;
   /** The last failed step, worded; null = none. */
@@ -763,6 +814,8 @@ export interface OutletScreenData {
   today: string;
   display: "silent" | "strike" | "strike_badge" | "strike_badge_left";
   reopen: "auto" | "ask" | "never";
+  /** Nastavení → "Výprodej s ostatními slevami" (engine.combination.outletWithAnything): the page says what combines with a sale. Absent = off. */
+  withOthers?: boolean;
   running: OutletRunView[];
   /** The 20 last ended sales. */
   ended: OutletRunView[];
@@ -775,13 +828,15 @@ export interface OutletScreenData {
 }
 
 export type OutletActionResult =
-  | { ok: true; kind: "started" | "ended" | "reopened" | "kept"; skippedLists?: number; pending?: boolean }
-  | { ok: false; reason: "invalid"; errors: FieldError[] }
-  | { ok: false; reason: "failed"; message: string };
+  | { ok: true; kind: "started" | "ended" | "reopened" | "kept" | "retried"; skippedLists?: number; pending?: boolean }
+  | { ok: false; reason: "invalid"; errors: FieldError[]; values?: SubmittedValues }
+  | { ok: false; reason: "failed"; message: string; values?: SubmittedValues };
 
 /** Přehled card. */
 export interface OutletOverviewView {
   running: number;
+  /** The running sales by product name, when the loader read the titles (P4). */
+  runningTitles?: string[];
   /** Ended sales with returned pieces waiting for "Znovu otevřít" / "Nechat skončené". */
   pendingReturns: { runId: string; title: string; qty: number }[];
   /** Sales with pieces sold past the quota. */
@@ -869,6 +924,8 @@ export interface CampaignView {
   tiers: CampaignTierView[];
   /** Stored overrides that do not apply: gift tiers (never), tier sets whose breaks give less than the base. */
   unused: number;
+  /** Their names (a tier set's label; "" = what it changed no longer exists). */
+  unusedNames: string[];
   /** Free: running since the downgrade, it finishes (A6). */
   finishing: boolean;
   /** Vyzkoušet košík at the campaign's start + 1 minute. */
@@ -889,11 +946,13 @@ export interface CampaignsScreenData {
   /** The campaign the form edits (?edit=<id>), when it can be edited. */
   editing: CampaignView | null;
   limits: { campaigns: number; maxDays: number; minLeadMinutes: number };
+  /** Feedback 2, bod 7: where the running campaign can show on the storefront (the "Campaign banner" block, the top bar). */
+  placements?: PlacementLinks;
 }
 
 export type CampaignsActionResult =
   | { ok: true; kind: "saved" | "killed" | "deleted"; sync?: SyncOutcomeView; fixes?: string[] }
-  | { ok: false; reason: "invalid"; errors: FieldError[] };
+  | { ok: false; reason: "invalid"; errors: FieldError[]; values?: SubmittedValues };
 
 /** Přehled card. */
 export interface CampaignsOverviewView {

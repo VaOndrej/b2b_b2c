@@ -43,6 +43,18 @@
 //     guards the admin save), with the longest code's length (`maxCodeLength`:
 //     the function never upper-cases an entered code longer than it, nor trims
 //     one longer than it + ENTERED_CODE_PADDING as entered);
+//   - generated code batches (plan 2026-10-06 dávka 4) as ONE more text each in
+//     the rule's `codeHashes` — the batch's check key, alphabet, lengths and
+//     prefix (code-batch.ts FunctionCodeBatch; 20 characters or more, so never
+//     taken for an 8-digit hash) — whatever the batch's size; never its codes,
+//     never its seed. MEASURED (tests/discounts/code-batch-payload.test.ts): a
+//     batch with a 5-character prefix adds 27 B (43 B as the rule's first
+//     code: `,"codeHashes":[…]`); a hand-typed code adds 11 B, so a batch is
+//     the smaller from 3 codes up: 10 code discounts × 5 batches of 1 000
+//     codes (50 000 codes) make a 3.4 kB config, where one discount's 780
+//     hand-typed codes alone no longer fit;
+//   - per-item minimum quantities (bod 8) NOT AT ALL: they travel in the
+//     product metafields' rule refs (targeting.ts), 0 B here;
 //   - schedules as SHOP-LOCAL dates (`startsOn`/`endsOn`), converted with the
 //     shop's IANA time zone, because the function can only compare
 //     `shop.localTime.date`;
@@ -62,6 +74,7 @@
 // gateConfigForPlan(config, plan), never from the stored config: only then does
 // none of its Pro data (targeting, combinesWith, campaigns) ship.
 
+import { codeBatchCodeLength, codeBatchPayload, type FunctionCodeBatch, listBatchCodes, matchesCodeBatch, readCodeBatch } from "./code-batch.ts";
 import { codeHash } from "./code-hash.ts";
 import { normalizeCode, type CartCampaignInput } from "./cart.ts";
 import {
@@ -87,7 +100,7 @@ import { buildRewardsPayload, type FunctionRewardsPayload } from "./rewards.ts";
 import { buildTiersPayload, type FunctionTierBreak, type FunctionTierSet, type FunctionTiersPayload } from "./tiers.ts";
 
 export { isFunctionConfigPayload };
-export type { FunctionMarginPayload, FunctionTierBreak, FunctionTierSet, FunctionTiersPayload, MarginCollectionTuple };
+export type { FunctionCodeBatch, FunctionMarginPayload, FunctionTierBreak, FunctionTierSet, FunctionTiersPayload, MarginCollectionTuple };
 
 /** Shopify's hard limit for a metafield read by a function (C3/C7: 10 000 B passes, 10 001 B is `null`). */
 export const FUNCTION_METAFIELD_LIMIT_BYTES = 10_000;
@@ -98,8 +111,12 @@ export interface FunctionRule {
   enabled: boolean;
   name: string;
   method: DiscountMethod;
-  /** Code rules only: codeHash() of each code. */
-  codeHashes?: string[];
+  /**
+   * Code rules only: codeHash() of each hand-typed code (8 hex digits), then
+   * one text per generated batch (code-batch.ts FunctionCodeBatch, ≥ 20
+   * characters: the two never look alike).
+   */
+  codeHashes?: (string | FunctionCodeBatch)[];
   value: DiscountRuleValue;
   target: { kind: DiscountTargetKind };
   priority?: number;
@@ -393,7 +410,9 @@ function shipRule(r: ReadonlyDeep<DiscountRule>, shopTimezone: string): Function
     value: copy<DiscountRuleValue>(r.value),
     target: { kind: r.target.kind },
   };
-  if (r.method === "code" && r.codes) out.codeHashes = r.codes.map(codeHash);
+  if (r.method === "code" && (r.codes || (r.codeBatches?.length ?? 0) > 0)) {
+    out.codeHashes = [...(r.codes ?? []).map(codeHash), ...(r.codeBatches ?? []).map(codeBatchPayload)];
+  }
   if (r.priority) out.priority = r.priority;
   const subtotal = r.minimum?.subtotal;
   const hasSubtotal = subtotal !== undefined && Object.keys(subtotal).length > 0;
@@ -429,6 +448,7 @@ function shipCodes(rules: ConfigInput["modules"]["codes"]["rules"], shopTimezone
   for (const r of rules) {
     if (r.method !== "code") continue;
     for (const code of r.codes ?? []) longest = Math.max(longest, normalizeCode(code).length);
+    for (const batch of r.codeBatches ?? []) longest = Math.max(longest, codeBatchCodeLength(batch));
   }
   return longest < 0 ? { rules: shipped } : { rules: shipped, maxCodeLength: longest };
 }
@@ -627,12 +647,59 @@ export function findCodeHashCollisions(config: ConfigInput, otherCodes: readonly
   for (const rule of config.modules.codes.rules) {
     if (rule.method !== "code") continue;
     for (const code of rule.codes ?? []) add(code, rule.id);
+    // A generated code is matched by hash first too (plan.ts matchCodes): it must not share one with another code.
+    for (const batch of rule.codeBatches ?? []) for (const code of listBatchCodes(batch)) add(code, rule.id);
   }
   for (const code of otherCodes) add(code, null);
   const out: CodeHashCollision[] = [];
   for (const [hash, codes] of byHash) {
     if (codes.length > 1 && codes.some((c) => c.ruleId !== null)) out.push({ hash, codes });
   }
+  return out;
+}
+
+export interface CodeBatchConflict {
+  /** The code the function would take for a code of the batch. */
+  code: string;
+  /** The rule that lists the code by hand; null = one of `otherCodes`. */
+  ruleId: string | null;
+  /** The batch whose check accepts it, and its rule. */
+  batchId: string;
+  batchRuleId: string;
+}
+
+/**
+ * Hand-typed codes of ANOTHER rule, and the shop's other codes (`otherCodes`:
+ * native discounts), that a generated batch's check would accept — the
+ * function would count the batch's rule as entered for them. A ~2⁻¹⁸ accident
+ * per code that has the batch's exact shape, or a batch code copied into
+ * another discount. The admin must refuse to save such a config, like a hash
+ * collision. (createCodeBatch already avoids every code it is told about.)
+ */
+export function findCodeBatchConflicts(config: ConfigInput, otherCodes: readonly string[] = []): CodeBatchConflict[] {
+  const batches: { read: NonNullable<ReturnType<typeof readCodeBatch>>; batchId: string; ruleId: string }[] = [];
+  for (const rule of config.modules.codes.rules) {
+    if (rule.method !== "code") continue;
+    for (const batch of rule.codeBatches ?? []) {
+      const read = readCodeBatch(codeBatchPayload(batch));
+      if (read) batches.push({ read, batchId: batch.id, ruleId: rule.id });
+    }
+  }
+  const out: CodeBatchConflict[] = [];
+  if (batches.length === 0) return out;
+  const check = (raw: string, ruleId: string | null) => {
+    const code = normalizeCode(raw);
+    // eslint-disable-next-line no-control-regex
+    if (!code || !/^[\x00-\x7f]*$/.test(code)) return;
+    for (const b of batches) {
+      if (b.ruleId !== ruleId && matchesCodeBatch(b.read, code)) out.push({ code, ruleId, batchId: b.batchId, batchRuleId: b.ruleId });
+    }
+  };
+  for (const rule of config.modules.codes.rules) {
+    if (rule.method !== "code") continue;
+    for (const code of rule.codes ?? []) check(code, rule.id);
+  }
+  for (const code of otherCodes) check(code, null);
   return out;
 }
 

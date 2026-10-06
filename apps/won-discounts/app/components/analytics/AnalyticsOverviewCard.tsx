@@ -1,5 +1,6 @@
 // Přehled card "Přehledy" (MVP 7, contract M4): the basic numbers of the last 30 days (any plan), or the honest
-// reason there are none. `analytics` absent = not known: the card is not rendered (§12).
+// nothing: without access to orders or without an order there is neither content nor an action, so the card is
+// not rendered (P2). `analytics` absent = not known: not rendered either (§12).
 
 import { useT } from "../../i18n/context";
 import type { AnalyticsOverviewView } from "../model/analytics";
@@ -7,16 +8,14 @@ import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 
 export function AnalyticsOverviewCard({ analytics }: { analytics: AnalyticsOverviewView }) {
   const { t } = useT();
+  if (!analytics.available || analytics.empty) return null;
   const numbers = analytics.tiles.map((tile) => `${t(`analytics.tile.${tile.id}` as "analytics.tile.cost")}: ${tile.value}`).join(" · ");
-  const summary = !analytics.available ? t("overview.analytics.unavailable") : analytics.empty ? t("overview.analytics.empty", { days: analytics.days }) : numbers;
   return (
-    <WonSection title={t("overview.analytics.title")} glyph="check" summary={summary} anchor="analytics">
+    <WonSection title={t("overview.analytics.title")} glyph="check" summary={numbers} anchor="analytics">
       <div>
-        {analytics.available && !analytics.empty ? (
-          <WonRow>
-            <RowNote>{t("analytics.basic.title", { days: analytics.days })}</RowNote>
-          </WonRow>
-        ) : null}
+        <WonRow>
+          <RowNote>{t("analytics.basic.title", { days: analytics.days })}</RowNote>
+        </WonRow>
         <WonRow
           action={
             <s-button href="/app/analytics" variant="secondary">

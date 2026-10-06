@@ -16,7 +16,7 @@ summary: Add quantity breaks to the tier set, choose a percentage or a fixed amo
 
 # Set up quantity discounts
 
-1. Open **Quantity discounts**.
+1. Open **Discounts → Quantity discounts**.
 2. Add a **tier**: from how many items, and the discount — a percentage, or a
    fixed amount off per item in each market's currency. Add more tiers for
    more thresholds. A set is one kind only (every tier a percent, or every

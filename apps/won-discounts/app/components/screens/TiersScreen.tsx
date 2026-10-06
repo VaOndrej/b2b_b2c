@@ -1,4 +1,4 @@
-// Množstevní slevy (MVP 3) — the module screen. "Kup víc, zaplať míň": a set of
+// Množstevní slevy (MVP 3) — the module screen. "Kupte víc, zaplaťte míň": a set of
 // quantity breaks (od X ks → % or an amount per item in each market currency,
 // MKT-1) for the whole store (Free), and on Pro further sets for selected
 // products / collections and counting across the cart (amber, §16, A2). Studio
@@ -10,7 +10,10 @@
 //      per the Nastavení switches; margin protection may lower a tier; clearance
 //      and gifts get none), and beside it (§17f) the faithful preview of the
 //      storefront block (TiersPreview: its markup, CSS and texts, on the live
-//      theme's tokens, the looks switchable in the preview);
+//      theme's tokens, with the stored Pro custom look and the merchant's
+//      texts); the look picked in the preview ("Vzhled na webu") is a field of
+//      this form and is SAVED with the page (the same config field Vzhled
+//      writes); the Pro custom colours and CSS are one link away;
 //   2. Tabulka na stránce produktu — is the block on the product page, the
 //      one "Přidat tabulku na stránku produktu" deep link (§13), the storefront
 //      config's state (K5), "Zobrazit na mém webu";
@@ -27,13 +30,15 @@ import { Form, useSubmit } from "react-router";
 import { useT } from "../../i18n/context";
 import { pickCollections, pickProducts } from "../model/app-bridge";
 import { currencyCodes } from "../model/markets";
-import { newTierSetId, readTiersForm, tierPayloadUse, tierSetToConfig, TIERS_FIELD, TIERS_INTENT, tierSummary } from "../model/tiers";
+import { freeGlobalSetId, newTierSetId, readTiersForm, tierPayloadUse, tierSetToConfig, TIERS_FIELD, TIERS_INTENT, tierSummary } from "../model/tiers";
 import type { FieldError, TierSetView, TiersScreenData, UiResult } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
 import { GateNotes } from "../shell/GateNotes";
 import { Notice } from "../shell/Notice";
+import { PlanBadge } from "../shell/PlanBadge";
+import { DiscountsSubNav } from "../shell/SubNav";
 import { WonSection } from "../shell/WonSection";
-import { ProTierSets } from "../tiers/ProTierSets";
+import { ProTierSets, TIERS_CAPACITY_ANCHOR } from "../tiers/ProTierSets";
 import { TierSetEditor } from "../tiers/TierSetEditor";
 import { TiersBlockSection } from "../tiers/TiersBlockSection";
 import { TiersPreview } from "../tiers/TiersPreview";
@@ -94,7 +99,8 @@ export function TiersScreen(props: TiersScreenProps) {
   const [globalSet] = useState<TierSetView>(
     () =>
       sets.find((s) => s.scope.kind === "global") ?? {
-        id: sets.some((s) => s.id === "global") ? newTierSetId() : "global",
+        // Deterministic (never a random id here): the server render and the browser's first render must agree.
+        id: freeGlobalSetId(sets),
         scope: { kind: "global" },
         countAcross: "product",
         breaks: [],
@@ -112,10 +118,14 @@ export function TiersScreen(props: TiersScreenProps) {
     return map;
   }, [proSets]);
   const [draft, setDraft] = useState<TierSetView[]>(sets);
+  // Rows the form holds per set (a typed row that is not complete yet is in the form, not in the draft).
+  const [rowCounts, setRowCounts] = useState<Map<string, number> | null>(null);
   const recompute = useCallback(() => {
     const form = formRef.current;
     if (!form) return;
     setSnapshot(snapshotOf(form));
+    const data = new FormData(form);
+    setRowCounts(new Map(data.getAll(F.set).map((id) => [String(id), data.getAll(F.row(String(id))).length])));
     // A kept set (not edited on this page) is the one shown, never re-parsed (audit P3-4).
     const keep = (id: string) => proSets.find((s) => s.id === id) ?? sets.find((s) => s.id === id);
     setDraft(readTiersForm(new FormData(form), { currencies: codes, keptCurrencies: kept, titles, keep }).sets);
@@ -182,6 +192,7 @@ export function TiersScreen(props: TiersScreenProps) {
       setProSets(sets.filter((s) => s.id !== globalSet.id));
       setDraft(sets);
       setSnapshot(null);
+      setRowCounts(null);
       window.setTimeout(recompute, 0);
     };
     el.addEventListener("reset", onReset);
@@ -208,37 +219,57 @@ export function TiersScreen(props: TiersScreenProps) {
   // The checkout's room for tiers, live from what is typed (the server refuses a save over it).
   const capacity = useMemo(() => tierPayloadUse(draft.map(tierSetToConfig)), [draft]);
   const hasTiers = globalDraft.breaks.length > 0;
+  // Typed rows that do not count yet (P3/P5): said in the state line, marked at the row (TierSetEditor).
+  const incomplete = Math.max(0, (rowCounts?.get(globalSet.id) ?? globalDraft.breaks.length) - globalDraft.breaks.length);
+  const globalSummary = incomplete > 0 ? `${tierSummary(globalDraft, tr, codes)} · ${tr.tp("tiers.incomplete", incomplete)}` : tierSummary(globalDraft, tr, codes);
+  // "The tiers do not fit at checkout" is shown at the room-for-tiers line (P3); the page scrolls to it.
+  const tooLarge = errors.find((e) => e.field === F.set && e.key === "tiers.error.tooLarge");
+  const capacityError = tooLarge ? t(tooLarge.key, tooLarge.params) : undefined;
+  const pageError = errors.find((e) => e.field === F.set && e.key !== "tiers.error.tooLarge");
+  useEffect(() => {
+    if (capacityError) document.getElementById(TIERS_CAPACITY_ANCHOR)?.scrollIntoView({ block: "center" });
+  }, [capacityError]);
 
   return (
     <s-page heading={t("module.tiers")}>
+      <DiscountsSubNav active="tiers" />
       <Form method="post" ref={formRef} data-save-bar>
         <input type="hidden" name={F.intent} value={TIERS_INTENT.save} />
         {configVersion ? <input type="hidden" name={F.configVersion} value={configVersion} /> : null}
         <s-stack key={formKey} direction="block" gap="base">
           <Notice result={result} onReplace={replaceUnreadable} />
-          {/* A refusal about the page as a whole (the tiers do not fit at checkout, a stale form) — at the top, not in a section. */}
-          <FieldMessage text={errorFor(F.set)} />
+          {/* A refusal about the page as a whole (a stale form, too many sets) — at the top, not in a section. */}
+          <FieldMessage text={pageError ? t(pageError.key, pageError.params) : undefined} />
           {gateNotes.length > 0 ? <GateNotes notes={gateNotes} /> : null}
           <input type="hidden" name={F.set} value={globalSet.id} />
           <input type="hidden" name={F.scope(globalSet.id)} value="global" />
           <WonSection
             title={t("tiers.global.title")}
             glyph="layers"
-            summary={tierSummary(globalDraft, tr, codes)}
+            summary={globalSummary}
             hint={t("tiers.global.hint")}
             // Green only where the sync facts say it runs (this page has none): off = "Vypnuto", on = no pill.
             on={hasTiers ? undefined : false}
             anchor="global"
             aside={
-              <TiersPreview
-                set={hasTiers ? globalDraft : null}
-                preset={preview.preset}
-                tokens={preview.tokens}
-                product={preview.product}
-                currency={shopCurrency}
-                controls
-                marginOn={marginOn}
-              />
+              <div style={{ display: "grid", gap: 10 }}>
+                <TiersPreview
+                  set={hasTiers ? globalDraft : null}
+                  preset={preview.preset}
+                  tokens={preview.tokens}
+                  product={preview.product}
+                  currency={shopCurrency}
+                  controls
+                  lookField={F.preset}
+                  extras={preview.look ?? null}
+                  marginOn={marginOn}
+                />
+                {/* Pro: colours, corners and the shop's own CSS live on Vzhled; the preview above already shows them. */}
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                  <s-link href="/app/appearance#custom">{t("tiers.preview.customLink")}</s-link>
+                  <PlanBadge tier="pro" locked={!pro} href={pro ? undefined : "/app/plan"} />
+                </div>
+              </div>
             }
           >
             <s-stack direction="block" gap="base">
@@ -263,6 +294,7 @@ export function TiersScreen(props: TiersScreenProps) {
             productsWithSets={pro ? (props.productsWithSets ?? null) : null}
             storedIds={storedIds}
             capacity={capacity}
+            capacityError={capacityError}
           />
           {/* One save for the whole form, last on the page (plus the App Bridge save bar). */}
           <div>

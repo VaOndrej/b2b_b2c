@@ -133,7 +133,7 @@ test("a new shop: no sets, the market currencies, the table on the product page,
   assert.equal(data.competingRules, 0);
   assert.deepEqual(data.block, { state: "on", themeName: "Horizon" });
   assert.deepEqual(data.storefront, { state: "missing" });
-  assert.equal(data.preview.preset, "default");
+  assert.equal(data.preview.preset, "highlight");
   assert.equal(data.preview.tokens?.fontBody, "Inter");
   assert.equal(data.preview.product?.title, "Mikina Won");
   assert.equal(data.preview.product?.unitPrice, 20000);
@@ -397,7 +397,7 @@ test("Vyzkoušet košík: the tier on the line (tagged, no raw id), the engine's
   }
   const text = plan.explain.map((e) => e.text).join(" | ");
   assert.match(text, /Množstevní sleva \(od 3 ks −10\u00a0%\)/, text);
-  assert.match(text, /Přidej 1 ks a dostaneš −15\u00a0%/, text);
+  assert.match(text, /Přidejte 1 ks a dostanete −15\u00a0%/, text);
   assert.doesNotMatch(text, /tier:|t_scoped|\bglobal\b/, "never an id");
 });
 
@@ -414,7 +414,7 @@ test("sync steps of MVP 3 are worded (cs + en) — never a product GID or a set 
   const write = say({ step: "storefront_config.write", ok: false, detail: "metafieldsSet: Throttled" });
   assert.equal(write.key, "sync.problem.storefrontConfig");
   // Audit P2-4: the site may show older (even higher) tiers until fixed; checkout applies the new ones.
-  assert.match(write.text, /Nastavení tabulky na stránce produktu se na web nepropsalo \(metafieldsSet: Throttled\)\. Do opravy může web ukazovat starší \(i vyšší\) úrovně, pokladna platí nové\./);
+  assert.match(write.text, /Nastavení tabulky na stránce produktu se na web nezapsalo \(metafieldsSet: Throttled\)\. Do opravy může web ukazovat starší \(i vyšší\) úrovně, pokladna platí nové\./);
   assert.equal(say({ step: "storefront_config.verify", ok: false, detail: "differs" }).key, "sync.problem.storefrontConfig");
   const refused = say({ step: "products.tiers", ok: false, detail: "gid://shopify/Product/9 refused", params: { refused: 3 } });
   assert.equal(refused.key, "sync.problem.productsTiersRefused");
@@ -423,7 +423,7 @@ test("sync steps of MVP 3 are worded (cs + en) — never a product GID or a set 
   assert.equal(tiersFailed.key, "sync.problem.productsTiers");
   assert.doesNotMatch(tiersFailed.text, /gid:\/\/|boom/);
   const tooLarge = say({ step: "tiers.too_large:t_devautumn", ok: false, detail: "…", params: { collection: "Podzimní kolekce", count: 1 } });
-  assert.match(tooLarge.text, /Sada množstevních slev nedosáhne na produkty kolekce „Podzimní kolekce“: vybrané kolekce mají dohromady víc než 10\u00a0000 produktů/);
+  assert.match(tooLarge.text, /Množstevní sleva nedosáhne na produkty kolekce „Podzimní kolekce“: vybrané kolekce mají dohromady víc než 10\u00a0000 produktů/);
   assert.doesNotMatch(tooLarge.text, /t_devautumn/);
   assert.equal(say({ step: "tiers.too_large:t_x", ok: false, detail: "", params: { collection: "Zimní", count: 3 } }).key, "sync.problem.tiersTooLargeMany");
   assert.equal(say({ step: "tiers.too_large:t_x", ok: false, detail: "", params: { collection: "", count: 1 } }).key, "sync.problem.tiersTooLargeUntitled");
@@ -680,7 +680,7 @@ test("the sync's over-cap refusal and the new core issue codes are worded (cs + 
   const names = new Map<string, string>();
   const over = stepProblem({ step: "shop_config.build", ok: false, detail: "tiers 612 B over 550 B", params: { tiersBytes: 612, tiersBudget: 550 } }, names);
   assert.equal(over.key, "sync.problem.tiersOverCapPercent");
-  assert.equal(t("cs", over.key, over.params), "Množstevní slevy se do pokladny nevejdou (zabraly by 112\u00a0% místa), nic se nezapsalo a platí předchozí nastavení. V Množstevních slevách odeber sadu nebo úroveň.");
+  assert.equal(t("cs", over.key, over.params), "Množstevní slevy se do pokladny nevejdou (zabraly by 112\u00a0% místa), nic se nezapsalo a platí předchozí nastavení. V Množstevních slevách odeberte výjimku nebo úroveň.");
   assert.equal(stepProblem({ step: "shop_config.build", ok: false, detail: "the quantity tiers are over their cap" }, names).key, "sync.problem.tiersOverCap");
   assert.equal(stepProblem({ step: "shop_config.build", ok: false, detail: "9500 B over the 9000 B budget" }, names).key, "sync.problem.tooLarge");
 
@@ -695,7 +695,83 @@ test("the sync's over-cap refusal and the new core issue codes are worded (cs + 
     },
   });
   const cs = wordIssues(issues, "cs", (m) => assert.fail(`unworded: ${m}`));
-  assert.ok(cs.includes("Sada úrovní neměla platný rozsah. Uložila se jako sada bez vybraných produktů, takže se na nic neuplatní."), cs.join(" | "));
+  assert.ok(cs.includes("Výjimka neměla platný výběr produktů. Uložila se bez vybraných produktů, takže se na nic neuplatní."), cs.join(" | "));
   assert.ok(cs.some((x) => /Vlastní nastavení marže může mít nejvýš 50 kolekcí\. Zbývající kolekce \(2\) jsme sloučili do nastavení pro celý obchod, platí to přísnější: min\. marže 0\u00a0%, bez nákupní ceny sleva nejvýš 5\u00a0%\./.test(x)), cs.join(" | "));
   assert.ok(wordIssues(issues, "en", () => assert.fail("unworded")).every((x) => !/t_x|gid:\/\//.test(x)));
+});
+
+// --- Plan 2026-10-06, dávka 5: the look picked on this page is saved by this page ---------------------------------
+
+function globalForm(more: [string, string][]): FormData {
+  return formOf([
+    [F.intent, "save"],
+    [F.set, "global"],
+    [F.scope("global"), "global"],
+    [F.count("global"), "product"],
+    [F.kind("global"), "percent"],
+    [F.row("global"), "r0"],
+    [F.min("global", "r0"), "3"],
+    [F.percent("global", "r0"), "10"],
+    ...more,
+  ]) as FormData;
+}
+
+test("the look switcher saves: `preset` in the tiers form writes storefront.appearancePreset (the field Vzhled writes), validated by the same parser; without the field the look is untouched", async () => {
+  const ctx = ctxFor(storeFor());
+  assert.equal((await loadTiersScreen(ctx, { scopes: SCOPES })).preview.preset, "highlight", "a new shop");
+  const saved = await tiersAction(ctx, globalForm([[F.preset, "chips"]]));
+  assert.equal(saved.ok, true, JSON.stringify(saved));
+  await syncIdle(shop);
+  let loaded = await loadConfig(db.prisma, shop);
+  assert.equal(loaded.config.storefront.appearancePreset, "chips");
+  assert.equal(loaded.config.modules.tiers.sets.length, 1, "the tiers are saved by the same save");
+  clearSignalCache();
+  assert.equal((await loadTiersScreen(ctx, { scopes: SCOPES })).preview.preset, "chips", "the page reads it back");
+  // Not one of the four → refused at the field, nothing saved (SEC-1).
+  const refused = await tiersAction(ctx, globalForm([[F.configVersion, loaded.version!], [F.preset, "neon"], [F.percent("global", "r0"), "12"]]));
+  assert.deepEqual(refused, { ok: false, reason: "invalid", errors: [{ field: "preset", key: "appearance.error.preset" }] });
+  loaded = await loadConfig(db.prisma, shop);
+  assert.equal(loaded.config.storefront.appearancePreset, "chips");
+  assert.deepEqual(loaded.config.modules.tiers.sets[0]?.breaks, [{ minQty: 3, percent: 10 }]);
+  // A form without the field (an older client) leaves the look alone.
+  const without = await tiersAction(ctx, globalForm([[F.configVersion, loaded.version!], [F.percent("global", "r0"), "12"]]));
+  assert.equal(without.ok, true, JSON.stringify(without));
+  await syncIdle(shop);
+  assert.equal((await loadConfig(db.prisma, shop)).config.storefront.appearancePreset, "chips");
+});
+
+test("F12 covers the look when the page submits it: a look changed elsewhere meanwhile → base_changed, never overwritten with the stale one", async () => {
+  const ctx = ctxFor(storeFor());
+  const first = await tiersAction(ctx, globalForm([[F.preset, "chips"]]));
+  assert.equal(first.ok, true, JSON.stringify(first));
+  await syncIdle(shop);
+  const opened = (await loadConfig(db.prisma, shop)).version!;
+  // Vzhled (another tab) changes the look.
+  const { saveAppearance } = await import("../../app/lib/integration/appearance.server.ts");
+  const other = await saveAppearance(ctx, "tiles", { configVersion: opened });
+  assert.equal(other.ok, true, JSON.stringify(other));
+  await syncIdle(shop);
+  const stale = await tiersAction(ctx, globalForm([[F.configVersion, opened], [F.preset, "chips"]]));
+  assert.deepEqual(stale, { ok: false, reason: "base_changed" });
+  assert.equal((await loadConfig(db.prisma, shop)).config.storefront.appearancePreset, "tiles");
+});
+
+test("the preview gets what the config adds: the merchant's storefront texts on any plan, the custom look only on Pro (BILL-1)", async () => {
+  const { previewLookOf } = await import("../../app/lib/integration/appearance.server.ts");
+  await store((c) => ({
+    ...c,
+    storefront: { ...c.storefront, custom: { vars: { accent: "#0a7d4f" }, css: ".won-tiers__heading{color:red}" } },
+    locales: { ...c.locales, cs: { "tiers.heading": "Kup víc, plať míň" } },
+  }));
+  const stored = (await loadConfig(db.prisma, shop)).config;
+  const pro = previewLookOf(stored, "pro");
+  assert.match(pro.customCss ?? "", /--won-tiers-accent:#0a7d4f/);
+  assert.match(pro.customCss ?? "", /\.won-tiers__heading\{color:red\}/);
+  assert.deepEqual(pro.texts, { cs: { "tiers.heading": "Kup víc, plať míň" } });
+  const free = previewLookOf(stored, "free");
+  assert.equal(free.customCss, null, "Free never ships a custom look, so the preview never shows one");
+  assert.deepEqual(free.texts, pro.texts);
+  clearSignalCache();
+  const data = await loadTiersScreen(ctxFor(storeFor()), { scopes: SCOPES });
+  assert.deepEqual(data.preview.look, free, "the page hands the preview the plan's look");
 });

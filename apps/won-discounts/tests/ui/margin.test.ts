@@ -195,13 +195,13 @@ test("before the first complete read of the costs, the screen and the card say o
   const running: CostMirrorView = { state: "running", done: 340, total: 1240, since: "2026-09-28T13:55:00" };
   const failed: CostMirrorView = { state: "failed", at: "2026-09-28T06:10:00", problems: [] };
   const on = { enabled: true, costsKnown: false, maxDiscountPercent: 40 };
-  assert.equal(ceilingOnlyText({ ...on, mirror: running }, cs), "Dokud nenačteme nákupní ceny (340 z 1\u00a0240), platí u nenačtených produktů jen strop 40\u00a0%.");
-  assert.equal(ceilingOnlyText({ ...on, mirror: failed }, cs), "Dokud nenačteme nákupní ceny, platí u nenačtených produktů jen strop 40\u00a0%.");
-  assert.equal(ceilingOnlyText({ ...on, mirror: { state: "stale", at: null } }, cs), "Dokud nenačteme nákupní ceny, platí u nenačtených produktů jen strop 40\u00a0%.");
+  assert.equal(ceilingOnlyText({ ...on, mirror: running }, cs), "Dokud nenačteme nákupní ceny (340 z 1\u00a0240), platí u nenačtených produktů jen strop slevy 40\u00a0%.");
+  assert.equal(ceilingOnlyText({ ...on, mirror: failed }, cs), "Dokud nenačteme nákupní ceny, platí u nenačtených produktů jen strop slevy 40\u00a0%.");
+  assert.equal(ceilingOnlyText({ ...on, mirror: { state: "stale", at: null } }, cs), "Dokud nenačteme nákupní ceny, platí u nenačtených produktů jen strop slevy 40\u00a0%.");
   assert.equal(ceilingOnlyText({ ...on, mirror: running, costsKnown: true }, cs), null, "after a complete read its costs stay in force");
   assert.equal(ceilingOnlyText({ ...on, mirror: running, enabled: false }, cs), null);
   assert.equal(ceilingOnlyText({ ...on, mirror: { state: "fresh", at: "2026-09-28T06:10:00" } }, cs), null);
-  assert.match(ceilingOnlyText({ ...on, mirror: running }, en) ?? "", /^Until the cost prices are read \(340 of 1,240\), only the 40% ceiling applies/);
+  assert.match(ceilingOnlyText({ ...on, mirror: running }, en) ?? "", /^Until the cost prices are read \(340 of 1,240\), only the 40% discount ceiling applies/);
   // The max-discount field says the ceiling is also the fallback.
   assert.match(cs.t("margin.max.details"), /nákupní cenu jsme ještě nenačetli/);
 
@@ -210,13 +210,13 @@ test("before the first complete read of the costs, the screen and the card say o
   const sync: SyncView = { state: "ok", at: "2026-09-28T16:20:00" };
   const card = (margin: MarginOverviewView) => renderToStaticMarkup(createElement(Provider, { locale: "cs" }, createElement(MarginOverviewCard, { margin, sync })));
   const first = card({ enabled: true, minMarginPercent: 20, maxDiscountPercent: 40, productsWithoutCost: null, mirror: running });
-  assert.doesNotMatch(first, /Běží/);
+  assert.doesNotMatch(first, /Aktivní/);
   assert.match(first, /Dokud nenačteme nákupní ceny \(340 z 1\u00a0240\)/);
   const read = card({ enabled: true, minMarginPercent: 20, maxDiscountPercent: 40, productsWithoutCost: 3, mirror: { state: "fresh", at: "2026-09-28T06:10:00" } });
-  assert.match(read, /Běží/);
+  assert.match(read, /Aktivní/);
   assert.doesNotMatch(read, /Dokud nenačteme/);
   // The promise is not absolute any more (P3-3).
-  assert.equal(cs.t("soon.margin"), "Sleva ve Won nikdy nesrazí cenu pod hranici, kterou tu nastavíš.");
+  assert.equal(cs.t("soon.margin"), "Sleva ve Won nikdy nesrazí cenu pod hranici, kterou tu nastavíte.");
   assert.match(cs.t("margin.never"), /neklesla pod hranici/);
 });
 
@@ -229,7 +229,7 @@ test("Notice: 'Obnovit nákupní ceny' answers that the read runs in the backgro
   assert.match(refreshed, /Načítání nákupních cen běží/);
   assert.match(refreshed, /Nákupní ceny načítáme ze Shopify na pozadí/);
   const saved = render({ ok: true, message: "saved", sync: { ok: true, problems: [], warnings: [] }, syncing: { costs: true } });
-  assert.match(saved, /Uloženo a propsáno do Shopify/);
+  assert.match(saved, /Uloženo a zapsáno do Shopify/);
   assert.match(saved, /Nákupní ceny načítáme ze Shopify na pozadí/);
   assert.match(render({ ok: true, message: "synced", syncing: { costs: true } }, "en"), /Reading cost prices/);
 });
@@ -247,7 +247,7 @@ test("percents keep one decimal: a second decimal is refused before the save, ne
     { field: "minMarginPercent", key: "margin.error.decimals" },
     { field: "collectionMax[0]", key: "margin.error.decimals" },
   ]);
-  assert.equal(cs.t("margin.error.decimals"), "Zadej nejvýš jedno desetinné místo, třeba 12,5.");
+  assert.equal(cs.t("margin.error.decimals"), "Zadejte nejvýš jedno desetinné místo, třeba 12,5.");
 });
 
 test("a collection over the limit is worded by WHY (audit fix rounds 2 + 3): over 10 000 on its own, or — exact count — the budget used by margin collections read first; the limit in the admin's number format", () => {
@@ -307,4 +307,46 @@ test("an untitled collection or product is never named by its id (audit fix roun
     ),
   );
   assert.match(costs, /Ponožky a produkt bez názvu|Ponožky, produkt bez názvu/);
+});
+
+test("B14 / P4 helpers: a refused form's values are echoed and read back; the collections header names them", async () => {
+  const { asForm, refusedValues, seedOf, submittedOf, withValues } = await import("../../app/components/model/submitted.ts");
+  const { collectionsSummary, MARGIN_SAVE_FIELDS, readMarginDraft } = await import("../../app/components/model/margin.ts");
+  const posted = new FormData();
+  posted.set("enabled", "on");
+  posted.set("minMarginPercent", "150");
+  posted.set("maxDiscountPercent", "35");
+  posted.append("collectionId[]", "gid://shopify/Collection/7");
+  posted.append("collectionMin[]", "30");
+  posted.append("collectionMax[]", "120");
+  posted.set("configVersion", "not-echoed");
+  const values = submittedOf(posted, MARGIN_SAVE_FIELDS);
+  assert.deepEqual(values, {
+    enabled: ["on"],
+    minMarginPercent: ["150"],
+    maxDiscountPercent: ["35"],
+    "collectionId[]": ["gid://shopify/Collection/7"],
+    "collectionMin[]": ["30"],
+    "collectionMax[]": ["120"],
+  });
+  // The refused value is shown again exactly as typed; a field the form did not post is empty, not the stored value.
+  const seed = seedOf(values);
+  assert.equal(seed.one("minMarginPercent", "20"), "150");
+  assert.equal(seedOf({ maxDiscountPercent: ["35"] }).one("minMarginPercent", "20"), "");
+  assert.equal(seedOf(null).one("minMarginPercent", "20"), "20");
+  // Only a refusal carries the values.
+  const refused = withValues({ ok: false as const, reason: "base_changed" as const }, () => values);
+  assert.deepEqual(refusedValues(refused), values);
+  assert.equal(refusedValues(withValues({ ok: true as const, message: "saved" as const }, () => values)), null);
+  // The same pure reader works on the echoed values (the live summary after a remount).
+  const stored = { enabled: false, minMarginPercent: 20, maxDiscountPercent: 40, collections: [{ collectionId: "gid://shopify/Collection/7", title: "Podzim", minMarginPercent: null, maxDiscountPercent: null }] };
+  const draft = readMarginDraft(asForm(values), stored);
+  assert.equal(draft.enabled, true);
+  assert.equal(draft.maxDiscountPercent, 35);
+  assert.equal(draft.minMarginPercent, 20, "an out-of-range percent keeps the stored one in the summary");
+  assert.equal(draft.collections[0]!.title, "Podzim");
+
+  assert.equal(collectionsSummary([], cs), "Všude platí nastavení výš");
+  assert.equal(collectionsSummary([{ title: "Podzim" }, { title: "" }], cs), "Vlastní nastavení: Podzim a Kolekce bez názvu");
+  assert.match(collectionsSummary(Array.from({ length: 7 }, (_, i) => ({ title: `K${i}` })), cs), /^Vlastní nastavení: K0, K1, K2, K3, K4 a další \(2\)$/);
 });

@@ -37,7 +37,7 @@ test("every admin route authenticates in its loader and action", () => {
       assert.match(firstStatement ?? "", /authenticate\.admin\(request\)/, `${file} ${kind}: authenticate before anything else`);
     }
   }
-  // 12 loaders (app, index, discounts, editor, try-cart, onboarding, module, settings, plan, margin, tiers, appearance)
+  // 11 loaders (app, index, discounts, editor, try-cart, onboarding, settings, plan, margin, tiers, appearance)
   // + 8 actions (index, editor, try-cart, onboarding, margin, tiers, appearance, settings).
   assert.ok(checked >= 20, `checked ${checked} loaders/actions`);
 });
@@ -132,6 +132,6 @@ for (const [file, params] of [
     assert.deepEqual(stored.modules.codes.rules, []);
     assert.equal(stored.modules.margin.enabled, false, "margin protection stays off");
     assert.deepEqual(stored.modules.tiers.sets, [], "no tier set written");
-    assert.equal(stored.storefront.appearancePreset, "default");
+    assert.equal(stored.storefront.appearancePreset, "highlight", "the new-shop look, untouched");
   });
 }

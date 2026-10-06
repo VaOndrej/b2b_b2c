@@ -76,8 +76,8 @@ test("a new rule is saved AND written to Shopify in one action; the landing page
   assert.equal(page.sync.state, "ok");
 
   const html = text(await renderPage(createElement(RuleEditorScreen, page)));
-  assert.match(html, /Uloženo a propsáno do Shopify/);
-  assert.match(html, /Běží/);
+  assert.match(html, /Uloženo a zapsáno do Shopify/);
+  assert.match(html, /Aktivní/);
 });
 
 test("a code rule gets its own Won node with the code; switching it off DEACTIVATES the node and it no longer 'Běží'", async () => {
@@ -156,7 +156,7 @@ test("unreadable stored config: refused with 'Nahradit neplatnou konfiguraci'; t
   assert.equal(shopConfigRules(store).length, 1, "synced after the replacement");
 });
 
-test("saved but NOT in Shopify: the result says what did not get through, 'Synchronizovat znovu', and the rule is 'Nepropsáno'", async () => {
+test("saved but NOT in Shopify: the result says what did not get through, 'Synchronizovat znovu', and the rule is 'Nezapsáno'", async () => {
   const store = new FakeStore();
   const ctx = testCtx(db.prisma, shop, store);
   // Every shop-config write fails (GraphQL error, not retried).
@@ -172,11 +172,11 @@ test("saved but NOT in Shopify: the result says what did not get through, 'Synch
   assert.ok(page.result.sync.problems.some((p) => p.key === "sync.problem.config"), JSON.stringify(page.result.sync.problems));
   assert.equal(page.ruleSync?.[id], "failed");
   const html = text(await renderPage(createElement(RuleEditorScreen, page)));
-  assert.match(html, /Uloženo, ale do Shopify se zatím nepropsalo/);
+  assert.match(html, /Uloženo, ale do Shopify se zatím nezapsalo/);
   assert.match(html, /Nové nastavení slev se do pokladny zatím nezapsalo, platí předchozí/);
   assert.match(html, /Synchronizovat znovu/);
-  assert.match(html, /Nepropsáno/);
-  assert.doesNotMatch(html, />Běží</);
+  assert.match(html, /Nezapsáno/);
+  assert.doesNotMatch(html, />Aktivní</);
 
   // Editing an existing rule answers in place (no redirect) with the same honest result.
   const edited = await ruleEditorAction(ctx, formOf(automatic.map(([k, v]) => [k, k === FIELD.percent ? "15" : v])), id);
@@ -202,7 +202,7 @@ test("delete: the rule's Won node is deleted in Shopify; the list lands with 'Sl
   assert.deepEqual(await ruleEditorAction(ctx, formOf([["intent", "delete"]]), "r_other"), { result: { ok: false, reason: "not_found" } });
 });
 
-test("'Běží' per rule: a rule changed after the last applied sync is 'čeká na propsání', the untouched one still runs", async () => {
+test("'Běží' per rule: a rule changed after the last applied sync is 'čeká na zápis', the untouched one still runs", async () => {
   const store = new FakeStore();
   const ctx = testCtx(db.prisma, shop, store);
   const a = await ruleEditorAction(ctx, formOf(automatic), "new");
@@ -220,7 +220,7 @@ test("'Běží' per rule: a rule changed after the last applied sync is 'čeká 
   const facts = await loadRuleSync(ctx, (await loadConfig(db.prisma, shop)).config);
   assert.deepEqual(facts, { [idA]: "synced", [idB]: "pending" });
   const page = await discountsPage(ctx, { ...PAGE, deleted: false });
-  assert.match(text(await renderPage(createElement(DiscountsScreen, page))), /2 slevy · 1 běží · 1 čeká na propsání/);
+  assert.match(text(await renderPage(createElement(DiscountsScreen, page))), /2 slevy · 1 aktivní · 1 čeká na zápis/);
 });
 
 // --- Fix round 1, item 2: "Běží" from the version link, not from timestamps --------------------
@@ -246,7 +246,7 @@ test("'Běží' follows the synced ConfigVersion, not clocks: a sync run stamped
   assert.deepEqual(await loadRuleSync(ctx as never, (await loadConfig(db.prisma, shop)).config), { [id]: "pending" });
 });
 
-test("'Běží' compares the whole config version: an engine setting change leaves every rule 'čeká na propsání' until synced", async () => {
+test("'Běží' compares the whole config version: an engine setting change leaves every rule 'čeká na zápis' until synced", async () => {
   const store = new FakeStore();
   const ctx = testCtx(db.prisma, shop, store);
   const a = await ruleEditorAction(ctx, formOf(automatic), "new");

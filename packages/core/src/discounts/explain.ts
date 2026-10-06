@@ -4,8 +4,8 @@
 // (Shopify only shows `applicable: false`, spec §3).
 //
 // Quantity tiers (MVP 3): what a tier saves (with the break when every line
-// reached the same one), why it does not apply, and the hint "Přidej 1 ks a
-// dostaneš −15 %" (plan.progress.tierHint). A set has no name: it is "the
+// reached the same one), why it does not apply, and the hint "Přidejte 1 ks a
+// dostanete −15 %" (plan.progress.tierHint). A set has no name: it is "the
 // quantity discount"; items carry `tierSetId`, never a rule id.
 //
 // Margin protection (MVP 2): a lowered line, a lowered order discount, lines the
@@ -16,6 +16,7 @@
 
 import {
   csPlural,
+  describeItemMinimumGap,
   describeMarginReason,
   describeRule,
   describeTierBreak,
@@ -67,6 +68,13 @@ export interface ExplainOptions {
    * lowered a discount, with the numbers.
    */
   audience?: "admin" | "shopper";
+  /**
+   * Per-item minimum quantity (plan 2026-10-06 bod 8): names of the selected
+   * products / collections by the tail of their GID (RuleOutcome.items[].key),
+   * so a sentence can say "Produkt Tričko: v košíku 1 ks, sleva platí od 4 ks."
+   * Without a name it says "Produkt: v košíku 1 ks, …" and carries the lines.
+   */
+  itemNames?: Readonly<Record<string, string>>;
 }
 
 const q = (text: string, locale: UiLocale) => (locale === "cs" ? `„${text}“` : `“${text}”`);
@@ -203,7 +211,7 @@ function tierSentences(tier: TierOutcome, plan: CartPlan, locale: UiLocale): Exp
     }
     case "outranked": {
       const better = betterName(tier, plan, locale);
-      if (!better) return info(cs ? `${subject} se neuplatní: máš výhodnější slevu.` : `${subject} is not applied: another discount is better.`);
+      if (!better) return info(cs ? `${subject} se neuplatní: máte výhodnější slevu.` : `${subject} is not applied: another discount is better.`);
       return info(cs ? `${subject} se neuplatní: výhodnější je ${better}.` : `${subject} is not applied: ${better} is better.`);
     }
     case "currency_missing":
@@ -224,7 +232,7 @@ function tierSentences(tier: TierOutcome, plan: CartPlan, locale: UiLocale): Exp
   }
 }
 
-/** "Přidej 1 ks a dostaneš −15 %." — plan.progress.tierHint in words. */
+/** "Přidejte 1 ks a dostanete −15 %." — plan.progress.tierHint in words. */
 function tierHintSentence(plan: CartPlan, locale: UiLocale): ExplainItem[] {
   const hint = plan.progress.tierHint;
   if (!hint) return [];
@@ -232,11 +240,11 @@ function tierHintSentence(plan: CartPlan, locale: UiLocale): ExplainItem[] {
   // Margin protection lowers the next tier there (MVP 4): promise a lower price, never a value.
   const text = hint.marginCapped
     ? locale === "cs"
-      ? `Přidej ${n} ks a dostaneš nižší cenu.`
+      ? `Přidejte ${n} ks a dostanete nižší cenu.`
       : `Add ${n} more ${enPlural(n, "item", "items")} for a lower price.`
     : (() => {
         const value = describeTierValue(tierStepBreak(hint.next, plan.currency), { locale, currency: plan.currency });
-        return locale === "cs" ? `Přidej ${n} ks a dostaneš ${value}.` : `Add ${n} more ${enPlural(n, "item", "items")} to get ${value}.`;
+        return locale === "cs" ? `Přidejte ${n} ks a dostanete ${value}.` : `Add ${n} more ${enPlural(n, "item", "items")} to get ${value}.`;
       })();
   return [item("info", text, { tierSetId: hint.setId, lineIds: hint.lineIds })];
 }
@@ -348,7 +356,7 @@ function codeSentences(code: CodeOutcome, plan: CartPlan, locale: UiLocale): Exp
       // Also a Pro partner left out of a stack only by the stack cap (plan.ts
       // MAX_STACK_CANDIDATES): every member of that stack gives more than it.
       const better = betterName(rule, plan, locale);
-      if (cs) return warn(`Kód ${c} se neuplatní: máš výhodnější slevu${better ? ` ${better}` : ""}.`);
+      if (cs) return warn(`Kód ${c} se neuplatní: máte výhodnější slevu${better ? ` ${better}` : ""}.`);
       return warn(`Code ${c} is not applied: you already have a better discount${better ? ` (${better})` : ""}.`);
     }
     case "no_target_lines":
@@ -449,7 +457,7 @@ function automaticSentences(rule: RuleOutcome, plan: CartPlan, locale: UiLocale)
       // Also a Pro partner left out of a stack only by the stack cap (plan.ts
       // MAX_STACK_CANDIDATES): every member of that stack gives more than it.
       const better = betterName(rule, plan, locale);
-      if (!better) return info(cs ? `Sleva ${name} se neuplatní: máš výhodnější slevu.` : `${name} is not applied: another discount is better.`);
+      if (!better) return info(cs ? `Sleva ${name} se neuplatní: máte výhodnější slevu.` : `${name} is not applied: another discount is better.`);
       return info(cs ? `Sleva ${name} se neuplatní: výhodnější je ${better}.` : `${name} is not applied: ${better} is better.`);
     }
     case "below_minimum": {
@@ -565,6 +573,26 @@ function marginOrderSentences(plan: CartPlan, locale: UiLocale): ExplainItem[] {
   return out;
 }
 
+/**
+ * Per-item minimum quantity: one sentence per item of the rule that has not
+ * reached its own minimum — whether the rule applies to other items or to none
+ * — through describe.ts `describeItemMinimumGap`. Only for a rule that got as
+ * far as its minimums (`items` is set then) and, for a code rule, was entered.
+ */
+function itemMinimumSentences(rule: RuleOutcome, locale: UiLocale, opts: ExplainOptions): ExplainItem[] {
+  const kind = rule.describable.target.kind;
+  if (!rule.items || (kind !== "products" && kind !== "collections")) return [];
+  if (rule.method === "code" && rule.enteredCodes.length === 0) return [];
+  const out: ExplainItem[] = [];
+  for (const group of rule.items) {
+    if (group.reached) continue;
+    const name = opts.itemNames?.[group.key];
+    const text = describeItemMinimumGap({ kind, minimum: group.minimum, count: group.count, ...(name ? { name } : {}) }, locale);
+    out.push(item(rule.method === "code" ? "warning" : "info", text, { ruleId: rule.ruleId, lineIds: group.lineIds }));
+  }
+  return out;
+}
+
 export function explainPlan(plan: CartPlan, locale: UiLocale, opts: ExplainOptions = {}): ExplainItem[] {
   const cs = locale === "cs";
   const admin = opts.audience === "admin";
@@ -616,6 +644,7 @@ export function explainPlan(plan: CartPlan, locale: UiLocale, opts: ExplainOptio
       }
     }
   }
+  for (const rule of plan.rules) out.push(...itemMinimumSentences(rule, locale, opts));
   for (const line of plan.lines) out.push(...cappedLineSentence(line, plan, locale, admin));
   out.push(...marginOrderSentences(plan, locale));
   out.push(...outletSentence(plan, locale));

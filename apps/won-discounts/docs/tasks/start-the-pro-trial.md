@@ -11,16 +11,16 @@ generated_from: null
 lang: en
 updated: 2026-10-04
 keywords: [start pro, upgrade, trial, subscribe, plan page, tarif, vyzkoušet pro]
-summary: Open Plan, click Try Pro free for 14 days, approve the subscription on Shopify's page, and you are back in the app on Pro.
+summary: Open Settings, scroll to Plan, click Try Pro free for 14 days, approve the subscription on Shopify's page, and you are back in the app on Pro.
 ---
 
 # Start the Pro trial
 
-1. Open **Plan**.
+1. Open **Settings** and scroll to **Plan**.
 2. Click **Try Pro free for 14 days**.
 3. Shopify's confirmation page opens. Check the price (29 USD a month after the
    trial) and click **Approve**.
-4. You land back on **Plan**: it says *You are trying Pro until …* with the trial's
+4. You land back in the app on **Plan**: it says *You are trying Pro until …* with the trial's
    last day. Your discounts are sent to Shopify again so Pro settings apply at
    checkout right away.
 

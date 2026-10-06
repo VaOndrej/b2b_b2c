@@ -69,7 +69,7 @@ test("Přesunout: backup → native deleted → Won rule saved AND live in Shopi
   assert.match(html, /Přesunuté do Won/);
   assert.match(html, /Vrátit zpět/);
   // F11 / audit P2-7: moved discounts live in Won, uninstalling ends them — said next to them.
-  assert.match(html, /Když aplikaci odinstaluješ, přestanou platit/);
+  assert.match(html, /Když aplikaci odinstalujete, přestanou platit/);
   // F11: what the undo changes is known BEFORE its confirmation (the dialog body).
   const listed = props.signals.native.moved[0] as UndoableBackup;
   assert.ok(listed.undoCosts?.some((c) => /s novým ID/.test(c)), JSON.stringify(listed));
@@ -111,7 +111,7 @@ test("a move whose Won node does not reach Shopify is rolled back and the discou
   assert.equal(result.ok, false);
   assert.ok(!result.ok && result.reason === "native_failed");
   assert.match(result.messages[0], /Přesun se nepovedl/);
-  assert.match(result.messages[0], /Sleva „LETO15“ se do Shopify nepropsala/);
+  assert.match(result.messages[0], /Sleva „LETO15“ se do Shopify nezapsala/);
   // F1: a restore is a new discount, never "as before".
   assert.match(result.messages[0], /Slevu jsme hned vrátili do Shopify\. Je to nová sleva s novým ID\. Počítadlo použití začíná od nuly\./);
   assert.doesNotMatch(result.messages[0], /funguje jako dřív/);
@@ -214,7 +214,7 @@ test("F11: the move dialog tells the true order (delete first, a short window), 
   assert.ok(backup >= 0 && backup < remove && remove < create, html);
   assert.match(html, /sleva chvíli neplatí/);
   assert.match(html, /Nic\./, "no losses → 'Nic.' (reachable now)");
-  assert.match(html, /Když aplikaci odinstaluješ, přestanou platit/);
+  assert.match(html, /Když aplikaci odinstalujete, přestanou platit/);
   assert.match(html, /nové ID, počítadlo od nuly, limit na zbývající použití/);
   assert.doesNotMatch(html, /zůstane v Shopify/);
 });

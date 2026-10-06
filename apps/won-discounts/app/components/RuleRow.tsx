@@ -1,6 +1,6 @@
-// One rule in a list (Přehled "Co běží", Slevy a kódy): name + real state pill,
+// One rule in a list (Přehled "Aktivní slevy", Slevy a kódy): name + real state pill,
 // the rule's state line, and — when it is not simply live or off — what it is
-// instead ("Naplánováno od …", "Uloženo, zatím nepropsáno do Shopify"). §17/A7:
+// instead ("Naplánováno od …", "Uloženo, zatím nezapsáno do Shopify"). §17/A7:
 // one row shape, not re-typed per screen.
 
 import type { ReactNode } from "react";
@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 import type { DiscountRule } from "@won/core/discounts/config";
 
 import { useT } from "../i18n/context";
-import { describeRuleLine, ruleName } from "./model/describe";
+import { describeRuleLine, ruleName, type RuleLineNames } from "./model/describe";
 import { needsAttention, statusText, type RuleStatus } from "./model/rule-status";
 import { RowNote, StatusPill, WonRow } from "./shell/WonSection";
 
@@ -19,6 +19,7 @@ export function RuleRow({
   timezone,
   action,
   attention,
+  names,
 }: {
   rule: DiscountRule;
   status: RuleStatus;
@@ -27,6 +28,8 @@ export function RuleRow({
   action?: ReactNode;
   /** A problem sentence for this rule (red = needs attention, §11a). */
   attention?: string;
+  /** Market and rule names for the state line (market targeting, combinations); handles and a count without them. */
+  names?: RuleLineNames;
 }) {
   const tr = useT();
   const note = statusText(status, tr);
@@ -36,7 +39,7 @@ export function RuleRow({
         <s-text type="strong">{ruleName(rule, tr)}</s-text>
         <StatusPill status={status} />
       </div>
-      <RowNote>{describeRuleLine(rule, tr, currencies, timezone)}</RowNote>
+      <RowNote>{describeRuleLine(rule, tr, currencies, timezone, names)}</RowNote>
       {note ? <RowNote tone={needsAttention(status) ? "attention" : undefined}>{note}</RowNote> : null}
       {attention ? <RowNote tone="attention">{attention}</RowNote> : null}
     </WonRow>

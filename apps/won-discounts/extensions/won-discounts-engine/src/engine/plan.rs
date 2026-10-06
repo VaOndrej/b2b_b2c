@@ -1,7 +1,10 @@
 // planCart (plan.ts): the one discount brain, the part of it a node's emission
 // depends on. Same stages, same order, same ties:
-//   resolveRules → matchCodes → prepareLines → gateRules (minimum: the whole
-//   cart, or the rule's own lines when its scope is "entitled") → prepareTiers
+//   resolveRules → matchCodes (by hash, else by generated batch: batch.rs) →
+//   prepareLines → gateRules (minimum: the whole cart, or the rule's own lines
+//   when its scope is "entitled") → applyItemMinimums (per-item minimum
+//   quantities: plan.ts "Per-item minimum" is the port spec; here ONE cold
+//   function after the unchanged gate, `apply_item_minimums`) → prepareTiers
 //   (MVP 3, engine/tiers.rs: each line's quantity-tier candidate) →
 //   planProducts (a tier competes like a rule, never in a Pro stack) → margin
 //   protection (MVP 2, only while `modules.margin` is on: computeFloors +
@@ -24,6 +27,7 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
 
+use super::batch::{is_batch_code, PREFIX};
 use super::cart::{normalize_cart, CartInput, NormalizedCart, NormalizedLine};
 use super::config::{threshold_in, Config, EngineFlags, FieldsRef, RawCampaign, RawRule, TargetKind, TierSet, ValueSpec};
 use super::describe::{describe_short, DescribedValue};
@@ -106,6 +110,7 @@ pub struct Rule<'a> {
     /// Fixed amount in the cart currency; none = no value for it.
     pub fixed: Option<i64>,
     pub priority: i64,
+    /// Code rules: its codes' hashes, and one longer text per generated batch (batch.rs).
     pub code_hashes: &'a [String],
     pub min_subtotal: Option<i64>,
     pub min_subtotal_missing: bool,
@@ -329,8 +334,10 @@ fn resolve_rules<'a>(config: &'a Config, cart: &NormalizedCart) -> Resolved<'a> 
 
 // --- Stage: codes ------------------------------------------------------------------------------
 
-/// Entered codes → code rules by hash (the first rule listing a hash owns it);
-/// plan.ts `matchCodes`. Of the first MAX_ENTERED_CODES entries as entered
+/// Entered codes → code rules: by hash (the first rule listing a hash owns it),
+/// else by generated batch (batch.rs `CodeBatch::matches`: the first batch in
+/// rule order, then batch order; only an entry that is all ASCII once trimmed
+/// is tried, which `is_batch_code` sees to — plan.ts `matchCodes`, cart.ts `ascii`). Of the first MAX_ENTERED_CODES entries as entered
 /// (every entry counts: an empty one, one that cannot be a Won code), only an
 /// entry that can be a Won code is matched (`normalized_hash_within`): at most
 /// the longest Won code (`max_code_length`) + CODE_PADDING UTF-16 units as
@@ -349,6 +356,7 @@ fn match_codes<'a>(rules: &[Rule], cart: &NormalizedCart<'a>, max_code_length: u
     // By the hash's number: a config text that is not 8 lower-case hex digits
     // equals no codeHash and is left out; the first rule listing a hash owns it.
     let mut owner_by_hash: Table<u64, usize> = Table::default();
+    let mut any_batch = false;
     for (i, rule) in rules.iter().enumerate() {
         if !rule.method_code {
             continue;
@@ -356,15 +364,26 @@ fn match_codes<'a>(rules: &[Rule], cart: &NormalizedCart<'a>, max_code_length: u
         for hash in rule.code_hashes {
             if let Some(n) = parse_hash(hash) {
                 owner_by_hash.get_or_insert_with(u64::from(n), || i);
+            } else {
+                // Longer than a hash: a generated batch's text (batch.rs), matched by `batch_owner`.
+                any_batch |= hash.len() > PREFIX;
             }
         }
     }
-    if owner_by_hash.is_empty() {
+    if owner_by_hash.is_empty() && !any_batch {
         return entered_by_rule;
     }
     for &raw in cart.entered_codes.iter().take(MAX_ENTERED_CODES) {
         let Some((hash, code)) = normalized_hash_within(raw, max_code_length) else { continue };
-        if let Some(&owner) = owner_by_hash.get(&u64::from(hash)) {
+        let owner = match owner_by_hash.get(&u64::from(hash)) {
+            Some(&owner) => Some(owner),
+            // Else the first code rule with a generated batch the code is a code of (batch.rs).
+            None if any_batch => {
+                rules.iter().position(|r| r.method_code && r.code_hashes.iter().any(|text| text.len() > PREFIX && is_batch_code(text, code.as_bytes())))
+            }
+            None => None,
+        };
+        if let Some(owner) = owner {
             entered_by_rule[owner].push((hash, code));
         }
     }
@@ -423,6 +442,206 @@ fn line_rule_ids(refs: &RuleRefs, rule_ids: &[String], variant_rule_ids: &[Strin
     out
 }
 
+/// The item refs (`ruleId[@campaign]#key:min`, per-item minimum; targeting.ts
+/// `lineTargeting`) of the lines some ref of which named no rule as it is
+/// (`looks`: `line_rule_ids` gave them fewer rules than they have refs — nearly
+/// never: the sync writes each ref once, for a rule the config has). Run once,
+/// after the lines' loop, which it leaves exactly as it was (a call from inside
+/// that loop cost every cart ~110 instructions a line). A ref with a "#" that
+/// names no rule plainly, and whose base does, is recorded for its line; each
+/// such rule, once a line, either is one the line ALSO lists by a plain ref
+/// (it is among the line's rules already) and gets a mark, or joins the line's
+/// rules now, with the line in its scope like any rule of the line.
+#[cold]
+#[inline(never)]
+#[allow(clippy::too_many_arguments)]
+fn collect_item_refs<'a>(
+    rules: &[Rule],
+    retargeted: &[bool],
+    campaign_id: Option<&str>,
+    lines: &[NormalizedLine<'a>],
+    work: &mut [WorkLine],
+    looks: &[u32],
+    rule_scopes: &mut [Scope],
+) -> Vec<ItemEntry<'a>> {
+    let mut items: Vec<ItemEntry<'a>> = Vec::new();
+    for &at in looks {
+        let (Some(line), Some(w)) = (lines.get(at as usize), work.get_mut(at as usize)) else { continue };
+        let first = items.len();
+        for r in line.rule_ids.iter().chain(line.variant_rule_ids) {
+            // An item ref — unless the text names a rule as it is (then it was that rule's plain ref).
+            let Some(item) = parse_item_ref(r).filter(|_| rule_of_text(rules, retargeted, campaign_id, r).is_none()) else { continue };
+            if let Some(rule) = rule_of_text(rules, retargeted, campaign_id, item.base) {
+                items.push(ItemEntry { line: at, rule: rule as u32, group: 0, min: item.min, text: item.group });
+            }
+        }
+        for k in first..items.len() {
+            let Some(&ItemEntry { rule, .. }) = items.get(k) else { break };
+            if items.get(first..k).is_some_and(|earlier| earlier.iter().any(|e| e.rule == rule)) {
+                continue;
+            }
+            if w.rule_set.contains(&(rule as usize)) {
+                items.push(ItemEntry { line: at, rule, group: 0, min: 0, text: "" });
+                continue;
+            }
+            w.rule_set.push(rule as usize);
+            if let (Some(scope), true) = (rule_scopes.get_mut(rule as usize), w.excluded != Some(Excluded::Gift)) {
+                scope.add(line, w.excluded.is_none());
+            }
+        }
+    }
+    items
+}
+
+/// An item ref's parts (targeting.ts `parseItemRef`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct ItemRef<'a> {
+    /// The plain ref before the "#".
+    base: &'a str,
+    /// The text before the last ":" (`base#key`): the lines naming it count together.
+    group: &'a str,
+    min: i64,
+}
+
+/// `parseItemRef`: after the FIRST "#" a non-empty key, the LAST ":" and 1–6
+/// ASCII digits making a number ≥ 1; any other text is no item ref.
+fn parse_item_ref(r: &str) -> Option<ItemRef<'_>> {
+    let bytes = r.as_bytes();
+    let hash = bytes.iter().position(|&b| b == b'#')?;
+    let colon = bytes.iter().rposition(|&b| b == b':').filter(|&colon| colon > hash + 1)?;
+    let digits = bytes.len() - colon - 1;
+    if digits == 0 || digits > 6 {
+        return None;
+    }
+    let mut min: i64 = 0;
+    for &d in &bytes[colon + 1..] {
+        if !d.is_ascii_digit() {
+            return None;
+        }
+        min = min * 10 + i64::from(d - b'0');
+    }
+    // "#" and ":" are ASCII: both cuts are character boundaries.
+    (min >= 1).then(|| ItemRef { base: r.get(..hash).unwrap_or(""), group: r.get(..colon).unwrap_or(""), min })
+}
+
+/// One item ref of one cart line (per-item minimum, plan.ts step 1), in line
+/// order as the refs were read — or, with an empty `text`, the mark that the
+/// line ALSO lists the rule by a plain ref (after the line's item refs;
+/// `collect_item_refs`).
+#[derive(Debug, Clone, Copy)]
+struct ItemEntry<'a> {
+    line: u32,
+    rule: u32,
+    /// The group's index, filled in by `apply_item_minimums`.
+    group: u32,
+    min: i64,
+    /// The group's text (`base#key`).
+    text: &'a str,
+}
+
+/// Per-item minimum, steps 2 to 5 (plan.ts `prepareLines`, `gate`,
+/// `applyItemMinimums`), after the gate, only for a cart with an item ref:
+///   2. a group's count = the pieces of every non-gift line naming it (a line
+///      once a rule and group); the rules those lines name are the item rules;
+///   3. an item rule (product class) the gate found below its minimum ONLY by
+///      its common quantity minimum — the last thing the gate checks; its
+///      subtotal minimum is reached — is eligible after all, and that minimum
+///      decides for its plain lines;
+///   4. an eligible item rule keeps a line when one of the line's groups of it
+///      reached its minimum, or the line lists it plainly and the common
+///      quantity minimum is reached;
+///   5. one that keeps no non-gift line is below its minimum.
+/// (Every index here is one the plan made: a line, a rule or a group that exists.)
+#[cold]
+#[inline(never)]
+fn apply_item_minimums<'a>(rules: &mut [Rule], work: &mut [WorkLine], lines: &[NormalizedLine], items: &mut [ItemEntry<'a>], cart_scope: Scope, rule_scopes: &[Scope]) {
+    // Per rule: 0 = not an item rule in play; 1 = eligible, its common quantity minimum missed; 2 = … reached; | 4 = keeps a line.
+    let mut plays = vec![0u8; rules.len()];
+    let mut groups: Vec<(&'a str, i64)> = Vec::new();
+    let gift = |work: &[WorkLine], line: u32| work.get(line as usize).is_none_or(|w| w.excluded == Some(Excluded::Gift));
+    for k in 0..items.len() {
+        let (before, rest) = items.split_at_mut(k);
+        let Some(entry) = rest.first_mut() else { break };
+        if entry.text.is_empty() || gift(work, entry.line) {
+            continue;
+        }
+        let group = groups.iter().position(|(other, _)| bytes_eq(other.as_bytes(), entry.text.as_bytes())).unwrap_or(groups.len());
+        if group == groups.len() {
+            groups.push((entry.text, 0));
+        }
+        entry.group = group as u32;
+        // (An earlier entry of this line with the same rule and group already counted it.)
+        let counted = before.iter().rev().take_while(|e| e.line == entry.line).any(|e| e.rule == entry.rule && e.group == entry.group && !e.text.is_empty());
+        if let (false, Some(count), Some(line)) = (counted, groups.get_mut(group), lines.get(entry.line as usize)) {
+            count.1 = count.1.saturating_add(line.quantity);
+        }
+        if let Some(play) = plays.get_mut(entry.rule as usize) {
+            *play = 2;
+        }
+    }
+    for ((rule, play), scope) in rules.iter_mut().zip(plays.iter_mut()).zip(rule_scopes) {
+        if *play == 0 {
+            continue;
+        }
+        *play = 0;
+        if rule.cls != DiscountClass::Product {
+            continue;
+        }
+        if rule.state.is_none() {
+            *play = 2;
+        } else if rule.state == Some(RuleState::BelowMinimum) {
+            let scope = if rule.min_entitled { *scope } else { cart_scope };
+            if rule.min_subtotal.is_none_or(|m| m <= scope.subtotal) {
+                rule.state = None;
+                *play = 1;
+            }
+        }
+    }
+    let mut rest: &[ItemEntry] = items;
+    for (at, w) in work.iter_mut().enumerate() {
+        // The line's entries.
+        let count = rest.iter().take_while(|e| e.line as usize == at).count();
+        let (entries, after) = rest.split_at(count);
+        rest = after;
+        if w.excluded == Some(Excluded::Gift) {
+            continue;
+        }
+        // The line's rules, each kept or left out in place (their order stays).
+        let mut len = 0;
+        for k in 0..w.rule_set.len() {
+            let i = w.rule_set[k];
+            let mut keeps = true;
+            if let Some(play) = plays.get_mut(i).filter(|play| **play != 0) {
+                // A line without an item ref of the rule lists it plainly.
+                let (mut listed, mut plain) = (false, false);
+                keeps = false;
+                for e in entries.iter().filter(|e| e.rule as usize == i) {
+                    if e.text.is_empty() {
+                        plain = true;
+                    } else {
+                        listed = true;
+                        keeps |= groups.get(e.group as usize).is_some_and(|g| g.1 >= e.min);
+                    }
+                }
+                keeps |= (plain || !listed) && *play & 2 != 0;
+                if keeps {
+                    *play |= 4;
+                }
+            }
+            if keeps {
+                w.rule_set[len] = i;
+                len += 1;
+            }
+        }
+        w.rule_set.truncate(len);
+    }
+    for (rule, play) in rules.iter_mut().zip(plays) {
+        if play != 0 && play & 4 == 0 {
+            rule.state = Some(RuleState::BelowMinimum);
+        }
+    }
+}
+
 /// What a ref names (`line_rule_ids`).
 struct RuleRefs<'c, 'a> {
     by_id: &'c IdMap<'a>,
@@ -457,6 +676,30 @@ impl RuleRefs<'_, '_> {
             },
         }
     }
+}
+
+/// `RuleRefs::rule_of`, written out once more for the item refs' cold path,
+/// over the rules themselves (`rules`: the plan's rules, without the tier
+/// sets'; `retargeted` and `campaign_id` as `RuleRefs` has them) — NOT through
+/// `RuleRefs`: handing the lines' loop's `refs` (or its table) to another
+/// function moves them from registers to memory for that loop too (measured:
+/// +16 to +24 instructions a ref on every cart). A text without "@" is the id
+/// of a rule the campaign does not re-target; one with "@" names, before its
+/// first "@", a rule the campaign after it re-targets. (The same answers as
+/// `rule_of`: a ref equal to an id with "@" is read by its "@" in both.)
+#[inline(never)]
+fn rule_of_text(rules: &[Rule], retargeted: &[bool], campaign_id: Option<&str>, r: &str) -> Option<usize> {
+    let (id, campaign) = match r.as_bytes().iter().position(|&b| b == b'@') {
+        None => (r, None),
+        Some(at) => (r.get(..at)?, r.get(at + 1..)),
+    };
+    let i = rules.iter().position(|rule| bytes_eq(rule.id.as_bytes(), id.as_bytes()))?;
+    let retargeted = retargeted.get(i).copied().unwrap_or(false);
+    match campaign {
+        None => !retargeted,
+        Some(_) => retargeted && campaign_id == campaign,
+    }
+    .then_some(i)
 }
 
 /// The rules one line already listed (a stamp per rule, the line's number).
@@ -1602,6 +1845,9 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
         id_has_at: &id_has_at,
         plain: id_has_at.iter().zip(&retargeted).map(|(&at, &retargeted)| !at && !retargeted).collect(),
     };
+    // Per-item minimum: the lines some ref of which named no rule as it is (`collect_item_refs`), and whether the last line was one.
+    let mut looks: Vec<u32> = Vec::new();
+    let mut look = false;
     let mut seen = Seen::new(rules.len());
     let mut work: Vec<WorkLine> = Vec::with_capacity(cart.lines.len());
     let mut cart_scope = Scope::default();
@@ -1616,9 +1862,19 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
         };
         // The lines of one product list the same refs: refs equal to the previous
         // line's (compared text by text, a word at a time) are not looked up again.
+        let at = work.len();
         let rule_set = match work.last() {
-            Some(before) if cart.lines[work.len() - 1].same_refs(line) => before.rule_set.clone(),
-            _ => line_rule_ids(&refs, line.rule_ids, line.variant_rule_ids, &mut seen),
+            // (Not after a line to look at again: this one's refs are then read one by one, to be looked at too.)
+            Some(before) if !look && cart.lines[at - 1].same_refs(line) => before.rule_set.clone(),
+            _ => {
+                let rule_set = line_rule_ids(&refs, line.rule_ids, line.variant_rule_ids, &mut seen);
+                // Some ref named no rule as it is: it may be an item ref (per-item minimum).
+                look = rule_set.len() != line.rule_ids.len() + line.variant_rule_ids.len();
+                if look {
+                    looks.push(at as u32);
+                }
+                rule_set
+            }
         };
         if excluded != Some(Excluded::Gift) {
             let discountable = excluded.is_none();
@@ -1637,6 +1893,13 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
             margin_tight: false,
         });
     }
+    // Per-item minimum quantities: the item refs of the lines to look at again (none in nearly every cart).
+    // (Slices and values only: nothing the lines' loop keeps in registers is handed over by reference.)
+    let mut items = if looks.is_empty() {
+        Vec::new()
+    } else {
+        collect_item_refs(&rules[..first_tier], retargeted.as_slice(), campaign_id, cart.lines.as_slice(), work.as_mut_slice(), looks.as_slice(), rule_scopes.as_mut_slice())
+    };
     // The rules only: a tier never stacks (no rule can list it), and sizing the
     // partner bits by the rules keeps the one-word stack search up to 64 rules.
     let partners = partners_of(&rules[..first_tier], &by_id);
@@ -1647,6 +1910,11 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
         let target_scope = if rule.cls == DiscountClass::Product { rule_scopes[i] } else { cart_scope };
         rule.state = gate(rule, &cart, &markets_here, &cart_scope, &target_scope, !entered_by_rule[i].is_empty());
     }
+    // Per-item minimum quantities: only a cart with an item ref.
+    if !items.is_empty() {
+        apply_item_minimums(&mut rules[..first_tier], work.as_mut_slice(), cart.lines.as_slice(), items.as_mut_slice(), cart_scope, rule_scopes.as_slice());
+    }
+    drop(items);
 
     // Quantity tiers (MVP 3): each line's candidate, from the sets as shipped.
     let tiers = prepare_tiers(&config.tiers, &cart.lines, &cart.tiers, |i| work[i].excluded.is_none(), &cart.currency, !cart.locale_en);

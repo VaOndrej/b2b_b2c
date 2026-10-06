@@ -108,3 +108,82 @@
   font-weight: 600;
   color: inherit;
 }
+/* Feedback 2 (2026-10-06): the "Rewards progress" and "Campaign banner" blocks and the embed's top bar. They
+   inherit the theme's font and colours; sizes in em (Dawn's root font-size is 62.5 %). */
+.won-progress,
+.won-campaign {
+  display: grid;
+  gap: 0.5em;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+}
+.won-progress--center,
+.won-campaign--center {
+  text-align: center;
+}
+.won-progress[hidden],
+.won-campaign[hidden],
+.won-campaign [hidden],
+.won-topbar[hidden] {
+  display: none !important;
+}
+.won-progress p,
+.won-campaign p {
+  margin: 0;
+}
+.won-progress__row {
+  display: grid;
+  gap: 0.3em;
+}
+.won-progress__track {
+  height: 0.375em;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 15%, transparent);
+  overflow: hidden;
+}
+.won-progress__track span {
+  display: block;
+  height: 100%;
+  background: currentColor;
+  border-radius: inherit;
+  transition: width 0.3s ease;
+}
+.won-campaign__title {
+  font-weight: 600;
+}
+.won-campaign__time {
+  font-variant-numeric: tabular-nums;
+}
+.won-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25em 1.5em;
+  padding: 0.6em 1em;
+  background: var(--won-topbar-bg, #111);
+  color: var(--won-topbar-text, #fff);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+}
+.won-topbar .won-progress,
+.won-topbar .won-campaign {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25em 1.5em;
+}
+.won-topbar .won-campaign {
+  gap: 0.25em 0.4em;
+}
+.won-topbar .won-campaign__time::before {
+  content: "· ";
+}
+@media (prefers-reduced-motion: reduce) {
+  .won-progress__track span {
+    transition: none;
+  }
+}

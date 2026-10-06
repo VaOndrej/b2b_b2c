@@ -63,6 +63,8 @@ export async function loadPlanScreen(ctx: ShopCtx, opts: { env?: Readonly<Record
     billingKnown: reconciled.known,
     trialEndsText: view.trialEndsAt ? formatShopTime(view.trialEndsAt.toISOString(), zone, ctx.locale) : null,
     test: view.test || isTestCharge(opts.env),
+    // eslint-disable-next-line no-undef
+    production: (opts.env ?? process.env).NODE_ENV === "production",
     price: { amount: PRO_PLAN.amount.replace(/\.00$/, ""), currency: PRO_PLAN.currency, trialDays: PRO_PLAN.trialDays },
     codeRules: codeRuleLimit(loaded.config),
     maxRules: CONFIG_LIMITS.rules,

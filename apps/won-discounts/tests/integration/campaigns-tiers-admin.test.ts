@@ -128,7 +128,11 @@ test("a campaign that would give less than the base is refused on the tier field
   const { ctx } = await setup();
   const less = await campaignsAction(ctx, await baseForm(globalRows("12", "12")));
   assert.ok(!less.ok && less.reason === "invalid" && "errors" in less, JSON.stringify(less));
-  assert.deepEqual(less.errors, [{ field: F.tierUse, key: "campaign.error.tierLess", params: { set: "Celý obchod", qty: 5, currency: "" } }]);
+  // The error carries the set's id (`at`): the screen shows it at that set, not under the whole list.
+  assert.deepEqual(less.errors, [{ field: F.tierUse, key: "campaign.error.tierLess", params: { set: "Celý obchod", qty: 5, currency: "" }, at: "g" }]);
+  // B14: the posted rows come back with the refusal.
+  assert.deepEqual(less.values?.[F.tierUse], ["g"]);
+  assert.equal(less.values?.[`${F.tierQty}g.0`]?.[0] !== undefined, true);
   const eur = await campaignsAction(ctx, await baseForm([[F.tierUse, "s"], [`${F.tierQty}s.0`, "3"], [`${F.tierAmount}s.0.CZK`, "20"], [`${F.tierAmount}s.0.EUR`, ""]]));
   assert.ok(!eur.ok && "errors" in eur, JSON.stringify(eur));
   assert.equal(eur.errors![0]!.key, "campaign.error.tierLess");
@@ -136,7 +140,7 @@ test("a campaign that would give less than the base is refused on the tier field
   for (const [two, five] of [["abc", "25"], ["20", "12"], ["120", "130"]] as const) {
     const junk = await campaignsAction(ctx, await baseForm(globalRows(two, five)));
     assert.ok(!junk.ok && "errors" in junk, JSON.stringify(junk));
-    assert.deepEqual(junk.errors, [{ field: F.tierUse, key: "campaign.error.tierBreaks", params: { set: "Celý obchod" } }], `${two} / ${five}`);
+    assert.deepEqual(junk.errors, [{ field: F.tierUse, key: "campaign.error.tierBreaks", params: { set: "Celý obchod" }, at: "g" }], `${two} / ${five}`);
   }
   const empty = await campaignsAction(ctx, await baseForm([[F.tierUse, "g"], [`${F.tierQty}g.0`, "2"], [`${F.tierPercent}g.0`, ""]]));
   assert.ok(!empty.ok && "errors" in empty && empty.errors![0]!.key === "campaign.error.tierEmpty", JSON.stringify(empty));

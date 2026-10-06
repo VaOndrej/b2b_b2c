@@ -3,7 +3,7 @@
 //                              names of their variants (never an id on screen), the ledger, the history worded in
 //                              the admin language and the shop's zone, the price lists with fixed prices, the
 //                              module settings;
-//   outletAction(ctx, form)    intent start | end | reopen | keep → outlet.server.ts (the form parsed HERE, SEC-1;
+//   outletAction(ctx, form)    intent start | end | retry | reopen | keep → outlet.server.ts (the form parsed HERE, SEC-1;
 //                              Pro checked there, BILL-1 / A6); intent settings → saveConfigSection on
 //                              modules.outlet (display, return after the end);
 //   outletOverviewOf(...)      the Přehled card and its question (returned pieces waiting for a decision).
@@ -15,7 +15,8 @@ import type { WonDiscountsConfig } from "@won/core/discounts/config";
 
 import { t, type Locale, type MessageKey } from "../../i18n";
 import { outletBlockAddUrl } from "../../components/model/embed";
-import { OUTLET_FIELD, OUTLET_INTENT, readOutletDraft, readOutletSettings } from "../../components/model/outlet";
+import { OUTLET_FIELD, OUTLET_INTENT, OUTLET_START_FIELDS, readOutletDraft, readOutletSettings } from "../../components/model/outlet";
+import { submittedOf } from "../../components/model/submitted";
 import { shopMidnightIso, shopToday, type FormDataLike } from "../../components/model/rule-form";
 import type { FieldError, OutletActionResult, OutletHistoryView, OutletOverviewView, OutletPriceListView, OutletRunView, OutletScreenData, UiResult } from "../../components/model/types";
 import type { PrismaClient } from "../../generated/prisma/client";
@@ -101,13 +102,16 @@ export interface OutletViewOptions {
   locale: Locale;
   timezone: string | null;
   titles: ReadonlyMap<string, string>;
+  /** Price list id → its name (absent or unknown: the list is named by its currency). */
+  listTitles?: ReadonlyMap<string, string>;
   money: (minor: number, currency: string) => string;
 }
 
 /** A sale as the screen shows it (pure: the dev harness renders the same). */
 export function outletRunView(run: RunRow, events: readonly EventRow[], opts: OutletViewOptions): OutletRunView {
   const when = (at: Date | null) => (at ? formatShopTime(at.toISOString(), opts.timezone ?? "UTC", opts.locale) : null);
-  const backup = parse(run.backup) as { currency?: string; variant?: { price?: number }; lists?: unknown[] } | null;
+  const backup = parse(run.backup) as { currency?: string; variant?: { price?: number }; lists?: { id?: string; currency?: string }[] } | null;
+  const lists = Array.isArray(backup?.lists) ? backup.lists : [];
   const sale = parse(run.sale) as { variant?: { price?: number } } | null;
   const history: OutletHistoryView[] = [...events]
     .sort((a, b) => b.at.getTime() - a.at.getTime())
@@ -132,7 +136,10 @@ export function outletRunView(run: RunRow, events: readonly EventRow[], opts: Ou
       backup?.variant?.price !== undefined && sale?.variant?.price !== undefined && backup.currency
         ? { before: backup.variant.price, sale: sale.variant.price, currency: backup.currency }
         : null,
-    lists: Array.isArray(backup?.lists) ? backup.lists.length : 0,
+    lists: lists.length,
+    listNames: lists.map((l) => opts.listTitles?.get(String(l?.id ?? "")) || t(opts.locale, "outlet.run.listUnknown", { currency: String(l?.currency ?? "") })),
+    // "Zkusit znovu" (outletAction retry): a failed end is finished, a running sale's value for the web is written again.
+    retry: run.error !== null && (run.status === "ending" || (run.status === "active" && run.error.startsWith("storefront"))),
     returnPending: run.returnPending,
     problem: run.error ? t(opts.locale, run.status === "active" ? "outlet.problem.storefront" : "outlet.problem.retrying") : null,
     history,
@@ -195,7 +202,7 @@ export async function loadOutletScreen(ctx: ShopCtx): Promise<OutletScreenData> 
     ? await ctx.db.outletEvent.findMany({ where: { shop: ctx.shop, runId: { in: runs.map((r) => r.id) } }, orderBy: { at: "desc" } })
     : [];
   const titles = await variantTitles(ctx, [...new Set(runs.map((r) => r.variantId))]);
-  const opts: OutletViewOptions = { locale: ctx.locale, timezone: shop.timezone, titles, money: moneyOf(ctx.locale) };
+  const opts: OutletViewOptions = { locale: ctx.locale, timezone: shop.timezone, titles, listTitles: new Map(priceLists.map((l) => [l.id, l.title])), money: moneyOf(ctx.locale) };
   const view = (r: RunRow) => outletRunView(r, events.filter((e) => e.runId === r.id), opts);
   return {
     plan,
@@ -204,6 +211,7 @@ export async function loadOutletScreen(ctx: ShopCtx): Promise<OutletScreenData> 
     today: shopToday(shop.timezone, nowOf(ctx)),
     display: loaded.config.modules.outlet.display,
     reopen: loaded.config.modules.outlet.reopenOnReturnAfterEnd,
+    withOthers: loaded.config.engine.combination.outletWithAnything === true,
     running: running.map(view),
     ended: ended.map(view),
     priceLists,
@@ -230,15 +238,17 @@ export async function outletAction(ctx: ShopCtx, form: FormDataLike): Promise<Ou
   const intent = String(form.get(OUTLET_FIELD.intent) ?? "");
   const deps = depsOf(ctx);
   const runId = String(form.get(OUTLET_FIELD.run) ?? "");
+  // B14: a refused start gets back what the form posted, so the screen shows it again.
+  const values = intent === OUTLET_INTENT.start ? { values: submittedOf(form, OUTLET_START_FIELDS) } : {};
   const outcome = (r: Awaited<ReturnType<typeof startOutletRun>>, kind: "started" | "ended" | "reopened"): OutletActionResult => {
     if (r.ok) return { ok: true, kind, ...(r.skippedLists.length ? { skippedLists: r.skippedLists.length } : {}), ...(r.pending ? { pending: true } : {}) };
-    if (r.reason === "invalid") return { ok: false, reason: "invalid", errors: errorsOf(r.errors) };
-    return { ok: false, reason: "failed", message: r.message };
+    if (r.reason === "invalid") return { ok: false, reason: "invalid", errors: errorsOf(r.errors), ...values };
+    return { ok: false, reason: "failed", message: r.message, ...values };
   };
   switch (intent) {
     case OUTLET_INTENT.start: {
       // Free is refused before anything is read (BILL-1, A6); startOutletRun checks the plan again.
-      if ((await ctxPlan(ctx)) !== "pro") return { ok: false, reason: "invalid", errors: [{ field: OUTLET_FIELD.variant, key: "outlet.error.pro" }] };
+      if ((await ctxPlan(ctx)) !== "pro") return { ok: false, reason: "invalid", errors: [{ field: OUTLET_FIELD.variant, key: "outlet.error.pro" }], ...values };
       const { timezone } = await readShopContext(graphqlOf(ctx));
       const raw = readOutletDraft(form, (day) => {
         const at = new Date(shopMidnightIso(day, timezone));
@@ -248,11 +258,28 @@ export async function outletAction(ctx: ShopCtx, form: FormDataLike): Promise<Ou
     }
     case OUTLET_INTENT.end:
       return outcome(await endOutletRun(deps, runId, "manual"), "ended");
+    case OUTLET_INTENT.retry: {
+      // "Zkusit znovu" at a failed step: a failed end is finished now, a running sale's value for the web is written again.
+      // A sale stuck in `starting` has no retry here: the scheduler closes it after OUTLET_START_STALE_MS.
+      const run = await ctx.db.outletRun.findFirst({ where: { id: runId, shop: ctx.shop } });
+      if (!run || run.error === null) return { ok: false, reason: "failed", message: "nothing to retry" };
+      if (run.status === "ending") return outcome(await endOutletRun(deps, runId, (run.endReason as "quota" | "date" | "manual" | null) ?? "manual"), "ended");
+      if (run.status !== "active") return { ok: false, reason: "failed", message: "nothing to retry" };
+      const error = await writeOutletStorefront(deps, [run.productId]);
+      if (error) return { ok: false, reason: "failed", message: error };
+      await ctx.db.outletRun.update({ where: { id: run.id }, data: { error: null, attempts: 0, nextAttemptAt: null } });
+      return { ok: true, kind: "retried" };
+    }
     case OUTLET_INTENT.reopen:
       return outcome(await reopenOutletRun(deps, runId), "reopened");
     case OUTLET_INTENT.keep:
       return (await keepOutletEnded(deps, runId)) ? { ok: true, kind: "kept" } : { ok: false, reason: "failed", message: "not an ended sale" };
     case OUTLET_INTENT.settings: {
+      // B15: on Free the module runs only while earlier sales finish; with none of them the settings change nothing.
+      if ((await ctxPlan(ctx)) !== "pro") {
+        const finishing = await ctx.db.outletRun.count({ where: { shop: ctx.shop, status: { not: "ended" } } });
+        if (finishing === 0) return { ok: false, reason: "invalid", errors: [{ field: OUTLET_FIELD.display, key: "outlet.error.settingsPro" }] };
+      }
       const loaded = await loadConfig(ctx.db, ctx.shop);
       const next = readOutletSettings(form, loaded.config.modules.outlet);
       const saved = await saveConfigSection(ctx, {
@@ -292,6 +319,8 @@ export async function loadOutletOverview(ctx: ShopCtx): Promise<OutletOverviewVi
 export function outletOverviewOf(rows: readonly RunRow[], titles: ReadonlyMap<string, string>, ordersCounted: boolean): OutletOverviewView {
   return {
     running: rows.filter((r) => r.status !== "ended").length,
+    // P4: the running sales by name (a sale whose title could not be read is left out of the names, not of the count).
+    runningTitles: rows.filter((r) => r.status !== "ended").map((r) => titles.get(r.variantId) ?? "").filter(Boolean),
     pendingReturns: rows.filter((r) => r.status === "ended" && r.returnPending > 0).map((r) => ({ runId: r.id, title: titles.get(r.variantId) ?? "", qty: r.returnPending })),
     oversold: rows.filter((r) => outletOversold(r) > 0 && r.status !== "ended").length,
     problems: rows.filter((r) => r.error !== null && r.status !== "ended").length,

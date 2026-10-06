@@ -2,7 +2,7 @@
 // Admin GraphQL API (spec §1 "Sync vrstva, jediný zapisovač do Shopify").
 //
 // Two implementations share this contract:
-//   - adminClientFromApp(admin) — the embedded app's session client
+//   - adminClientFromApp(admin, shop) — the embedded app's session client
 //     (`authenticate.admin(request).admin`), used by saveAndSync;
 //   - createCliAdminClient(...) (admin-client-cli.server.ts) — `shopify app
 //     execute` as the app, for scripts and live tests on the dev store.
@@ -77,14 +77,22 @@ interface ShopifyApiErrorShape {
   response?: { code?: unknown; retryAfter?: unknown };
 }
 
+const writeListeners = new Set<(shop: string) => void>();
+
+/** `listener(shop)` runs after every mutation adminClientFromApp sends for that shop — a failed one too: it may have been applied. */
+export function onAdminWrite(listener: (shop: string) => void): void {
+  writeListeners.add(listener);
+}
+
 /**
- * AdminClient over the embedded app's session (`authenticate.admin`). The
+ * AdminClient over the embedded app's session (`authenticate.admin`) of `shop`. The
  * library's own retries are off (`tries` unset): sync/transport.ts owns the
  * retry policy so every attempt is visible in the sync steps.
  */
-export function adminClientFromApp(admin: AppAdminGraphql): AdminClient {
+export function adminClientFromApp(admin: AppAdminGraphql, shop: string): AdminClient {
   return {
     async graphql(query, variables) {
+      const write = /^\s*mutation\b/.test(query);
       try {
         // AdminOperations is string-indexed, so any document is a valid key.
         const response = await admin.graphql(query, variables === undefined ? undefined : { variables });
@@ -108,6 +116,8 @@ export function adminClientFromApp(admin: AppAdminGraphql): AdminClient {
           retryAfterMs: retryAfter === null ? null : Math.round(retryAfter * 1000),
           cause: error,
         });
+      } finally {
+        if (write) for (const listener of writeListeners) listener(shop);
       }
     },
   };

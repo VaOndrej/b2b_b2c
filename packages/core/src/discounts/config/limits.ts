@@ -19,10 +19,37 @@ export const CONFIG_LIMITS = Object.freeze({
    * code longer than the longest Won code, so this bounds its work per code.
    */
   codeLength: 64,
+  /**
+   * Generated code batches (plan 2026-10-06, dávka 4; code-batch.ts). A batch is
+   * regenerated from its seed, so the stored config and the function payload
+   * carry a constant few bytes a batch whatever its size, and a batch's codes
+   * do not count toward `codesPerRule` (that caps the hand-typed list, each of
+   * which ships as an 11-byte hash). `codeBatchSize`: codes a batch generates
+   * (Pro); `codeBatchSizeFree`: on Free; `codeBatchesPerRule`: batches a rule
+   * holds — so a rule adds at most 5 000 generated codes to Shopify, 250 a call
+   * (the sync's existing bulk path: 20 calls).
+   */
+  codeBatchesPerRule: 5,
+  codeBatchSize: 1000,
+  codeBatchSizeFree: 100,
+  /** Literal parts of a batch code (`[A-Z0-9_-]`): the prefix 2–12 characters, the middle and the suffix up to 12. */
+  codeBatchPrefixMin: 2,
+  codeBatchLiteralLength: 12,
+  /** The random part of a batch code, characters (check characters included): at most this many. */
+  codeBatchRandomLength: 24,
   tierSets: 50,
   breaksPerTierSet: 10,
   /** Largest `minQty` of a quantity break, whole items (MVP 3): larger is lowered to it, with an issue. */
   tierMinQty: 10_000,
+  /**
+   * Largest per-item minimum quantity of a product / collection rule (plan
+   * 2026-10-06, bod 8; `target.itemMinimums[].quantity`), whole items: the same
+   * cap as a quantity break's. Larger is lowered to it, with an issue. The list
+   * itself holds at most `listItems` entries (one per selected product or
+   * collection). It costs the shared function config NOTHING: a minimum
+   * travels in the product metafield's rule ref (targeting.ts, `ruleId#min.key`).
+   */
+  itemMinQty: 10_000,
   /**
    * Most UTF-8 bytes of the quantity tiers in the shop config (`modules.tiers`
    * as tiers.ts buildTiersPayload writes it), for the stored config AND the

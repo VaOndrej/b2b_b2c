@@ -129,12 +129,60 @@ test("another shop's sale is never ended from this session (SEC-2)", async () =>
 });
 
 test("module settings: display and return-after-end saved into modules.outlet; an unknown value keeps the stored one", async () => {
-  const { ctx } = setup("free");
+  const { ctx } = setup("pro");
   const r = await outletAction(ctx, formOf([[F.intent, OUTLET_INTENT.settings], [F.display, "strike_badge_left"], [F.reopen, "nonsense"]]));
   assert.ok(r.ok, JSON.stringify(r));
   const stored = (await loadConfig(db.prisma, shop)).config.modules.outlet;
   assert.equal(stored.display, "strike_badge_left");
   assert.equal(stored.reopenOnReturnAfterEnd, "ask");
+});
+
+const asFree = (ctx: ShopCtx): ShopCtx => ({ ...ctx, createSync: ((client, prisma) => ({ ...realSync(client, prisma), plan: async () => "free" })) as ShopCtx["createSync"] });
+
+test("B15: on Free the settings are refused while no sale runs (nothing written), and saved while an earlier sale still runs", async () => {
+  const { ctx, product, variant } = setup("pro");
+  const settings = formOf([[F.intent, OUTLET_INTENT.settings], [F.display, "silent"], [F.reopen, "never"]]);
+  const refused = await outletAction(asFree(ctx), settings);
+  assert.deepEqual(refused, { ok: false, reason: "invalid", errors: [{ field: F.display, key: "outlet.error.settingsPro" }] });
+  assert.equal((await loadConfig(db.prisma, shop)).config.modules.outlet.display, "strike_badge", "nothing written");
+  // A sale started on Pro keeps running after the downgrade: its display can still be changed.
+  assert.ok((await outletAction(ctx, startForm(variant, product.id))).ok);
+  const saved = await outletAction(asFree(ctx), settings);
+  assert.ok(saved.ok, JSON.stringify(saved));
+  assert.equal((await loadConfig(db.prisma, shop)).config.modules.outlet.display, "silent");
+});
+
+test("B14: a refused start returns what the form posted, so the screen can show it again", async () => {
+  const { ctx, product, variant } = setup("pro");
+  const r = await outletAction(ctx, startForm(variant, product.id));
+  assert.ok(r.ok, JSON.stringify(r));
+  // The same variant again: refused (a sale already runs on it), with the posted values.
+  const again = await outletAction(ctx, startForm(variant, product.id, [[F.variantTitle, "Mikina — L"], [F.variantPrice, "20.00"]]));
+  assert.equal(again.ok, false);
+  assert.deepEqual((again as { values?: unknown }).values, {
+    [F.variant]: [variant],
+    [F.product]: [product.id],
+    [F.variantTitle]: ["Mikina — L"],
+    [F.variantPrice]: ["20.00"],
+    [F.quota]: ["4"],
+    [F.percent]: ["25"],
+    [F.endsOn]: ["2026-10-10"],
+    [F.priceList]: [LIST],
+  });
+});
+
+test("retry: a failed end is finished by 'Zkusit znovu'; a sale without a failed step has nothing to retry", async () => {
+  const { ctx, product, variant } = setup("pro");
+  assert.ok((await outletAction(ctx, startForm(variant, product.id))).ok);
+  const run = (await db.prisma.outletRun.findFirst({ where: { shop } }))!;
+  const retry = formOf([[F.intent, OUTLET_INTENT.retry], [F.run, run.id]]);
+  assert.deepEqual(await outletAction(ctx, retry), { ok: false, reason: "failed", message: "nothing to retry" });
+  // An end that failed: the row waits in `ending` with its error.
+  await db.prisma.outletRun.update({ where: { id: run.id }, data: { status: "ending", endReason: "manual", error: "end: HTTP 503" } });
+  const screen = await loadOutletScreen(ctx);
+  assert.equal(screen.running[0]!.retry, true, "the screen offers the retry");
+  assert.deepEqual(await outletAction(ctx, retry), { ok: true, kind: "ended" });
+  assert.equal((await db.prisma.outletRun.findUnique({ where: { id: run.id } }))!.status, "ended");
 });
 
 test("audit A3: a new display level reaches the storefront value of the running sales at once (not with the next order)", async () => {
@@ -155,11 +203,14 @@ test("an unknown intent is a bad request", async () => {
 test("screen: Free shows the form locked in the amber Pro frame (§16b), never red; Pro shows the start button enabled", async () => {
   const free = await renderPage(createElement(OutletScreen, devOutletScreen({ plan: "free", state: null, locale: "cs" })));
   assert.ok(free.includes(WON_AMBER), "amber Pro frame");
-  assert.match(text(free), /Výprodej je v tarifu Pro/);
+  assert.match(text(free), /S Pro doprodáte zvolený počet kusů varianty se slevou/);
+  assert.match(free, /href="\/app\/plan"/, "the plan link");
+  assert.doesNotMatch(text(free), /Takhle by vypadal/);
   assert.match(free, /<s-button[^>]*type="submit"[^>]*variant="primary"[^>]*disabled/, "start disabled on Free");
   const pro = text((await renderPage(createElement(OutletScreen, devOutletScreen({ plan: "pro", state: null, locale: "cs" })))).replace(/<[^>]+>/g, " "));
   assert.match(pro, /Spustit výprodej/);
-  assert.match(pro, /Prodáno o 1 ks víc než kvóta/);
+  assert.match(pro, /Prodáno o 1 ks víc, než bylo k doprodeji/);
+  assert.doesNotMatch(pro, /[Kk]vót/, "one merchant term on the screen: kusů k doprodeji");
   assert.match(pro, /Po konci se vrátilo 2 ks/);
   assert.doesNotMatch(pro, /gid:\/\/shopify/, "never an id on screen (§4c)");
 });
@@ -167,7 +218,7 @@ test("screen: Free shows the form locked in the amber Pro frame (§16b), never r
 // 5a (F-O1): until Shopify lets the app read orders, nothing counts the quota — the module and the Přehled card
 // say so, and the form recommends an end date. Access = the read_orders scope in the session AND a successful
 // order read (cached); ACCESS_DENIED = no access; a failed read is not cached and counts as no access.
-const OFF_TEXT = /Kvóta se zatím neodečítá — výprodej skončí datem nebo ručně\./;
+const OFF_TEXT = /Prodané kusy se zatím nepočítají\. Výprodej skončí datem nebo ručně\./;
 const probes = (fake: FakeShopify) => fake.calls.filter((c) => c.op === "WonDiscountsOrdersProbe").length;
 
 test("orders access: without read_orders in the session nothing is probed and the quota is not counted", async () => {
@@ -200,19 +251,20 @@ test("orders access: an approved order read = counted; a failed read is not cach
 test("screen and card: no order access says the quota is not counted and recommends an end date (cs + en)", async () => {
   const off = text(await renderPage(createElement(OutletScreen, { ...devOutletScreen({ plan: "pro", state: null, locale: "cs" }), ordersCounted: false })));
   assert.match(off, OFF_TEXT, "the warning banner's heading");
-  assert.match(off, /Shopify appce zatím nepouští objednávky/);
-  assert.match(off, /Bez přístupu k objednávkám kvóta výprodej neukončí — nastavte datum konce\./);
+  assert.match(off, /Won zatím nemá přístup k objednávkám obchodu/);
+  assert.doesNotMatch(off, /chráněná data/);
+  assert.match(off, /Bez přístupu k objednávkám výprodej po doprodání neskončí\. Nastavte datum konce\./);
   const on = text(await renderPage(createElement(OutletScreen, { ...devOutletScreen({ plan: "pro", state: null, locale: "cs" }), ordersCounted: true })));
-  assert.doesNotMatch(on, /Kvóta se zatím neodečítá/);
+  assert.doesNotMatch(on, /Prodané kusy se zatím nepočítají/);
   assert.doesNotMatch(on, /Bez přístupu k objednávkám/);
   const en = text(await renderPage(createElement(EnProvider, { locale: "en" }, createElement(OutletScreen, { ...devOutletScreen({ plan: "pro", state: null, locale: "en" }), ordersCounted: false }))));
-  assert.match(en, /The quota is not counted yet — the sale ends by its date or by hand\./);
+  assert.match(en, /Sold pieces are not counted yet\. The sale ends by its date or by hand\./);
   const card = text((await renderPage(createElement(OutletOverviewCard, { outlet: { ...devOutletOverview(), ordersCounted: false } }))).replace(/<[^>]+>/g, " "));
   assert.match(card, OFF_TEXT);
   const idle = text(
     (await renderPage(createElement(OutletOverviewCard, { outlet: { running: 0, pendingReturns: [], oversold: 0, problems: 0, ordersCounted: false } }))).replace(/<[^>]+>/g, " "),
   );
-  assert.doesNotMatch(idle, /Kvóta se zatím neodečítá/, "audit B4: no sale running, no warning on the card (Free noise)");
+  assert.doesNotMatch(idle, /Prodané kusy se zatím nepočítají/, "audit B4: no sale running, no warning on the card (Free noise)");
   const cardOn = text((await renderPage(createElement(OutletOverviewCard, { outlet: { ...devOutletOverview(), ordersCounted: true } }))).replace(/<[^>]+>/g, " "));
-  assert.doesNotMatch(cardOn, /Kvóta se zatím neodečítá/);
+  assert.doesNotMatch(cardOn, /Prodané kusy se zatím nepočítají/);
 });

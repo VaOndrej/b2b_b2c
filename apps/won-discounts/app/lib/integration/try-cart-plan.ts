@@ -416,6 +416,7 @@ export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput)
       tone: item.tone,
       text: notConvertedText(item, plan, notConverted, input) ?? item.text,
       ...(item.lineIds && item.lineIds.length > 0 ? { lineIds: [...item.lineIds] } : {}),
+      ...(item.ruleId ? { ruleId: item.ruleId } : {}),
     })),
     totals: {
       subtotal: plan.totals.subtotal,

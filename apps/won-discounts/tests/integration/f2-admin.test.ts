@@ -14,7 +14,7 @@ import {
   overviewPage,
   ruleEditorAction,
   ruleEditorPage,
-  tryCartAction,
+  tryCartCompute,
   tryCartPage,
 } from "../../app/lib/integration/pages.server.ts";
 import { clearResyncDebounce, whenOverviewIdle } from "../../app/lib/integration/sync-status.server.ts";
@@ -113,7 +113,7 @@ test("BILL-1: on Free, Přehled / Slevy a kódy / the editor say which Pro setti
   const html = text(await renderPage(createElement(OverviewScreen, overview)));
   assert.match(html, /Pro funkce není aktivní — v pokladně se neuplatní/);
   assert.match(html, /Sleva „Jen Slovensko“ cílí na vybrané trhy/);
-  assert.match(html, /Neběží: používá funkci Pro, kterou tvůj tarif v pokladně nespouští/);
+  assert.match(html, /Neaktivní: používá funkci Pro, kterou váš tarif v pokladně nespouští/);
   // The shop config Shopify runs has the market rule off and no per-rule combination.
   const shipped = JSON.parse(store.sync.shopMetafieldValue("function_config")!);
   assert.doesNotMatch(JSON.stringify(shipped), /combinesWith/);
@@ -127,7 +127,7 @@ test("BILL-1: on Free, Přehled / Slevy a kódy / the editor say which Pro setti
   assert.equal(editor.gateOff, true);
   const editorHtml = text(await renderPage(createElement(RuleEditorScreen, editor)));
   assert.match(editorHtml, /Pro funkce není aktivní — v pokladně se neuplatní/);
-  assert.match(editorHtml, /Neběží/);
+  assert.match(editorHtml, /Neaktivní/);
 });
 
 test("BILL-1: the dev-only override WON_DEV_PLAN=pro (NODE_ENV test) runs Pro: nothing gated, the rule runs", async () => {
@@ -253,7 +253,7 @@ test("item 2: Try Cart uses the refs checkout reads — a product that left the 
   const cart = formOf([["intent", "run"], ["variantId", V1], ["productId", product.id], ["quantity", "1"], ["currency", "CZK"]]);
 
   // Never synced: checkout has no refs yet — no discount, and the page says the settings are not in Shopify.
-  const before = await tryCartAction(ctx, cart, PAGE);
+  const before = await tryCartCompute(ctx, cart, PAGE);
   assert.equal(before.plan?.lines[0]?.discount, 0);
   assert.ok(before.plan?.warnings?.some((w) => w.key === "tryCart.warning.notApplied"), JSON.stringify(before.plan?.warnings));
 
@@ -262,11 +262,11 @@ test("item 2: Try Cart uses the refs checkout reads — a product that left the 
   // The product leaves the collection in Shopify; the webhook marked it, the refresh has not run yet.
   store.sync.collections.set(collection, []);
   await markTargetingStale(db.prisma, shop, "collections/update", new Date());
-  const run = await tryCartAction(ctx, cart, PAGE);
+  const run = await tryCartCompute(ctx, cart, PAGE);
   assert.equal(run.plan?.lines[0]?.discount, 200_00, "checkout still has the ref: it still gives the 20 %");
   // The product left the collection: named as a membership change (live collections are read while stale).
   assert.ok(run.plan?.warnings?.some((w) => w.key === "tryCart.warning.membership"), JSON.stringify(run.plan?.warnings));
-  const html = text(await renderPage(createElement(TryCartScreen, { ...(await tryCartPage(ctx, PAGE)), lines: run.lines!, plan: run.plan, result: run.result })));
+  const html = text(await renderPage(createElement(TryCartScreen, { ...(await tryCartPage(ctx, PAGE)), pro: true, lines: run.lines!, plan: run.plan, result: run.result })));
   assert.match(html, /Pokladna se může lišit/);
   assert.match(html, /změnilo členství v kolekci/);
   // Membership is read live only to warn, in the same variants query; the discount still follows the refs.
@@ -276,7 +276,7 @@ test("item 2: Try Cart uses the refs checkout reads — a product that left the 
 
 // --- item 4: Synchronizovat znovu when the stored config is not in Shopify --------------------------
 
-test("P2-2: a stored config no applying run synced shows 'čeká na propsání' with 'Synchronizovat znovu' (debounced load)", async () => {
+test("P2-2: a stored config no applying run synced shows 'čeká na zápis' with 'Synchronizovat znovu' (debounced load)", async () => {
   await seed({ modules: { codes: { rules: [auto("a1")] } } });
   const store = new FakeStore();
   const ctx = testCtx(db.prisma, shop, store);
@@ -288,7 +288,7 @@ test("P2-2: a stored config no applying run synced shows 'čeká na propsání' 
   const props = await overviewPage(ctx, PAGE);
   assert.equal(props.signals?.sync.state, "pending");
   const html = text(await renderPage(createElement(OverviewScreen, props)));
-  assert.match(html, /Uloženo, čeká na propsání do Shopify/);
+  assert.match(html, /Uloženo, čeká na zápis do Shopify/);
   assert.match(html, /Synchronizovat znovu/);
 });
 
@@ -455,7 +455,7 @@ test("item 7: a rule on a collection saves with the shop config in place; the pr
   // A Přehled load while the products are still being written: shown, never restarted.
   const id = /discounts\/([^?]+)/.exec(outcome.redirect)![1]!;
   const props = await overviewPage(ctx, PAGE);
-  assert.notEqual(props.ruleSync?.[id], "synced", "not 'Běží' while its products are being written");
+  assert.notEqual(props.ruleSync?.[id], "synced", "not 'Aktivní' while its products are being written");
   await settle();
   assert.equal(await db.prisma.syncRun.count({ where: { shop } }), runsAfterSave + 1, "exactly one more run: the product lane itself");
   for (const p of products) assert.deepEqual(store.sync.productMetafield(p), { ruleIds: [id], variantRuleIds: {} });

@@ -194,6 +194,28 @@ Theme app extension (app embed + bloky), Horizon i Dawn.
 - **Vzhled:** předpřipravené vzhledy bloků; Pro vlastní vzhled + návod pro AI.
 - **Nastavení** (hraniční chování, trhy, jazyky) · **Tarif**.
 
+## Změny po prvním průchodu (rozhodnuto 2026-10-06)
+
+Mění body výše; kde se liší, platí tohle. Plný plán: [`plan-zmen-2026-10-06.md`](plan-zmen-2026-10-06.md),
+obecná pravidla: doktrína §18 (P1–P9).
+
+- **Menu má 5 položek:** Slevy · Ochrana marže · Vzhled · Přehledy · Nastavení. Stránka Slevy má
+  podmenu Slevy a kódy · Množstevní slevy · Odměny · Výprodej (Pro) · Kampaně (Pro), pořadí podle
+  cílů z onboardingu. Ruší „vždy vidět všechny moduly v menu“.
+- **Tarif** je sekce v Nastavení (`/app/plan` zůstává kvůli návratu z billingu).
+- **Vyzkoušet košík je Pro** (bylo Free) a je v Nastavení → Nástroje. Slevy se v něm vybírají ze
+  seznamu, kód se nepíše.
+- **„Další možnosti“ v editoru slevy zanikají:** Podmínky, Jak se uplatní, Kdy platí jsou vždy otevřené.
+- **Karta „Slevy mimo Won“** se na Přehledu ukáže jen tehdy, když je co řešit. Detekce běží dál vždy.
+- **Segmenty zákazníků** se v editoru neukazují, dokud je pokladna neumí.
+- **Pro na Free:** jantarový zamčený vzhled zůstává, s větou, k čemu funkce je, a odkazem na tarif.
+  Vymyšlené ukázky se neukazují.
+- **Minimum kusů na produkt / kolekci** (Pro): každý produkt hlídá jen své minimum.
+- **Dávky kódů:** generátor (Free až 100 náhodných, Pro vzor); dávku pozná pokladna podle předpony.
+- **Výchozí vzhled tabulky množstevních slev** pro nové obchody je „Zvýrazněná úroveň“; vzhled jde
+  přepnout přímo v Množstevních slevách.
+- **Rozhraní vyká.**
+
 ## Analytika (rozhodnuto 2026-09-28)
 
 - **Free:** objednávky se slevou, kolik slevy stály, průměrná objednávka.

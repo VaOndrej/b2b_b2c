@@ -25,7 +25,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const parsed = parseCartPlanRequest(body);
   if (!parsed) return Response.json({ ok: false, reason: "invalid" }, { status: 400, headers: NO_STORE });
   try {
-    const answer = await runCartPlan(adminClientFromApp(admin), session.shop, parsed);
+    const answer = await runCartPlan(adminClientFromApp(admin, session.shop), session.shop, parsed);
     return Response.json(answer, { headers: NO_STORE });
   } catch (error) {
     if (error instanceof Response) throw error;

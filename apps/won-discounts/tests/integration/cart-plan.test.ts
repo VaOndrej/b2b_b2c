@@ -5,17 +5,19 @@ import { afterEach, beforeEach, test } from "node:test";
 import { buildShopFunctionConfig } from "@won/core/discounts/function-payload";
 import { sanitizeConfig } from "@won/core/discounts/config";
 
-import type { AdminClient } from "../../app/lib/admin-client.server.ts";
+import { adminClientFromApp, type AdminClient } from "../../app/lib/admin-client.server.ts";
 import {
   CART_PLAN_CACHE_MAX,
   CART_PLAN_DOCUMENTS,
   CART_PLAN_CACHE_MS,
   CART_PLAN_MAX_LINES,
   CART_PLAN_READS_PER_MINUTE,
+  CART_PLAN_SHOP_MAX,
   CartPlanRateLimited,
   cartPlanCacheSize,
   cartPlanInput,
   clearCartPlanCache,
+  invalidateCartPlan,
   parseCartPlanRequest,
   runCartPlan,
   setCartPlanClock,
@@ -190,7 +192,7 @@ test("no shop config (or one over 10 000 B, null to the function) plans nothing 
   assert.deepEqual({ saved: answer.saved, hint: answer.hint, gifts: answer.gifts }, { saved: 0, hint: undefined, gifts: [] });
 });
 
-test("Shopify reads are cached per shop for 60 s (injected clock), per variant", async () => {
+test("Shopify reads are cached per shop for CART_PLAN_CACHE_MS (10 min, injected clock), per variant", async () => {
   const config = payload({ tiers: TIERS });
   const { client, calls } = fakeAdmin(config, { 11: { product: { ruleIds: [] } }, 12: { product: { ruleIds: [] } } });
   const line = (variantId: number) => ({ key: `k${variantId}`, variantId, productId: 1, quantity: 1, unitPrice: 100_00 });
@@ -213,6 +215,76 @@ test("audit P1: the cache never grows past its cap — random variant ids from a
   assert.ok(cartPlanCacheSize() <= CART_PLAN_CACHE_MAX, `${cartPlanCacheSize()} entries`);
 });
 
+test("one shop's variants are capped (CART_PLAN_SHOP_MAX, the oldest go first): a large catalog never pushes out another shop", async () => {
+  const config = payload({ tiers: TIERS });
+  const { client, calls } = fakeAdmin(config, {});
+  const lines = (from: number) => Array.from({ length: CART_PLAN_MAX_LINES }, (_, i) => ({ key: `k${i}`, variantId: from + i, productId: 1, quantity: 1, unitPrice: 100_00 }));
+  await runCartPlan(client, "small.myshopify.com", request(lines(1)));
+  const small = cartPlanCacheSize();
+  for (let n = 0; n * CART_PLAN_MAX_LINES < CART_PLAN_SHOP_MAX * 2; n++) {
+    await runCartPlan(client, "large.myshopify.com", request(lines(n * CART_PLAN_MAX_LINES + 1)));
+    clock += 2_100; // under the read limit, and every entry still fresh at the end
+  }
+  assert.equal(cartPlanCacheSize(), small + CART_PLAN_SHOP_MAX + 1, "the large shop holds its cap (+ its config)");
+  const before = calls.length;
+  await runCartPlan(client, "small.myshopify.com", request(lines(1)));
+  assert.equal(calls.length, before, "the small shop's entries are still there");
+});
+
+test("a write of the app to the shop drops that shop's cache at once (and only that shop's)", async () => {
+  const variants: Record<number, { product?: unknown }> = { 11: { product: { ruleIds: [] } } };
+  const a = fakeAdmin(payload({ tiers: TIERS }), variants);
+  const line = { key: "k", variantId: 11, productId: 1, quantity: 2, unitPrice: 100_00 };
+  await runCartPlan(a.client, "w.myshopify.com", request([line]));
+  await runCartPlan(a.client, "other.myshopify.com", request([line]));
+  const before = a.calls.length;
+  invalidateCartPlan("w.myshopify.com");
+  await runCartPlan(a.client, "other.myshopify.com", request([line]));
+  assert.equal(a.calls.length, before, "another shop keeps its cache");
+  // The app's own config change is answered from the new config on the very next request.
+  const b = fakeAdmin(payload({ tiers: { sets: [{ id: "g", scope: "global", countAcross: "line", breaks: [{ minQty: 5, percent: 25 }] }] } }), variants);
+  const answer = await runCartPlan(b.client, "w.myshopify.com", request([line]));
+  assert.deepEqual(b.calls, ["WonCartPlanConfig", "WonCartPlanVariants"]);
+  assert.deepEqual(answer.hint, { key: "k", missing: 3, minQty: 5, percent: 25 });
+});
+
+test("a read in flight when the shop's cache is dropped stores nothing (what it read may be older than the write)", async () => {
+  const config = payload({ tiers: TIERS });
+  let release = () => {};
+  const gate = new Promise<void>((ok) => (release = ok));
+  const calls: string[] = [];
+  const slow: AdminClient = {
+    async graphql(query: string, variables?: Record<string, unknown>) {
+      calls.push(/query (\w+)/.exec(query)![1]!);
+      await gate;
+      if (query.includes("WonCartPlanConfig")) return { data: { shop: { ianaTimezone: "Europe/Prague", config: { value: config } } } };
+      return { data: { nodes: ((variables?.ids as string[]) ?? []).map(() => null) } };
+    },
+  } as AdminClient;
+  const line = { key: "k", variantId: 11, productId: 1, quantity: 1, unitPrice: 100_00 };
+  const pending = runCartPlan(slow, "f.myshopify.com", request([line]));
+  invalidateCartPlan("f.myshopify.com");
+  release();
+  await pending;
+  assert.equal(cartPlanCacheSize(), 0);
+  await runCartPlan(slow, "f.myshopify.com", request([line]));
+  assert.deepEqual(calls, ["WonCartPlanConfig", "WonCartPlanVariants", "WonCartPlanConfig", "WonCartPlanVariants"]);
+});
+
+test("every mutation sent through the app's admin client drops that shop's cart plan cache; a query does not", async () => {
+  const { client, calls } = fakeAdmin(payload({ tiers: TIERS }), {});
+  const line = { key: "k", variantId: 11, productId: 1, quantity: 1, unitPrice: 100_00 };
+  const admin = { graphql: async () => new Response(JSON.stringify({ data: { ok: true } })) };
+  const app = adminClientFromApp(admin as never, "m.myshopify.com");
+  await runCartPlan(client, "m.myshopify.com", request([line]));
+  await app.graphql("query Q { shop { id } }");
+  await runCartPlan(client, "m.myshopify.com", request([line]));
+  assert.equal(calls.length, 2, "a read keeps the cache");
+  await app.graphql("mutation M { metafieldsSet(metafields: []) { userErrors { message } } }");
+  await runCartPlan(client, "m.myshopify.com", request([line]));
+  assert.equal(calls.length, 4, "a write drops it");
+});
+
 test("audit P2: Shopify reads per shop are limited per minute; over the limit no read and no answer (the panel shows no hint, fail closed)", async () => {
   const config = payload({ tiers: TIERS });
   const { client, calls } = fakeAdmin(config, {});
@@ -231,7 +303,7 @@ test("audit P2: Shopify reads per shop are limited per minute; over the limit no
 test("the route authenticates the app proxy request first, takes the shop from it, answers no-store", async () => {
   const source = await readFile(new URL("../../app/routes/won-discounts.cart-plan.tsx", import.meta.url), "utf8");
   assert.match(source, /await authenticate\.public\.appProxy\(request\)/);
-  assert.match(source, /runCartPlan\(adminClientFromApp\(admin\), session\.shop, parsed\)/);
+  assert.match(source, /runCartPlan\(adminClientFromApp\(admin, session\.shop\), session\.shop, parsed\)/);
   assert.ok(source.indexOf("authenticate.public.appProxy") < source.indexOf("request.json()"), "the signature is checked before the body is read");
   assert.match(source, /"Cache-Control": "no-store"/);
 });

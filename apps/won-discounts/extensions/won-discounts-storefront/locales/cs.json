@@ -37,5 +37,13 @@
   "outlet": {
     "badge": "Výprodej",
     "left": "Zbývá {{ count }} ks"
+  },
+  "progress": {
+    "empty": "Odměny za košík zatím nejsou nastavené. V aplikaci Won Discounts otevřete Slevy → Odměny."
+  },
+  "campaign": {
+    "ends": "Končí za {time}",
+    "units": "d,h,min,s",
+    "sample": "Název kampaně"
   }
 }

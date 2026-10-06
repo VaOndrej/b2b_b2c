@@ -18,7 +18,7 @@ import {
 } from "../../app/lib/integration/margin.server.ts";
 import { setMarginImpactMinInterval } from "../../app/lib/integration/margin-impact.server.ts";
 import type { MarginImpactClock } from "../../app/lib/integration/margin-impact.server.ts";
-import { overviewData, tryCartAction } from "../../app/lib/integration/pages.server.ts";
+import { overviewData, tryCartCompute } from "../../app/lib/integration/pages.server.ts";
 import { clearMarketCountryCache, estimateShopToCartRate } from "../../app/lib/integration/try-cart.server.ts";
 import { costIdle } from "../../app/lib/sync/cost-lane.server.ts";
 import { createSync, syncIdle } from "../../app/lib/sync/sync.server.ts";
@@ -430,13 +430,13 @@ test("Vyzkoušet košík: the cost from the mirror caps the line (admin explanat
     ["quantity", "1"],
   ]);
   await createSync({ ...productionSyncDeps(store, db.prisma, quiet), sleep: async () => {}, plan: async () => "free" }).syncShop(shop, (await loadConfig(db.prisma, shop)).config);
-  const offRun = await tryCartAction(ctx, cart, { scopes: "write_discounts,read_products,read_themes" });
+  const offRun = await tryCartCompute(ctx, cart, { scopes: "write_discounts,read_products,read_themes" });
   assert.equal(offRun.plan?.margin, undefined);
   assert.equal(offRun.plan?.lines[0]!.discount, 500);
 
   await saveMarginSettings(ctx, settings(), { configVersion: (await loadConfig(db.prisma, shop)).version });
   await settle();
-  const run = await tryCartAction(ctx, cart, { scopes: "write_discounts,read_products,read_themes" });
+  const run = await tryCartCompute(ctx, cart, { scopes: "write_discounts,read_products,read_themes" });
   assert.equal(run.result, null, JSON.stringify(run.result));
   const plan = run.plan!;
   assert.deepEqual(plan.margin, { rateEstimated: false, linesWithoutCost: 1, linesCostNotConverted: 0 });
@@ -467,7 +467,7 @@ test("Vyzkoušet košík in another currency: the cost is converted with the med
   });
   await saveMarginSettings(ctx, settings({ minMarginPercent: 0 }), { configVersion: (await loadConfig(db.prisma, shop)).version });
   await settle();
-  const run = await tryCartAction(
+  const run = await tryCartCompute(
     ctx,
     formOf([
       ["intent", "run"],
@@ -658,7 +658,7 @@ test("a variant whose cost Shopify refuses is surfaced in the mirror status (the
   assert.doesNotMatch(t("cs", problems[0]!.key, problems[0]!.params), /Value is invalid|gid:\/\//);
 });
 
-test("a failed cost READ is said as a read failure in its own sentence (never 'Část změn se do Shopify nepropsala'), the technical detail second", async () => {
+test("a failed cost READ is said as a read failure in its own sentence (never 'Část změn se do Shopify nezapsala'), the technical detail second", async () => {
   const { costMirrorView } = await import("../../app/lib/integration/costs.server.ts");
   const failed = { token: "t", since: "2026-09-29T08:00:00.000Z", done: 150, total: 900, failedAt: "2026-09-29T08:05:00.000Z", error: "costs.read: Throttled (3 attempts)" };
   await db.prisma.shopSyncState.create({ data: { shop, costsPending: JSON.stringify(failed) } });
@@ -689,7 +689,7 @@ test("no usable offline session (OQ4): the reconcile records it, the admin says 
   assert.equal(view.state, "failed");
   assert.deepEqual(view.state === "failed" ? view.problems : null, [{ key: "margin.mirror.reauth" }]);
   const { t } = await import("../../app/i18n/index.ts");
-  assert.match(t("cs", "margin.mirror.reauth"), /Otevři appku, ať můžeme pokračovat na pozadí/);
+  assert.match(t("cs", "margin.mirror.reauth"), /Otevřete aplikaci, ať můžeme pokračovat na pozadí/);
   // The next admin load has a session: the pass starts at once (no 15-min retry wait for this failure).
   const started = await ensureCostsFresh(shop, { client: store, db: db.prisma, plan: async () => "free", now: () => new Date(now.getTime() + 60_000) }, true);
   assert.equal(started, "started_full");
@@ -897,7 +897,7 @@ test("an untitled product is never named by its GID (audit fix round 2): coverag
   );
   assert.match(html, /Produkt bez názvu/);
   assert.doesNotMatch(html.replace(/href="[^"]*"/g, ""), /gid:\/\//);
-  const run = await tryCartAction(
+  const run = await tryCartCompute(
     ctx,
     formOf([
       ["intent", "run"],
@@ -940,7 +940,7 @@ test("Try Cart runs what checkout runs: a margin collection too large to read is
     ["quantity", "1"],
   ]);
   const scopes = { scopes: "write_discounts,read_products,read_themes" };
-  assert.equal((await tryCartAction(ctx, cart, scopes)).plan!.lines[0]!.discount, 1000, "as stored: 50 % of 20.00");
+  assert.equal((await tryCartCompute(ctx, cart, scopes)).plan!.lines[0]!.discount, 1000, "as stored: 50 % of 20.00");
   await db.prisma.syncRun.create({
     data: {
       shop,
@@ -953,7 +953,7 @@ test("Try Cart runs what checkout runs: a margin collection too large to read is
       ]),
     },
   });
-  assert.equal((await tryCartAction(ctx, cart, scopes)).plan!.lines[0]!.discount, 200, "folded: at most 10 % for the whole store");
+  assert.equal((await tryCartCompute(ctx, cart, scopes)).plan!.lines[0]!.discount, 200, "folded: at most 10 % for the whole store");
 });
 
 test("Pro preview with protection OFF and a folded collection: the loader and the background count for the SAME config — 'ready' stays 'ready' (audit fix round 2)", async () => {

@@ -1,8 +1,11 @@
 // Slevy a kódy — the rule list (module "Slevy a kódy"). Each rule leads with its
 // real state (§17, §11d: Běží only when it truly runs — model/rule-status.ts),
-// its state line from the core formatter, and what needs fixing. The cap on
-// active code rules is shown before a save would refuse (§13). Recipes are the
-// next step (§15b). Rendered by app/routes/app.discounts._index.tsx and the harness.
+// its state line from the core formatter, and what needs fixing — "Upravit" of
+// a rule that needs attention opens the editor AT the field that fixes it (P3),
+// and so do the plan notes. A failed sync carries "Synchronizovat znovu" here.
+// The cap on active code rules is said only when it is close (P2, §13). With no
+// rule yet the list IS the recipes (§15b). Rendered by
+// app/routes/app.discounts._index.tsx and the harness.
 
 import type { DiscountRule, WonDiscountsConfig } from "@won/core/discounts/config";
 
@@ -12,11 +15,12 @@ import { RuleRow } from "../RuleRow";
 import { missingCurrencies, ruleName } from "../model/describe";
 import { currencyCodes, currencyViews, type MarketNames } from "../model/markets";
 import { shopToday } from "../model/rule-form";
-import { ruleStatus, ruleStatusSummary } from "../model/rule-status";
+import { ruleEditHref, ruleStatus, ruleStatusSummary, type RuleStatus } from "../model/rule-status";
+import { codeLimitNear } from "../rule-editor/ApplySection";
 import { syncText } from "../model/signals";
 import type { CodeRuleLimit, CurrencyView, GateNoteView, RuleSyncMap, SyncView, UiResult } from "../model/types";
-import { GateNotes } from "../shell/GateNotes";
-import { Notice } from "../shell/Notice";
+import { Notice, ResyncButton } from "../shell/Notice";
+import { DiscountsSubNav } from "../shell/SubNav";
 import { WonSection } from "../shell/WonSection";
 
 export interface DiscountsScreenProps {
@@ -76,6 +80,40 @@ export function buildDiscountsProps(
   };
 }
 
+/**
+ * BILL-1 notes of the list (shell/GateNotes, with one difference): each note
+ * about a rule links to that rule in the editor, at the field that fixes it (P3).
+ */
+function RuleGateNotes({ notes, pending, hrefFor }: { notes: readonly GateNoteView[]; pending: boolean; hrefFor: (ruleId: string) => string | null }) {
+  const { t } = useT();
+  return (
+    <s-banner tone="warning" heading={t(pending ? "gate.pendingHeading" : "gate.heading")}>
+      <s-stack direction="block" gap="small-200">
+        <s-paragraph>{t(pending ? "gate.pendingBody" : "gate.body")}</s-paragraph>
+        <s-unordered-list>
+          {notes.map((note, i) => {
+            const href = note.ruleId !== undefined ? hrefFor(note.ruleId) : null;
+            return (
+              <s-list-item key={`${i}-${note.ruleId ?? ""}`}>
+                {note.text}
+                {href ? (
+                  <>
+                    {" "}
+                    <s-link href={href}>{t("common.edit")}</s-link>
+                  </>
+                ) : null}
+              </s-list-item>
+            );
+          })}
+        </s-unordered-list>
+      </s-stack>
+      <s-button slot="secondary-actions" href="/app/plan">
+        {t("common.upgradeCta")}
+      </s-button>
+    </s-banner>
+  );
+}
+
 /** Hints are joined into one line: each ends with a full stop. */
 const sentence = (text: string) => (/[.!?…]$/.test(text) ? text : `${text}.`);
 
@@ -101,13 +139,25 @@ export function DiscountsScreen({
   const summary = rules.length === 0 ? t("discounts.list.none") : ruleStatusSummary(statuses, tr);
   const hints = [
     // §12: say when saved rules are not (all) in Shopify, and why.
-    sync.state === "not_wired" ? t("result.notWired.sync") : "",
     sync.state === "error" || sync.state === "blocked" || sync.state === "running" ? sentence(syncText(sync, tr)) : "",
-    codeRules.active > 0 ? t("discounts.codeLimit", { active: codeRules.active, limit: codeRules.limit }) : "",
+    codeLimitNear(codeRules) ? t("discounts.codeLimit", { active: codeRules.active, limit: codeRules.limit }) : "",
   ].filter(Boolean);
+  const names = {
+    marketNames: Object.fromEntries(currencies.flatMap((c) => c.markets.map((m) => [m.handle, m.name] as const))),
+    ruleNames: new Map(rules.map((r) => [r.id, r.name])),
+  };
+  const statusOf = new Map<string, RuleStatus>(rules.map((r, i) => [r.id, statuses[i]]));
+  // A plan note is about a Pro setting: the markets when the plan switches the rule off for them, else the Pro section.
+  const gateHref = (ruleId: string): string | null => {
+    const rule = rules.find((r) => r.id === ruleId);
+    const status = statusOf.get(ruleId);
+    if (!rule || !status) return null;
+    return status.kind === "pro_off" ? ruleEditHref(rule, status, codes) : `/app/discounts/${encodeURIComponent(rule.id)}#pro`;
+  };
 
   return (
     <s-page heading={t("discounts.title")}>
+      <DiscountsSubNav active="discounts" />
       <s-button slot="primary-action" variant="primary" href="/app/discounts/new">
         {t("discounts.new")}
       </s-button>
@@ -118,11 +168,22 @@ export function DiscountsScreen({
           </s-banner>
         ) : null}
         <Notice result={result} />
-        {gate.length > 0 ? <GateNotes notes={gate} pending={gatePending} /> : null}
+        {gate.length > 0 ? <RuleGateNotes notes={gate} pending={gatePending} hrefFor={gateHref} /> : null}
 
-        <WonSection title={t("discounts.list.title")} glyph="tag" summary={summary} hint={hints.join(" ") || undefined}>
+        <WonSection
+          title={t("discounts.list.title")}
+          glyph="tag"
+          summary={summary}
+          hint={hints.join(" ") || undefined}
+          // §13a: a failed sync carries its fix right here.
+          proof={sync.state === "error" && !readOnly ? <ResyncButton /> : undefined}
+        >
           {rules.length === 0 ? (
-            <s-paragraph>{t("discounts.empty.body")}</s-paragraph>
+            // §15b: the empty list is the next step itself — the recipes, one click from a pre-filled discount.
+            <s-stack direction="block" gap="base">
+              <s-paragraph>{t("discounts.empty.body")}</s-paragraph>
+              <RecipeGrid withBlank />
+            </s-stack>
           ) : (
             <div>
               {rules.map((rule, i) => {
@@ -134,13 +195,15 @@ export function DiscountsScreen({
                     status={statuses[i]}
                     currencies={codes}
                     timezone={timezone}
+                    names={names}
                     attention={
                       missing.length > 0
                         ? t("overview.warning.missingCurrency", { rule: ruleName(rule, tr), currencies: tr.list(missing) })
                         : undefined
                     }
                     action={
-                      <s-button variant="tertiary" href={`/app/discounts/${encodeURIComponent(rule.id)}`}>
+                      // P3: a rule that needs attention opens at the field that fixes it.
+                      <s-button variant="tertiary" href={ruleEditHref(rule, statuses[i], codes)}>
                         {t("common.edit")}
                       </s-button>
                     }
@@ -151,15 +214,11 @@ export function DiscountsScreen({
           )}
         </WonSection>
 
-        <WonSection
-          title={t("discounts.recipes.title")}
-          glyph="spark"
-          summary={t("discounts.recipes.summary")}
-          collapsible
-          defaultOpen={rules.length === 0}
-        >
-          <RecipeGrid withBlank />
-        </WonSection>
+        {rules.length > 0 ? (
+          <WonSection title={t("discounts.recipes.title")} glyph="spark" summary={t("discounts.recipes.summary")} collapsible defaultOpen={false}>
+            <RecipeGrid withBlank />
+          </WonSection>
+        ) : null}
       </s-stack>
     </s-page>
   );

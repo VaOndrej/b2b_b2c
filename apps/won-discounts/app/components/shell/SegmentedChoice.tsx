@@ -16,6 +16,8 @@ export interface ChoiceOption {
   disabled?: boolean;
   /** Pro option: the amber plan marker next to its label (§16b). */
   pro?: boolean;
+  /** Where the plan marker of a locked Pro option leads (the plan page); absent = a plain marker. */
+  proHref?: string;
 }
 
 export function SegmentedChoice({
@@ -88,7 +90,7 @@ export function SegmentedChoice({
                 <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: 999, background: WON_SELECT }} />
               ) : null}
               {option.label}
-              {option.pro ? <PlanBadge tier="pro" locked={option.disabled === true} /> : null}
+              {option.pro ? <PlanBadge tier="pro" locked={option.disabled === true} href={option.disabled === true ? option.proHref : undefined} /> : null}
             </label>
           );
         })}

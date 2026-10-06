@@ -16,7 +16,7 @@ summary: Set up a discount that applies only with a code, add several codes to i
 
 # Create a discount code
 
-1. Open **Discounts & codes** and start a **New discount**, or the **Welcome code**
+1. Open **Discounts → Discounts & codes** and start a **New discount**, or the **Welcome code**
    recipe (10 % once per customer).
 2. Fill in the name, discount type, value and what it applies to, as for an
    automatic discount ([create-an-automatic-discount](create-an-automatic-discount)).

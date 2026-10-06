@@ -1,4 +1,6 @@
+import { batchPrefixesClash, CODE_BATCH_LITERAL_RE, CODE_BATCH_SEED_RE, codeBatchMinLength } from "../code-batch.ts";
 import {
+  CODE_BATCH_ALPHABETS,
   DISCOUNT_METHODS,
   DISCOUNT_TARGET_KINDS,
   DISCOUNT_VALUE_KINDS,
@@ -23,8 +25,8 @@ import {
   sanitizeString,
   sanitizeStringArray,
 } from "./sanitize-helpers.ts";
-import type { ConfigIssue, DiscountRule, DiscountRuleValue, DiscountTarget } from "./types.ts";
-import { isIsoDateTime, NATIVE_DISCOUNT_GID_RE } from "./validators.ts";
+import type { CodeBatch, ConfigIssue, DiscountRule, DiscountRuleValue, DiscountTarget, ItemMinimum } from "./types.ts";
+import { isIsoDateTime, isValidEntityId, NATIVE_DISCOUNT_GID_RE } from "./validators.ts";
 
 /** True when `v` is one of the runtime `as const` values (the list IS the validation). */
 function isOneOf<T extends string>(v: unknown, allowed: readonly T[]): v is T {
@@ -45,15 +47,102 @@ const VALUE_SANITIZERS: { readonly [K in DiscountValueKind]: Sanitizer<Extract<D
   freeShipping: () => ({ kind: "freeShipping" }),
 };
 
+/** The tail of an id a per-item minimum is keyed by in a product's rule ref (targeting.ts `itemRef`). */
+const ITEM_KEY_RE = /^[A-Za-z0-9_-]{1,40}$/;
+const PRODUCT_GID_RE = /^gid:\/\/shopify\/Product\/\d{1,20}$/;
+
+/**
+ * Per-item minimum quantities (Pro, plan 2026-10-06 bod 8): one entry per
+ * selected product / collection, whole items 1–CONFIG_LIMITS.itemMinQty. An
+ * entry without a quantity ≥ 1 is "no own minimum" and is left out silently
+ * (the form's empty field). `allowed`: the ids an entry may name — a
+ * collection must be one the rule targets; a product one it targets or a
+ * product GID (the product of variants selected one by one, which the
+ * sanitizer cannot look up). Absent / empty → undefined (the key is omitted).
+ */
+function sanitizeItemMinimums(v: unknown, allowed: (id: string) => boolean, issues: ConfigIssue[], path: string): ItemMinimum[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out: ItemMinimum[] = [];
+  const seen = new Set<string>();
+  const orphans: string[] = [];
+  let duplicates = 0;
+  let clamped = 0;
+  let overLimit = 0;
+  for (const raw of v) {
+    if (!isRecord(raw) || typeof raw.id !== "string" || raw.id.length > CONFIG_LIMITS.referenceLength) continue;
+    if (typeof raw.quantity !== "number" || !Number.isFinite(raw.quantity) || Math.floor(raw.quantity) < 1) continue;
+    const id = raw.id;
+    const key = id.slice(id.lastIndexOf("/") + 1);
+    if (!allowed(id) || !ITEM_KEY_RE.test(key)) {
+      orphans.push(preview(id, 60));
+      continue;
+    }
+    if (seen.has(id)) {
+      duplicates++;
+      continue;
+    }
+    if (out.length >= CONFIG_LIMITS.listItems) {
+      overLimit++;
+      continue;
+    }
+    seen.add(id);
+    const quantity = Math.min(CONFIG_LIMITS.itemMinQty, Math.floor(raw.quantity));
+    if (quantity !== Math.floor(raw.quantity)) clamped++;
+    out.push({ id, quantity });
+  }
+  if (orphans.length > 0) {
+    pushIssue(
+      issues,
+      path,
+      "orphan_item_minimum",
+      `Minimum quantity for item(s) the discount does not target (${listPreview(orphans)}); they were removed.`,
+      { ...listParams("ids", orphans), count: orphans.length },
+    );
+  }
+  if (duplicates > 0) {
+    pushIssue(issues, path, "duplicate_item_minimum", `${duplicates} repeated minimum quantity entr(ies) were dropped (the first one of an item counts).`, { count: duplicates });
+  }
+  if (clamped > 0) {
+    pushIssue(
+      issues,
+      path,
+      "clamped_item_minimum",
+      `${clamped} minimum quantit(ies) above ${CONFIG_LIMITS.itemMinQty} were lowered to it.`,
+      { count: clamped, max: CONFIG_LIMITS.itemMinQty },
+    );
+  }
+  if (overLimit > 0) {
+    pushIssue(
+      issues,
+      path,
+      "too_many_items",
+      `A list can have at most ${CONFIG_LIMITS.listItems} items; ${overLimit} more were dropped.`,
+      { max: CONFIG_LIMITS.listItems, count: overLimit },
+    );
+  }
+  return out.length > 0 ? out : undefined;
+}
+
 const TARGET_SANITIZERS: { readonly [K in DiscountTargetKind]: Sanitizer<Extract<DiscountTarget, { kind: K }>> } = {
   order: () => ({ kind: "order" }),
   shipping: () => ({ kind: "shipping" }),
-  products: (v, issues, path) => ({
-    kind: "products",
-    productIds: sanitizeStringArray(v.productIds, issues, `${path}.productIds`),
-    variantIds: sanitizeStringArray(v.variantIds, issues, `${path}.variantIds`),
-  }),
-  collections: (v, issues, path) => ({ kind: "collections", ids: sanitizeStringArray(v.ids, issues, `${path}.ids`) }),
+  products: (v, issues, path) => {
+    const productIds = sanitizeStringArray(v.productIds, issues, `${path}.productIds`);
+    const listed = new Set(productIds);
+    const itemMinimums = sanitizeItemMinimums(v.itemMinimums, (id) => listed.has(id) || PRODUCT_GID_RE.test(id), issues, `${path}.itemMinimums`);
+    return {
+      kind: "products",
+      productIds,
+      variantIds: sanitizeStringArray(v.variantIds, issues, `${path}.variantIds`),
+      ...(itemMinimums ? { itemMinimums } : {}),
+    };
+  },
+  collections: (v, issues, path) => {
+    const ids = sanitizeStringArray(v.ids, issues, `${path}.ids`);
+    const listed = new Set(ids);
+    const itemMinimums = sanitizeItemMinimums(v.itemMinimums, (id) => listed.has(id), issues, `${path}.itemMinimums`);
+    return { kind: "collections", ids, ...(itemMinimums ? { itemMinimums } : {}) };
+  },
 };
 
 function sanitizeDiscountRuleValue(
@@ -199,6 +288,75 @@ function sanitizeCodes(v: unknown[], issues: ConfigIssue[], path: string): strin
 }
 
 /**
+ * Generated code batches of a rule (code-batch.ts). A batch's codes are
+ * rebuilt from its fields, so ANY field that is off would silently change (or
+ * unmake) codes customers already hold: an invalid batch is dropped whole, with
+ * an issue saying which field, never repaired. Only `count` above the limit is
+ * lowered (the first codes stay the same) and `removed` is tidied.
+ */
+function sanitizeCodeBatches(v: unknown, issues: ConfigIssue[], path: string): CodeBatch[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out: CodeBatch[] = [];
+  const ids = new Set<string>();
+  let overLimit = 0;
+  v.forEach((raw, i) => {
+    const at = `${path}[${i}]`;
+    const drop = (field: string) =>
+      pushIssue(issues, at, "invalid_code_batch", `The generated code batch has an invalid ${field}; the batch was dropped.`, { field });
+    if (!isRecord(raw)) return;
+    if (out.length >= CONFIG_LIMITS.codeBatchesPerRule) {
+      overLimit++;
+      return;
+    }
+    if (!isValidEntityId(raw.id) || ids.has(raw.id)) return drop("id");
+    const prefix = typeof raw.prefix === "string" ? raw.prefix.trim().toUpperCase() : "";
+    if (prefix.length < CONFIG_LIMITS.codeBatchPrefixMin || prefix.length > CONFIG_LIMITS.codeBatchLiteralLength || !CODE_BATCH_LITERAL_RE.test(prefix)) return drop("prefix");
+    if (typeof raw.seed !== "string" || !CODE_BATCH_SEED_RE.test(raw.seed)) return drop("seed");
+    if (!isOneOf(raw.alphabet, CODE_BATCH_ALPHABETS)) return drop("alphabet");
+    if (typeof raw.count !== "number" || !Number.isInteger(raw.count) || raw.count < 1) return drop("count");
+    const literals: { middle?: string; suffix?: string } = {};
+    for (const field of ["middle", "suffix"] as const) {
+      const value = raw[field];
+      if (value === undefined || value === null || value === "") continue;
+      if (typeof value !== "string" || value.length > CONFIG_LIMITS.codeBatchLiteralLength || !CODE_BATCH_LITERAL_RE.test(value)) return drop(field);
+      literals[field] = value;
+    }
+    let count = raw.count;
+    if (count > CONFIG_LIMITS.codeBatchSize) {
+      pushIssue(
+        issues,
+        `${at}.count`,
+        "too_many_batch_codes",
+        `A generated batch can have at most ${CONFIG_LIMITS.codeBatchSize} codes; ${count - CONFIG_LIMITS.codeBatchSize} more were dropped.`,
+        { max: CONFIG_LIMITS.codeBatchSize, count: count - CONFIG_LIMITS.codeBatchSize },
+      );
+      count = CONFIG_LIMITS.codeBatchSize;
+    }
+    const length = raw.length;
+    if (typeof length !== "number" || !Number.isInteger(length) || length < codeBatchMinLength(raw.alphabet, count) || length > CONFIG_LIMITS.codeBatchRandomLength) {
+      return drop("length");
+    }
+    const batch: CodeBatch = { id: raw.id, prefix, count, seed: raw.seed, length, alphabet: raw.alphabet, ...literals };
+    if (Array.isArray(raw.removed)) {
+      const removed = [...new Set(raw.removed.filter((n): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0 && n < count))].sort((a, b) => a - b);
+      if (removed.length > 0) batch.removed = removed;
+    }
+    ids.add(batch.id);
+    out.push(batch);
+  });
+  if (overLimit > 0) {
+    pushIssue(
+      issues,
+      path,
+      "too_many_code_batches",
+      `A discount can have at most ${CONFIG_LIMITS.codeBatchesPerRule} generated code batches; ${overLimit} more were dropped.`,
+      { max: CONFIG_LIMITS.codeBatchesPerRule, count: overLimit },
+    );
+  }
+  return out.length > 0 ? out : undefined;
+}
+
+/**
  * A rule's schedule becomes startsAt/endsAt of its Shopify discount node, so both
  * must be ISO 8601 date-times with a zone and start < end. A schedule that is
  * supplied but wrong is removed AND the rule is disabled (with an issue): running
@@ -258,6 +416,10 @@ export function sanitizeDiscountRule(v: unknown, issues: ConfigIssue[], path: st
   if (priority !== undefined) rule.priority = priority;
 
   if (Array.isArray(v.codes)) rule.codes = sanitizeCodes(v.codes, issues, `${path}.codes`);
+  // Kept on an automatic rule too (switching the method back must not lose the batches: §14a "off ≠ erased");
+  // only a code rule ships them (function-payload.ts) and has them added to its discount (sync nodes.ts).
+  const codeBatches = sanitizeCodeBatches(v.codeBatches, issues, `${path}.codeBatches`);
+  if (codeBatches) rule.codeBatches = codeBatches;
 
   if (isRecord(v.minimum)) {
     const minimum: DiscountRule["minimum"] = {};
@@ -367,6 +529,8 @@ export function sanitizeRules(v: unknown, issues: ConfigIssue[]): { rules: Disco
   const paths: string[] = [];
   const ids = new Set<string>();
   const usedCodes = new Set<string>();
+  // No batch's prefix may start another's, shop-wide: a code then belongs to one batch at most.
+  const usedPrefixes: string[] = [];
   let overLimit = 0;
   v.forEach((item, i) => {
     if (out.length >= CONFIG_LIMITS.rules) {
@@ -401,6 +565,25 @@ export function sanitizeRules(v: unknown, issues: ConfigIssue[]): { rules: Disco
         );
       }
       for (const code of rule.codes) usedCodes.add(code);
+    }
+    if (rule.codeBatches) {
+      const kept = rule.codeBatches.filter((batch) => {
+        const clash = usedPrefixes.find((prefix) => batchPrefixesClash(prefix, batch.prefix));
+        if (clash === undefined) {
+          usedPrefixes.push(batch.prefix);
+          return true;
+        }
+        pushIssue(
+          issues,
+          `${path}.codeBatches`,
+          "code_batch_prefix_taken",
+          `The generated batch with the prefix ${batch.prefix} clashes with an earlier batch's prefix ${clash}; the batch was dropped.`,
+          { prefix: batch.prefix, other: clash },
+        );
+        return false;
+      });
+      if (kept.length > 0) rule.codeBatches = kept;
+      else delete rule.codeBatches;
     }
     out.push(rule);
     paths.push(path);

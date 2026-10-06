@@ -16,7 +16,7 @@ summary: Set up a discount that applies by itself (a sale, an amount off the ord
 
 # Create an automatic discount
 
-1. Open **Discounts & codes** and start a **New discount**, or pick a recipe (for
+1. Open **Discounts → Discounts & codes** and start a **New discount**, or pick a recipe (for
    example "% off everything" or "Free shipping"). A recipe pre-fills the values; you
    only check them.
 2. **Name**: customers see it in the cart and at checkout.

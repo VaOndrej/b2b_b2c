@@ -43,10 +43,12 @@ and it decides how discounts combine instead of leaving that to chance.
 - **Moving Shopify discounts into Won**, with Undo. See
   [discounts-outside-won](discounts-outside-won).
 
-## Not built yet
+## Where things are in the menu
 
-Clearance (Pro) and Campaigns (Pro) are in the menu but open a "coming in a
-later version" page. Nothing can be set up there yet.
+The menu has five items: **Discounts**, **Margin protection**, **Appearance**,
+**Reports** and **Settings**. **Discounts** has tabs on the page: Discounts & codes,
+Quantity discounts, Cart rewards, Clearance (Pro) and Campaigns (Pro). The plan
+and **Try a cart** are in **Settings**.
 
 ## Where customers see Won discounts
 

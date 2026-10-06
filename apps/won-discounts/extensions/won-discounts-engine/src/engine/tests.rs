@@ -1889,3 +1889,94 @@ fn the_tier_payload_is_read_tolerantly() {
         assert_eq!(tiers_read(&tier_rules("", junk, ""), "CZK"), (None, vec![]), "{junk}");
     }
 }
+
+// --- Per-item minimum quantity (plan 2026-10-06 bod 8; plan.ts "Per-item minimum") ----------------
+
+#[test]
+fn per_item_minimums_judge_each_item_on_its_own() {
+    // A from 3 pieces (two variants count together), B from 4, C follows the common minimum.
+    let lines = [
+        line("a1", 2, 10000, &["r#1:3"]),
+        line("a2", 1, 10000, &["r#1:3"]),
+        line("b1", 1, 10000, &["r#2:4"]),
+        line("c1", 2, 10000, &["r"]),
+        line("x", 5, 10000, &[]),
+    ];
+    let c = rules(&pct("r", 10.0, ""), "");
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    assert_eq!(product_of(&plan, "a1"), Some(("r", &EmittedValue::Percent(10.0), 2000)));
+    assert_eq!(product_of(&plan, "a2"), Some(("r", &EmittedValue::Percent(10.0), 1000)));
+    assert_eq!(product_of(&plan, "b1"), None);
+    assert_eq!(product_of(&plan, "c1"), Some(("r", &EmittedValue::Percent(10.0), 2000)));
+    assert_eq!(state(&plan, "r"), None);
+    // A common quantity minimum (the cart has 11 pieces) decides for C only.
+    let c = rules(&pct("r", 10.0, r#", "minimum": {"quantity": 12}"#), "");
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    assert_eq!(product_of(&plan, "a1").map(|p| p.2), Some(2000));
+    assert_eq!(product_of(&plan, "c1"), None);
+    assert_eq!(state(&plan, "r"), None);
+    // "entitled": every line of the rule counts (6 pieces).
+    let c = rules(&pct("r", 10.0, r#", "minimum": {"quantity": 6, "scope": "entitled"}"#), "");
+    assert_eq!(product_of(&plan_cart(cart(&lines, &[]), Some(&c)), "c1").map(|p| p.2), Some(2000));
+    // A subtotal minimum still gates the whole rule.
+    let c = rules(&pct("r", 10.0, r#", "minimum": {"subtotal": {"CZK": 200000}}"#), "");
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    assert_eq!(state(&plan, "r"), Some(RuleState::BelowMinimum));
+    assert_eq!(product_of(&plan, "a1"), None);
+    // No item reached, the common minimum missed: below the minimum.
+    let c = rules(&pct("r", 10.0, r#", "minimum": {"quantity": 5}"#), "");
+    let short = [line("a1", 2, 10000, &["r#1:3"]), line("c1", 1, 10000, &["r"])];
+    assert_eq!(state(&plan_cart(cart(&short, &[]), Some(&c)), "r"), Some(RuleState::BelowMinimum));
+}
+
+#[test]
+fn a_product_in_two_collections_qualifies_through_any_of_them() {
+    let c = rules(&[pct("r", 10.0, ""), pct("o", 10.0, r#", "target": {"kind": "order"}, "minimum": {"quantity": 99}"#)].join(","), "");
+    let both = ["r#1:5", "r#2:2"];
+    let mut gift = line("g", 9, 10000, &["r#1:5"]);
+    gift.gift = true;
+    let mut outlet = line("o1", 1, 10000, &["r#1:5"]);
+    outlet.outlet = true;
+    // Collection 1: p1 1 + p3 3 + p4 1 + the outlet line 1 = 6 ≥ 5 (a gift line counts toward nothing).
+    let lines = [line("p1", 1, 10000, &both), line("p2", 1, 10000, &["r#2:2"]), line("p3", 3, 10000, &["r#1:5"]), line("p4", 1, 10000, &["r", "r#1:5"]), gift, outlet];
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let amounts: Vec<Option<i64>> = ["p1", "p2", "p3", "p4", "g", "o1"].iter().map(|id| product_of(&plan, id).map(|p| p.2)).collect();
+    assert_eq!(amounts, vec![Some(1000), Some(1000), Some(3000), Some(1000), None, None]);
+    // Collection 1 with 4 pieces: p3 loses, p1 keeps it through collection 2.
+    let fewer = [line("p1", 1, 10000, &both), line("p2", 1, 10000, &["r#2:2"]), line("p3", 3, 10000, &["r#1:5"])];
+    let plan = plan_cart(cart(&fewer, &[]), Some(&c));
+    assert_eq!(product_of(&plan, "p1").map(|p| p.2), Some(1000));
+    assert_eq!(product_of(&plan, "p3"), None);
+    // Junk after "#" names no rule; an item ref never makes an order rule an item rule.
+    let junk = [line("l", 1, 10000, &["r#", "r#1", "r#1:0", "r#1:x", "r#1:1234567", "o#1:1"])];
+    let plan = plan_cart(cart(&junk, &[]), Some(&c));
+    assert_eq!(state(&plan, "r"), Some(RuleState::NoTargetLines));
+    assert_eq!(state(&plan, "o"), Some(RuleState::BelowMinimum));
+}
+
+// --- Generated code batches (plan 2026-10-06 dávka 4; code-batch.ts) ------------------------------
+
+#[test]
+fn a_generated_batch_code_enters_its_rule_a_made_up_one_does_not() {
+    // The batch of seed 000102…0f (prefix BF-, 10 characters of both) as one text among the rule's
+    // code hashes: its check key, "0" (both), "=" (13 characters), "0" (no suffix), the prefix.
+    let batch = r#", "method": "code", "codeHashes": [["fMMWc55qaEgjTq67", "BF-"], 7, "fMMWc55qaEgjTq670=0bf-", "fMMWc55qaEgjTq670=0BF-""#;
+    let c = rules(&[pct("k", 10.0, &format!("{batch}]")), pct("a", 5.0, "")].join(","), "");
+    let lines = [line("l", 1, 100000, &["k", "a"])];
+    let plan = plan_cart(cart(&lines, &["  bf-kzg8e2navt\n"]), Some(&c));
+    assert_eq!(product_of(&plan, "l").map(|p| (p.0, p.2)), Some(("k", 10000)));
+    let k = plan.rule_index("k").unwrap();
+    assert!(plan.rule_has_code(k, "BF-KZG8E2NAVT"));
+    assert!(!plan.rule_has_code(k, "BF-EHG852G9N8"));
+    assert_eq!(plan.entered_codes(k), vec!["BF-KZG8E2NAVT"]);
+    // "PREFIX-anything", one character off, a non-ASCII look-alike: the rule is not entered.
+    for fake in ["BF-ANYTHING12", "BF-KZG8E2NAVU", "BF-KZG8E2NAV", "BF-KZG8E2NAVT2", "ＢF-KZG8E2NAVT", "BF-KZG8E2NAV\u{17f}"] {
+        let plan = plan_cart(cart(&lines, &[fake]), Some(&c));
+        assert_eq!(state(&plan, "k"), Some(RuleState::CodeNotEntered), "{fake}");
+        assert_eq!(product_of(&plan, "l").map(|p| (p.0, p.2)), Some(("a", 5000)), "{fake}");
+    }
+    // A hand-typed code of the same rule keeps working beside the batch.
+    let c = rules(&pct("k", 10.0, &format!("{batch}, {WELCOME15}]")), "");
+    assert_eq!(state(&plan_cart(cart(&lines, &["welcome15"]), Some(&c)), "k"), None);
+    assert_eq!(state(&plan_cart(cart(&lines, &["BF-RPH79S627G"]), Some(&c)), "k"), None);
+}

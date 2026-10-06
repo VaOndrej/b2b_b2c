@@ -19,6 +19,7 @@ import {
   withCodes,
 } from "./fixture-builder.js";
 import { inputLimit, messagePackBytes } from "./input-size.js";
+import { generateBatchCodes } from "@won/core/discounts/code-batch";
 
 /** @typedef {import("./fixture-builder.js").Scenario} Scenario */
 
@@ -83,6 +84,10 @@ const fromAmount = (/** @type {number} */ n, /** @type {string} */ money) => `Od
 
 const SUMMER = pct("summer", 10, { name: "Letní sleva" });
 const WELCOME = withCodes(["WELCOME15"], pct("welcome", 15, { name: "Vítejte" }));
+/** A generated batch (code-batch.ts) of a fixed seed: 100 codes "BF-" + 10 characters. */
+const BATCH = { id: "b1", prefix: "BF-", count: 100, seed: "000102030405060708090a0b0c0d0e0f", length: 10, alphabet: "both" };
+const BATCH_CODES = generateBatchCodes(BATCH);
+const BATCH_RULE = pct("davka", 15, { name: "Black Friday", method: "code", codeBatches: [BATCH] });
 const ORDER5 = orderPct("order5", 5, { name: "5 % na objednávku" });
 const SHIP = freeShip("ship", { name: "Doprava zdarma", minimum: { subtotal: { CZK: 100000 } } });
 
@@ -1410,6 +1415,111 @@ function allScenarios() {
 
   marginTightTies(),
 
+  // --- per-item minimum quantity (Pro, plan 2026-10-06 bod 8; plan.ts "Per-item minimum") ---------
+  {
+    name: "lines-item-minimum-products",
+    description:
+      "10 % on products A (from 3 pieces), B (from 4) and C (no own minimum): the cart has 3 × A in two variants, 1 × B, 2 × C — A's lines and C's get it, B's does not. The minimum travels in the product metafield's ref `rule#key:min`.",
+    target: "lines",
+    rules: [pct("vyber", 10, { name: "Vybrané produkty" })],
+    role: AUTO,
+    lines: [
+      { n: 1, price: "100.0", qty: 2, product: 101, won: won("vyber#101:3") },
+      { n: 2, price: "120.0", product: 101, won: won("vyber#101:3") },
+      { n: 3, price: "100.0", product: 102, won: won("vyber#102:4") },
+      { n: 4, price: "50.0", qty: 2, product: 103, won: won("vyber") },
+      { n: 5, price: "70.0", qty: 4, won: null },
+    ],
+    expected: out(products(pc("Vybrané produkty", [1, 2, 4], percent(10)))),
+  },
+  {
+    name: "lines-item-minimum-common-minimum",
+    description:
+      "The rule's common minimum (the cart from 12 pieces; it has 10) decides only for the product without its own minimum: A (from 3, the cart has 3) keeps the discount, C loses it — and a better automatic discount still wins a line on its own.",
+    target: "lines",
+    rules: [pct("vyber", 10, { name: "Vybrané produkty", minimum: { quantity: 12 } }), pct("maly", 4, { name: "Malá sleva" })],
+    role: AUTO,
+    lines: [
+      { n: 1, price: "100.0", qty: 3, product: 101, won: won("vyber#101:3", "maly") },
+      { n: 2, price: "100.0", product: 102, won: won("vyber#102:4", "maly") },
+      { n: 3, price: "50.0", qty: 2, product: 103, won: won("vyber") },
+      { n: 4, price: "70.0", qty: 4, won: null },
+    ],
+    expected: out(products(pc("Vybrané produkty", [1], percent(10)), pc("Malá sleva", [2], percent(4)))),
+  },
+  {
+    name: "lines-item-minimum-collections-any",
+    description:
+      "20 % on collections 1 (from 5 pieces) and 2 (from 2): collection 2 has 2 pieces, collection 1 only 4. The product in BOTH qualifies through collection 2; the one only in collection 1 does not; a gift line counts toward nothing.",
+    target: "lines",
+    rules: [pct("kolekce", 20, { name: "Kolekce", target: { kind: "collections", ids: [] } })],
+    role: AUTO,
+    lines: [
+      { n: 1, price: "100.0", won: won("kolekce#1:5", "kolekce#2:2") },
+      { n: 2, price: "100.0", won: won("kolekce#2:2") },
+      { n: 3, price: "100.0", qty: 3, won: won("kolekce#1:5") },
+      { n: 4, price: "100.0", qty: 9, gift: "tier-1", won: won("kolekce#1:5") },
+    ],
+    expected: out(products(pc("Kolekce", [1, 2], percent(20)))),
+  },
+  {
+    name: "lines-item-minimum-free-gated",
+    description:
+      "Per-item minimums are Pro: a Free shop's config ships the rule switched OFF (plan-gate.ts), never the discount without its minimums — nothing is emitted even though the cart has more than the minimum.",
+    target: "lines",
+    plan: "free",
+    rules: [pct("vyber", 10, { name: "Vybrané produkty", target: { kind: "products", productIds: [productId(1)], variantIds: [], itemMinimums: [{ id: productId(1), quantity: 2 }] } })],
+    role: AUTO,
+    lines: [{ n: 1, price: "100.0", qty: 5, won: won("vyber") }],
+    expected: NONE,
+  },
+
+  // --- generated code batches (plan 2026-10-06 dávka 4; code-batch.ts) ------------------------------
+  {
+    name: "lines-code-batch-own-trigger",
+    description:
+      "A code node triggered by a code of its rule's GENERATED batch (entered in lower case): the batch ships as one tuple, the function recognises the code by the prefix and its keyed check. 15 % on the targeted line.",
+    target: "lines",
+    rules: [BATCH_RULE],
+    role: codeNode("davka"),
+    triggering: BATCH_CODES[0].toLowerCase(),
+    entered: [BATCH_CODES[0].toLowerCase()],
+    lines: [
+      { n: 1, price: "100.0", won: won("davka") },
+      { n: 2, price: "50.0", won: null },
+    ],
+    expected: out(products(pc("Black Friday", [1], percent(15)))),
+  },
+  {
+    name: "lines-code-batch-made-up-code-auto-node",
+    description:
+      "\"PREFIX-anything\" is not a code of the batch (its check is wrong): the batch's rule is NOT entered, so the automatic 10 % keeps both lines. Entered next to a hand-typed code of another discount, which wins its line.",
+    target: "lines",
+    rules: [BATCH_RULE, pct("auto", 10, { name: "Automat" }), WELCOME],
+    role: AUTO,
+    entered: ["BF-ANYTHING12", `${BATCH_CODES[0].slice(0, -1)}${BATCH_CODES[0].endsWith("2") ? "3" : "2"}`, "welcome15"],
+    lines: [
+      { n: 1, price: "100.0", won: won("davka", "auto") },
+      { n: 2, price: "50.0", won: won("auto") },
+      { n: 3, price: "80.0", won: won("welcome", "auto") },
+    ],
+    expected: out(products(pc("Automat", [1, 2], percent(10)))),
+  },
+  {
+    name: "lines-code-batch-wins-auto-node",
+    description:
+      "A real code of the batch (the 57th of 100) is entered: its 15 % beats the automatic 10 % on line 1, so the automatic node emits only line 2 (the code's own node emits line 1).",
+    target: "lines",
+    rules: [BATCH_RULE, pct("auto", 10, { name: "Automat" })],
+    role: AUTO,
+    entered: [BATCH_CODES[56]],
+    lines: [
+      { n: 1, price: "100.0", won: won("davka", "auto") },
+      { n: 2, price: "50.0", won: won("auto") },
+    ],
+    expected: out(products(pc("Automat", [2], percent(10)))),
+  },
+
   // --- output size (Shopify: 20 kB for ≤ 200 lines) ----------------------------------------
   proStackPercentOutput(),
   proStackDegradedOutput(),
@@ -1420,6 +1530,7 @@ function allScenarios() {
   // --- instruction budget ------------------------------------------------------------------
   budget("lines"),
   budget("delivery"),
+  itemMinimumBudget(),
   marginBudget("lines"),
   marginBudget("delivery"),
   marginSlowBudget(),
@@ -1633,6 +1744,74 @@ function budget(target) {
       target === "lines"
         ? out(products(...budgetExpectedProducts()), order("Sleva o1", outlet, percent(5)))
         : out(delivery("Doprava s1", percent(100))),
+  };
+}
+
+// Per-item minimums and generated batches on the budget cart: every one of the
+// 200 lines lists TWO item refs (13-digit keys, as product and collection ids
+// are) and a plain one; 25 item groups of the 30 % rule and 40 of the 20 % one,
+// some reached and some not; 5 code discounts with 5 generated batches each,
+// and 25 entered codes of a batch's exact shape (24 made up — each costs the
+// full keyed check — and one real).
+const IM_GROUPS_A = 25;
+const IM_GROUPS_B = 40;
+const imQty = (/** @type {number} */ i) => 1 + (i % 3);
+const imPrice = (/** @type {number} */ i) => 100 + (i % 37) * 10; // Kč
+const imMinA = (/** @type {number} */ g) => 5 + g;
+const imMinB = (/** @type {number} */ g) => 4 + (g % 9) * 2;
+const imRefs = (/** @type {number} */ i) => [`im30#${8841234500000 + (i % IM_GROUPS_A)}:${imMinA(i % IM_GROUPS_A)}`, `im20#${5512345600000 + (i % IM_GROUPS_B)}:${imMinB(i % IM_GROUPS_B)}`, "plain5"];
+
+/** @returns {Scenario} */
+function itemMinimumBudget() {
+  const countA = new Array(IM_GROUPS_A).fill(0);
+  const countB = new Array(IM_GROUPS_B).fill(0);
+  for (let i = 1; i <= BUDGET_LINES; i += 1) {
+    countA[i % IM_GROUPS_A] += imQty(i);
+    countB[i % IM_GROUPS_B] += imQty(i);
+  }
+  const lines = [];
+  /** @type {Record<string, number[]>} */
+  const winners = { im30: [], im20: [], plain5: [] };
+  for (let i = 1; i <= BUDGET_LINES; i += 1) {
+    lines.push({ n: i, price: `${imPrice(i)}.0`, qty: imQty(i), won: { ruleIds: imRefs(i) } });
+    const a = countA[i % IM_GROUPS_A] >= imMinA(i % IM_GROUPS_A);
+    const b = countB[i % IM_GROUPS_B] >= imMinB(i % IM_GROUPS_B);
+    winners[a ? "im30" : b ? "im20" : "plain5"].push(i);
+  }
+  for (const [id, list] of Object.entries(winners)) if (list.length < 20) throw new Error(`itemMinimumBudget: only ${list.length} lines for ${id}`);
+  const rules = [pct("im30", 30), pct("im20", 20), pct("plain5", 5)];
+  /** @type {string[]} */
+  const entered = [];
+  for (let r = 0; r < 5; r += 1) {
+    const codeBatches = Array.from({ length: 5 }, (_, b) => ({
+      id: `b${b}`,
+      prefix: `K${r}${b}-`,
+      count: 1000,
+      seed: (r * 5 + b + 1).toString(16).padStart(32, "0"),
+      length: 14,
+      alphabet: "digits",
+    }));
+    rules.push(pct(`kody${r}`, 50, { method: "code", codeBatches }));
+    if (r === 4) {
+      // 24 made-up codes of the last batch's exact shape (the function runs its whole check on each), and a real one.
+      for (let k = 0; k < 24; k += 1) entered.push(`K44-${String(22222222222222 + k * 1010101).slice(0, 14)}`);
+      entered.push(generateBatchCodes({ ...codeBatches[4], count: 1 })[0]);
+    }
+  }
+  // First appearance orders the candidates.
+  const order = Object.entries(winners).sort((x, y) => x[1][0] - y[1][0]);
+  const percents = { im30: 30, im20: 20, plain5: 5 };
+  return {
+    name: "lines-item-minimum-200-lines-budget",
+    description:
+      "Instruction budget: 200 lines × 2 item refs with 13-digit keys (65 item groups, some reached) + a plain ref, 5 code discounts × 5 generated batches of 1 000 codes, 25 entered codes of a batch's shape (24 made up, 1 real) — within the ordinary budget.",
+    realisticIds: true,
+    target: "lines",
+    rules,
+    role: AUTO,
+    entered,
+    lines,
+    expected: out(products(...order.map(([id, list]) => pc(`Sleva ${id}`, list, percent(percents[/** @type {keyof typeof percents} */ (id)]))))),
   };
 }
 

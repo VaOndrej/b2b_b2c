@@ -91,7 +91,7 @@ export function savedResult(
 /**
  * An admin write under the shop's config lock, waiting at most
  * CONFIG_LOCK_WAIT_MS for it (F2 re-review I-1): another writer still at work
- * → `busy` ("Nastavení se právě propisuje, zkus to za chvíli"), nothing ran.
+ * → `busy` ("Nastavení se právě zapisuje, zkus to za chvíli"), nothing ran.
  */
 export async function lockedWrite<T>(ctx: Pick<ShopCtx, "shop" | "lockWaitMs">, busy: T, run: () => Promise<T>): Promise<T> {
   try {

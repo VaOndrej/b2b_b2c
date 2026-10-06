@@ -71,10 +71,10 @@ test("an entered code longer than the longest Won code is never matched, and cou
   // The entries: every one counts, whatever it holds, and keeps its length as entered.
   const cart = normalizeCart(cartOf(lines, { enteredCodes: [" welcome15 ", "", 7 as unknown as string, "ß"] }));
   assert.deepEqual(cart.consideredEntries, [
-    { code: "WELCOME15", rawLength: 11 },
-    { code: "", rawLength: 0 },
-    { code: "", rawLength: 0 },
-    { code: "SS", rawLength: 1 },
+    { code: "WELCOME15", rawLength: 11, ascii: true },
+    { code: "", rawLength: 0, ascii: true },
+    { code: "", rawLength: 0, ascii: false },
+    { code: "SS", rawLength: 1, ascii: false },
   ]);
   assert.equal(cart.consideredCodes, 2);
   // 25 codes that are too long, or empty, or not strings, then STRASSE: past the cap.

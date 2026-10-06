@@ -9,15 +9,17 @@
 //   loadCampaignsOverview(ctx)        the Přehled card: the running and the next campaign.
 // The session shop only (SEC-2). Times are shop-local wall times (the window the function checks, C4).
 
+import { CAMPAIGN_BLOCK_HANDLE, placementLinks } from "../../components/model/embed";
 import { campaignTierSets } from "@won/core/discounts/campaign-tiers";
-import { CAMPAIGN_LIMITS, addLocalMinutes, campaignStatusAt, validateCampaignDraft, type CampaignDraftError } from "@won/core/discounts/campaigns";
+import { CAMPAIGN_LIMITS, addLocalMinutes, campaignStatusAt, validateCampaignDraft, type CampaignDraft, type CampaignDraftError } from "@won/core/discounts/campaigns";
 import { CONFIG_LIMITS, type Campaign, type DiscountRule, type ReadonlyDeep, type TierBreak, type TierSet, type WonDiscountsConfig } from "@won/core/discounts/config";
 import { formatAmounts, formatPercent } from "@won/core/discounts/describe";
 import { currencyExponent, fromMinorUnits } from "@won/core/discounts/money";
 import { reachableTierSets } from "@won/core/discounts/tiers";
 
 import { t, type Locale } from "../../i18n";
-import { CAMPAIGN_ERROR_FIELD, CAMPAIGN_FIELD, CAMPAIGN_INTENT, readCampaignForm } from "../../components/model/campaigns";
+import { CAMPAIGN_ERROR_FIELD, CAMPAIGN_FIELD, CAMPAIGN_INTENT, campaignFieldNames, readCampaignForm } from "../../components/model/campaigns";
+import { submittedOf, withValues } from "../../components/model/submitted";
 import type { FormDataLike } from "../../components/model/rule-form";
 import type {
   CampaignRuleChoice,
@@ -161,6 +163,13 @@ export function campaignView(c: ReadonlyDeep<Campaign>, opts: CampaignViewOption
     overrides,
     tiers,
     unused: c.overrides.length - overrides.length - tiers.length,
+    // P4: named, not only counted. A tier set by its label; "" = what the change was for no longer exists.
+    unusedNames: c.overrides
+      .filter((o) => !opts.rules.has(o.ruleId) && !(run?.applied ?? []).includes(o.ruleId))
+      .map((o) => {
+        const set = opts.tiers?.sets.find((x) => x.id === o.ruleId);
+        return set ? tierSetLabel(set, opts.locale) : "";
+      }),
     finishing: opts.plan === "free" && status === "running" && opts.finishing.has(c.id),
     tryCartUrl: `/app/try-cart?date=${at.slice(0, 10)}&time=${at.slice(11, 16)}`,
   };
@@ -213,20 +222,49 @@ export async function loadCampaignsScreen(ctx: ShopCtx, opts: { edit?: string | 
     tierSets: campaignTierChoices(config, ctx.locale),
     editing,
     limits: { campaigns: CONFIG_LIMITS.campaigns, maxDays: CAMPAIGN_LIMITS.maxDays, minLeadMinutes: CAMPAIGN_LIMITS.minLeadMinutes },
+    placements: placementLinks(ctx.shop, ctx.apiKey, CAMPAIGN_BLOCK_HANDLE),
   };
 }
 
-/** Core's draft errors on the form's fields; a tier set is named by its label (it has no name), a currency as " (EUR)". */
-function fieldErrors(errors: readonly CampaignDraftError[], config: ReadonlyDeep<WonDiscountsConfig>, locale: Locale): FieldError[] {
-  return errors.map((e) => {
+/**
+ * Core's draft errors on the form's fields. A tier set is named by its label (it has no name), a currency as " (EUR)".
+ * An error about one discount or one tier set carries its id (`at`): the screen shows it at that row. A window that
+ * cannot be read lands on the control that is wrong: the date, or the time.
+ */
+function fieldErrors(
+  errors: readonly CampaignDraftError[],
+  config: ReadonlyDeep<WonDiscountsConfig>,
+  locale: Locale,
+  posted: { draft: CampaignDraft; startDate: string; endDate: string },
+): FieldError[] {
+  const dateOk = (day: string) => /^\d{4}-\d{2}-\d{2}$/.test(day.trim());
+  return errors.map((e): FieldError => {
+    if (e.key === "campaign.error.when") {
+      const start = e.field === "start";
+      if (dateOk(start ? posted.startDate : posted.endDate)) return { field: start ? CAMPAIGN_FIELD.startTime : CAMPAIGN_FIELD.endTime, key: "campaign.error.time" };
+      return { field: CAMPAIGN_ERROR_FIELD[e.field], key: "campaign.error.date" };
+    }
     if (!e.params) return { field: CAMPAIGN_ERROR_FIELD[e.field], key: e.key };
     const params = { ...e.params };
+    let at: string | undefined;
     if (e.field === "tiers" && typeof params.set === "string") {
       const set = config.modules.tiers.sets.find((x) => x.id === params.set);
-      if (set) params.set = tierSetLabel(set, locale);
+      if (set) {
+        at = set.id;
+        params.set = tierSetLabel(set, locale);
+      }
       if (typeof params.currency === "string") params.currency = params.currency ? ` (${params.currency})` : "";
     }
-    return { field: CAMPAIGN_ERROR_FIELD[e.field], key: e.key, params };
+    if (e.field === "overrides" && typeof params.rule === "string") {
+      // Core names the discount, not its id: the first ticked one of that name the error can be about.
+      const named = posted.draft.overrides.filter((o) => {
+        const rule = config.modules.codes.rules.find((r) => r.id === o.ruleId);
+        return rule !== undefined && (rule.name || rule.id) === params.rule;
+      });
+      const about = e.key === "campaign.error.override" ? named.find((o) => o.enabled === undefined && o.value === undefined) : named.find((o) => o.value !== undefined);
+      at = (about ?? named[0])?.ruleId;
+    }
+    return { field: CAMPAIGN_ERROR_FIELD[e.field], key: e.key, params, ...(at ? { at } : {}) };
   });
 }
 
@@ -245,15 +283,27 @@ export async function campaignsAction(ctx: ShopCtx, form: FormDataLike): Promise
     loaded.config.modules.tiers.sets.map((set) => [set.id, { kind: tierKind(set.breaks), currencies: tierCurrencies(set.breaks), exponent: currencyExponent }]),
   );
   const { intent, id, draft } = readCampaignForm(form, kinds, sets);
+  // B14: a refused save gets back what the form posted, so the screen shows it again.
+  const posted = () =>
+    submittedOf(
+      form,
+      campaignFieldNames(
+        [...kinds].map(([ruleId, k]) => ({ id: ruleId, kind: k.kind, currencies: k.currencies })),
+        [...sets].map(([setId, k]) => ({ id: setId, kind: k.kind, currencies: k.currencies })),
+      ),
+    );
   const pick = (config: WonDiscountsConfig) => config.campaigns;
   const options = readSaveOptions(form);
   switch (intent) {
     case CAMPAIGN_INTENT.save: {
       // BILL-1 / A6: on Free nothing is created, edited or revived (a finishing campaign runs as it was).
-      if ((await ctxPlan(ctx)) !== "pro") return { ok: false, reason: "invalid", errors: [{ field: CAMPAIGN_FIELD.name, key: "campaign.error.pro" }] };
+      if ((await ctxPlan(ctx)) !== "pro") return { ok: false, reason: "invalid", errors: [{ field: CAMPAIGN_FIELD.name, key: "campaign.error.pro" }], values: posted() };
       const { now } = await shopNow(ctx);
       const r = validateCampaignDraft(draft, loaded.config, { now, maxCampaigns: CONFIG_LIMITS.campaigns });
-      if (!r.ok) return { ok: false, reason: "invalid", errors: fieldErrors(r.errors, loaded.config, ctx.locale) };
+      if (!r.ok) {
+        const dates = { startDate: String(form.get(CAMPAIGN_FIELD.startDate) ?? ""), endDate: String(form.get(CAMPAIGN_FIELD.endDate) ?? "") };
+        return { ok: false, reason: "invalid", errors: fieldErrors(r.errors, loaded.config, ctx.locale, { draft, ...dates }), values: posted() };
+      }
       const campaign = r.campaign;
       const result = await saveConfigSection(ctx, {
         ...options,
@@ -269,7 +319,8 @@ export async function campaignsAction(ctx: ShopCtx, form: FormDataLike): Promise
           return { ...config, campaigns: existing ? config.campaigns.map((c) => (c.id === campaign.id ? next : c)) : [...config.campaigns, next] };
         },
       });
-      return saved(result, "saved");
+      // Any other refusal (changed meanwhile, busy, …) keeps the typed values too.
+      return saved(withValues(result, posted), "saved");
     }
     case CAMPAIGN_INTENT.kill: {
       const target = loaded.config.campaigns.find((c) => c.id === id);

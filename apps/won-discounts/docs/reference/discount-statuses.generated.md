@@ -22,17 +22,17 @@ Each discount in the list shows one status. Only **Live** and
 
 | Status (EN) | Status (CS) | What it means |
 |---|---|---|
-| Live | Běží | Switched on, inside its dates, and this version is in Shopify: it applies at checkout. |
+| Live | Aktivní | Switched on, inside its dates, and this version is in Shopify: it applies at checkout. |
 | Off | Vypnuto | Switched off. It does not apply. |
 | Scheduled | Naplánováno | Scheduled from ‹date› |
 | Ended | Skončilo | Ended ‹date› |
 | Unsaved | Neuloženo | Not saved yet |
-| Not synced | Nepropsáno | Saved, not written to Shopify yet |
-| Not synced | Nepropsáno | Not in Shopify: the sync failed. Details and Sync again are on the Overview. |
+| Not synced | Nezapsáno | Saved, not written to Shopify yet |
+| Not synced | Nezapsáno | Not in Shopify: the sync failed. |
 | Syncing | Propisuje se | Running, but its product targeting is being written to Shopify right now. New products get the discount within minutes. |
-| Not running | Neběží | Not running: this code discount has no code yet |
-| Not running | Neběží | Not running: no products or collections are picked. |
-| Not running | Neběží | Not running: it has no value in any of the store's currencies. |
-| Not running | Neběží | Not running: it targets only markets that are switched off in Won. |
-| Not running | Neběží | Not running: it uses a Pro feature your plan does not run at checkout. |
-| Not running | Neběží | Not running: segment targeting isn't applied at checkout yet |
+| Not running | Neaktivní | Not running: this code discount has no code yet |
+| Not running | Neaktivní | Not running: no products or collections are picked. |
+| Not running | Neaktivní | Not running: it has no value in any of the store's currencies. |
+| Not running | Neaktivní | Not running: it targets only markets that are switched off in Won. |
+| Not running | Neaktivní | Not running: it uses a Pro feature your plan does not run at checkout. |
+| Not running | Neaktivní | Not running: segment targeting isn't applied at checkout yet |

@@ -1,5 +1,8 @@
 import { reactRouter } from "@react-router/dev/vite";
-import { defineConfig, type UserConfig } from "vite";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+import { defineConfig, type Plugin, type UserConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 if (
@@ -31,6 +34,33 @@ if (host === "localhost") {
   };
 }
 
+// Dev only: `shopify app dev` proxies every request under `/extensions` to its
+// own extension server, so a `?raw` import of a file in extensions/ (the admin
+// preview of the storefront block, TiersPreview.tsx) 404s through the tunnel and
+// the route never hydrates inside Shopify admin. Serve those imports as virtual
+// modules (`/@id/…`) instead. The build inlines the text and is left alone.
+const RAW_EXTENSION_PREFIX = "\0won-extension-raw:";
+const RAW_EXTENSION_SUFFIX = ".raw-text";
+const extensionsDir = path.resolve(__dirname, "extensions") + path.sep;
+const rawExtensionImports: Plugin = {
+  name: "won-raw-extension-imports",
+  apply: "serve",
+  enforce: "pre",
+  async resolveId(source, importer) {
+    if (!source.endsWith("?raw")) return null;
+    const resolved = await this.resolve(source.slice(0, -"?raw".length), importer, { skipSelf: true });
+    if (!resolved || !resolved.id.startsWith(extensionsDir)) return null;
+    // The suffix keeps Vite's JSON and CSS plugins off the virtual module.
+    return RAW_EXTENSION_PREFIX + path.relative(extensionsDir, resolved.id) + RAW_EXTENSION_SUFFIX;
+  },
+  load(id) {
+    if (!id.startsWith(RAW_EXTENSION_PREFIX)) return null;
+    const file = path.join(extensionsDir, id.slice(RAW_EXTENSION_PREFIX.length, -RAW_EXTENSION_SUFFIX.length));
+    this.addWatchFile(file);
+    return `export default ${JSON.stringify(readFileSync(file, "utf8"))};`;
+  },
+};
+
 export default defineConfig({
   server: {
     allowedHosts: [host],
@@ -44,7 +74,7 @@ export default defineConfig({
       allow: ["app", "node_modules", "../../packages", "../../node_modules"],
     },
   },
-  plugins: [reactRouter(), tsconfigPaths()],
+  plugins: [rawExtensionImports, reactRouter(), tsconfigPaths()],
   build: {
     assetsInlineLimit: 0,
   },

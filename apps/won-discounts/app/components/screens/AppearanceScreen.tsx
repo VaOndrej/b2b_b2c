@@ -11,19 +11,33 @@
 // A presentational component: app/routes/app.appearance.tsx renders it from
 // loadAppearanceScreen (app/lib/integration/appearance.server.ts).
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Form, useSubmit } from "react-router";
 
 import { APPEARANCE_PRESETS } from "@won/core/discounts/config";
 
 import { useT } from "../../i18n/context";
-import { APPEARANCE_FIELD, APPEARANCE_INTENT, isAppearancePreset, presetDetails, presetLabel, TEXT_LANGS } from "../model/appearance";
+import {
+  APPEARANCE_FIELD,
+  APPEARANCE_INTENT,
+  changedTextCount,
+  customLookSet,
+  isAppearancePreset,
+  liveCustomLookCss,
+  presetDetails,
+  presetLabel,
+  TEXT_LANGS,
+  textField,
+  textLabel,
+  textLangLabel,
+} from "../model/appearance";
 import { embedText } from "../model/signals";
-import type { AppearancePresetView, AppearanceScreenData, UiResult } from "../model/types";
+import type { AppearancePresetView, AppearanceScreenData, PreviewLookView, UiResult } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
 import { Notice } from "../shell/Notice";
 import { boolAttr } from "../shell/attrs";
 import { ProFrame } from "../shell/ProFrame";
+import { ProSell } from "../shell/ProSell";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 import { selectionRing, WON_FONT, WON_INK, WON_MUTED } from "../shell/tokens";
 import { TiersBlockSection } from "../tiers/TiersBlockSection";
@@ -33,22 +47,46 @@ export interface AppearanceScreenProps extends AppearanceScreenData {
   result?: UiResult | null;
 }
 
+/** The last read value of every field (the first one of a name). */
+function snapshotOf(form: HTMLFormElement): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const [name, value] of new FormData(form).entries()) if (!out.has(name) && typeof value === "string") out.set(name, value);
+  return out;
+}
+
 export function AppearanceScreen(props: AppearanceScreenProps) {
-  const { plan, configVersion, preset, tokens, sample, product, block, embed, cardPrices, custom, customIssue, texts, cardBlockUrl, aiPrompt, result } = props;
+  const { plan, configVersion, preset, tokens, sample, product, block, embed, cardPrices, custom, customIssue, texts, cardBlockUrl, aiPrompt, previewLook, result } = props;
   const pro = plan === "pro";
   const tr = useT();
-  const { t } = tr;
+  const { t, locale } = tr;
   const [chosen, setChosen] = useState<AppearancePresetView>(preset);
   const formRef = useRef<HTMLFormElement>(null);
+  const langs = props.languages && props.languages.length > 0 ? TEXT_LANGS.filter((lang) => props.languages!.includes(lang)) : TEXT_LANGS;
 
-  // "Discard" in the App Bridge save bar: back to the stored look.
+  // P5: the state lines and the previews follow the form — re-read on every native input / change (never React's
+  // onChange on an `s-*` field). null = nothing typed yet: what is stored.
+  const [snapshot, setSnapshot] = useState<Map<string, string> | null>(null);
+  const recompute = useCallback(() => {
+    if (formRef.current) setSnapshot(snapshotOf(formRef.current));
+  }, []);
   useEffect(() => {
     const el = formRef.current;
     if (!el) return;
-    const onReset = () => setChosen(preset);
+    // "Discard" in the App Bridge save bar: back to the stored look and the stored values.
+    const onReset = () => {
+      setChosen(preset);
+      setSnapshot(null);
+      window.setTimeout(recompute, 0);
+    };
+    el.addEventListener("input", recompute);
+    el.addEventListener("change", recompute);
     el.addEventListener("reset", onReset);
-    return () => el.removeEventListener("reset", onReset);
-  }, [preset]);
+    return () => {
+      el.removeEventListener("input", recompute);
+      el.removeEventListener("change", recompute);
+      el.removeEventListener("reset", onReset);
+    };
+  }, [preset, recompute]);
 
   const errors = result && !result.ok && result.reason === "invalid" ? (result.errors ?? []) : [];
   const presetError = errors.find((e) => e.field === APPEARANCE_FIELD.preset);
@@ -56,19 +94,58 @@ export function AppearanceScreen(props: AppearanceScreenProps) {
     const e = errors.find((x) => x.field === field);
     return e ? t(e.key, e.params) : undefined;
   };
-  const changedTexts = texts.reduce((n, x) => n + (x.values.cs ? 1 : 0) + (x.values.sk ? 1 : 0) + (x.values.en ? 1 : 0), 0);
-  const customSet = custom.accent !== "" || custom.line !== "" || custom.tint !== "" || custom.radius !== "" || custom.css.trim() !== "";
-  const [copied, setCopied] = useState(false);
+
+  // What is stored, by field name — the form's values before anything is typed.
+  const stored = useMemo(() => {
+    const map = new Map<string, string>([
+      [APPEARANCE_FIELD.accent, custom.accent],
+      [APPEARANCE_FIELD.line, custom.line],
+      [APPEARANCE_FIELD.tint, custom.tint],
+      [APPEARANCE_FIELD.radius, custom.radius],
+      [APPEARANCE_FIELD.css, custom.css],
+    ]);
+    for (const x of texts) for (const lang of TEXT_LANGS) map.set(textField(lang, x.key), x.values[lang]);
+    return map;
+  }, [custom, texts]);
+  const storedCustomSet = customLookSet((field) => stored.get(field) ?? "");
+  // On Free the custom-look fields are locked (disabled fields are not in the form): what is stored is what there is.
+  const lookValue = (field: string) => (pro && snapshot ? (snapshot.get(field) ?? "") : (stored.get(field) ?? ""));
+  const customSet = customLookSet(lookValue);
+  const cardsOn = snapshot ? snapshot.has(APPEARANCE_FIELD.cardPrices) : cardPrices;
+  const textValues: [string, string][] = texts.flatMap((x) => langs.map((lang): [string, string] => [textField(lang, x.key), snapshot ? (snapshot.get(textField(lang, x.key)) ?? "") : x.values[lang]]));
+  const changedTexts = changedTextCount(textValues);
+
+  // The previews: the custom look as the storefront would get it and the texts in the admin language — live on what
+  // is typed; before that (and for the look on Free, which the plan does not ship) what the server read.
+  const extras: PreviewLookView = useMemo(() => {
+    if (!snapshot) return previewLook ?? { customCss: null, texts: {} };
+    const typed: Record<string, string> = {};
+    for (const x of texts) {
+      const value = (snapshot.get(textField(locale, x.key)) ?? "").trim();
+      if (value !== "") typed[x.key] = value;
+    }
+    return { customCss: pro ? liveCustomLookCss((field) => snapshot.get(field) ?? "") || null : (previewLook?.customCss ?? null), texts: { ...previewLook?.texts, [locale]: typed } };
+  }, [snapshot, previewLook, texts, locale, pro]);
+
+  // "Zkopírovat zadání pro AI": says when it worked — and when it did not (no clipboard in this browser / frame).
+  const [copied, setCopied] = useState<"done" | "failed" | null>(null);
   const copyPrompt = () => {
-    if (typeof navigator === "undefined" || !navigator.clipboard) return;
-    void navigator.clipboard.writeText(aiPrompt).then(() => setCopied(true));
+    if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
+      setCopied("failed");
+      return;
+    }
+    navigator.clipboard.writeText(aiPrompt).then(
+      () => setCopied("done"),
+      () => setCopied("failed"),
+    );
   };
   const customFields = (
     <s-stack direction="block" gap="base">
       {customIssue ? <s-banner tone="warning" heading={t("appearance.custom.issue")} /> : null}
       <s-grid gridTemplateColumns="repeat(auto-fit, minmax(160px, 1fr))" gap="base" alignItems="start">
         {(["accent", "line", "tint"] as const).map((key) => (
-          <s-text-field
+          // P6: a colour is picked, not typed — the field submits a hex the server takes (#rrggbb); empty = the theme's.
+          <s-color-field
             key={key}
             name={APPEARANCE_FIELD[key]}
             label={t(`appearance.custom.${key}` as "appearance.custom.accent")}
@@ -91,9 +168,10 @@ export function AppearanceScreen(props: AppearanceScreenProps) {
         </pre>
         <div>
           <s-button variant="secondary" onClick={copyPrompt} disabled={boolAttr(!pro)}>
-            {copied ? `${t("appearance.ai.copy")} ✓` : t("appearance.ai.copy")}
+            {copied === "done" ? `${t("appearance.ai.copy")} ✓` : t("appearance.ai.copy")}
           </s-button>
         </div>
+        {copied === "failed" ? <RowNote tone="attention">{t("appearance.ai.copyFailed")}</RowNote> : null}
       </s-stack>
     </s-stack>
   );
@@ -105,6 +183,8 @@ export function AppearanceScreen(props: AppearanceScreenProps) {
     data.set(APPEARANCE_FIELD.replaceUnreadable, "1");
     submit(data, { method: "post" });
   };
+  // The app on the storefront: a section only when there is something to do (P2), then marked with its one fix (P3).
+  const embedAction = embed.state !== "on" && embed.activateUrl ? embed.activateUrl : null;
 
   return (
     <s-page heading={t("module.appearance")}>
@@ -114,9 +194,23 @@ export function AppearanceScreen(props: AppearanceScreenProps) {
         {configVersion ? <input type="hidden" name={APPEARANCE_FIELD.configVersion} value={configVersion} /> : null}
         <s-stack direction="block" gap="base">
           <Notice result={result} onReplace={replaceUnreadable} />
+          {embedAction ? (
+            <WonSection title={t("appearance.embed")} glyph="store" summary={embedText(embed.state, tr)} anchor="embed">
+              <WonRow
+                tone="attention"
+                action={
+                  <s-button href={embedAction} target="_blank" variant="primary">
+                    {t("overview.embed.activate")}
+                  </s-button>
+                }
+              >
+                <RowNote tone="attention">{t("appearance.embed.needed")}</RowNote>
+              </WonRow>
+            </WonSection>
+          ) : null}
           <WonSection title={t("module.appearance")} glyph="spark" summary={t("appearance.summary", { preset: presetLabel(chosen, tr) })} hint={t("appearance.hint")} anchor="looks">
             <s-stack direction="block" gap="base">
-              <TiersPreviewStyles />
+              <TiersPreviewStyles customCss={extras.customCss} />
               <div role="radiogroup" aria-label={t("appearance.choose")} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 380px), 1fr))", gap: 12 }}>
                 {APPEARANCE_PRESETS.map((p) => (
                   <LookCard
@@ -125,16 +219,18 @@ export function AppearanceScreen(props: AppearanceScreenProps) {
                     active={chosen === p}
                     saved={p === preset}
                     onPick={setChosen}
-                    preview={<TiersPreview set={sample} preset={p} tokens={tokens} product={product} bare withStyles={false} quantity={sample?.breaks[0]?.minQty ?? 3} />}
+                    preview={<TiersPreview set={sample} preset={p} tokens={tokens} product={product} bare withStyles={false} extras={extras} quantity={sample?.breaks[0]?.minQty ?? 3} />}
                   />
                 ))}
               </div>
               <FieldMessage text={presetError ? t(presetError.key, presetError.params) : undefined} />
-              <div style={{ fontSize: 12, lineHeight: 1.4, color: WON_MUTED }}>
-                {sample ? null : `${t("tiers.preview.sample")} `}
-                {tokens?.themeName ? t("tiers.preview.theme", { theme: tokens.themeName }) : t("tiers.preview.noTheme")}
-                {tokens?.fontBody ? ` ${t("tiers.preview.font", { font: tokens.fontBody })}` : ""}
-              </div>
+              {/* Only what the merchant should know (P2): the set is an example; the theme could not be read. */}
+              {!sample || !tokens?.themeName ? (
+                <div style={{ fontSize: 12, lineHeight: 1.4, color: WON_MUTED }}>
+                  {sample ? null : `${t("tiers.preview.sample")} `}
+                  {tokens?.themeName ? null : t("tiers.preview.noTheme")}
+                </div>
+              ) : null}
             </s-stack>
           </WonSection>
 
@@ -143,29 +239,28 @@ export function AppearanceScreen(props: AppearanceScreenProps) {
             glyph="spark"
             pro
             locked={!pro}
-            on={pro && customSet}
+            // Green only for what is stored AND still set; a look typed but not saved yet has no pill.
+            on={!pro ? undefined : customSet ? (storedCustomSet ? true : undefined) : false}
             summary={t(customSet ? "appearance.custom.summary.on" : "appearance.custom.summary.off")}
             anchor="custom"
             collapsible
-            defaultOpen={customSet || errors.some((e) => e.field.startsWith("look."))}
+            defaultOpen={storedCustomSet || errors.some((e) => e.field.startsWith("look."))}
           >
             {pro ? (
               customFields
             ) : (
-              <ProFrame locked>
-                <s-stack direction="block" gap="small-300">
-                  <RowNote>{t("appearance.custom.locked")}</RowNote>
-                  {customFields}
-                </s-stack>
-              </ProFrame>
+              <s-stack direction="block" gap="base">
+                <ProSell benefit={t("appearance.custom.benefit")} />
+                <ProFrame locked>{customFields}</ProFrame>
+              </s-stack>
             )}
           </WonSection>
 
           <WonSection
             title={`${t("appearance.cards.title")} · ${t("appearance.beta")}`}
             glyph="tag"
-            on={cardPrices}
-            summary={t(cardPrices ? "appearance.cards.summary.on" : "appearance.cards.summary.off")}
+            on={cardsOn ? (cardPrices ? true : undefined) : false}
+            summary={t(cardsOn ? "appearance.cards.summary.on" : "appearance.cards.summary.off")}
             anchor="cards"
             collapsible
             defaultOpen={cardPrices}
@@ -198,36 +293,33 @@ export function AppearanceScreen(props: AppearanceScreenProps) {
           >
             <s-stack direction="block" gap="base">
               <RowNote>{t("appearance.texts.hint")}</RowNote>
-              {texts.map((x) => (
-                <s-grid key={x.key} gridTemplateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap="small-300" alignItems="start">
-                  {TEXT_LANGS.map((lang) => (
-                    <s-text-field
-                      key={lang}
-                      name={`${APPEARANCE_FIELD.text}${lang}.${x.key}`}
-                      label={`${x.key} · ${lang}`}
-                      value={x.values[lang]}
-                      placeholder={x.defaults[lang]}
-                      error={errorOf(`${APPEARANCE_FIELD.text}${lang}.${x.key}`)}
-                    />
-                  ))}
-                </s-grid>
-              ))}
+              {texts.map((x) => {
+                // A name the merchant understands ("Nadpis tabulky · česky"), never the extension's key; one field per language.
+                const name = textLabel(x.key, x.defaults[locale] || x.defaults.en, tr);
+                return (
+                  <div key={x.key} data-won-text={x.key}>
+                    <s-grid gridTemplateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap="small-300" alignItems="start">
+                      {langs.map((lang) => (
+                        <s-text-field
+                          key={lang}
+                          name={textField(lang, x.key)}
+                          label={`${name} · ${textLangLabel(lang, tr)}`}
+                          value={x.values[lang]}
+                          placeholder={x.defaults[lang]}
+                          error={errorOf(textField(lang, x.key))}
+                        />
+                      ))}
+                    </s-grid>
+                    {/* A language the shop does not use keeps what is stored for it (a save never erases it). */}
+                    {TEXT_LANGS.filter((lang) => !langs.includes(lang) && x.values[lang] !== "").map((lang) => (
+                      <input key={lang} type="hidden" name={textField(lang, x.key)} value={x.values[lang]} />
+                    ))}
+                  </div>
+                );
+              })}
             </s-stack>
           </WonSection>
           <TiersBlockSection block={block} product={product} />
-          <WonSection title={t("appearance.embed")} glyph="store" summary={embedText(embed.state, tr)}>
-            {embed.state !== "on" && embed.activateUrl ? (
-              <WonRow
-                action={
-                  <s-button href={embed.activateUrl} target="_blank" variant="secondary">
-                    {t("overview.embed.activate")}
-                  </s-button>
-                }
-              >
-                {null}
-              </WonRow>
-            ) : null}
-          </WonSection>
           <div>
             <s-button type="submit" variant="primary">
               {t("common.save")}

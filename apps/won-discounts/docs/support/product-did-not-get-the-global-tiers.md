@@ -31,7 +31,7 @@ default, or none at all.
 
 ## How to check
 
-1. Open **Quantity discounts** and look at each scoped set's product and
+1. Open **Discounts → Quantity discounts** and look at each scoped set's product and
    collection list for this product.
 2. If a scoped set claims it, remove the product (or its collection) from that
    set's scope, or add breaks to that set, to change what it gets.

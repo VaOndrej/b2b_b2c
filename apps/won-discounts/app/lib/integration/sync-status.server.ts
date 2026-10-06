@@ -38,7 +38,7 @@
 //       collection     → "failed"; products still being written or the
 //       rule           targeting marked stale → "refreshing".
 //     A run without a link (before the column existed) or whose version was
-//     pruned from history proves nothing: its rules read "čeká na propsání"
+//     pruned from history proves nothing: its rules read "čeká na zápis"
 //     until the next sync.
 
 import { readStoredConfig, type DiscountRule, type WonDiscountsConfig } from "@won/core/discounts/config";
@@ -47,6 +47,8 @@ import { gateConfigForPlan, type ShopPlan } from "@won/core/discounts/plan-gate"
 import type { PrismaClient } from "../../generated/prisma/client";
 import { loadConfig } from "../config.server";
 import { planOf } from "../plan.server";
+import { ruleCodes } from "@won/core/discounts/code-batch";
+
 import { codesHash, SYNC_RUNS_KEPT } from "../sync/nodes";
 import { hasProductTargets, ruleTargetsCollections } from "../sync/products";
 import { syncProgress } from "../sync/progress";
@@ -540,7 +542,7 @@ export async function loadRuleSync(
       out[rule.id] = notSynced;
       continue;
     }
-    if (rule.method === "code" && hashes.get(`code:${rule.id}`) !== codesHash(rule.codes ?? [])) {
+    if (rule.method === "code" && hashes.get(`code:${rule.id}`) !== codesHash(ruleCodes(rule))) {
       out[rule.id] = notSynced;
       continue;
     }

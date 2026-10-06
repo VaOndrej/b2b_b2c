@@ -29,7 +29,9 @@ export function sanitizeStorefront(v: unknown, issues: ConfigIssue[]): Storefron
   const rec = isRecord(v) ? v : {};
   const custom = sanitizeCustomLook(rec.custom, issues);
   return {
-    appearancePreset: sanitizeAppearancePreset(rec.appearancePreset, def.appearancePreset, issues),
+    // A stored config without a (valid) look keeps the look it always had, the table: only a NEW shop
+    // starts with DEFAULT_CONFIG's look (2026-10-06), so no existing storefront changes on its own.
+    appearancePreset: sanitizeAppearancePreset(rec.appearancePreset, rec.appearancePreset === undefined && v === undefined ? def.appearancePreset : "default", issues),
     cardPricesEnabled: sanitizeBool(rec.cardPricesEnabled, def.cardPricesEnabled),
     ...(custom ? { custom } : {}),
   };

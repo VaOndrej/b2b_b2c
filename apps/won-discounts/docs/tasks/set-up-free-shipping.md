@@ -16,7 +16,7 @@ summary: Turn on free shipping in Cart rewards and enter the order amount for ea
 
 # Set up free shipping from an amount
 
-1. Open **Cart rewards**.
+1. Open **Discounts → Cart rewards**.
 2. In **Free shipping**, switch on **Offer free shipping from an amount**.
 3. Enter the amount for each currency of your markets (for example
    `1 000` in CZK and `40` in EUR). Amounts are in the currency's normal units.

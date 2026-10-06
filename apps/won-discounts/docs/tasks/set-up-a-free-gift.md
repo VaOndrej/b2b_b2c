@@ -16,7 +16,7 @@ summary: Pick a product variant as the gift and the order amount per currency; o
 
 # Set up a free gift from an amount
 
-1. Open **Cart rewards**.
+1. Open **Discounts → Cart rewards**.
 2. In **Free gift**, click **Add a gift**.
 3. Enter the **Gift threshold** for each currency of your markets.
 4. Click **Pick a gift** and choose the product variant from your store.

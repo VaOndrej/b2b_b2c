@@ -444,7 +444,7 @@ test("explain: the tier in words (cs/en) — what it saves, what one more item g
   const applied = planCart(cartOf([pline("L1", 1, 100_00, 3)]), payload);
   assert.deepEqual(explainPlan(applied, "cs"), [
     { tone: "success", text: `Množstevní sleva (od 3 ks −10${NBSP}%) ušetří 30${NBSP}Kč na 1 položce.`, tierSetId: "g", lineIds: ["L1"] },
-    { tone: "info", text: `Přidej 1 ks a dostaneš −15${NBSP}%.`, tierSetId: "g", lineIds: ["L1"] },
+    { tone: "info", text: `Přidejte 1 ks a dostanete −15${NBSP}%.`, tierSetId: "g", lineIds: ["L1"] },
   ]);
   assert.deepEqual(
     explainPlan(applied, "en").map((i) => i.text),
@@ -455,7 +455,7 @@ test("explain: the tier in words (cs/en) — what it saves, what one more item g
   const beaten = planCart(cartOf([pline("L1", 1, 100_00, 4, { ruleIds: ["r"] })]), tiersPayload([GLOBAL], [pct("r", 5)]));
   assert.ok(explainPlan(beaten, "en").some((i) => i.text === "“Rule r” is not applied: “Quantity discount” is better."), JSON.stringify(explainPlan(beaten, "en")));
   const amount = planCart(cartOf([pline("L1", 1, 100_00, 3)]), tiersPayload([MIXED]));
-  assert.ok(explainPlan(amount, "cs").some((i) => i.text === `Přidej 2 ks a dostaneš −50${NBSP}Kč za kus.`));
+  assert.ok(explainPlan(amount, "cs").some((i) => i.text === `Přidejte 2 ks a dostanete −50${NBSP}Kč za kus.`));
   assert.ok(explainPlan(amount, "en").some((i) => i.text === "Add 2 more items to get −CZK 50 per item."));
   const usd = planCart(cartOf([pline("L1", 1, 4_00, 5)], { currency: "USD" }), tiersPayload([MIXED]));
   assert.ok(explainPlan(usd, "cs").some((i) => i.text === "Množstevní sleva nemá hodnotu pro měnu USD, proto se tu nenabízí."));

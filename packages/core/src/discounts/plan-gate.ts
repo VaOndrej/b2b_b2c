@@ -11,7 +11,10 @@
 // turns into sentences (explainGate) so it can say exactly what is not in force.
 //
 // Free vs Pro, as far as the config types reach today:
-//   Slevy a kódy   Free: every type        Pro: + segment / market targeting
+//   Slevy a kódy   Free: every type        Pro: + segment / market targeting,
+//                                               minimum quantity per product / collection
+//   Generované kódy Free: ≤ 100 a batch,   Pro: ≤ 1 000 a batch, pattern options
+//                  random behind a prefix       (middle, suffix, length, alphabet)
 //   Engine         Free: category switches Pro: + per-rule combinations (combinesWith)
 //   Kampaně        Free: —                 Pro: ✓
 //   Množstevní     Free: 1 global set      Pro: sets per product / collection, counting across the cart
@@ -23,6 +26,20 @@
 // customer MORE than the merchant set up:
 //   - market / segment targeting: the rule is switched OFF. Dropping only the
 //     targeting would widen the rule to every market / every customer;
+//   - per-item minimum quantity (plan 2026-10-06 bod 8): the rule is switched
+//     OFF, for the same reason: dropping the items' minimums would give the
+//     discount from the first piece (or from the common minimum) — MORE than
+//     the Pro setup. Keeping the rule for the items without their own minimum
+//     would be as safe (less is never more), but then one discount would half
+//     apply with no place in the admin to say so; off is one clear state, and
+//     removing the minimums (the editor offers it) turns the rule back on;
+//     a finishing campaign's re-target that carries such minimums switches its
+//     rule off for the campaign likewise;
+//   - generated code batches (dávka 4): a batch with a Pro pattern is LEFT OUT
+//     (its codes are not recognised and leave the Shopify discount: no
+//     discount, never more); a batch above the Free size keeps its first 100
+//     codes. Both come back untouched with Pro (the codes are rebuilt from the
+//     stored batch, §14a);
 //   - combinesWith: removed (the rule competes like any other: better one wins);
 //   - campaigns: removed (the base rules apply); one finishing after a downgrade
 //     keeps its rule overrides and the kept global tier set's, not those of the
@@ -66,7 +83,9 @@
 // Analytics (Pro reports) and appearance (Pro custom look) are admin features,
 // outside the function payload.
 
+import { isProCodeBatch } from "./code-batch.ts";
 import type { ReadonlyDeep, WonDiscountsConfig } from "./config.ts";
+import { CONFIG_LIMITS } from "./config/limits.ts";
 import { csPlural, formatPercent, type UiLocale } from "./describe.ts";
 
 export type ShopPlan = "free" | "pro";
@@ -76,6 +95,9 @@ export const PRO_CAPABILITIES = [
   "market_targeting",
   "segment_targeting",
   "rule_combinations",
+  "item_minimum_quantity",
+  "code_batch_pattern",
+  "code_batch_size",
   "campaigns",
   "tier_set_scope",
   "tier_sets_extra",
@@ -135,6 +157,11 @@ export interface GatedConfig {
 
 const nonEmpty = (list: readonly unknown[] | undefined): boolean => Array.isArray(list) && list.length > 0;
 
+/** A (rule or campaign patch) target that carries per-item minimum quantities. */
+function hasItemMinimums(target: unknown): boolean {
+  return typeof target === "object" && target !== null && nonEmpty((target as { itemMinimums?: unknown[] }).itemMinimums);
+}
+
 /**
  * The config a shop on `plan` may run: Pro → an exact copy; Free → a copy
  * without any Pro capability (see the header for how each is neutralised) and
@@ -148,12 +175,44 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
   if (plan === "pro") return { config: out, stripped };
 
   // Discount rules: targeting and per-rule combinations.
+  const itemRulesOff = new Set<string>();
   for (const rule of out.modules.codes.rules) {
     const who = { ruleId: rule.id, name: rule.name };
     const report = rule.enabled;
     if (rule.combinesWith) {
       if (report && rule.combinesWith.ruleIds.length > 0) stripped.push({ capability: "rule_combinations", reason: "removed", ...who });
       delete rule.combinesWith;
+    }
+    // Per-item minimum quantities: the rule is off (see the header); the minimums themselves go too, so the
+    // product refs the sync writes for a Free shop carry none.
+    if (hasItemMinimums(rule.target)) {
+      if (report) stripped.push({ capability: "item_minimum_quantity", reason: "rule_off", ...who });
+      rule.enabled = false;
+      delete (rule.target as { itemMinimums?: unknown }).itemMinimums;
+      itemRulesOff.add(rule.id);
+    }
+    // Generated code batches: Pro patterns out, a batch above the Free size cut to it.
+    if (rule.codeBatches) {
+      const codeRule = report && rule.method === "code";
+      const kept = [];
+      for (const batch of rule.codeBatches) {
+        if (isProCodeBatch(batch)) {
+          if (codeRule) stripped.push({ capability: "code_batch_pattern", reason: "removed", ...who, entityId: batch.id, count: batch.count - (batch.removed?.length ?? 0) });
+          continue;
+        }
+        const max = CONFIG_LIMITS.codeBatchSizeFree;
+        if (batch.count > max) {
+          const before = batch.count - (batch.removed?.length ?? 0);
+          batch.count = max;
+          if (batch.removed) batch.removed = batch.removed.filter((i) => i < max);
+          if (batch.removed && batch.removed.length === 0) delete batch.removed;
+          const after = batch.count - (batch.removed?.length ?? 0);
+          if (codeRule) stripped.push({ capability: "code_batch_size", reason: "reduced", ...who, entityId: batch.id, count: before - after });
+        }
+        kept.push(batch);
+      }
+      if (kept.length > 0) rule.codeBatches = kept;
+      else delete rule.codeBatches;
     }
     if (rule.targeting) {
       const markets = nonEmpty(rule.targeting.markets);
@@ -176,6 +235,17 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
     else stripped.push({ capability: "campaigns", reason: "removed", entityId: campaign.id, name: campaign.name });
   }
   out.campaigns = keep;
+  // A campaign finishing on Free must not bring per-item minimums back through a re-target: that override
+  // switches its rule off instead (the same neutralisation as on the rule itself).
+  for (const campaign of out.campaigns) {
+    for (const override of campaign.overrides) {
+      // (Nor may it switch a rule the gate turned off for its minimums back on, without them.)
+      if (itemRulesOff.has(override.ruleId) && override.patch.enabled === true && !("target" in override.patch)) delete override.patch.enabled;
+      if (!hasItemMinimums(override.patch.target)) continue;
+      delete (override.patch.target as { itemMinimums?: unknown }).itemMinimums;
+      override.patch.enabled = false;
+    }
+  }
 
   // Quantity tiers (K1): one global set, counted per product at most; scoped
   // sets INERT (no breaks), so their products never fall back to the global set.
@@ -302,9 +372,21 @@ function sentence(s: StrippedCapability, locale: UiLocale): string {
       return cs
         ? `${ruleName} cílí na segment zákazníků. To je funkce Pro, ve Free se proto neuplatní vůbec.`
         : `${ruleName} targets a customer segment. That is a Pro feature, so on Free it does not apply at all.`;
+    case "item_minimum_quantity":
+      return cs
+        ? `${ruleName} má minimum kusů u jednotlivých produktů nebo kolekcí. To je funkce Pro, ve Free se proto neuplatní vůbec.`
+        : `${ruleName} has a minimum quantity for individual products or collections. That is a Pro feature, so on Free it does not apply at all.`;
+    case "code_batch_pattern":
+      return cs
+        ? `${ruleName}: ${csCount(n, ["vygenerovaný kód", "vygenerované kódy", "vygenerovaných kódů"])} s vlastním vzorem ve Free neplatí, vzor kódů je funkce Pro.`
+        : `${ruleName}: ${n} generated ${n === 1 ? "code" : "codes"} with a custom pattern ${n === 1 ? "does" : "do"} not work on Free; code patterns are a Pro feature.`;
+    case "code_batch_size":
+      return cs
+        ? `${ruleName}: ve Free platí z jedné dávky nejvýš ${CONFIG_LIMITS.codeBatchSizeFree} vygenerovaných kódů, ${csOthers(n, ["kód", "kódy", "kódů"])} neplatí.`
+        : `${ruleName}: on Free at most ${CONFIG_LIMITS.codeBatchSizeFree} generated codes of a batch work; the other ${n === 1 ? "one does" : `${n} do`} not.`;
     case "rule_combinations":
       return cs
-        ? `${ruleName} se ve Free nesčítá se slevami, které máš u ní vybrané (kombinace u jednotlivých slev jsou funkce Pro). Platí kombinování po kategoriích.`
+        ? `${ruleName} se ve Free nesčítá se slevami, které máte u ní vybrané (kombinace u jednotlivých slev jsou funkce Pro). Platí kombinování po kategoriích.`
         : `${ruleName} does not add up with the discounts you picked for it on Free (per-discount combinations are a Pro feature). The category switches apply.`;
     case "campaigns": {
       const name = s.name ? (cs ? `„${s.name}“` : `“${s.name}”`) : cs ? "bez názvu" : "without a name";
@@ -337,8 +419,8 @@ function sentence(s: StrippedCapability, locale: UiLocale): string {
       const change = marginChange(s.values, locale);
       if (cs) {
         return change
-          ? `Ochrana marže pro jednotlivé kolekce je funkce Pro. Ve Free platí jedno minimum pro celý obchod: použili jsme to nejpřísnější z tvého nastavení, ${change}.`
-          : "Ochrana marže pro jednotlivé kolekce je funkce Pro. Ve Free platí jedno minimum pro celý obchod, tvoje globální nastavení se nemění.";
+          ? `Ochrana marže pro jednotlivé kolekce je funkce Pro. Ve Free platí jedno minimum pro celý obchod: použili jsme to nejpřísnější z vašeho nastavení, ${change}.`
+          : "Ochrana marže pro jednotlivé kolekce je funkce Pro. Ve Free platí jedno minimum pro celý obchod, vaše globální nastavení se nemění.";
       }
       return change
         ? `Margin protection per collection is a Pro feature. On Free one minimum applies to the whole store: we used the strictest of your settings, ${change}.`

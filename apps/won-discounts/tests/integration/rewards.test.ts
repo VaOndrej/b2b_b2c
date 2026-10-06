@@ -188,19 +188,36 @@ test("screen: Free shows the first gift editable and the Pro threshold as stored
   assert.ok(around.includes(WON_AMBER), "inside the amber Pro frame");
   assert.ok(!around.slice(around.lastIndexOf("<div")).includes(WON_ATTENTION), "not the attention colour");
   assert.match(free, /V měně EUR \(.*\) není částka, v tomto trhu se odměna nenabízí/);
-  assert.match(free, /Víc prahů a výběr ze 3 dárků je v tarifu Pro/);
+  assert.match(free, /V Pro nastavíte víc prahů a u každého výběr až ze 3 dárků/);
+  assert.match(freeHtml, /href="\/app\/plan"/, "the Pro note leads to the plan");
+  // P5: the state lines say the real values.
+  assert.match(free, /Doprava zdarma od 1 000 Kč \/ 40 €/);
+  assert.match(free, /Ponožky Won — M od 1 500 Kč/);
+  assert.doesNotMatch(free, /Aktivní/, "never a green pill from this page's own form");
   const pro = text(await renderPage(createElement(RewardsScreen, devRewardsScreen({ plan: "pro", state: null, locale: "cs" }))));
   assert.match(pro, /2\. práh/);
   assert.match(pro, /Dárek \(na výběr až 3\)/);
   assert.match(pro, /Hrnek Won/);
   assert.match(pro, /Přidat další práh/);
+  assert.match(pro, /Kšiltovka Won, Plátěná taška Won nebo Hrnek Won od 3 000 Kč \/ 120 €/);
   const empty = text(await renderPage(createElement(RewardsScreen, devRewardsScreen({ plan: "free", state: "empty", locale: "cs" }))));
   assert.match(empty, /Přidat dárek/);
   assert.match(empty, /Zapnout v tématu/);
+  assert.match(empty, /Košík odměny neukazuje\. Won není v tématu zapnutý/);
+  assert.match(empty, /Doprava zdarma vypnutá/);
+  assert.match(empty, /Žádný dárek/);
+  // Every state of the app embed check has its own sentence and action.
+  const embed = async (state: string) => text(await renderPage(createElement(RewardsScreen, devRewardsScreen({ plan: "free", state, locale: "cs" }))));
+  assert.match(await embed("embed-draft"), /Won je zapnutý jen v nepublikovaném tématu.*Zapněte Won i v živém tématu.*Zapnout v tématu/);
+  assert.match(await embed("embed-unknown"), /Nepodařilo se ověřit, jestli je Won v tématu zapnutý.*Otevřít editor tématu/);
+  assert.match(await embed("embed-no-scope"), /Won nemá přístup k tématu.*Otevřít editor tématu/);
+  // B12: the limit of thresholds is said, and the server's refusal is rendered.
+  const tooMany = text(await renderPage(createElement(RewardsScreen, { ...devRewardsScreen({ plan: "pro", state: null, locale: "cs" }), result: devRewardsResult("too-many") })));
+  assert.match(tooMany, /Prahů může být nejvýš 5\./);
   const invalid = text(
     await renderPage(createElement(RewardsScreen, { ...devRewardsScreen({ plan: "free", state: null, locale: "cs" }), result: devRewardsResult("invalid") })),
   );
-  assert.match(invalid, /Vyber dárek\./);
+  assert.match(invalid, /Vyberte dárek\./);
 });
 
 // --- Vyzkoušet košík: the gift line the cart on the website would add (Task 6) --------------------------------
@@ -288,7 +305,7 @@ test("harness: Vyzkoušet košík with rewards — Free adds the socks (free), s
     ["Ponožky Won — M", 0, 1],
     ["Kšiltovka Won", 0, 3],
   ]);
-  const base = buildTryCartProps(DEV_REWARDS_FIXTURE, { timezone: "Europe/Prague" });
+  const base = buildTryCartProps(DEV_REWARDS_FIXTURE, { timezone: "Europe/Prague", pro: true });
   const html = text(await renderPage(createElement(TryCartScreen, { ...base, lines: devTryCartRewardLines("pro"), currency: "CZK:cz", plan: pro, result: null })));
   assert.match(html, /Zákazník si v košíku vybere ze 3 dárků/);
   assert.match(html, /Doprava zdarma: nákup od 1/);

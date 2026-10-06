@@ -44,6 +44,7 @@ import {
   type OnboardingGoal,
   type WonDiscountsConfig,
 } from "@won/core/discounts/config";
+import { createCodeBatch } from "@won/core/discounts/code-batch";
 import { parseEmbedStatus } from "@won/core/toasts/embed-status";
 
 import { EMBED_BLOCK_HANDLE, embedActivationUrl } from "../components/model/embed";
@@ -382,14 +383,30 @@ export async function saveRule(
         };
       }
 
+      // Bod 6: generating codes needs the shop's other codes (Won's and Shopify's own) before the batch is drawn.
+      const generating = form.get(FIELD.method) === "code" && String(form.get(FIELD.batchCount) ?? "").trim() !== "";
+      if (generating && native === null) native = await freshNativeCodes(ctx, config);
+      const others = rules.filter((r) => r.id !== id);
       const parsed = readRuleForm(form, {
         id,
+        createBatch: (spec, existingIds) =>
+          createCodeBatch(spec, {
+            plan: opts.pro ? "pro" : "free",
+            randomBytes: (n) => crypto.getRandomValues(new Uint8Array(n)),
+            otherCodes: [...others.flatMap((r) => r.codes ?? []), ...(existing?.codes ?? []), ...(native?.codes ?? [])],
+            // Every batch of the shop, this rule's kept ones included: no prefix may start another's.
+            otherPrefixes: rules.flatMap((r) => (r.codeBatches ?? []).map((batch) => batch.prefix)),
+            existingIds,
+          }),
         currencies: currencyCodes(currencyViews(config.markets, { shopCurrency: opts.shopCurrency, rules })),
         timezone: opts.timezone,
         pro: opts.pro,
         existing,
+        // Enabled markets only; a stored market that is off stays while the form still sends it (B3, readRuleForm).
         marketHandles: config.markets.filter((m) => m.enabled).map((m) => m.handle),
         otherRules: rules.filter((r) => r.id !== id).map((r) => ({ id: r.id, name: r.name, codes: r.codes })),
+        // P5: the language of a generated name (FIELD.nameAuto) — the admin's, as the editor showed it.
+        locale: ctx.locale,
       });
       if (parsed.errors.length > 0) return { result: { ok: false, reason: "invalid", errors: parsed.errors }, ruleId: null };
 

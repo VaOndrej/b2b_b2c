@@ -164,7 +164,7 @@ test("automatic: the delete is refused AND the rollback fails → 'both may appl
   const result = await moveNative({ ...common, nativeId });
   assert.ok(!result.ok);
   assert.equal(result.state, "both_live");
-  assert.match(result.error, /Klikni hned na „Vrátit zpět“/);
+  assert.match(result.error, /Klikněte hned na „Vrátit zpět“/);
   const [row] = await rows(shop);
   assert.equal(row.status, "backed_up");
   assert.equal((await loadConfig(db.prisma, shop)).config.modules.codes.rules.length, 1);

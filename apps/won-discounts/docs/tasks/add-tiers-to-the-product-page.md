@@ -16,7 +16,7 @@ summary: One click adds the quantity-tiers block to the active theme's product p
 
 # Add the quantity-tiers table to the product page
 
-1. Open **Quantity discounts**. The screen shows whether the table is already
+1. Open **Discounts → Quantity discounts**. The screen shows whether the table is already
    on the product page of your active theme.
 2. If it is not there, click **Add table to the product page**. This opens the
    theme editor with the block ready to place on the product template; confirm

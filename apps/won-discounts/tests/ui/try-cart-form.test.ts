@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { readTryCartForm, TRY_CART_LIMITS } from "../../app/components/model/try-cart-form.ts";
+import { readTryCartForm, resolveRuleCodes, TRY_CART_LIMITS } from "../../app/components/model/try-cart-form.ts";
 
 // SEC-1 for "Vyzkoušet košík": the server reads only variant ids, quantities, a
 // known currency, codes and a day. Prices are never taken from the browser (the
@@ -39,9 +39,45 @@ test("a valid simulated cart", () => {
     currency: "EUR",
     market: null,
     codes: ["VIP10", "LETO"],
+    ruleIds: [],
     date: "2026-11-27",
     time: null,
   });
+});
+
+// Plan 6 Oct 2026, point 10: discounts are ticked (rule ids), the time is a choice.
+test("ticked discounts arrive as rule ids (each once, well-formed only); `when=now` ignores the date and time fields", () => {
+  const line: [string, string][] = [
+    ["variantId", "gid://shopify/ProductVariant/11"],
+    ["productId", "gid://shopify/Product/1"],
+    ["quantity", "1"],
+    ["currency", "CZK"],
+  ];
+  const ticked = readTryCartForm(form([...line, ["ruleId", "vip"], ["ruleId", "vip"], ["ruleId", "<script>"], ["ruleId", "leto-15"]]), CTX);
+  assert.deepEqual(ticked.errors, []);
+  assert.deepEqual(ticked.input.ruleIds, ["vip", "leto-15"]);
+  assert.deepEqual(ticked.input.codes, [], "ids are not codes: the server resolves them");
+
+  const now = readTryCartForm(form([...line, ["when", "now"], ["date", "not a date"], ["time", "25:99"]]), CTX);
+  assert.deepEqual(now.errors, [], "fields that do not apply are not read (SEC-1)");
+  assert.deepEqual([now.input.date, now.input.time], ["2026-09-28", null]);
+
+  const custom = readTryCartForm(form([...line, ["when", "custom"], ["date", "2026-11-27"], ["time", "09:30"]]), CTX);
+  assert.deepEqual([custom.input.date, custom.input.time], ["2026-11-27", "09:30"]);
+  const bad = readTryCartForm(form([...line, ["when", "custom"], ["date", "2026-11-27"], ["time", "9.30"]]), CTX);
+  assert.deepEqual(bad.errors, [{ field: "time", key: "tryCart.error.time" }]);
+});
+
+test("resolveRuleCodes: a ticked code discount gives its first code; anything else is ignored", () => {
+  const rules = [
+    { id: "vip", method: "code", codes: ["vip20", "VIP-B"] },
+    { id: "auto", method: "automatic" },
+    { id: "empty", method: "code", codes: [] },
+  ];
+  assert.deepEqual(resolveRuleCodes(["vip", "auto", "empty", "nope", "vip"], rules), ["VIP20"]);
+  assert.deepEqual(resolveRuleCodes(["vip"], rules, ["OTHER", "VIP20"]), ["OTHER", "VIP20"], "typed codes stay, each code once");
+  const many = Array.from({ length: 15 }, (_, i) => ({ id: `r${i}`, method: "code", codes: [`C${i}`] }));
+  assert.equal(resolveRuleCodes(many.map((r) => r.id), many).length, TRY_CART_LIMITS.codes);
 });
 
 test("market choice: `CZK:cz` names an enabled Won market of that currency, anything else is refused", () => {

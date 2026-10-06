@@ -75,6 +75,7 @@ test("the split keeps the public surface of @won/core/discounts/config", () => {
   const values = Object.keys(publicConfig).sort();
   assert.deepEqual(values, [
     "APPEARANCE_PRESETS",
+    "CODE_BATCH_ALPHABETS",
     "COMBINATION_CATEGORIES",
     "CONFIG_LIMITS",
     "DEFAULT_CONFIG",

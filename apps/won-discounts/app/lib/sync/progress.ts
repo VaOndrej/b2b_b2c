@@ -1,5 +1,5 @@
 // What a running sync is doing right now, per shop, in THIS process (item 7:
-// the admin says "propisuje se na N produktů" instead of waiting). A plain
+// the admin says "zapisuje se na N produktů" instead of waiting). A plain
 // in-memory map: it is a progress hint for the page, never a fact the sync
 // decides anything by (the facts are SyncRun rows).
 

@@ -5,8 +5,9 @@
 // (SEC-1). Pure; tests/ui/combination-appearance.test.ts.
 
 import { APPEARANCE_PRESETS, type AppearancePreset } from "@won/core/discounts/config";
+import { customLookCss } from "@won/core/discounts/custom-look";
 
-import type { MessageKey, Translator } from "../../i18n";
+import { CATALOGUES, type MessageKey, type Translator } from "../../i18n";
 import type { FormDataLike } from "./rule-form";
 import type { AppearancePresetView, FieldError } from "./types";
 
@@ -110,4 +111,56 @@ export function readAppearanceExtras(form: FormDataLike, textKeys: readonly stri
   if (errors.length > 0) return { ok: false, errors };
   const custom = Object.keys(vars).length > 0 || css.trim() !== "" ? { vars, css: css.trim() === "" ? "" : css } : null;
   return { ok: true, extras: { cardPrices: form.get(APPEARANCE_FIELD.cardPrices) === "on", custom, texts } };
+}
+
+// --- The live form (P5): what the page says and previews follows what is typed --------------------------------------
+
+/** Is anything of the custom look set (a colour, the radius, CSS)? `value(field)` = the field as typed or as stored. */
+export function customLookSet(value: (field: string) => string): boolean {
+  return [APPEARANCE_FIELD.accent, APPEARANCE_FIELD.line, APPEARANCE_FIELD.tint, APPEARANCE_FIELD.radius, APPEARANCE_FIELD.css].some((field) => value(field).trim() !== "");
+}
+
+/**
+ * The custom look as the storefront would get it from what is typed (core customLookCss: the variables on the block
+ * roots + the CSS scoped under them), for the live preview. A value the server would refuse is left out (a colour
+ * that is not a hex, a radius out of range, CSS that cannot be scoped) — the preview never shows what cannot be
+ * saved. "" = nothing to add.
+ */
+export function liveCustomLookCss(value: (field: string) => string): string {
+  const vars: { accent?: string; line?: string; tint?: string; radius?: number } = {};
+  for (const key of ["accent", "line", "tint"] as const) {
+    const v = value(APPEARANCE_FIELD[key]).trim();
+    if (COLOR.test(v)) vars[key] = v.toLowerCase();
+  }
+  const radius = value(APPEARANCE_FIELD.radius).trim();
+  if (/^\d{1,2}$/.test(radius) && Number(radius) <= RADIUS_MAX) vars.radius = Number(radius);
+  return customLookCss({ vars, css: value(APPEARANCE_FIELD.css) });
+}
+
+/** The form field of one storefront text. */
+export function textField(lang: TextLang, key: string): string {
+  return `${APPEARANCE_FIELD.text}${lang}.${key}`;
+}
+
+/** How many storefront texts are changed (non-empty), from the form's values by field name. */
+export function changedTextCount(values: Iterable<readonly [string, string]>): number {
+  let n = 0;
+  for (const [name, value] of values) if (name.startsWith(APPEARANCE_FIELD.text) && value.trim() !== "") n += 1;
+  return n;
+}
+
+/**
+ * A storefront text's name for the merchant ("Nadpis tabulky") instead of the extension's key (`tiers.heading`).
+ * A key the admin has no name for yet (a text added to the extension later) is named by its own default text —
+ * never by the raw key.
+ */
+export function textLabel(key: string, fallback: string, tr: Translator): string {
+  const message = `appearance.text.${key}`;
+  if (Object.prototype.hasOwnProperty.call(CATALOGUES[tr.locale], message)) return tr.t(message as MessageKey);
+  return fallback.trim() || key;
+}
+
+/** The language of a storefront text, in the admin language ("česky"). */
+export function textLangLabel(lang: TextLang, tr: Translator): string {
+  return tr.t(`appearance.lang.${lang}` as MessageKey);
 }

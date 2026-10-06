@@ -1,7 +1,9 @@
 // One tier set's fields (MVP 3): how items are counted and its breaks — "od X
 // ks" with a percent or an amount per item in each market currency (MKT-1: an
 // empty currency = the break is not offered there, said at the row, naming the
-// market). Rows are added one at a time (§9c), at most CONFIG_LIMITS.breaksPerTierSet.
+// market). Rows are added one at a time (§9c), at most CONFIG_LIMITS.breaksPerTierSet;
+// an empty set offers ready-made tiers that fill the rows in one click (P6). A row
+// that is not complete yet is marked at the row (it does not count until it is, P3).
 // Field names are model/tiers.ts TIERS_FIELD — the server parses exactly these
 // (readTiersForm, SEC-1). A value stored for a market that is off travels back
 // as a hidden field (§14a: off ≠ erased). `HiddenTierSet` carries a whole set
@@ -15,7 +17,7 @@ import { formatMoney } from "@won/core/discounts/describe";
 
 import { useT } from "../../i18n/context";
 import { minorToInput } from "../model/rule-form";
-import { countLabel, TIERS_FIELD, TIER_COUNT_MODES, TIER_MIN_QTY_MAX, type TierCountMode } from "../model/tiers";
+import { countLabel, tierPresetLabel, tierRowGap, TIERS_FIELD, TIER_COUNT_MODES, TIER_MIN_QTY_MAX, TIER_PRESETS, type TierCountMode } from "../model/tiers";
 import type { CurrencyView, TierBreakView, TierSetView } from "../model/types";
 import { FieldMessage, Shown } from "../rule-editor/parts";
 import { SegmentedChoice } from "../shell/SegmentedChoice";
@@ -75,8 +77,17 @@ export function TierSetEditor({
   const add = () => {
     const key = `r${counter.current}`;
     counter.current += 1;
-    const last = rows[rows.length - 1]?.initial.minQty ?? 0;
-    setRows((list) => [...list, { key, initial: { minQty: last > 0 ? last + 2 : 3, kind: "percent", percent: null, amount: {} } }]);
+    // The proposed "od X ks" continues from what the last row says NOW (typed, not only stored).
+    const lastRow = rows[rows.length - 1];
+    const typed = lastRow ? live(F.min(sid, lastRow.key)) : null;
+    const typedMin = typed !== null && /^\d{1,6}$/.test(typed.trim()) ? Number(typed.trim()) : null;
+    const last = typedMin ?? lastRow?.initial.minQty ?? 0;
+    setRows((list) => [...list, { key, initial: { minQty: last > 0 ? Math.min(TIER_MIN_QTY_MAX, last + 2) : 3, kind: "percent", percent: null, amount: {} } }]);
+  };
+  const fill = (preset: (typeof TIER_PRESETS)[number]) => {
+    const start = counter.current;
+    counter.current += preset.breaks.length;
+    setRows(preset.breaks.map((b, i) => ({ key: `r${start + i}`, initial: { minQty: b.minQty, kind: "percent", percent: b.percent, amount: {} } })));
   };
   const remove = (key: string) => setRows((list) => list.filter((r) => r.key !== key));
   const codes = currencies.map((c) => c.code);
@@ -100,7 +111,7 @@ export function TierSetEditor({
           options={TIER_COUNT_MODES.map((mode) => ({
             value: mode,
             label: countLabel(mode, tr),
-            ...(mode === "cart" ? { pro: true, disabled: cartLocked } : {}),
+            ...(mode === "cart" ? { pro: true, disabled: cartLocked, proHref: "/app/plan" } : {}),
           }))}
         />
         <RowNote>{t(countNow === "line" ? "tiers.count.line.details" : countNow === "product" ? "tiers.count.product.details" : "tiers.count.cart.details")}</RowNote>
@@ -123,7 +134,21 @@ export function TierSetEditor({
       </Shown>
 
       <div>
-        {rows.length === 0 ? <s-text color="subdued">{t("tiers.empty")}</s-text> : null}
+        {rows.length === 0 ? (
+          <s-stack direction="block" gap="small-200">
+            <s-text color="subdued">{t("tiers.empty")}</s-text>
+            {/* Ready-made percent tiers (P6): one click fills the rows, every value stays editable. */}
+            {kind === "percent" ? (
+              <s-stack direction="inline" gap="small-200" alignItems="center">
+                {TIER_PRESETS.map((preset) => (
+                  <s-button key={preset.id} variant="secondary" onClick={() => fill(preset)}>
+                    {tierPresetLabel(preset, tr)}
+                  </s-button>
+                ))}
+              </s-stack>
+            ) : null}
+          </s-stack>
+        ) : null}
         {rows.map((row) => {
           const amountNow = (code: string): string => {
             const typed = live(F.amount(sid, row.key, code));
@@ -132,6 +157,12 @@ export function TierSetEditor({
           };
           const minNow = Number(live(F.min(sid, row.key)) ?? row.initial.minQty);
           const missing = kind === "amount" ? currencies.filter((c) => amountNow(c.code) === "") : [];
+          // What the row still lacks, from what is typed (before the first read: from what is stored).
+          const gap = tierRowGap(kind, {
+            min: live(F.min(sid, row.key)) ?? (row.initial.minQty > 0 ? String(row.initial.minQty) : ""),
+            percent: live(F.percent(sid, row.key)) ?? percentValue(row.initial),
+            amounts: [...codes, ...kept].map(amountNow),
+          });
           return (
             <div key={row.key} style={{ padding: "12px 0", borderTop: `1px solid ${WON_LINE}` }}>
               <input type="hidden" name={F.row(sid)} value={row.key} />
@@ -175,6 +206,7 @@ export function TierSetEditor({
                     </Shown>
                   ))}
                 </div>
+                {gap ? <RowNote tone="attention">{t(gap === "min" ? "tiers.break.incompleteMin" : kind === "percent" ? "tiers.break.incompletePercent" : "tiers.break.incompleteAmount")}</RowNote> : null}
                 <Shown when={kind === "amount"}>
                   <FieldMessage text={errorFor(F.amounts(sid, row.key))} />
                   {missing.map((c) => (

@@ -172,7 +172,7 @@ function appDeps(db: PrismaClient, logger: SyncLogger): StaleClaimSweepDeps {
       try {
         const { unauthenticated } = await import("../../shopify.server");
         const { admin }: { admin: UnauthenticatedAdmin } = await unauthenticated.admin(shop);
-        return adminClientFromApp(admin);
+        return adminClientFromApp(admin, shop);
       } catch {
         // No offline session (never installed under this API key) or the shop
         // uninstalled meanwhile: nothing to sweep for it right now.

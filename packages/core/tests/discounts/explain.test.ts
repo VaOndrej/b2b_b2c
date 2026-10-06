@@ -33,12 +33,12 @@ test("formatMoney: Czech and English, minor units, whole amounts without decimal
   assert.equal(formatMoney(1500, "JPY", "en"), "JPY 1,500");
 });
 
-test("a code that loses everywhere: „máš výhodnější slevu“", () => {
+test("a code that loses everywhere: „máte výhodnější slevu“", () => {
   const plan = planCart(
     cartOf([line("L1", 1000_00, 1, ["A", "C"])], { enteredCodes: ["KOD"] }),
     payloadOf([pct("A", 30, { name: "Podzim" }), pct("C", 10, code(["KOD"]))]),
   );
-  assert.ok(texts(plan, "cs").includes("Kód KOD se neuplatní: máš výhodnější slevu „Podzim“."));
+  assert.ok(texts(plan, "cs").includes("Kód KOD se neuplatní: máte výhodnější slevu „Podzim“."));
   assert.ok(texts(plan, "en").includes("Code KOD is not applied: you already have a better discount (“Podzim”)."));
 });
 

@@ -16,7 +16,7 @@ summary: Name the campaign, set its start and end in the store's time, tick the 
 
 # Schedule a campaign
 
-1. Open **Campaigns** (Pro).
+1. Open **Discounts → Campaigns** (Pro).
 2. Under **New campaign** enter a **name**.
 3. Set the **start** and the **end**: a date and a time (HH:MM) each. Times are in
    your store's time zone; the screen says which one and what time it is there now.

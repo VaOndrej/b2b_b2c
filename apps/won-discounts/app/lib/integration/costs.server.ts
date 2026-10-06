@@ -218,7 +218,7 @@ export async function offlineClient(shop: string): Promise<AdminClient | null> {
   try {
     const { unauthenticated } = await import("../../shopify.server");
     const { admin } = await unauthenticated.admin(shop);
-    return adminClientFromApp(admin as unknown as AppAdminGraphql);
+    return adminClientFromApp(admin as unknown as AppAdminGraphql, shop);
   } catch {
     return null;
   }

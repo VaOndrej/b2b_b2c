@@ -13,6 +13,9 @@ export function TiersOverviewCard({ tiers }: { tiers: TiersOverviewView }) {
   const tr = useT();
   const { t } = tr;
   const has = tiers.global !== null || tiers.sets > 0;
+  // P4: the own sets by what they are for, when the loader read the names; else how many.
+  const names = (tiers.setNames ?? []).filter(Boolean);
+  const setsText = names.length > 0 ? t("overview.tiers.setsNamed", { names: tr.list(names) }) : t("overview.tiers.sets", { sets: tr.tp("count.tierSet", tiers.sets) });
   const addUrl = tiers.block.state === "off" || tiers.block.state === "unknown" ? tiers.block.addUrl : null;
   if (!has) {
     return (
@@ -29,13 +32,13 @@ export function TiersOverviewCard({ tiers }: { tiers: TiersOverviewView }) {
     <WonSection
       title={t("module.tiers")}
       glyph="layers"
-      summary={tiers.global ? tierSummary(tiers.global, tr) : t("overview.tiers.sets", { sets: tr.tp("count.tierSet", tiers.sets) })}
+      summary={tiers.global ? tierSummary(tiers.global, tr) : setsText}
       anchor="tiers"
     >
       <div>
         {tiers.sets > 0 && tiers.global ? (
           <WonRow>
-            <RowNote>{t("overview.tiers.sets", { sets: tr.tp("count.tierSet", tiers.sets) })}</RowNote>
+            <RowNote>{setsText}</RowNote>
           </WonRow>
         ) : null}
         <WonRow

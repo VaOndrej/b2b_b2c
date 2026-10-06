@@ -236,7 +236,7 @@ export function nativeViews(
       losses: [],
     });
   }
-  const conflicts = detection.conflicts.map((c) => ({ nativeTitle: c.nativeTitle, ruleName: c.ruleName, message: c.message }));
+  const conflicts = detection.conflicts.map((c) => ({ nativeTitle: c.nativeTitle, ruleId: c.ruleId, ruleName: c.ruleName, message: c.message }));
   return { discounts, conflicts };
 }
 

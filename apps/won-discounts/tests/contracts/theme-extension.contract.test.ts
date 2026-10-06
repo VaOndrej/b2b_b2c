@@ -79,7 +79,14 @@ test("embed serves the app-data config as an inline JSON script tag", async () =
 test("embed loads storefront JS with defer via the schema; its only <script src> are the cards script (MVP 7, only with cards on, collection / search) and the cart script (MVP 4, only with rewards), both deferred", async () => {
   const block = await readExtension("blocks/won_discounts_embed.liquid");
   const srcs = [...block.matchAll(/<script[^>]+src=[^>]*>/g)].map((m) => m[0]);
-  assert.deepEqual(srcs, [`<script src="{{ 'won-discounts-cards.js' | asset_url }}" defer>`, `<script src="{{ 'won-discounts-cart.js' | asset_url }}" defer>`]);
+  // Feedback 2: + the blocks script, only with the embed's top bar switched on.
+  assert.deepEqual(srcs, [
+    `<script src="{{ 'won-discounts-cards.js' | asset_url }}" defer>`,
+    `<script src="{{ 'won-discounts-cart.js' | asset_url }}" defer>`,
+    `<script src="{{ 'won-discounts-blocks.js' | asset_url }}" defer>`,
+  ]);
+  const blocksScript = block.indexOf("<script src=\"{{ 'won-discounts-blocks.js'");
+  assert.ok(block.lastIndexOf("{%- if block.settings.top_bar_rewards or block.settings.top_bar_campaign -%}", blocksScript) !== -1, "the blocks script only with the top bar on");
   const cards = block.indexOf("<script src=\"{{ 'won-discounts-cards.js'");
   assert.ok(block.lastIndexOf("{%- if won_discounts_config_raw.cards == 1 -%}", cards) !== -1, "the cards script only when the storefront config switches cards on");
   assert.match(block.slice(0, cards), /template\.name == 'collection'[\s\S]*template\.name == 'search'/, "… and only on a collection or search page");
@@ -151,7 +158,7 @@ test("MVP 3–7: the extension ships the embed, the quantity_tiers, cart_rewards
   const blocks = (await readdir(path.join(extensionRoot, "blocks"))).filter((f) => f.endsWith(".liquid")).sort();
   // The handles `quantity_tiers` / `cart_rewards` are the file names: the admin deep links (addAppBlockId,
   // CART_BLOCK_HANDLE) and the theme template's block type `shopify://apps/won-discounts/blocks/<handle>/<uuid>` use them.
-  assert.deepEqual(blocks, ["card_tiers.liquid", "cart_rewards.liquid", "outlet_badge.liquid", "quantity_tiers.liquid", "won_discounts_embed.liquid"]);
+  assert.deepEqual(blocks, ["campaign_banner.liquid", "card_tiers.liquid", "cart_rewards.liquid", "outlet_badge.liquid", "quantity_tiers.liquid", "rewards_progress.liquid", "won_discounts_embed.liquid"]);
   assert.equal(CART_BLOCK_HANDLE, "cart_rewards");
   const cartSchema = JSON.parse((await readExtension("blocks/cart_rewards.liquid")).match(/\{%\s*schema\s*%\}([\s\S]*?)\{%\s*endschema\s*%\}/)?.[1] ?? "{}");
   assert.deepEqual(cartSchema.enabled_on, { templates: ["cart"] }, "the cart panel block only on the cart template");

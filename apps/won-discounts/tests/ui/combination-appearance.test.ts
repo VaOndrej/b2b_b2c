@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { APPEARANCE_PRESETS, DEFAULT_CONFIG } from "@won/core/discounts/config";
 
-import { APPEARANCE_FIELD, isAppearancePreset, presetLabel, readAppearanceForm } from "../../app/components/model/appearance.ts";
+import { APPEARANCE_FIELD, changedTextCount, customLookSet, isAppearancePreset, liveCustomLookCss, presetLabel, readAppearanceForm, textField, textLabel, textLangLabel } from "../../app/components/model/appearance.ts";
 import {
   COMBINATION_FIELD,
   COMBINATION_KEYS,
@@ -86,4 +86,31 @@ test("theme-editor deep links: the block (addAppBlockId, product template, main 
   assert.equal(tiersBlockAddUrl("evil.example.com", "abc123"), null);
   assert.equal(tiersBlockAddUrl("won-dev.myshopify.com", ""), null);
   assert.match(embedActivationUrl("won-dev.myshopify.com", "abc123") ?? "", /activateAppId=abc123\/won_discounts_embed/);
+});
+
+test("plan 2026-10-06: a new shop starts with the highlighted look", () => {
+  assert.equal(DEFAULT_CONFIG.storefront.appearancePreset, "highlight");
+});
+
+test("plan 2026-10-06: Vzhled follows its form — the custom look as the storefront would get it, only values a save would take", () => {
+  const values = (map: Record<string, string>) => (field: string) => map[field] ?? "";
+  assert.equal(customLookSet(values({})), false);
+  assert.equal(customLookSet(values({ [APPEARANCE_FIELD.radius]: "4" })), true);
+  assert.equal(customLookSet(values({ [APPEARANCE_FIELD.css]: "  " })), false);
+  assert.equal(liveCustomLookCss(values({})), "");
+  assert.equal(
+    liveCustomLookCss(values({ [APPEARANCE_FIELD.accent]: "#0A7D4F", [APPEARANCE_FIELD.radius]: "4", [APPEARANCE_FIELD.css]: ".won-tiers__heading{color:red}" })),
+    ":is(.won-tiers,.won-cart,.won-cart-slot,.won-outlet,.won-progress,.won-campaign,.won-topbar){--won-tiers-accent:#0a7d4f;--won-tiers-radius:4px}:is(.won-tiers,.won-cart,.won-cart-slot,.won-outlet,.won-progress,.won-campaign,.won-topbar) .won-tiers__heading{color:red}",
+  );
+  // What the server would refuse never reaches the preview: a colour that is not a hex, a radius out of range, CSS that cannot be scoped.
+  assert.equal(liveCustomLookCss(values({ [APPEARANCE_FIELD.accent]: "red", [APPEARANCE_FIELD.radius]: "99", [APPEARANCE_FIELD.css]: ".a{background:url(x)}" })), "");
+});
+
+test("plan 2026-10-06: storefront texts have human names in the admin language, never the extension's key; the count of changed texts follows the fields", () => {
+  assert.equal(textField("cs", "tiers.heading"), "tx.cs.tiers.heading");
+  assert.equal(textLabel("tiers.heading", "Množstevní sleva", cs), "Nadpis tabulky");
+  assert.equal(textLabel("tiers.row_qty", "Od {min} ks", en), "Table row: from how many items");
+  assert.equal(textLabel("cart.brand_new", "Nový text", cs), "Nový text", "a text the admin has no name for yet: its own default, never the key");
+  assert.equal(textLangLabel("sk", cs), "slovensky");
+  assert.equal(changedTextCount([["tx.cs.tiers.heading", "Kup víc"], ["tx.en.tiers.heading", "  "], ["tx.sk.cart.saved", "x"], ["look.css", "a{}"]]), 2);
 });

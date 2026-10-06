@@ -128,6 +128,7 @@ function tierRule(set: TierSetRead, locale: PlanLocale): Rule {
     fixed: null,
     priority: 0,
     codeHashes: [],
+    codeBatches: [],
     minSubtotal: null,
     minSubtotalMissing: false,
     minQuantity: 0,

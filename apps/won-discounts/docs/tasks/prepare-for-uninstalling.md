@@ -11,7 +11,7 @@ generated_from: null
 lang: en
 updated: 2026-10-04
 keywords: [uninstall, remove app, restore prices, restore shopify discounts, clearance prices stuck, připravit na odinstalaci, odinstalace]
-summary: Before uninstalling, click Prepare for uninstalling on the Plan page. It ends running sales (prices back) and restores the Shopify discounts you moved into Won.
+summary: Before uninstalling, click Prepare for uninstalling in Settings, under Plan. It ends running sales (prices back) and restores the Shopify discounts you moved into Won.
 ---
 
 # Prepare for uninstalling
@@ -19,7 +19,8 @@ summary: Before uninstalling, click Prepare for uninstalling on the Plan page. I
 After an uninstall the app has no access to your store and **cannot put anything
 back**. Do this first — it works on any plan.
 
-1. Open **Plan** and find **Prepare for uninstalling**. It lists what it will do:
+1. Open **Settings**, scroll to **Plan** and find **Prepare for uninstalling** (it is
+   shown only when there is something to put back). It lists what it will do:
    how many running clearance sales it ends (their prices go back to what they were
    before the sale) and which Shopify discounts it restores (the ones you moved into
    Won with **Move**).

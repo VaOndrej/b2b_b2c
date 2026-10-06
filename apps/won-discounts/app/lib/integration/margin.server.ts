@@ -55,7 +55,7 @@ import { ctxPlan } from "./sync-status.server";
 
 /**
  * Form error keys (app/i18n, cs + en):
- *   margin.error.percent             "Zadej 0 až {max} %." (params.max: 95 or 100)
+ *   margin.error.percent             "Zadejte 0 až {max} %." (params.max: 95 or 100)
  *   margin.error.collection          the collection id is not a Shopify collection
  *   margin.error.tooManyCollections  more than {max} collections
  */

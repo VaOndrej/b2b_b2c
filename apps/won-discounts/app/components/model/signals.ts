@@ -4,7 +4,7 @@
 import { formatDate } from "@won/core/discounts/describe";
 
 import type { MessageKey, Translator } from "../../i18n";
-import type { AdminSignals, CheckoutView, EmbedState, SyncView, TargetingView } from "./types";
+import type { AdminSignals, EmbedState, NativeView, SyncView, TargetingView } from "./types";
 
 /** What the app shows while sync / native detection / checkout checks are not connected yet. */
 export const NOT_WIRED_SIGNALS: AdminSignals = {
@@ -31,18 +31,6 @@ const EMBED_KEYS: Record<EmbedState, MessageKey> = {
 
 export function embedText(state: EmbedState, tr: Translator): string {
   return tr.t(EMBED_KEYS[state]);
-}
-
-export function checkoutText(view: CheckoutView, tr: Translator): string {
-  switch (view.state) {
-    case "verified":
-      return tr.t("overview.checkout.verified", { date: formatDateTime(view.at, tr.locale) });
-    case "failing":
-      return tr.t("overview.checkout.failing", { date: formatDateTime(view.at, tr.locale) });
-    case "not_wired":
-    default:
-      return tr.t("overview.checkout.notWired");
-  }
 }
 
 export function syncText(view: SyncView, tr: Translator): string {
@@ -89,12 +77,44 @@ export function syncSettled(view: SyncView): boolean {
   return (view.state === "ok" && (view.attention ?? []).length === 0) || view.state === "never";
 }
 
-/** The "Stav v obchodě" state line. */
+/**
+ * The "Stav v obchodě" state line. Only what the app really checks counts (B10): the website
+ * (theme embed) and the sync. Checkout verification is not built, so it is neither shown nor counted.
+ */
+/** Everything the store needs is in place (the theme shows the discounts, Shopify has the current settings): the section's green pill. */
+export function statusAllGood(signals: AdminSignals): boolean {
+  return signals.embed.state === "on" && syncSettled(signals.sync);
+}
+
 export function statusSummary(signals: AdminSignals, tr: Translator): string {
-  const { embed, checkout, sync } = signals;
+  const { embed, sync } = signals;
   if (embed.state === "off" || embed.state === "draft_only" || embed.state === "no_scope") {
     return tr.t("overview.status.embedOff");
   }
-  const open = [embed.state !== "on", checkout.state !== "verified", !syncSettled(sync)].filter(Boolean).length;
+  const open = [embed.state !== "on", !syncSettled(sync)].filter(Boolean).length;
   return open === 0 ? tr.t("overview.status.allGood") : tr.t("overview.status.unverified", { n: open });
+}
+
+/**
+ * Is there anything to do about discounts outside Won (P2)? Native discounts exist, a move can be
+ * undone (or did not finish), a discount fights a Won one, or the detection failed (then with a retry).
+ * "Not checked", "still loading" and "none" have neither content nor an action: the section is not shown.
+ */
+export function nativeNeedsSection(native: NativeView | undefined): boolean {
+  if (!native || native.state === "not_wired") return false;
+  if (native.state === "error") return true;
+  if ((native.moved ?? []).length > 0) return true;
+  if (native.state === "loading") return false;
+  return native.discounts.length > 0 || (native.conflicts ?? []).length > 0;
+}
+
+/** Shopify discounts still outside Won (the margin card says protection does not see them). */
+export function nativeOutsideCount(native: NativeView | undefined): number {
+  return native && native.state === "ok" ? native.discounts.length : 0;
+}
+
+/** `gid://shopify/DiscountCodeNode/1001` → the discount's page in Shopify admin (App Bridge follows `shopify://admin`). */
+export function nativeAdminUrl(id: string): string | null {
+  const numeric = /\/(\d{1,20})$/.exec(id)?.[1];
+  return numeric ? `shopify://admin/discounts/${numeric}` : null;
 }

@@ -8,8 +8,11 @@
 // pinned by a parity test), on the live theme's
 // tokens (fonts, colors, the input radius the CSS reads, the block's accent —
 // integration/themes.server.ts). Prices are written with the shop's money format
-// like the storefront. What it cannot know is said under it (§12): the font
-// shows only if the device has it; margin protection may lower a tier; an
+// like the storefront. On top of the ready-made look it renders what the stored
+// config adds (`extras`): the Pro custom look exactly as the storefront gets it
+// (core customLookCss, confined to the preview like the block's own CSS) and the
+// storefront texts the merchant changed. What it cannot know is said under it
+// (§12): the theme could not be read; margin protection may lower a tier; an
 // example set / product is labelled "Ukázka".
 //
 // By design it renders the K8 markup WITHOUT the block's
@@ -19,11 +22,15 @@
 // the currency (MKT-1) — the note under it then says why.
 //
 // One component for every preview surface (A1): the Množstevní slevy screen,
-// the four looks on Vzhled and the dev harness. The admin controls around it
-// (look switcher, items in the cart) are native buttons with no form name —
-// they never submit with the page's form.
+// the four looks on Vzhled and the dev harness. The items-in-the-cart stepper is
+// native buttons with no form name (never submitted). The look switcher is a
+// native radio group: with `lookField` it is a field of the page's form — the
+// pick is SAVED with the page (config.storefront.appearancePreset, the same
+// field Vzhled writes) and its change event reaches the form (the save bar and
+// the live draft see it); without `lookField` the radios have no name and
+// nothing is submitted.
 
-import { useMemo, useState, type CSSProperties } from "react";
+import { useId, useMemo, useState, type CSSProperties } from "react";
 
 import csStorefront from "../../../extensions/won-discounts-storefront/locales/cs.json?raw";
 import enStorefront from "../../../extensions/won-discounts-storefront/locales/en.default.json?raw";
@@ -35,7 +42,7 @@ import { useT } from "../../i18n/context";
 import type { Locale } from "../../i18n";
 import { presetLabel } from "../model/appearance";
 import { formatLiquidMoney, previewTiersLiquid, TIERS_SAMPLE_SET, TIER_MIN_QTY_MAX } from "../model/tiers";
-import type { AppearancePresetView, PreviewProductView, ThemeTokensView, TierSetView } from "../model/types";
+import type { AppearancePresetView, PreviewLookView, PreviewProductView, ThemeTokensView, TierSetView } from "../model/types";
 import { selectionRing, WON_AMBER_TEXT, WON_FAINT, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SURFACE } from "../shell/tokens";
 import { scopeCss } from "./scope-css";
 
@@ -56,9 +63,14 @@ function parseTexts(raw: string): Partial<Record<TextKey, string>> {
 
 const TEXTS: Readonly<Record<Locale, Partial<Record<TextKey, string>>>> = { cs: parseTexts(csStorefront), en: parseTexts(enStorefront) };
 
-/** The block's text in the admin language (the other language's text when one is missing — never a key). */
-export function storefrontText(locale: Locale, key: TextKey, params: Record<string, string | number> = {}): string {
-  const template = TEXTS[locale][key] ?? TEXTS[locale === "cs" ? "en" : "cs"][key] ?? "";
+/**
+ * The block's text in the admin language (the other language's text when one is missing — never a key).
+ * `changed` = the texts the merchant changed for that language, by the extension's key (`tiers.heading`): a
+ * non-empty one wins, like on the storefront.
+ */
+export function storefrontText(locale: Locale, key: TextKey, params: Record<string, string | number> = {}, changed?: Readonly<Record<string, string>>): string {
+  const own = changed?.[`tiers.${key}`];
+  const template = (typeof own === "string" && own.trim() !== "" ? own : undefined) ?? TEXTS[locale][key] ?? TEXTS[locale === "cs" ? "en" : "cs"][key] ?? "";
   return template.replace(/\{(\w+)\}/g, (whole, name: string) => (name in params ? String(params[name]) : whole));
 }
 
@@ -96,11 +108,25 @@ export interface TiersPreviewProps {
   bare?: boolean;
   /** Include the scoped storefront CSS (false when the page renders <TiersPreviewStyles /> once for several previews). */
   withStyles?: boolean;
+  /** What the config adds on top of the look: the Pro custom look (CSS as the storefront gets it) and the merchant's texts. */
+  extras?: PreviewLookView | null;
+  /** With `controls`: the form field the picked look is submitted as (the page saves it). Absent = the switcher only changes the preview. */
+  lookField?: string;
 }
 
-/** The storefront CSS confined to the preview scope, once for a page with several previews. */
-export function TiersPreviewStyles() {
-  return <style dangerouslySetInnerHTML={{ __html: SCOPED_CSS }} />;
+/**
+ * The storefront CSS confined to the preview scope, once for a page with several previews. `customCss` = the Pro
+ * custom look as the storefront gets it (core customLookCss — never contains `<`), confined the same way, after
+ * the block's own CSS (the order the storefront loads them in).
+ */
+export function TiersPreviewStyles({ customCss }: { customCss?: string | null }) {
+  const custom = customCss ? scopeCss(customCss, `.${PREVIEW_SCOPE}`) : "";
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: SCOPED_CSS }} />
+      {custom ? <style data-won-custom-look="" dangerouslySetInnerHTML={{ __html: custom }} /> : null}
+    </>
+  );
 }
 
 function fontStack(family: string | null): string {
@@ -137,10 +163,16 @@ export function TiersPreview({
   quantity: initialQuantity,
   bare = false,
   withStyles = true,
+  extras = null,
+  lookField,
 }: TiersPreviewProps) {
   const tr = useT();
   const { t, locale } = tr;
   const [look, setLook] = useState<AppearancePresetView>(preset);
+  const [lookFocus, setLookFocus] = useState<AppearancePresetView | null>(null);
+  const lookLabelId = useId();
+  const changed = extras?.texts[locale];
+  const text = (key: TextKey, params: Record<string, string | number> = {}) => storefrontText(locale, key, params, changed);
   const shown = set && set.breaks.length > 0 ? set : TIERS_SAMPLE_SET;
   const sample = shown === TIERS_SAMPLE_SET;
   const firstMin = shown.breaks[0]?.minQty ?? 1;
@@ -165,7 +197,7 @@ export function TiersPreview({
       style={accent ? ({ ["--won-tiers-accent" as string]: accent } as CSSProperties) : undefined}
       hidden={model.empty}
     >
-      <p className="won-tiers__heading">{storefrontText(locale, "heading")}</p>
+      <p className="won-tiers__heading">{text("heading")}</p>
       {/* K8 markup, as the storefront renders it: `role="list"` keeps the list semantics Safari drops for a list without bullets. */}
       {/* eslint-disable-next-line jsx-a11y/no-redundant-roles */}
       <ol className="won-tiers__list" role="list">
@@ -180,22 +212,22 @@ export function TiersPreview({
             aria-current={row.active ? "true" : undefined}
             hidden={row.hidden}
           >
-            <span className="won-tiers__qty">{storefrontText(locale, "row_qty", { min: row.minQty })}</span>
+            <span className="won-tiers__qty">{text("row_qty", { min: row.minQty })}</span>
             <span className="won-tiers__save">
               {row.save.kind === "percent"
-                ? storefrontText(locale, "save_pct", { pct: percentText(row.save.percent, locale) })
-                : storefrontText(locale, "save_off", { amount: money(row.save.amount) })}
+                ? text("save_pct", { pct: percentText(row.save.percent, locale) })
+                : text("save_off", { amount: money(row.save.amount) })}
             </span>
-            <span className="won-tiers__unit">{storefrontText(locale, "unit", { price: money(row.unitPrice) })}</span>
+            <span className="won-tiers__unit">{text("unit", { price: money(row.unitPrice) })}</span>
           </li>
         ))}
       </ol>
       <p className="won-tiers__live" data-won-discounts-live-price="" data-unit-cents={model.unitPrice} aria-live="polite">
-        {storefrontText(locale, "live", { qty: quantity, total: money(model.total), price: money(model.unitPrice) })}
+        {text("live", { qty: quantity, total: money(model.total), price: money(model.unitPrice) })}
       </p>
       {model.next ? (
         <p className="won-tiers__next" data-won-discounts-tier-next="">
-          {storefrontText(locale, "next", { count: model.next.add, price: money(model.next.unitPrice) })}
+          {text("next", { count: model.next.add, price: money(model.next.unitPrice) })}
         </p>
       ) : (
         <p className="won-tiers__next" data-won-discounts-tier-next="" hidden />
@@ -206,8 +238,8 @@ export function TiersPreview({
   const notes: string[] = [];
   if (!bare) {
     if (sample) notes.push(t("tiers.preview.sample"));
-    notes.push(tokens?.themeName ? t("tiers.preview.theme", { theme: tokens.themeName }) : t("tiers.preview.noTheme"));
-    if (tokens?.fontBody) notes.push(t("tiers.preview.font", { font: tokens.fontBody }));
+    // Only the failure is said (P2): a theme that was read needs no sentence.
+    if (!tokens?.themeName) notes.push(t("tiers.preview.noTheme"));
     if (marginOn) notes.push(t("tiers.preview.marginNote"));
   }
 
@@ -221,18 +253,44 @@ export function TiersPreview({
       )}
       {controls ? (
         <div style={{ display: "grid", gap: 8 }}>
-          <div role="group" aria-label={t("tiers.preview.look")} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {APPEARANCE_PRESETS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                aria-pressed={look === p}
-                onClick={() => setLook(p)}
-                style={{ ...selectionRing(look === p), borderRadius: 999, padding: "4px 10px", fontSize: 12.5, fontWeight: look === p ? 700 : 500, color: WON_INK, cursor: "pointer", fontFamily: WON_FONT }}
-              >
-                {presetLabel(p, tr)}
-              </button>
-            ))}
+          <div style={{ display: "grid", gap: 5 }}>
+            <div id={lookLabelId} style={{ fontSize: 13, fontWeight: 500, color: WON_INK }}>
+              {t("tiers.preview.look")}
+            </div>
+            <div role="radiogroup" aria-labelledby={lookLabelId} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {APPEARANCE_PRESETS.map((p) => (
+                <label
+                  key={p}
+                  style={{
+                    ...selectionRing(look === p),
+                    position: "relative",
+                    borderRadius: 999,
+                    padding: "4px 10px",
+                    fontSize: 12.5,
+                    fontWeight: look === p ? 700 : 500,
+                    color: WON_INK,
+                    cursor: "pointer",
+                    fontFamily: WON_FONT,
+                    ...(lookFocus === p ? { outline: `3px solid ${WON_INK}`, outlineOffset: 2 } : {}),
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name={lookField}
+                    value={p}
+                    checked={look === p}
+                    onChange={() => setLook(p)}
+                    onFocus={(e) => setLookFocus(e.currentTarget.matches(":focus-visible") ? p : null)}
+                    onBlur={() => setLookFocus(null)}
+                    style={{ position: "absolute", opacity: 0, width: 1, height: 1, margin: 0, pointerEvents: "none" }}
+                  />
+                  {presetLabel(p, tr)}
+                </label>
+              ))}
+            </div>
+            {look !== preset ? (
+              <div style={{ fontSize: 12, color: WON_MUTED }}>{t(lookField ? "tiers.preview.lookUnsaved" : "tiers.preview.lookSaved", { preset: presetLabel(preset, tr) })}</div>
+            ) : null}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: WON_MUTED }}>
             <span>{t("tiers.preview.quantity")}</span>
@@ -250,7 +308,7 @@ export function TiersPreview({
       ) : null}
       <div className={PREVIEW_SCOPE}>
         {/* The storefront's own CSS, nested under the preview scope (never styles the admin). */}
-        {withStyles ? <TiersPreviewStyles /> : null}
+        {withStyles ? <TiersPreviewStyles customCss={extras?.customCss} /> : null}
         <div style={pageStyle(tokens)}>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontFamily: fontStack(tokens?.fontHeading ?? tokens?.fontBody ?? null), fontWeight: 600, fontSize: "1.15em" }}>
@@ -262,7 +320,6 @@ export function TiersPreview({
           {model.empty ? <div style={{ fontSize: 13, opacity: 0.8 }}>{t("tiers.preview.notOffered", { currency: shopCurrency })}</div> : null}
         </div>
       </div>
-      {controls && look !== preset ? <div style={{ fontSize: 12, color: WON_MUTED }}>{t("tiers.preview.lookSaved", { preset: presetLabel(preset, tr) })}</div> : null}
       {notes.length > 0 ? (
         <div style={{ display: "grid", gap: 2 }}>
           {notes.map((note) => (

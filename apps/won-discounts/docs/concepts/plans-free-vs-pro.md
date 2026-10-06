@@ -37,7 +37,7 @@ Try a cart and moving Shopify discounts work in full on Free. Free is not a demo
 Clearance (Pro) sells a number of pieces of a variant at a discount, see [clearance](clearance). Campaigns (Pro) change your discounts for a time window, see [campaigns](campaigns); a campaign running when the store moves to Free finishes.
 
 Pro is a flat **29 USD a month** with no limit on orders, with a **14-day free trial**
-and no yearly plan. You start it, and cancel it, on the **Plan** page; the charge
+and no yearly plan. You start it, and cancel it, in **Settings** under **Plan**; the charge
 goes through Shopify (see [start-the-pro-trial](../tasks/start-the-pro-trial.md),
 [billing-and-downgrade](billing-and-downgrade)). Reports per discount and a custom
 look of the storefront blocks are Pro too. The full comparison:

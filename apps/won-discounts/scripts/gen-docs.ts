@@ -49,7 +49,7 @@ import {
   type StrippedCapability,
 } from "@won/core/discounts/plan-gate";
 
-import { MODULE_META, UPCOMING_MODULES, type AdminModule } from "../app/components/model/modules.ts";
+import { MODULE_META, type AdminModule } from "../app/components/model/modules.ts";
 import { RECIPE_KEYS, recipeRule } from "../app/components/model/rule-form.ts";
 import { cs } from "../app/i18n/cs.ts";
 import { en } from "../app/i18n/en.ts";
@@ -123,31 +123,31 @@ const CAPABILITY_META: { readonly [K in ProCapability]: { label: string; area: A
   market_targeting: { label: "Show a discount only in chosen markets", area: "discounts" },
   segment_targeting: { label: "Show a discount only to chosen customer segments", area: "discounts" },
   rule_combinations: { label: "Choose per discount which other discounts it stacks with", area: "discounts" },
-  campaigns: { label: "Campaigns: start and end many discounts at once (e.g. Black Friday)", area: "campaigns" },
+  campaigns: { label: "Campaigns: start and end many discounts at once", area: "campaigns" },
   tier_set_scope: { label: "Quantity discount sets for chosen products or collections", area: "tiers" },
   tier_sets_extra: { label: "More than one quantity discount set", area: "tiers" },
   tier_count_across_cart: { label: "Quantity discounts counted across the whole cart", area: "tiers" },
   gift_ladder: { label: "A ladder of several gift thresholds", area: "rewards" },
   gift_choices: { label: "A choice of gifts at one threshold", area: "rewards" },
   margin_per_collection: { label: "Margin protection settings per collection", area: "margin" },
+  item_minimum_quantity: { label: "A minimum quantity per product or collection", area: "discounts" },
+  code_batch_pattern: { label: "Generated codes with your own pattern", area: "discounts" },
+  code_batch_size: { label: "More than 100 generated codes in a batch", area: "discounts" },
 };
 
 /** What the server gate does with a Pro setting on Free (StrippedCapability.reason). */
 const ON_FREE: { readonly [K in StrippedCapability["reason"]]: string } = {
   rule_off:
-    "The whole discount does not apply on Free (removing only its targeting would widen it to everyone).",
+    "The whole discount is off on Free: without this setting it would give more than you set up.",
   removed: "The Pro setting is left out; the rest keeps working.",
   reduced: "Kept within the Free limit.",
   folded: "Merged into the store-wide setting; the strictest value wins.",
 };
 
-function areaBuilt(area: Area): boolean {
-  return area === "discounts" || !(UPCOMING_MODULES as readonly string[]).includes(area);
-}
-
+/** Every module is built (the "coming soon" pages are gone); only a capability checkout does not support yet is planned. */
 function capabilityAvailable(cap: ProCapability): boolean {
   if (cap === "segment_targeting") return SEGMENT_TARGETING_SUPPORTED;
-  return areaBuilt(CAPABILITY_META[cap].area);
+  return true;
 }
 
 function areaName(area: Area): string {
@@ -172,6 +172,15 @@ function freeGateReasons(): Map<ProCapability, StrippedCapability["reason"]> {
   probe.modules.codes.rules = [
     rule("a", { targeting: { markets: ["m"] }, combinesWith: { ruleIds: ["b"] } }),
     rule("b", { targeting: { segments: ["s"] } }),
+    // A minimum of its own for one product; a generated batch larger than Free allows and one with a Pro pattern.
+    rule("c", { target: { kind: "products", productIds: ["gid://shopify/Product/1"], variantIds: [], itemMinimums: [{ id: "gid://shopify/Product/1", quantity: 3 }] } }),
+    rule("d", {
+      method: "code",
+      codeBatches: [
+        { id: "big", prefix: "KXTR-", count: CONFIG_LIMITS.codeBatchSizeFree + 1, seed: "0".repeat(32), length: 10, alphabet: "both" },
+        { id: "pattern", prefix: "BF-", count: 5, seed: "1".repeat(32), length: 13, alphabet: "digits", suffix: "-VIP" },
+      ],
+    }),
   ];
   probe.campaigns = [
     { id: "c", name: "c", window: { start: "2000-01-01T00:00:00", end: "2000-01-02T00:00:00" }, overrides: [], killed: false },
@@ -207,7 +216,6 @@ function planLimitsDoc(): string {
     if (!reason) throw new Error(`gen-docs: no Free-gate reason for ${c}.`);
     return `| ${CAPABILITY_META[c].label} | ${areaName(CAPABILITY_META[c].area)} | ${ON_FREE[reason]} |`;
   };
-  const upcoming = UPCOMING_MODULES.map((m) => `- **${en[MODULE_META[m].title]}**${MODULE_META[m].pro ? " (Pro)" : ""}: ${en[`soon.${m}`]}`);
 
   return doc(
     {
@@ -221,10 +229,10 @@ function planLimitsDoc(): string {
     `# Free vs Pro plans
 
 Free limits **scope, never quality**: the same engine, checkout consistency,
-margin protection, Try a cart and moving Shopify discounts work in full on Free.
+margin protection and moving Shopify discounts work in full on Free.
 
 **Pro price:** ${en["plan.pro.title"].replace(/^Pro\s*·\s*/, "")}.
-**Availability:** ${en["plan.pro.soon"]}
+**Where:** ${en["nav.settings"]} → ${en["nav.plan"]}. You start and cancel Pro there.
 
 ## Free includes
 
@@ -232,7 +240,6 @@ margin protection, Try a cart and moving Shopify discounts work in full on Free.
   automatic or with a code
 - Up to ${num(CONFIG_LIMITS.rules)} discounts, at most ${num(MAX_ACTIVE_CODE_RULES)} active code discounts at a time
 - The default combination rules
-- ${en["nav.tryCart"]}: which discounts apply to a cart and why
 - ${en["nav.margin"]}: one store-wide minimum margin and one ceiling for products without a cost price
 - Moving Shopify discounts into Won, with Undo
 - Admin in Czech or English
@@ -243,19 +250,21 @@ margin protection, Try a cart and moving Shopify discounts work in full on Free.
 |---|---|---|
 ${available.map(capRow).join("\n")}
 
+Pro also opens **${en["nav.tryCart"]}** (${en["nav.settings"]} → ${en["settings.tools.title"]}): which discounts apply to a cart and why.
+
 With per-discount combinations, at most **${MAX_STACK_CANDIDATES}** discounts stack on one line
 (or on the order).
 
-## Pro capabilities of modules not built yet
+## Pro capabilities not available yet
 
-These belong to planned modules or are not supported at checkout yet. They are
-listed so the plan comparison is complete; none of them can be set up today.
+These are not supported at checkout yet. They are listed so the plan comparison
+is complete; none of them can be set up today.
 
 | Pro capability | Area | On Free |
 |---|---|---|
 ${planned.map(capRow).join("\n")}
 
-${upcoming.length ? `## Planned modules\n\n${upcoming.join("\n")}\n\n` : ""}## What "On Free" means
+## What "On Free" means
 
 Pro settings are **never erased**: they stay saved, but the server leaves them
 out of what checkout runs while the shop is on Free. The admin lists each one
@@ -363,10 +372,7 @@ function combinationValue(category: CombinationCategory): string {
 }
 
 function combinationDoc(): string {
-  const rows = COMBINATION_CATEGORIES.map((c) => {
-    const note = c === "outletWithAnything" && !areaBuilt("outlet") ? " (Clearance is a planned module)" : "";
-    return `| ${COMBINATION_LABELS[c]}${note} | ${combinationValue(c)} |`;
-  });
+  const rows = COMBINATION_CATEGORIES.map((c) => `| ${COMBINATION_LABELS[c]} | ${combinationValue(c)} |`);
   return doc(
     {
       title: "Default combination rules",

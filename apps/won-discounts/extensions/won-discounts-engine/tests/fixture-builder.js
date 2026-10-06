@@ -170,6 +170,11 @@ export function withRealisticIds(s) {
     if (!ids.has(id)) ids.set(id, lengthen(appRuleId(id)));
     return ids.get(id);
   };
+  /** A product metafield ref: the rule id before an item ref's `#key:min` tail (per-item minimum) is mapped, the tail kept. */
+  const ref = (/** @type {unknown} */ r) => {
+    if (typeof r !== "string" || !r.includes("#")) return rid(r);
+    return `${rid(r.slice(0, r.indexOf("#")))}${r.slice(r.indexOf("#"))}`;
+  };
   const rules = s.rules.map((r) => ({
     ...r,
     id: rid(r.id),
@@ -185,9 +190,9 @@ export function withRealisticIds(s) {
       ? {
           won: {
             ...l.won,
-            ...(Array.isArray(l.won.ruleIds) ? { ruleIds: l.won.ruleIds.map(rid) } : {}),
+            ...(Array.isArray(l.won.ruleIds) ? { ruleIds: l.won.ruleIds.map(ref) } : {}),
             ...(l.won.variantRuleIds && typeof l.won.variantRuleIds === "object"
-              ? { variantRuleIds: Object.fromEntries(Object.entries(l.won.variantRuleIds).map(([k, refs]) => [k, Array.isArray(refs) ? refs.map(rid) : refs])) }
+              ? { variantRuleIds: Object.fromEntries(Object.entries(l.won.variantRuleIds).map(([k, refs]) => [k, Array.isArray(refs) ? refs.map(ref) : refs])) }
               : {}),
           },
         }

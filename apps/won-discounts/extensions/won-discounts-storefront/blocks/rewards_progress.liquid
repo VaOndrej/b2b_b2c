@@ -1,0 +1,54 @@
+{% comment %}
+  Rewards progress (feedback 2 bod 5): "X more for free shipping / a free gift" with a bar, for any section of
+  any template (the product page, the home page, an Apps section under the header). The text is rendered here
+  from the cart; assets/won-discounts-blocks.js updates it when the cart changes. Renders nothing when the shop
+  offers no reward in the cart's currency (in the theme editor it says so instead of leaving a gap).
+{% endcomment %}
+{%- liquid
+  assign won_rw = app.metafields.won_discounts.storefront_config.value.rewards
+  assign won_cur = cart.currency.iso_code
+-%}
+{%- capture won_rows -%}
+  {%- if won_rw != blank -%}
+    {%- render 'won-progress', rw: won_rw, cur: won_cur, ship: block.settings.show_shipping, gift: block.settings.show_gift, bar: block.settings.show_bar -%}
+  {%- endif -%}
+{%- endcapture -%}
+{%- assign won_rows = won_rows | strip -%}
+{%- if won_rows != blank -%}
+  <div
+    class="won-progress won-progress--{{ block.settings.align }}"
+    data-won-discounts-progress
+    data-ship="{{ block.settings.show_shipping }}"
+    data-gift="{{ block.settings.show_gift }}"
+    data-bar="{{ block.settings.show_bar }}"
+    {{ block.shopify_attributes }}
+  >
+    {{ won_rows }}
+  </div>
+{%- elsif request.design_mode -%}
+  <p class="won-progress won-progress--{{ block.settings.align }}" {{ block.shopify_attributes }}>{{ 'progress.empty' | t }}</p>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Rewards progress",
+  "target": "section",
+  "stylesheet": "won-discounts.css",
+  "javascript": "won-discounts-blocks.js",
+  "settings": [
+    { "type": "checkbox", "id": "show_shipping", "label": "Free shipping", "default": true },
+    { "type": "checkbox", "id": "show_gift", "label": "Free gift", "default": true },
+    { "type": "checkbox", "id": "show_bar", "label": "Progress bar", "default": true },
+    {
+      "type": "select",
+      "id": "align",
+      "label": "Alignment",
+      "default": "start",
+      "options": [
+        { "value": "start", "label": "Start" },
+        { "value": "center", "label": "Center" }
+      ]
+    }
+  ]
+}
+{% endschema %}

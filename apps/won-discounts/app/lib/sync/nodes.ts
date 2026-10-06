@@ -8,7 +8,16 @@
 //             (Shopify keeps its usage count and once-per-customer history),
 //             never created;
 //   absent    the rule was DELETED from the config: its node is deleted.
+// Generated code batches (plan 2026-10-06 dávka 4, core code-batch.ts): a code
+// rule's node carries its hand-typed codes AND every code its batches have in
+// force — the batches are rebuilt from their seeds here (`withBatchCodes`), so
+// they reach Shopify through the node sync's existing redeem-code path (bulk
+// add, ≤ 250 a call) and a rule with batches only is a code rule with codes.
+// The config handed in is the one GATED for the shop's plan, so a Free shop's
+// node gets only what Free allows (plan-gate.ts) and loses the rest.
 // Pure: no I/O.
+
+import { ruleCodes } from "@won/core/discounts/code-batch";
 
 import { activeCodeRules, type ActivityContext } from "../config-guards.server";
 import type { ConfigView, SyncNodeRole } from "./types";
@@ -101,12 +110,33 @@ function codeNode(config: ConfigView, rule: RuleView, active: boolean): DesiredN
 }
 
 /**
+ * The config with every code rule's `codes` = its hand-typed codes followed by
+ * the codes of its generated batches (upper-case, each once): what its Shopify
+ * discount must hold as redeem codes. Rules without a batch are the same objects.
+ */
+export function withBatchCodes(config: ConfigView): ConfigView {
+  const rules = config.modules.codes.rules;
+  if (!rules.some((rule) => rule.method === "code" && (rule.codeBatches?.length ?? 0) > 0)) return config;
+  return {
+    ...config,
+    modules: {
+      ...config.modules,
+      codes: {
+        ...config.modules.codes,
+        rules: rules.map((rule) => (rule.method === "code" && (rule.codeBatches?.length ?? 0) > 0 ? { ...rule, codes: ruleCodes(rule) } : rule)),
+      },
+    },
+  };
+}
+
+/**
  * The automatic node + one entry per rule of the config: active code rules as
  * `active`, every other rule as `inactive` (only acts on a node the sync
  * already tracks under `code:<ruleId>`). A tracked node whose rule id is not in
  * the list at all belongs to a deleted rule.
  */
-export function desiredNodes(config: ConfigView, ctx: ActivityContext = {}): DesiredNode[] {
+export function desiredNodes(stored: ConfigView, ctx: ActivityContext = {}): DesiredNode[] {
+  const config = withBatchCodes(stored);
   const nodes: DesiredNode[] = [
     {
       key: AUTO_NODE_KEY,

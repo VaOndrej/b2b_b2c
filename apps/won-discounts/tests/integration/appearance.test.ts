@@ -66,12 +66,12 @@ function storeWithTheme(): FakeStore {
   return store;
 }
 
-test("load: the stored look (default on a new shop), the theme's tokens, the table's state, a real product, no set yet → an example", async () => {
+test("load: the stored look (highlight on a new shop), the theme's tokens, the table's state, a real product, no set yet → an example", async () => {
   const store = storeWithTheme();
   const data = await loadAppearanceScreen(ctxFor(store), { scopes: "write_discounts,read_themes" });
   assert.equal(data.plan, "free");
   assert.equal(data.configVersion, null);
-  assert.equal(data.preset, "default");
+  assert.equal(data.preset, "highlight");
   assert.equal(data.tokens?.themeName, "Dawn");
   assert.equal(data.tokens?.radius, 6);
   assert.deepEqual(data.block, {
@@ -90,7 +90,7 @@ test("load: the stored look (default on a new shop), the theme's tokens, the tab
   assert.equal(data.embed.state, "unknown", "the fake has no themes for the embed check");
 });
 
-test("load: the global set is the sample; an unknown stored look reads as the default (K7)", async () => {
+test("load: the global set is the sample; a shop that never chose a look has the new-shop one (highlight)", async () => {
   const store = storeWithTheme();
   const base = (await loadConfig(db.prisma, shop)).config;
   await saveConfig(db.prisma, shop, {
@@ -99,7 +99,7 @@ test("load: the global set is the sample; an unknown stored look reads as the de
   });
   const data = await loadAppearanceScreen(ctxFor(store), { scopes: "read_themes" });
   assert.deepEqual(data.sample?.breaks, [{ minQty: 3, kind: "percent", percent: 10, amount: {} }]);
-  assert.equal(data.preset, "default");
+  assert.equal(data.preset, "highlight");
 });
 
 test("save: a preset goes into the config (storefront.appearancePreset); a value that is not one of the four is refused", async () => {
@@ -189,7 +189,7 @@ test("MVP 7 save (Pro): card prices, the custom look and storefront texts are st
   const live = store.sync.storefrontConfig() as { cards?: number; appearance: { preset: string; css?: string }; texts: Record<string, Record<string, string>> };
   assert.equal(live.cards, 1);
   assert.equal(live.appearance.preset, "chips");
-  assert.match(live.appearance.css ?? "", /^:is\(\.won-tiers,\.won-cart,\.won-cart-slot,\.won-outlet\)\{--won-tiers-accent:#0a7d4f;--won-tiers-radius:4px\}:is\([^)]*\) \.won-tiers__row\{font-weight: 700\}$/);
+  assert.match(live.appearance.css ?? "", /^:is\(\.won-tiers,\.won-cart,\.won-cart-slot,\.won-outlet,\.won-progress,\.won-campaign,\.won-topbar\)\{--won-tiers-accent:#0a7d4f;--won-tiers-radius:4px\}:is\([^)]*\) \.won-tiers__row\{font-weight: 700\}$/);
   assert.deepEqual(live.texts, { cs: { "tiers.heading": "Kup víc, plať míň" } });
 
   const screen = await loadAppearanceScreen(ctx, { scopes: "read_themes" });
@@ -234,7 +234,7 @@ test("MVP 7 save: a colour that is not #rgb / #rrggbb, a radius out of range and
   assert.deepEqual(await errors([["tx.cs.tiers.heading", "x".repeat(501)]]), [{ field: "tx.cs.tiers.heading", key: "appearance.error.text", params: { max: 500 } }]);
   const stored = (await loadConfig(db.prisma, shop)).config;
   assert.equal(stored.storefront.custom, undefined);
-  assert.equal(stored.storefront.appearancePreset, "default");
+  assert.equal(stored.storefront.appearancePreset, "highlight");
 });
 
 test("MVP 7 save: a storefront config over Shopify's metafield limit is refused before the save (not left to a failed sync step)", async () => {

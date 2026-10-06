@@ -7,14 +7,15 @@ import { Kind, parse, type FieldNode, type SelectionSetNode } from "graphql";
 import { planCart } from "@won/core/discounts/plan";
 
 import { saveConfig } from "../../app/lib/config.server.ts";
-import { overviewAction, tryCartAction, tryCartPage } from "../../app/lib/integration/pages.server.ts";
+import { overviewAction, tryCartAction, tryCartCompute, tryCartPage } from "../../app/lib/integration/pages.server.ts";
 import { clearMarketCountryCache, TRY_CART_DOCUMENTS, TRY_CART_VARIANTS_BATCH } from "../../app/lib/integration/try-cart.server.ts";
 import { planTryCart } from "../../app/lib/integration/try-cart-plan.ts";
-import { syncIdle } from "../../app/lib/sync/sync.server.ts";
+import { createSync, syncIdle } from "../../app/lib/sync/sync.server.ts";
+import { productionSyncDeps } from "../../app/lib/sync/wiring.server.ts";
 import { clearSignalCache } from "../../app/lib/ui-actions.server.ts";
 import { TryCartScreen } from "../../app/components/screens/TryCartScreen.tsx";
 import { createTestDatabase, type TestDatabase } from "../lib/test-db.ts";
-import { FakeStore, formOf, renderPage, testCtx, text } from "./helpers.ts";
+import { FakeStore, formOf, quiet, renderPage, testCtx, text } from "./helpers.ts";
 
 // Vyzkoušet košík (integration step 5): real variant prices for the chosen
 // market (contextual pricing by the market's country), the product refs the
@@ -22,6 +23,8 @@ import { FakeStore, formOf, renderPage, testCtx, text } from "./helpers.ts";
 // fresh recompute of collection membership), the engine run on the discount
 // function's own payload (the same JSON the sync writes) with checkout's own
 // output mapping, explainPlan → the screen. Every input is validated on the server.
+// The tool is Pro (plan 6 Oct 2026, point 10): the page's action (tryCartAction) refuses a Free shop;
+// the engine tests below run the cart through tryCartCompute, the same body without the plan check.
 
 let db: TestDatabase;
 let seq = 0;
@@ -113,7 +116,7 @@ test("CZK · Česko + VIP20: prices from Shopify for CZ, collection targeting fr
   const ctx = testCtx(db.prisma, shop, store);
   assert.equal((await overviewAction(ctx, formOf([["intent", "resync"]]))).ok, true, "the config (and the refs) are in Shopify");
   await syncIdle(shop);
-  const run = await tryCartAction(ctx, cart([["currency", "CZK:cz"], ["codes", "vip20"], ["date", "2026-09-28"]]), PAGE);
+  const run = await tryCartCompute(ctx, cart([["currency", "CZK:cz"], ["codes", "vip20"], ["date", "2026-09-28"]]), PAGE);
   assert.equal(run.result, null, JSON.stringify(run.result));
   const plan = run.plan!;
   assert.equal(plan.currency, "CZK");
@@ -141,7 +144,7 @@ test("CZK · Česko + VIP20: prices from Shopify for CZ, collection targeting fr
     ["Čepice", undefined, { CZK: 390_00 }],
   ]);
   const page = await tryCartPage(ctx, PAGE);
-  const html = text(await renderPage(createElement(TryCartScreen, { ...page, lines: run.lines!, plan, result: run.result, currency: "CZK:cz", codes: "VIP20" })));
+  const html = text(await renderPage(createElement(TryCartScreen, { ...page, pro: true, lines: run.lines!, plan, result: run.result, currency: "CZK:cz", ruleIds: ["vip"] })));
   assert.match(html, /Ceny a země z trhu Česko/);
   assert.match(html, /Mikina Won \(M \/ černá\) × 2/);
   assert.match(html, /CZK · Česko/);
@@ -157,7 +160,7 @@ test("the plan is computed on the SAME payload the function reads: planCart on t
   const hoodieRefs = store.sync.productMetafield("gid://shopify/Product/1") as { ruleIds: string[] };
 
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Prague", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-  const run = await tryCartAction(ctx, cart([["currency", "CZK:cz"], ["codes", "VIP20"], ["date", today]]), PAGE);
+  const run = await tryCartCompute(ctx, cart([["currency", "CZK:cz"], ["codes", "VIP20"], ["date", today]]), PAGE);
   const checkout = planCart(
     {
       currency: "CZK",
@@ -181,7 +184,7 @@ test("the plan is computed on the SAME payload the function reads: planCart on t
 
 test("the chosen day decides the schedule (shop days): Černý pátek applies on 28. 11. 2026", async () => {
   const { store } = await setup();
-  const run = await tryCartAction(testCtx(db.prisma, shop, store), cart([["currency", "CZK:cz"], ["date", "2026-11-28"]]), PAGE);
+  const run = await tryCartCompute(testCtx(db.prisma, shop, store), cart([["currency", "CZK:cz"], ["date", "2026-11-28"]]), PAGE);
   assert.equal(run.result, null);
   assert.ok(run.plan!.explain.some((e) => e.tone === "success" && /Černý pátek/.test(e.text)), JSON.stringify(run.plan!.explain));
   assert.equal(run.plan!.date, "2026-11-28");
@@ -190,14 +193,14 @@ test("the chosen day decides the schedule (shop days): Černý pátek applies on
 test("EUR · Slovensko: contextual prices for SK in EUR; a product without an EUR price is 'unknown', never 0", async () => {
   const { store } = await setup();
   const ctx = testCtx(db.prisma, shop, store);
-  const missing = await tryCartAction(ctx, cart([["currency", "EUR:sk"]]), PAGE);
+  const missing = await tryCartCompute(ctx, cart([["currency", "EUR:sk"]]), PAGE);
   assert.deepEqual(missing.result, { ok: false, reason: "prices_unavailable", currency: "EUR", products: ["Čepice"] });
   assert.equal(missing.plan, null);
-  const html = text(await renderPage(createElement(TryCartScreen, { ...(await tryCartPage(ctx, PAGE)), lines: missing.lines!, plan: null, result: missing.result })));
+  const html = text(await renderPage(createElement(TryCartScreen, { ...(await tryCartPage(ctx, PAGE)), pro: true, lines: missing.lines!, plan: null, result: missing.result })));
   assert.match(html, /Shopify nemá cenu v EUR pro Čepice/);
 
   const onlyHoodie = formOf([["intent", "run"], ["variantId", V_HOODIE], ["productId", "gid://shopify/Product/1"], ["quantity", "1"], ["currency", "EUR:sk"]]);
-  const ok = await tryCartAction(ctx, onlyHoodie, PAGE);
+  const ok = await tryCartCompute(ctx, onlyHoodie, PAGE);
   assert.equal(ok.result, null);
   assert.equal(ok.plan?.totals.subtotal, 52_00);
   assert.equal(store.calls.filter((c) => c.op === "WonTryCartVariants").at(-1)?.variables.country, "SK");
@@ -206,7 +209,7 @@ test("EUR · Slovensko: contextual prices for SK in EUR; a product without an EU
 test("server-side validation: unknown variants, a foreign currency or market, tampered product ids, a wrong intent", async () => {
   const { store } = await setup();
   const ctx = testCtx(db.prisma, shop, store);
-  const unknown = await tryCartAction(
+  const unknown = await tryCartCompute(
     ctx,
     formOf([["intent", "run"], ["variantId", "gid://shopify/ProductVariant/999"], ["productId", "gid://shopify/Product/9"], ["quantity", "1"], ["currency", "CZK"]]),
     PAGE,
@@ -214,15 +217,15 @@ test("server-side validation: unknown variants, a foreign currency or market, ta
   assert.deepEqual(unknown.result, { ok: false, reason: "invalid", errors: [{ field: "lines", key: "tryCart.error.unknownProduct" }] });
 
   for (const currency of ["HUF", "CZK:sk", "USD"]) {
-    const res = await tryCartAction(ctx, cart([["currency", currency]]), PAGE);
+    const res = await tryCartCompute(ctx, cart([["currency", currency]]), PAGE);
     assert.ok(res.result && !res.result.ok && res.result.reason === "invalid", currency);
   }
   const calls = store.calls.length;
-  assert.deepEqual(await tryCartAction(ctx, formOf([["intent", "save"]]), PAGE), { result: { ok: false, reason: "bad_request" }, plan: null });
+  assert.deepEqual(await tryCartCompute(ctx, formOf([["intent", "save"]]), PAGE), { result: { ok: false, reason: "bad_request" }, plan: null });
   assert.equal(store.calls.length, calls, "a bad intent reads nothing");
 
   // The product id comes from Shopify, not from the form.
-  const tampered = await tryCartAction(
+  const tampered = await tryCartCompute(
     ctx,
     formOf([["intent", "run"], ["variantId", V_CAP], ["productId", "gid://shopify/Product/1"], ["quantity", "1"], ["currency", "CZK"], ["codes", "VIP20"]]),
     PAGE,
@@ -234,7 +237,7 @@ test("server-side validation: unknown variants, a foreign currency or market, ta
 test("Shopify unavailable: said with the detail, nothing planned", async () => {
   const { store } = await setup();
   store.overrides.set("WonTryCartVariants", () => ({ errors: [{ message: "Internal error" }] }));
-  const run = await tryCartAction(testCtx(db.prisma, shop, store), cart([["currency", "CZK:cz"]]), PAGE);
+  const run = await tryCartCompute(testCtx(db.prisma, shop, store), cart([["currency", "CZK:cz"]]), PAGE);
   assert.deepEqual(run, { result: { ok: false, reason: "shopify_unavailable", detail: "Internal error" }, plan: null });
 });
 
@@ -324,7 +327,7 @@ test("Odměny (MVP 4): a reached gift tier — the gift variant read with the ca
   });
   assert.equal(saved.ok, true, JSON.stringify(saved));
   const ctx = testCtx(db.prisma, shop, store);
-  const run = await tryCartAction(ctx, cart([["currency", "CZK:cz"], ["date", "2026-10-01"]]), PAGE);
+  const run = await tryCartCompute(ctx, cart([["currency", "CZK:cz"], ["date", "2026-10-01"]]), PAGE);
   assert.equal(run.result, null, JSON.stringify(run.result));
   const pricing = store.calls.filter((c) => c.op === "WonTryCartVariants");
   assert.equal(pricing.length, 1, "one read: the gift variant goes with the cart's variants");
@@ -335,8 +338,73 @@ test("Odměny (MVP 4): a reached gift tier — the gift variant read with the ca
   assert.equal(plan.totals.total, 2 * 1290_00 + 390_00, "the gift costs nothing");
   assert.deepEqual(run.lines?.map((l) => l.title), ["Mikina Won", "Čepice"], "the merchant's cart stays as built (the gift is the website cart's)");
   const page = await tryCartPage(ctx, PAGE);
-  const html = text(await renderPage(createElement(TryCartScreen, { ...page, lines: run.lines!, plan, result: run.result, currency: "CZK:cz" })));
+  const html = text(await renderPage(createElement(TryCartScreen, { ...page, pro: true, lines: run.lines!, plan, result: run.result, currency: "CZK:cz" })));
   assert.match(html, /Ponožky Won × 1/);
   assert.match(html, /Dárek přidá košík na webu/);
   assert.match(html, /Dárek zdarma: nákup od 2/);
+});
+
+// --- Plan 6 Oct 2026, point 10: Pro only, discounts picked instead of typed -------------------------
+
+const proCtx = (store: FakeStore) => ({
+  ...testCtx(db.prisma, shop, store),
+  createSync: ((client, prisma) => createSync({ ...productionSyncDeps(client, prisma, quiet), sleep: async () => {}, plan: async () => "pro" })) as ReturnType<typeof testCtx>["createSync"],
+});
+
+test("Vyzkoušet košík is Pro: a Free shop gets the locked page and the server refuses the run without reading Shopify", async () => {
+  const { store } = await setup();
+  const free = testCtx(db.prisma, shop, store);
+  const page = await tryCartPage(free, PAGE);
+  assert.equal(page.pro, false);
+  const html = text(await renderPage(createElement(TryCartScreen, page)));
+  assert.match(html, /S Pro si košík vyzkoušíte předem/);
+  assert.match(html, /Zobrazit tarif Pro/);
+  assert.doesNotMatch(html, /Co se uplatní/);
+
+  const before = store.ops.length;
+  const refused = await tryCartAction(free, cart([["currency", "CZK:cz"], ["ruleId", "vip"]]), PAGE);
+  assert.deepEqual(refused, { result: { ok: false, reason: "invalid", errors: [{ field: "plan", key: "tryCart.error.pro" }] }, plan: null });
+  assert.equal(store.ops.length, before, "nothing was read from Shopify for a refused run");
+  assert.deepEqual(await tryCartAction(free, formOf([["intent", "save"]]), PAGE), { result: { ok: false, reason: "bad_request" }, plan: null });
+});
+
+test("Pro: the page offers the shop's discounts; a ticked code discount is resolved to its code on the server", async () => {
+  const { store } = await setup();
+  const ctx = proCtx(store);
+  assert.equal((await overviewAction(ctx, formOf([["intent", "resync"]]))).ok, true);
+  await syncIdle(shop);
+
+  const page = await tryCartPage(ctx, PAGE);
+  assert.equal(page.pro, true);
+  assert.deepEqual(
+    page.rules.map((r) => [r.id, r.name, r.method, r.codes, r.enabled, r.startsOn ?? null, r.endsOn ?? null]),
+    [
+      ["podzim", "Podzim 10 %", "automatic", [], true, null, null],
+      ["vip", "VIP mikiny", "code", ["VIP20"], true, null, null],
+      ["bf", "Černý pátek", "automatic", [], true, "2026-11-27", "2026-11-30"],
+    ],
+  );
+  const html = await renderPage(createElement(TryCartScreen, page));
+  assert.match(text(html), /Uplatní se samy: Podzim 10 %/, "the scheduled automatic discount is not listed for today");
+  assert.doesNotMatch(text(html), /Uplatní se samy: [^<]*Černý pátek/);
+  assert.match(html, /<input type="checkbox" name="ruleId"[^>]*value="vip"/);
+  assert.doesNotMatch(html, /name="codes"/, "no free-text codes field");
+
+  // The form submits the rule id; the engine gets the rule's code.
+  const ticked = await tryCartAction(ctx, cart([["currency", "CZK:cz"], ["ruleId", "vip"], ["when", "now"]]), PAGE);
+  assert.equal(ticked.result, null, JSON.stringify(ticked.result));
+  assert.ok(ticked.plan!.explain.some((e) => /VIP20/.test(e.text)), JSON.stringify(ticked.plan!.explain));
+  const plain = await tryCartAction(ctx, cart([["currency", "CZK:cz"], ["when", "now"]]), PAGE);
+  assert.ok(!plain.plan!.explain.some((e) => /VIP20/.test(e.text)), "not ticked: the code is not entered");
+  // An id that is not a code discount of this shop is ignored (SEC-1), never an error.
+  const unknown = await tryCartAction(ctx, cart([["currency", "CZK:cz"], ["ruleId", "podzim"], ["ruleId", "nope"]]), PAGE);
+  assert.equal(unknown.result, null);
+  assert.deepEqual(unknown.plan!.totals, plain.plan!.totals);
+
+  // "Teď" ignores a stale date field; "vlastní" uses it (the campaign day: Černý pátek runs).
+  const now = await tryCartAction(ctx, cart([["currency", "CZK:cz"], ["when", "now"], ["date", "2026-11-28"], ["time", "10:00"]]), PAGE);
+  assert.notEqual(now.plan!.date, "2026-11-28");
+  const custom = await tryCartAction(ctx, cart([["currency", "CZK:cz"], ["when", "custom"], ["date", "2026-11-28"], ["time", "10:00"]]), PAGE);
+  assert.equal(custom.plan!.date, "2026-11-28");
+  assert.ok(custom.plan!.explain.some((e) => e.tone === "success" && /Černý pátek/.test(e.text)));
 });

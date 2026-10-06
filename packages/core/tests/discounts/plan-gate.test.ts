@@ -196,7 +196,7 @@ test("explainGate: one human sentence per stripped capability, Czech and English
   // The margin sentence names the numbers that changed.
   assert.ok(
     cs.includes(
-      "Ochrana marže pro jednotlivé kolekce je funkce Pro. Ve Free platí jedno minimum pro celý obchod: použili jsme to nejpřísnější z tvého nastavení, max. sleva 20\u00a0% (bylo 50\u00a0%), min. marže 25\u00a0% (bylo 10\u00a0%).",
+      "Ochrana marže pro jednotlivé kolekce je funkce Pro. Ve Free platí jedno minimum pro celý obchod: použili jsme to nejpřísnější z vašeho nastavení, max. sleva 20\u00a0% (bylo 50\u00a0%), min. marže 25\u00a0% (bylo 10\u00a0%).",
     ),
     cs.join("\n"),
   );

@@ -184,7 +184,7 @@ function Glyph({ name }: { name: SectionGlyphName }) {
 /**
  * State legible at rest (§11d). Green ONLY for "really running" — `on` for a
  * switch-like thing (the embed), `status` for a rule (model/rule-status.ts:
- * Běží / Naplánováno / Skončilo / Nepropsáno / Neběží / Vypnuto).
+ * Běží / Naplánováno / Skončilo / Nezapsáno / Neběží / Vypnuto).
  */
 export function StatusPill({ on, status }: { on?: boolean; status?: RuleStatus }) {
   const tr = useT();

@@ -40,11 +40,14 @@ export function CostsSection({
   coverage,
   mirror,
   maxDiscountPercent,
+  afterSavePercent = null,
 }: {
   coverage: CostCoverageView | null;
   mirror: CostMirrorView;
-  /** The typed ceiling for products without a cost (A2). */
+  /** The discount ceiling for products without a cost that runs now: the STORED one (A2). */
   maxDiscountPercent: number;
+  /** The ceiling typed in the form when it differs from the stored one: said as "po uložení" (null = the same). */
+  afterSavePercent?: number | null;
 }) {
   const tr = useT();
   const { t } = tr;
@@ -56,13 +59,18 @@ export function CostsSection({
         {coverage ? (
           <s-stack direction="block" gap="small-200">
             <s-text color="subdued">{t("margin.costs.coverage", { with: coverage.variantsWithCost, total: coverage.variants })}</s-text>
-            {missing > 0 ? <s-text>{t("margin.costs.cap", { percent: percentText(maxDiscountPercent, tr) })}</s-text> : null}
+            {missing > 0 ? (
+              <s-text>
+                {t("margin.costs.cap", { percent: percentText(maxDiscountPercent, tr) })}
+                {afterSavePercent !== null ? ` ${t("margin.afterSave", { percent: percentText(afterSavePercent, tr) })}` : ""}
+              </s-text>
+            ) : null}
           </s-stack>
         ) : null}
         {sample.length > 0 ? (
           <div style={{ marginTop: 12 }}>
-            {/* §3i: the list is capped (20 from the server) and collapsed on first paint; the summary names the count. */}
-            <WonBlock title={t("margin.costs.sample")} summary={sampleSummary(sample, missing, tr)} collapsible defaultOpen={false}>
+            {/* §3i: the list is capped (20 from the server). Open whenever there is a product to fix (P7): the fix links are the point. */}
+            <WonBlock title={t("margin.costs.sample")} summary={sampleSummary(sample, missing, tr)} collapsible defaultOpen>
               <div>
                 {sample.map((product) => {
                   const href = adminProductHref(product.productId);
@@ -99,7 +107,6 @@ export function CostsSection({
             <s-text type="strong">{t("margin.mirror.label")}</s-text>
             <RowNote tone={mirror.state === "failed" ? "attention" : undefined}>{mirrorText(mirror, tr)}</RowNote>
             {mirror.state === "failed" ? mirror.problems.map((problem, i) => <RowNote key={i}>{uiText(problem, tr)}</RowNote>) : null}
-            <RowNote>{t("margin.mirror.model")}</RowNote>
           </WonRow>
         </div>
       </div>

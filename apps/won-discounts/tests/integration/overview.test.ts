@@ -63,7 +63,7 @@ test("a saved config that never reached Shopify is synced by the Přehled load; 
   assert.ok(store.sync.shopMetafieldValue("function_config"), "the shop config was written");
   const html = text(await renderPage(createElement(OverviewScreen, props)));
   assert.match(html, /Synchronizováno 28\. 9\. 2026|Synchronizováno \d+\. \d+\. \d{4} \d{2}:\d{2}/);
-  assert.match(html, /1 sleva · 1 běží/);
+  assert.match(html, /1 sleva · 1 aktivní/);
   assert.doesNotMatch(html, /Synchronizovat znovu/);
 });
 
@@ -78,7 +78,8 @@ test("REL-1: a slow Shopify does not hold the page — 'synchronizace právě b�
   assert.equal(props.signals?.native.state, "loading");
   const html = text(await renderPage(createElement(OverviewScreen, props)));
   assert.match(html, /Synchronizace právě běží/);
-  assert.match(html, /Slevy v Shopify se ještě načítají/);
+  // P2: a detection that is still running has neither content nor an action — "Slevy mimo Won" is not rendered.
+  assert.doesNotMatch(html, /Slevy mimo Won|Slevy v Shopify se ještě načítají/);
 
   // The background resync finishes: the next load sees it (and does not resync again). Wait for
   // the work the loader started and for the config lock it holds — not for the SyncRun row,
@@ -104,7 +105,7 @@ test("a failed sync: the problem in words + 'Synchronizovat znovu'; the button r
   assert.match(html, /Synchronizace selhala/);
   assert.match(html, /Nové nastavení slev se do pokladny zatím nezapsalo, platí předchozí \(could not write the shop config/);
   assert.match(html, /Synchronizovat znovu/);
-  assert.match(html, /Nepropsáno/);
+  assert.match(html, /Nezapsáno/);
 
   // Still failing → an honest refusal with the problems.
   const again = await overviewAction(ctx, formOf([["intent", "resync"]]));
@@ -126,6 +127,8 @@ test("an unreadable stored config is never synced (it would delete every Won dis
   assert.deepEqual(props.signals?.sync, { state: "blocked", reason: "unreadable_config" });
   assert.equal(store.ops.filter((op) => op.startsWith("WonSync")).length, 0);
   assert.match(text(await renderPage(createElement(OverviewScreen, props))), /Uložené nastavení nejde přečíst/);
+  // P3: a blocked sync says where it is fixed (saving a discount replaces the unreadable config).
+  assert.match(await renderPage(createElement(OverviewScreen, props)), /<s-button href="\/app\/discounts" variant="secondary">Zobrazit slevy/);
   assert.deepEqual(await overviewAction(testCtx(db.prisma, shop, store), formOf([["intent", "resync"]])), {
     ok: false,
     reason: "unreadable_config",
@@ -159,6 +162,16 @@ test("native discounts: movable ones with what a move loses (planMove), BXGY wit
   assert.match(html, /LETO15/);
   assert.match(html, /Přesunout/);
   assert.match(html, /Střetává se s Won/);
+  // P3: the clash links to the Won discount's codes, the discount that cannot be moved to itself in Shopify admin.
+  assert.equal(native.conflicts?.[0]?.ruleId, "won-code");
+  const raw = await renderPage(createElement(OverviewScreen, props));
+  assert.match(raw, /href="\/app\/discounts\/won-code#codes"/);
+  assert.match(raw, new RegExp(`href="shopify://admin/discounts/${bxgy!.id.split("/").pop()}"`));
+  assert.equal(props.plan, "free", "the plan rides along for the Pro cards");
+  // B10: the store status counts only what the app checks (website + sync) — no "checkout not verified yet" row.
+  assert.doesNotMatch(html, /Slevy platí v pokladně.*Zatím neověřeno|přijde v další verzi|Konfigurace: verze/);
+  // B11: a read-only config disables Move (the server refuses it as well).
+  assert.match(await renderPage(createElement(OverviewScreen, { ...props, readOnly: true })), /command="--show" disabled="[^"]*">Přesunout/);
   assert.match(html, new RegExp(bxgy!.reason!.slice(0, 30).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
   // The shop's native codes (hash-collision check of rule saves) are at hand per shop, whatever language detected them.
@@ -173,6 +186,9 @@ test("native discounts: movable ones with what a move loses (planMove), BXGY wit
   // Onboarding step 2 shows the same list (one Move button for all).
   const onboarding = await onboardingPage(ctx, { ...PAGE, fresh: false });
   assert.equal(onboarding.native.state, "ok");
+  // B16: "Všechno je aktivní" comes from real rule statuses — the discount exists but was never written to Shopify here.
+  assert.equal(onboarding.rules, 1);
+  assert.equal(typeof onboarding.liveRules, "number");
   forgetDetection(shop);
   assert.equal(cachedNativeCodes(shop), undefined, "forgotten with the detection");
 });

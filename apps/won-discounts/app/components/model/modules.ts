@@ -1,30 +1,24 @@
-// The five modules + campaigns + appearance (docs/won-discounts/rozhodnuti.md,
-// Admin IA). MVP 1 ships Slevy a kódy, MVP 2 Ochrana marže, MVP 3 Množstevní
-// slevy and Vzhled, MVP 4 Odměny, MVP 5 Výprodej, MVP 6 Kampaně; a module not built yet would be visible — each has a real
-// page that says so and links onward (§13b: never a dead end). Every module
-// stays in the nav, built or not.
+// The modules of the admin (docs/won-discounts/rozhodnuti.md, Admin IA; plan
+// docs/won-discounts/plan-zmen-2026-10-06.md, Dávka 1). The Shopify sidebar has
+// five items after the home link (P1): Slevy · Ochrana marže · Vzhled · Přehledy ·
+// Nastavení. The discount pages (Slevy a kódy, Množstevní slevy, Odměny, Výprodej,
+// Kampaně) share one sidebar item and a sub-navigation on the page
+// (app/components/shell/SubNav.tsx). Tarif and Vyzkoušet košík live in Nastavení.
+// Every URL stays as it was.
 
 import type { OnboardingGoal } from "@won/core/discounts/config";
 
 import { t, type Locale, type MessageKey } from "../../i18n";
 
-/** Every module in the nav, in the default order. */
+/** Every module with its own page, in the default order. */
 export const ADMIN_MODULES = ["tiers", "rewards", "outlet", "margin", "campaigns", "appearance"] as const;
 export type AdminModule = (typeof ADMIN_MODULES)[number];
-
-/** Modules with their own screen (a static route, e.g. app.margin.tsx, wins over app.$module.tsx). */
-export const BUILT_MODULES = ["margin", "tiers", "rewards", "outlet", "campaigns", "appearance"] as const satisfies readonly AdminModule[];
-
-/** Modules that are visible but not built yet (app.$module.tsx → ComingSoonScreen). */
-// MVP 6: Kampaně shipped — nothing is "coming soon" any more (the machinery stays for a later module).
-export const UPCOMING_MODULES: readonly AdminModule[] = [];
-/** A module listed in UPCOMING_MODULES (none today; isUpcomingModule decides at runtime). */
-export type UpcomingModule = AdminModule;
 
 export interface ModuleMeta {
   key: AdminModule;
   title: MessageKey;
   nav: MessageKey;
+  /** The module in one sentence (the `soon.*` keys are older than the modules; the names stay, other screens read them). */
   body: MessageKey;
   pro: boolean;
 }
@@ -38,13 +32,6 @@ export const MODULE_META: Readonly<Record<AdminModule, ModuleMeta>> = {
   appearance: { key: "appearance", title: "module.appearance", nav: "nav.appearance", body: "soon.appearance", pro: false },
 };
 
-/** The not-yet-built modules' meta (ComingSoonScreen, Přehled "Další moduly"). */
-export const UPCOMING_MODULE_META: Readonly<Record<UpcomingModule, ModuleMeta>> = MODULE_META;
-
-export function isUpcomingModule(v: unknown): v is UpcomingModule {
-  return typeof v === "string" && (UPCOMING_MODULES as readonly string[]).includes(v);
-}
-
 /** Onboarding goals that name a module ("migrate" is about Shopify discounts, not a module). */
 const GOAL_MODULE: Partial<Record<OnboardingGoal, AdminModule>> = {
   rewards: "rewards",
@@ -54,9 +41,9 @@ const GOAL_MODULE: Partial<Record<OnboardingGoal, AdminModule>> = {
 };
 
 /**
- * Modules in the order the merchant asked for in onboarding step 1 ("Co chceš
- * řešit?"): picked modules first, in the order picked, then the rest in the
- * default order. Goals only ORDER — every module stays visible (Admin IA).
+ * Modules in the order the merchant asked for in onboarding step 1: picked
+ * modules first, in the order picked, then the rest in the default order.
+ * Goals only ORDER, every module stays.
  */
 export function orderedModules(goals: readonly OnboardingGoal[]): AdminModule[] {
   const first: AdminModule[] = [];
@@ -67,19 +54,50 @@ export function orderedModules(goals: readonly OnboardingGoal[]): AdminModule[] 
   return [...first, ...ADMIN_MODULES.filter((m) => !first.includes(m))];
 }
 
-/** The not-yet-built modules in goal order (Přehled "Další moduly"). */
-export function orderedUpcomingModules(goals: readonly OnboardingGoal[]): UpcomingModule[] {
-  return orderedModules(goals).filter(isUpcomingModule);
-}
-
-/** The admin nav after the home link: Slevy a kódy, Vyzkoušet košík, modules (goal order), Přehledy, Nastavení, Tarif last. */
-export function navItems(locale: Locale, goals: readonly OnboardingGoal[]): { to: string; label: string }[] {
+/** The Shopify sidebar after the home link: exactly five items (P1), no plan suffixes. */
+export function navItems(locale: Locale): { to: string; label: string }[] {
   return [
-    { to: "/app/discounts", label: t(locale, "nav.discounts") },
-    { to: "/app/try-cart", label: t(locale, "nav.tryCart") },
-    ...orderedModules(goals).map((key) => ({ to: `/app/${key}`, label: t(locale, MODULE_META[key].nav) })),
+    { to: "/app/discounts", label: t(locale, "nav.discountsGroup") },
+    { to: "/app/margin", label: t(locale, "nav.margin") },
+    { to: "/app/appearance", label: t(locale, "nav.appearance") },
     { to: "/app/analytics", label: t(locale, "nav.analytics") },
     { to: "/app/settings", label: t(locale, "nav.settings") },
-    { to: "/app/plan", label: t(locale, "nav.plan") },
   ];
+}
+
+// --- The sub-navigation of "Slevy" ---------------------------------------------------------------
+
+/** The pages under the sidebar item "Slevy". */
+export const DISCOUNT_PAGES = ["discounts", "tiers", "rewards", "outlet", "campaigns"] as const;
+export type DiscountPage = (typeof DISCOUNT_PAGES)[number];
+
+export interface SubNavItem<K extends string = string> {
+  key: K;
+  to: string;
+  label: string;
+  pro: boolean;
+}
+
+function isDiscountModule(module: AdminModule): module is Exclude<DiscountPage, "discounts"> {
+  return (DISCOUNT_PAGES as readonly string[]).includes(module);
+}
+
+/** Slevy a kódy first, then the four discount modules in the order of the onboarding goals. */
+export function discountPages(goals: readonly OnboardingGoal[]): DiscountPage[] {
+  return ["discounts", ...orderedModules(goals).filter(isDiscountModule)];
+}
+
+/** The sub-navigation's items: the label without a plan suffix, Pro said by a badge (`pro`). */
+export function discountSubNavItems(locale: Locale, goals: readonly OnboardingGoal[]): SubNavItem<DiscountPage>[] {
+  return discountPages(goals).map((key) =>
+    key === "discounts"
+      ? { key, to: "/app/discounts", label: t(locale, "nav.discounts"), pro: false }
+      : { key, to: `/app/${key}`, label: t(locale, MODULE_META[key].nav), pro: MODULE_META[key].pro },
+  );
+}
+
+/** The goals out of the `routes/app` layout loader's data (unknown shape: the dev harness has no layout loader). */
+export function goalsOfLayoutData(data: unknown): OnboardingGoal[] {
+  const goals = (data as { goals?: unknown } | null | undefined)?.goals;
+  return Array.isArray(goals) ? (goals.filter((g) => typeof g === "string") as OnboardingGoal[]) : [];
 }

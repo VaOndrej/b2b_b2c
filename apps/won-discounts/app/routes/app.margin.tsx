@@ -12,7 +12,8 @@ import {
   refreshCostsAction,
   saveMarginSettings,
 } from "../lib/integration/margin.server";
-import { MARGIN_FIELD, MARGIN_INTENT } from "../components/model/margin";
+import { MARGIN_FIELD, MARGIN_INTENT, MARGIN_SAVE_FIELDS } from "../components/model/margin";
+import { submittedOf, withValues } from "../components/model/submitted";
 import type { UiResult } from "../components/model/types";
 import { MarginScreen } from "../components/screens/MarginScreen";
 
@@ -46,14 +47,18 @@ export const action = async ({ request }: ActionFunctionArgs): Promise<UiResult>
   const intent = form.get(MARGIN_FIELD.intent);
   if (intent === MARGIN_INTENT.refreshCosts) return refreshCostsAction(ctx);
   if (intent !== MARGIN_INTENT.save) return { ok: false, reason: "bad_request" };
+  // B14: a refused save (a field error, a config changed meanwhile, …) gets back what the form posted, so the
+  // screen shows it again instead of the stored values.
+  const posted = () => submittedOf(form, MARGIN_SAVE_FIELDS);
   const parsed = readMarginForm(form);
-  if (!parsed.ok) return { ok: false, reason: "invalid", errors: parsed.errors };
-  return saveMarginSettings(ctx, parsed.settings, readMarginSaveOptions(form));
+  if (!parsed.ok) return { ok: false, reason: "invalid", errors: parsed.errors, values: posted() };
+  return withValues(await saveMarginSettings(ctx, parsed.settings, readMarginSaveOptions(form)), posted);
 };
 
 export default function Margin() {
   const loaded = useLoaderData<typeof loader>();
   const submitted = useActionData<typeof action>();
-  // Remount on a new stored version (after a save) so the form shows what is stored now.
+  // Remount on a new stored version (after a save) so the form shows what is stored now. A refused save does not
+  // change the version; when someone else's save does, the result's posted values seed the remounted form (B14).
   return <MarginScreen key={loaded.configVersion ?? "none"} {...loaded} result={submitted ?? null} />;
 }

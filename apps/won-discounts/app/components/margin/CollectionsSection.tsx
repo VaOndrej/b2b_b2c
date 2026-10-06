@@ -13,13 +13,15 @@
 // On Free the rows stay visible and removable (§14a: off ≠ erased — removing a
 // Pro setting the plan folds into a stricter global value is always allowed),
 // their values travel as hidden inputs so a save never drops them, and the
-// fields are disabled. With nothing stored, Free sees one sample row labelled
-// "Ukázka" (§16c: show the upside, never as the shop's data — §12).
+// fields are disabled. With nothing stored, Free sees the benefit sentence with
+// the plan link and the locked frame: no invented sample row (§12).
+// B14: a field's `error` attribute is never set (it resets a Polaris field that
+// holds typed text): the server's and the live messages sit under the row.
 
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
 
 import { useT } from "../../i18n/context";
-import { COLLECTION_READ_LIMIT, MARGIN_FIELD, MARGIN_PERCENT_STEP, percentInput } from "../model/margin";
+import { COLLECTION_READ_LIMIT, collectionsSummary, MARGIN_FIELD, MARGIN_PERCENT_STEP, percentInput } from "../model/margin";
 import type { GateNoteView, MarginCollectionView, MarginTooLargeView } from "../model/types";
 import { FieldGrid, FieldMessage } from "../rule-editor/parts";
 import { boolAttr } from "../shell/attrs";
@@ -27,23 +29,19 @@ import { GateNotes } from "../shell/GateNotes";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
-import { WON_AMBER_TEXT } from "../shell/tokens";
 
 function PercentFields({
   min,
   max,
   named,
   disabled,
-  minError,
-  maxError,
 }: {
-  min: number | null;
-  max: number | null;
+  /** The field's value as text: the stored percent, or exactly what a refused save posted. */
+  min: string;
+  max: string;
   /** Submit these fields (Pro); on Free the values go as hidden inputs instead. */
   named: boolean;
   disabled: boolean;
-  minError?: string;
-  maxError?: string;
 }) {
   const { t } = useT();
   return (
@@ -51,7 +49,7 @@ function PercentFields({
       <s-number-field
         name={named ? MARGIN_FIELD.collectionMin : undefined}
         label={t("margin.collections.min")}
-        value={percentInput(min)}
+        value={min}
         placeholder={t("margin.collections.inherit")}
         min={0}
         max={95}
@@ -59,12 +57,11 @@ function PercentFields({
         suffix="%"
         inputMode="decimal"
         disabled={boolAttr(disabled)}
-        error={minError}
       />
       <s-number-field
         name={named ? MARGIN_FIELD.collectionMax : undefined}
         label={t("margin.collections.max")}
-        value={percentInput(max)}
+        value={max}
         placeholder={t("margin.collections.inherit")}
         min={0}
         max={100}
@@ -72,7 +69,6 @@ function PercentFields({
         suffix="%"
         inputMode="decimal"
         disabled={boolAttr(disabled)}
-        error={maxError}
       />
     </FieldGrid>
   );
@@ -89,6 +85,7 @@ export function CollectionsSection({
   decimalErrorFor,
   error,
   tooLarge = [],
+  posted = null,
 }: {
   pro: boolean;
   collections: readonly MarginCollectionView[];
@@ -105,16 +102,20 @@ export function CollectionsSection({
   error?: string;
   /** Collections the last sync could not read (over the 10 000-product limit): said at their row (P1-1). */
   tooLarge?: readonly MarginTooLargeView[];
+  /** B14: the rows a refused save posted, as typed (a value the server refused is shown again, not dropped). */
+  posted?: { ids: readonly string[]; min: readonly string[]; max: readonly string[] } | null;
 }) {
   const tr = useT();
   const { t } = tr;
   const full = collections.length >= CONFIG_LIMITS.marginOverrides;
   const tooLargeOf = new Map(tooLarge.map((c) => [c.collectionId, c]));
-  // §17c: on Free one setting applies to the whole shop, whatever is stored.
-  const summary =
-    pro && collections.length > 0
-      ? t("margin.collections.some", { collections: tr.tp("count.collection", collections.length) })
-      : t("margin.collections.none");
+  const typed = (c: MarginCollectionView, which: "min" | "max"): string => {
+    const at = posted ? posted.ids.indexOf(c.collectionId) : -1;
+    const raw = at >= 0 ? posted![which][at] : undefined;
+    return raw ?? percentInput(which === "min" ? c.minMarginPercent : c.maxDiscountPercent);
+  };
+  // §17c: on Free one setting applies to the whole shop, whatever is stored. P4: the collections by name.
+  const summary = collectionsSummary(pro ? collections : [], tr);
   return (
     <WonSection
       title={t("margin.collections.title")}
@@ -123,7 +124,7 @@ export function CollectionsSection({
       locked={!pro}
       summary={summary}
       collapsible
-      defaultOpen={collections.length > 0 || gateNotes.length > 0 || !!error}
+      defaultOpen={pro || collections.length > 0 || gateNotes.length > 0 || !!error}
       anchor="collections"
     >
       <s-stack direction="block" gap="base">
@@ -157,17 +158,16 @@ export function CollectionsSection({
                         <RowNote tone="attention">
                           {tooLargeOf.get(c.collectionId)!.count === null
                             ? t("margin.collections.tooLargeUncounted", { limit: COLLECTION_READ_LIMIT })
-                            : t("margin.collections.tooLarge", { count: tooLargeOf.get(c.collectionId)!.count!, limit: COLLECTION_READ_LIMIT })}
+                            : t("margin.collections.tooLarge", { count: tooLargeOf.get(c.collectionId)!.count!, limit: COLLECTION_READ_LIMIT })}{" "}
+                          {t("margin.collections.tooLargeFix")}
                         </RowNote>
                       ) : null}
                     </div>
                     <PercentFields
-                      min={c.minMarginPercent}
-                      max={c.maxDiscountPercent}
+                      min={typed(c, "min")}
+                      max={typed(c, "max")}
                       named={pro}
                       disabled={!pro}
-                      minError={errorFor(`collectionMin[${i}]`)}
-                      maxError={errorFor(`collectionMax[${i}]`)}
                     />
                     <FieldMessage
                       text={
@@ -178,7 +178,8 @@ export function CollectionsSection({
                           ] as const
                         )
                           .map(([field, label]) => {
-                            const message = decimalErrorFor(field);
+                            // The live check first (it is about what is in the field now), else the server's refusal.
+                            const message = decimalErrorFor(field) ?? errorFor(field);
                             return message ? `${label}: ${message}` : null;
                           })
                           .filter((m): m is string => m !== null)
@@ -188,14 +189,6 @@ export function CollectionsSection({
                   </WonRow>
                 ))}
               </div>
-            ) : !pro ? (
-              <WonRow>
-                <div style={{ marginBottom: 8 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: WON_AMBER_TEXT }}>{t("margin.collections.sample")} · </span>
-                  <s-text type="strong">{t("margin.collections.sampleName")}</s-text>
-                </div>
-                <PercentFields min={30} max={20} named={false} disabled />
-              </WonRow>
             ) : null}
             <FieldMessage text={error} />
             <s-stack direction="block" gap="small-200">
@@ -203,7 +196,6 @@ export function CollectionsSection({
                 <s-button onClick={onPick} disabled={boolAttr(!pro || full)}>
                   {t("editor.pick.collections")}
                 </s-button>
-                {collections.length > 0 ? <s-text color="subdued">{tr.tp("count.collection", collections.length)}</s-text> : null}
               </s-stack>
               {full ? <RowNote>{t("margin.collections.limit", { max: CONFIG_LIMITS.marginOverrides })}</RowNote> : null}
               {pickUnavailable ? <s-text color="subdued">{t("editor.pick.unavailable")}</s-text> : null}

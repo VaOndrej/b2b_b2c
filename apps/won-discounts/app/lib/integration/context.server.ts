@@ -47,7 +47,7 @@ export function shopCtx(
   return {
     shop,
     db,
-    client: adminClientFromApp(admin),
+    client: adminClientFromApp(admin, shop),
     locale: opts.locale,
     apiKey: opts.apiKey ?? "",
     ...(typeof opts.scopes === "string" ? { scopes: opts.scopes } : {}),

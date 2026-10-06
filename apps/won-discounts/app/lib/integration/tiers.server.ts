@@ -22,11 +22,12 @@
 import type { DiscountRule, TierSet, WonDiscountsConfig } from "@won/core/discounts/config";
 import { explainGate, gateConfigForPlan, type ProCapability } from "@won/core/discounts/plan-gate";
 
-import { presetOf } from "../../components/model/appearance";
+import { presetOf, readAppearanceForm } from "../../components/model/appearance";
 import { currencyCodes, currencyViews } from "../../components/model/markets";
 import type { FormDataLike } from "../../components/model/rule-form";
 import { readTiersForm, tierPayloadUse, tierSetToConfig, tierSetView, TIERS_FIELD, TIERS_INTENT } from "../../components/model/tiers";
-import type { FieldError, GateNoteView, TierSetView, TiersOverviewView, TiersScreenData, UiResult } from "../../components/model/types";
+import type { AppearancePresetView, FieldError, GateNoteView, TierSetView, TiersOverviewView, TiersScreenData, UiResult } from "../../components/model/types";
+import { previewLookOf, withAppearancePreset } from "./appearance.server";
 import { loadConfig, type LoadedConfig } from "../config.server";
 import { MAX_COLLECTION_PRODUCTS } from "../sync/products";
 import { tierProductCounts } from "../sync/storefront";
@@ -160,7 +161,7 @@ export async function loadTiersScreen(ctx: ShopCtx, opts: { scopes: string; fres
     ...tiersScreenFacts(stored, { plan, locale: ctx.locale, titles, syncable }),
     block: look.block,
     storefront,
-    preview: { tokens: look.tokens, preset: presetOf(stored.storefront.appearancePreset), product },
+    preview: { tokens: look.tokens, preset: presetOf(stored.storefront.appearancePreset), product, look: previewLookOf(stored, plan) },
     productsWithSets: counts,
     outletWithAnything: stored.engine.combination.outletWithAnything === true,
   };
@@ -181,19 +182,28 @@ export function nextTierSets(sets: readonly TierSetView[], keep?: ReadonlyMap<st
     .map((s) => keep?.get(s.id) ?? tierSetToConfig(s));
 }
 
-/** Save the page's sets (nextTierSets) like every admin change (saveConfigSection: lock, F12 on the tiers only, saveAndSync). */
+/**
+ * Save the page's sets (nextTierSets) like every admin change (saveConfigSection: lock, F12, saveAndSync).
+ * `preset` = the look picked in the page's preview (already validated): written to
+ * config.storefront.appearancePreset, the one field Vzhled writes too — then F12 covers the look as well (a look
+ * changed in another tab meanwhile → base_changed). Without it the look is not touched and F12 is on the tiers only.
+ */
 export function saveTiers(
   ctx: ShopCtx,
   sets: readonly TierSetView[],
-  opts: SaveOptions & { keep?: ReadonlyMap<string, TierSet> },
+  opts: SaveOptions & { keep?: ReadonlyMap<string, TierSet>; preset?: AppearancePresetView },
 ): Promise<UiResult> {
   const next = nextTierSets(sets, opts.keep);
+  const preset = opts.preset;
   return saveConfigSection(ctx, {
     configVersion: opts.configVersion,
     ...(opts.replaceUnreadable !== undefined ? { replaceUnreadable: opts.replaceUnreadable } : {}),
     path: "modules.tiers",
-    pick: (config) => config.modules.tiers,
-    apply: (config) => ({ ...config, modules: { ...config.modules, tiers: { ...config.modules.tiers, sets: next } } }),
+    pick: (config) => (preset === undefined ? config.modules.tiers : { tiers: config.modules.tiers, preset: presetOf(config.storefront.appearancePreset) }),
+    apply: (config) => {
+      const withTiers = { ...config, modules: { ...config.modules, tiers: { ...config.modules.tiers, sets: next } } };
+      return preset === undefined ? withTiers : withAppearancePreset(withTiers, preset);
+    },
   });
 }
 
@@ -289,6 +299,13 @@ export async function tiersAction(ctx: ShopCtx, form: FormDataLike): Promise<UiR
     },
   });
   if (parsed.errors.length > 0) return { ok: false, reason: "invalid", errors: parsed.errors };
+  // The look picked in the preview: the same parser as Vzhled (one of the four, SEC-1); a form without the field leaves it.
+  let preset: AppearancePresetView | undefined;
+  if (form.get(TIERS_FIELD.preset) !== null) {
+    const look = readAppearanceForm(form);
+    if (!look.ok) return { ok: false, reason: "invalid", errors: look.errors };
+    preset = look.preset;
+  }
   const sizeErrors = await collectionSizeErrors(
     ctx,
     parsed.sets.filter((s) => !parsed.kept.includes(s.id)),
@@ -299,7 +316,7 @@ export async function tiersAction(ctx: ShopCtx, form: FormDataLike): Promise<UiR
   // The checkout's room for tiers (CONFIG_LIMITS.tierPayloadBytes, audit): refused with what to do, never "bytes".
   const use = tierPayloadUse(nextTierSets(parsed.sets, keep));
   if (!use.fits) return { ok: false, reason: "invalid", errors: [{ field: TIERS_FIELD.set, key: "tiers.error.tooLarge", params: { percent: use.percent } }] };
-  return saveTiers(ctx, parsed.sets, { ...readSaveOptions(form), keep });
+  return saveTiers(ctx, parsed.sets, { ...readSaveOptions(form), keep, ...(preset !== undefined ? { preset } : {}) });
 }
 
 // --- Přehled --------------------------------------------------------------------------------------------------------
@@ -311,7 +328,14 @@ export async function loadTiersOverview(
   opts: { scopes: string },
 ): Promise<TiersOverviewView> {
   const [plan, look] = await Promise.all([ctxPlan(ctx), readThemeLook(ctx, { scopes: opts.scopes })]);
-  return tiersOverviewOf(loaded.config, plan, look.block);
+  const view = tiersOverviewOf(loaded.config, plan, look.block);
+  // P4: what the own sets are for, by name.
+  const own = gateConfigForPlan(loaded.config, plan).config.modules.tiers.sets.filter((s) => s.breaks.length > 0 && s.scope !== "global");
+  const ids = own.flatMap((s) => (s.scope === "global" ? [] : [...(s.scope.productIds ?? []), ...(s.scope.collectionIds ?? [])]));
+  if (ids.length === 0) return view;
+  const titles = await tierTitles(ctx, ids);
+  const setNames = [...new Set(ids.map((id) => titles.get(id)).filter((title): title is string => !!title))];
+  return setNames.length > 0 ? { ...view, setNames } : view;
 }
 
 /** The Přehled card from the stored config on this plan (pure; the harness uses it too). */

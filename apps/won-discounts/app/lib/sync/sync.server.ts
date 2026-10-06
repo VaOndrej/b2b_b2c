@@ -762,7 +762,7 @@ async function syncSteps({ deps, transport, shop, config: stored, configVersionI
   // 4b. The storefront config (MVP 3, K5) from the SAME gated config as the payload, behind it; never fatal.
   // K4 v2: its margin key from the same gated margin and the same shop currency string as the pdp keys (cost lane).
   // MVP 6.1: the campaign's tier sets only behind the shop config that runs them, a minute after its start.
-  await writeStorefrontConfig({ deps, transport, shop, config: payloadConfig, stored, configVersionId, shopCurrency: isoCurrency(shopCurrency), campaignId: shownCampaign, record });
+  await writeStorefrontConfig({ deps, transport, shop, config: payloadConfig, stored, configVersionId, shopCurrency: isoCurrency(shopCurrency), shopTimezone, campaignId: shownCampaign, record });
   // The pdp floor (MVP 3): did the margin the shop config ships change (also when the product plan did not finish)?
   const nextMargin = liveMarginOf(payload.json);
   const marginChanged = nextMargin.enabled && (shopState.functionConfig === null || canonicalJson(liveMarginOf(shopState.functionConfig)) !== canonicalJson(nextMargin));

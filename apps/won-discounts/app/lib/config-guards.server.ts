@@ -4,7 +4,8 @@
 // explains the limit, never silently drops a rule).
 
 import type { ConfigIssue, DiscountRule, ReadonlyDeep, WonDiscountsConfig } from "@won/core/discounts/config";
-import { findCodeHashCollisions } from "@won/core/discounts/function-payload";
+import { ruleHasCodes } from "@won/core/discounts/code-batch";
+import { findCodeBatchConflicts, findCodeHashCollisions } from "@won/core/discounts/function-payload";
 
 /**
  * Most ACTIVE code rules a shop may have (C2 fallback, spec §3 "Admin limit").
@@ -58,8 +59,9 @@ function earliestLocalNow(now: Date): string {
   return new Date(now.getTime() - 12 * 3600_000).toISOString().slice(0, 19);
 }
 
+/** Hand-typed codes or a generated batch: either makes the rule a code discount in Shopify. */
 function hasCodes(rule: RuleView): boolean {
-  return Array.isArray(rule.codes) && rule.codes.length > 0;
+  return ruleHasCodes(rule);
 }
 
 /** The rule's own schedule already ended (M6): its node would be created already expired. */
@@ -150,6 +152,22 @@ export type CodeHashCollisionCheck =
  */
 export function checkCodeHashCollisions(config: ConfigView, otherCodes: readonly string[] = []): CodeHashCollisionCheck {
   const found = findCodeHashCollisions(config, otherCodes);
+  // A hand-typed (or native) code that a generated batch's check would accept: the same refusal.
+  const batchHits = findCodeBatchConflicts(config as Parameters<typeof findCodeBatchConflicts>[0], otherCodes);
+  if (found.length === 0 && batchHits.length > 0) {
+    const where = (ruleId: string | null) => (ruleId === null ? "another discount on the store" : `rule ${ruleId}`);
+    return {
+      ok: false,
+      collisions: batchHits.map((hit) => [hit.code]),
+      issue: {
+        path: "modules.codes.rules",
+        code: "code_hash_collision",
+        message:
+          `These codes would be taken for generated codes of another discount: ${batchHits.map((hit) => `${hit.code} (${where(hit.ruleId)}, generated codes of rule ${hit.batchRuleId})`).join("; ")}. ` +
+          "Change the code, or delete the generated batch and generate a new one.",
+      },
+    };
+  }
   if (found.length === 0) return { ok: true };
   const collisions = found.map((c) => c.codes.map((x) => x.code));
   const describe = (c: (typeof found)[number]) =>

@@ -7,7 +7,9 @@ import type { NormalizedLine, PlanLocale } from "./cart.ts";
 import type { DiscountMethod } from "./config.ts";
 import { type DescribableRule, describeRule } from "./describe.ts";
 import type { MarginBasis, MarginSettings } from "./margin.ts";
-import type { DiscountClass, EmittedValue, PlanLineMarginCap, PlanModule, PlanStack, RuleOutcome, RuleState } from "./plan.ts";
+import type { ReadCodeBatch } from "./code-batch.ts";
+import type { DiscountClass, EmittedValue, ItemMinimumOutcome, PlanLineMarginCap, PlanModule, PlanStack, RuleOutcome, RuleState } from "./plan.ts";
+import type { LineItemRef } from "./targeting.ts";
 
 export type ValueKind = "percentage" | "fixed" | "freeShipping";
 
@@ -25,6 +27,8 @@ export interface Rule {
   fixed: number | null;
   priority: number;
   codeHashes: string[];
+  /** Code rules: the generated batches the payload carries (code-batch.ts readCodeBatch; an unreadable one is left out). */
+  codeBatches: ReadCodeBatch[];
   minSubtotal: number | null;
   minSubtotalMissing: boolean;
   minQuantity: number;
@@ -43,6 +47,10 @@ export interface Rule {
   // evaluation
   state: RuleState | null; // null = eligible so far
   missing?: RuleOutcome["missing"];
+  /** Per-item minimum: what the common quantity minimum lacks (0 = reached), kept by the gate for the item stage. */
+  commonQuantityMissing?: number;
+  /** Per-item minimum: the rule's item groups in this cart (plan.ts applyItemMinimums). */
+  items?: ItemMinimumOutcome[];
   hadCandidate: boolean;
   lostTo: string[];
   dropped: boolean;
@@ -67,6 +75,10 @@ export interface WorkLine {
   line: NormalizedLine;
   excluded: "outlet" | "gift" | null;
   ruleSet: Set<string>;
+  /** Rules the line lists by a plain ref (targeting.ts lineTargeting): their common minimum decides for it. */
+  plain: Set<string>;
+  /** The line's item refs (per-item minimum); [] for nearly every line. */
+  items: LineItemRef[];
   product: PlanStack | null;
   /** Margin on: the floor of a discountable line; null when margin is off or the line is excluded. */
   floor: LineFloor | null;

@@ -19,10 +19,12 @@ export default function App() {
   return (
     <AppProvider embedded apiKey={apiKey}>
       {/* Unified Won navigation. Add this app's feature pages here in order;
-          Overview (home) is always first and Plan is conventionally last. */}
+          Overview (home) is always first, at most 5 items follow it, Settings
+          is last. The plan is not a menu item: it lives in Settings. Related
+          pages share one item and a sub-navigation on the page. */}
       <WonNavMenu
         items={[
-          // { to: "/app/plan", label: "Plan" },
+          // { to: "/app/settings", label: "Settings" },
         ]}
       />
       <Outlet />

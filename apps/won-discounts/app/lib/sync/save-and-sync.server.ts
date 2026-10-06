@@ -392,7 +392,7 @@ export async function saveAndSyncFromAdmin(
   options: FromAdminOptions & { otherCodes?: readonly string[]; replaceUnreadable?: boolean; expectedVersion?: string | null } = {},
 ): Promise<SaveAndSyncResult> {
   return saveAndSync({
-    client: adminClientFromApp(admin),
+    client: adminClientFromApp(admin, shop),
     db: await appDb(options),
     shop,
     input,
@@ -404,7 +404,7 @@ export async function saveAndSyncFromAdmin(
 }
 
 export async function resyncShopFromAdmin(admin: AppAdminGraphql, shop: string, options: FromAdminOptions = {}): Promise<ResyncResult> {
-  return resyncShop({ client: adminClientFromApp(admin), db: await appDb(options), shop, createSync: options.createSync });
+  return resyncShop({ client: adminClientFromApp(admin, shop), db: await appDb(options), shop, createSync: options.createSync });
 }
 
 export async function resyncIfPendingFromAdmin(
@@ -412,5 +412,5 @@ export async function resyncIfPendingFromAdmin(
   shop: string,
   options: FromAdminOptions = {},
 ): Promise<ResyncIfPendingResult> {
-  return resyncIfPending({ client: adminClientFromApp(admin), db: await appDb(options), shop, createSync: options.createSync });
+  return resyncIfPending({ client: adminClientFromApp(admin, shop), db: await appDb(options), shop, createSync: options.createSync });
 }

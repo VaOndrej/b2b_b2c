@@ -29,7 +29,8 @@ export const DEFAULT_CONFIG: ReadonlyDeep<WonDiscountsConfig> = deepFreeze<WonDi
     margin: { enabled: false, global: { maxDiscountPercent: 50 }, perCollection: [] },
   },
   campaigns: [],
-  storefront: { appearancePreset: "default", cardPricesEnabled: false },
+  // A new shop starts with the highlighted look (plan 2026-10-06, dávka 5); a stored value is never changed by this.
+  storefront: { appearancePreset: "highlight", cardPricesEnabled: false },
   locales: { cs: {}, sk: {}, en: {} },
   onboarding: { goals: [], step: 1 },
 });

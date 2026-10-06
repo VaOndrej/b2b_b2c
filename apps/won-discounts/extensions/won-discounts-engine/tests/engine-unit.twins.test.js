@@ -1269,6 +1269,74 @@ const TWINS = {
     expect(read([["a"]])).toBeNull();
     expect(read(null)).toBeNull();
   },
+
+  per_item_minimums_judge_each_item_on_its_own() {
+    const lines = [
+      line("a1", 2, 10000, ["r#1:3"]),
+      line("a2", 1, 10000, ["r#1:3"]),
+      line("b1", 1, 10000, ["r#2:4"]),
+      line("c1", 2, 10000, ["r"]),
+      line("x", 5, 10000, []),
+    ];
+    let plan = planCart(cart(lines), cfg([pct("r", 10)]));
+    expect(productOf(plan, "a1")).toEqual(["r", { percent: 10 }, 2000]);
+    expect(productOf(plan, "a2")).toEqual(["r", { percent: 10 }, 1000]);
+    expect(productOf(plan, "b1")).toBeNull();
+    expect(productOf(plan, "c1")).toEqual(["r", { percent: 10 }, 2000]);
+    expect(gated(plan, "r")).toBeNull();
+    plan = planCart(cart(lines), cfg([pct("r", 10, { minimum: { quantity: 12 } })]));
+    expect(productOf(plan, "a1")[2]).toBe(2000);
+    expect(productOf(plan, "c1")).toBeNull();
+    expect(gated(plan, "r")).toBeNull();
+    expect(productOf(planCart(cart(lines), cfg([pct("r", 10, { minimum: { quantity: 6, scope: "entitled" } })])), "c1")[2]).toBe(2000);
+    plan = planCart(cart(lines), cfg([pct("r", 10, { minimum: { subtotal: { CZK: 200000 } } })]));
+    expect(gated(plan, "r")).toBe("below_minimum");
+    expect(productOf(plan, "a1")).toBeNull();
+    const short = [line("a1", 2, 10000, ["r#1:3"]), line("c1", 1, 10000, ["r"])];
+    expect(gated(planCart(cart(short), cfg([pct("r", 10, { minimum: { quantity: 5 } })])), "r")).toBe("below_minimum");
+  },
+
+  a_product_in_two_collections_qualifies_through_any_of_them() {
+    const c = cfg([pct("r", 10), pct("o", 10, { target: { kind: "order" }, minimum: { quantity: 99 } })]);
+    const both = ["r#1:5", "r#2:2"];
+    const lines = [
+      line("p1", 1, 10000, both),
+      line("p2", 1, 10000, ["r#2:2"]),
+      line("p3", 3, 10000, ["r#1:5"]),
+      line("p4", 1, 10000, ["r", "r#1:5"]),
+      line("g", 9, 10000, ["r#1:5"], { giftTierId: "g" }),
+      line("o1", 1, 10000, ["r#1:5"], { outlet: true }),
+    ];
+    let plan = planCart(cart(lines), c);
+    expect(["p1", "p2", "p3", "p4", "g", "o1"].map((id) => productOf(plan, id)?.[2] ?? null)).toEqual([1000, 1000, 3000, 1000, null, null]);
+    plan = planCart(cart([line("p1", 1, 10000, both), line("p2", 1, 10000, ["r#2:2"]), line("p3", 3, 10000, ["r#1:5"])]), c);
+    expect(productOf(plan, "p1")[2]).toBe(1000);
+    expect(productOf(plan, "p3")).toBeNull();
+    plan = planCart(cart([line("l", 1, 10000, ["r#", "r#1", "r#1:0", "r#1:x", "r#1:1234567", "o#1:1"])]), c);
+    expect(gated(plan, "r")).toBe("no_target_lines");
+    expect(gated(plan, "o")).toBe("below_minimum");
+  },
+
+  a_generated_batch_code_enters_its_rule_a_made_up_one_does_not() {
+    const key = "fMMWc55qaEgjTq67";
+    const hashes = [[key, "BF-"], 7, `${key}0=0bf-`, `${key}0=0BF-`];
+    const c = cfg([pct("k", 10, { method: "code", codeHashes: hashes }), pct("a", 5)]);
+    const lines = [line("l", 1, 100000, ["k", "a"])];
+    const plan = planCart(cart(lines, ["  bf-kzg8e2navt\n"]), c);
+    expect(productOf(plan, "l").filter((_, i) => i !== 1)).toEqual(["k", 10000]);
+    const node = { kind: "code", ruleId: "k" };
+    expect(lineIds(emitForNode(plan, node, "BF-KZG8E2NAVT"))).toEqual(["l"]);
+    expect(emitForNode(plan, node, "BF-EHG852G9N8").productCandidates).toEqual([]);
+    expect(plan.rules.find((r) => r.ruleId === "k").enteredCodes).toEqual(["BF-KZG8E2NAVT"]);
+    for (const fake of ["BF-ANYTHING12", "BF-KZG8E2NAVU", "BF-KZG8E2NAV", "BF-KZG8E2NAVT2", "ＢF-KZG8E2NAVT", "BF-KZG8E2NAV\u017f"]) {
+      const p = planCart(cart(lines, [fake]), c);
+      expect(gated(p, "k"), fake).toBe("code_not_entered");
+      expect(productOf(p, "l").filter((_, i) => i !== 1), fake).toEqual(["a", 5000]);
+    }
+    const typed = cfg([pct("k", 10, { method: "code", codeHashes: [...hashes, ...W] })]);
+    expect(gated(planCart(cart(lines, ["welcome15"]), typed), "k")).toBeNull();
+    expect(gated(planCart(cart(lines, ["BF-RPH79S627G"]), typed), "k")).toBeNull();
+  },
 };
 
 /** `#[test] fn name()` in a Rust source file. */

@@ -8,35 +8,33 @@
 // only its largest losses; the rule editor's number is the same. While the
 // numbers are being (re)computed the section says so and shows the last ones.
 // BILL-1: on Free the server sends no data (`impact` null); Free sees the
-// amber frame with a sample labelled "Ukázka" (§16c), never the shop's rows.
+// amber section with one sentence of what it is for and the plan link — no
+// invented sample rows (§12). The numbers come from the SAVED settings: while
+// the form differs from them the section says so (`unsaved`), and its on / off
+// wording follows the live switch.
 // The rule editor deep-links to one rule (`?rule=<id>#impact`, §13c) — the
 // server narrows the view to it, so it is never empty for a rule outside the
 // largest losses.
 
 import { formatMoney } from "@won/core/discounts/describe";
-import { currencyExponent } from "@won/core/discounts/money";
 
 import { useT } from "../../i18n/context";
-import type { Translator } from "../../i18n";
 import { impactReason, impactRuleSummary, impactSummary, marginImpactHref } from "../model/margin";
 import type { MarginImpactRowView, MarginImpactRuleView, MarginImpactView } from "../model/types";
-import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
 import { RowNote, WonBlock, WonRow, WonSection } from "../shell/WonSection";
-import { WON_AMBER_TEXT } from "../shell/tokens";
 
 /** Rows shown per rule before "a další" (§3i: never an endless list). */
 const ROWS_PER_RULE = 5;
 
 export { impactSummary };
 
-function ImpactRow({ row, currency, sample = false }: { row: MarginImpactRowView; currency: string; sample?: boolean }) {
+function ImpactRow({ row, currency }: { row: MarginImpactRowView; currency: string }) {
   const tr = useT();
   const { t } = tr;
   const money = (minor: number) => formatMoney(minor, currency, tr.locale);
   return (
     <WonRow>
-      {sample ? <span style={{ fontSize: 12, fontWeight: 700, color: WON_AMBER_TEXT }}>{t("margin.impact.sample")} · </span> : null}
       <s-text type="strong">{row.title.trim() || t("margin.impact.untitledProduct")}</s-text>
       <RowNote>
         {t("margin.impact.change", { wanted: money(row.wanted), allowed: money(row.allowed) })} · {impactReason(row, tr)}
@@ -90,31 +88,18 @@ function RuleGroup({ rule, currency, focused }: { rule: MarginImpactRuleView; cu
   );
 }
 
-/** The Free preview: two sample rows in the shop currency, labelled "Ukázka" (never the shop's data). */
-function samplePreview(currency: string, tr: Translator): MarginImpactRowView[] {
-  const scale = 10 ** currencyExponent(currency);
-  return [
-    { productId: "sample", variantId: "sample-1", title: tr.t("margin.impact.sampleProduct"), wanted: 387 * scale, allowed: 290 * scale, basis: "cost", source: "global" },
-    {
-      productId: "sample-2",
-      variantId: "sample-2",
-      title: tr.t("margin.collections.sampleName"),
-      wanted: 150 * scale,
-      allowed: 100 * scale,
-      basis: "max_percent",
-      source: "collection",
-    },
-  ];
-}
-
 export function ImpactSection({
   pro,
   enabled,
+  unsaved = false,
   impact,
   currency,
 }: {
   pro: boolean;
+  /** The switch as it is in the form now (the section's on / off wording follows it). */
   enabled: boolean;
+  /** The form differs from what is saved: the numbers are the saved state's, and say so. */
+  unsaved?: boolean;
   /** Null on Free (BILL-1) and when nothing could be computed yet. Narrowed to one rule on the server (`impact.focus`). */
   impact: MarginImpactView | null;
   currency: string;
@@ -137,20 +122,16 @@ export function ImpactSection({
     >
       <s-stack direction="block" gap="base">
         {!pro ? (
-          <>
-            <ProSell benefit={t("margin.impact.benefit")} />
-            <ProFrame locked>
-              <div>
-                {samplePreview(currency, tr).map((row) => (
-                  <ImpactRow key={row.variantId} row={row} currency={currency} sample />
-                ))}
-              </div>
-            </ProFrame>
-          </>
+          <ProSell benefit={t("margin.impact.benefit")} />
         ) : !impact ? (
-          <s-text color="subdued">{t("margin.impact.model", { currency })}</s-text>
+          // Nothing computed yet: what it waits for and where that is, not an explanation of absent numbers.
+          <s-text color="subdued">
+            {t(enabled ? "margin.impact.waiting" : "margin.impact.unknown")}.{" "}
+            <s-link href={enabled ? "#costs" : "#settings"}>{t(enabled ? "margin.costs.link" : "margin.impact.enableLink")}</s-link>
+          </s-text>
         ) : (
           <>
+            {unsaved ? <s-text type="strong">{t("margin.impact.saved")}</s-text> : null}
             {focus ? (
               <s-stack direction="inline" gap="base" alignItems="center">
                 <s-text>{t("margin.impact.filtered", { rule: focus.ruleName.trim() || t("common.untitled") })}</s-text>
@@ -176,7 +157,7 @@ export function ImpactSection({
             {impact.withoutCost > 0 && !focus ? (
               <s-text color="subdued">{t("margin.impact.withoutCost", { variants: tr.tp("count.variant", impact.withoutCost) })}</s-text>
             ) : null}
-            <s-text color="subdued">{t("margin.impact.model", { currency })}</s-text>
+            {impact.rules.length > 0 ? <s-text color="subdued">{t("margin.impact.model", { currency })}</s-text> : null}
           </>
         )}
       </s-stack>

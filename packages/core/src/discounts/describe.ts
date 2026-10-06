@@ -79,6 +79,8 @@ export function enPlural(n: number, one: string, many: string): string {
 export interface DescribableRule {
   method: DiscountMethod;
   codes?: readonly string[];
+  /** Generated code batches (code-batch.ts): only what a description needs. */
+  codeBatches?: readonly { readonly count: number; readonly removed?: readonly number[] }[];
   value: DiscountRuleValue;
   target: { readonly kind: DiscountTargetKind };
   minimum?: { readonly subtotal?: MoneyByCurrency; readonly quantity?: number; readonly scope?: MinimumScope };
@@ -205,7 +207,11 @@ function describeMethod(rule: DescribableRule, locale: UiLocale, codesKnown: boo
   const cs = locale === "cs";
   if (rule.method === "automatic") return cs ? "automaticky" : "automatic";
   const codes = rule.codes ?? [];
+  // Generated batches (plan 2026-10-06 dávka 4): counted, never listed.
+  let generated = 0;
+  for (const batch of rule.codeBatches ?? []) generated += Math.max(0, batch.count - (batch.removed?.length ?? 0));
   if (codes.length === 0) {
+    if (generated > 0) return describeGeneratedCodes(generated, locale);
     if (codesKnown) return cs ? "kódem, zatím bez kódu" : "by code, no code yet";
     return cs ? "kódem" : "by code";
   }
@@ -213,7 +219,64 @@ function describeMethod(rule: DescribableRule, locale: UiLocale, codesKnown: boo
   const more = codes.length - MAX_CODES_SHOWN;
   const tail = more > 0 ? (cs ? ` a ${more} další` : ` and ${more} more`) : "";
   const label = codes.length === 1 ? (cs ? "kód" : "code") : cs ? "kódy" : "codes";
-  return `${label} ${shown}${tail}`;
+  const batches = generated > 0 ? ` + ${describeGeneratedCodes(generated, locale)}` : "";
+  return `${label} ${shown}${tail}${batches}`;
+}
+
+/** "1 vygenerovaný kód" · "3 vygenerované kódy" · "100 vygenerovaných kódů" / "100 generated codes". */
+export function describeGeneratedCodes(count: number, locale: UiLocale): string {
+  if (locale === "cs") return `${count} ${csPlural(count, ["vygenerovaný kód", "vygenerované kódy", "vygenerovaných kódů"])}`;
+  return `${count} generated ${enPlural(count, "code", "codes")}`;
+}
+
+// --- Per-item minimum quantity (plan 2026-10-06 bod 8) ---------------------------------------------
+
+/** What an item with its own minimum is: a selected product, or a selected collection. */
+export type ItemMinimumKind = "products" | "collections";
+
+const ITEM_NOUN = {
+  products: { cs: "Produkt", en: "Product" },
+  collections: { cs: "Kolekce", en: "Collection" },
+} as const;
+
+/** "Produkt Tričko" / "Kolekce Léto" — or just "Produkt" when the caller has no name for it. */
+function itemLabel(kind: ItemMinimumKind, name: string | undefined, locale: UiLocale): string {
+  const noun = ITEM_NOUN[kind][locale === "cs" ? "cs" : "en"];
+  return name ? `${noun} ${name}` : noun;
+}
+
+/**
+ * One item's own minimum, for the admin summary: "Produkt Tričko od 3 ks" /
+ * "Product Tričko from 3 items". Without a name: "Produkt od 3 ks".
+ */
+export function describeItemMinimum(item: { kind: ItemMinimumKind; minimum: number; name?: string }, locale: UiLocale): string {
+  const label = itemLabel(item.kind, item.name, locale);
+  return locale === "cs" ? `${label} od ${item.minimum} ks` : `${label} from ${item.minimum} ${enPlural(item.minimum, "item", "items")}`;
+}
+
+/**
+ * How many selected items have their own minimum, as one part of a rule's
+ * summary: "vlastní minimum u 2 produktů" / "own minimum for 2 products";
+ * null when none has.
+ */
+export function describeItemMinimumsSummary(kind: ItemMinimumKind, count: number, locale: UiLocale): string | null {
+  if (count <= 0) return null;
+  if (locale === "cs") {
+    const noun = kind === "products" ? csPlural(count, ["produktu", "produktů", "produktů"]) : csPlural(count, ["kolekce", "kolekcí", "kolekcí"]);
+    return `vlastní minimum u ${count} ${noun}`;
+  }
+  return `own minimum for ${count} ${kind === "products" ? enPlural(count, "product", "products") : enPlural(count, "collection", "collections")}`;
+}
+
+/**
+ * Why an item's lines do not get the discount yet (explain.ts says it for a
+ * cart): "Produkt B: v košíku 1 ks, sleva platí od 4 ks." / "Product B: 1 item
+ * in the cart, the discount applies from 4 items."
+ */
+export function describeItemMinimumGap(item: { kind: ItemMinimumKind; minimum: number; count: number; name?: string }, locale: UiLocale): string {
+  const label = itemLabel(item.kind, item.name, locale);
+  if (locale === "cs") return `${label}: v košíku ${item.count} ks, sleva platí od ${item.minimum} ks.`;
+  return `${label}: ${item.count} ${enPlural(item.count, "item", "items")} in the cart, the discount applies from ${item.minimum} ${enPlural(item.minimum, "item", "items")}.`;
 }
 
 /**

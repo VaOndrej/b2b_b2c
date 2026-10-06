@@ -25,13 +25,13 @@ test("failed steps → sentences that name the rule and keep the detail", () => 
 
   assert.equal(
     say({ step: "node.create:code:vip", ok: false, detail: '"VIP10": could not create "VIP10": Code must be unique.' }),
-    'Kód slevy „VIP10“ už v Shopify používá jiná sleva. Změň kód, nebo tu slevu přesuň do Won ("VIP10": could not create "VIP10": Code must be unique.).',
+    'Kód slevy „VIP10“ už v Shopify používá jiná sleva. Změňte kód, nebo tu slevu přesuň do Won ("VIP10": could not create "VIP10": Code must be unique.).',
   );
   assert.equal(
     say({ step: "codes:code:vip", ok: false, detail: "code bulk add job 1 still running" }, "en"),
     "Shopify is still importing the codes of “VIP10”. The next sync checks them.",
   );
-  assert.match(say({ step: "node.update:auto", ok: false, detail: "Throttled" }), /^Automatické slevy se do Shopify nepropsaly \(Throttled\)\.$/);
+  assert.match(say({ step: "node.update:auto", ok: false, detail: "Throttled" }), /^Automatické slevy se do Shopify nezapsaly \(Throttled\)\.$/);
   assert.match(say({ step: "shop_config.write", ok: false, detail: "held: some products could not be cleared" }), /platí předchozí/);
   assert.match(
     say({ step: "shop_config.write", ok: false, detail: "campaign switch held at 'no campaign'" }),
@@ -39,7 +39,7 @@ test("failed steps → sentences that name the rule and keep the detail", () => 
   );
   assert.match(say({ step: "shop_config.rollback", ok: false, detail: "no valid previous config to restore" }), /Won slevy do další úspěšné synchronizace neplatí/);
   assert.match(say({ step: "products.set", ok: false, detail: "1/2 product(s) updated" }), /Cílení na produkty/);
-  assert.match(say({ step: "node.create:code:gone", ok: false, detail: "x" }), /Sleva „gone“ se do Shopify nepropsala/, "an unknown rule is named by its id");
+  assert.match(say({ step: "node.create:code:gone", ok: false, detail: "x" }), /Sleva „gone“ se do Shopify nezapsala/, "an unknown rule is named by its id");
   assert.match(say({ step: "something.new", ok: false, detail: "y".repeat(400) }), /…\)\.$/, "long details are shortened");
 });
 
@@ -80,7 +80,7 @@ test("audit fix rounds 2 + 3: a rule collection over the limit is named „by ti
     say({ step: "products.too_large:vip", ok: false, detail: '"VIP10" does not apply at checkout to gid://shopify/Collection/9 …', params } as never);
   assert.equal(
     tooLarge({ collection: "Zimní", count: 1 }),
-    "Sleva „VIP10“ se v pokladně neuplatní na kolekci „Zimní“: vybrané kolekce mají dohromady víc než 10\u00a0000 produktů, tolik Won při jedné synchronizaci nenačte. Ostatní slevy se propsaly.",
+    "Sleva „VIP10“ se v pokladně neuplatní na kolekci „Zimní“: vybrané kolekce mají dohromady víc než 10\u00a0000 produktů, tolik Won při jedné synchronizaci nenačte. Ostatní slevy se zapsaly.",
   );
   assert.match(tooLarge({ collection: "Zimní", count: 3 }), /na kolekce „Zimní“ a další \(2\):/);
   assert.match(tooLarge({ collection: "", count: 2 }), /na část svých kolekcí \(kolekce bez názvu\):/);
@@ -90,24 +90,24 @@ test("audit fix rounds 2 + 3: a rule collection over the limit is named „by ti
   const held = (reason: string) => say({ step: "shop_config.write", ok: false, detail: "held: …", params: { held: reason } } as never);
   assert.match(held("margin_refs"), /nepodařilo zapsat jejich kolekce s nastavením marže\. Platí předchozí nastavení/);
   assert.match(held("rule_refs"), /nepodařilo odebrat slevy, které k nim už nepatří/);
-  assert.match(held("tier_refs"), /nepodařilo připravit změnu množstevní sady\. Platí předchozí nastavení/);
+  assert.match(held("tier_refs"), /nepodařilo připravit změnu množstevní slevy\. Platí předchozí nastavení/);
   assert.match(held("products_unread"), /nepodařilo načíst ze Shopify/);
   assert.match(held("products_refused"), /Shopify teď odmítá zápisy cílení u produktů/);
   assert.doesNotMatch(held("margin_refs"), /cleared|held/);
   const refused = say({ step: "products.set", ok: false, detail: "Shopify refused 2 product(s): gid://shopify/Product/1: bad", params: { refused: 2 } } as never);
-  assert.equal(refused, "Shopify odmítl zapsat cílení slev u produktů: 2. Ostatní produkty se propsaly, další synchronizace to zkusí znovu.");
+  assert.equal(refused, "Shopify odmítl zapsat cílení slev u produktů: 2. Ostatní produkty se zapsaly, další synchronizace to zkusí znovu.");
   const prune = say({ step: "products.prune", ok: false, detail: "0/3 product(s) finished after the flip; Throttled" } as never);
   assert.match(prune, /Na slevu to vliv nemá \(platí stejná hranice\), další synchronizace to dokončí\.$/);
-  assert.doesNotMatch(prune, /Throttled|Cílení na produkty se do Shopify nepropsalo/);
+  assert.doesNotMatch(prune, /Throttled|Cílení na produkty se do Shopify nezapsalo/);
 });
 
 test("audit fix round 4: a tripped refusal breaker never says the other products were written; an older run's too-large step ({collections, untitled}) still names its collections; an unread membership words the margin hold", () => {
   const breaker = { step: "products.set", ok: false, detail: "Shopify refused 80 product(s): …", params: { refused: 80, breaker: 1 } };
-  assert.equal(say(breaker as never), "Shopify teď odmítá zápisy cílení slev u produktů: nepropsalo se jich 80. Další synchronizace to zkusí znovu.");
+  assert.equal(say(breaker as never), "Shopify teď odmítá zápisy cílení slev u produktů: nezapsalo se jich 80. Další synchronizace to zkusí znovu.");
   assert.equal(say(breaker as never, "en"), "Shopify is refusing the discount targeting writes for products right now: 80 product(s) were not written. The next sync tries again.");
-  for (const locale of ["cs", "en"] as const) assert.doesNotMatch(say(breaker as never, locale), /Ostatní produkty se propsaly|other products were written/);
+  for (const locale of ["cs", "en"] as const) assert.doesNotMatch(say(breaker as never, locale), /Ostatní produkty se zapsaly|other products were written/);
   // Without the breaker the sentence stays as it was (only some products were refused, one by one).
-  assert.match(say({ step: "products.add", ok: false, detail: "x", params: { refused: 2 } } as never), /Ostatní produkty se propsaly/);
+  assert.match(say({ step: "products.add", ok: false, detail: "x", params: { refused: 2 } } as never), /Ostatní produkty se zapsaly/);
 
   // Runs recorded before audit fix round 3 carry {collections: "A, B", untitled: n}.
   const old = (params: Record<string, string | number>) => say({ step: "products.too_large:vip", ok: false, detail: "x", params } as never);

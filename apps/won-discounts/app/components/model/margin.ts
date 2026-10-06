@@ -32,6 +32,16 @@ export const MARGIN_FIELD = {
   collectionMax: "collectionMax[]",
 } as const;
 
+/** The settings fields a refused save gets back (B14). */
+export const MARGIN_SAVE_FIELDS = [
+  MARGIN_FIELD.enabled,
+  MARGIN_FIELD.minMarginPercent,
+  MARGIN_FIELD.maxDiscountPercent,
+  MARGIN_FIELD.collectionId,
+  MARGIN_FIELD.collectionMin,
+  MARGIN_FIELD.collectionMax,
+] as const;
+
 /** `intent`: the settings form saves; "Obnovit nákupní ceny" asks for a new read of the costs. */
 export const MARGIN_INTENT = { save: "save", refreshCosts: "refreshCosts" } as const;
 
@@ -252,6 +262,14 @@ export function impactSummary(impact: MarginImpactView | null, pro: boolean, ena
   let text = n === 0 ? tr.t("margin.impact.none") : tr.tp("margin.impact.rules", n);
   if (impact.status === "updating") text = `${text} · ${tr.t("margin.impact.updating")}`;
   return enabled ? text : `${text} · ${tr.t("margin.impact.off")}`;
+}
+
+/** The collections header: their names (P4), the first five and how many more. */
+export function collectionsSummary(collections: readonly { title: string }[], tr: Translator): string {
+  if (collections.length === 0) return tr.t("margin.collections.none");
+  const shown = collections.slice(0, 5).map((c) => c.title.trim() || tr.t("common.untitledCollection"));
+  const rest = collections.length - shown.length;
+  return tr.t("margin.collections.named", { names: rest > 0 ? `${shown.join(", ")} ${tr.t("margin.costs.more", { n: rest })}` : tr.list(shown) });
 }
 
 /** One rule's line: on how many variants (all of them, the editor's number too). */

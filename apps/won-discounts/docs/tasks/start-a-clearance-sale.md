@@ -16,7 +16,7 @@ summary: Pick a variant, enter the pieces to sell and the percent, optionally an
 
 # Start a clearance sale
 
-1. Open **Clearance**.
+1. Open **Discounts → Clearance**.
 2. In **New sale**, click **Pick a variant** and choose the product and its variant.
 3. Enter **Pieces to sell** (the quota) and **Discount (%)**.
 4. Optionally pick an **End** date. The sale ends at the start of that day in your

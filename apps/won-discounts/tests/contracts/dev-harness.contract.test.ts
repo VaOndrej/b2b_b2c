@@ -133,10 +133,13 @@ test("OverviewScreen renders the Přehled status with Czech plurals and the read
   const render = (ruleCount: number, readOnly = false) =>
     renderToStaticMarkup(createElement(OverviewScreen, { schemaVersion: 1, ruleCount, readOnly }));
 
-  assert.match(render(0), /verze 1 · 0 pravidel/);
-  assert.match(render(1), /1 pravidlo</);
-  assert.match(render(2), /2 pravidla</);
-  assert.match(render(5), /5 pravidel</);
+  // The "Konfigurace: verze N · M pravidel" footer is gone (plan 6 Oct 2026, P2: no content, no action);
+  // the plurals are on the "Aktivní slevy" state line.
+  assert.doesNotMatch(render(0), /Konfigurace: verze/);
+  assert.match(render(0), /Zatím žádná sleva/);
+  assert.match(render(1), /1 sleva</);
+  assert.match(render(2), /2 slevy</);
+  assert.match(render(5), /5 slev</);
   assert.match(render(2), /<s-page heading="Won Discounts">/);
   assert.doesNotMatch(render(2), /s-banner/);
   assert.match(render(2, true), /<s-banner tone="warning"/);

@@ -60,12 +60,12 @@ import type {
   CampaignsScreenData,
 } from "../components/model/types";
 import { presetOf } from "../components/model/appearance";
-import { cartBlockAddUrl, outletBlockAddUrl, tiersBlockAddUrl } from "../components/model/embed";
+import { CAMPAIGN_BLOCK_HANDLE, cartBlockAddUrl, outletBlockAddUrl, placementLinks, REWARDS_PROGRESS_BLOCK_HANDLE, tiersBlockAddUrl } from "../components/model/embed";
 import { REWARDS_FIELD } from "../components/model/rewards";
 import { rewardsScreenFacts } from "./integration/rewards.server";
 import { currencyViews } from "../components/model/markets";
 import { TIERS_FIELD } from "../components/model/tiers";
-import { aiPrompt, sampleSet, storefrontTextDefaults, storefrontTextKeys } from "./integration/appearance.server";
+import { aiPrompt, previewLookOf, sampleSet, storefrontTextDefaults, storefrontTextKeys } from "./integration/appearance.server";
 import { tiersOverviewOf, tiersScreenFacts } from "./integration/tiers.server";
 import { lossText, undoCostTexts, warningText } from "./native/copy";
 import { isDevHarnessEnvironment } from "./dev-harness-env";
@@ -257,7 +257,7 @@ export function devNativeMoved(locale: "cs" | "en" = "cs"): NativeView {
         state: "attention",
         note:
           locale === "cs"
-            ? "Přesun se nepovedl (Sleva „PODZIM20“ se do Shopify nepropsala). Slevu se nepodařilo vrátit do Shopify. Je v záloze, klikni na „Vrátit zpět“."
+            ? "Přesun se nepovedl (Sleva „PODZIM20“ se do Shopify nezapsala). Slevu se nepodařilo vrátit do Shopify. Je v záloze, klikni na „Vrátit zpět“."
             : "The move failed (The discount “PODZIM20” did not reach Shopify). The discount could not be put back into Shopify. It is in the backup, click “Undo”.",
       },
       ...base.moved,
@@ -748,6 +748,15 @@ export function devMarginResult(kind: string | null, locale: "cs" | "en" = "cs")
           { field: "minMarginPercent", key: "margin.error.percent", params: { max: 95 } },
           { field: "collectionMax[1]", key: "margin.error.percent", params: { max: 100 } },
         ],
+        // B14: what the refused form posted comes back, the screen shows it again (also the refused 150 and 120).
+        values: {
+          enabled: ["on"],
+          minMarginPercent: ["150"],
+          maxDiscountPercent: ["35"],
+          "collectionId[]": [DEV_C7, DEV_C9],
+          "collectionMin[]": ["30", ""],
+          "collectionMax[]": ["", "120"],
+        },
       };
     case "unreadable":
       return { ok: false, reason: "unreadable_config" };
@@ -1004,6 +1013,8 @@ export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | nul
       tokens: devTokens(opts.theme === "dawn" || opts.state === "dawn" ? "dawn" : opts.theme, devBlock(opts.state)),
       preset: presetOf(config.storefront.appearancePreset),
       product: DEV_PREVIEW_PRODUCT,
+      // ?state=custom: a stored Pro custom look and a changed text — the preview shows both (the gate drops the look on Free).
+      look: previewLookOf(opts.state === "custom" ? DEV_CUSTOM_LOOK_FIXTURE : config, opts.plan),
     },
     // Pro only (BILL-1): products per Pro set as the last sync wrote them (tierProductCounts).
     productsWithSets: opts.plan === "pro" && opts.state !== "empty" ? { t_devautumn: 14 } : null,
@@ -1027,10 +1038,20 @@ export function devTiersResult(kind: string | null): UiResult | null {
       };
     case "unreadable":
       return { ok: false, reason: "unreadable_config" };
+    case "too-large":
+      // The server's refusal of tiers over the checkout's room for them: shown at the room-for-tiers line.
+      return { ok: false, reason: "invalid", errors: [{ field: TIERS_FIELD.set, key: "tiers.error.tooLarge", params: { percent: 112 } }] };
     default:
       return null;
   }
 }
+
+/** DEV_TIERS_FIXTURE with a Pro custom look and one changed storefront text (the previews of ?state=custom). */
+const DEV_CUSTOM_LOOK_FIXTURE: WonDiscountsConfig = readStoredConfig({
+  ...DEV_TIERS_FIXTURE,
+  storefront: { ...DEV_TIERS_FIXTURE.storefront, custom: { vars: { accent: "#0a7d4f", tint: "#f2fbf6", radius: 4 }, css: ".won-tiers__heading { text-transform: uppercase; }" } },
+  locales: { ...DEV_TIERS_FIXTURE.locales, cs: { "tiers.heading": "Kup víc, plať míň" } },
+});
 
 /** Vzhled as loadAppearanceScreen hands it over; `empty` = no set yet (the looks show an example). */
 export function devAppearanceScreen(opts: { plan: "free" | "pro"; state: string | null; theme?: string | null }): AppearanceScreenData {
@@ -1061,6 +1082,7 @@ export function devAppearanceScreen(opts: { plan: "free" | "pro"; state: string 
     }),
     cardBlockUrl: "https://won-dev.myshopify.com/admin/themes/current/editor?template=collection&addAppBlockId=dev/card_tiers&target=mainSection",
     aiPrompt: aiPrompt(),
+    previewLook: previewLookOf(opts.state === "custom" ? DEV_CUSTOM_LOOK_FIXTURE : config, opts.plan),
   };
 }
 
@@ -1161,7 +1183,9 @@ export const DEV_REWARDS_FIXTURE: WonDiscountsConfig = readStoredConfig({
  * Odměny as loadRewardsScreen hands it over (the same pure rewardsScreenFacts):
  *   default     Free: free shipping, the first gift; the Pro threshold stored (gate note);
  *   plan=pro    the ladder and the choice of 3 editable;
- *   empty       a new shop: nothing set, the app embed off.
+ *   empty       a new shop: nothing set, the app embed off;
+ *   embed-draft | embed-unknown | embed-no-scope   the other states of the app embed check (each has its own
+ *               sentence and action on the page).
  */
 export function devRewardsScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en" }): RewardsScreenData {
   const config = opts.state === "empty" ? DEV_EMPTY_FIXTURE : DEV_REWARDS_FIXTURE;
@@ -1170,8 +1194,18 @@ export function devRewardsScreen(opts: { plan: "free" | "pro"; state: string | n
     configVersion: "dev-config-version",
     currencies: currencyViews(config.markets, { marketNames: DEV_MARKET_NAMES }),
     ...rewardsScreenFacts(config, { plan: opts.plan, locale: opts.locale, titles: DEV_GIFT_TITLES }),
-    embed: opts.state === "empty" ? DEV_EMBED_OFF : DEV_EMBED_ON,
+    embed:
+      opts.state === "empty"
+        ? DEV_EMBED_OFF
+        : opts.state === "embed-draft"
+          ? { state: "draft_only", activateUrl: DEV_EMBED_OFF.activateUrl }
+          : opts.state === "embed-unknown"
+            ? { state: "unknown", activateUrl: DEV_EMBED_OFF.activateUrl }
+            : opts.state === "embed-no-scope"
+              ? { state: "no_scope", activateUrl: DEV_EMBED_OFF.activateUrl }
+              : DEV_EMBED_ON,
     cartBlockAddUrl: cartBlockAddUrl(DEV_SHOP, "dev-api-key"),
+    placements: placementLinks(DEV_SHOP, "dev-api-key", REWARDS_PROGRESS_BLOCK_HANDLE),
   };
 }
 
@@ -1188,6 +1222,8 @@ export function devRewardsResult(kind: string | null): UiResult | null {
       ],
     };
   }
+  // B12: a form with more thresholds than the limit (an older client) — the refusal is shown at the list.
+  if (kind === "too-many") return { ok: false, reason: "invalid", errors: [{ field: REWARDS_FIELD.tier, key: "rewards.error.tooManyTiers", params: { max: 5 } }] };
   return null;
 }
 
@@ -1347,7 +1383,7 @@ export function devOutletScreen(opts: { plan: "free" | "pro"; state: string | nu
     outletRunView(
       r,
       DEV_OUTLET_EVENTS.filter((e) => e.runId === r.id),
-      { locale: opts.locale, timezone: DEV_TIMEZONE, titles: DEV_OUTLET_TITLES, money: devMoney(opts.locale) },
+      { locale: opts.locale, timezone: DEV_TIMEZONE, titles: DEV_OUTLET_TITLES, listTitles: new Map([["gid://shopify/PriceList/1", "Slovensko"]]), money: devMoney(opts.locale) },
     );
   return {
     plan: opts.plan,
@@ -1380,9 +1416,27 @@ export function devOutletResult(kind: string | null): OutletActionResult | null 
         { field: OUTLET_FIELD.variant, key: "outlet.error.variant" },
         { field: OUTLET_FIELD.quota, key: "outlet.error.quota", params: { max: OUTLET_LIMITS.quotaMax } },
       ],
+      // B14: what the refused form posted comes back, the screen shows it again.
+      values: { [OUTLET_FIELD.quota]: ["0"], [OUTLET_FIELD.percent]: ["30"], [OUTLET_FIELD.endsOn]: ["2026-10-12"], [OUTLET_FIELD.priceList]: ["gid://shopify/PriceList/1"] },
     };
   }
-  if (kind === "failed") return { ok: false, reason: "failed", message: "HTTP 503" };
+  if (kind === "failed") {
+    return {
+      ok: false,
+      reason: "failed",
+      message: "HTTP 503",
+      // A failed start keeps the picked variant (its name and price as the picker gave them) and the typed values.
+      values: {
+        [OUTLET_FIELD.variant]: ["gid://shopify/ProductVariant/7001"],
+        [OUTLET_FIELD.product]: ["gid://shopify/Product/701"],
+        [OUTLET_FIELD.variantTitle]: ["Mikina Won — L"],
+        [OUTLET_FIELD.variantPrice]: ["1490.00"],
+        [OUTLET_FIELD.quota]: ["10"],
+        [OUTLET_FIELD.percent]: ["30"],
+      },
+    };
+  }
+  if (kind === "settings-pro") return { ok: false, reason: "invalid", errors: [{ field: OUTLET_FIELD.display, key: "outlet.error.settingsPro" }] };
   return null;
 }
 
@@ -1442,6 +1496,7 @@ export function devCampaignsScreen(opts: { plan: "free" | "pro"; state: string |
     tierSets: campaignTierChoices(DEV_TIERS_FIXTURE, opts.locale),
     editing: opts.edit ? (views.find((v) => v.id === opts.edit && (v.status === "running" || v.status === "scheduled")) ?? null) : null,
     limits: { campaigns: CONFIG_LIMITS.campaigns, maxDays: CAMPAIGN_LIMITS.maxDays, minLeadMinutes: CAMPAIGN_LIMITS.minLeadMinutes },
+    placements: placementLinks(DEV_SHOP, "dev-api-key", CAMPAIGN_BLOCK_HANDLE),
   };
 }
 
@@ -1457,8 +1512,30 @@ export function devCampaignsResult(kind: string | null): CampaignsActionResult |
         { field: CAMPAIGN_FIELD.startDate, key: "campaign.error.overlap", params: { other: "Black Friday" } },
         { field: CAMPAIGN_FIELD.use, key: "campaign.error.empty" },
       ],
+      // B14: what the refused form posted comes back, the screen shows it again.
+      values: { [CAMPAIGN_FIELD.name]: ["Podzimní akce"], [CAMPAIGN_FIELD.startDate]: ["2026-11-28"], [CAMPAIGN_FIELD.startTime]: ["08:15"], [CAMPAIGN_FIELD.endDate]: ["2026-11-29"], [CAMPAIGN_FIELD.endTime]: ["23:59"] },
     };
   }
+  // An error about one discount and one about the time: each at its own control, with the typed values kept.
+  if (kind === "invalid-rule") {
+    return {
+      ok: false,
+      reason: "invalid",
+      errors: [
+        { field: CAMPAIGN_FIELD.endTime, key: "campaign.error.time" },
+        { field: CAMPAIGN_FIELD.use, key: "campaign.error.value", params: { rule: "Podzimní sleva 10 %" }, at: "dev-fixture-1" },
+      ],
+      values: {
+        [CAMPAIGN_FIELD.name]: ["Podzimní akce"],
+        [CAMPAIGN_FIELD.startDate]: ["2026-10-10"],
+        [CAMPAIGN_FIELD.startTime]: ["08:15"],
+        [CAMPAIGN_FIELD.endDate]: ["2026-10-12"],
+        [CAMPAIGN_FIELD.use]: ["dev-fixture-1"],
+        [`${CAMPAIGN_FIELD.percent}dev-fixture-1`]: ["150"],
+      },
+    };
+  }
+  if (kind === "sync-pending") return { ok: true, kind: "saved", sync: { ok: false, problems: [], warnings: [] } };
   return null;
 }
 
@@ -1528,5 +1605,12 @@ export function devAnalyticsScreen(opts: { plan: "free" | "pro"; state: string |
     gifts: empty ? 0 : 12,
     outletItems: empty ? 0 : 31,
   };
-  return analyticsScreenOf(summary, { plan: opts.plan, available: opts.state !== "unavailable", locale: opts.locale, config: DEV_OVERVIEW_FIXTURE });
+  return analyticsScreenOf(summary, {
+    plan: opts.plan,
+    available: opts.state !== "unavailable",
+    locale: opts.locale,
+    config: DEV_OVERVIEW_FIXTURE,
+    shopCurrency: "CZK",
+    otherCurrencies: empty ? [] : ["EUR"],
+  });
 }

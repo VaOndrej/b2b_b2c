@@ -13,6 +13,7 @@
 
 export {
   APPEARANCE_PRESETS,
+  CODE_BATCH_ALPHABETS,
   COMBINATION_CATEGORIES,
   DISCOUNT_METHODS,
   DISCOUNT_TARGET_KINDS,
@@ -28,6 +29,7 @@ export {
 } from "./config/enums.ts";
 export type {
   AppearancePreset,
+  CodeBatchAlphabet,
   CombinationCategory,
   DiscountMethod,
   DiscountTargetKind,
@@ -42,6 +44,7 @@ export type {
 } from "./config/enums.ts";
 export type {
   Campaign,
+  CodeBatch,
   CodesModule,
   ConfigIssue,
   DiscountRule,
@@ -56,6 +59,7 @@ export type {
   DiscountTargetShipping,
   EngineSettings,
   GiftTier,
+  ItemMinimum,
   LocaleDictionary,
   MarginCollectionOverride,
   MarginModule,

@@ -11,7 +11,7 @@ const queues = new Map<string, Promise<unknown>>();
 
 /**
  * How long an admin action waits for the shop's lock before it gives up with
- * an honest "Nastavení se právě propisuje, zkus to za chvíli" (F2 re-review
+ * an honest "Nastavení se právě zapisuje, zkus to za chvíli" (F2 re-review
  * I-1, REL-1): a request never hangs behind another writer.
  */
 export const CONFIG_LOCK_WAIT_MS = 10_000;

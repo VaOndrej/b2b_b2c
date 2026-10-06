@@ -16,7 +16,7 @@ summary: Add the Sale badge app block to the product page so the badge and Only 
 
 # Add the sale badge to the product page
 
-1. Open **Clearance → Display and returns**.
+1. Open **Discounts → Clearance → Display and returns**.
 2. Choose how the sale shows on the web: *Struck-through price and a "Sale"
    badge* or *Struck-through price, badge and "Only X left"*.
 3. Click **Add the badge to the product page**. The theme editor opens on the

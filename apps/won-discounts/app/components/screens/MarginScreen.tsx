@@ -19,6 +19,13 @@
 // the fields step by a tenth and a second decimal is refused before the save
 // (model/margin.ts marginDecimalErrors), so no value changes silently (§12);
 // whatever the sanitizer still adjusts comes back as the save's `fixes` (Notice).
+// B14: a refused save keeps what was typed. The action returns the posted values,
+// the fields are seeded from them (remounted once per refusal) and every message
+// sits BESIDE its field — a field's `error` attribute is never set, because a
+// Polaris field whose attributes change goes back to its initial value.
+// What runs now is the STORED setting: a sentence about it uses the stored value
+// and adds "po uložení" when the form holds another one; Přehled zásahů says when
+// it shows the saved state.
 // A presentational component: app/routes/app.margin.tsx renders it from
 // loadMarginScreen (app/lib/integration/margin.server.ts), the dev harness from
 // fixtures (app/routes/dev.preview.$.tsx).
@@ -32,6 +39,7 @@ import { useT } from "../../i18n/context";
 import { pickCollections } from "../model/app-bridge";
 import {
   ceilingOnlyText,
+  percentText,
   MARGIN_FIELD,
   MARGIN_INTENT,
   MARGIN_PERCENT_STEP,
@@ -41,6 +49,7 @@ import {
   percentInput,
   readMarginDraft,
 } from "../model/margin";
+import { asForm, useRefusedSeed } from "../model/submitted";
 import type { FieldError, MarginCollectionView, MarginScreenData, MarginSettingsView, UiResult } from "../model/types";
 import { CollectionsSection } from "../margin/CollectionsSection";
 import { CostsSection } from "../margin/CostsSection";
@@ -64,7 +73,14 @@ export function MarginScreen(props: MarginScreenProps) {
 
   // §2/§17b: the live draft, re-read from the whole form on native events.
   const formRef = useRef<HTMLFormElement>(null);
-  const [draft, setDraft] = useState<MarginSettingsView>(settings);
+  // B14: what a refused save posted (null = the fields show what is stored).
+  const { seed, values: refused, key: seedKey, clear: clearSeed } = useRefusedSeed(result);
+  const titled = (rows: readonly MarginCollectionView[], known: readonly MarginCollectionView[]): MarginCollectionView[] => {
+    const titles = new Map(known.map((c) => [c.collectionId, c.title]));
+    return rows.map((c) => ({ ...c, title: c.title || titles.get(c.collectionId) || "" }));
+  };
+  const refusedDraft = refused ? readMarginDraft(asForm(refused), settings) : null;
+  const [draft, setDraft] = useState<MarginSettingsView>(refusedDraft ?? settings);
   // Percents typed with a second decimal, said at the field while typing (the save is refused until fixed).
   const [decimalErrors, setDecimalErrors] = useState<FieldError[]>([]);
   const recompute = useCallback(() => {
@@ -86,7 +102,16 @@ export function MarginScreen(props: MarginScreenProps) {
   }, [recompute]);
 
   // Collections: the resource picker (App Bridge seam) feeds the rows; a pick keeps typed values.
-  const [collections, setCollections] = useState<MarginCollectionView[]>(settings.collections);
+  const [collections, setCollections] = useState<MarginCollectionView[]>(refusedDraft ? titled(refusedDraft.collections, settings.collections) : settings.collections);
+  // A new refusal remounts the fields: the rows take the posted values before that render commits.
+  const [seededKey, setSeededKey] = useState(seedKey);
+  if (seededKey !== seedKey) {
+    setSeededKey(seedKey);
+    if (refusedDraft) {
+      setDraft(refusedDraft);
+      setCollections(titled(refusedDraft.collections, [...collections, ...settings.collections]));
+    }
+  }
   const [pickUnavailable, setPickUnavailable] = useState(false);
   const touched = useRef(false);
   useEffect(() => {
@@ -125,6 +150,7 @@ export function MarginScreen(props: MarginScreenProps) {
     const el = formRef.current;
     if (!el) return;
     const onReset = () => {
+      clearSeed();
       setFormKey((k) => k + 1);
       setDraft(settings);
       setCollections(settings.collections);
@@ -132,10 +158,11 @@ export function MarginScreen(props: MarginScreenProps) {
     };
     el.addEventListener("reset", onReset);
     return () => el.removeEventListener("reset", onReset);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- clearSeed only clears a ref
   }, [settings, recompute]);
 
   const errors: FieldError[] = result && !result.ok && result.reason === "invalid" ? result.errors : [];
-  /** The server's refusal, on the field itself (it arrives with a full render). */
+  /** The server's refusal, said under the field (never through its `error` attribute, see the header). */
   const errorFor = (field: string): string | undefined => {
     const e = errors.find((x) => x.field === field);
     return e ? t(e.key, e.params) : undefined;
@@ -162,8 +189,13 @@ export function MarginScreen(props: MarginScreenProps) {
   const global = marginInForce(draft, plan).global;
   const inForce: MarginSettingsView = { ...draft, minMarginPercent: global.minMarginPercent ?? null, maxDiscountPercent: global.maxDiscountPercent };
   // Audit P2-1: before the first complete read of the costs, unread products have only the ceiling (what is STORED runs).
-  const storedCeiling = marginInForce(settings, plan).global.maxDiscountPercent;
+  const storedInForce = marginInForce(settings, plan);
+  const storedCeiling = storedInForce.global.maxDiscountPercent;
   const ceilingOnly = ceilingOnlyText({ enabled: settings.enabled, mirror, costsKnown: coverage !== null, maxDiscountPercent: storedCeiling }, tr);
+  // One source for every sentence about the ceiling: the stored one runs; a different typed one is "po uložení".
+  const afterSaveCeiling = inForce.maxDiscountPercent !== storedCeiling ? inForce.maxDiscountPercent : null;
+  // Přehled zásahů is computed from the saved settings: said while the form differs from them.
+  const unsaved = JSON.stringify(marginInForce(draft, plan)) !== JSON.stringify(storedInForce);
 
   const submit = useSubmit();
   // I3: "Nahradit neplatnou konfiguraci" re-submits exactly this form, confirmed.
@@ -187,7 +219,7 @@ export function MarginScreen(props: MarginScreenProps) {
       >
         <input type="hidden" name={MARGIN_FIELD.intent} value={MARGIN_INTENT.save} />
         {configVersion ? <input type="hidden" name={MARGIN_FIELD.configVersion} value={configVersion} /> : null}
-        <s-stack key={formKey} direction="block" gap="base">
+        <s-stack key={`${formKey}-${seedKey}`} direction="block" gap="base">
           <Notice result={result} onReplace={replaceUnreadable} />
           <WonSection
             title={t("module.margin")}
@@ -202,7 +234,7 @@ export function MarginScreen(props: MarginScreenProps) {
             aside={<MarginProof settings={inForce} currency={shopCurrency} />}
           >
             <s-stack direction="block" gap="base">
-              <s-switch name={MARGIN_FIELD.enabled} value="on" label={t("margin.enabled")} checked={boolAttr(settings.enabled)} />
+              <s-switch name={MARGIN_FIELD.enabled} value="on" label={t("margin.enabled")} checked={boolAttr(seed.active ? seed.one(MARGIN_FIELD.enabled, "") === "on" : settings.enabled)} />
               <s-stack direction="block" gap="small-200">
                 <s-text color="subdued">{t("margin.never")}</s-text>
                 {/* Honest scope (§12): discounts outside Won are not seen by the protection; the fix is on Přehled (§13c). */}
@@ -210,38 +242,41 @@ export function MarginScreen(props: MarginScreenProps) {
                   {t("margin.scope")} <s-link href="/app#native">{t("margin.scope.link")}</s-link>
                 </s-text>
                 {/* §12: until the first complete read, the ceiling is all there is for unread products (also those with a cost). */}
-                {ceilingOnly ? <s-text type="strong">{ceilingOnly}</s-text> : null}
+                {ceilingOnly ? (
+                  <s-text type="strong">
+                    {ceilingOnly}
+                    {afterSaveCeiling !== null ? ` ${t("margin.afterSave", { percent: percentText(afterSaveCeiling, tr) })}` : ""} <s-link href="#costs">{t("margin.costs.link")}</s-link>
+                  </s-text>
+                ) : null}
               </s-stack>
               <s-number-field
                 name={MARGIN_FIELD.minMarginPercent}
                 label={t("margin.min.label")}
-                value={percentInput(settings.minMarginPercent)}
+                value={seed.one(MARGIN_FIELD.minMarginPercent, percentInput(settings.minMarginPercent))}
                 min={0}
                 max={95}
                 step={MARGIN_PERCENT_STEP}
                 suffix="%"
                 inputMode="decimal"
                 details={t("margin.min.details")}
-                error={errorFor(MARGIN_FIELD.minMarginPercent)}
               />
-              <FieldMessage text={decimalErrorFor(MARGIN_FIELD.minMarginPercent)} />
+              <FieldMessage text={decimalErrorFor(MARGIN_FIELD.minMarginPercent) ?? errorFor(MARGIN_FIELD.minMarginPercent)} />
               <s-number-field
                 name={MARGIN_FIELD.maxDiscountPercent}
                 label={t("margin.max.label")}
-                value={percentInput(settings.maxDiscountPercent)}
+                value={seed.one(MARGIN_FIELD.maxDiscountPercent, percentInput(settings.maxDiscountPercent))}
                 min={0}
                 max={100}
                 step={MARGIN_PERCENT_STEP}
                 suffix="%"
                 inputMode="decimal"
                 details={t("margin.max.details")}
-                error={errorFor(MARGIN_FIELD.maxDiscountPercent)}
               />
-              <FieldMessage text={decimalErrorFor(MARGIN_FIELD.maxDiscountPercent)} />
+              <FieldMessage text={decimalErrorFor(MARGIN_FIELD.maxDiscountPercent) ?? errorFor(MARGIN_FIELD.maxDiscountPercent)} />
               <FieldMessage text={errorFor(MARGIN_FIELD.enabled)} />
             </s-stack>
           </WonSection>
-          <CostsSection coverage={coverage} mirror={mirror} maxDiscountPercent={inForce.maxDiscountPercent} />
+          <CostsSection coverage={coverage} mirror={mirror} maxDiscountPercent={storedCeiling} afterSavePercent={afterSaveCeiling} />
           <CollectionsSection
             pro={pro}
             collections={collections}
@@ -253,8 +288,9 @@ export function MarginScreen(props: MarginScreenProps) {
             decimalErrorFor={decimalErrorFor}
             error={collectionError ? t(collectionError.key, collectionError.params) : undefined}
             tooLarge={tooLarge}
+            posted={refused && pro ? { ids: refused[MARGIN_FIELD.collectionId] ?? [], min: refused[MARGIN_FIELD.collectionMin] ?? [], max: refused[MARGIN_FIELD.collectionMax] ?? [] } : null}
           />
-          <ImpactSection pro={pro} enabled={settings.enabled} impact={impact} currency={shopCurrency} />
+          <ImpactSection pro={pro} enabled={draft.enabled} unsaved={unsaved} impact={impact} currency={shopCurrency} />
           {/* One save for the whole form, last on the page like the rule editor (plus the App Bridge save bar). */}
           <div>
             <s-button type="submit" variant="primary">

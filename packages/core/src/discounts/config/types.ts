@@ -5,6 +5,7 @@ import type { CustomLook } from "../custom-look.ts";
 import type { CurrencyCode, MoneyByCurrency } from "../money.ts";
 import type {
   AppearancePreset,
+  CodeBatchAlphabet,
   DiscountMethod,
   LocaleCode,
   MinimumScope,
@@ -56,14 +57,33 @@ export type DiscountRuleValue =
 export interface DiscountTargetOrder {
   kind: "order";
 }
+/**
+ * A minimum quantity of ONE selected product or collection (Pro, plan
+ * 2026-10-06 bod 8). `id` = a product GID (products target; it also covers the
+ * product's variants selected one by one in `variantIds`: the variants of one
+ * product count together) or a collection GID (collections target).
+ * Each item is judged on its own: its lines get the discount when the pieces
+ * of THAT product (collection) in the cart reach `quantity`; the rule's common
+ * `minimum.quantity` then does not apply to it. An item without an entry
+ * follows the common minimum. plan.ts "Per-item minimum" is the port spec.
+ */
+export interface ItemMinimum {
+  id: string;
+  /** Whole items, 1–CONFIG_LIMITS.itemMinQty. */
+  quantity: number;
+}
 export interface DiscountTargetProducts {
   kind: "products";
   productIds: string[];
   variantIds: string[];
+  /** Pro. Absent = none. One entry per product id at most. */
+  itemMinimums?: ItemMinimum[];
 }
 export interface DiscountTargetCollections {
   kind: "collections";
   ids: string[];
+  /** Pro. Absent = none. Only collections listed in `ids`, one entry each. */
+  itemMinimums?: ItemMinimum[];
 }
 export interface DiscountTargetShipping {
   kind: "shipping";
@@ -74,12 +94,47 @@ export type DiscountTarget =
   | DiscountTargetCollections
   | DiscountTargetShipping;
 
+/**
+ * A generated batch of codes (code-batch.ts is the spec). The codes are NOT
+ * stored: `generateBatchCodes(batch)` rebuilds them from `seed`, always the
+ * same, so the config and the function payload stay a constant size whatever
+ * `count` is. A code is
+ *   prefix + random part (+ middle inside it) + suffix
+ * where the random part is `length` characters of `alphabet`, its last
+ * characters a keyed check of the ones before (the function recognises the
+ * batch by the prefix and the check, never by a list).
+ * `seed` is a SECRET (whoever has it can list every code): it never leaves the
+ * stored config — the function payload carries a key derived from it, the
+ * storefront config nothing.
+ */
+export interface CodeBatch {
+  /** `[A-Za-z0-9_-]{1,64}`, unique in the rule. */
+  id: string;
+  /** `[A-Z0-9_-]`, 2–12 characters; no batch's prefix starts another's (shop-wide). */
+  prefix: string;
+  /** How many codes were generated (1–CONFIG_LIMITS.codeBatchSize). */
+  count: number;
+  /** 32 lower-case hex digits. */
+  seed: string;
+  /** Characters of the random part, check characters included. */
+  length: number;
+  alphabet: CodeBatchAlphabet;
+  /** Pro: a literal inside the random part (after its first half). */
+  middle?: string;
+  /** Pro: a literal after the random part. */
+  suffix?: string;
+  /** Indexes (0-based, ascending) of the generated codes the merchant deleted. */
+  removed?: number[];
+}
+
 export interface DiscountRule {
   id: string;
   enabled: boolean;
   name: string;
   method: DiscountMethod;
   codes?: string[];
+  /** Generated code batches (code rules; plan 2026-10-06 dávka 4, code-batch.ts). Absent = none. */
+  codeBatches?: CodeBatch[];
   value: DiscountRuleValue;
   target: DiscountTarget;
   /** `scope` (MINIMUM_SCOPES): the sanitizer always sets it, "cart" unless the rule says "entitled". */

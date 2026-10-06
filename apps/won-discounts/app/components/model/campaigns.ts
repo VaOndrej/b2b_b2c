@@ -1,6 +1,7 @@
 // Kampaně (MVP 6, Pro; contract K7) — the form model shared by the screen and the server (SEC-1: the action parses
-// exactly these fields). A campaign: a name, a window in the shop's time (a date and HH:MM for each end) and, per
-// discount rule, an override (D2): switch it on / off during the campaign and / or give it another value; MVP 6.1
+// exactly these fields). A campaign: a name, a window in the shop's time (a date and a time picked from a list for
+// each end) and, per
+// discount rule (only a TICKED one: the screen shows its fields only then, B7), an override (D2): switch it on / off during the campaign and / or give it another value; MVP 6.1
 // (L8): per quantity tier set, its breaks during the campaign (rows of a quantity and a value). Core
 // validateCampaignDraft checks the draft (window, overlap, rules, values, breaks at least as generous as the base).
 
@@ -8,6 +9,7 @@ import type { CampaignDraft, CampaignDraftField, CampaignDraftOverride, Campaign
 import type { TierBreak } from "@won/core/discounts/config";
 
 import type { FormDataLike } from "./rule-form";
+import type { CampaignRuleChoice, CampaignTierChoice, CampaignTierRow, CampaignView, SubmittedValues } from "./types";
 
 export const CAMPAIGNS_ACTION = "/app/campaigns";
 export const CAMPAIGN_INTENT = { save: "save", kill: "kill", delete: "delete" } as const;
@@ -142,4 +144,80 @@ export function readCampaignForm(
       ...(tiers.length > 0 ? { tiers } : {}),
     },
   };
+}
+
+// --- The form's values (B14 seed, P5 live summary) ----------------------------------------------------------
+
+/** The times the form offers: every quarter of an hour, and 23:59 for "to the end of the day". */
+export function campaignTimeOptions(current = ""): string[] {
+  const out: string[] = [];
+  for (let m = 0; m < 24 * 60; m += 15) out.push(`${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
+  out.push("23:59");
+  // A stored time off the grid (set before the list existed) stays selectable, in its place.
+  if (HHMM.test(current) && !out.includes(current)) out.push(current);
+  return out.sort();
+}
+
+/** Extra empty rows under a set's breaks, for a break only the campaign has. */
+export const CAMPAIGN_EXTRA_TIER_ROWS = 2;
+
+/** The rows the form shows for a set: the campaign's own (when it changes the set), else the set's, plus the empty ones. */
+export function campaignTierFormRows(set: Pick<CampaignTierChoice, "id" | "rows">, editing: Pick<CampaignView, "tiers"> | null): { rows: CampaignTierRow[]; own: number } {
+  const stored = editing?.tiers.find((x) => x.setId === set.id)?.rows ?? set.rows;
+  const extra = Math.max(0, Math.min(CAMPAIGN_TIER_ROWS - stored.length, CAMPAIGN_EXTRA_TIER_ROWS));
+  return { rows: [...stored, ...Array.from({ length: extra }, () => ({ qty: "" }))], own: stored.length };
+}
+
+type RuleShape = Pick<CampaignRuleChoice, "id" | "kind" | "currencies">;
+type SetShape = Pick<CampaignTierChoice, "id" | "kind" | "currencies">;
+
+/** Every field name the form can post for these rules and sets (the server echoes them to a refused form). */
+export function campaignFieldNames(rules: readonly RuleShape[], sets: readonly SetShape[]): string[] {
+  const F = CAMPAIGN_FIELD;
+  const names: string[] = [F.id, F.name, F.startDate, F.startTime, F.endDate, F.endTime, F.use, F.tierUse];
+  for (const r of rules) {
+    names.push(`${F.enabled}${r.id}`);
+    if (r.kind === "percentage") names.push(`${F.percent}${r.id}`);
+    if (r.kind === "fixed") for (const cur of r.currencies) names.push(`${F.amount}${r.id}.${cur}`);
+  }
+  for (const set of sets) {
+    for (let row = 0; row < CAMPAIGN_TIER_ROWS; row += 1) {
+      names.push(`${F.tierQty}${set.id}.${row}`);
+      if (set.kind === "percent") names.push(`${F.tierPercent}${set.id}.${row}`);
+      else for (const cur of set.currencies) names.push(`${F.tierAmount}${set.id}.${row}.${cur}`);
+    }
+  }
+  return names;
+}
+
+/** What the form shows before anything is typed: the edited campaign, or a new one's defaults. Empty values are left out. */
+export function campaignFormValues(editing: CampaignView | null, rules: readonly CampaignRuleChoice[], sets: readonly CampaignTierChoice[]): SubmittedValues {
+  const F = CAMPAIGN_FIELD;
+  const out: SubmittedValues = {};
+  const put = (name: string, value: string | undefined) => {
+    if (value !== undefined && value !== "") out[name] = [value];
+  };
+  put(F.name, editing?.name);
+  put(F.startDate, editing?.start.date);
+  put(F.startTime, editing?.start.time ?? "00:00");
+  put(F.endDate, editing?.end.date);
+  put(F.endTime, editing?.end.time ?? "23:59");
+  const known = new Set(rules.map((r) => r.id));
+  const overrides = (editing?.overrides ?? []).filter((o) => known.has(o.ruleId));
+  if (overrides.length > 0) out[F.use] = overrides.map((o) => o.ruleId);
+  for (const o of overrides) {
+    put(`${F.enabled}${o.ruleId}`, o.enabled === undefined ? "" : o.enabled ? "on" : "off");
+    put(`${F.percent}${o.ruleId}`, o.percent !== undefined ? String(o.percent) : "");
+    for (const [cur, text] of Object.entries(o.amount ?? {})) put(`${F.amount}${o.ruleId}.${cur}`, text);
+  }
+  const used = (editing?.tiers ?? []).map((x) => x.setId).filter((id) => sets.some((set) => set.id === id));
+  if (used.length > 0) out[F.tierUse] = used;
+  for (const set of sets) {
+    campaignTierFormRows(set, editing).rows.forEach((row, i) => {
+      put(`${F.tierQty}${set.id}.${i}`, row.qty);
+      put(`${F.tierPercent}${set.id}.${i}`, row.percent);
+      for (const [cur, text] of Object.entries(row.amount ?? {})) put(`${F.tierAmount}${set.id}.${i}.${cur}`, text);
+    });
+  }
+  return out;
 }

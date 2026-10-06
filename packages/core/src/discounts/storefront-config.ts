@@ -37,6 +37,7 @@ import { fnv1a32Hex } from "./code-hash.ts";
 import { currencyExponent, moneyFor } from "./money.ts";
 import { variantNumber } from "./rewards.ts";
 import { campaignTierSets } from "./campaign-tiers.ts";
+import { shopLocalToUtc } from "./campaigns.ts";
 import { customLookCss } from "./custom-look.ts";
 import { globalTierSet, reachableTierSets } from "./tiers.ts";
 
@@ -119,7 +120,24 @@ export interface StorefrontConfigV1 {
   ow?: 1;
   /** MVP 7 BETA (contract M8): 1 when product cards show the first quantity break (`storefront.cardPricesEnabled`). */
   cards?: 1;
+  /**
+   * Feedback 2 (2026-10-06, bod 7): the campaigns the storefront may announce — name, start and end as epoch
+   * seconds (UTC). Pages are cached, so the "Campaign banner" block decides in the browser which one runs.
+   * Not killed, at most STOREFRONT_CAMPAIGNS (the ones ending last); absent when there is none or the shop's
+   * time zone is not known (StorefrontConfigOptions.shopTimezone).
+   */
+  camps?: StorefrontCampaign[];
 }
+
+export interface StorefrontCampaign {
+  n: string;
+  s: number;
+  e: number;
+}
+
+/** Most campaigns the storefront config lists, and the longest name it carries. */
+export const STOREFRONT_CAMPAIGNS = 10;
+export const STOREFRONT_CAMPAIGN_NAME = 80;
 
 /** A gift variant with its product's handle (Liquid renders it through `all_products[h]`). */
 export interface StorefrontGiftVariant {
@@ -170,6 +188,8 @@ export interface StorefrontConfigOptions {
    * over the same gated config); null / absent / a campaign without an applied tier override = the base sets.
    */
   campaignId?: string | null;
+  /** The shop's IANA time zone: campaign windows are shop-local, the storefront needs instants (`camps`). */
+  shopTimezone?: string;
 }
 
 /** A value under a key that may be an Object.prototype name ("__proto__"): always an own, enumerable entry. */
@@ -275,7 +295,27 @@ export function buildStorefrontConfig(gated: ReadonlyDeep<WonDiscountsConfig>, o
     ...rewardsPart(gated.modules.rewards, opts.variantHandles ?? {}),
     ...(gated.engine.combination.outletWithAnything ? { ow: 1 as const } : {}),
     ...(gated.storefront.cardPricesEnabled ? { cards: 1 as const } : {}),
+    ...campaignsPart(gated.campaigns, opts.shopTimezone),
   };
+}
+
+/** `camps`: every campaign that is not killed, as instants; a window that cannot be read is left out. */
+function campaignsPart(campaigns: ReadonlyDeep<WonDiscountsConfig["campaigns"]>, zone: string | undefined): { camps?: StorefrontCampaign[] } {
+  if (!zone) return {};
+  const out: StorefrontCampaign[] = [];
+  for (const campaign of campaigns) {
+    if (campaign.killed) continue;
+    try {
+      const s = Math.floor(shopLocalToUtc(campaign.window.start, zone).getTime() / 1000);
+      const e = Math.floor(shopLocalToUtc(campaign.window.end, zone).getTime() / 1000);
+      if (Number.isFinite(s) && Number.isFinite(e) && e > s) out.push({ n: campaign.name.trim().slice(0, STOREFRONT_CAMPAIGN_NAME), s, e });
+    } catch {
+      // An unknown zone or an unreadable window: the storefront announces nothing for it.
+    }
+  }
+  if (out.length === 0) return {};
+  out.sort((a, b) => b.e - a.e || a.s - b.s);
+  return { camps: out.slice(0, STOREFRONT_CAMPAIGNS).sort((a, b) => a.s - b.s || a.e - b.e) };
 }
 
 /** Threshold per currency in Liquid units, own entries only; empty map → null. */

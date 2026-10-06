@@ -30,6 +30,13 @@ const PAGES: Record<string, string[]> = {
   "cart page": [...EVERY_PAGE],
   "collection / search": [...EVERY_PAGE, "won-discounts-cards.js"],
 };
+/**
+ * Feedback 2 (2026-10-06, body 5 a 7): scripts NO page loads by default — only where the merchant adds the block
+ * ("Rewards progress", "Campaign banner") or switches the embed's top bar on. They are outside the per-page
+ * budget above on purpose (a default install stays within it) and have a ceiling of their own; a page that uses
+ * them goes over SF-2 by that much (the product page: 10 226 B + this file), which docs/won-discounts/bfs-check.md says.
+ */
+const OPT_IN: Record<string, number> = { "won-discounts-blocks.js": 2048 };
 const GZIP_BUDGET_BYTES = 10 * 1024; // 10240 B ceiling (SF-2), per page type
 const RAW_THEME_CHECK_BYTES = 10_000; // AssetSizeAppBlockJavaScript default, per file
 const present = (file: string) => existsSync(path.join(ASSETS, file));
@@ -44,10 +51,17 @@ for (const [page, files] of Object.entries(PAGES)) {
 
 test("every JS file of the extension belongs to a page type above and stays under Theme Check's raw AssetSizeAppBlockJavaScript threshold", () => {
   const all = readdirSync(ASSETS).filter((file) => file.endsWith(".js"));
-  const known = new Set(Object.values(PAGES).flat());
+  const known = new Set([...Object.values(PAGES).flat(), ...Object.keys(OPT_IN)]);
   assert.deepEqual(all.filter((file) => !known.has(file)), [], "a new script must be put on its page type(s) in PAGES");
   for (const file of all) {
     const raw = readFileSync(path.join(ASSETS, file)).length;
     assert.ok(raw <= RAW_THEME_CHECK_BYTES, `${file} is ${raw} B raw, over Theme Check's ${RAW_THEME_CHECK_BYTES} B default.`);
   }
 });
+
+for (const [file, ceiling] of Object.entries(OPT_IN)) {
+  test(`opt-in storefront script ${file} stays within its own gzip ceiling`, () => {
+    const gz = gzipSync(readFileSync(path.join(ASSETS, file))).length;
+    assert.ok(gz <= ceiling, `${file}: ${gz} B gzipped, over its ${ceiling} B ceiling.`);
+  });
+}

@@ -43,10 +43,33 @@
 // Pro set on Free, plan-gate.ts) still claims its products: they get no tier.
 //
 // A reference is one string (rule and campaign ids are `[A-Za-z0-9_-]`, so "@"
-// is a safe separator):
-//   "ruleId"             always
-//   "ruleId@<campaign>"  only while that campaign re-targets the rule
+// and "#" are safe separators):
+//   "ruleId"                        always
+//   "ruleId@<campaign>"             only while that campaign re-targets the rule
+//   "<either of those>#<key>:<min>" the product is in the rule through an item
+//                                   that has its OWN minimum quantity (below)
 // Order and shipping rules are never listed: they apply to every line.
+//
+// Per-item minimum (Pro, plan 2026-10-06 bod 8; `target.itemMinimums`). The
+// minimum travels in the ref, so it costs the shared config's 9 000 B nothing
+// and the function needs neither collection memberships nor product ids:
+//   - `key` = the tail of the item's GID (variantKey): the product's own number
+//     for a products target, the collection's for a collections target;
+//   - `min` = the item's minimum, 1–6 digits;
+//   - the text before the last ":" (`ruleId[@campaign]#key`) is the GROUP: every
+//     cart line whose refs name the same group counts toward it together — the
+//     lines of one product (its variants together), or of one collection.
+// A product listed through an item WITHOUT its own minimum gets the plain ref
+// (the rule's common minimum applies). A product in two targeted collections
+// gets one ref per collection (plain or with a minimum), so the engine can let
+// it qualify through ANY of them (plan.ts "Per-item minimum").
+// Cost: 3 + key + min characters a ref (≤ 22 B with a 13-digit id) in THAT
+// product's metafield, which has its own 9 000 B budget; over it the longest
+// refs go first, which only ever means less discount (a dropped item ref stops
+// the product counting toward its group; a dropped plain ref leaves it its
+// item minimum).
+// Consistency: like every targeting change, a changed minimum is in force for a
+// product once its metafield is rewritten (the sync does it with the config).
 
 import { variantKey } from "./cart.ts";
 import type { ReadonlyDeep, WonDiscountsConfig } from "./config.ts";
@@ -67,9 +90,47 @@ export function ruleRef(ruleId: string, opts: { campaignId?: string } = {}): str
   return opts.campaignId ? `${ruleId}@${opts.campaignId}` : ruleId;
 }
 
+/** The rule (and campaign) a ref names; an item ref's `#key:min` tail is not part of either. */
 export function parseRuleRef(ref: string): RuleRefParts {
-  const at = ref.indexOf("@");
-  return at === -1 ? { ruleId: ref } : { ruleId: ref.slice(0, at), campaignId: ref.slice(at + 1) };
+  const hash = ref.indexOf("#");
+  const base = hash === -1 ? ref : ref.slice(0, hash);
+  const at = base.indexOf("@");
+  return at === -1 ? { ruleId: base } : { ruleId: base.slice(0, at), campaignId: base.slice(at + 1) };
+}
+
+/** `base#key:min` — the ref of a product listed through an item with its own minimum quantity. */
+export function itemRef(base: string, key: string, minimum: number): string {
+  return `${base}#${key}:${minimum}`;
+}
+
+export interface ItemRefParts {
+  /** The plain ref before "#": `ruleId` or `ruleId@<campaign>`. */
+  base: string;
+  /** `base#key`: the lines naming it count together. */
+  group: string;
+  /** The tail of the item's GID. */
+  key: string;
+  minimum: number;
+}
+
+const ITEM_MIN_RE = /^[0-9]{1,6}$/;
+
+/**
+ * An item ref's parts (the Rust function parses the same way, plan.rs
+ * `item_of`): the text has a "#"; after its FIRST "#" comes a non-empty key,
+ * the LAST ":" and 1–6 ASCII digits making a number ≥ 1. A text with a "#"
+ * that is not exactly that is no ref at all (null: it names no rule).
+ */
+export function parseItemRef(ref: string): ItemRefParts | null {
+  const hash = ref.indexOf("#");
+  if (hash === -1) return null;
+  const colon = ref.lastIndexOf(":");
+  if (colon <= hash + 1) return null;
+  const digits = ref.slice(colon + 1);
+  if (!ITEM_MIN_RE.test(digits)) return null;
+  const minimum = Number(digits);
+  if (minimum < 1) return null;
+  return { base: ref.slice(0, hash), group: ref.slice(0, colon), key: ref.slice(hash + 1, colon), minimum };
 }
 
 export interface ProductTargetingInput {
@@ -201,22 +262,64 @@ interface Scope {
   productIds: ReadonlySet<string>;
   variantIds: ReadonlySet<string>;
   collectionIds: ReadonlySet<string>;
+  /** Item GID (a product's, or a collection's) → its own minimum quantity. */
+  minimums: ReadonlyMap<string, number>;
 }
 
-type TargetLike = { kind?: unknown; productIds?: unknown; variantIds?: unknown; ids?: unknown };
+type TargetLike = { kind?: unknown; productIds?: unknown; variantIds?: unknown; ids?: unknown; itemMinimums?: unknown };
 
 const stringSet = (v: unknown) => new Set(Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+
+const ITEM_KEY_RE = /^[A-Za-z0-9_-]+$/;
+
+/** `target.itemMinimums` as a map; an entry the ref cannot carry (a key with other characters, no whole quantity ≥ 1) is not one. */
+function minimumsOf(v: unknown): Map<string, number> {
+  const out = new Map<string, number>();
+  if (!Array.isArray(v)) return out;
+  for (const item of v) {
+    if (typeof item !== "object" || item === null) continue;
+    const { id, quantity } = item as { id?: unknown; quantity?: unknown };
+    if (typeof id !== "string" || typeof quantity !== "number" || !Number.isInteger(quantity) || quantity < 1 || quantity > 999_999) continue;
+    if (!ITEM_KEY_RE.test(variantKey(id)) || out.has(id)) continue;
+    out.set(id, quantity);
+  }
+  return out;
+}
 
 function scopeOf(target: unknown, ref: string): Scope | null {
   if (typeof target !== "object" || target === null) return null;
   const t = target as TargetLike;
   if (t.kind === "products") {
-    return { ref, productIds: stringSet(t.productIds), variantIds: stringSet(t.variantIds), collectionIds: new Set() };
+    return { ref, productIds: stringSet(t.productIds), variantIds: stringSet(t.variantIds), collectionIds: new Set(), minimums: minimumsOf(t.itemMinimums) };
   }
   if (t.kind === "collections") {
-    return { ref, productIds: new Set(), variantIds: new Set(), collectionIds: stringSet(t.ids) };
+    return { ref, productIds: new Set(), variantIds: new Set(), collectionIds: stringSet(t.ids), minimums: minimumsOf(t.itemMinimums) };
   }
   return null;
+}
+
+/**
+ * The refs one scope gives a product, product-wide: none when the scope does
+ * not list it. Products target: its own minimum's ref, else the plain one.
+ * Collections target: one ref per targeted collection the product is in — with
+ * that collection's minimum, or the plain ref (once) for the ones without.
+ */
+function wholeRefs(scope: Scope, product: ProductTargetingInput): string[] {
+  if (scope.productIds.has(product.productId)) return [productRef(scope, product.productId)];
+  const out: string[] = [];
+  for (const collectionId of product.collectionIds) {
+    if (!scope.collectionIds.has(collectionId)) continue;
+    const minimum = scope.minimums.get(collectionId);
+    const ref = minimum === undefined ? scope.ref : itemRef(scope.ref, variantKey(collectionId), minimum);
+    if (!out.includes(ref)) out.push(ref);
+  }
+  return out;
+}
+
+/** A products target's ref for a product (listed whole, or through its variants): with the product's own minimum when it has one. */
+function productRef(scope: Scope, productId: string): string {
+  const minimum = scope.minimums.get(productId);
+  return minimum === undefined ? scope.ref : itemRef(scope.ref, variantKey(productId), minimum);
 }
 
 /** Numeric id order for the `col` keys (canonical digit strings): shorter first, then by digits. */
@@ -287,8 +390,9 @@ export function productRuleIndex(
     const whole = new Set<string>();
     const perVariant = new Map<string, Set<string>>();
     for (const scope of scopes) {
-      if (scope.productIds.has(product.productId) || product.collectionIds.some((c) => scope.collectionIds.has(c))) {
-        whole.add(scope.ref);
+      const listed = wholeRefs(scope, product);
+      if (listed.length > 0) {
+        for (const ref of listed) whole.add(ref);
         continue;
       }
       for (const variantId of product.variantIds) {
@@ -296,7 +400,8 @@ export function productRuleIndex(
         const key = variantKey(variantId);
         let refs = perVariant.get(key);
         if (!refs) perVariant.set(key, (refs = new Set()));
-        refs.add(scope.ref);
+        // The variants of one product count together: the minimum is the product's.
+        refs.add(productRef(scope, product.productId));
       }
     }
     const marginRefs =
@@ -320,15 +425,74 @@ export function lineRuleIds(
   campaignId: string | null,
   retargeted: ReadonlySet<string>,
 ): Set<string> {
-  const out = new Set<string>();
+  return lineTargeting(line, campaignId, retargeted).ruleIds;
+}
+
+/** A line's part in one item group of a rule (an item ref it lists). */
+export interface LineItemRef {
+  ruleId: string;
+  /** `ruleId[@campaign]#key` (parseItemRef): the lines naming it count together. */
+  group: string;
+  key: string;
+  minimum: number;
+}
+
+export interface LineTargeting {
+  /** Every rule that targets the line, through a plain ref or an item ref. */
+  ruleIds: Set<string>;
+  /** Rules the line lists by a plain ref: the rule's common minimum decides for it there. */
+  plain: Set<string>;
+  /** The line's item refs, each (rule, group) once, in ref order; [] for a line without any. */
+  items: LineItemRef[];
+}
+
+/** The rule a plain ref (no "#") names for this run, or null. */
+function plainRuleId(ref: string, campaignId: string | null, retargeted: ReadonlySet<string>): string | null {
+  const at = ref.indexOf("@");
+  if (at === -1) return retargeted.has(ref) ? null : ref;
+  const ruleId = ref.slice(0, at);
+  return retargeted.has(ruleId) && ref.slice(at + 1) === campaignId ? ruleId : null;
+}
+
+/**
+ * `lineRuleIds` with the per-item minimums the refs carry (the Rust function:
+ * plan.rs `line_rule_ids` + `collect_item_refs`). Ref by ref:
+ *   1. a ref that names a rule as it is, is that rule's plain ref — for a text
+ *      with a "#" only when the rule exists (`known`: the plan's rule ids; an
+ *      id holds a "#" in a hand-made config only);
+ *   2. any other text with a "#" is an item ref or nothing (parseItemRef): its
+ *      base before the "#" must name an existing rule the way a plain ref
+ *      does. Each (rule, group) counts once a line.
+ * Without `known` every rule a base names is taken as existing, and no text
+ * with a "#" is a plain ref.
+ */
+export function lineTargeting(
+  line: { ruleIds: readonly string[] },
+  campaignId: string | null,
+  retargeted: ReadonlySet<string>,
+  known?: { has(ruleId: string): boolean },
+): LineTargeting {
+  const ruleIds = new Set<string>();
+  const plain = new Set<string>();
+  const items: LineItemRef[] = [];
   for (const ref of line.ruleIds) {
-    const at = ref.indexOf("@");
-    if (at === -1) {
-      if (!retargeted.has(ref)) out.add(ref);
+    const direct = plainRuleId(ref, campaignId, retargeted);
+    if (!ref.includes("#")) {
+      if (direct === null) continue;
+      ruleIds.add(direct);
+      plain.add(direct);
       continue;
     }
-    const ruleId = ref.slice(0, at);
-    if (retargeted.has(ruleId) && ref.slice(at + 1) === campaignId) out.add(ruleId);
+    if (direct !== null && known?.has(direct) === true) {
+      ruleIds.add(direct);
+      plain.add(direct);
+      continue;
+    }
+    const item = parseItemRef(ref);
+    const ruleId = item ? plainRuleId(item.base, campaignId, retargeted) : null;
+    if (!item || ruleId === null || known?.has(ruleId) === false) continue;
+    ruleIds.add(ruleId);
+    if (!items.some((x) => x.ruleId === ruleId && x.group === item.group)) items.push({ ruleId, group: item.group, key: item.key, minimum: item.minimum });
   }
-  return out;
+  return { ruleIds, plain, items };
 }

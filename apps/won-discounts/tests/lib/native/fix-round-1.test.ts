@@ -124,7 +124,7 @@ async function resumeRow(shop: string, raw: { id: string; discount: unknown }, s
 
 test("Important 1: resumed move refused (code now on another Won rule) → the native is restored at once", async () => {
   const { shop, shopify, common } = setup();
-  const raw = basicNode({ title: "Obnov mě", codes: ["OBNOV"] });
+  const raw = basicNode({ title: "Obnovte mě", codes: ["OBNOV"] });
   await resumeRow(shop, raw, shopify); // native already deleted by an earlier attempt
   const config = createDefaultConfig();
   config.modules.codes.rules.push({
@@ -144,7 +144,7 @@ test("Important 1: resumed move refused (code now on another Won rule) → the n
   assert.equal(result.nativeRestored, true);
   assert.doesNotMatch(result.error, /Nic se nezměnilo/);
   assert.match(result.error, /Slevu jsme hned vrátili do Shopify/);
-  assert.equal(shopify.holderOf("OBNOV")?.discount.title, "Obnov mě");
+  assert.equal(shopify.holderOf("OBNOV")?.discount.title, "Obnovte mě");
   const [row] = await rows(shop);
   assert.equal(row.status, "failed");
   assert.equal(parseSnapshot(row.snapshot)?.restoredAs?.nativeId, result.restoredNativeId);
@@ -172,7 +172,7 @@ test("Important 2 (create-first): the Won rule's sync fails AND its rollback fai
   assert.ok(!result.ok);
   assert.equal(result.code, "sync_failed");
   assert.equal((result as { state?: string }).state, "both_live");
-  assert.match(result.error, /můžou teď platit obě\. Klikni hned na „Vrátit zpět“/);
+  assert.match(result.error, /můžou teď platit obě\. Klikněte hned na „Vrátit zpět“/);
   assert.ok(shopify.nodes.has(nativeId), "the native was never deleted");
   assert.equal(shopify.callsTo("WonNativeAutomaticDelete").length, 0);
   assert.equal(shopify.callsTo("WonNativeAutomaticBasicCreate").length, 0);

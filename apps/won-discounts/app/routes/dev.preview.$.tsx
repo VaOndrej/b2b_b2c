@@ -5,13 +5,11 @@ import { useActionData, useLoaderData, useLocation } from "react-router";
 import { resolveLocale } from "../i18n";
 import { LocaleProvider, useT } from "../i18n/context";
 import { MoveDialog, MoveDialogBody, moveDialogHeading } from "../components/MoveDialog";
-import { isUpcomingModule, type UpcomingModule } from "../components/model/modules";
 import { isRecipeKey } from "../components/model/rule-form";
 import type { NativeDiscountView } from "../components/model/types";
 import { WonSection } from "../components/shell/WonSection";
-import { ComingSoonScreen } from "../components/screens/ComingSoonScreen";
 import { buildDiscountsProps, DiscountsScreen, type DiscountsScreenProps } from "../components/screens/DiscountsScreen";
-import { buildOnboardingProps, OnboardingScreen, type OnboardingScreenProps, onboardingStep } from "../components/screens/OnboardingScreen";
+import { buildOnboardingProps, onboardingHasNative, OnboardingScreen, type OnboardingScreenProps, onboardingStep } from "../components/screens/OnboardingScreen";
 import { buildOverviewProps, OverviewScreen, type OverviewScreenProps } from "../components/screens/OverviewScreen";
 import { PlanScreen, type PlanScreenProps } from "../components/screens/PlanScreen";
 import { buildRuleEditorProps, RuleEditorScreen, type RuleEditorScreenProps } from "../components/screens/RuleEditorScreen";
@@ -111,21 +109,30 @@ import {
 //                                 ?rule=<id> (Přehled zásahů of one rule, narrowed like the server does);
 //                                 ?result=refreshed | saved | invalid | unreadable | fixes (sanitizer notes of a save)
 //   /dev/preview/tiers           Množstevní slevy (MVP 3): Free by default, ?plan=pro; ?state=empty | dawn |
-//                                 failed | pending | block-unknown | no-scope; ?theme=dawn;
-//                                 ?result=saved | invalid | unreadable
-//   /dev/preview/appearance      Vzhled: the four looks on the theme; ?state=empty (an example set), ?theme=dawn
-//   /dev/preview/settings        Nastavení: combination switches + markets; ?state=changed, ?plan=pro
+//                                 failed | pending | block-unknown | no-scope | custom (a stored Pro custom
+//                                 look + a changed text in the preview); ?theme=dawn;
+//                                 ?result=saved | invalid | unreadable | too-large (does not fit at checkout)
+//   /dev/preview/appearance      Vzhled: the four looks on the theme; ?state=empty (an example set) | custom |
+//                                 issue, ?theme=dawn
+//   /dev/preview/rewards         Odměny: Free by default, ?plan=pro; ?state=empty | embed-draft | embed-unknown |
+//                                 embed-no-scope; ?result=saved | invalid | too-many
+//   /dev/preview/settings        Nastavení: combination switches + markets + tools + the plan sections;
+//                                 ?state=changed, ?plan=pro, ?planState=dev | unknown | clean | production
 //   /dev/preview/overview        …also ?state=tiers (the Množstevní slevy card, the table not on the page yet),
 //                                 ?state=tiers-empty
 //   /dev/preview/rule-editor     …also &tiers=1 (a product rule competing with a tier set: the tier note)
-//   /dev/preview/onboarding      ?step=1|2|3, ?embed=on
+//   /dev/preview/onboarding      ?step=1–5, ?embed=on | none | noscope, ?native=none (step 2 skipped), ?rules=1 (has discounts), ?live=<n>
+//   /dev/preview/overview        …also ?state=clean (nothing outside Won, all good) | native-error | conflict | pro-cards; ?plan=pro
+//   /dev/preview/try-cart        …the bare page is Free (locked); ?plan=pro the tool; ?date=&time= as from a campaign
 //   /dev/preview/move-dialog
 //   /dev/preview/outlet          Výprodej (MVP 5): Free by default, ?plan=pro; ?state=empty; ?result=started | ended |
-//                                 invalid | failed. Přehled: ?state=outlet (the card with a question)
+//                                 invalid | failed (both with the posted values, B14) | settings-pro (B15).
+//                                 Přehled: ?state=outlet (the card with a question)
 //   /dev/preview/campaigns       Kampaně (MVP 6): Free by default, ?plan=pro; ?state=empty | finishing; ?edit=<id>;
-//                                 ?result=saved | killed | invalid. Přehled: ?state=campaigns (+ &finishing=1)
-//   /dev/preview/coming-soon     ?module=<a module not built yet> (none since MVP 6)
-//   /dev/preview/plan
+//                                 ?result=saved | killed | invalid | invalid-rule (an error at one discount and at
+//                                 the time control) | sync-pending. Přehled: ?state=campaigns (+ &finishing=1)
+//   /dev/preview/plan            Tarif as its own page; ?plan=pro, ?state=dev | unknown | clean | production
+//                                 (production: no sentences for developers), ?result=<kind>
 //   Any screen: ?locale=en for the English admin.
 //
 // Double guard against ever reaching a non-development environment:
@@ -146,7 +153,6 @@ export const HARNESS_SCREENS = [
   "try-cart",
   "onboarding",
   "move-dialog",
-  "coming-soon",
   "plan",
   "analytics",
   "settings",
@@ -183,7 +189,48 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
   const sync = { state: "not_wired" as const };
   switch (screen) {
     case "overview": {
-      const wired = { readOnly, timezone: DEV_TIMEZONE, marketNames: names, now: DEV_NOW };
+      // ?plan=pro: the Pro cards (Kampaně, Výprodej) as a Pro shop sees them; Free says they are Pro.
+      const wired = { readOnly, timezone: DEV_TIMEZONE, marketNames: names, now: DEV_NOW, plan: q.get("plan") === "pro" ? ("pro" as const) : ("free" as const) };
+      // Nothing outside Won, the website on, everything synced: "Slevy mimo Won" is not rendered and the store status is all good.
+      if (state === "clean") {
+        return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
+          ...wired,
+          signals: { ...DEV_SIGNALS, embed: DEV_EMBED_ON, native: { state: "ok", discounts: [], moved: [], conflicts: [] }, analytics: { available: true, empty: true, days: 30, tiles: [] } },
+          ruleSync: DEV_RULE_SYNC_OK,
+        });
+      }
+      // The detection failed (a retry), a discount fights a Won one (a link to its codes), the theme cannot be read, the sync is blocked.
+      if (state === "native-error") {
+        return buildOverviewProps(DEV_OVERVIEW_FIXTURE, { ...wired, signals: { ...DEV_SIGNALS, native: { state: "error" } }, ruleSync: DEV_RULE_SYNC_OK });
+      }
+      if (state === "conflict") {
+        return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
+          ...wired,
+          signals: {
+            ...DEV_SIGNALS,
+            embed: { state: "no_scope", activateUrl: null },
+            sync: { state: "blocked", reason: "unreadable_config" },
+            native: {
+              ...devNative(locale),
+              conflicts: [{ nativeTitle: "VIP10", ruleName: "VIP kód", ruleId: "dev-fixture-2", message: locale === "cs" ? "Kód VIP10 používá i sleva v Shopify. Platit může jen jedna." : "The code VIP10 is also used by a Shopify discount. Only one can apply." }],
+            },
+          },
+          ruleSync: DEV_RULE_SYNC_OK,
+        });
+      }
+      // Free with nothing running: the Pro cards say so (ProSell) instead of offering their setup.
+      if (state === "pro-cards") {
+        return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
+          ...wired,
+          signals: {
+            ...DEV_SIGNALS,
+            native: devNative(locale),
+            campaigns: { running: null, next: null, finishing: false },
+            outlet: { running: 0, pendingReturns: [], oversold: 0, problems: 0, ordersCounted: true },
+          },
+          ruleSync: DEV_RULE_SYNC_OK,
+        });
+      }
       if (state === "live") {
         return buildOverviewProps(DEV_OVERVIEW_FIXTURE, { ...wired, signals: { ...DEV_SIGNALS, native: devNative(locale) }, ruleSync: DEV_RULE_SYNC_OK });
       }
@@ -289,8 +336,24 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
         now: DEV_NOW,
       });
       if (!props) throw notFound();
+      // P4: ?products=N targets N named products (the selected list, its filter and "show all"); the last has no name.
+      const productCount = Math.min(Number(q.get("products")) || 0, 40);
+      const picked = Array.from({ length: productCount }, (_, i) => `gid://shopify/Product/${900 + i}`);
+      const pickedLabels = Object.fromEntries(picked.slice(0, -1).map((id, i) => [id, { title: `${["Mikina Won", "Tričko Won", "Čepice Won", "Ponožky Won"][i % 4]} ${i + 1}` }]));
       return {
         ...props,
+        ...(productCount > 0 && props.rule
+          ? { rule: { ...props.rule, target: { kind: "products" as const, productIds: picked, variantIds: [], ...(q.get("mins") === "1" ? { itemMinimums: [{ id: picked[0]!, quantity: 3 }, { id: picked[1] ?? picked[0]!, quantity: 4 }] } : {}) } }, labels: pickedLabels }
+          : { labels: { "gid://shopify/Collection/7": { title: "Doplňky" } } }),
+        // Bod 6: ?batch=N lists a generated batch of N codes (and a Pro-pattern one).
+        ...(Number(q.get("batch")) > 0
+          ? {
+              batches: [
+                { id: "b1", pattern: "KXTR-XXXXXXXXXX", pro: false, codes: Array.from({ length: Math.min(Number(q.get("batch")), 200) }, (_, i) => `KXTR-${String(7352941 * (i + 3)).padStart(10, "A").slice(0, 10)}`) },
+                { id: "b2", pattern: "BF-XXXXXX-VIP", pro: true, codes: ["BF-4821KQ-VIP", "BF-9034TR-VIP", "BF-1177MZ-VIP"] },
+              ],
+            }
+          : {}),
         result: devEditorResult(q.get("result")),
         ...(q.get("margin") === "1" || q.get("margin") === "computing"
           ? { marginImpact: devRuleMarginImpact(ruleParam, { pro: q.get("plan") === "pro", computing: q.get("margin") === "computing" }) }
@@ -298,9 +361,20 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       };
     }
     case "try-cart": {
-      const base = buildTryCartProps(DEV_OVERVIEW_FIXTURE, { timezone: DEV_TIMEZONE, marketNames: names, now: DEV_NOW });
+      // Vyzkoušet košík is Pro: the bare page is what Free sees (the locked frame), ?plan=pro the tool itself.
+      // A `state` fixture shows a result of the engine, so it is always the unlocked tool (its ?plan= picks the fixture's plan).
+      // ?date=&time= as from a campaign link (the "začátek kampaně" time choice).
+      const base = buildTryCartProps(DEV_OVERVIEW_FIXTURE, {
+        timezone: DEV_TIMEZONE,
+        marketNames: names,
+        now: DEV_NOW,
+        pro: q.get("plan") === "pro" || state !== null,
+        date: q.get("date"),
+        time: q.get("time"),
+      });
+      if (!base.pro) return base;
       if (state === "empty") return base;
-      if (state === "warnings") return { ...base, lines: DEV_TRY_CART_LINES, codes: "VIP10", currency: "CZK:cz", plan: devTryCartPlanWarnings(locale) };
+      if (state === "warnings") return { ...base, lines: DEV_TRY_CART_LINES, ruleIds: ["dev-fixture-2"], currency: "CZK:cz", plan: devTryCartPlanWarnings(locale) };
       if (state === "margin") return { ...base, lines: DEV_TRY_CART_MARGIN_LINES, currency: "EUR:sk", plan: devTryCartPlanMargin(locale) };
       if (state === "tiers") {
         return { ...base, lines: DEV_TRY_CART_TIER_LINES, currency: "CZK:cz", plan: devTryCartPlanTiers(locale, q.get("plan") === "pro" ? "pro" : "free") };
@@ -310,36 +384,48 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
         return { ...base, lines: devTryCartRewardLines(plan), currency: "CZK:cz", plan: devTryCartPlanRewards(locale, plan) };
       }
       if (state === "not-wired") {
-        return { ...base, lines: DEV_TRY_CART_LINES, codes: "VIP10", result: { ok: false as const, reason: "not_wired" as const, what: "tryCart" as const } };
+        return { ...base, lines: DEV_TRY_CART_LINES, ruleIds: ["dev-fixture-2"], result: { ok: false as const, reason: "not_wired" as const, what: "tryCart" as const } };
       }
-      return { ...base, lines: DEV_TRY_CART_LINES, codes: "VIP10", currency: "CZK:cz", plan: devTryCartPlan(locale) };
+      return { ...base, lines: DEV_TRY_CART_LINES, ruleIds: ["dev-fixture-2"], currency: "CZK:cz", plan: devTryCartPlan(locale) };
     }
     case "onboarding": {
       const step = Number(q.get("step") ?? "1");
-      const config = step === 1 ? DEV_EMPTY_FIXTURE : DEV_ONBOARDING_FIXTURE;
+      // ?rules=1: a shop that already has discounts (steps 4 and 5 done or not, by ?live=).
+      const config = step === 1 ? DEV_EMPTY_FIXTURE : q.get("rules") === "1" ? { ...DEV_OVERVIEW_FIXTURE, onboarding: DEV_ONBOARDING_FIXTURE.onboarding } : DEV_ONBOARDING_FIXTURE;
+      // ?native=none: nothing outside Won, so step 2 is skipped (four steps). ?embed=on | none (no link to the editor)
+      // | noscope. ?live=<n>: how many of the discounts really run (default: all of them).
+      const native = q.get("native") === "none" ? { state: "ok" as const, discounts: [], moved: [], conflicts: [] } : devNative(locale);
+      const embedParam = q.get("embed");
+      const embed =
+        embedParam === "on" ? DEV_EMBED_ON : embedParam === "none" ? { state: "unknown" as const, activateUrl: null } : embedParam === "noscope" ? { state: "no_scope" as const, activateUrl: null } : DEV_EMBED_OFF;
+      const live = q.get("live");
       const props = buildOnboardingProps(config, {
-        native: devNative(locale),
-        embed: q.get("embed") === "on" ? DEV_EMBED_ON : DEV_EMBED_OFF,
+        native,
+        embed,
         readOnly,
+        liveRules: live !== null && /^\d+$/.test(live) ? Number(live) : config.modules.codes.rules.length,
       });
-      // The shown step follows the state as on the real page (embed on → 4, a first discount → 5).
-      return { ...props, step: onboardingStep(Number.isFinite(step) ? step : 1, { embedOn: q.get("embed") === "on", rules: props.rules }) };
+      // The shown step follows the state as on the real page (past step 3 → 4, a first discount → 5; step 2 only with something outside Won).
+      return { ...props, step: onboardingStep(Number.isFinite(step) ? step : 1, { embedOn: embedParam === "on", rules: props.rules, hasNative: onboardingHasNative(native) }) };
     }
     case "move-dialog": {
       const discounts = devNative(locale).discounts.filter((d) => d.movable);
       return { discounts: q.get("all") === "1" ? discounts : discounts.slice(0, 1) };
     }
-    case "coming-soon": {
-      const module = q.get("module") ?? "tiers";
-      if (!isUpcomingModule(module)) throw notFound();
-      return { module };
-    }
     case "plan":
       // Tarif (MVP 7): Free by default; ?plan=pro (subscribed, on trial), ?state=dev (the dev override alone),
       // ?state=unknown (Shopify did not answer), ?state=clean (nothing to put back), ?result=<kind>.
-      return devPlanScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, result: q.get("result") });
-    case "settings":
-      return devSettingsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state });
+      // ?state=production: the app in production (the dev override and test charge sentences are not shown).
+      return { ...devPlanScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, result: q.get("result") }), production: state === "production" };
+    case "settings": {
+      // Nastavení ends with the plan sections (Tarif lives here since the menu change); ?planState= as on /plan.
+      const plan = q.get("plan") === "pro" ? "pro" : "free";
+      const planState = q.get("planState");
+      return {
+        ...devSettingsScreen({ plan, state }),
+        planScreen: { ...devPlanScreen({ plan, state: planState, result: null }), production: planState === "production" },
+      };
+    }
     case "tiers":
       return {
         ...devTiersScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, theme: q.get("theme") }),
@@ -425,14 +511,12 @@ export default function DevPreview() {
     case "move-dialog":
       content = <MoveDialogPreview {...(data as { discounts: NativeDiscountView[] })} />;
       break;
-    case "coming-soon":
-      content = <ComingSoonScreen {...(data as { module: UpcomingModule })} />;
-      break;
     case "plan":
       content = <PlanScreen {...(data as PlanScreenProps)} />;
       break;
     case "settings":
-      content = <SettingsScreen {...(data as SettingsScreenProps)} result={submitted} />;
+      // The plan sections post to the harness itself (nothing is saved), not to /app/plan.
+      content = <SettingsScreen {...(data as SettingsScreenProps)} result={submitted} planAction="" />;
       break;
     case "tiers":
       content = <TiersScreen {...(data as TiersScreenProps)} result={submitted ?? (data as TiersScreenProps).result} />;

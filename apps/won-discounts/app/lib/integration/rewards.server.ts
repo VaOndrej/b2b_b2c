@@ -14,7 +14,7 @@
 import type { GiftTier, WonDiscountsConfig } from "@won/core/discounts/config";
 import { explainGate, gateConfigForPlan, type ProCapability } from "@won/core/discounts/plan-gate";
 
-import { cartBlockAddUrl } from "../../components/model/embed";
+import { cartBlockAddUrl, placementLinks, REWARDS_PROGRESS_BLOCK_HANDLE } from "../../components/model/embed";
 import { currencyCodes, currencyViews } from "../../components/model/markets";
 import { giftTierView, readRewardsForm, REWARDS_FIELD, REWARDS_INTENT } from "../../components/model/rewards";
 import type { FormDataLike } from "../../components/model/rule-form";
@@ -25,6 +25,7 @@ import { graphqlOf, type ShopCtx } from "./context.server";
 import { readSaveOptions, saveConfigSection } from "./settings.server";
 import { ctxPlan } from "./sync-status.server";
 import { readMarketNames, readShopContext } from "./themes.server";
+import { resourceLabels } from "./titles.server";
 
 const REWARD_CAPABILITIES: readonly ProCapability[] = ["gift_ladder", "gift_choices"];
 
@@ -104,6 +105,7 @@ export async function loadRewardsScreen(ctx: ShopCtx, opts: { scopes: string; fr
     ...rewardsScreenFacts(stored, { plan, locale: ctx.locale, titles }),
     embed: signals.embed,
     cartBlockAddUrl: cartBlockAddUrl(ctx.shop, ctx.apiKey),
+    placements: placementLinks(ctx.shop, ctx.apiKey, REWARDS_PROGRESS_BLOCK_HANDLE),
   };
 }
 
@@ -146,7 +148,14 @@ export async function loadRewardsOverview(
 ): Promise<RewardsOverviewView> {
   const plan = await ctxPlan(ctx);
   const currency = opts.shopCurrency || loaded.config.markets.find((m) => m.enabled)?.currency || "";
-  return rewardsOverviewOf(loaded.config, plan, currency);
+  const view = rewardsOverviewOf(loaded.config, plan, currency);
+  // P4: each threshold's gift by name (its first choice; the card says how many more there are to choose from).
+  const gifts = gateConfigForPlan(loaded.config, plan).config.modules.rewards.gifts;
+  const firstChoices = gifts.map((g) => g.choices[0] ?? null);
+  const ids = firstChoices.filter((id): id is string => !!id);
+  if (ids.length === 0) return view;
+  const labels = await resourceLabels(ctx, ids);
+  return { ...view, giftNames: firstChoices.map((id) => (id ? (labels[id]?.title ?? null) : null)) };
 }
 
 /** The Přehled card: free shipping and the gift thresholds the PLAN runs, in the shop currency (§17c). */

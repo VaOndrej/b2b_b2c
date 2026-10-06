@@ -50,7 +50,7 @@ export class NativeDetectError extends Error {
 function detectErrorText(detail: string, locale: NativeLocale): string {
   return locale === "en"
     ? `Could not read the discounts from Shopify (${detail}). Try again in a moment.`
-    : `Slevy se nepodařilo načíst ze Shopify (${detail}). Zkus to za chvíli znovu.`;
+    : `Slevy se nepodařilo načíst ze Shopify (${detail}). Zkuste to za chvíli znovu.`;
 }
 
 /** Shop currency + time zone (the mapping needs both). */

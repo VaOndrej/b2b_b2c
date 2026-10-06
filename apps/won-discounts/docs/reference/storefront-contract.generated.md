@@ -42,9 +42,15 @@ Set them in the admin (Look → Custom look) or in your CSS on the root:
 - `--won-tiers-max-width`
 - `--won-tiers-radius`
 - `--won-tiers-tint`
+- `--won-topbar-bg`
+- `--won-topbar-text`
 
 ## Classes
 
+- `.won-campaign`
+- `.won-campaign--center`
+- `.won-campaign__time`
+- `.won-campaign__title`
 - `.won-card`
 - `.won-cart`
 - `.won-cart__applied`
@@ -58,6 +64,10 @@ Set them in the admin (Look → Custom look) or in your CSS on the root:
 - `.won-outlet__left`
 - `.won-outlet__row`
 - `.won-outlet__variant`
+- `.won-progress`
+- `.won-progress--center`
+- `.won-progress__row`
+- `.won-progress__track`
 - `.won-tiers`
 - `.won-tiers--chips`
 - `.won-tiers--default`
@@ -71,11 +81,13 @@ Set them in the admin (Look → Custom look) or in your CSS on the root:
 - `.won-tiers__row`
 - `.won-tiers__save`
 - `.won-tiers__unit`
+- `.won-topbar`
 
 ## Data markers
 
 Stable hooks for scripts and tests (do not style by them; classes are for styling):
 
+- `data-won-discounts-campaign`
 - `data-won-discounts-card`
 - `data-won-discounts-cart`
 - `data-won-discounts-cart-slot`
@@ -97,6 +109,7 @@ Stable hooks for scripts and tests (do not style by them; classes are for stylin
 - `data-won-discounts-tier-row`
 - `data-won-discounts-tiers`
 - `data-won-discounts-tiers-data`
+- `data-won-discounts-topbar`
 
 ## Events
 

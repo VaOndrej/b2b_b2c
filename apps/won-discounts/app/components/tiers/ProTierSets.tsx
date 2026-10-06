@@ -5,34 +5,58 @@
 // breaks. Which set a product gets is said once (contract K1): its own set only
 // — never the whole-store set as well — the first one naming the product, else
 // the first one with its collection. On Free the stored sets stay listed and
-// removable (§14a: off ≠ erased), carried as hidden fields, not editable; with
-// none stored Free sees one example labelled "Ukázka" (§16c).
+// removable (§14a: off ≠ erased), carried as hidden fields, not editable, with
+// the names of what they pick; the header says how many are stored and that
+// they do not apply. Free sees what the feature is for and the link to the plan
+// (ProSell) — never an invented example or a button that does nothing (P2, P8).
+// The section is always open (P7: on Pro this is everyday work). A set that
+// picks nothing or has no tiers is marked before a save (P3). The checkout's
+// room for tiers is said only close to its limit, and the save's "does not fit"
+// refusal is shown at that line.
+
+import { useState } from "react";
 
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
 
 import { useT } from "../../i18n/context";
-import { scopeSummary, TIERS_FIELD, tierSummary, type TierPayloadUse } from "../model/tiers";
+import { scopeSummary, tierCapacityShown, TIERS_FIELD, tierSummary, type TierPayloadUse } from "../model/tiers";
 import type { CurrencyView, TierSetView } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
-import { RowNote, WonBlock, WonRow, WonSection } from "../shell/WonSection";
-import { WON_AMBER_TEXT } from "../shell/tokens";
+import { SegmentedChoice } from "../shell/SegmentedChoice";
+import { RowNote, WonBlock, WonSection } from "../shell/WonSection";
 import { HiddenTierSet, TierSetEditor } from "./TierSetEditor";
 
 const F = TIERS_FIELD;
 
+/** The DOM id of the room-for-tiers line (the page scrolls to it when a save is refused for it). */
+export const TIERS_CAPACITY_ANCHOR = "capacity";
+
+/** How many names a list shows before "Zobrazit všech N" (every name is one click away, P4). */
+const TITLES_SHOWN = 12;
+
 function TitleList({ items, fallback }: { items: readonly { id: string; title: string }[]; fallback: string }) {
+  const tr = useT();
+  const [all, setAll] = useState(false);
   if (items.length === 0) return null;
+  const shown = all ? items : items.slice(0, TITLES_SHOWN);
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-      {items.slice(0, 12).map((item) => (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+      {shown.map((item) => (
         <s-chip key={item.id}>{item.title.trim() || fallback}</s-chip>
       ))}
-      {items.length > 12 ? <s-text color="subdued">+{items.length - 12}</s-text> : null}
+      {items.length > TITLES_SHOWN ? (
+        <s-button variant="tertiary" onClick={() => setAll((v) => !v)}>
+          {all ? tr.t("tiers.pro.titlesLess") : tr.t("tiers.pro.titlesAll", { n: items.length })}
+        </s-button>
+      ) : null}
     </div>
   );
 }
+
+/** The exception's choice "own tiers / no quantity discount" (a UI-only field: the parser reads the tier rows, which "none" does not mount). */
+const MODE_FIELD = (sid: string) => `set.${sid}.mode`;
 
 export function ProTierSets({
   pro,
@@ -50,6 +74,7 @@ export function ProTierSets({
   productsWithSets = null,
   storedIds,
   capacity,
+  capacityError,
 }: {
   pro: boolean;
   /** The Pro sets as the page holds them (stored ones + added ones, with picked scopes). */
@@ -71,28 +96,32 @@ export function ProTierSets({
   storedIds?: ReadonlySet<string>;
   /** How much of the checkout's room for tiers the page's sets take (live; CONFIG_LIMITS.tierPayloadBytes). */
   capacity?: TierPayloadUse;
+  /** The save's "the tiers do not fit at checkout" refusal, shown at the room-for-tiers line. */
+  capacityError?: string;
 }) {
   const tr = useT();
   const { t } = tr;
   const codes = currencies.map((c) => c.code);
   const full = sets.length + 1 >= CONFIG_LIMITS.tierSets;
-  // §17c: on Free no Pro set is in force, whatever is stored.
-  const summary = pro && sets.length > 0 ? tr.tp("count.tierSet", sets.length) : t("tiers.pro.none");
+  // §17c: on Free no Pro set is in force, whatever is stored — the header says how many are stored and that they do not apply.
+  const summary = sets.length === 0 ? t("tiers.pro.none") : pro ? tr.tp("count.tierSet", sets.length) : tr.tp("tiers.pro.storedFree", sets.length);
+  const capacityLine = capacity && (tierCapacityShown(capacity) || capacityError !== undefined);
   return (
-    <WonSection title={t("tiers.pro.title")} glyph="target" pro locked={!pro} summary={summary} collapsible defaultOpen={sets.length > 0} anchor="pro">
+    <WonSection title={t("tiers.pro.title")} glyph="target" pro locked={!pro} summary={summary} anchor="pro">
       <s-stack direction="block" gap="base">
         {!pro ? <ProSell benefit={t("tiers.pro.benefit")} /> : null}
+        {capacity && capacityLine ? (
+          // The checkout's room for tiers (audit: cap 550 B) as a share, never bytes — only close to the limit or over it
+          // (P2); over it the page cannot be saved, and the save's refusal is shown here (P3).
+          <div id={TIERS_CAPACITY_ANCHOR} style={{ scrollMarginTop: 16 }}>
+            <s-text type="strong">{t("tiers.capacity", { percent: capacity.percent })}</s-text>
+            <RowNote tone={capacity.fits && !capacityError ? undefined : "attention"}>{capacityError ?? t(capacity.fits ? "tiers.capacity.hint" : "tiers.capacity.over")}</RowNote>
+          </div>
+        ) : null}
         <ProFrame locked={!pro}>
           <s-stack direction="block" gap="base">
             <s-text color="subdued">{t("tiers.pro.body")}</s-text>
-            <s-text color="subdued">{t("tiers.pro.precedence")}</s-text>
-            {capacity ? (
-              // The checkout's room for tiers (audit: cap 550 B) as a share, never bytes; over it the page cannot be saved.
-              <div>
-                <s-text type="strong">{t("tiers.capacity", { percent: capacity.percent })}</s-text>
-                <RowNote tone={capacity.fits ? undefined : "attention"}>{t(capacity.fits ? "tiers.capacity.hint" : "tiers.capacity.over")}</RowNote>
-              </div>
-            ) : null}
+            {pro || sets.length > 0 ? <s-text color="subdued">{t("tiers.pro.precedence")}</s-text> : null}
             {sets.map((set, i) => {
               const draft = drafts.find((d) => d.id === set.id) ?? set;
               const sid = set.id;
@@ -118,24 +147,49 @@ export function ProTierSets({
                               <input key={c.id} type="hidden" name={F.collection(sid)} value={c.id} />
                             ))}
                             <s-stack direction="block" gap="small-200">
+                              <s-text type="strong">{t("tiers.pro.forWhat")}</s-text>
                               <s-stack direction="inline" gap="base" alignItems="center">
                                 <s-button onClick={() => onPick(sid, "products")}>{t("editor.pick.products")}</s-button>
                                 <s-button onClick={() => onPick(sid, "collections")}>{t("editor.pick.collections")}</s-button>
                               </s-stack>
                               <TitleList items={set.scope.products} fallback={t("common.untitledProduct")} />
                               <TitleList items={set.scope.collections} fallback={t("common.untitledCollection")} />
-                              {set.scope.products.length === 0 && set.scope.collections.length === 0 ? <s-text color="subdued">{t("editor.pick.none")}</s-text> : null}
+                              {/* P3: a set that picks nothing cannot be saved — said at the pick, before the save. */}
+                              {set.scope.products.length === 0 && set.scope.collections.length === 0 ? <RowNote tone="attention">{t("tiers.error.scopeEmpty")}</RowNote> : null}
                               {pickUnavailable ? <s-text color="subdued">{t("editor.pick.unavailable")}</s-text> : null}
                               <FieldMessage text={errorFor(F.scope(sid)) ?? errorFor(F.product(sid)) ?? errorFor(F.collection(sid))} />
                             </s-stack>
-                            <TierSetEditor set={set} currencies={currencies} kept={kept} pro live={live} errorFor={errorFor} onChange={onRowsChange} />
-                            {draft.breaks.length === 0 ? <RowNote>{t("tiers.pro.emptySet")}</RowNote> : null}
+                            {/* An exception is either own tiers, or no quantity discount at all (a set without tiers: the engine's inert set). */}
+                            <SegmentedChoice
+                              name={MODE_FIELD(sid)}
+                              label={t("tiers.pro.mode")}
+                              defaultValue={storedIds?.has(sid) && set.breaks.length === 0 ? "none" : "own"}
+                              options={[
+                                { value: "own", label: t("tiers.pro.mode.own") },
+                                { value: "none", label: t("tiers.pro.mode.none") },
+                              ]}
+                            />
+                            {(live(MODE_FIELD(sid)) ?? (storedIds?.has(sid) && set.breaks.length === 0 ? "none" : "own")) === "none" ? (
+                              <>
+                                {/* No tier fields are mounted, so nothing is saved as a tier; the counting field keeps the parser's contract. */}
+                                <input type="hidden" name={F.count(sid)} value={set.countAcross} />
+                                <RowNote>{t("tiers.pro.emptySet")}</RowNote>
+                              </>
+                            ) : (
+                              <TierSetEditor set={set} currencies={currencies} kept={kept} pro live={live} errorFor={errorFor} onChange={onRowsChange} />
+                            )}
                           </>
                         )}
                       </>
                     ) : (
                       <>
                         <HiddenTierSet set={set} />
+                        {set.scope.kind === "selection" ? (
+                          <s-stack direction="block" gap="small-200">
+                            <TitleList items={set.scope.products} fallback={t("common.untitledProduct")} />
+                            <TitleList items={set.scope.collections} fallback={t("common.untitledCollection")} />
+                          </s-stack>
+                        ) : null}
                         <RowNote>{t("tiers.pro.free")}</RowNote>
                       </>
                     )}
@@ -148,19 +202,14 @@ export function ProTierSets({
                 </WonBlock>
               );
             })}
-            {sets.length === 0 && !pro ? (
-              <WonRow>
-                <span style={{ fontSize: 12, fontWeight: 700, color: WON_AMBER_TEXT }}>{t("tiers.sample")} · </span>
-                <s-text type="strong">{t("tiers.pro.sampleName")}</s-text>
-                <RowNote>{tierSummary({ id: "sample", scope: { kind: "global" }, countAcross: "product", breaks: [{ minQty: 2, kind: "percent", percent: 5, amount: {} }, { minQty: 6, kind: "percent", percent: 8, amount: {} }] }, tr)}</RowNote>
-              </WonRow>
+            {pro ? (
+              <s-stack direction="inline" gap="base" alignItems="center">
+                <s-button onClick={onAdd} disabled={full ? true : undefined}>
+                  {t("tiers.pro.add")}
+                </s-button>
+                {full ? <s-text color="subdued">{t("tiers.pro.limit", { max: CONFIG_LIMITS.tierSets })}</s-text> : null}
+              </s-stack>
             ) : null}
-            <s-stack direction="inline" gap="base" alignItems="center">
-              <s-button onClick={onAdd} disabled={!pro || full ? true : undefined}>
-                {t("tiers.pro.add")}
-              </s-button>
-              {full ? <s-text color="subdued">{t("tiers.pro.limit", { max: CONFIG_LIMITS.tierSets })}</s-text> : null}
-            </s-stack>
           </s-stack>
         </ProFrame>
       </s-stack>

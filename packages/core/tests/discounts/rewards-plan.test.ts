@@ -344,7 +344,7 @@ test("explain: a margin-capped tier hint promises a lower price, not a value", (
   const tiers = { sets: [{ id: "g", scope: "global", countAcross: "line", breaks: [{ minQty: 3, percent: 30 }] }] };
   const payload = payloadOf([], { modules: { margin: { enabled: true, global: { minMarginPercent: 0, maxDiscountPercent: 10 } }, tiers } });
   const plan = planCart(cartOf([pl(1, 100_00, 2)]), payload);
-  assert.ok(texts(plan, "cs").includes("info: Přidej 1 ks a dostaneš nižší cenu."), JSON.stringify(texts(plan, "cs")));
+  assert.ok(texts(plan, "cs").includes("info: Přidejte 1 ks a dostanete nižší cenu."), JSON.stringify(texts(plan, "cs")));
 });
 
 test("checkout preview: the gift line takes exactly one item's price off (1 item → 100 %, 3 items → one item), the shipping reward is emitted", () => {

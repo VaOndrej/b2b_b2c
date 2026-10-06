@@ -109,6 +109,14 @@ const COPY: Readonly<Record<string, IssueCopy | ((issue: ConfigIssue) => IssueCo
   tier_break_lower_value: { key: "fix.tier_break_lower_value", params: { min: "minQty" } },
   clamped_tier_quantity: { key: "fix.clamped_tier_quantity", params: { from: "value", to: "to", min: "min", max: "max" } },
   unknown_appearance_preset: { key: "fix.unknown_appearance_preset" },
+  // Plan 2026-10-06 (core config/codes.ts): a minimum quantity per item, generated code batches.
+  orphan_item_minimum: { key: "fix.orphan_item_minimum", params: { count: "count" } },
+  duplicate_item_minimum: { key: "fix.duplicate_item_minimum", params: { count: "count" } },
+  clamped_item_minimum: { key: "fix.clamped_item_minimum", params: { count: "count", max: "max" } },
+  invalid_code_batch: { key: "fix.invalid_code_batch" },
+  too_many_batch_codes: { key: "fix.too_many_batch_codes", params: { count: "count", max: "max" } },
+  too_many_code_batches: { key: "fix.too_many_code_batches", params: { count: "count", max: "max" } },
+  code_batch_prefix_taken: { key: "fix.code_batch_prefix_taken", params: { prefix: "prefix", other: "other" } },
   unknown_onboarding_goal: { key: "fix.unknown_onboarding_goal" },
   // Audit fix MVP 3 (core): a tier scope neither "global" nor a selection → an inert set; margin collections over the limit folded.
   invalid_tier_scope: { key: "fix.invalid_tier_scope" },

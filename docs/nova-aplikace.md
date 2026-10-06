@@ -6,7 +6,7 @@ existují** — hlavně E2E témata a produkty.
 
 > **Povinná četba před návrhem:** [`won-app-design-doctrine.md`](won-app-design-doctrine.md)
 > — kompletní **Won App Doctrine** platná pro **všechny** `won-*` appky:
-> **Part I** Product/Admin-UX (`§1–§16`, `A1–A6`) **a Part II** Engineering/Platform
+> **Part I** Product/Admin-UX (`§1–§18`, `A1–A7`) **a Part II** Engineering/Platform
 > (SEC/WBH/BILL/DATA/API/REL/SF/PERF/PRIV/TEST/DEPLOY/OBS/MKT/…). Nová appka ji dědí;
 > cituj sekce (`doctrine §7b`, `WBH-3`) v kódu i PR. **Compliant-by-construction
 > (STORE-1):** scaffold z `apps/_template` už splňuje WBH-3 (compliance webhooky),
@@ -67,6 +67,13 @@ eventy/pravidla nešly proti breaking migracím. Badge appky v roadmapě postupu
 - **Support/chatbot dokumentace se píše průběžně, ne „až bude hotovo"** — vrstvená
   podle stability, volatilní věci generované z kódu, drift hlídaný testem. Detail
   v [§9](#9-supportchatbot-dokumentace-průběžně-ne-až-bude-hotovo).
+- **Devět pravidel z prvního průchodu obchodníka (doktrína §18, P1–P9):** menu
+  nejvýš 5 položek a tarif v Nastavení; nic bez obsahu a akce; problém označený
+  u pole, které ho opraví; výběr jako seznam s názvy; texty počítané z nastavení;
+  vybírat místo psaní; pod rozbalovačkou jen vzácné volby; Pro funkce hotová,
+  nebo neviditelná; ovládací prvek dělá, co říká. Každá obrazovka se proti nim
+  projde před uzavřením MVP a má test, který na ni v adminu kliká.
+- **Rozhraní vyká** a nepoužívá vývojářský žargon („engine“, „propsat“, „appka“).
 
 ### d) Výstupy gate
 

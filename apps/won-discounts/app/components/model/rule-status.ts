@@ -14,15 +14,16 @@
 //     automatic node, product refs); without it, the shop's last sync must be
 //     ok (the v0 harness states).
 // Everything else says what it is instead: Vypnuto / Neběží (and why) /
-// Naplánováno od … / Skončilo … / Uloženo, zatím nepropsáno / Nepropsáno
+// Naplánováno od … / Skončilo … / Uloženo, zatím nezapsáno / Nezapsáno
 // (synchronizace selhala) / Propisuje se (product targeting being refreshed).
 
 import type { DiscountRule } from "@won/core/discounts/config";
 import { formatDate, ruleScheduleState } from "@won/core/discounts/describe";
+import { ruleHasCodes } from "@won/core/discounts/code-batch";
 import { unsupportedInFunction } from "@won/core/discounts/plan";
 
 import type { MessageKey, PluralBase, Translator } from "../../i18n";
-import { missingCurrencies, ruleDays } from "./describe";
+import { missingCurrencies, missingValueAnchor, ruleDays, type EditorAnchor } from "./describe";
 import type { RuleSyncMap, SyncView } from "./types";
 
 export type RuleStatusKind =
@@ -59,6 +60,8 @@ export interface RuleStatusContext {
   sync: SyncView;
   /** Per-rule sync facts; when given, they decide (not the shop-wide sync line). */
   ruleSync?: RuleSyncMap;
+  /** The editor's draft will get generated codes on save (the generator has a count): not "no code". */
+  pendingCodes?: boolean;
   /** An editor draft that was never saved. */
   draft?: boolean;
   /** Rules the plan gate switches off (BILL-1, gateConfigForPlan `rule_off`). */
@@ -78,7 +81,7 @@ export function ruleStatus(rule: DiscountRule, ctx: RuleStatusContext): RuleStat
   if (!rule.enabled) return { kind: "off" };
   if (unsupportedInFunction(rule).length > 0) return { kind: "unsupported" };
   if (ctx.gateOff?.includes(rule.id)) return { kind: "pro_off" };
-  if (rule.method === "code" && (rule.codes ?? []).length === 0) return { kind: "no_code" };
+  if (rule.method === "code" && !ruleHasCodes(rule) && !ctx.pendingCodes) return { kind: "no_code" };
   if (noTarget(rule)) return { kind: "no_target" };
   if (ctx.currencies && ctx.currencies.length > 0 && missingCurrencies(rule, ctx.currencies).length === ctx.currencies.length) {
     return { kind: "no_value" };
@@ -112,6 +115,61 @@ export function needsAttention(status: RuleStatus): boolean {
     status.kind === "market_off" ||
     status.kind === "sync_failed"
   );
+}
+
+/** The rule gives its discount at checkout right now. */
+export function runsNow(status: RuleStatus): boolean {
+  return status.kind === "live" || status.kind === "refreshing";
+}
+
+/**
+ * P3: the editor field that fixes a rule which does not run — the header
+ * sentence, the list's "Upravit" and Přehled link to it. null = nothing to
+ * fix in a field (switched off, a draft, waiting for / failed sync: those get
+ * "Synchronizovat znovu" next to the status instead).
+ */
+export function statusAnchor(status: RuleStatus, rule: DiscountRule, currencies: readonly string[]): EditorAnchor | null {
+  switch (status.kind) {
+    case "unsupported":
+      return "segments";
+    case "pro_off":
+      return (rule.targeting?.segments?.length ?? 0) > 0 ? "segments" : "markets";
+    case "no_code":
+      return "codes";
+    case "no_target":
+      return "target";
+    case "no_value":
+      return missingValueAnchor(rule, currencies) ?? "value";
+    case "market_off":
+      return "markets";
+    case "scheduled":
+    case "ended":
+      return "schedule";
+    default:
+      return null;
+  }
+}
+
+/**
+ * Where "Upravit" of a rule lands: the field of a status that needs attention;
+ * else the field of a missing currency value (the rule runs, or will, but not
+ * in every market); else the dates of a scheduled / finished rule.
+ */
+export function attentionAnchor(status: RuleStatus, rule: DiscountRule, currencies: readonly string[]): EditorAnchor | null {
+  const own = statusAnchor(status, rule, currencies);
+  if (own && needsAttention(status)) return own;
+  return (rule.enabled ? missingValueAnchor(rule, currencies) : null) ?? own;
+}
+
+/** "/app/discounts/<id>#codes": the editor, at the field that needs attention when there is one. */
+export function ruleEditHref(rule: DiscountRule, status: RuleStatus, currencies: readonly string[]): string {
+  const anchor = attentionAnchor(status, rule, currencies);
+  return `/app/discounts/${encodeURIComponent(rule.id)}${anchor ? `#${anchor}` : ""}`;
+}
+
+/** The sync did not (yet) bring this version to Shopify: "Synchronizovat znovu" belongs next to the status. */
+export function needsResync(status: RuleStatus): boolean {
+  return status.kind === "sync_failed" || status.kind === "not_synced";
 }
 
 const LABELS: Record<RuleStatusKind, MessageKey> = {
@@ -188,7 +246,7 @@ const COUNT_AS: Partial<Record<RuleStatusKind, RuleStatusKind>> = {
   market_off: "unsupported",
 };
 
-/** "5 slev · 1 běží · 1 naplánovaná · 2 čekají na propsání · 1 vypnutá" — only the states present. */
+/** "5 slev · 1 běží · 1 naplánovaná · 2 čekají na zápis · 1 vypnutá" — only the states present. */
 export function ruleStatusSummary(statuses: readonly RuleStatus[], tr: Translator): string {
   const counts = new Map<RuleStatusKind, number>();
   for (const s of statuses) {

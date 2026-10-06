@@ -21,8 +21,11 @@ export type WonNavItem = {
  *    *how* to move around it.
  *  - The Overview/home link is always first (App Bridge uses it as the app
  *    root via `rel="home"`).
- *  - Feature pages follow in the given order; billing/"Plan" is conventionally
- *    last.
+ *  - At most FIVE items follow the home link, in the given order. Related
+ *    pages share one item and a sub-navigation on the page (a strip of links
+ *    under the page heading; see Won Discounts' `components/shell/SubNav.tsx`).
+ *  - Settings is last. The plan ("Plan"/"Tarif") is NOT a menu item: it lives
+ *    in Settings. The `/app/plan` route may stay for Shopify's billing return.
  *
  * Every Won app renders this in its `app.tsx`, passing only its own feature
  * pages:
@@ -30,7 +33,7 @@ export type WonNavItem = {
  *   <WonNavMenu
  *     items={[
  *       { to: "/app/behavior", label: "Behavior" },
- *       { to: "/app/plan", label: "Plan" },
+ *       { to: "/app/settings", label: "Settings" },
  *     ]}
  *   />
  *

@@ -7,6 +7,9 @@
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
 import type { GiftTier, RewardsModule } from "@won/core/discounts/config";
 
+import { formatMoney } from "@won/core/discounts/describe";
+
+import type { Translator } from "../../i18n";
 import { minorToInput, parseMoneyInput, type FormDataLike } from "./rule-form";
 import type { FieldError, GiftTierView, GiftVariantView } from "./types";
 
@@ -127,4 +130,59 @@ export function amountInput(amounts: Record<string, number> | null | undefined, 
 /** Currencies of enabled markets a threshold has no value for (MKT-1: not offered there; the screen says which). */
 export function missingCurrencies(amounts: Record<string, number> | null | undefined, currencies: readonly string[]): string[] {
   return currencies.filter((c) => typeof amounts?.[c] !== "number");
+}
+
+// --- The live form (P5): the state lines say the real values, from what is typed -----------------------------------
+
+/**
+ * A threshold as the form holds it NOW: per currency of the enabled markets the typed amount (`typed(currency)`,
+ * null = the field was not read yet → the stored one), valid positive amounts only — what a save would take.
+ */
+export function liveThreshold(typed: (currency: string) => string | null, stored: Record<string, number> | null | undefined, currencies: readonly string[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const currency of currencies) {
+    const raw = typed(currency);
+    const minor = raw === null ? (stored?.[currency] ?? null) : parseMoneyInput(raw, currency);
+    if (minor !== null && Number.isFinite(minor) && minor > 0 && minor <= CONFIG_LIMITS.moneyMinorUnits) out[currency] = minor;
+  }
+  return out;
+}
+
+/** Currencies of the enabled markets whose field is empty NOW (MKT-1: the reward is not offered there). */
+export function liveMissingCurrencies(typed: (currency: string) => string | null, stored: Record<string, number> | null | undefined, currencies: readonly string[]): string[] {
+  return currencies.filter((currency) => {
+    const raw = typed(currency);
+    return raw === null ? typeof stored?.[currency] !== "number" : raw.trim() === "";
+  });
+}
+
+/** "1 500 Kč / 40 €": a threshold in every currency it has, in the markets' order; "" = none. */
+export function thresholdText(threshold: Record<string, number>, currencies: readonly string[], tr: Translator): string {
+  return currencies
+    .filter((c) => typeof threshold[c] === "number")
+    .map((c) => formatMoney(threshold[c]!, c, tr.locale))
+    .join(" / ");
+}
+
+/** The free-shipping state line: "Doprava zdarma od 1 500 Kč / 40 €", switched on without an amount, or off. */
+export function shippingSummary(on: boolean, threshold: Record<string, number>, currencies: readonly string[], tr: Translator): string {
+  if (!on) return tr.t("rewards.ship.summaryOff");
+  const from = thresholdText(threshold, currencies, tr);
+  return from ? tr.t("rewards.ship.summaryFrom", { amount: from }) : tr.t("rewards.ship.summaryNoAmount");
+}
+
+/**
+ * The gift state line, one part per threshold: "Ponožky Won — M od 1 500 Kč" (a choice: "A, B nebo C od …"); a
+ * threshold without a gift or without an amount says which is missing. No threshold → "Žádný dárek".
+ */
+export function giftSummary(tiers: readonly { threshold: Record<string, number>; choices: readonly GiftVariantView[] }[], currencies: readonly string[], tr: Translator): string {
+  if (tiers.length === 0) return tr.t("rewards.gift.summaryNone");
+  return tiers
+    .map((tier) => {
+      const names = tier.choices.map((c) => c.title.trim() || tr.t("rewards.gift.unknown"));
+      const gift = names.length === 0 ? tr.t("rewards.gift.summaryNoGift") : names.length === 1 ? names[0]! : tr.t("rewards.gift.summaryChoice", { gifts: names.slice(0, -1).join(", "), last: names[names.length - 1]! });
+      const from = thresholdText(tier.threshold, currencies, tr);
+      return from ? tr.t("rewards.gift.summaryFrom", { gift, amount: from }) : tr.t("rewards.gift.summaryNoAmount", { gift });
+    })
+    .join(" · ");
 }

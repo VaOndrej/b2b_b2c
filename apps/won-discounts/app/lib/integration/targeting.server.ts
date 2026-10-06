@@ -257,7 +257,7 @@ export function appTargetingRefresher(db: PrismaClient): TargetingRefresher {
         try {
           const { unauthenticated } = await import("../../shopify.server");
           const { admin, session } = await unauthenticated.admin(shop);
-          return { client: adminClientFromApp(admin as unknown as AppAdminGraphql), scopes: session.scope ?? null };
+          return { client: adminClientFromApp(admin as unknown as AppAdminGraphql, shop), scopes: session.scope ?? null };
         } catch {
           return null;
         }

@@ -65,7 +65,7 @@ test("K8 markup with the storefront's texts, the shop's money format, the theme 
   assert.match(html, /font-family:&quot;Assistant&quot;/);
   assert.match(html, /background:#fafafa/);
   assert.match(html, /--style-border-radius-inputs:6px;--inputs-radius:6px/);
-  assert.match(html, /Barvy a písmo z tématu Dawn\./);
+  assert.doesNotMatch(html, /Barvy a písmo z tématu|jen pokud ho/, "a theme that was read needs no sentence");
 });
 
 test("no set yet → the labelled example; English admin → the English storefront texts; no theme → said", async () => {
@@ -87,14 +87,43 @@ test("a set with nothing offered in the currency (MKT-1) renders the block empty
     product: { productId: "p", title: "", unitPrice: 5000, currency: "CZK", url: null },
   });
   assert.match(html, /data-state="empty"[^>]*hidden=""/);
-  assert.match(html, /V CZK se tahle sada nenabízí\./);
+  assert.match(html, /V CZK se tyhle úrovně nenabízejí\./);
   assert.match(html, /Produkt bez názvu/, "never an id for an untitled product");
 });
 
-test("the look switcher and the stepper are plain buttons: nothing in the preview posts with the page's form", async () => {
-  const html = await preview({ set: SET, preset: "default", tokens: null, product: null, controls: true });
-  assert.doesNotMatch(html, /<(input|select|textarea)\b/);
-  assert.equal((html.match(/<button type="button"/g) ?? []).length, 6, "4 looks + − and +");
+test("the look switcher is a labelled radio group: with a field name it is submitted with the page's form (the look is saved), without one nothing in the preview posts", async () => {
+  const plain = await preview({ set: SET, preset: "default", tokens: null, product: null, controls: true });
+  assert.match(plain, /Vzhled na webu/, "a visible label, not aria-only");
+  assert.equal((plain.match(/<input type="radio"/g) ?? []).length, 4);
+  assert.doesNotMatch(plain, /<input[^>]* name=/, "no field name: nothing is submitted");
+  assert.equal((plain.match(/<button type="button"/g) ?? []).length, 2, "− and +");
+  const saved = await preview({ set: SET, preset: "chips", tokens: null, product: null, controls: true, lookField: "preset" });
+  assert.equal((saved.match(/<input type="radio" name="preset"/g) ?? []).length, 4);
+  assert.match(saved, /<input type="radio" name="preset"[^>]* checked=""[^>]* value="chips"|<input type="radio" name="preset" value="chips"[^>]* checked=""/, "starts on the stored look");
+  assert.match(saved, /class="won-tiers won-tiers--chips"/);
+});
+
+test("the preview renders what the config adds: the Pro custom look confined to the preview, and the merchant's storefront texts", async () => {
+  const { customLookCss } = await import("@won/core/discounts/custom-look");
+  const customCss = customLookCss({ vars: { accent: "#0a7d4f", radius: 4 }, css: ".won-tiers__heading { text-transform: uppercase; }" });
+  const html = await preview({
+    set: SET,
+    preset: "default",
+    tokens: null,
+    product: null,
+    extras: { customCss, texts: { cs: { "tiers.heading": "Kup víc, plať míň", "tiers.row_qty": "Od {min} kusů", "tiers.next": "" } } },
+  });
+  const style = /<style data-won-custom-look="">([\s\S]*?)<\/style>/.exec(html)?.[1] ?? "";
+  assert.match(style, /^\.won-tiers-preview \{/, "nested under the preview scope: never a style for the admin");
+  assert.match(style, /--won-tiers-accent:#0a7d4f;--won-tiers-radius:4px/);
+  assert.match(style, /\.won-tiers__heading\s*\{\s*text-transform: uppercase/);
+  assert.match(html, /<p class="won-tiers__heading">Kup víc, plať míň<\/p>/);
+  assert.match(html, /Od 3 kusů/, "the merchant's text with the block's own placeholder filled");
+  assert.match(html, /Ještě 2\u00a0ks a zaplatíte/, "an empty text = the extension's own");
+  // Another language's texts are not the admin language's.
+  const en = await preview({ set: SET, preset: "default", tokens: null, product: null, extras: { customCss: null, texts: { cs: { "tiers.heading": "Kup víc" } } } }, "en");
+  assert.match(en, /Quantity discount/);
+  assert.doesNotMatch(en, /data-won-custom-look/);
 });
 
 test("'Celý košík' on Free: the note says what the plan does instead only where the stored set counts the whole cart (review fix 6)", async () => {

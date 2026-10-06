@@ -37,5 +37,13 @@
   "outlet": {
     "badge": "Sale",
     "left": "Only {{ count }} left"
+  },
+  "progress": {
+    "empty": "Cart rewards are not set up yet. In the Won Discounts app open Discounts → Rewards."
+  },
+  "campaign": {
+    "ends": "Ends in {time}",
+    "units": "d,h,min,s",
+    "sample": "Campaign name"
   }
 }

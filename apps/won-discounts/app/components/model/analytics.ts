@@ -23,6 +23,8 @@ export interface AnalyticsRuleRowView {
   revenue: string;
   /** 0–100: its cost against the costliest row (the bar). */
   share: number;
+  /** Where the row is set up: the discount's editor (the key is a discount that still exists), Množstevní slevy, Odměny. */
+  href?: string;
 }
 
 export interface AnalyticsScreenData {
@@ -36,11 +38,13 @@ export interface AnalyticsScreenData {
   series: AnalyticsDay[];
   /** Orders in another currency than the sums' (left out). */
   otherCurrencyOrders: number;
-  /** Pro: per discount. On Free a labelled example (the frame is locked). */
+  /** Those currencies by code, when known (P4: named, not only counted). */
+  otherCurrencies?: string[];
+  /** Pro: per discount (empty = no order with a discount yet). On Free a labelled example in the locked frame. */
   rules: AnalyticsRuleRowView[];
   gifts: number;
   outletItems: number;
-  /** The rows are an example, not the shop's numbers (Free, or nothing yet). */
+  /** The rows are an example, not the shop's numbers: only on Free, inside the locked frame, in the shop currency. */
   sample: boolean;
 }
 

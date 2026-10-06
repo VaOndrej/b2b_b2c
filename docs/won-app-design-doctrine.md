@@ -57,7 +57,7 @@ not a second source of truth.
 
 # PART I — PRODUCT & ADMIN-UX
 
-## The principles (§1–§17)
+## The principles (§1–§18)
 
 ### §1 — Preview-first `[INV]`
 Every merchant-editable surface shows a **live preview** of the real result, not an
@@ -255,6 +255,60 @@ uninformative no matter how it is styled — the fix is information, not decorat
   beside its controls; one with no meaningful local consequence stays single
   column, because a proof on a trivial toggle is noise (§10d).
   *Example:* `WonSection` / `WonBlock` + `describe*()` (Won Toasts).
+
+### §18 — Nine field rules from the first full merchant walkthrough `[WON]`
+Written after the owner clicked through Won Discounts end to end (6 Oct 2026).
+Each rule names the screen-level symptom that breaks it, so a review can check
+a screen against the list. Where a rule tightens an earlier section, this one
+wins.
+
+- **§18a (P1) — The app's sidebar menu has at most 5 items.** Related pages are a
+  sub-menu on the page (a strip of links under the page heading), not more
+  sidebar entries. Plan / billing lives inside Settings. *Tightens §7; replaces
+  "every module is always in the nav". Symptom:* Shopify shows "Zobrazit více".
+- **§18b (P2) — Nothing without content or an action is shown.** A card, block
+  or row that can only say "none" and offers nothing to do is not rendered.
+  Technical facts the merchant cannot act on (config versions, internal counts,
+  refresh cadence) are never permanent text. *Symptom:* "Žádné." with no button.
+- **§18c (P3) — A problem is marked at the field that fixes it.** Every state
+  that means "this does not run" has a quiet marker (dot + one sentence) beside
+  the exact field, computed from the live draft, and the status sentence in the
+  header is a link that jumps to it. The same deep link is used from lists and
+  the overview. *Extends §13. Symptom:* the reason is only in a header or banner.
+- **§18d (P4) — A selection is a list with names, never only a count.** Products,
+  variants, collections, markets, other rules: listed by name, removable where
+  they are chosen, filterable when long. The loader reads names for stored ids.
+  *Symptom:* "3 produkty" with no list.
+- **§18e (P5) — Every text that describes the settings is computed from them.**
+  Summaries, previews, default names and state lines follow every choice,
+  including the rare combinations; a prefilled literal must not pose as a
+  derived text. One test walks every combination. *Extends §17b. Symptom:* a
+  preview that stays the same after an option changes.
+- **§18f (P6) — What the app knows is picked, not typed; what can be produced in
+  bulk is generated.** No free-text field for a code, a rule, a product, a
+  market, a time. *Symptom:* a text field for something the app has in its data.
+- **§18g (P7) — A collapsible holds only what is set rarely.** Conditions,
+  schedule, limits and anything most merchants touch are always open. A Pro
+  section is open for a Pro shop. *Narrows §9a / §7c: "collapse by frequency"
+  never hides a primary control. Symptom:* a disclosure most merchants open.
+- **§18h (P8) — A Pro feature is finished or not visible.** No disabled
+  "připravujeme" control and no "coming soon" page. A finished Pro feature on
+  Free keeps the amber locked look (§16a) with one sentence saying what it is
+  for and the link to the plan; invented sample rows and texts are not shown.
+  *Tightens §16a / §15a. Symptom:* a greyed control with no date and no action.
+- **§18i (P9) — A control does what it says and saves it.** A switch that only
+  changes a preview is not allowed to look like a setting. Destructive or
+  ending actions ask first (§14). Every screen has a test that clicks its
+  controls in the embedded admin, through the CLI dev proxy as well as the
+  build. *Symptom:* a control whose value is not in the submitted form.
+
+Two platform traps found on the way, both `[PLAT]` (verified 2026-10):
+`shopify app dev` proxies every `/extensions/*` request to its own extension
+server, so a module the admin imports from `extensions/` 404s through the
+tunnel and the route never hydrates (serve such imports from another URL in
+dev). And a screen that re-renders from a native `input` listener on the form
+must keep its native inputs **uncontrolled**: the listener runs before React's
+own handler, so a controlled value is put back and the keystroke is lost.
 
 ## Architecture decisions (cross-cutting) `[WON]` unless tagged
 

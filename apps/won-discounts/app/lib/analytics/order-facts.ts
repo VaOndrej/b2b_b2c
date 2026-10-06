@@ -13,6 +13,7 @@
 //   - anything else (a renamed rule's old name, another app's or Shopify's own discount) → "other".
 // A rule on shipping is `kind: "shipping"`. Parts are in the order of the first application of each key.
 
+import { ruleCodes } from "@won/core/discounts/code-batch";
 import { normalizeCode } from "@won/core/discounts/cart";
 import type { ReadonlyDeep, WonDiscountsConfig } from "@won/core/discounts/config";
 import { toMinorUnits } from "@won/core/discounts/money";
@@ -69,7 +70,8 @@ export function orderFactFromWebhook(payload: unknown, config: ReadonlyDeep<Pick
   for (const rule of config.modules.codes.rules) {
     const entry = { id: rule.id, shipping: rule.target.kind === "shipping" };
     if (rule.name && !byName.has(rule.name)) byName.set(rule.name, entry);
-    for (const code of rule.codes ?? []) byCode.set(normalizeCode(code), entry);
+    // Generated codes belong to their rule too (ruleCodes = hand-typed + generated).
+    for (const code of rule.method === "code" ? ruleCodes(rule) : (rule.codes ?? [])) byCode.set(normalizeCode(code), entry);
   }
   const partOf = (application: unknown): Omit<OrderFactPart, "amountMinor"> => {
     const a = isRec(application) ? application : {};

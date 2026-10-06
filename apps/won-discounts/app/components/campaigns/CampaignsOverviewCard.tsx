@@ -1,14 +1,25 @@
 // Přehled card "Kampaně" (MVP 6, contract K7, A3 status first): the running campaign and when it ends, else the
 // next one and when it starts; on Free a campaign finishing after the downgrade says so (A6). The whole module is
 // Pro: the amber marker always (§16). `campaigns` absent = not known: the card is not rendered (§12).
+// On Free with nothing running the card says it is a Pro feature (one sentence of what it is for + the plan
+// link, ProSell) instead of offering "Naplánovat kampaň" as if it were available (P8).
 
 import { useT } from "../../i18n/context";
 import type { CampaignsOverviewView } from "../model/types";
+import { ProSell } from "../shell/ProSell";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 
-export function CampaignsOverviewCard({ campaigns }: { campaigns: CampaignsOverviewView }) {
+export function CampaignsOverviewCard({ campaigns, plan = "pro" }: { campaigns: CampaignsOverviewView; plan?: "free" | "pro" }) {
   const { t } = useT();
   const { running, next, finishing } = campaigns;
+  const free = plan === "free";
+  if (free && !running && !finishing) {
+    return (
+      <WonSection title={t("module.campaigns")} glyph="calendar" pro locked summary={t("overview.campaigns.locked")} anchor="campaigns">
+        <ProSell benefit={t("overview.campaigns.benefit")} />
+      </WonSection>
+    );
+  }
   const summary = running
     ? t("overview.campaigns.running", { name: running.name, end: running.endText })
     : next
@@ -30,7 +41,7 @@ export function CampaignsOverviewCard({ campaigns }: { campaigns: CampaignsOverv
         <WonRow
           action={
             <s-button href="/app/campaigns" variant="secondary">
-              {t(running || next ? "overview.campaigns.open" : "overview.campaigns.setup")}
+              {t(running || next || free ? "overview.campaigns.open" : "overview.campaigns.setup")}
             </s-button>
           }
         >

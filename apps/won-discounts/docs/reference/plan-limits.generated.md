@@ -18,10 +18,10 @@ summary: What the Free plan includes, which Won Discounts features need Pro, and
 # Free vs Pro plans
 
 Free limits **scope, never quality**: the same engine, checkout consistency,
-margin protection, Try a cart and moving Shopify discounts work in full on Free.
+margin protection and moving Shopify discounts work in full on Free.
 
 **Pro price:** 29 USD a month.
-**Availability:** Pro subscriptions start in a later version. Until then you have everything in Free.
+**Where:** Settings → Plan. You start and cancel Pro there.
 
 ## Free includes
 
@@ -29,7 +29,6 @@ margin protection, Try a cart and moving Shopify discounts work in full on Free.
   automatic or with a code
 - Up to 200 discounts, at most 20 active code discounts at a time
 - The default combination rules
-- Try a cart: which discounts apply to a cart and why
 - Margin protection: one store-wide minimum margin and one ceiling for products without a cost price
 - Moving Shopify discounts into Won, with Undo
 - Admin in Czech or English
@@ -38,9 +37,12 @@ margin protection, Try a cart and moving Shopify discounts work in full on Free.
 
 | Pro capability | Area | On Free |
 |---|---|---|
-| Show a discount only in chosen markets | Discounts & codes | The whole discount does not apply on Free (removing only its targeting would widen it to everyone). |
+| Show a discount only in chosen markets | Discounts & codes | The whole discount is off on Free: without this setting it would give more than you set up. |
 | Choose per discount which other discounts it stacks with | Discounts & codes | The Pro setting is left out; the rest keeps working. |
-| Campaigns: start and end many discounts at once (e.g. Black Friday) | Campaigns | The Pro setting is left out; the rest keeps working. |
+| A minimum quantity per product or collection | Discounts & codes | The whole discount is off on Free: without this setting it would give more than you set up. |
+| Generated codes with your own pattern | Discounts & codes | The Pro setting is left out; the rest keeps working. |
+| More than 100 generated codes in a batch | Discounts & codes | Kept within the Free limit. |
+| Campaigns: start and end many discounts at once | Campaigns | The Pro setting is left out; the rest keeps working. |
 | Quantity discount sets for chosen products or collections | Quantity discounts | The Pro setting is left out; the rest keeps working. |
 | More than one quantity discount set | Quantity discounts | The Pro setting is left out; the rest keeps working. |
 | Quantity discounts counted across the whole cart | Quantity discounts | Kept within the Free limit. |
@@ -48,17 +50,19 @@ margin protection, Try a cart and moving Shopify discounts work in full on Free.
 | A choice of gifts at one threshold | Cart rewards | Kept within the Free limit. |
 | Margin protection settings per collection | Margin protection | Merged into the store-wide setting; the strictest value wins. |
 
+Pro also opens **Try a cart** (Settings → Tools): which discounts apply to a cart and why.
+
 With per-discount combinations, at most **6** discounts stack on one line
 (or on the order).
 
-## Pro capabilities of modules not built yet
+## Pro capabilities not available yet
 
-These belong to planned modules or are not supported at checkout yet. They are
-listed so the plan comparison is complete; none of them can be set up today.
+These are not supported at checkout yet. They are listed so the plan comparison
+is complete; none of them can be set up today.
 
 | Pro capability | Area | On Free |
 |---|---|---|
-| Show a discount only to chosen customer segments | Discounts & codes | The whole discount does not apply on Free (removing only its targeting would widen it to everyone). |
+| Show a discount only to chosen customer segments | Discounts & codes | The whole discount is off on Free: without this setting it would give more than you set up. |
 
 ## What "On Free" means
 

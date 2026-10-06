@@ -10,11 +10,11 @@ import {
 import { describeRule as coreDescribeRule } from "@won/core/discounts/describe";
 
 import {
+  autoRuleName,
   collectWarnings,
   describeLimits,
   describeMethod,
   describeMinimum,
-  describeMoreOptions,
   describeProSettings,
   describeRuleLine,
   describeSchedule,
@@ -22,6 +22,8 @@ import {
   missingCurrencies,
   ruleDays,
 } from "../../app/components/model/describe.ts";
+import type { RuleStatus, RuleStatusKind } from "../../app/components/model/rule-status.ts";
+import { previewModel } from "../../app/components/rule-editor/CustomerPreview.tsx";
 import { translator, type Locale } from "../../app/i18n/index.ts";
 
 // Doctrine §17 / §17a / DATA-4: the admin's state lines come from the ONE core
@@ -112,7 +114,8 @@ test("describe* state lines never contain raw enum keys, i18n keys or placeholde
         describeMinimum(r, tr, CURRENCIES),
         describeSchedule(r, tr, TZ),
         describeLimits(r, tr),
-        describeMoreOptions(r, tr, CURRENCIES, TZ),
+        describeRuleLine(r, tr, CURRENCIES, TZ, { ruleNames: names, marketNames: { sk: "Slovensko" } }),
+        autoRuleName(r, tr, CURRENCIES),
         describeProSettings(r, tr, names, { sk: "Slovensko" }),
       ];
       for (const line of lines) assertHuman(line, tr.locale, `${r.value.kind}/${r.target.kind}/${r.method}`);
@@ -122,11 +125,11 @@ test("describe* state lines never contain raw enum keys, i18n keys or placeholde
   assert.ok(count > 300, `exercised ${count} combinations`);
 });
 
-test("§17a: the admin line IS the core formatter's line (+ the schedule); no second wording", () => {
+test("§17a: the admin line IS the core formatter's line (+ the schedule, limits, markets, combinations when set); no second wording", () => {
   for (const r of everyRule()) {
     for (const tr of [cs, en]) {
       const core = coreDescribeRule(r, tr.locale, undefined, { currencies: CURRENCIES, codesKnown: true });
-      const line = describeRuleLine({ ...r, schedule: undefined }, tr, CURRENCIES, TZ);
+      const line = describeRuleLine({ ...r, schedule: undefined, limits: undefined, targeting: undefined, combinesWith: undefined }, tr, CURRENCIES, TZ);
       assert.equal(line, core);
     }
   }
@@ -190,7 +193,7 @@ test("collectWarnings: segment targeting (never sold as working), missing curren
   assert.deepEqual(
     warnings.map((w) => [w.kind, w.ruleId, w.field]),
     [
-      ["unsupported", "s", "pro"],
+      ["unsupported", "s", "segments"],
       ["missingCurrency", "a", "value"],
       ["noCode", "b", "codes"],
       ["noTarget", "c", "target"],
@@ -200,6 +203,173 @@ test("collectWarnings: segment targeting (never sold as working), missing curren
   assert.match(describeProSettings(rule({ targeting: { segments: ["x"] } }), cs, new Map()), /v pokladně se zatím neuplatní/);
   assert.equal(
     describeProSettings(rule({ targeting: { markets: ["cz", "sk"] } }), cs, new Map(), { cz: "Česko" }),
-    "Jen trhy Česko a sk · kombinuje se podle výchozích pravidel",
+    "Jen trhy Česko a sk · se slevou stejného druhu se nesčítá, platí výhodnější",
   );
+  // One verb everywhere: "sčítá se s".
+  assert.equal(
+    describeProSettings(rule({ combinesWith: { ruleIds: ["r2"] } }), cs, new Map([["r2", "Druhá sleva"]])),
+    "Všichni zákazníci a trhy · sčítá se s Druhá sleva",
+  );
+});
+
+test("collectWarnings: a missing minimum points at the conditions; a rule limited to switched-off markets is reported only when the enabled markets are given (B3)", () => {
+  const rules = [
+    rule({ id: "m", name: "Minimum", minimum: { subtotal: { CZK: 100000 } } }),
+    rule({ id: "t", name: "Trh", targeting: { markets: ["hu"] } }),
+    rule({ id: "u", name: "Trhy", targeting: { markets: ["hu", "cz"] } }),
+  ];
+  assert.deepEqual(
+    collectWarnings(rules, CURRENCIES).map((w) => [w.kind, w.ruleId, w.field]),
+    [["missingCurrency", "m", "conditions"]],
+  );
+  assert.deepEqual(
+    collectWarnings(rules, CURRENCIES, { enabledMarkets: ["cz", "sk"] }).map((w) => [w.kind, w.ruleId, w.field]),
+    [
+      ["missingCurrency", "m", "conditions"],
+      ["marketOff", "t", "markets"],
+    ],
+  );
+});
+
+test("P5: the one-line state adds usage limits, market targeting and combinations when they are set", () => {
+  const r = rule({
+    method: "code",
+    codes: ["VIP10"],
+    limits: { usageLimit: 100, oncePerCustomer: true },
+    targeting: { markets: ["cz", "sk"] },
+    combinesWith: { ruleIds: ["r2", "r3"] },
+  });
+  assert.equal(
+    describeRuleLine(r, cs, ["CZK"], TZ, { marketNames: { cz: "Česko", sk: "Slovensko" }, ruleNames: new Map([["r2", "Druhá"], ["r3", ""]]) }),
+    `10${NBSP}% z objednávky · kód VIP10 · 1× na zákazníka · nejvýš 100× celkem · jen trhy Česko a Slovensko · sčítá se s Druhá a Sleva bez názvu`,
+  );
+  // Without the names (a caller that does not know them): handles and a count, never an id.
+  assert.equal(describeRuleLine(r, cs, ["CZK"], TZ), `10${NBSP}% z objednávky · kód VIP10 · 1× na zákazníka · nejvýš 100× celkem · jen trhy cz a sk · sčítá se s dalšími slevami (2)`);
+  // Limits belong to code rules only (Shopify): an automatic rule never shows them.
+  assert.equal(describeRuleLine({ ...r, method: "automatic", codes: undefined, targeting: undefined, combinesWith: undefined }, cs, ["CZK"], TZ), `10${NBSP}% z objednávky · automaticky`);
+});
+
+test("P5: the generated name is the value + target phrase with the minimum", () => {
+  assert.equal(autoRuleName(rule({}), cs, CURRENCIES), `10${NBSP}% z objednávky`);
+  assert.equal(autoRuleName(rule({ value: { kind: "fixed", amount: { CZK: 10000 } }, target: { kind: "shipping" } }), cs, ["CZK"]), `100${NBSP}Kč z dopravy`);
+  assert.equal(
+    autoRuleName(rule({ value: { kind: "freeShipping" }, target: { kind: "shipping" }, minimum: { subtotal: { CZK: 100000 } } }), cs, ["CZK"]),
+    `Doprava zdarma od 1${NBSP}000${NBSP}Kč`,
+  );
+  assert.equal(
+    autoRuleName(rule({ target: { kind: "collections", ids: ["gid://shopify/Collection/1"] }, minimum: { quantity: 3, scope: "entitled" } }), cs, CURRENCIES),
+    `10${NBSP}% na vybrané kolekce, od 3 ks z vybraných kolekcí`,
+  );
+  assert.equal(autoRuleName(rule({ minimum: { subtotal: { CZK: 100000 } } }), en, ["CZK"]), "10% off the order, orders from CZK 1,000");
+});
+
+// --- P5: every combination of the editor's main choices -------------------------------------------
+
+const VIEWS = [
+  { code: "CZK", markets: [{ handle: "cz", name: "Česko" }] },
+  { code: "EUR", markets: [{ handle: "sk", name: "Slovensko" }] },
+];
+const LIVE: RuleStatus = { kind: "live" };
+
+function previewText(r: DiscountRule, tr: typeof cs, status: RuleStatus = LIVE): string {
+  const p = previewModel(r, VIEWS, status, tr);
+  return [p.name, p.notNow ?? "", p.code ?? "", ...p.lines.map((l) => `${l.currency ?? "*"}=${l.offer ?? "-"}`)].join(" | ");
+}
+
+test("P5: every value × target × method (+ minimum scope) has a summary line, a generated name and a preview that name the right target and change with every option", () => {
+  const values: DiscountRule["value"][] = [{ kind: "percentage", percent: 10 }, { kind: "fixed", amount: { CZK: 10000, EUR: 400 } }, { kind: "freeShipping" }];
+  const targets: DiscountRule["target"][] = [
+    { kind: "order" },
+    { kind: "products", productIds: ["gid://shopify/Product/1"], variantIds: [] },
+    { kind: "collections", ids: ["gid://shopify/Collection/1"] },
+    { kind: "shipping" },
+  ];
+  const TARGET_WORDS: Record<Locale, Record<string, RegExp>> = {
+    cs: { order: /z objednávky/, products: /vybran(é|ých) produkt/, collections: /kolekc/, shipping: /z dopravy/, freeShipping: /Doprava zdarma/ },
+    en: { order: /off the order/, products: /selected (products|item)/, collections: /selected collections/, shipping: /off shipping/, freeShipping: /Free shipping/ },
+  };
+  for (const tr of [cs, en]) {
+    const lines = new Set<string>();
+    const names = new Map<string, string>();
+    const previews = new Set<string>();
+    let count = 0;
+    for (const value of values) {
+      // Free shipping always targets shipping (the parser's rule): the other targets do not exist for it.
+      for (const target of value.kind === "freeShipping" ? targets.filter((t) => t.kind === "shipping") : targets) {
+        const lineTarget = target.kind === "products" || target.kind === "collections";
+        const minimums: (DiscountRule["minimum"] | undefined)[] = [undefined, { subtotal: { CZK: 100000, EUR: 4000 }, quantity: 2, scope: "cart" }];
+        if (lineTarget) minimums.push({ subtotal: { CZK: 100000, EUR: 4000 }, quantity: 2, scope: "entitled" });
+        for (const minimum of minimums) {
+          for (const method of DISCOUNT_METHODS) {
+            const base = rule({ value, target, method, minimum, ...(method === "code" ? { codes: ["VIP10"] } : {}) });
+            const name = autoRuleName(base, tr, CURRENCIES);
+            const r = { ...base, name };
+            const where = `${tr.locale} ${value.kind}/${target.kind}/${method}/${minimum?.scope ?? "none"}`;
+            const line = describeRuleLine(r, tr, CURRENCIES, TZ);
+            const preview = previewModel(r, VIEWS, LIVE, tr);
+            const text = previewText(r, tr);
+            for (const s of [line, name, text]) {
+              assert.ok(s.trim().length > 0, `${where}: empty`);
+              assertHuman(s.replace(/\b(CZK|EUR)=/g, ""), tr.locale, where);
+              assert.match(s, TARGET_WORDS[tr.locale][value.kind === "freeShipping" ? "freeShipping" : target.kind], `${where}: the target in "${s}"`);
+            }
+            // The method: the code (line + preview), or "automatically" (line only; the customer enters nothing).
+            if (method === "code") {
+              assert.match(line, /VIP10/, where);
+              assert.match(preview.code ?? "", /VIP10/, where);
+            } else {
+              assert.match(line, tr.locale === "cs" ? /automaticky/ : /automatic/, where);
+              assert.equal(preview.code, null, where);
+            }
+            // The minimum, in the words of what it is measured on.
+            if (minimum) {
+              const word = tr.locale === "cs" ? (minimum.scope === "entitled" ? /nákup od/ : lineTarget ? /košík od/ : /od 1/) : minimum.scope === "entitled" ? /from .* (of|in) selected/ : lineTarget ? /cart from/ : /orders from/;
+              for (const s of [line, name, text]) assert.match(s, word, `${where}: the minimum in "${s}"`);
+            }
+            // One line when every currency reads the same; one per currency when the amounts differ.
+            const perCurrency = value.kind === "fixed" || minimum !== undefined;
+            assert.equal(preview.lines.length, perCurrency ? 2 : 1, `${where}: preview lines`);
+            assert.equal(preview.lines[0].currency, perCurrency ? "CZK" : null, where);
+            assert.equal(preview.notNow, null, where);
+            lines.add(line);
+            previews.add(text);
+            names.set(`${value.kind}/${target.kind}/${minimum?.scope ?? "none"}`, name);
+            count++;
+          }
+        }
+      }
+    }
+    assert.equal(count, 44, "(2 values × 10 target/minimum pairs + free shipping × 2) × 2 methods");
+    // Changing any one option changes the text.
+    assert.equal(lines.size, count, `${tr.locale}: every summary line is different`);
+    assert.equal(previews.size, count, `${tr.locale}: every preview is different`);
+    assert.equal(new Set(names.values()).size, names.size, `${tr.locale}: every generated name is different (the method is not part of a name)`);
+    assert.equal(names.size, count / 2);
+  }
+});
+
+test("P5: the preview says 'does not run' for every status but Běží / Zapisuje se, and lists only the currencies of the targeted markets", () => {
+  const kinds: RuleStatusKind[] = ["off", "unsupported", "pro_off", "no_code", "no_target", "no_value", "market_off", "scheduled", "ended", "not_synced", "sync_failed", "draft"];
+  for (const kind of kinds) {
+    for (const tr of [cs, en]) {
+      const p = previewModel(rule({}), VIEWS, { kind, date: "2026-11-27" }, tr);
+      assert.ok(p.notNow && p.notNow.trim().length > 0, `${kind}: says it does not run`);
+      assertHuman(p.notNow ?? "", tr.locale, kind);
+    }
+  }
+  assert.equal(previewModel(rule({}), VIEWS, { kind: "live" }, cs).notNow, null);
+  assert.equal(previewModel(rule({}), VIEWS, { kind: "refreshing" }, cs).notNow, null);
+  assert.equal(previewModel(rule({}), VIEWS, { kind: "off" }, cs).notNow, "Vypnuto");
+
+  const fixed = rule({ value: { kind: "fixed", amount: { CZK: 10000 } } });
+  assert.deepEqual(previewModel(fixed, VIEWS, LIVE, cs).lines, [
+    { currency: "CZK", offer: `100${NBSP}Kč z objednávky` },
+    { currency: "EUR", offer: null },
+  ]);
+  // Limited to Slovensko: the CZK line is gone, EUR is "not offered".
+  assert.deepEqual(previewModel({ ...fixed, targeting: { markets: ["sk"] } }, VIEWS, LIVE, cs).lines, [{ currency: "EUR", offer: null }]);
+  assert.deepEqual(previewModel({ ...fixed, targeting: { markets: ["cz"] } }, VIEWS, LIVE, cs).lines, [{ currency: null, offer: `100${NBSP}Kč z objednávky` }]);
+  // A code rule without a code shows no code line (the status says why it does not run).
+  assert.equal(previewModel(rule({ method: "code", codes: [] }), VIEWS, { kind: "no_code" }, cs).code, null);
+  assert.equal(previewModel(rule({ method: "code", codes: ["VIP10", "LETO"] }), VIEWS, LIVE, cs).code, "Zákazník zadá kódy VIP10, LETO.");
 });

@@ -7,7 +7,8 @@
 // never shows the green "Běží" before that read finished; a failed read says
 // why (e.g. "open the app" when the background has no session, OQ4); a Pro
 // collection too large to read says its values apply to the whole store (P1-1).
-// `margin` absent = not known: the card is not rendered (§12).
+// `margin` absent = not known: the card is not rendered (§12). That protection does not see the discounts
+// outside Won is said only while such discounts exist (`nativeOutside`), with a link to them (#native, P2).
 
 import { describeMarginSettings } from "@won/core/discounts/describe";
 
@@ -19,7 +20,7 @@ import type { MarginOverviewView, SyncView } from "../model/types";
 import { RefreshCostsButton } from "../shell/Notice";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 
-export function MarginOverviewCard({ margin, sync }: { margin: MarginOverviewView; sync: SyncView }) {
+export function MarginOverviewCard({ margin, sync, nativeOutside = 0 }: { margin: MarginOverviewView; sync: SyncView; nativeOutside?: number }) {
   const tr = useT();
   const { t } = tr;
   const summary = describeMarginSettings(
@@ -55,9 +56,14 @@ export function MarginOverviewCard({ margin, sync }: { margin: MarginOverviewVie
   const ceilingOnly = ceilingOnlyText({ enabled: true, mirror: margin.mirror, costsKnown, maxDiscountPercent: margin.maxDiscountPercent }, tr);
   const failed = margin.mirror.state === "failed" ? margin.mirror.problems : [];
   return (
-    // Honest scope (§12): the hint says protection does not see the discounts outside Won (the section below).
-    <WonSection title={t("module.margin")} glyph="shield" summary={summary} on={on} hint={t("overview.margin.scope")} anchor="margin">
+    <WonSection title={t("module.margin")} glyph="shield" summary={summary} on={on} anchor="margin">
       <div>
+        {nativeOutside > 0 ? (
+          // Honest scope (§12), only while there is something outside: protection does not see those discounts.
+          <WonRow action={<s-link href="#native">{t("overview.margin.scopeShow")}</s-link>}>
+            <RowNote>{t("overview.margin.scope")}</RowNote>
+          </WonRow>
+        ) : null}
         <WonRow
           action={
             missing !== null && missing > 0 ? (
@@ -85,7 +91,14 @@ export function MarginOverviewCard({ margin, sync }: { margin: MarginOverviewVie
           ))}
         </WonRow>
         {(margin.tooLarge ?? []).length > 0 ? (
-          <WonRow tone="attention">
+          <WonRow
+            tone="attention"
+            action={
+              <s-button href="/app/margin#collections" variant="secondary">
+                {t("overview.margin.collections.show")}
+              </s-button>
+            }
+          >
             <s-text type="strong">{t("margin.collections.title")}</s-text>
             {(margin.tooLarge ?? []).slice(0, 3).map((c) => (
               <RowNote key={c.collectionId}>

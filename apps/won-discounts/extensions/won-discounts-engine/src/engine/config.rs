@@ -177,7 +177,8 @@ pub struct RawRule {
     pub id: String,
     /// `raw.method === "code"`.
     pub method_code: bool,
-    /// Code rules: `stringList(raw.codeHashes) ?? []`.
+    /// Code rules: `stringList(raw.codeHashes) ?? []` — the hashes of its hand-typed
+    /// codes (8 hex digits) and one longer text per generated batch (batch.rs).
     pub code_hashes: Vec<String>,
     /// `Math.floor(raw.priority)` when a number, else 0.
     pub priority: i64,

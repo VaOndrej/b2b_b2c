@@ -1,0 +1,59 @@
+{%- comment -%}
+  Reward progress (plan 2026-10-06, feedback 2 bod 5): how far the cart is from free shipping and from the next
+  free gift, as text with an optional bar. Rendered by the "Rewards progress" block and by the embed's top bar;
+  assets/won-discounts-blocks.js keeps it current after the cart changes (the cart script's own numbers).
+  The base is the cart's goods before discounts without gift lines (the same as won-discounts.js `base`).
+  Params: rw (the storefront config's rewards), cur (cart currency), ship / gift / bar (booleans).
+{%- endcomment -%}
+{%- liquid
+  assign won_base = 0
+  for won_item in cart.items
+    if won_item.properties['_won_gift'] == blank
+      assign won_base = won_base | plus: won_item.original_line_price
+    endif
+  endfor
+  assign won_ship = rw.ship[cur]
+  assign won_gift_at = nil
+  assign won_gift_any = false
+  for won_g in rw.gifts
+    assign won_t = won_g.t[cur]
+    if won_t != blank
+      assign won_gift_any = true
+      if won_t > won_base and won_gift_at == nil
+        assign won_gift_at = won_t
+      endif
+    endif
+  endfor
+-%}
+{%- if ship and won_ship != blank -%}
+  {%- liquid
+    if won_base >= won_ship
+      assign won_text = 'cart.ship_done' | t
+      assign won_pct = 100
+    else
+      assign won_left = won_ship | minus: won_base | money
+      assign won_text = 'cart.ship_left' | t | replace: '{amount}', won_left
+      assign won_pct = won_base | times: 100 | divided_by: won_ship
+    endif
+  -%}
+  <div class="won-progress__row" data-won-progress-row="ship">
+    <p class="won-progress__text">{{ won_text }}</p>
+    {%- if bar -%}<div class="won-progress__track" aria-hidden="true"><span style="width: {{ won_pct }}%"></span></div>{%- endif -%}
+  </div>
+{%- endif -%}
+{%- if gift and won_gift_any -%}
+  {%- liquid
+    if won_gift_at == nil
+      assign won_text = 'cart.gift_done' | t
+      assign won_pct = 100
+    else
+      assign won_left = won_gift_at | minus: won_base | money
+      assign won_text = 'cart.gift_left' | t | replace: '{amount}', won_left
+      assign won_pct = won_base | times: 100 | divided_by: won_gift_at
+    endif
+  -%}
+  <div class="won-progress__row" data-won-progress-row="gift">
+    <p class="won-progress__text">{{ won_text }}</p>
+    {%- if bar -%}<div class="won-progress__track" aria-hidden="true"><span style="width: {{ won_pct }}%"></span></div>{%- endif -%}
+  </div>
+{%- endif -%}

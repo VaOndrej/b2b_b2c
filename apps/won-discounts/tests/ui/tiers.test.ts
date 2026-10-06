@@ -5,12 +5,17 @@ import { sanitizeConfig } from "@won/core/discounts/config";
 
 import {
   formatShopMoney,
+  freeGlobalSetId,
   missingCurrencies,
   newTierSetId,
   previewTiers,
   readTiersForm,
   scopeSummary,
   tierBreakText,
+  tierCapacityShown,
+  tierPresetLabel,
+  tierRowGap,
+  TIER_PRESETS,
   tierSetToConfig,
   tierSetView,
   tierSummary,
@@ -64,6 +69,49 @@ test("form field names are the contract between the screen and the server parser
   assert.equal(F.amounts("global", "r0"), "set.global.r0.amount");
   assert.deepEqual(TIERS_INTENT, { save: "save" });
   assert.match(newTierSetId(), /^t_[A-Za-z0-9]{20}$/);
+  assert.equal(F.preset, "preset", "the look: the same field name Vzhled posts");
+});
+
+test("plan 2026-10-06: the whole-store set's id for a shop without one is deterministic (server and browser render the same)", () => {
+  assert.equal(freeGlobalSetId([]), "global");
+  assert.equal(freeGlobalSetId([{ id: "t_abc" }]), "global");
+  assert.equal(freeGlobalSetId([{ id: "global" }]), "global-2", "a Pro set already uses the id");
+  assert.equal(freeGlobalSetId([{ id: "global" }, { id: "global-2" }]), "global-3");
+  assert.equal(freeGlobalSetId([{ id: "global" }]), freeGlobalSetId([{ id: "global" }]), "never random");
+  assert.match(freeGlobalSetId([{ id: "global" }]), /^[A-Za-z0-9_-]{1,64}$/, "valid for the config");
+});
+
+test("plan 2026-10-06: ready-made tiers — ascending, valid for the form, labelled from their own values", () => {
+  assert.ok(TIER_PRESETS.length >= 1);
+  assert.equal(tierPresetLabel(TIER_PRESETS[0]!, cs), "3 / 5 / 10 ks → 5 / 10 / 15 %");
+  assert.equal(tierPresetLabel(TIER_PRESETS[0]!, en), "3 / 5 / 10 items → 5 / 10 / 15%");
+  for (const preset of TIER_PRESETS) {
+    const entries: [string, string][] = [[F.set, "global"], [F.scope("global"), "global"], [F.count("global"), "product"], [F.kind("global"), "percent"]];
+    preset.breaks.forEach((b, i) => entries.push([F.row("global"), `r${i}`], [F.min("global", `r${i}`), String(b.minQty)], [F.percent("global", `r${i}`), String(b.percent)]));
+    const parsed = readTiersForm(form(entries), { currencies: ["CZK"] });
+    assert.deepEqual(parsed.errors, [], preset.id);
+    assert.equal(parsed.sets[0]?.breaks.length, preset.breaks.length);
+  }
+});
+
+test("plan 2026-10-06: a typed row that is not complete is named (never silently left out), by the parser's own grammar", () => {
+  assert.equal(tierRowGap("percent", { min: "3", percent: "10", amounts: [] }), null);
+  assert.equal(tierRowGap("percent", { min: "3", percent: "12,5", amounts: [] }), null);
+  assert.equal(tierRowGap("percent", { min: "3", percent: "", amounts: [] }), "value", "half-typed: no percent yet");
+  assert.equal(tierRowGap("percent", { min: "", percent: "10", amounts: [] }), "min");
+  assert.equal(tierRowGap("percent", { min: "0", percent: "10", amounts: [] }), "min");
+  assert.equal(tierRowGap("percent", { min: "3", percent: "0", amounts: [] }), "value");
+  assert.equal(tierRowGap("percent", { min: "3", percent: "101", amounts: [] }), "value");
+  assert.equal(tierRowGap("amount", { min: "3", percent: "", amounts: ["", " "] }), "value");
+  assert.equal(tierRowGap("amount", { min: "3", percent: "", amounts: ["", "30"] }), null);
+});
+
+test("plan 2026-10-06: the room for tiers is said only close to its limit or over it", () => {
+  assert.equal(tierCapacityShown({ percent: 27, fits: true }), false);
+  assert.equal(tierCapacityShown({ percent: 79, fits: true }), false);
+  assert.equal(tierCapacityShown({ percent: 80, fits: true }), true);
+  assert.equal(tierCapacityShown({ percent: 100, fits: true }), true);
+  assert.equal(tierCapacityShown({ percent: 101, fits: false }), true);
 });
 
 test("readTiersForm: breaks sorted ascending; one kind per set — percents, or amounts per item per currency (minor units)", () => {
@@ -371,7 +419,7 @@ test("the sanitizer's new tier / look issues are worded in the admin language fr
   assert.ok(worded.includes("Dvě úrovně začínaly od 3 ks, ponechala se první."), worded.join(" | "));
   assert.ok(worded.includes("Úroveň od 4 ks neměla procento ani částku, vyřadila se."), worded.join(" | "));
   assert.ok(worded.includes("Úroveň bez počtu kusů se vyřadila."), worded.join(" | "));
-  assert.ok(worded.includes("Sada úrovní byla uložená dvakrát, druhá kopie se vyřadila."), worded.join(" | "));
+  assert.ok(worded.includes("Jedny úrovně byly uložené dvakrát, druhá kopie se vyřadila."), worded.join(" | "));
   assert.ok(worded.includes("Neznámý vzhled, použil se výchozí (Tabulka)."), worded.join(" | "));
   assert.ok(worded.every((w) => !/\bg\b|neon/.test(w)), "no id or raw value");
   const en = wordIssues(issues, "en", () => assert.fail("worded"));

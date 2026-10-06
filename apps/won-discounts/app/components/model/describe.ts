@@ -3,16 +3,18 @@
 // ONE formatter the engine also uses (@won/core/discounts/describe), so the
 // admin header, explainPlan and the checkout message can never describe a rule
 // differently (DATA-4). This module only adds the admin chrome around it
-// (limits, the collapsed "Další možnosti" summary, Pro targeting, warnings), in
-// the admin language from app/i18n. Pure, unit tested (tests/ui/describe.test.ts).
+// (limits, market targeting, combinations, the generated rule name, warnings),
+// in the admin language from app/i18n. Pure, unit tested (tests/ui/describe.test.ts).
 
 import type { DiscountRule } from "@won/core/discounts/config";
 import {
   currenciesWithoutValue,
+  describeItemMinimumsSummary,
   describeRuleParts,
   describeSchedule as describeDays,
   type ScheduleDays,
 } from "@won/core/discounts/describe";
+import { ruleHasCodes } from "@won/core/discounts/code-batch";
 import { shopLocalDates } from "@won/core/discounts/function-payload";
 import { unsupportedInFunction } from "@won/core/discounts/plan";
 
@@ -97,37 +99,82 @@ export function missingCurrencies(rule: DiscountRule, currencies: readonly strin
   return currenciesWithoutValue(rule, currencies);
 }
 
-/** The rule's one-line state (§17 slot 2): value · method · minimum · schedule · not offered in. */
+/**
+ * The generated rule name (P5): the core value + target phrase and the minimum —
+ * "10 % z objednávky", "100 Kč z dopravy", "Doprava zdarma od 1 000 Kč". The
+ * editor keeps a rule's name on it until the merchant types their own
+ * (model/rule-form.ts FIELD.nameAuto); the parser stores it, because checkout
+ * shows the name to customers.
+ */
+export function autoRuleName(rule: DiscountRule, tr: Translator, currencies: readonly string[]): string {
+  const p = parts(rule, tr, currencies);
+  if (p.minimum.length === 0) return p.value;
+  const lineTarget = rule.target.kind === "products" || rule.target.kind === "collections";
+  return `${p.value}${tr.locale === "cs" && !lineTarget ? " " : ", "}${p.minimum.join(", ")}`;
+}
+
+/** Names the one-line state may use; without them it falls back to handles and a count. */
+export interface RuleLineNames {
+  marketNames?: MarketNames;
+  ruleNames?: ReadonlyMap<string, string>;
+}
+
+/** "jen trhy Česko a Slovensko", or "" when the rule is not limited to markets. */
+export function describeMarkets(rule: DiscountRule, tr: Translator, marketNames: MarketNames = {}): string {
+  const markets = (rule.targeting?.markets ?? []).map((h) => marketView(h, marketNames).name);
+  return markets.length > 0 ? tr.t("describe.line.markets", { markets: tr.list(markets) }) : "";
+}
+
+/** "sčítá se s Podzimní sleva a VIP10" (or with a count when the names are not known), "" with no combination. */
+export function describeCombines(rule: DiscountRule, tr: Translator, ruleNames?: ReadonlyMap<string, string>): string {
+  const ids = rule.combinesWith?.ruleIds ?? [];
+  if (ids.length === 0) return "";
+  if (!ruleNames) return tr.t("describe.line.combinesCount", { n: ids.length });
+  const names = ids.map((id) => ruleNames.get(id)).filter((n): n is string => n !== undefined).map((n) => n.trim() || tr.t("common.untitled"));
+  return names.length > 0 ? tr.t("describe.line.combines", { names: tr.list(names) }) : "";
+}
+
+/**
+ * The rule's one-line state (§17 slot 2): value · method · minimum · schedule ·
+ * usage limits · market targeting · combinations · not offered in. The first
+ * four and the last are the core formatter's; the rest is set only when the
+ * rule has it (P5).
+ */
+/** "vlastní minimum u 2 produktů" — the per-item minimums of a product / collection rule (Pro, bod 8), or "". */
+export function describeItemMinimums(rule: DiscountRule, tr: Translator): string {
+  const target = rule.target;
+  if (target.kind !== "products" && target.kind !== "collections") return "";
+  return describeItemMinimumsSummary(target.kind, target.itemMinimums?.length ?? 0, tr.locale) ?? "";
+}
+
 export function describeRuleLine(
   rule: DiscountRule,
   tr: Translator,
   currencies: readonly string[],
   timezone: string | null,
+  names: RuleLineNames = {},
 ): string {
   const p = parts(rule, tr, currencies);
-  return [p.value, p.method, ...p.minimum, describeSchedule(rule, tr, timezone), p.notOffered ?? ""]
+  return [
+    p.value,
+    p.method,
+    ...p.minimum,
+    describeItemMinimums(rule, tr),
+    describeSchedule(rule, tr, timezone),
+    describeLimits(rule, tr),
+    describeMarkets(rule, tr, names.marketNames),
+    describeCombines(rule, tr, names.ruleNames),
+    p.notOffered ?? "",
+  ]
     .filter(Boolean)
     .join(SEP);
 }
 
-/** Summary of the collapsed "Další možnosti" block (§9d: collapsed still tells the truth). */
-export function describeMoreOptions(
-  rule: DiscountRule,
-  tr: Translator,
-  currencies: readonly string[],
-  timezone: string | null,
-): string {
-  const out = [
-    describeMinimum(rule, tr, currencies) || tr.t("describe.minimum.none"),
-    describeSchedule(rule, tr, timezone) || tr.t("describe.schedule.always"),
-  ];
-  if (rule.method === "code") out.push(describeLimits(rule, tr) || tr.t("describe.limits.none"));
-  return out.join(SEP);
-}
-
 /**
  * What the Pro block is set to (§17c: what is stored; what checkout cannot
- * evaluate yet is said, never sold as working).
+ * evaluate yet is said, never sold as working). Without a combination it says
+ * what really happens: discounts of the same kind never add up, the better one
+ * for the customer applies (core plan.ts planProducts / planOrderStage).
  */
 export function describeProSettings(
   rule: DiscountRule,
@@ -138,37 +185,74 @@ export function describeProSettings(
   const markets = (rule.targeting?.markets ?? []).map((h) => marketView(h, marketNames).name);
   const out = [markets.length > 0 ? tr.t("describe.targeting.markets", { markets: tr.list(markets) }) : tr.t("describe.targeting.all")];
   if (unsupportedInFunction(rule).length > 0) out.push(tr.t("describe.targeting.segments"));
-  const names = (rule.combinesWith?.ruleIds ?? []).map((id) => ruleNames.get(id)).filter((n): n is string => !!n);
-  out.push(names.length > 0 ? tr.t("describe.combines.some", { names: tr.list(names) }) : tr.t("describe.combines.default"));
+  out.push(describeCombines(rule, tr, ruleNames) || tr.t("describe.combines.default"));
   return out.join(SEP);
 }
 
-export type RuleWarningKind = "missingCurrency" | "noCode" | "noTarget" | "unsupported";
+/**
+ * Anchors of the rule editor (deep links `/app/discounts/<id>#<anchor>`, §13c):
+ * `value` the amount / percent fields, `target` the product / collection
+ * picker, `conditions` the minimum, `codes` how it applies (codes, limits),
+ * `schedule` the dates, `pro` the Pro section with `markets`, `segments` and
+ * `combines` inside it. `more` is the retired "Další možnosti": old links land
+ * on `conditions`.
+ */
+export type EditorAnchor = "value" | "target" | "conditions" | "codes" | "schedule" | "pro" | "markets" | "segments" | "combines";
+export const EDITOR_ANCHOR_ALIASES: Readonly<Record<string, EditorAnchor>> = { more: "conditions" };
+
+/** Where a rule not offered in some currency is fixed: the amounts, or the minimum. */
+export function missingValueAnchor(rule: DiscountRule, currencies: readonly string[]): "value" | "conditions" | null {
+  const missing = missingCurrencies(rule, currencies);
+  if (missing.length === 0) return null;
+  const value = rule.value;
+  return value.kind === "fixed" && missing.some((c) => typeof value.amount[c] !== "number") ? "value" : "conditions";
+}
+
+/** Market currencies a fixed amount has no value for. */
+export function missingAmountCurrencies(rule: DiscountRule, currencies: readonly string[]): string[] {
+  const value = rule.value;
+  return value.kind === "fixed" ? currencies.filter((c) => typeof value.amount[c] !== "number") : [];
+}
+
+/** Market currencies the minimum subtotal lacks while it is set for others. */
+export function missingMinimumCurrencies(rule: DiscountRule, currencies: readonly string[]): string[] {
+  const subtotal = rule.minimum?.subtotal;
+  if (!subtotal || Object.keys(subtotal).length === 0) return [];
+  return currencies.filter((c) => typeof subtotal[c] !== "number");
+}
+
+export type RuleWarningKind = "missingCurrency" | "noCode" | "noTarget" | "unsupported" | "marketOff";
 
 export interface RuleWarning {
   kind: RuleWarningKind;
   ruleId: string;
   ruleName: string;
   currencies?: string[];
-  /** Editor anchor the fix link jumps to (§13c: deep-link to the control, not the page). */
-  field: "value" | "more" | "codes" | "target" | "pro";
+  /** Editor anchor the fix link jumps to (§13c: deep-link to the control, not the page). `more` is no longer produced. */
+  field: EditorAnchor | "more";
 }
 
-/** Problems of switched-on rules that the merchant must fix, each with its target field. */
-export function collectWarnings(rules: readonly DiscountRule[], currencies: readonly string[]): RuleWarning[] {
+/**
+ * Problems of switched-on rules that the merchant must fix, each with its
+ * target field. `enabledMarkets` (handles) adds `marketOff` — a rule limited to
+ * markets that are all switched off (B3); without it that check is skipped.
+ */
+export function collectWarnings(
+  rules: readonly DiscountRule[],
+  currencies: readonly string[],
+  opts: { enabledMarkets?: readonly string[] } = {},
+): RuleWarning[] {
   const out: RuleWarning[] = [];
   for (const rule of rules) {
     if (!rule.enabled) continue;
     if (unsupportedInFunction(rule).length > 0) {
-      out.push({ kind: "unsupported", ruleId: rule.id, ruleName: rule.name, field: "pro" });
+      out.push({ kind: "unsupported", ruleId: rule.id, ruleName: rule.name, field: "segments" });
     }
     const missing = missingCurrencies(rule, currencies);
     if (missing.length > 0) {
-      const value = rule.value;
-      const onValue = value.kind === "fixed" && missing.some((c) => typeof value.amount[c] !== "number");
-      out.push({ kind: "missingCurrency", ruleId: rule.id, ruleName: rule.name, currencies: missing, field: onValue ? "value" : "more" });
+      out.push({ kind: "missingCurrency", ruleId: rule.id, ruleName: rule.name, currencies: missing, field: missingValueAnchor(rule, currencies) ?? "value" });
     }
-    if (rule.method === "code" && (rule.codes ?? []).length === 0) {
+    if (rule.method === "code" && !ruleHasCodes(rule)) {
       out.push({ kind: "noCode", ruleId: rule.id, ruleName: rule.name, field: "codes" });
     }
     const target = rule.target;
@@ -177,6 +261,10 @@ export function collectWarnings(rules: readonly DiscountRule[], currencies: read
       (target.kind === "collections" && target.ids.length === 0)
     ) {
       out.push({ kind: "noTarget", ruleId: rule.id, ruleName: rule.name, field: "target" });
+    }
+    const markets = rule.targeting?.markets ?? [];
+    if (opts.enabledMarkets && markets.length > 0 && !markets.some((m) => opts.enabledMarkets!.includes(m))) {
+      out.push({ kind: "marketOff", ruleId: rule.id, ruleName: rule.name, field: "markets" });
     }
   }
   return out;

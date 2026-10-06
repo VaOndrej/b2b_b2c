@@ -51,7 +51,7 @@ test("sorts every discount type into movable / not movable / expired with human 
   assert.deepEqual(result.expired.map((e) => e.id).sort(), [expired, expiredBxgy].sort());
   const reasons = new Map(result.notMovable.map((e) => [e.id, e]));
   assert.deepEqual([...reasons.keys()].sort(), [shipCountries, bxgy, otherApp, vip, oncePerOrder].sort());
-  assert.equal(reasons.get(bxgy)?.reason, "Won Discounts nemá Kup X, dostaneš Y. Pokryjí to množstevní slevy.");
+  assert.equal(reasons.get(bxgy)?.reason, "Won Discounts nemá Kupte X, dostanete Y. Pokryjí to množstevní slevy.");
   assert.match(reasons.get(otherApp)?.reason ?? "", /Loyalty Pro/);
   assert.equal(reasons.get(vip)?.reasonCode, "specific_buyers");
   assert.equal(reasons.get(oncePerOrder)?.reasonCode, "fixed_once_per_order");

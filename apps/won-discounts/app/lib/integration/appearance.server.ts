@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import type { WonDiscountsConfig } from "@won/core/discounts/config";
-import { CUSTOM_LOOK_VARS, customLookIssue } from "@won/core/discounts/custom-look";
+import { CUSTOM_LOOK_VARS, customLookCss, customLookIssue } from "@won/core/discounts/custom-look";
 import { gateConfigForPlan, type ShopPlan } from "@won/core/discounts/plan-gate";
 import { CUSTOM_CSS_MAX_LENGTH } from "@won/core/discounts/scope-css";
 import { buildStorefrontConfig } from "@won/core/discounts/storefront-config";
@@ -32,7 +32,7 @@ import {
 import { cardBlockAddUrl } from "../../components/model/embed";
 import type { FormDataLike } from "../../components/model/rule-form";
 import { tierSetView } from "../../components/model/tiers";
-import type { AppearancePresetView, AppearanceScreenData, TierSetView, UiResult } from "../../components/model/types";
+import type { AppearancePresetView, AppearanceScreenData, PreviewLookView, TierSetView, UiResult } from "../../components/model/types";
 import { loadConfig } from "../config.server";
 import { STOREFRONT_CONFIG_MAX_BYTES } from "../sync/storefront";
 import { loadAdminSignals } from "../ui-actions.server";
@@ -88,6 +88,8 @@ export const STOREFRONT_CLASSES = [
   ".won-tiers__row", ".won-tiers__qty", ".won-tiers__save", ".won-tiers__unit", ".won-tiers__live", ".won-tiers__next",
   ".won-cart", ".won-cart-slot", ".won-cart__row", ".won-cart__bar", ".won-cart__code", ".won-cart__applied", ".won-cart__warn", ".won-cart__saved",
   ".won-outlet", ".won-outlet__row", ".won-outlet__badge", ".won-outlet__variant", ".won-outlet__left", ".won-card-tier",
+  ".won-progress", ".won-progress--center", ".won-progress__row", ".won-progress__track",
+  ".won-campaign", ".won-campaign--center", ".won-campaign__title", ".won-campaign__time", ".won-topbar",
 ] as const;
 
 /** The brief a merchant hands to an AI (English: the code speaks it); the full page is docs/reference/storefront-contract. */
@@ -96,7 +98,7 @@ export function aiPrompt(): string {
     "Write CSS for the Won Discounts storefront blocks of my Shopify store.",
     "CSS only: no HTML, no JavaScript, no url(), no @import, no @font-face, no @keyframes; @media, @supports and @container are allowed.",
     `At most ${CUSTOM_CSS_MAX_LENGTH} characters. Selectors are relative to a block; :root means the block itself.`,
-    "Blocks: .won-tiers (quantity discount table on the product page; the active row has data-active=\"true\"), .won-cart (cart panel), .won-outlet (sale badge), .won-card-tier (line on a product card).",
+    "Blocks: .won-tiers (quantity discount table on the product page; the active row has data-active=\"true\"), .won-cart (cart panel), .won-outlet (sale badge), .won-card-tier (line on a product card), .won-progress (progress to free shipping / a gift), .won-campaign (campaign banner with a countdown), .won-topbar (the bar at the top of the store).",
     `CSS variables you may set on :root: ${Object.values(CUSTOM_LOOK_VARS).join(", ")}.`,
     `Classes: ${STOREFRONT_CLASSES.join(", ")}.`,
     "The look I want: <describe it here>.",
@@ -108,6 +110,29 @@ export function sampleSet(config: WonDiscountsConfig): TierSetView | null {
   const sets = config.modules.tiers.sets.filter((s) => s.breaks.length > 0);
   const chosen = sets.find((s) => s.scope === "global") ?? sets[0];
   return chosen ? tierSetView(chosen, new Map()) : null;
+}
+
+/**
+ * What the stored config adds to the faithful preview on this plan (pure; Množstevní slevy uses it too): the custom
+ * look exactly as the storefront config carries it (BILL-1: the gate removes it on Free) and the texts the merchant
+ * changed.
+ */
+export function previewLookOf(stored: WonDiscountsConfig, plan: ShopPlan): PreviewLookView {
+  const gated = gateConfigForPlan(stored, plan).config;
+  const texts: PreviewLookView["texts"] = {};
+  for (const lang of TEXT_LANGS) {
+    const changed = Object.fromEntries(Object.entries(gated.locales[lang] ?? {}).filter(([, text]) => typeof text === "string" && text !== ""));
+    if (Object.keys(changed).length > 0) texts[lang] = changed;
+  }
+  return { customCss: customLookCss(gated.storefront.custom) || null, texts };
+}
+
+/**
+ * Save only the look (the switcher on Množstevní slevy): the same validated value and the same config field as
+ * this page's form — `config` with the look set, everything else of the storefront untouched.
+ */
+export function withAppearancePreset(config: WonDiscountsConfig, preset: AppearancePresetView): WonDiscountsConfig {
+  return applyAppearance(config, preset, null, "free");
 }
 
 export async function loadAppearanceScreen(ctx: ShopCtx, opts: { scopes: string; fresh?: boolean }): Promise<AppearanceScreenData> {
@@ -147,6 +172,7 @@ export async function loadAppearanceScreen(ctx: ShopCtx, opts: { scopes: string;
     })),
     cardBlockUrl: cardBlockAddUrl(ctx.shop, ctx.apiKey),
     aiPrompt: aiPrompt(),
+    previewLook: previewLookOf(loaded.config, plan),
   };
 }
 

@@ -105,7 +105,7 @@ test("N1 (a'): …and the rollback fails → listed with 'both may apply, click 
   await resolveStaleClaims(env.common);
   const [row] = await rows(env.shop);
   assert.equal(row.status, "backed_up");
-  assert.match(row.error ?? "", /Klikni hned na „Vrátit zpět“/);
+  assert.match(row.error ?? "", /Klikněte hned na „Vrátit zpět“/);
   assert.match(env.shopify.shopFunctionConfig ?? "", new RegExp(ruleId));
   const listed = await movedBackups({ db: db.prisma, shop: env.shop }, null);
   assert.deepEqual(listed.map((m) => m.state), ["attention"]);
@@ -135,7 +135,7 @@ test("N1 (b'): …and the resync fails → the row stays listed until the live s
   const [row] = await rows(env.shop);
   assert.equal(row.status, "backed_up");
   assert.equal(parseSnapshot(row.snapshot)?.restoredAs, undefined);
-  assert.match(row.error ?? "", /Klikni hned na „Vrátit zpět“/);
+  assert.match(row.error ?? "", /Klikněte hned na „Vrátit zpět“/);
   const listed = await movedBackups({ db: db.prisma, shop: env.shop }, null);
   assert.equal(listed.length, 1);
 });

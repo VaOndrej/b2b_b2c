@@ -196,3 +196,26 @@ test("MVP 5 (contract O9): `ow: 1` only when outlet combines with anything — t
   const on = buildStorefrontConfig(gateConfigForPlan(configOf({ engine: { combination: { outletWithAnything: true } } }), "free").config, { configVersion: "v1" });
   assert.equal(on.ow, 1);
 });
+
+test("feedback 2, bod 7: `camps` lists the campaigns that are not killed as UTC instants of their shop-local window; none without the shop's time zone; on Free only what the gate leaves", () => {
+  const config = configOf({
+    campaigns: [
+      { id: "bf", name: "  Black Friday  ", window: { start: "2026-11-27T00:00:00", end: "2026-11-30T00:00:00" }, overrides: [], killed: false },
+      { id: "x", name: "Zrušená", window: { start: "2026-12-01T00:00:00", end: "2026-12-02T00:00:00" }, overrides: [], killed: true },
+      { id: "s", name: "Léto", window: { start: "2026-07-01T08:00:00", end: "2026-07-02T08:00:00" }, overrides: [], killed: false },
+    ],
+  });
+  const built = buildStorefrontConfig(config, { configVersion: "v", shopTimezone: "Europe/Prague" });
+  assert.deepEqual(built.camps, [
+    // Summer time: 08:00 in Prague is 06:00 UTC.
+    { n: "Léto", s: Date.UTC(2026, 6, 1, 6) / 1000, e: Date.UTC(2026, 6, 2, 6) / 1000 },
+    // Winter time: midnight in Prague is 23:00 UTC the day before.
+    { n: "Black Friday", s: Date.UTC(2026, 10, 26, 23) / 1000, e: Date.UTC(2026, 10, 29, 23) / 1000 },
+  ]);
+  assert.equal(buildStorefrontConfig(config, { configVersion: "v" }).camps, undefined, "no time zone: nothing is announced");
+  assert.equal(buildStorefrontConfig(config, { configVersion: "v", shopTimezone: "Not/AZone" }).camps, undefined);
+  assert.equal(buildStorefrontConfig(configOf({}), { configVersion: "v", shopTimezone: "Europe/Prague" }).camps, undefined);
+  // Campaigns are Pro: the Free gate removes them, so the storefront of a Free shop announces none.
+  const free = gateConfigForPlan(config, "free", { now: "2026-01-01T00:00:00" }).config;
+  assert.equal(buildStorefrontConfig(free, { configVersion: "v", shopTimezone: "Europe/Prague" }).camps, undefined);
+});

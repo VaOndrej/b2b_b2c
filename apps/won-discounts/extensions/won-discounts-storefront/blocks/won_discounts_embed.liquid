@@ -137,12 +137,51 @@
   <script src="{{ 'won-discounts-cart.js' | asset_url }}" defer></script>
 {%- endif -%}
 
+{%- comment -%}
+  Feedback 2 (2026-10-06, body 5 a 7): the top bar. The theme's announcement bar takes no app block, so the embed
+  offers its own strip: reward progress and / or the running campaign. It is printed here and moved to the top
+  of <body> by assets/won-discounts-blocks.js, which also hides it while it has nothing to say.
+{%- endcomment -%}
+{%- if block.settings.top_bar_rewards or block.settings.top_bar_campaign -%}
+  {%- liquid
+    assign won_camps = won_discounts_config_raw.camps
+    assign won_ends = 'campaign.ends' | t
+    assign won_units = 'campaign.units' | t
+  -%}
+  <div
+    class="won-topbar"
+    data-won-discounts-topbar
+    style="--won-topbar-bg: {{ block.settings.top_bar_bg }}; --won-topbar-text: {{ block.settings.top_bar_text }};"
+    hidden
+  >
+    {%- if block.settings.top_bar_campaign and won_camps != blank -%}
+      <div class="won-campaign" data-won-discounts-campaign data-text="{name}" data-countdown="true" data-ends="{{ won_ends | escape }}" data-units="{{ won_units | escape }}" hidden>
+        <script type="application/json">{{ won_camps | json | replace: '</', '<\/' }}</script>
+        <p class="won-campaign__title"></p>
+        <p class="won-campaign__time" aria-live="off"></p>
+      </div>
+    {%- endif -%}
+    {%- if block.settings.top_bar_rewards and rw != blank -%}
+      <div class="won-progress" data-won-discounts-progress data-ship="true" data-gift="true" data-bar="false">
+        {%- render 'won-progress', rw: rw, cur: cur, ship: true, gift: true, bar: false -%}
+      </div>
+    {%- endif -%}
+  </div>
+  <script src="{{ 'won-discounts-blocks.js' | asset_url }}" defer></script>
+{%- endif -%}
+
 {% schema %}
 {
   "name": "Won Discounts",
   "target": "body",
   "stylesheet": "won-discounts.css",
   "javascript": "won-discounts.js",
-  "settings": []
+  "settings": [
+    { "type": "header", "content": "Top bar" },
+    { "type": "checkbox", "id": "top_bar_rewards", "label": "Show reward progress at the top of the store", "default": false },
+    { "type": "checkbox", "id": "top_bar_campaign", "label": "Show the running campaign at the top of the store", "default": false },
+    { "type": "color", "id": "top_bar_bg", "label": "Top bar background", "default": "#111111" },
+    { "type": "color", "id": "top_bar_text", "label": "Top bar text", "default": "#ffffff" }
+  ]
 }
 {% endschema %}

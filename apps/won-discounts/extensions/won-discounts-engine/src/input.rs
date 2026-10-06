@@ -33,6 +33,7 @@ use shopify_function::wasm_api::Value;
 use crate::engine::cart::{is_country, CampaignInput, CartInput, LineInput, LineTier};
 use crate::engine::config::{Config, TierCount};
 use crate::engine::emit::NodeRole;
+use crate::engine::batch::PREFIX;
 use crate::engine::hash::{parse_hash, MAX_ENTERED_CODES};
 use crate::engine::js;
 use crate::engine::margin::MarginRef;
@@ -384,9 +385,9 @@ impl RunInput {
         }
 
         // The entered codes matter only to a code rule with a hash an entered code
-        // can have (plan.rs `match_codes`); without one none is read (each costs
+        // can have, or with a generated batch's text (plan.rs `match_codes`); without one none is read (each costs
         // ~2 k instructions, and a cart can hold 250).
-        let codes_matter = config.rules.iter().any(|r| r.method_code && r.code_hashes.iter().any(|h| parse_hash(h).is_some()));
+        let codes_matter = config.rules.iter().any(|r| r.method_code && r.code_hashes.iter().any(|h| h.len() > PREFIX || parse_hash(h).is_some()));
         // Only the first MAX_ENTERED_CODES entries count (cart.ts), whatever they
         // hold: the reader reads those and no more (Shopify still walks the rest).
         // An entry without a code string is an empty code, which matches nothing.

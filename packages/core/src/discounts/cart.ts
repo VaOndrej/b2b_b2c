@@ -181,6 +181,12 @@ export interface ConsideredEntry {
   code: string;
   /** The entry's length as entered, white space included (UTF-16 units); 0 when not a string. */
   rawLength: number;
+  /**
+   * The entry, trimmed, is all ASCII (false when not a string). Only such an
+   * entry can be a generated batch code (code-batch.ts): the function compares
+   * bytes, and "ı" / "ſ" upper-case INTO ASCII letters.
+   */
+  ascii: boolean;
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -308,7 +314,10 @@ export function normalizeCart(input: CartPlanInput): NormalizedCart {
   for (const raw of Array.isArray(input.enteredCodes) ? (input.enteredCodes as readonly unknown[]) : []) {
     entered += 1;
     const code = typeof raw === "string" ? raw.trim().toUpperCase() : ""; // normalizeCode
-    if (entered <= MAX_ENTERED_CODES) consideredEntries.push({ code, rawLength: typeof raw === "string" ? raw.length : 0 });
+    if (entered <= MAX_ENTERED_CODES) {
+      // eslint-disable-next-line no-control-regex
+      consideredEntries.push({ code, rawLength: typeof raw === "string" ? raw.length : 0, ascii: typeof raw === "string" && /^[\x00-\x7f]*$/.test(raw.trim()) });
+    }
     if (code && !seenCodes.has(code)) {
       seenCodes.add(code);
       enteredCodes.push(code);
