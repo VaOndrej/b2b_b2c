@@ -544,7 +544,7 @@ test("plan 2026-10-06, dávka 5: nothing without content or action — no room-f
   const rewards = (await render("rewards")).html;
   // The green label is the STORED state (the same as the home tile), never the page's own unsaved form: both
   // sections carry it, and it does not depend on the switch.
-  assert.equal((rewards.replace(/<script[\s\S]*?<\/script>/g, "").match(/data-won-state="active"/g) ?? []).length, 2);
+  assert.equal((rewards.replace(/<script[\s\S]*?<\/script>/g, "").match(/data-won-state="active"/g) ?? []).length, 4, "two tiles + their two sections");
 });
 
 test("the tier note is only for a product rule (an order rule does not compete with a tier)", async () => {

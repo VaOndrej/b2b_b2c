@@ -43,7 +43,12 @@ export function FieldGrid({ children }: { children: ReactNode }) {
 
 export function FieldMessage({ text }: { text?: string }) {
   if (!text) return null;
-  return <div style={{ color: WON_ATTENTION, fontSize: 12.5, fontFamily: WON_FONT }}>{text}</div>;
+  // (the marker lets a page of panels open the one that holds the error: shell/views.tsx)
+  return (
+    <div data-won-field-error style={{ color: WON_ATTENTION, fontSize: 12.5, fontFamily: WON_FONT }}>
+      {text}
+    </div>
+  );
 }
 
 /**

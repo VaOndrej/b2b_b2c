@@ -73,12 +73,13 @@ eventy/pravidla nešly proti breaking migracím. Badge appky v roadmapě postupu
   vybírat místo psaní; pod rozbalovačkou jen vzácné volby; Pro funkce hotová,
   nebo neviditelná; ovládací prvek dělá, co říká. Každá obrazovka se proti nim
   projde před uzavřením MVP a má test, který na ni v adminu kliká.
-- **Čtyři pravidla ze třetího průchodu (doktrína §19):** stav modulu říká jedna
+- **Pět pravidel ze třetího průchodu (doktrína §19):** stav modulu říká jedna
   funkce a stejný štítek („Aktivní“ / „Neaktivní“ / „Vyžaduje pozornost“) je na
   úvodní dlaždici i na stránce modulu; Pro se značí jednou za sekci, nic uvnitř
   ho neopakuje; každé umístění na webu má štítek „V tématu“ / „Chybí v tématu“ /
   „Neověřeno“ a tlačítko na přidání v hlavičce sekce; úvodní stránka je rozcestník
-  z dlaždic, celá dlaždice je odkaz.
+  z dlaždic, celá dlaždice je odkaz; stránka modulu je pár dlaždic a jeden panel
+  (dlaždice říká, k čemu část je a co je nastavené).
 - **Rozhraní vyká** a nepoužívá vývojářský žargon („engine“, „propsat“, „appka“).
 
 ### d) Výstupy gate

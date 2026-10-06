@@ -21,7 +21,7 @@ const GRID_CSS = `
 .won-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .won-tiles>*{display:grid;min-width:0}
 .won-tile{min-height:104px}
-@media (min-width:900px){.won-tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}}
+@media (min-width:900px){.won-tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.won-tiles--4{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .won-tile{height:100%;box-sizing:border-box}
 .won-tile__about{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .won-tile__active{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -30,11 +30,12 @@ const GRID_CSS = `
 @media (max-width:520px){.won-tile{padding:12px!important;min-height:138px}.won-tile__head{flex-direction:column;align-items:flex-start!important;gap:8px!important}}
 `;
 
-export function ModuleTiles({ label, children }: { label: string; children: ReactNode }) {
+/** `columns={4}`: a page with four parts keeps them in one row on a desktop. */
+export function ModuleTiles({ label, children, columns = 3 }: { label: string; children: ReactNode; columns?: 3 | 4 }) {
   return (
     <nav aria-label={label}>
-      <style dangerouslySetInnerHTML={{ __html: GRID_CSS }} />
-      <div className="won-tiles" data-won-tiles>
+      <style data-won-tiles-css="" dangerouslySetInnerHTML={{ __html: GRID_CSS }} />
+      <div className={columns === 4 ? "won-tiles won-tiles--4" : "won-tiles"} data-won-tiles>
         {children}
       </div>
     </nav>
@@ -61,7 +62,7 @@ export interface ModuleTileProps extends TileContent {
   href: string;
 }
 
-function TileBody({ id, title, glyph, about, active, status, pro = false, locked = false, selected = false, marker }: TileContent & { selected?: boolean; marker: Record<string, string> }) {
+function TileBody({ title, glyph, about, active, status, pro = false, locked = false, selected = false, marker }: TileContent & { selected?: boolean; marker: Record<string, string> }) {
   const tr = useT();
   const issues = status?.issues ?? 0;
   return (

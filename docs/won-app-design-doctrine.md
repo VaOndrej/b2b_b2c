@@ -310,7 +310,7 @@ dev). And a screen that re-renders from a native `input` listener on the form
 must keep its native inputs **uncontrolled**: the listener runs before React's
 own handler, so a controlled value is put back and the keystroke is lost.
 
-### §19 — Four rules from the third round of the walkthrough `[WON]`
+### §19 — Five rules from the third round of the walkthrough `[WON]`
 Written after the owner's third pass through Won Discounts (6 Oct 2026). Same
 form as §18: each rule names its symptom.
 
@@ -349,6 +349,20 @@ form as §18: each rule names its symptom.
   a screenful. *Replaces the stacked overview cards of A3. Symptom:* a home
   page that grows with every module, or a card whose only link is "Upravit".
   *Example:* `shell/ModuleTile.tsx` (Won Discounts).
+
+- **§19e — A module page is a few tiles and one panel at a time.** The tiles
+  on top are the page's parts (what runs · make a new one · how it works, or
+  the page's two to four areas). Each says what the part is **for** and, under
+  a line, what is **set now**, with the §19a label; a click opens its panel
+  below. What runs is the first panel, never under a form; after an action the
+  page opens the panel that shows its result. A panel that is not shown is
+  hidden, never unmounted, so the page keeps one form and one Save; a refused
+  save opens the panel with the error, and a deep link to a section opens its
+  panel. A home tile carries the same two lines (what it covers, what is
+  active), so the merchant knows what is under it before clicking. *Tightens
+  §8 / §9. Symptom:* a page that scrolls through every section to reach the
+  running thing; a tile that only names a module.
+  *Example:* `shell/views.tsx` (`useView`, `ViewPanel`), `ViewTile` (Won Discounts).
 
 ## Architecture decisions (cross-cutting) `[WON]` unless tagged
 

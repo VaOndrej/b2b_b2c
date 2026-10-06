@@ -17,6 +17,9 @@
 
 import { StorefrontPlacements } from "../StorefrontPlacements";
 import { useEffect, useMemo, useRef, useState } from "react";
+
+import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
+import { useView, ViewPanel } from "../shell/views";
 import { Form, useSubmit } from "react-router";
 
 import { formatMoney, formatPercent } from "@won/core/discounts/describe";
@@ -504,39 +507,48 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
   const liveCount = campaigns.filter((c) => c.status === "running" || c.status === "scheduled").length;
   const act = (intent: string, id: string) => submit({ [F.intent]: intent, [F.id]: id }, { method: "post" });
 
+  // Which panel is open: a campaign being edited or a refused save → the form; else the list when there is one.
+  const running = campaigns.find((c) => c.status === "running") ?? null;
+  const next = campaigns.find((c) => c.status === "scheduled") ?? null;
+  const showPlaces = pro && props.placements !== undefined;
+  const [view, setView] = useView<"list" | "form" | "places">({
+    initial: () => (editing || (result && !result.ok) ? "form" : liveCount > 0 || (isCampaignResult(result) && result.ok) || (!pro && campaigns.length > 0) ? "list" : "form"),
+    hash: { list: "list", form: "form", places: "places" },
+    resetKey: `${editing?.id ?? ""}|${result ? JSON.stringify(result).length : 0}`,
+  });
+  const listActive = running ? t("campaign.view.list.running", { name: running.name }) : next ? t("campaign.view.list.next", { name: next.name }) : t("overview.campaigns.none");
+  const placed = props.placed ?? {};
+  const placedCount = [placed.campaignHome, placed.campaignProduct, placed.topBarCampaign].filter(Boolean).length;
+  const placesActive = placedCount > 0 ? tr.tp("placement.count", placedCount) : t("placement.none");
+
   return (
     <s-page heading={t("module.campaigns")}>
       <DiscountsSubNav active="campaigns" />
       <s-stack direction="block" gap="base">
         {isCampaignResult(result) ? <CampaignBanner result={result} /> : <Notice result={result as UiResult | null | undefined} />}
-        <RowNote>{t("campaign.hint")}</RowNote>
 
-        <WonSection title={t(editing ? "campaign.edit.title" : "campaign.new.title")} glyph="calendar" pro={!pro} locked={!pro} summary={pro ? summary : undefined} anchor="form">
-          {pro ? (
-            form
-          ) : (
-            <s-stack direction="block" gap="base">
-              <ProSell benefit={t("campaign.pro.benefit")} />
-              <ProFrame locked>{form}</ProFrame>
-            </s-stack>
-          )}
-        </WonSection>
+        {/* Three tiles, one panel at a time (doctrine §19e): what runs is the first thing seen. */}
+        <ModuleTiles label={t("campaign.view.label")}>
+          <ViewTile id="list" title={t("campaign.list.title")} glyph="calendar" about={t("campaign.view.list.about")} active={listActive} status={running ? props.status : undefined} selected={view === "list"} onPick={() => setView("list")} />
+          <ViewTile id="form" title={t(editing ? "campaign.edit.title" : "campaign.new.title")} glyph="tag" about={t("campaign.view.form.about")} active={pro ? undefined : t("overview.campaigns.locked")} pro={!pro} locked={!pro} selected={view === "form"} onPick={() => setView("form")} />
+          {showPlaces ? (
+            <ViewTile id="places" title={t("campaign.places.title")} glyph="store" about={t("campaign.view.places.about")} active={placesActive} selected={view === "places"} onPick={() => setView("places")} />
+          ) : null}
+        </ModuleTiles>
 
-        {/* Feedback 2, bod 7: the running campaign on the storefront — a banner with a countdown for any page, and the strip at the top. */}
-        {pro && props.placements ? (
-          <WonSection title={t("campaign.places.title")} glyph="store" summary={t("campaign.places.summary")} anchor="places">
-            <StorefrontPlacements
-              links={props.placements}
-              placed={props.placed}
-              rows={[
-                { place: "home", key: "campaignHome", text: "campaign.places.home" },
-                { place: "product", key: "campaignProduct", text: "campaign.places.product" },
-                { place: "topBar", key: "topBarCampaign", text: "campaign.places.topBar", action: "placements.openEmbed" },
-              ]}
+        <ViewPanel id="list" view={view}>
+          {campaigns.length === 0 ? (
+            <WonSection
+              title={t("campaign.list.title")}
+              glyph="calendar"
+              summary={t("overview.campaigns.none")}
+              action={
+                <s-button variant="primary" onClick={() => setView("form")}>
+                  {t("campaign.new.title")}
+                </s-button>
+              }
             />
-          </WonSection>
-        ) : null}
-
+          ) : null}
         {campaigns.length > 0 ? (
           <WonSection
             title={t("campaign.list.title")}
@@ -562,6 +574,40 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
             </s-stack>
           </WonSection>
         ) : null}
+        </ViewPanel>
+
+        <ViewPanel id="form" view={view}>
+          <RowNote>{t("campaign.hint")}</RowNote>
+        <WonSection title={t(editing ? "campaign.edit.title" : "campaign.new.title")} glyph="calendar" pro={!pro} locked={!pro} summary={pro ? summary : undefined} anchor="form">
+          {pro ? (
+            form
+          ) : (
+            <s-stack direction="block" gap="base">
+              <ProSell benefit={t("campaign.pro.benefit")} />
+              <ProFrame locked>{form}</ProFrame>
+            </s-stack>
+          )}
+        </WonSection>
+
+        </ViewPanel>
+
+        <ViewPanel id="places" view={view}>
+        {/* Feedback 2, bod 7: the running campaign on the storefront — a banner with a countdown for any page, and the strip at the top. */}
+        {pro && props.placements ? (
+          <WonSection title={t("campaign.places.title")} glyph="store" summary={t("campaign.places.summary")} anchor="places">
+            <StorefrontPlacements
+              links={props.placements}
+              placed={props.placed}
+              rows={[
+                { place: "home", key: "campaignHome", text: "campaign.places.home" },
+                { place: "product", key: "campaignProduct", text: "campaign.places.product" },
+                { place: "topBar", key: "topBarCampaign", text: "campaign.places.topBar", action: "placements.openEmbed" },
+              ]}
+            />
+          </WonSection>
+        ) : null}
+
+        </ViewPanel>
       </s-stack>
 
       {/* "Ukončit hned", "Zrušit kampaň" and "Smazat" ask first (the confirm pattern of the rule editor's delete). */}

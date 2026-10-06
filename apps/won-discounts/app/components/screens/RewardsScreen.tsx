@@ -38,6 +38,8 @@ import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
 import { DiscountsSubNav } from "../shell/SubNav";
 import { embedPlacement, placementOf } from "../model/embed";
+import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
+import { useView, ViewPanel } from "../shell/views";
 import { PlacementPill, RowNote, WonRow, WonSection } from "../shell/WonSection";
 
 const F = REWARDS_FIELD;
@@ -205,6 +207,12 @@ export function RewardsScreen(props: RewardsScreenProps) {
   const embedCopy = embed.state === "on" ? null : EMBED_COPY[embed.state];
   const cartBlock = placementOf(props.placed?.cartBlock);
 
+  const [view, setView] = useView<"shipping" | "gift" | "web">({
+    initial: () => (shipping === null && gifts.length > 0 ? "gift" : "shipping"),
+    hash: { shipping: "shipping", gift: "gift", count: "gift", cart: "web", places: "web" },
+    resetKey: result,
+  });
+
   return (
     <s-page heading={t("module.rewards")}>
       <DiscountsSubNav active="rewards" />
@@ -215,6 +223,14 @@ export function RewardsScreen(props: RewardsScreenProps) {
           <Notice result={result} onReplace={replaceUnreadable} />
           <GateNotes notes={gateNotes} />
 
+          {/* Three tiles, one panel at a time (doctrine §19e); the panels stay in the one form with its one Save. */}
+          <ModuleTiles label={t("rewards.view.label")}>
+            <ViewTile id="shipping" title={t("rewards.ship.title")} glyph="receipt" about={t("rewards.view.shipping.about")} active={shipSummary} status={props.status?.shipping} selected={view === "shipping"} onPick={() => setView("shipping")} />
+            <ViewTile id="gift" title={t("rewards.gift.title")} glyph="spark" about={t("rewards.view.gift.about")} active={giftLine} status={props.status?.gift} selected={view === "gift"} onPick={() => setView("gift")} />
+            <ViewTile id="web" title={t("rewards.view.web.title")} glyph="store" about={t("rewards.view.web.about")} active={t(embedCopy ? embedCopy.summary : "rewards.cart.on")} selected={view === "web"} onPick={() => setView("web")} />
+          </ModuleTiles>
+
+          <ViewPanel id="shipping" view={view}>
           <WonSection title={t("rewards.ship.title")} glyph="receipt" state={props.status?.shipping} summary={shipSummary} hint={t("rewards.ship.hint")} anchor="shipping">
             <s-stack direction="block" gap="base">
               {/* `checked` is what is STORED; the live state is read from the form (never React's onChange on an s-* element). */}
@@ -229,6 +245,8 @@ export function RewardsScreen(props: RewardsScreenProps) {
             </s-stack>
           </WonSection>
 
+          </ViewPanel>
+          <ViewPanel id="gift" view={view}>
           <WonSection title={t("rewards.gift.title")} glyph="spark" state={props.status?.gift} summary={giftLine} hint={t("rewards.gift.hint")} anchor="gift">
             <s-stack direction="block" gap="base">
               {tiers.map((tier, i) => {
@@ -318,6 +336,8 @@ export function RewardsScreen(props: RewardsScreenProps) {
             </s-stack>
           </WonSection>
 
+          </ViewPanel>
+          <ViewPanel id="web" view={view}>
           <WonSection
             title={t("rewards.cart.title")}
             glyph="cart"
@@ -372,6 +392,8 @@ export function RewardsScreen(props: RewardsScreenProps) {
               />
             </WonSection>
           ) : null}
+
+          </ViewPanel>
 
           <div>
             <s-button type="submit" variant="primary">

@@ -42,3 +42,6 @@ vyplatí postavit hned:
   znovu“). Co se nepodařilo přečíst, není „chybí“.
 - **Úvodní stránka je rozcestník z dlaždic.** Celá dlaždice je odkaz, detailní
   řádky patří na stránku modulu. Dva sloupce na telefonu, tři na desktopu.
+- **Stránka modulu je pár dlaždic a jeden panel.** Dlaždice říká, k čemu část je
+  a co je nastavené. Co běží, je první panel. Skrytý panel zůstává ve formuláři,
+  uložení je jedno. Chyba ve skrytém panelu ho sama otevře.

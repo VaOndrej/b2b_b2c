@@ -240,3 +240,32 @@ test("Výprodej: three tiles instead of one long page — the sales (with their 
   const free = await render("outlet");
   assert.match(free, /data-won-view-tile="new"[^>]*data-won-tile-locked/);
 });
+
+test("the module pages are tiles and one panel at a time: Množstevní slevy, Odměny, Kampaně, Ochrana marže", async () => {
+  const pages: [string, string[], string][] = [
+    ["tiers?plan=pro", ["global", "table", "exceptions"], "global"],
+    ["rewards", ["shipping", "gift", "web"], "shipping"],
+    ["campaigns?plan=pro", ["list", "form", "places"], "list"],
+    ["campaigns?plan=pro&edit=weekend", ["list", "form", "places"], "form"],
+    ["margin?plan=pro", ["settings", "costs", "collections", "impact"], "settings"],
+  ];
+  for (const [path, views, open] of pages) {
+    const html = await render(path);
+    assert.deepEqual([...html.matchAll(/data-won-view-tile="(\w+)"/g)].map((m) => m[1]), views, path);
+    for (const view of views) {
+      // Every tile says what the part is for; exactly the open panel is shown, the others stay mounted (their fields submit).
+      assert.match(html, new RegExp(`data-won-view-tile="${view}"[\\s\\S]*?data-won-tile-about`), `${path} ${view}`);
+      const shown = new RegExp(`data-won-view-panel="${view}" style="display:(block|none)"`).exec(html)?.[1];
+      assert.equal(shown, view === open ? "block" : "none", `${path}: panel ${view}`);
+    }
+    assert.match(html, new RegExp(`data-won-view-tile="${open}"[^>]*aria-pressed="true"`), path);
+  }
+  // One form, one Save, outside the panels: still the last control of the page.
+  const tiers = await render("tiers?plan=pro");
+  assert.ok(tiers.lastIndexOf('type="submit"') > tiers.lastIndexOf("data-won-view-panel="));
+  // The tile of a part carries the same state as its section and as the home tile.
+  assert.match(tiers, /data-won-view-tile="global"[\s\S]*?data-won-state="active"/);
+  // Free: the Pro parts are amber tiles.
+  assert.match(await render("tiers"), /data-won-view-tile="exceptions"[^>]*data-won-tile-locked/);
+  assert.match(await render("margin"), /data-won-view-tile="collections"[^>]*data-won-tile-locked/);
+});

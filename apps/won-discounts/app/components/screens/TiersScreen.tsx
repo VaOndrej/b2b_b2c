@@ -30,11 +30,13 @@ import { Form, useSubmit } from "react-router";
 import { useT } from "../../i18n/context";
 import { pickCollections, pickProducts } from "../model/app-bridge";
 import { currencyCodes } from "../model/markets";
-import { freeGlobalSetId, newTierSetId, readTiersForm, tierPayloadUse, tierSetToConfig, TIERS_FIELD, TIERS_INTENT, tierSummary } from "../model/tiers";
+import { freeGlobalSetId, newTierSetId, readTiersForm, tierPayloadUse, tierSetToConfig, TIERS_FIELD, TIERS_INTENT, tierSummary, blockText } from "../model/tiers";
 import type { FieldError, TierSetView, TiersScreenData, UiResult } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
 import { GateNotes } from "../shell/GateNotes";
 import { Notice } from "../shell/Notice";
+import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
+import { useView, ViewPanel } from "../shell/views";
 import { PlanBadge } from "../shell/PlanBadge";
 import { DiscountsSubNav } from "../shell/SubNav";
 import { WonSection } from "../shell/WonSection";
@@ -226,8 +228,17 @@ export function TiersScreen(props: TiersScreenProps) {
   const tooLarge = errors.find((e) => e.field === F.set && e.key === "tiers.error.tooLarge");
   const capacityError = tooLarge ? t(tooLarge.key, tooLarge.params) : undefined;
   const pageError = errors.find((e) => e.field === F.set && e.key !== "tiers.error.tooLarge");
+  const [view, setView] = useView<"global" | "table" | "exceptions">({
+    initial: () => "global",
+    hash: { global: "global", block: "table", pro: "exceptions", [TIERS_CAPACITY_ANCHOR]: "exceptions" },
+    resetKey: result,
+  });
   useEffect(() => {
-    if (capacityError) document.getElementById(TIERS_CAPACITY_ANCHOR)?.scrollIntoView({ block: "center" });
+    if (!capacityError) return;
+    setView("exceptions");
+    const timer = window.setTimeout(() => document.getElementById(TIERS_CAPACITY_ANCHOR)?.scrollIntoView({ block: "center" }), 0);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- setView is stable
   }, [capacityError]);
 
   return (
@@ -243,6 +254,24 @@ export function TiersScreen(props: TiersScreenProps) {
           {gateNotes.length > 0 ? <GateNotes notes={gateNotes} /> : null}
           <input type="hidden" name={F.set} value={globalSet.id} />
           <input type="hidden" name={F.scope(globalSet.id)} value="global" />
+          {/* Three tiles, one panel at a time (doctrine §19e); the panels stay in the one form with its one Save. */}
+          <ModuleTiles label={t("tiers.view.label")}>
+            <ViewTile id="global" title={t("tiers.view.global.title")} glyph="layers" about={t("tiers.view.global.about")} active={globalSummary} status={props.status?.global} selected={view === "global"} onPick={() => setView("global")} />
+            <ViewTile id="table" title={t("tiers.view.table.title")} glyph="store" about={t("tiers.view.table.about")} active={blockText(block, tr)} selected={view === "table"} onPick={() => setView("table")} />
+            <ViewTile
+              id="exceptions"
+              title={t("tiers.view.exceptions.title")}
+              glyph="target"
+              about={t("tiers.view.exceptions.about")}
+              active={proSets.length === 0 ? t("tiers.pro.none") : pro ? tr.tp("count.tierSet", proSets.length) : tr.tp("tiers.pro.storedFree", proSets.length)}
+              status={pro && proSets.length > 0 ? props.status?.sets : undefined}
+              pro={!pro}
+              locked={!pro}
+              selected={view === "exceptions"}
+              onPick={() => setView("exceptions")}
+            />
+          </ModuleTiles>
+          <ViewPanel id="global" view={view}>
           <WonSection
             title={t("tiers.global.title")}
             glyph="layers"
@@ -277,7 +306,11 @@ export function TiersScreen(props: TiersScreenProps) {
               <HonestNotes marginOn={marginOn} competingRules={competingRules} outletWithAnything={props.outletWithAnything === true} />
             </s-stack>
           </WonSection>
-          <TiersBlockSection block={block} storefront={storefront} product={preview.product} />
+          </ViewPanel>
+          <ViewPanel id="table" view={view}>
+            <TiersBlockSection block={block} storefront={storefront} product={preview.product} />
+          </ViewPanel>
+          <ViewPanel id="exceptions" view={view}>
           <ProTierSets
             pro={pro}
             sets={proSets}
@@ -297,6 +330,7 @@ export function TiersScreen(props: TiersScreenProps) {
             capacityError={capacityError}
             status={props.status?.sets}
           />
+          </ViewPanel>
           {/* One save for the whole form, last on the page (plus the App Bridge save bar). */}
           <div>
             <s-button type="submit" variant="primary">

@@ -31,6 +31,9 @@
 // fixtures (app/routes/dev.preview.$.tsx).
 
 import { useCallback, useEffect, useRef, useState } from "react";
+
+import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
+import { useView, ViewPanel } from "../shell/views";
 import { Form, useSubmit } from "react-router";
 
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
@@ -52,7 +55,7 @@ import {
 import { asForm, useRefusedSeed } from "../model/submitted";
 import type { FieldError, MarginCollectionView, MarginScreenData, MarginSettingsView, UiResult } from "../model/types";
 import { CollectionsSection } from "../margin/CollectionsSection";
-import { CostsSection } from "../margin/CostsSection";
+import { CostsSection, coverageSummary } from "../margin/CostsSection";
 import { ImpactSection } from "../margin/ImpactSection";
 import { MarginProof } from "../margin/MarginProof";
 import { FieldMessage } from "../rule-editor/parts";
@@ -207,6 +210,12 @@ export function MarginScreen(props: MarginScreenProps) {
     submit(data, { method: "post" });
   };
 
+  const [view, setView] = useView<"settings" | "costs" | "collections" | "impact">({
+    initial: () => "settings",
+    hash: { settings: "settings", costs: "costs", collections: "collections", impact: "impact" },
+    resetKey: result,
+  });
+
   return (
     <s-page heading={t("module.margin")}>
       <Form
@@ -221,6 +230,24 @@ export function MarginScreen(props: MarginScreenProps) {
         {configVersion ? <input type="hidden" name={MARGIN_FIELD.configVersion} value={configVersion} /> : null}
         <s-stack key={`${formKey}-${seedKey}`} direction="block" gap="base">
           <Notice result={result} onReplace={replaceUnreadable} />
+          {/* Four tiles, one panel at a time (doctrine §19e); the panels stay in the one form with its one Save. */}
+          <ModuleTiles label={t("margin.view.label")} columns={4}>
+            <ViewTile id="settings" title={t("margin.view.settings.title")} glyph="shield" about={t("margin.view.settings.about")} active={marginSummary(draft, plan, tr)} status={props.status} selected={view === "settings"} onPick={() => setView("settings")} />
+            <ViewTile id="costs" title={t("margin.costs.title")} glyph="receipt" about={t("margin.view.costs.about")} active={coverageSummary(coverage, mirror, tr)} selected={view === "costs"} onPick={() => setView("costs")} />
+            <ViewTile
+              id="collections"
+              title={t("margin.collections.title")}
+              glyph="target"
+              about={t("margin.view.collections.about")}
+              active={collections.length > 0 ? tr.tp("count.collection", collections.length) : undefined}
+              pro={!pro}
+              locked={!pro}
+              selected={view === "collections"}
+              onPick={() => setView("collections")}
+            />
+            <ViewTile id="impact" title={t("margin.view.impact.title")} glyph="alert" about={t("margin.view.impact.about")} pro={!pro} locked={!pro} selected={view === "impact"} onPick={() => setView("impact")} />
+          </ModuleTiles>
+          <ViewPanel id="settings" view={view}>
           <WonSection
             title={t("module.margin")}
             glyph="shield"
@@ -274,7 +301,11 @@ export function MarginScreen(props: MarginScreenProps) {
               <FieldMessage text={errorFor(MARGIN_FIELD.enabled)} />
             </s-stack>
           </WonSection>
-          <CostsSection coverage={coverage} mirror={mirror} maxDiscountPercent={storedCeiling} afterSavePercent={afterSaveCeiling} />
+          </ViewPanel>
+          <ViewPanel id="costs" view={view}>
+            <CostsSection coverage={coverage} mirror={mirror} maxDiscountPercent={storedCeiling} afterSavePercent={afterSaveCeiling} />
+          </ViewPanel>
+          <ViewPanel id="collections" view={view}>
           <CollectionsSection
             pro={pro}
             collections={collections}
@@ -288,7 +319,10 @@ export function MarginScreen(props: MarginScreenProps) {
             tooLarge={tooLarge}
             posted={refused && pro ? { ids: refused[MARGIN_FIELD.collectionId] ?? [], min: refused[MARGIN_FIELD.collectionMin] ?? [], max: refused[MARGIN_FIELD.collectionMax] ?? [] } : null}
           />
-          <ImpactSection pro={pro} enabled={draft.enabled} unsaved={unsaved} impact={impact} currency={shopCurrency} />
+          </ViewPanel>
+          <ViewPanel id="impact" view={view}>
+            <ImpactSection pro={pro} enabled={draft.enabled} unsaved={unsaved} impact={impact} currency={shopCurrency} />
+          </ViewPanel>
           {/* One save for the whole form, last on the page like the rule editor (plus the App Bridge save bar). */}
           <div>
             <s-button type="submit" variant="primary">

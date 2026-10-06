@@ -351,3 +351,14 @@ Závěr: první vykreslení bylo správně, chyba byla jen po změně košíku. 
 - Rychlost stránky před a po není změřená (stejný důvod). Při načtení stránky se nic nepřidalo kromě 574 B skriptu.
 - Počítání „celý košík“ a výjimky naživo (v testech ano).
 - Rozšíření se měnilo za běhu `shopify app dev`; do dev obchodu se propsalo samo. Podle runbooku může být potřeba `shopify app dev` restartovat.
+
+## Doplnění 6. 10. večer (Ondřej po prohlédnutí dávky A)
+
+| Co | Stav |
+|---|---|
+| Dlaždice úvodní stránky říkají, co se pod nimi skrývá, a pod čarou, co je aktivní | hotovo (`shell/ModuleTile.tsx`, `OverviewScreen.tsx`) |
+| Výprodej: tři dlaždice (Výprodeje / Nový výprodej / Jak výprodej funguje), běžící první, skončené poslední, po založení se ukáže seznam | hotovo (`OutletScreen.tsx`) |
+| Stejný dlaždicový pohled na dalších stránkách | hotovo: Množstevní slevy, Odměny, Kampaně, Ochrana marže (`shell/views.tsx`). Beze změny: Slevy a kódy, Přehledy, Nastavení (krátké stránky), Vzhled (v dávce E zaniká), Vyzkoušet košík (dávka F). |
+| Předpřipravené scénáře ve Vyzkoušet košík | **nezačato**, je to bod 16 (dávka F). Ondřej potvrdil, že je chce jako hlavní cestu, ruční košík až jako druhou možnost. |
+
+Pravidlo je v doktríně §19e. Naživo v Shopify adminu neklikáno; testy `tests/ui/kolo3-a.test.ts`, screenshoty `Apps/.playwright-mcp/kolo3/a2`.
