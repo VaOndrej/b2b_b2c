@@ -104,6 +104,8 @@ export interface OutletDraft {
   percent: number;
   endsAt: Date | null;
   priceListIds: string[];
+  /** false = the storefront badge block does not show this sale's variant (the sale itself is the same). */
+  showBadge: boolean;
 }
 
 export interface OutletDraftError {
@@ -157,7 +159,7 @@ export function validateOutletDraft(raw: unknown, ctx: OutletDraftContext): { ok
   }
   return {
     ok: true,
-    draft: { variantId: variantId!, productId: productId!, quota, percent, endsAt, priceListIds: [...new Set(lists as string[])] },
+    draft: { variantId: variantId!, productId: productId!, quota, percent, endsAt, priceListIds: [...new Set(lists as string[])], showBadge: rec.showBadge !== false },
   };
 }
 
@@ -168,9 +170,14 @@ export interface OutletStorefrontValue {
   v: Record<string, number>;
 }
 
-export function outletStorefrontValue(display: OutletDisplay, runs: readonly { variantId: string; left: number }[]): OutletStorefrontValue | null {
-  if (runs.length === 0) return null;
+/**
+ * A sale whose badge the merchant hid (`showBadge: false`) is left out: the block lists only the variants in `v`,
+ * so that variant gets no badge and no "zbývá X ks" while its sale runs as any other. No shown variant = null.
+ */
+export function outletStorefrontValue(display: OutletDisplay, runs: readonly { variantId: string; left: number; showBadge?: boolean }[]): OutletStorefrontValue | null {
+  const shown = runs.filter((run) => run.showBadge !== false);
+  if (shown.length === 0) return null;
   const v: Record<string, number> = {};
-  for (const run of runs) v[String(run.variantId).split("/").pop()!] = Math.max(0, Math.floor(run.left) || 0);
+  for (const run of shown) v[String(run.variantId).split("/").pop()!] = Math.max(0, Math.floor(run.left) || 0);
   return { d: display, v };
 }

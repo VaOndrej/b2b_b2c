@@ -25,7 +25,7 @@ import { formatShopTime } from "../native/copy";
 import { GQL } from "../sync/graphql";
 import { graphqlOf, nowOf, type ShopCtx } from "./context.server";
 import { GIFT_TITLES_DOCUMENT } from "./rewards.server";
-import { endOutletRun, keepOutletEnded, reopenOutletRun, startOutletRun, writeOutletStorefront, type OutletDeps } from "./outlet.server";
+import { endOutletRun, keepOutletEnded, reopenOutletRun, setOutletBadge, startOutletRun, writeOutletStorefront, type OutletDeps } from "./outlet.server";
 import { readSaveOptions, saveConfigSection } from "./settings.server";
 import { outletStatus } from "../../components/model/module-status";
 import { ctxPlan } from "./sync-status.server";
@@ -128,6 +128,7 @@ export function outletRunView(run: RunRow, events: readonly EventRow[], opts: Ou
     returned: run.returned,
     left: outletLeft(run),
     oversold: outletOversold(run),
+    showBadge: run.showBadge !== false,
     status: run.status as OutletRunView["status"],
     endReason: (run.endReason as OutletRunView["endReason"]) ?? null,
     endsAt: when(run.endsAt),
@@ -276,6 +277,12 @@ export async function outletAction(ctx: ShopCtx, form: FormDataLike): Promise<Ou
       if (error) return { ok: false, reason: "failed", message: error };
       await ctx.db.outletRun.update({ where: { id: run.id }, data: { error: null, attempts: 0, nextAttemptAt: null } });
       return { ok: true, kind: "retried" };
+    }
+    case OUTLET_INTENT.badge: {
+      // The badge of one running sale, shown or hidden on the storefront; nothing else of the sale changes.
+      const show = String(form.get(OUTLET_FIELD.badge) ?? "") !== "hide";
+      const r = await setOutletBadge(deps, runId, show);
+      return r.ok ? { ok: true, kind: show ? "badgeShown" : "badgeHidden" } : { ok: false, reason: "failed", message: r.message };
     }
     case OUTLET_INTENT.reopen:
       return outcome(await reopenOutletRun(deps, runId), "reopened");

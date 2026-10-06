@@ -88,7 +88,7 @@ function OutletBanner({ result }: { result: OutletActionResult }) {
   return loose ? <s-banner tone="critical" heading={t(loose.key, loose.params)} /> : null;
 }
 
-function RunCard({ run, pro, money }: { run: OutletRunView; pro: boolean; money: (minor: number, currency: string) => string }) {
+function RunCard({ run, pro, money, badgeOn = false }: { run: OutletRunView; pro: boolean; money: (minor: number, currency: string) => string; /** The shop's display level shows a badge at all. */ badgeOn?: boolean }) {
   const { t } = useT();
   const ended = run.status === "ended";
   const active = run.status === "active";
@@ -119,6 +119,23 @@ function RunCard({ run, pro, money }: { run: OutletRunView; pro: boolean; money:
         {ended && run.endReason && run.endedAt ? <RowNote>{t(`outlet.ended.reason.${run.endReason}` as "outlet.ended.reason.manual", { at: run.endedAt })}</RowNote> : null}
         {!ended ? <RowNote>{run.endsAt ? t("outlet.run.ends", { at: run.endsAt }) : t("outlet.run.noEnd")}</RowNote> : null}
         {run.listNames.length > 0 ? <RowNote>{t("outlet.run.lists", { names: run.listNames.join(", ") })}</RowNote> : null}
+        {active && badgeOn ? (
+          // The badge on the storefront, per sale variant: said here and switched with one button.
+          <WonRow
+            action={
+              <Form method="post">
+                <input type="hidden" name={F.intent} value={OUTLET_INTENT.badge} />
+                <input type="hidden" name={F.run} value={run.id} />
+                <input type="hidden" name={F.badge} value={run.showBadge ? "hide" : "show"} />
+                <s-button type="submit" variant="secondary">
+                  {t(run.showBadge ? "outlet.run.badge.hide" : "outlet.run.badge.show")}
+                </s-button>
+              </Form>
+            }
+          >
+            <RowNote>{t(run.showBadge ? "outlet.run.badge.shown" : "outlet.run.badge.hidden")}</RowNote>
+          </WonRow>
+        ) : null}
         {run.problem ? (
           run.retry ? (
             <WonRow
@@ -371,6 +388,11 @@ export function OutletScreen(props: OutletScreenProps) {
         ) : err(F.priceList) ? (
           <RowNote tone="attention">{err(F.priceList)}</RowNote>
         ) : null}
+        {/* Per variant: the sale runs the same, only the storefront badge block leaves this variant out. */}
+        <s-stack direction="block" gap="small-200">
+          <s-checkbox name={F.hideBadge} value="1" label={t("outlet.new.hideBadge")} checked={boolAttr(seed.one(F.hideBadge, "") === "1")} disabled={boolAttr(!pro)} />
+          <RowNote>{t("outlet.new.hideBadgeHint")}</RowNote>
+        </s-stack>
         <RowNote>{t("outlet.new.backup")}</RowNote>
         <div>
           <s-button type="submit" variant="primary" disabled={boolAttr(!pro)}>
@@ -469,7 +491,7 @@ export function OutletScreen(props: OutletScreenProps) {
           <WonSection title={t("outlet.running.title")} glyph="calendar" state={props.status} summary={tr.tp("overview.outlet.running", running.length)} anchor="running">
             <s-stack direction="block" gap="base">
               {running.map((run) => (
-                <RunCard key={run.id} run={run} pro={pro} money={money} />
+                <RunCard key={run.id} run={run} pro={pro} money={money} badgeOn={display.startsWith("strike_badge")} />
               ))}
             </s-stack>
           </WonSection>
@@ -480,7 +502,7 @@ export function OutletScreen(props: OutletScreenProps) {
           <WonSection title={t("outlet.ended.title")} glyph="receipt" summary={t("outlet.ended.count", { n: ended.length })} anchor="ended">
             <s-stack direction="block" gap="base">
               {ended.map((run) => (
-                <RunCard key={run.id} run={run} pro={pro} money={money} />
+                <RunCard key={run.id} run={run} pro={pro} money={money} badgeOn={display.startsWith("strike_badge")} />
               ))}
             </s-stack>
           </WonSection>

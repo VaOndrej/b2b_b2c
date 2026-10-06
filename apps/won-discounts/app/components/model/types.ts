@@ -795,6 +795,8 @@ export interface OutletRunView {
   left: number;
   /** Pieces sold past the quota (a late order webhook): the exact number. */
   oversold: number;
+  /** The storefront badge block shows this variant (false = hidden for this sale by the merchant). */
+  showBadge: boolean;
   status: OutletRunStatus;
   endReason: "quota" | "date" | "manual" | null;
   endsAt: string | null;
@@ -849,7 +851,7 @@ export interface OutletScreenData {
 }
 
 export type OutletActionResult =
-  | { ok: true; kind: "started" | "ended" | "reopened" | "kept" | "retried"; skippedLists?: number; pending?: boolean }
+  | { ok: true; kind: "started" | "ended" | "reopened" | "kept" | "retried" | "badgeShown" | "badgeHidden"; skippedLists?: number; pending?: boolean }
   | { ok: false; reason: "invalid"; errors: FieldError[]; values?: SubmittedValues }
   | { ok: false; reason: "failed"; message: string; values?: SubmittedValues };
 

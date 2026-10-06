@@ -10,7 +10,7 @@ import { outletPricesFor } from "@won/core/discounts/outlet";
 import type { FormDataLike } from "./rule-form";
 
 export const OUTLET_ACTION = "/app/outlet";
-export const OUTLET_INTENT = { start: "start", end: "end", retry: "retry", reopen: "reopen", keep: "keep", settings: "settings" } as const;
+export const OUTLET_INTENT = { start: "start", end: "end", retry: "retry", reopen: "reopen", keep: "keep", settings: "settings", badge: "badge" } as const;
 export type OutletIntent = (typeof OUTLET_INTENT)[keyof typeof OUTLET_INTENT];
 
 export const OUTLET_FIELD = {
@@ -29,6 +29,10 @@ export const OUTLET_FIELD = {
   priceList: "ol.priceList",
   display: "ol.display",
   reopen: "ol.reopen",
+  /** The new sale's checkbox "na webu u této varianty štítek neukazovat" ("1" = hide). */
+  hideBadge: "ol.hideBadge",
+  /** The running sale's switch: "show" | "hide". */
+  badge: "ol.badge",
 } as const;
 
 /** The raw draft core validateOutletDraft checks (strings as typed; endsAt as an ISO instant or null). */
@@ -42,6 +46,7 @@ export function readOutletDraft(form: FormDataLike, toInstant: (day: string) => 
     percent: text(OUTLET_FIELD.percent) === "" ? Number.NaN : Number(text(OUTLET_FIELD.percent)),
     endsAt: day === "" ? null : (/^\d{4}-\d{2}-\d{2}$/.test(day) ? toInstant(day) : "invalid") ?? "invalid",
     priceListIds: form.getAll(OUTLET_FIELD.priceList).map(String),
+    showBadge: text(OUTLET_FIELD.hideBadge) !== "1",
   };
 }
 
@@ -57,6 +62,7 @@ export function readOutletSettings(form: FormDataLike, stored: { display: Outlet
 
 /** The new-sale fields a refused form gets back (B14). */
 export const OUTLET_START_FIELDS = [
+  OUTLET_FIELD.hideBadge,
   OUTLET_FIELD.variant,
   OUTLET_FIELD.product,
   OUTLET_FIELD.variantTitle,

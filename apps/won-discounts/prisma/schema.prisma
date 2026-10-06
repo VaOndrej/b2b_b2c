@@ -248,6 +248,9 @@ model OutletRun {
   endsAt        DateTime?
   /// JSON string[]: the price lists (GIDs) whose fixed price the merchant picked.
   priceListIds  String    @default("[]")
+  /// The storefront badge block shows this sale's variant (false = the merchant hid it for this sale; the price
+  /// and everything else stay the same).
+  showBadge     Boolean   @default(true)
   /// "starting" | "active" | "ending" | "ended"
   status        String
   /// "quota" | "date" | "manual" | null

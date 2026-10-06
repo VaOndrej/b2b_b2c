@@ -232,6 +232,7 @@ export async function startOutletRun(deps: OutletDeps, raw: unknown): Promise<Ou
         percent: draft.percent,
         endsAt: draft.endsAt,
         priceListIds: JSON.stringify(draft.priceListIds),
+        showBadge: draft.showBadge,
         status: "starting",
       },
     });
@@ -465,13 +466,25 @@ export async function writeOutletFlag(deps: OutletDeps, variantId: string): Prom
   }
 }
 
+/**
+ * Show or hide the storefront badge of ONE running sale (its variant). Only the value the badge block reads is
+ * written again; the price, the quota and the sale's flag stay as they are. false = not this shop's running sale.
+ */
+export async function setOutletBadge(deps: OutletDeps, runId: string, show: boolean): Promise<{ ok: true } | { ok: false; message: string }> {
+  const run = await deps.db.outletRun.findFirst({ where: { id: runId, shop: deps.shop, status: { in: [...OUTLET_NOT_ENDED] } } });
+  if (!run) return { ok: false, message: "not a running sale" };
+  await deps.db.outletRun.update({ where: { id: run.id }, data: { showBadge: show } });
+  const error = await writeOutletStorefront(deps, [run.productId]);
+  return error ? { ok: false, message: error } : { ok: true };
+}
+
 /** O9: the storefront block's product metafield `outlet` — the active sales and what they have left; deleted when none. */
 export async function writeOutletStorefront(deps: OutletDeps, productIds: readonly string[]): Promise<string | null> {
   const transport = transportOf(deps);
   const settings = await outletSettings(deps);
   for (const productId of new Set(productIds)) {
     const runs = await deps.db.outletRun.findMany({ where: { shop: deps.shop, productId, status: "active" } });
-    const value = outletStorefrontValue(settings.display, runs.map((r) => ({ variantId: r.variantId, left: outletLeft(r) })));
+    const value = outletStorefrontValue(settings.display, runs.map((r) => ({ variantId: r.variantId, left: outletLeft(r), showBadge: r.showBadge })));
     try {
       if (value) {
         const data: { metafieldsSet: { userErrors: UserErrorLike[] } } = await transport.call("metafieldsSet", {

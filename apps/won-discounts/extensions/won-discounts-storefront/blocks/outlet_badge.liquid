@@ -2,6 +2,7 @@
   Won Discounts — sale badge (MVP 5, Výprodej; contract O9, docs/plans/2026-10-02-won-discounts-mvp5.md).
   App block, product template only. Reads the product metafield `outlet` the sale writes:
   {"d": display, "v": {"<variant numeric id>": pieces left}} (absent = nothing on sale).
+  A sale whose badge the merchant hid for its variant is simply not in `v` (the app leaves it out).
   - silent / strike: nothing here (the theme strikes compare_at_price itself);
   - strike_badge: "Výprodej"; strike_badge_left: + "Zbývá X ks" (X > 0, the real quota).
   A product with one variant gets one badge; otherwise one row per sale variant, named — so the badge is

@@ -259,3 +259,52 @@ test("screen and card: no order access says the quota is not counted and recomme
   const en = text(await renderPage(createElement(EnProvider, { locale: "en" }, createElement(OutletScreen, { ...devOutletScreen({ plan: "pro", state: null, locale: "en" }), ordersCounted: false }))));
   assert.match(en, /Sold pieces are not counted yet\. The sale ends by its date or by hand\./);
 });
+
+// --- Feedback 6 Oct 2026: the sale badge can be hidden per sale variant ------------------------------------------
+
+test("badge per variant: a sale started with 'bez štítku' runs like any other, but the storefront value leaves its variant out", async () => {
+  const { fake, ctx: own } = setup("pro");
+  const product = fake.addProduct(60, 2);
+  const [shown, hidden] = product.variantIds as [string, string];
+  for (const id of [shown, hidden]) fake.variants.get(id)!.price = "20.00";
+  const stored = () => fake.products.get(product.id)!.metafields.get("$app:won_discounts/outlet");
+  const numeric = (gid: string) => gid.split("/").pop()!;
+
+  // Only a hidden sale on the product: the price is lowered, nothing is written for the badge.
+  assert.deepEqual(await outletAction(own, startForm(hidden, product.id, [[F.hideBadge, "1"]])), { ok: true, kind: "started", skippedLists: 1 });
+  assert.equal(fake.variants.get(hidden)!.price, "15.00");
+  assert.equal((await db.prisma.outletRun.findFirst({ where: { shop, variantId: hidden } }))!.showBadge, false);
+  assert.equal(stored(), undefined, "no variant shows a badge: no value for the block");
+
+  // A second variant with the badge: only that one is in the value.
+  await outletAction(own, startForm(shown, product.id));
+  assert.deepEqual(Object.keys(JSON.parse(stored()!.value).v), [numeric(shown)]);
+
+  // The merchant changes their mind on the running sale: the value follows at once, the price does not move.
+  const run = (await db.prisma.outletRun.findFirst({ where: { shop, variantId: hidden } }))!;
+  assert.deepEqual(await outletAction(own, formOf([[F.intent, OUTLET_INTENT.badge], [F.run, run.id], [F.badge, "show"]])), { ok: true, kind: "badgeShown" });
+  assert.deepEqual(Object.keys(JSON.parse(stored()!.value).v).sort(), [numeric(shown), numeric(hidden)].sort());
+  assert.deepEqual(await outletAction(own, formOf([[F.intent, OUTLET_INTENT.badge], [F.run, run.id], [F.badge, "hide"]])), { ok: true, kind: "badgeHidden" });
+  assert.deepEqual(Object.keys(JSON.parse(stored()!.value).v), [numeric(shown)]);
+  assert.equal(fake.variants.get(hidden)!.price, "15.00");
+
+  // The screen says it at the sale, with the button that turns it back.
+  const page = await loadOutletScreen(own);
+  assert.equal(page.running.find((r) => r.id === run.id)!.showBadge, false);
+  const html = text(await renderPage(createElement(OutletScreen, page)));
+  assert.match(html, /Štítek na webu je u této varianty skrytý/);
+  assert.match(html, /Ukázat štítek/);
+  assert.match(html, /Skrýt štítek/, "the other running sale offers to hide it");
+});
+
+test("badge per variant: another shop's sale is never touched (SEC-2); an ended sale has nothing to switch", async () => {
+  const { fake, ctx, product, variant } = setup("pro");
+  await outletAction(ctx, startForm(variant, product.id));
+  const run = (await db.prisma.outletRun.findFirst({ where: { shop } }))!;
+  const other = { ...ctx, shop: "someone-else.myshopify.com" };
+  assert.deepEqual(await outletAction(other, formOf([[F.intent, OUTLET_INTENT.badge], [F.run, run.id], [F.badge, "hide"]])), { ok: false, reason: "failed", message: "not a running sale" });
+  assert.equal((await db.prisma.outletRun.findUnique({ where: { id: run.id } }))!.showBadge, true);
+  await outletAction(ctx, formOf([[F.intent, OUTLET_INTENT.end], [F.run, run.id]]));
+  assert.deepEqual(await outletAction(ctx, formOf([[F.intent, OUTLET_INTENT.badge], [F.run, run.id], [F.badge, "hide"]])), { ok: false, reason: "failed", message: "not a running sale" });
+  assert.ok(fake);
+});

@@ -1325,6 +1325,7 @@ function devRun(id: string, variant: number, over: Partial<DevRun>): DevRun {
     percent: 30,
     endsAt: null,
     priceListIds: "[]",
+    showBadge: true,
     status: "active",
     endReason: null,
     sold: 0,

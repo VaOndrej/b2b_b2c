@@ -362,3 +362,11 @@ Závěr: první vykreslení bylo správně, chyba byla jen po změně košíku. 
 | Předpřipravené scénáře ve Vyzkoušet košík | **nezačato**, je to bod 16 (dávka F). Ondřej potvrdil, že je chce jako hlavní cestu, ruční košík až jako druhou možnost. |
 
 Pravidlo je v doktríně §19e. Naživo v Shopify adminu neklikáno; testy `tests/ui/kolo3-a.test.ts`, screenshoty `Apps/.playwright-mcp/kolo3/a2`.
+
+## Doplnění 6. 10. večer: štítek výprodeje jde skrýt u jednotlivé varianty
+
+Hotovo, naživo neověřeno. U nového výprodeje zaškrtávátko „Na webu u této varianty štítek výprodeje neukazovat“, u běžícího tlačítko „Skrýt štítek“ / „Ukázat štítek“. Sleva, kusy k doprodeji ani cena se nemění; appka jen variantu vynechá z údaje, který blok štítku čte, takže se téma ani blok měnit nemusí.
+
+- Nový sloupec `OutletRun.showBadge` (výchozí ano), migrace `20261006180000_outlet_show_badge` (SQLite) a `0002_outlet_show_badge` (Postgres). V lokální dev databázi je aplikovaná, záloha před ní `scratchpad/dev.sqlite.before-show-badge`.
+- Testy: `tests/integration/outlet-admin.test.ts` (+2). Postgres test (`npm run test:postgres -w won-discounts`, potřebuje Docker) neběžel.
+- Platí pro celou variantu ve výprodeji, ne pro jednotlivé trhy.
