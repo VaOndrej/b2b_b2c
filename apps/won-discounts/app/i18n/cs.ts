@@ -1011,7 +1011,6 @@ export const cs = {
   "settings.markets.count.other": "{n} trhů",
   "settings.markets.missingIn": "chybí částky: {markets}",
   "settings.markets.allSet": "všude je nastaveno vše",
-  "settings.markets.sameCurrency": "Trhy se stejnou měnou mají společnou částku: {markets}.",
   "settings.markets.source": "Trhy a jejich měny přebíráme ze Shopify. Nový trh se tu objeví do hodiny po otevření úvodní stránky.",
 
   // --- Množstevní slevy (MVP 3) -----------------------------------------------------------------

@@ -1,5 +1,5 @@
 {
-  "scenario": "The same set, an EUR cart from a country in no market: only the currency's column counts — 5 items reach the last break with an EUR amount, −2 €.",
+  "scenario": "The same set, an EUR cart from a country in no market: the set's euro columns are Slovakia's and Germany's, none is this cart's — no tier.",
   "payload": {
     "export": "cart-lines-discounts-generate-run",
     "target": "cart.lines.discounts.generate.run",
@@ -59,7 +59,6 @@
                     "line",
                     [
                       "CZK",
-                      "EUR",
                       "EUR@de",
                       "EUR@sk"
                     ],
@@ -69,7 +68,6 @@
                         [
                           5000,
                           200,
-                          200,
                           200
                         ]
                       ],
@@ -77,7 +75,6 @@
                         5,
                         [
                           8000,
-                          null,
                           400,
                           300
                         ]
@@ -145,31 +142,7 @@
       }
     },
     "output": {
-      "operations": [
-        {
-          "productDiscountsAdd": {
-            "candidates": [
-              {
-                "message": "Od 2 ks −2 € za kus",
-                "targets": [
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/1"
-                    }
-                  }
-                ],
-                "value": {
-                  "fixedAmount": {
-                    "amount": "2.00",
-                    "appliesToEachItem": true
-                  }
-                }
-              }
-            ],
-            "selectionStrategy": "ALL"
-          }
-        }
-      ]
+      "operations": []
     }
   }
 }

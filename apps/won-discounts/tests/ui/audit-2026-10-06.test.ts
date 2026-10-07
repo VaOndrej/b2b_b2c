@@ -8,10 +8,11 @@ import { renderToString } from "react-dom/server";
 import { createStaticHandler, createStaticRouter, StaticRouterProvider } from "react-router";
 
 import { sanitizeConfig } from "@won/core/discounts/config";
+import { expandConfigAmounts } from "@won/core/discounts/market-amounts";
 
 import { codesStatus, tiersStatus } from "../../app/components/model/module-status.ts";
 import { suggestedAmount } from "../../app/components/model/markets.ts";
-import { marketRows, sharedCurrencyGroups } from "../../app/components/model/markets-overview.ts";
+import { marketRows } from "../../app/components/model/markets-overview.ts";
 import type { RuleStatus } from "../../app/components/model/rule-status.ts";
 import type { SyncView } from "../../app/components/model/types.ts";
 import { campaignRuleChoices } from "../../app/lib/integration/campaigns-admin.server.ts";
@@ -187,8 +188,10 @@ test("N8: quantity levels name the market in one sentence, and a level that is n
     markets: MARKETS,
     modules: { tiers: { sets: [{ id: "g", scope: "global", countAcross: "product", breaks: [{ minQty: 3, amountOff: { CZK: 3000, EUR: 120 } }, { minQty: 6, amountOff: { CZK: 6000 } }] }] } },
   });
-  const overview = tiersOverviewOf(config, "free", { state: "on", themeName: "Horizon" });
-  assert.deepEqual(overview.missing, { global: ["EUR"], sets: [] }, "HUF is switched off: not asked for");
+  // The admin reads a config in its columns (loadConfig → core expandConfigAmounts): one amount key per market.
+  // 7 Oct 2026: both euro markets lack the level, each is named by its market (one thing to resolve on the tile).
+  const overview = tiersOverviewOf(expandConfigAmounts(config), "free", { state: "on", themeName: "Horizon" });
+  assert.deepEqual(overview.missing, { global: ["EUR@sk", "EUR@de"], sets: [] }, "HUF is switched off: not asked for");
   assert.deepEqual(tiersStatus(overview, OK), { state: "active", issues: 1 });
 });
 
@@ -204,10 +207,10 @@ test("N14: a campaign asks for the currencies of enabled markets only and says w
       },
     },
   });
-  const choices = campaignRuleChoices(config, "cs");
+  const choices = campaignRuleChoices(expandConfigAmounts(config), "cs");
   assert.deepEqual(choices.map((c) => [c.id, c.currencies, c.missing]), [
-    ["both", ["CZK", "EUR"], []],
-    ["czk", ["CZK"], ["EUR"]],
+    ["both", ["CZK", "EUR@de", "EUR@sk"], []],
+    ["czk", ["CZK"], ["EUR@sk", "EUR@de"]],
   ]);
   const html = await render("campaigns?plan=pro&edit=bf");
   assert.doesNotMatch(html, /Sleva v kampani[^"]*HUF/);
@@ -238,7 +241,12 @@ test("N15: the markets table — amounts, what is missing with its link, percent
   assert.deepEqual(sk.discounts, { kind: "missing", href: "/app/discounts/czk#value", count: 1 });
   assert.deepEqual(sk.tiers, { kind: "percent" });
   assert.deepEqual(rows[0]!.discounts, { kind: "ok" });
-  assert.deepEqual(sharedCurrencyGroups(rows), [{ currency: "EUR", names: ["Slovensko", "Německo"] }], "two markets, one currency: said in words");
+  // 7 Oct 2026: two markets of one currency no longer share an amount — each row is its own market's.
+  const own = sanitizeConfig({ markets: MARKETS, modules: { rewards: { freeShipping: { threshold: { CZK: 100000, "EUR@sk": 4000, "EUR@de": 6000 } }, gifts: [] } } }).config;
+  const ownRows = marketRows(own, { plan: "free", names: { cz: "Česko", sk: "Slovensko", de: "Německo", hu: "Maďarsko" }, locale: "cs" });
+  assert.deepEqual(ownRows.map((r) => (r.shipping.kind === "amount" ? r.shipping.text.replace(/\s/g, " ") : r.shipping.kind)), ["1 000 Kč", "40 €", "60 €", "missing"]);
+  const onlySk = sanitizeConfig({ markets: MARKETS, modules: { rewards: { freeShipping: { threshold: { CZK: 100000, "EUR@sk": 4000 } }, gifts: [] } } }).config;
+  assert.deepEqual(marketRows(onlySk, { plan: "free", locale: "cs" }).map((r) => r.shipping.kind), ["amount", "amount", "missing", "missing"], "Germany has no amount of its own: missing there, not Slovakia's");
 });
 
 test("N16: the sale page lists what there is to resolve, each row with the link to its sale", async () => {

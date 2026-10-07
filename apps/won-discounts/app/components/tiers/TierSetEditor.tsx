@@ -10,6 +10,7 @@
 // that the plan does not let the merchant edit (a Pro set on Free) so a save
 // never drops it.
 
+import { amountKeyCurrency } from "@won/core/discounts/money";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
@@ -273,7 +274,7 @@ export function TierSetEditor({
                         label={marketsOf(code) ? t("tiers.break.amountMarket", { currency: code, markets: marketsOf(code) }) : t("tiers.break.amount", { currency: code })}
                         value={row.initial.amount[code] !== undefined ? minorToInput(row.initial.amount[code]!, code) : ""}
                         min={0}
-                        suffix={code}
+                        suffix={amountKeyCurrency(code)}
                         inputMode="decimal"
                         error={errorFor(F.amount(sid, row.key, code))}
                       />

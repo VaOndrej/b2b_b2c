@@ -113,7 +113,9 @@ test("a market without its own amount keeps its currency's; the minimum spend is
   assert.equal(off("SK", 4), 0);
   assert.equal(off("DE", 5), 0, "Germany needs 200 €");
   assert.equal(off("DE", 20), 2000);
-  assert.equal(off("FR", 5), 1000, "a country in no market: the currency's amount");
+  // Stored, the two euro markets differ, so each has its own key and there is no amount "for the euro" any more.
+  assert.equal(off("FR", 5), 0, "a country in no market: no market's amount is its own");
+  assert.deepEqual(payload.modules.codes.rules[0]!.value, { kind: "fixed", amount: { "EUR@sk": 1000, "EUR@de": 2000 } });
 });
 
 test("quantity tiers and reward thresholds follow the market as well", () => {
@@ -138,20 +140,20 @@ test("quantity tiers and reward thresholds follow the market as well", () => {
   }).config;
   const { payload } = payloadFor(config);
   assert.equal(payload.am, true);
-  // The set's columns: a break written with "EUR" alone still has Slovakia's and Germany's amount.
-  assert.deepEqual(payload.modules.tiers.sets[0], ["g", "product", ["CZK", "EUR", "EUR@de", "EUR@sk"], [[3, [3000, 120, 120, 120]], [5, [5000, null, 250, 200]]]]);
+  // The set's columns: a break written with "EUR" alone has Slovakia's and Germany's amount in their columns.
+  assert.deepEqual(payload.modules.tiers.sets[0], ["g", "product", ["CZK", "EUR@de", "EUR@sk"], [[3, [3000, 120, 120]], [5, [5000, 250, 200]]]]);
   const plan = (countryCode: string, quantity: number, unitPrice = 10_00) => planCart(cartOf([L(unitPrice, quantity)], { currency: "EUR", countryCode }), payload);
   assert.equal(lineOf(plan("SK", 3), "L1").product?.amount, 360, "3 × 1,20 €");
   assert.equal(lineOf(plan("SK", 5), "L1").product?.amount, 1000, "5 × 2,00 €");
   assert.equal(lineOf(plan("DE", 5), "L1").product?.amount, 1250, "5 × 2,50 €");
-  assert.equal(lineOf(plan("FR", 5), "L1").product?.amount, 600, "no market: the last level with a currency amount, 5 × 1,20 €");
+  assert.equal(lineOf(plan("FR", 5), "L1").product ?? null, null, "a country in no market: no level is its own");
   const shipping = (countryCode: string, quantity: number) => plan(countryCode, quantity).progress.freeShipping?.reached;
   assert.equal(shipping("SK", 6), true, "60 € in Slovakia");
   assert.equal(shipping("DE", 6), false, "Germany needs 80 €");
   assert.equal(shipping("DE", 8), true);
   // The storefront config carries the same keys (Liquid picks the market's, then the currency's).
   const sf = buildStorefrontConfig(config, { now: FIXTURE_NOW, shopTimezone: FIXTURE_TZ, configVersion: "t" } as never);
-  assert.deepEqual((sf as { tiers: { sets: Record<string, { breaks: { off?: Record<string, number> }[] }> } }).tiers.sets.g.breaks.map((b) => Object.keys(b.off ?? {})), [["CZK", "EUR"], ["CZK", "EUR@de", "EUR@sk"]]);
+  assert.deepEqual((sf as { tiers: { sets: Record<string, { breaks: { off?: Record<string, number> }[] }> } }).tiers.sets.g.breaks.map((b) => Object.keys(b.off ?? {})), [["CZK", "EUR@de", "EUR@sk"], ["CZK", "EUR@de", "EUR@sk"]]);
 });
 
 test("marketAmountsView: nothing changes without the flag, a country, or a market holding it", () => {
@@ -163,4 +165,34 @@ test("marketAmountsView: nothing changes without the flag, a country, or a marke
   assert.equal(view.modules.x.amount.EUR, 2);
   assert.equal((view.modules.t[0]![2] as string[]).indexOf("EUR"), 1, "the market's column is the one read");
   assert.equal(config.modules.x.amount.EUR, 1, "the shipped config is not changed");
+});
+
+test("the admin's columns: a currency one market sells in keeps its plain key, a shared one gets a key per market", async () => {
+  const { amountColumns, toAmountColumns, expandConfigAmounts, collapseConfigAmounts } = await import("../../src/discounts/market-amounts.ts");
+  assert.deepEqual(amountColumns(MARKETS).map((c) => c.key), ["CZK", "EUR@sk", "EUR@de"]);
+  assert.deepEqual(amountColumns(MARKETS.slice(0, 2)).map((c) => c.key), ["CZK", "EUR"], "no shared currency: the keys a shop always had");
+  assert.deepEqual(toAmountColumns({ CZK: 40000, EUR: 1600 }, MARKETS), { CZK: 40000, "EUR@sk": 1600, "EUR@de": 1600 });
+  assert.deepEqual(toAmountColumns({ CZK: 40000, "EUR@de": 2000, HUF: 9 }, MARKETS), { CZK: 40000, "EUR@de": 2000, HUF: 9 });
+  // A whole stored config: into columns and back, byte for byte — also with a campaign and every kind of amount.
+  const stored = sanitizeConfig({
+    markets: MARKETS,
+    modules: {
+      codes: { rules: [orderFixed("r", { CZK: 40000, EUR: 1600 }, { minimum: { subtotal: { CZK: 150000, EUR: 6000 } } }), orderFixed("own", { CZK: 1, "EUR@sk": 2, "EUR@de": 3 })] },
+      tiers: { sets: [{ id: "g", scope: "global", countAcross: "product", breaks: [{ minQty: 3, amountOff: { CZK: 300, EUR: 50 } }, { minQty: 5, amountOff: { CZK: 400, EUR: 50 } }] }] },
+      rewards: { freeShipping: { threshold: { CZK: 10000, EUR: 400 } }, gifts: [{ id: "g1", threshold: { CZK: 150000 }, choices: ["gid://shopify/ProductVariant/1"] }] },
+    },
+    campaigns: [{ id: "bf", name: "BF", window: { start: "2026-11-27T00:00:00", end: "2026-11-30T23:59:00" }, overrides: [{ ruleId: "r", patch: { value: { kind: "fixed", amount: { CZK: 50000, EUR: 2000 } } } }] }],
+  }).config;
+  const columns = expandConfigAmounts(stored);
+  assert.deepEqual((columns.modules.codes.rules[0]!.value as { amount: unknown }).amount, { CZK: 40000, "EUR@sk": 1600, "EUR@de": 1600 });
+  assert.deepEqual(columns.modules.tiers.sets[0]!.breaks[0]!.amountOff, { CZK: 300, "EUR@sk": 50, "EUR@de": 50 });
+  assert.deepEqual(columns.modules.rewards.freeShipping?.threshold, { CZK: 10000, "EUR@sk": 400, "EUR@de": 400 });
+  assert.deepEqual((columns.campaigns[0]!.overrides[0]!.patch.value as { amount: unknown }).amount, { CZK: 50000, "EUR@sk": 2000, "EUR@de": 2000 });
+  assert.equal(JSON.stringify(collapseConfigAmounts(columns)), JSON.stringify(stored), "back to the stored config, byte for byte");
+  // The checkout and the storefront get the short form whichever one they are given.
+  assert.equal(payloadFor(columns).json, payloadFor(stored).json);
+  // A shop without a shared currency: nothing is touched at all.
+  const plain = sanitizeConfig({ markets: MARKETS.slice(0, 2), modules: { codes: { rules: [orderFixed("r", { CZK: 1, EUR: 2 })] } } }).config;
+  assert.equal(expandConfigAmounts(plain), plain);
+  assert.equal(collapseConfigAmounts(plain), plain);
 });

@@ -1336,7 +1336,7 @@ function allScenarios() {
   },
   {
     name: "lines-market-amount-tiers-unknown-country",
-    description: "The same set, an EUR cart from a country in no market: only the currency's column counts — 5 items reach the last break with an EUR amount, −2 €.",
+    description: "The same set, an EUR cart from a country in no market: the set's euro columns are Slovakia's and Germany's, none is this cart's — no tier.",
     target: "lines",
     rules: [],
     tiers: tiers(tierSet("castka", "line", [{ minQty: 2, amountOff: { CZK: 5000, EUR: 200 } }, { minQty: 5, amountOff: { CZK: 8000, "EUR@sk": 300, "EUR@de": 400 } }])),
@@ -1345,7 +1345,7 @@ function allScenarios() {
     currency: "EUR",
     country: "FR",
     lines: [{ n: 1, price: "10.0", qty: 5, won: won() }],
-    expected: out(products(pc(fromAmount(2, `2${NBSP}€`), [1], perItem("2.00")))),
+    expected: NONE,
   },
   {
     name: "lines-tiers-currency-missing",

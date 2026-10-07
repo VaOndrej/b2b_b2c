@@ -140,6 +140,7 @@ import {
 //   /dev/preview/plan            Tarif as its own page; ?plan=pro, ?state=dev | unknown | clean | production
 //                                 (production: no sentences for developers), ?result=<kind>
 //   Any screen: ?locale=en for the English admin.
+//   tiers, rewards, settings: ?markets=shared (Germany sells in euros next to Slovakia: a field per market).
 //
 // Double guard against ever reaching a non-development environment:
 //   1. BUILD-TIME: app/routes.ts excludes this file from the route manifest
@@ -452,19 +453,19 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       const plan = q.get("plan") === "pro" ? "pro" : "free";
       const planState = q.get("planState");
       return {
-        ...devSettingsScreen({ plan, state }),
+        ...devSettingsScreen({ plan, state, shared: q.get("markets") === "shared" }),
         planScreen: { ...devPlanScreen({ plan, state: planState, result: null }), production: planState === "production" },
       };
     }
     case "tiers":
       return {
-        ...devTiersScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, theme: q.get("theme"), accent: q.get("accent"), embed: q.get("embed") }),
+        ...devTiersScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, theme: q.get("theme"), accent: q.get("accent"), embed: q.get("embed"), shared: q.get("markets") === "shared" }),
         result: devTiersResult(q.get("result")),
         suggest: devSuggest(q),
       };
     case "rewards":
       // ?start=shipping: opened from the setup guide (free shipping switched on, amounts prefilled — N1).
-      return { ...devRewardsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale }), result: devRewardsResult(q.get("result")), start: q.get("start") === "shipping" ? ("shipping" as const) : null, suggest: devSuggest(q) };
+      return { ...devRewardsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, shared: q.get("markets") === "shared" }), result: devRewardsResult(q.get("result")), start: q.get("start") === "shipping" ? ("shipping" as const) : null, suggest: devSuggest(q) };
     case "campaigns":
       return {
         ...devCampaignsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, edit: q.get("edit") }),

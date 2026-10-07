@@ -174,3 +174,99 @@ export function marketAmountsView<T>(config: T, cart: { currency: string; countr
   };
   return walk(config) as T;
 }
+
+// --- The admin's columns ---------------------------------------------------------------------------
+// An admin form has one amount field per MARKET. Its key is the market's currency while that market is the only
+// enabled one selling in it ("CZK" — a plain key says exactly that), and "EUR@sk" once two enabled markets share
+// the currency. So a shop whose markets all differ in currency sees the keys it always had.
+
+/** The amount columns of the enabled markets, in market order: one per market. */
+export function amountColumns(markets: Markets): { key: string; currency: string; handle: string }[] {
+  const enabled = enabledMarkets(markets);
+  return enabled.map((m) => ({
+    key: enabled.filter((x) => x.currency === m.currency).length > 1 ? marketAmountKey(m.currency, m.handle) : m.currency,
+    currency: m.currency,
+    handle: m.handle,
+  }));
+}
+
+/** A stored map as the admin's columns hold it: every column's amount under its key; keys of nothing enabled kept. */
+export function toAmountColumns(money: MoneyByCurrency | undefined | null, markets: Markets): Record<string, number> {
+  const expanded = expandMarketAmounts(money, markets);
+  const out: Record<string, number> = {};
+  const used = new Set<string>();
+  for (const column of amountColumns(markets)) {
+    const key = marketAmountKey(column.currency, column.handle);
+    used.add(key);
+    const value = own(expanded, key);
+    if (value !== undefined) out[column.key] = value;
+  }
+  for (const [key, value] of Object.entries(expanded)) if (!used.has(key) && !Object.hasOwn(out, key)) out[key] = value;
+  return out;
+}
+
+type ConfigLike = { markets: Markets; modules: { codes: { rules: readonly unknown[] }; tiers: { sets: readonly unknown[] }; rewards: unknown }; campaigns?: readonly unknown[] };
+
+/** Every amount map of a config through `money` (a tier set's breaks together through `breaks`); the config itself is not changed. */
+function mapConfigAmounts<T extends ConfigLike>(
+  config: T,
+  money: (m: MoneyByCurrency) => Record<string, number>,
+  breaks: (list: { amountOff?: MoneyByCurrency }[]) => { amountOff?: MoneyByCurrency }[],
+): T {
+  const moneyIn = (holder: unknown, key: string): Rec | null => {
+    if (!isRecord(holder) || !isRecord(holder[key]) || Object.keys(holder[key] as Rec).length === 0) return null;
+    return { ...holder, [key]: money(holder[key] as MoneyByCurrency) };
+  };
+  const ruleLike = <R>(raw: R): R => {
+    if (!isRecord(raw)) return raw;
+    let out: Rec = raw;
+    const value = moneyIn(raw.value, "amount");
+    if (value) out = { ...out, value };
+    const minimum = moneyIn(raw.minimum, "subtotal");
+    if (minimum) out = { ...out, minimum };
+    const threshold = moneyIn(out, "threshold");
+    if (threshold) out = threshold;
+    if (Array.isArray(raw.breaks)) out = { ...out, breaks: breaks(raw.breaks as { amountOff?: MoneyByCurrency }[]) };
+    return out as R;
+  };
+  const rewards = config.modules.rewards;
+  const nextRewards = isRecord(rewards)
+    ? {
+        ...rewards,
+        ...(isRecord(rewards.freeShipping) ? { freeShipping: ruleLike(rewards.freeShipping) } : {}),
+        ...(Array.isArray(rewards.gifts) ? { gifts: rewards.gifts.map(ruleLike) } : {}),
+      }
+    : rewards;
+  return {
+    ...config,
+    modules: {
+      ...config.modules,
+      codes: { ...config.modules.codes, rules: config.modules.codes.rules.map(ruleLike) },
+      tiers: { ...config.modules.tiers, sets: config.modules.tiers.sets.map(ruleLike) },
+      rewards: nextRewards,
+    },
+    ...(Array.isArray(config.campaigns)
+      ? { campaigns: config.campaigns.map((c) => (isRecord(c) && Array.isArray(c.overrides) ? { ...c, overrides: c.overrides.map((o) => (isRecord(o) && isRecord(o.patch) ? { ...o, patch: ruleLike(o.patch) } : o)) } : c)) }
+      : {}),
+  };
+}
+
+/** The config as the admin works with it: every amount under its market's column (toAmountColumns). */
+export function expandConfigAmounts<T extends ConfigLike>(config: T): T {
+  if (amountColumns(config.markets).every((c) => c.key === c.currency) && !usesMarketAmounts([config.modules, config.campaigns])) return config;
+  return mapConfigAmounts(
+    config,
+    (m) => toAmountColumns(m, config.markets),
+    (list) => list.map((b) => (b.amountOff ? { ...b, amountOff: toAmountColumns(b.amountOff, config.markets) } : b)),
+  );
+}
+
+/** The config as it is stored and shipped: every amount map as short as it can be (collapseMarketAmounts; a tier set as a whole). */
+export function collapseConfigAmounts<T extends ConfigLike>(config: T): T {
+  if (amountColumns(config.markets).every((c) => c.key === c.currency) && !usesMarketAmounts([config.modules, config.campaigns])) return config;
+  return mapConfigAmounts(
+    config,
+    (m) => collapseMarketAmounts(m, config.markets),
+    (list) => collapseTierAmounts(list, config.markets),
+  );
+}

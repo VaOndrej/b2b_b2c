@@ -1007,7 +1007,6 @@ export const en: Record<keyof typeof cs, string> = {
   "settings.markets.count.other": "{n} markets",
   "settings.markets.missingIn": "amounts missing: {markets}",
   "settings.markets.allSet": "everything is set everywhere",
-  "settings.markets.sameCurrency": "Markets with the same currency share one amount: {markets}.",
   "settings.markets.source": "Markets and their currencies come from Shopify. A new market shows up here within an hour of opening the home page.",
 
   // --- Quantity discounts (MVP 3) -----------------------------------------------------------------

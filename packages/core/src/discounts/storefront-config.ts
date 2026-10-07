@@ -20,6 +20,7 @@
 // makes it stale; any change of the margin settings or the shop currency
 // changes `k`. pdpMaxDiscountPercent (K4 v1) stays until the sync switches.
 
+import { collapseConfigAmounts } from "./market-amounts.ts";
 import { variantKey } from "./cart.ts";
 import {
   APPEARANCE_PRESETS,
@@ -278,7 +279,9 @@ function storefrontTiers(setsOf: ReadonlyDeep<WonDiscountsConfig>["modules"]["ti
  * MVP 6.1: `opts.campaignId` swaps in that campaign's sets (`bt`, `tc`).
  * Pure; never throws.
  */
-export function buildStorefrontConfig(gated: ReadonlyDeep<WonDiscountsConfig>, opts: StorefrontConfigOptions): StorefrontConfigV1 {
+export function buildStorefrontConfig(given: ReadonlyDeep<WonDiscountsConfig>, opts: StorefrontConfigOptions): StorefrontConfigV1 {
+  // Amounts per market are written as short as they can be, whatever form the caller holds.
+  const gated = collapseConfigAmounts(given as never) as ReadonlyDeep<WonDiscountsConfig>;
   const base = storefrontTiers(gated.modules.tiers.sets);
   const campaign = opts.campaignId ? gated.campaigns.find((c) => c.id === opts.campaignId && !c.killed) : undefined;
   const run = campaign ? campaignTierSets(gated.modules.tiers, campaign) : null;

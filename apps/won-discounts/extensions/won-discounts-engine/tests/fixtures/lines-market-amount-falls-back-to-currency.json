@@ -38,6 +38,9 @@
               }
             },
             "marketCountries": {
+              "sk": [
+                "SK"
+              ],
               "de": [
                 "DE",
                 "AT"
@@ -55,7 +58,7 @@
                     "value": {
                       "kind": "fixed",
                       "amount": {
-                        "EUR": 1000,
+                        "EUR@sk": 1000,
                         "EUR@de": 2000
                       }
                     },
@@ -64,7 +67,7 @@
                     },
                     "minimum": {
                       "subtotal": {
-                        "EUR": 5000,
+                        "EUR@sk": 5000,
                         "EUR@de": 20000
                       }
                     }

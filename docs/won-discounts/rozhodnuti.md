@@ -102,6 +102,9 @@ Free omezuje rozsah, ne kvalitu. Konzistence košík ↔ pokladna, ochrana marž
 
 - Každý práh má **vlastní hodnotu pro každý trh / měnu**, žádný přepočet kurzem
   (CZ 1000 Kč, SK 60 €). Funkce i storefront berou hodnotu podle měny košíku.
+- **Změna 2026-10-07 (Ondřej):** částka patří trhu, ne měně. Dva trhy se stejnou měnou mají každý vlastní částku;
+  funkce i web berou hodnotu podle trhu zákazníka (země košíku), potom podle měny. Návrh a měření:
+  `navrh-castky-podle-trhu.md`.
 - Je to základ, ne Pro (špatný práh = ztráta důvěry).
 - Trh bez zadané hodnoty: odměna se v něm nenabízí a admin na to upozorní. Nikdy
   se neukáže přepočtené nebo cizí číslo.

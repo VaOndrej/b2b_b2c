@@ -82,7 +82,27 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   - **Naživo neověřeno:** klikání (rozbalení, „Hotovo“, výběr produktů z „Přidat výjimku“) v běžící aplikaci; screenshoty jsou ze
     staticky vykreslených stránek dev náhledu (`scripts/static-preview.ts`, `Apps/.playwright-mcp/dotazeni-static-shots.mjs`), protože
     dev náhled neběží.
-- **Další krok:** úkol 6 (návrh `won-discounts/navrh-castky-podle-trhu.md`, pak převod), potom 7, 8, 9. Úkoly 2 a 4 čekají na Ondřeje.
+- **Úkol 6 (částky podle trhu) — v kódu, brána zelená, sloučeno do `main`; naživo až po nasazení.** Návrh s měřením:
+  [`won-discounts/navrh-castky-podle-trhu.md`](won-discounts/navrh-castky-podle-trhu.md).
+  - **Uložení:** mapa částek má klíč měny (`EUR` = každý trh té měny bez vlastního klíče) a jen tam, kde se trhy jedné měny liší,
+    klíč trhu (`EUR@sk`). Staré nastavení se nepřepisuje a čte se stejně; načtení a uložení beze změny dá stejný řetězec
+    (`packages/core/src/discounts/market-amounts.ts`, testy `market-amounts.test.ts` 10, `tests/ui/market-amounts.test.ts` 6).
+  - **Pokladna:** funkce v Rustu hledá částku trhu podle země košíku jen s příznakem `am` (`engine/config.rs` `MARKET_KEY`).
+    **Wasm 255 677 B z 256 000 B (zbývá 323 B)**, instrukce +0,010 bodu bez vlastních částek a +0,043 bodu s nimi (150 nejtěžších
+    vstupů). 7 nových fixtures, parita s TS na všech 134 + 627 testech vitest.
+  - **Web:** tabulka úrovní, karty, průběh k odměně a panel košíku čtou `měna@trh` z `localization.market.handle`, pak měnu.
+  - **Aplikace:** `loadConfig` rozbalí částky do sloupců (jeden na trh; sdílená měna má klíč `EUR@sk`), uložení je zase sbalí.
+    Pole, chybějící trhy, přehled trhů v Nastavení i věci k vyřešení jdou po trzích; věta o společné částce je pryč.
+    Dev náhled: `?markets=shared` u `tiers`, `rewards`, `settings`. Screenshoty `Apps/.playwright-mcp/dotazeni/u6-*.png`.
+  - **Rozhodl jsem sám:** (1) obchod, kde má každá měna jeden trh, nevidí žádnou změnu klíčů ani dat; (2) kde se trhy jedné měny
+    liší, zmizí společný klíč měny, takže košík ze země mimo trhy nedostane nic (nikdy částku jiného trhu).
+  - **Známé mezery:** návrh částky bere kurz podle měny, ne podle trhu; souhrnné věty u dvou trhů jedné měny s různou částkou
+    vypíšou obě částky bez názvu trhu; trh bez seznamu zemí pokladna nepozná; editor slevy a kampaně se dvěma trhy v eurech
+    nemají vlastní stav v dev náhledu ani screenshot (používají stejné sloupce jako Odměny a Úrovně).
+  - **Rezerva funkce je po změně 323 B a asi 0,05 bodu.** Další funkce v pokladně musí nejdřív uvolnit místo.
+  - **Pozor:** změnil jsem `extensions/` za běhu `shopify app dev`; podle runbooku to rozbije soubory rozšíření na webu do dalšího
+    restartu. Ověření: `node apps/won-discounts/scripts/check-storefront-assets.mjs the-inventory-not-tracked-snowboard`.
+- **Další krok:** úkol 7 (Milníky), potom 8, 9.
 
 Zadání: [`won-discounts/audit-dlazdice-trhy-2026-10-06.md`](won-discounts/audit-dlazdice-trhy-2026-10-06.md) (stav po nálezech je na jeho
 konci). Práce inline, commitnuto lokálně, nepushnuto, nenasazeno.

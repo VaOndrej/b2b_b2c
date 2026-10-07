@@ -306,6 +306,7 @@ Zapisuje se po bodech během práce.
 | 4, vzhled na webu (dotažení, úkol 1) | vyřešeno 7. 10. restartem `shopify app dev`, naživo ověřeno | Blok na živém webu byl bez stylů, protože obchod ukazuje dev preview a jeho soubory vrací 404. Kód, uložené nastavení i značka sedí. Kontrola: `scripts/check-storefront-assets.mjs`, `assertExtensionAssetsLoaded`. Podrobnosti v build logu. |
 | návrh částky v kampaních (dotažení, úkol 3) | v kódu, test zelený, screenshoty chybí | `CampaignsScreen.tsx` + `AmountSuggestions`; `/dev/preview/campaigns?plan=pro&state=suggest&edit=bf`. |
 | 7 | v kódu, testy zelené, klikání naživo neověřeno | `tiers/ProTierSets.tsx`, `TierSetEditor.tsx` (`inherit`), `TiersScreen.tsx` (`addSet`); testy `tests/ui/kolo3-c.test.ts`; rozhodnutí v build logu. |
+| částky podle trhu (dotažení, úkol 6) | v kódu, brána zelená, naživo až po nasazení | Klíč `měna@trh` jen kde se trhy jedné měny liší; funkce 255 677 B z 256 000 B. Viz `navrh-castky-podle-trhu.md` a build log. |
 | 9, 10 | nezačato | dávka D |
 | 11, 12, 13, 14 | nezačato | dávka E |
 | 16 | nezačato | dávka F |

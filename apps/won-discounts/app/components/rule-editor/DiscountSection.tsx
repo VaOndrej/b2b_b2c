@@ -5,6 +5,7 @@
 // and that field carries a marker computed from the live draft. P5: the name
 // follows the settings until the merchant types their own.
 
+import { amountKeyCurrency } from "@won/core/discounts/money";
 import { useEffect, useRef } from "react";
 
 import { formatMoney } from "@won/core/discounts/describe";
@@ -202,7 +203,7 @@ export function DiscountSection({
                     label={codes.length > 1 ? (marketsOf(c) ? t("editor.amount.labelMarket", { currency: c, markets: marketsOf(c) }) : t("editor.amount.label", { currency: c })) : t("editor.amount.labelSingle")}
                     value={defaults.amounts[c] ?? ""}
                     min={0}
-                    suffix={c}
+                    suffix={amountKeyCurrency(c)}
                     inputMode="decimal"
                     details={codes.length > 1 ? (marketsOf(c) ? t("editor.amount.detailsMarket", { markets: marketsOf(c) }) : t("editor.amount.details", { currency: c })) : undefined}
                     error={errorFor(FIELD.amount(c))}

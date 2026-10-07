@@ -22,6 +22,7 @@ import { analyticsScreenOf } from "./integration/analytics-admin.server";
 import type { PlanActionResult, PlanScreenData } from "../components/model/plan";
 import { codeRuleLimit } from "./ui-actions.server";
 import { codeHash } from "@won/core/discounts/code-hash";
+import { expandConfigAmounts } from "@won/core/discounts/market-amounts";
 import { ACCENT_PRESETS, CONFIG_LIMITS, DEFAULT_CONFIG, readStoredConfig, sanitizeConfig, type Campaign, type WonDiscountsConfig } from "@won/core/discounts/config";
 import { CAMPAIGN_LIMITS } from "@won/core/discounts/campaigns";
 import type { MarginVariant } from "@won/core/discounts/margin";
@@ -100,7 +101,16 @@ const DEV_MARKETS = [
 ];
 
 /** Shopify market names (read_markets) for the fixture handles. */
-export const DEV_MARKET_NAMES: Readonly<Record<string, string>> = { cz: "Česko", sk: "Slovensko", hu: "Maďarsko" };
+export const DEV_MARKET_NAMES: Readonly<Record<string, string>> = { cz: "Česko", sk: "Slovensko", hu: "Maďarsko", de: "Německo" };
+
+/**
+ * ?markets=shared: Germany sells in euros next to Slovakia. 7 Oct 2026: every market has its own amount, so the
+ * forms get a field per market ("EUR@sk", "EUR@de"), each starting from what is stored for the euro — the config
+ * is in the admin's columns, as loadConfig returns it (core expandConfigAmounts).
+ */
+export function devSharedMarket<T extends WonDiscountsConfig>(config: T, shared: boolean): T {
+  return shared ? expandConfigAmounts({ ...config, markets: [...config.markets, { handle: "de", currency: "EUR", enabled: true, countries: ["DE"] }] }) : config;
+}
 
 /**
  * Přehled fixture: the real defaults, two enabled markets (CZK, EUR) plus a
@@ -1036,8 +1046,8 @@ function devStorefront(state: string | null): StorefrontSyncView {
  *   dawn           Dawn's tokens + a block accent; failed / pending — the
  *                  storefront config; block-unknown / no-scope — the block check.
  */
-export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; theme?: string | null; accent?: string | null; embed?: string | null }): TiersScreenData {
-  const base = opts.state === "empty" ? DEV_EMPTY_FIXTURE : opts.state === "exceptions" ? DEV_TIERS_EXCEPTIONS_FIXTURE : DEV_TIERS_FIXTURE;
+export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; theme?: string | null; accent?: string | null; embed?: string | null; shared?: boolean }): TiersScreenData {
+  const base = devSharedMarket(opts.state === "empty" ? DEV_EMPTY_FIXTURE : opts.state === "exceptions" ? DEV_TIERS_EXCEPTIONS_FIXTURE : DEV_TIERS_FIXTURE, opts.shared === true);
   // ?accent=green: a stored ready-made colour; ?embed=off | noscope: Won on the storefront is off / not readable.
   const accent = ACCENT_PRESETS.find((a) => a === opts.accent);
   const config = accent ? { ...base, storefront: { ...base.storefront, accent } } : base;
@@ -1133,7 +1143,7 @@ export function devAppearanceScreen(opts: { plan: "free" | "pro"; state: string 
 }
 
 /** Nastavení: the switches as stored (`changed` = two switched off, as a shop may have them). */
-export function devSettingsScreen(opts: { plan: "free" | "pro"; state: string | null }): SettingsScreenData {
+export function devSettingsScreen(opts: { plan: "free" | "pro"; state: string | null; shared?: boolean }): SettingsScreenData {
   const c = DEFAULT_CONFIG.engine.combination;
   const combination = {
     outletWithAnything: c.outletWithAnything,
@@ -1144,11 +1154,11 @@ export function devSettingsScreen(opts: { plan: "free" | "pro"; state: string | 
   return {
     plan: opts.plan,
     configVersion: "dev-config-version",
-    currencies: currencyViews(DEV_OVERVIEW_FIXTURE.markets, { marketNames: DEV_MARKET_NAMES }),
+    currencies: currencyViews(devSharedMarket(DEV_OVERVIEW_FIXTURE, opts.shared === true).markets, { marketNames: DEV_MARKET_NAMES }),
     combination: opts.state === "changed" ? { ...combination, productWithOrder: false, productWithShipping: false } : combination,
     // The same shop as the home page's ?state=modules: the discounts, rewards and tiers of the three fixtures.
     markets: marketRows(
-      { ...DEV_OVERVIEW_FIXTURE, modules: { ...DEV_OVERVIEW_FIXTURE.modules, rewards: DEV_REWARDS_FIXTURE.modules.rewards, tiers: DEV_TIERS_FIXTURE.modules.tiers } },
+      devSharedMarket({ ...DEV_OVERVIEW_FIXTURE, modules: { ...DEV_OVERVIEW_FIXTURE.modules, rewards: DEV_REWARDS_FIXTURE.modules.rewards, tiers: DEV_TIERS_FIXTURE.modules.tiers } }, opts.shared === true),
       { plan: opts.plan, names: DEV_MARKET_NAMES, locale: "cs" },
     ),
   };
@@ -1238,8 +1248,8 @@ export const DEV_REWARDS_FIXTURE: WonDiscountsConfig = readStoredConfig({
  *   embed-draft | embed-unknown | embed-no-scope   the other states of the app embed check (each has its own
  *               sentence and action on the page).
  */
-export function devRewardsScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en" }): RewardsScreenData {
-  const config = opts.state === "empty" ? DEV_EMPTY_FIXTURE : DEV_REWARDS_FIXTURE;
+export function devRewardsScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; shared?: boolean }): RewardsScreenData {
+  const config = devSharedMarket(opts.state === "empty" ? DEV_EMPTY_FIXTURE : DEV_REWARDS_FIXTURE, opts.shared === true);
   return {
     plan: opts.plan,
     configVersion: "dev-config-version",

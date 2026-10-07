@@ -5,6 +5,7 @@
 // P3: a minimum set for some currencies only takes the rule out of the others;
 // the marker says in which.
 
+import { amountKeyCurrency } from "@won/core/discounts/money";
 import { AmountSuggestions } from "../shell/AmountSuggestions";
 import { describeItemMinimums, describeMinimum, missingMinimumCurrencies } from "../model/describe";
 import { FIELD } from "../model/rule-form";
@@ -34,7 +35,7 @@ export function ConditionsSection({ ed }: { ed: EditorView }) {
               label={codes.length > 1 ? (marketsOf(c) ? t("editor.minimum.labelMarket", { currency: c, markets: marketsOf(c) }) : t("editor.minimum.label", { currency: c })) : t("editor.minimum.labelSingle")}
               value={defaults.minimums[c] ?? ""}
               min={0}
-              suffix={c}
+              suffix={amountKeyCurrency(c)}
               inputMode="decimal"
               error={errorFor(FIELD.minimum(c))}
               disabled={off}

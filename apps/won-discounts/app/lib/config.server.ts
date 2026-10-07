@@ -18,6 +18,7 @@ import {
   type WonDiscountsConfig,
 } from "@won/core/discounts/config";
 import { FUNCTION_CONFIG_BUDGET_BYTES } from "@won/core/discounts/function-config";
+import { collapseConfigAmounts, expandConfigAmounts } from "@won/core/discounts/market-amounts";
 import { buildShopFunctionConfigWorstCase } from "@won/core/discounts/function-payload";
 
 import type { PrismaClient } from "../generated/prisma/client";
@@ -201,7 +202,9 @@ export async function loadConfig(db: PrismaClient, shop: string): Promise<Loaded
   if (!parsed.ok || !isConfigObject(parsed.value)) {
     return { config: createDefaultConfig(), readOnly, exists: true, unreadable: true, version };
   }
-  return { config: readStoredConfig(parsed.value), readOnly, exists: true, unreadable: false, version };
+  // Amounts per market (7 Oct 2026): the app works with one amount per market (a key per market where two enabled
+  // markets share a currency); the row keeps the short form (validateConfigForSave collapses it again).
+  return { config: expandConfigAmounts(readStoredConfig(parsed.value)), readOnly, exists: true, unreadable: false, version };
 }
 
 /** A stored config is always a sanitized object with `modules`; anything else is unreadable. */
@@ -279,7 +282,8 @@ export function withExpectedConfigVersion<T>(shop: string, version: string | nul
 export function validateConfigForSave(input: unknown, options: Omit<SaveConfigOptions, "replaceUnreadable" | "expectedVersion"> = {}): ConfigValidationResult {
   const sanitized = sanitizeConfig(input);
   const issues = sanitized.issues;
-  const config = options.shopMarkets ? withShopMarkets(sanitized.config, options.shopMarkets).config : sanitized.config;
+  // Stored as short as it can be: where every market of a currency has the same amount, one key of that currency.
+  const config = collapseConfigAmounts(options.shopMarkets ? withShopMarkets(sanitized.config, options.shopMarkets).config : sanitized.config);
   const codeRules = checkActiveCodeRuleLimit(config, { shopLocalNow: options.shopLocalNow });
   if (!codeRules.ok) {
     return {

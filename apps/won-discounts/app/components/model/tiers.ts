@@ -14,7 +14,7 @@ import { CONFIG_LIMITS, createDefaultConfig, type TierBreak, type TierSet, type 
 import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
 import { buildTiersPayload } from "@won/core/discounts/tiers";
 import { describeTierBreak, describeTierSet, formatMoney, type DescribableTierBreak } from "@won/core/discounts/describe";
-import { currencyExponent } from "@won/core/discounts/money";
+import { splitAmountKey, currencyExponent } from "@won/core/discounts/money";
 
 import type { Locale, Translator } from "../../i18n";
 import { COLLECTION_GID, PRODUCT_GID } from "./ids";
@@ -175,7 +175,7 @@ export function readTiersForm(form: FormDataLike, ctx: TiersFormContext): TiersF
   const errors: FieldError[] = [];
   const sets: TierSetView[] = [];
   const kept: string[] = [];
-  const currencies = [...new Set([...ctx.currencies, ...(ctx.keptCurrencies ?? [])])].filter((c) => /^[A-Z]{3}$/.test(c));
+  const currencies = [...new Set([...ctx.currencies, ...(ctx.keptCurrencies ?? [])])].filter((c) => splitAmountKey(c) !== null);
   const title = (id: string) => ctx.titles?.get(id) ?? "";
   const ids = uniqueStrings(form.getAll(F.set));
   if (ids.some((id) => !SET_ID.test(id))) errors.push({ field: F.set, key: "tiers.error.set" });

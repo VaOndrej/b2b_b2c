@@ -2,6 +2,7 @@
 // language. Pure functions only (no React) so loaders, actions, formatters and
 // tests share one lookup; the React side lives in ./context.tsx.
 
+import { amountKeyCurrency } from "@won/core/discounts/money";
 import { cs } from "./cs";
 import { en } from "./en";
 
@@ -47,6 +48,8 @@ function interpolate(locale: Locale, template: string, params?: MessageParams): 
   return template.replace(/\{(\w+)\}/g, (whole, name: string) => {
     if (!Object.prototype.hasOwnProperty.call(params, name)) return whole;
     const value = params[name];
+    // An amount key of one market ("EUR@sk", amounts per market) is said as its currency: the market is named next to it.
+    if (name === "currency" && typeof value === "string") return amountKeyCurrency(value);
     return typeof value === "number" ? formatNumberParam(locale, value) : String(value);
   });
 }

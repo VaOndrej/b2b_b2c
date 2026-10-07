@@ -74,7 +74,7 @@
 // gateConfigForPlan(config, plan), never from the stored config: only then does
 // none of its Pro data (targeting, combinesWith, campaigns) ship.
 
-import { marketsWithOwnAmounts } from "./market-amounts.ts";
+import { collapseConfigAmounts, marketsWithOwnAmounts } from "./market-amounts.ts";
 import { codeBatchCodeLength, codeBatchPayload, type FunctionCodeBatch, listBatchCodes, matchesCodeBatch, readCodeBatch } from "./code-batch.ts";
 import { codeHash } from "./code-hash.ts";
 import { normalizeCode, type CartCampaignInput } from "./cart.ts";
@@ -502,8 +502,11 @@ function encode(payload: FunctionConfigPayload): EncodedShopFunctionConfig {
   return { payload, json, bytes, fits: bytes <= FUNCTION_CONFIG_BUDGET_BYTES && tiers.fits, tiers };
 }
 
-function build(config: ConfigInput, selected: CampaignInput | null, shopTimezone: string, shopCurrency?: string): EncodedShopFunctionConfig {
+function build(given: ConfigInput, picked: CampaignInput | null, shopTimezone: string, shopCurrency?: string): EncodedShopFunctionConfig {
   formatterFor(shopTimezone, "buildShopFunctionConfig"); // validate the zone once, up front
+  // Amounts per market ship as short as they can be, whatever form the caller holds (the admin's columns included).
+  const config = collapseConfigAmounts(given as never) as ConfigInput;
+  const selected = picked ? (config.campaigns.find((c) => c.id === picked.id) ?? picked) : null;
   const { codes, tiers, rewards, margin } = config.modules;
   const ruleIds = new Set(codes.rules.map((r) => r.id));
   const campaignTiers = selected ? campaignTiersPayload(tiers, selected) : null;

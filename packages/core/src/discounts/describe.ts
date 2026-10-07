@@ -109,9 +109,8 @@ function shownCurrencies(amount: MoneyByCurrency, currencies: readonly string[])
  * here (the editor lists it separately). "" when none.
  */
 export function formatAmounts(amount: MoneyByCurrency, currencies: readonly string[], locale: UiLocale): string {
-  return shownCurrencies(amount, currencies)
-    .map((c) => formatMoney(moneyFor(amount, c) ?? 0, c, locale))
-    .join(" / ");
+  // Two markets of one currency with the same amount ("EUR@sk", "EUR@de") are said once.
+  return [...new Set(shownCurrencies(amount, currencies).map((c) => formatMoney(moneyFor(amount, c) ?? 0, c, locale)))].join(" / ");
 }
 
 /**
@@ -427,6 +426,8 @@ export interface DescribeTierOptions {
    * given: every currency the amount has.
    */
   currencies?: readonly string[];
+  /** Names of the amount keys' markets ("EUR@sk" → "Slovensko"), for "not offered in …"; absent = the currency code. */
+  labels?: Readonly<Record<string, string>>;
 }
 
 /** The currencies a tier break's amount is described in (`opts`), and those of them it has an amount for. */
@@ -458,8 +459,19 @@ function tierBreakPhrase(b: DescribableTierBreak, opts: DescribeTierOptions): st
   if (typeof b.percent === "number") return `${from} ${describeTierValue(b, opts)}`;
   const { listed, shown } = tierCurrencies(b, opts);
   const missing = listed.filter((c) => !shown.includes(c));
+  // Named by the market when the caller knows its name (`labels`), else by the currency (an amount key "EUR@sk" as "EUR").
+  const named = opts.labels ? missing.map((c) => opts.labels![c] ?? amountKeyCurrency(c)) : null;
+  const codes = [...new Set(missing.map(amountKeyCurrency))];
   const notOffered =
-    missing.length === 0 ? "" : cs ? ` (v ${joinWords(missing, locale)} se nenabízí)` : ` (not offered in ${joinWords(missing, locale)})`;
+    missing.length === 0
+      ? ""
+      : named
+        ? cs
+          ? ` (${joinWords(named, locale)}: nenabízí se)`
+          : ` (not offered: ${joinWords(named, locale)})`
+        : cs
+          ? ` (v ${joinWords(codes, locale)} se nenabízí)`
+          : ` (not offered in ${joinWords(codes, locale)})`;
   if (shown.length === 0) return missing.length > 0 ? `${from}${notOffered}` : `${from} ${cs ? "(bez hodnoty)" : "(no value)"}`;
   return `${from} ${describeTierValue(b, opts)}${notOffered}`;
 }

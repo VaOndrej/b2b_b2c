@@ -35,7 +35,7 @@ import type { CombinationView, SettingsScreenData, UiResult } from "../model/typ
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
 import { PlanBadge } from "../shell/PlanBadge";
-import { sharedCurrencyGroups, type MarketCell } from "../model/markets-overview";
+import type { MarketCell } from "../model/markets-overview";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 import { WON_INK, WON_LINE, WON_MUTED } from "../shell/tokens";
 import { PlanSections } from "./PlanScreen";
@@ -90,7 +90,6 @@ export function SettingsScreen({ currencies, combination: stored, configVersion,
   const withMarkets = currencies.filter((c) => c.markets.length > 0);
   const liveMarkets = markets.filter((m) => m.enabled);
   const missingIn = liveMarkets.filter((m) => m.missing > 0).map((m) => m.name);
-  const shared = sharedCurrencyGroups(markets);
   const columns = [
     ["shipping", t("settings.markets.col.shipping")],
     ["gift", t("settings.markets.col.gift")],
@@ -232,10 +231,6 @@ export function SettingsScreen({ currencies, combination: stored, configVersion,
               </div>
             ) : null}
             {markets.some((m) => !m.enabled) ? <RowNote>{t("settings.markets.offNote")}</RowNote> : null}
-            {/* Návrh 8 (not built): two markets with one currency share every amount — said here, in words. */}
-            {shared.map((group) => (
-              <RowNote key={group.currency}>{t("settings.markets.sameCurrency", { markets: `${tr.list(group.names)} (${group.currency})` })}</RowNote>
-            ))}
             {markets.length > 0 ? <RowNote>{t("settings.markets.source")}</RowNote> : null}
             <div>
               <s-button href={SHOPIFY_MARKETS_URL} target="_top" variant="secondary">

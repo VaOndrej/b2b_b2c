@@ -18,6 +18,7 @@
 // save bar puts back the stored gifts, thresholds and switches (B12). A state pill is never green from what is
 // only typed: off says "Vypnuto", anything else has no pill (this page has no sync facts).
 
+import { amountKeyCurrency } from "@won/core/discounts/money";
 import { StorefrontPlacements } from "../StorefrontPlacements";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Form, useSubmit } from "react-router";
@@ -206,7 +207,7 @@ export function RewardsScreen(props: RewardsScreenProps) {
           label={hasMarkets(code) ? t("rewards.amountMarket", { currency: code, markets: marketsOf(code) }) : t("rewards.amount", { currency: code })}
           value={amountInput(initial, code)}
           min={0}
-          suffix={code}
+          suffix={amountKeyCurrency(code)}
           inputMode="decimal"
           error={err(field(code))}
         />

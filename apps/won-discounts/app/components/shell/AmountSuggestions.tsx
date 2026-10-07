@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { formatMoney } from "@won/core/discounts/describe";
-import { currencyExponent } from "@won/core/discounts/money";
+import { amountKeyCurrency, currencyExponent } from "@won/core/discounts/money";
 
 import { useT } from "../../i18n/context";
 import { suggestedAmount, type AmountSuggestView } from "../model/markets";
@@ -59,9 +59,11 @@ export function AmountSuggestions({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the field names say when the set of fields changed
   }, [names]);
 
-  const base = suggest?.base;
+  // The field the merchant types first: the (first) market selling in the shop currency. Amounts are per market
+  // (7 Oct 2026), so every other market gets its own suggestion — one in the same currency the same amount.
+  const base = suggest ? codes.find((code) => amountKeyCurrency(code) === suggest.base) : undefined;
   const baseMajor = base ? majorOf(values[base]) : NaN;
-  const rows = suggest && base && codes.includes(base) && baseMajor > 0 ? currencies.filter((c) => c.code !== base && (values[c.code] ?? "").trim() === "") : [];
+  const rows = suggest && base && baseMajor > 0 ? currencies.filter((c) => c.code !== base && (values[c.code] ?? "").trim() === "") : [];
   const use = (code: string, value: string) => {
     const form = ref.current?.closest("form");
     const el = form?.querySelector(`[name="${CSS.escape(field(code))}"]`) as (HTMLElement & { value?: string }) | null;
@@ -74,9 +76,10 @@ export function AmountSuggestions({
   return (
     <div ref={ref} data-won-amount-suggest>
       {rows.map((c) => {
-        const market = c.markets.length > 0 ? `${c.markets.map((m) => m.name).join(", ")} (${c.code})` : c.code;
+        const market = c.markets.length > 0 ? `${c.markets.map((m) => m.name).join(", ")} (${amountKeyCurrency(c.code)})` : amountKeyCurrency(c.code);
         const exponent = currencyExponent(c.code);
-        const major = suggestedAmount(baseMajor, suggest?.rates[c.code], exponent);
+        const currency = amountKeyCurrency(c.code);
+        const major = currency === suggest?.base ? baseMajor : suggestedAmount(baseMajor, suggest?.rates[currency], exponent);
         // A box of its own, apart from the field notes (Ondřej 7 Oct 2026): blue = something to pick (§11a), grey = nothing to offer.
         if (major === null) {
           return (

@@ -23,7 +23,7 @@ import { useView, ViewPanel } from "../shell/views";
 import { Form, useSubmit } from "react-router";
 
 import { formatMoney, formatPercent } from "@won/core/discounts/describe";
-import { currencyExponent } from "@won/core/discounts/money";
+import { amountKeyCurrency, currencyExponent } from "@won/core/discounts/money";
 
 import { useT } from "../../i18n/context";
 import {
@@ -205,7 +205,7 @@ function TierSetFields({
                         value={init.one(`${F.tierAmount}${set.id}.${i}.${cur}`, "")}
                         min={0}
                         step={0.01}
-                        suffix={cur}
+                        suffix={amountKeyCurrency(cur)}
                         inputMode="decimal"
                       />
                     ))}
@@ -454,7 +454,7 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
                               value={init.one(`${F.amount}${r.id}.${cur}`, "")}
                               min={0}
                               step={0.01}
-                              suffix={cur}
+                              suffix={amountKeyCurrency(cur)}
                               inputMode="decimal"
                             />
                           ))}

@@ -8,6 +8,8 @@
 // when that read fails.
 
 import type { DiscountRule, MarketSetting } from "@won/core/discounts/config";
+import { amountColumns } from "@won/core/discounts/market-amounts";
+import { amountKeyCurrency } from "@won/core/discounts/money";
 
 import type { CurrencyView, MarketView } from "./types";
 
@@ -22,13 +24,10 @@ export function currencyViews(
   markets: readonly MarketSetting[],
   opts: { shopCurrency?: string | null; rules?: readonly DiscountRule[]; marketNames?: MarketNames } = {},
 ): CurrencyView[] {
+  // 7 Oct 2026: one amount per MARKET. A currency one enabled market sells in keeps its plain key ("CZK"); a
+  // shared one gets a key per market ("EUR@sk") — core market-amounts.ts amountColumns.
   const byCode = new Map<string, MarketView[]>();
-  for (const market of markets) {
-    if (!market.enabled) continue;
-    const list = byCode.get(market.currency) ?? [];
-    list.push(marketView(market.handle, opts.marketNames));
-    byCode.set(market.currency, list);
-  }
+  for (const column of amountColumns(markets)) byCode.set(column.key, [marketView(column.handle, opts.marketNames)]);
   if (byCode.size === 0 && opts.shopCurrency && /^[A-Z]{3}$/.test(opts.shopCurrency)) {
     byCode.set(opts.shopCurrency, []);
   }
@@ -44,8 +43,9 @@ export function currencyViews(
 }
 
 /** Currencies of the enabled markets, each once; none configured → the shop currency (the same source order as currencyViews). */
-export function enabledCurrencies(markets: readonly Pick<MarketSetting, "currency" | "enabled">[], shopCurrency?: string | null): string[] {
-  const codes = [...new Set(markets.filter((m) => m.enabled).map((m) => m.currency))];
+export function enabledCurrencies(markets: readonly Pick<MarketSetting, "handle" | "currency" | "enabled">[], shopCurrency?: string | null): string[] {
+  // The amount keys the enabled markets ask for: one per market (see currencyViews).
+  const codes = amountColumns(markets).map((c) => c.key);
   return codes.length > 0 ? codes : shopCurrency && /^[A-Z]{3}$/.test(shopCurrency) ? [shopCurrency] : [];
 }
 
@@ -94,7 +94,8 @@ export function marketViews(markets: readonly MarketSetting[], names: MarketName
   return markets.filter((m) => m.enabled).map((m) => marketView(m.handle, names));
 }
 
-/** "CZK · Česko, Slovensko" — a currency with the markets that sell in it. */
+/** "CZK · Česko" — a market's amount key as its currency with the market's name. */
 export function currencyLabel(view: CurrencyView): string {
-  return view.markets.length > 0 ? `${view.code} · ${view.markets.map((m) => m.name).join(", ")}` : view.code;
+  const code = amountKeyCurrency(view.code);
+  return view.markets.length > 0 ? `${code} · ${view.markets.map((m) => m.name).join(", ")}` : code;
 }

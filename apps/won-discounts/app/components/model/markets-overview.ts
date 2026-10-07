@@ -4,6 +4,7 @@
 
 import type { DiscountRule, WonDiscountsConfig } from "@won/core/discounts/config";
 import { formatMoney } from "@won/core/discounts/describe";
+import { amountColumns, expandConfigAmounts } from "@won/core/discounts/market-amounts";
 import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
 
 import type { Locale } from "../../i18n";
@@ -41,13 +42,18 @@ function discountsCell(rules: readonly DiscountRule[], currency: string): Market
   return { kind: "missing", href: without.length === 1 ? `/app/discounts/${encodeURIComponent(without[0]!.id)}#value` : "/app/discounts", count: without.length };
 }
 
-export function marketRows(config: WonDiscountsConfig, opts: { plan: "free" | "pro"; names?: MarketNames; locale: Locale }): MarketRowView[] {
+export function marketRows(stored: WonDiscountsConfig, opts: { plan: "free" | "pro"; names?: MarketNames; locale: Locale }): MarketRowView[] {
+  // 7 Oct 2026: every market has its own amount. In the admin's columns (core market-amounts.ts) a market's
+  // amount is under its own key — "EUR@sk" where two enabled markets share the currency, else the currency.
+  const config = expandConfigAmounts(stored);
+  const keys = new Map(amountColumns(config.markets).map((column) => [column.handle, column.key]));
   const gated = gateConfigForPlan(config, opts.plan).config;
   const { freeShipping, gifts } = gated.modules.rewards;
   const sets = gated.modules.tiers.sets.filter((s) => s.breaks.length > 0);
   const amountBreaks = sets.flatMap((s) => s.breaks.flatMap((b) => (b.amountOff ? [b.amountOff] : [])));
   const rows = config.markets.map((market): MarketRowView => {
-    const c = market.currency;
+    // A switched-off market has no column: what is stored for its currency is what it would get.
+    const c = keys.get(market.handle) ?? market.currency;
     const money = (minor: number) => formatMoney(minor, c, opts.locale);
     const shipping: MarketCell = !freeShipping
       ? { kind: "none" }
@@ -72,7 +78,7 @@ export function marketRows(config: WonDiscountsConfig, opts: { plan: "free" | "p
     return {
       handle: market.handle,
       name: marketView(market.handle, opts.names).name,
-      currency: c,
+      currency: market.currency,
       enabled: market.enabled,
       ...cells,
       missing: market.enabled ? Object.values(cells).filter((cell) => cell.kind === "missing").length : 0,
@@ -80,11 +86,4 @@ export function marketRows(config: WonDiscountsConfig, opts: { plan: "free" | "p
   });
   // Enabled markets first; the switched-off ones under them.
   return [...rows.filter((r) => r.enabled), ...rows.filter((r) => !r.enabled)];
-}
-
-/** Groups of enabled markets that sell in one currency (they share every amount — MoneyByCurrency). */
-export function sharedCurrencyGroups(rows: readonly MarketRowView[]): { currency: string; names: string[] }[] {
-  const by = new Map<string, string[]>();
-  for (const row of rows) if (row.enabled) by.set(row.currency, [...(by.get(row.currency) ?? []), row.name]);
-  return [...by].filter(([, names]) => names.length > 1).map(([currency, names]) => ({ currency, names }));
 }
