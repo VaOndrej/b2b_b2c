@@ -939,7 +939,26 @@ export const DEV_TIERS_FIXTURE: WonDiscountsConfig = readStoredConfig({
 const DEV_TIER_TITLES: ReadonlyMap<string, string> = new Map([
   [DEV_P1, "Mikina Won"],
   [DEV_C7, "Podzimní kolekce"],
+  ["gid://shopify/Product/21", "Dárkový poukaz"],
+  ["gid://shopify/Product/22", "Vzorek zdarma"],
+  ["gid://shopify/Collection/23", "Tištěné katalogy"],
+  ["gid://shopify/Collection/24", "Obaly"],
 ]);
+
+/** ?state=exceptions: a second exception — four things picked ("a další 2"), no quantity discount for them. */
+const DEV_TIERS_EXCEPTIONS_FIXTURE: WonDiscountsConfig = {
+  ...DEV_TIERS_FIXTURE,
+  modules: {
+    ...DEV_TIERS_FIXTURE.modules,
+    tiers: {
+      ...DEV_TIERS_FIXTURE.modules.tiers,
+      sets: [
+        ...DEV_TIERS_FIXTURE.modules.tiers.sets,
+        { id: "t_devnone", scope: { productIds: ["gid://shopify/Product/21", "gid://shopify/Product/22"], collectionIds: ["gid://shopify/Collection/23", "gid://shopify/Collection/24"] }, countAcross: "product", breaks: [] },
+      ],
+    },
+  },
+};
 
 /** The live theme as readThemeLook reads it (tmp/e2e-themes Horizon / Dawn settings_data). */
 export const DEV_TOKENS_HORIZON: ThemeTokensView = {
@@ -1018,7 +1037,7 @@ function devStorefront(state: string | null): StorefrontSyncView {
  *                  storefront config; block-unknown / no-scope — the block check.
  */
 export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; theme?: string | null; accent?: string | null; embed?: string | null }): TiersScreenData {
-  const base = opts.state === "empty" ? DEV_EMPTY_FIXTURE : DEV_TIERS_FIXTURE;
+  const base = opts.state === "empty" ? DEV_EMPTY_FIXTURE : opts.state === "exceptions" ? DEV_TIERS_EXCEPTIONS_FIXTURE : DEV_TIERS_FIXTURE;
   // ?accent=green: a stored ready-made colour; ?embed=off | noscope: Won on the storefront is off / not readable.
   const accent = ACCENT_PRESETS.find((a) => a === opts.accent);
   const config = accent ? { ...base, storefront: { ...base.storefront, accent } } : base;
@@ -1060,6 +1079,9 @@ export function devTiersResult(kind: string | null): UiResult | null {
           { field: TIERS_FIELD.min("global", "r2"), key: "tiers.error.minTaken", params: { min: 5 } },
         ],
       };
+    case "invalid-exception":
+      // A refusal about one exception: the page opens that exception (the others stay rows).
+      return { ok: false, reason: "invalid", errors: [{ field: TIERS_FIELD.min("t_devautumn", "r1"), key: "tiers.error.minTaken", params: { min: 2 } }] };
     case "unreadable":
       return { ok: false, reason: "unreadable_config" };
     case "too-large":

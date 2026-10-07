@@ -405,6 +405,21 @@ export function scopeSummary(scope: TierScopeView, tr: Translator): string {
   return parts.length > 0 ? parts.join(" · ") : tr.t("tiers.scope.empty");
 }
 
+/**
+ * An exception's name in the list (kolo 3, bod 7): what it is for — the first two picked names, then "a další N".
+ * Products first, then collections (the order the page lists them in); nothing picked yet = "Zatím nic nevybráno".
+ */
+export function exceptionTitle(scope: TierScopeView, tr: Translator): string {
+  if (scope.kind === "global") return tr.t("tiers.scope.global");
+  const names = [
+    ...scope.products.map((p) => p.title.trim() || tr.t("common.untitledProduct")),
+    ...scope.collections.map((c) => c.title.trim() || tr.t("common.untitledCollection")),
+  ];
+  if (names.length === 0) return tr.t("tiers.scope.empty");
+  const shown = names.slice(0, 2).join(", ");
+  return names.length > 2 ? tr.t("tiers.pro.titleMore", { names: shown, n: names.length - 2 }) : shown;
+}
+
 /** How the set counts items, in words. */
 export function countLabel(mode: TierCountMode, tr: Translator): string {
   return tr.t(mode === "line" ? "tiers.count.line" : mode === "product" ? "tiers.count.product" : "tiers.count.cart");

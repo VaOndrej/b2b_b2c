@@ -10,7 +10,7 @@
 // that the plan does not let the merchant edit (a Pro set on Free) so a save
 // never drops it.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
 import { formatMoney } from "@won/core/discounts/describe";
@@ -52,6 +52,7 @@ export function TierSetEditor({
   onChange,
   attempted = false,
   suggest,
+  inherit,
 }: {
   set: TierSetView;
   /** Currencies of the enabled markets (amount fields). */
@@ -68,6 +69,11 @@ export function TierSetEditor({
   suggest?: AmountSuggestView;
   /** A save was refused: every row says what it lacks (before that only rows the merchant has left, audit N8). */
   attempted?: boolean;
+  /**
+   * An exception (kolo 3, bod 7): how the whole store counts and what kind of discount it gives. The exception's two
+   * choices then sit folded under "Počítat jinak než zbytek obchodu", open by themselves when it differs.
+   */
+  inherit?: { count: TierCountMode; kind: "percent" | "amount" };
 }) {
   const tr = useT();
   const { t } = tr;
@@ -124,10 +130,30 @@ export function TierSetEditor({
   const setKind: "percent" | "amount" = set.breaks[0]?.kind ?? "percent";
   const liveKind = live(F.kind(sid));
   const kind: "percent" | "amount" = liveKind === "amount" || liveKind === "percent" ? liveKind : setKind;
+  const differs = inherit ? countNow !== inherit.count || kind !== inherit.kind : false;
+  const [ownOpen, setOwnOpen] = useState(() => (inherit ? count !== inherit.count || setKind !== inherit.kind : true));
+  const ownId = useId();
+  // Folded, the two choices stay in the form (they are submitted like every other field), only out of sight.
+  const ownShown = !inherit || ownOpen || differs;
 
   return (
     <div ref={rootRef}>
     <s-stack direction="block" gap="base">
+      {inherit ? (
+        <div data-won-tier-own={ownShown ? "open" : "closed"}>
+          {differs ? (
+            // It does count differently: the two choices cannot be folded away.
+            <s-text type="strong">{t("tiers.pro.own")}</s-text>
+          ) : (
+            <s-button variant="tertiary" onClick={() => setOwnOpen((v) => !v)} aria-expanded={ownShown ? "true" : "false"} aria-controls={ownId}>
+              {t("tiers.pro.own")}
+            </s-button>
+          )}
+          {ownShown ? null : <RowNote>{t("tiers.pro.ownSame", { count: countLabel(inherit.count, tr).toLocaleLowerCase(tr.locale), kind: t(inherit.kind === "amount" ? "tiers.break.kind.amount" : "tiers.break.kind.percent").toLocaleLowerCase(tr.locale) })}</RowNote>}
+        </div>
+      ) : null}
+      <div id={ownId} style={{ display: ownShown ? "block" : "none" }}>
+      <s-stack direction="block" gap="base">
       <s-stack direction="block" gap="small-200">
         <SegmentedChoice
           name={F.count(sid)}
@@ -158,6 +184,8 @@ export function TierSetEditor({
       <Shown when={kind === "amount"}>
         <RowNote>{t("tiers.break.amountDetails")}</RowNote>
       </Shown>
+      </s-stack>
+      </div>
 
       <div>
         {rows.length === 0 ? (

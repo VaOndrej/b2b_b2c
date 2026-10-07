@@ -111,7 +111,8 @@ import {
 //                                 impact-computing | gate (Free with collection settings stored);
 //                                 ?rule=<id> (Přehled zásahů of one rule, narrowed like the server does);
 //                                 ?result=refreshed | saved | invalid | unreadable | fixes (sanitizer notes of a save)
-//   /dev/preview/tiers           Množstevní slevy (MVP 3): Free by default, ?plan=pro; ?state=empty | dawn |
+//   /dev/preview/tiers           Množstevní slevy (MVP 3): Free by default, ?plan=pro; ?state=exceptions (two
+//                                 exceptions; &result=invalid-exception opens the one refused) | empty | dawn |
 //                                 failed | pending | block-unknown | no-scope | custom (a stored Pro custom
 //                                 look + a changed text in the preview); ?theme=dawn; ?accent=green (a stored
 //                                 colour); ?embed=off | noscope (Won on the storefront off / not readable);

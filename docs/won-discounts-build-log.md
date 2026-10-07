@@ -57,6 +57,24 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   - Test: `tests/ui/audit-2026-10-06.test.ts` „úkol 3“.
 - **Úkol 4 (zkouška Horizon + Dawn) — nespuštěno:** potřebuje běžící `shopify app dev` (ten 7. 10. skončil) a zapisuje do dev obchodu.
 
+- **Úkol 5 (výjimky, dávka C, bod 7) — v kódu, commitnuto na větvi.** Podle nákresu `won-discounts/nakres-bod7-vyjimky.md`:
+  - `tiers/ProTierSets.tsx`: seznam výjimek (název = první dva vybrané názvy a „a další N“, pod ním co výjimka dává, „Upravit“
+    a „Odebrat“), rozbalená je jen upravovaná. Sbalená výjimka zůstává ve formuláři (skrytá, ne odpojená), ukládá se dál jedním „Uložit“.
+  - Rozbalená: věta „X: od 3 ks −5 %… Zbytek obchodu beze změny.“, výběr, dvě karty „Jiné úrovně“ / „Bez množstevní slevy“, úrovně jako
+    očíslované karty s návrhem částky, „Hotovo“ a „Odebrat výjimku“. Počítání kusů a druh slevy jsou sbalené pod „Počítat jinak než
+    zbytek obchodu“ (`TierSetEditor.tsx`, `inherit`) a otevřou se samy, když se liší.
+  - „Přidat výjimku“ předvyplní úrovně a počítání celého obchodu a rovnou otevře výběr produktů (`TiersScreen.tsx` `addSet`).
+  - Odmítnuté uložení otevře výjimku, které se chyba týká.
+  - **Rozhodl jsem sám:** (1) výběr má dvě tlačítka („Vybrat produkty“, „Vybrat kolekce“), ne jedno „Změnit výběr“, protože výběr v Shopify
+    bere jen jeden druh najednou; (2) štítky vybraných položek nemají křížek, odebírá se ve výběru; (3) věta „Produkt s výjimkou se řídí
+    jen jí“ zůstává od první výjimky, věta o pořadí až od druhé; (4) výchozí volba je „Jiné úrovně“.
+  - Zjištěno: souhrn úrovní z jádra říká „(v EUR se nenabízí)“, tedy měnou, ne trhem. Opraví se v úkolu 6 (částky podle trhu).
+  - Testy: `tests/ui/kolo3-c.test.ts` (6). Screenshoty 390 a 1440 px bez vodorovného posuvu: `Apps/.playwright-mcp/dotazeni/u5-*.png`.
+  - **Naživo neověřeno:** klikání (rozbalení, „Hotovo“, výběr produktů z „Přidat výjimku“) v běžící aplikaci; screenshoty jsou ze
+    staticky vykreslených stránek dev náhledu (`scripts/static-preview.ts`, `Apps/.playwright-mcp/dotazeni-static-shots.mjs`), protože
+    dev náhled neběží.
+- **Další krok:** úkol 6 (návrh `won-discounts/navrh-castky-podle-trhu.md`, pak převod), potom 7, 8, 9. Úkoly 2 a 4 čekají na Ondřeje.
+
 Zadání: [`won-discounts/audit-dlazdice-trhy-2026-10-06.md`](won-discounts/audit-dlazdice-trhy-2026-10-06.md) (stav po nálezech je na jeho
 konci). Práce inline, commitnuto lokálně, nepushnuto, nenasazeno.
 

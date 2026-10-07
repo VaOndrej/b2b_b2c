@@ -155,16 +155,22 @@ export function TiersScreen(props: TiersScreenProps) {
 
   // Pro sets: add, remove, pick products / collections (App Bridge; unavailable outside Shopify admin).
   const [pickUnavailable, setPickUnavailable] = useState(false);
-  const addSet = () => {
+  // Bod 7: a new exception starts from the whole store's levels and counting (the merchant rewrites only the numbers)
+  // and goes straight to the product picker.
+  const addSet = (): string => {
     touched.current = true;
-    setProSets((list) => [...list, { id: newTierSetId(), scope: { kind: "selection", products: [], collections: [] }, countAcross: "product", breaks: [] }]);
+    const from = draft.find((s) => s.id === globalSet.id) ?? globalSet;
+    const added: TierSetView = { id: newTierSetId(), scope: { kind: "selection", products: [], collections: [] }, countAcross: from.countAcross, breaks: from.breaks.map((b) => ({ ...b, amount: { ...b.amount } })) };
+    setProSets((list) => [...list, added]);
+    void pick(added.id, "products", added);
+    return added.id;
   };
   const removeSet = (id: string) => {
     touched.current = true;
     setProSets((list) => list.filter((s) => s.id !== id));
   };
-  const pick = async (id: string, kind: "products" | "collections") => {
-    const set = proSets.find((s) => s.id === id);
+  const pick = async (id: string, kind: "products" | "collections", added?: TierSetView) => {
+    const set = added ?? proSets.find((s) => s.id === id);
     if (!set || set.scope.kind !== "selection") return;
     const res =
       kind === "products"
@@ -324,6 +330,9 @@ export function TiersScreen(props: TiersScreenProps) {
             kept={kept}
             live={live}
             errorFor={errorFor}
+            errorFields={errors.map((e) => e.field)}
+            inherit={{ count: globalDraft.countAcross, kind: globalDraft.breaks[0]?.kind ?? "percent" }}
+            suggest={props.suggest}
             onAdd={addSet}
             onRemove={removeSet}
             onPick={(id, kind) => void pick(id, kind)}
