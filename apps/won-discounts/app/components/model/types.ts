@@ -654,6 +654,8 @@ export interface TiersScreenData {
   status?: { global: ModuleStatus; sets: ModuleStatus };
   storefront: StorefrontSyncView;
   preview: TiersPreviewView;
+  /** Won on the storefront (the app embed): the picked colour reaches the storefront only through it. Absent = not known. */
+  embed?: EmbedView;
   /**
    * Pro: how many products carry each Pro set (`tierRef`), by set id, as the
    * last sync wrote them (app/lib/sync/storefront.ts tierProductCounts); null

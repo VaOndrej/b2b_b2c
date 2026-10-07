@@ -1095,6 +1095,8 @@ export const en: Record<keyof typeof cs, string> = {
   "tiers.preview.accent.red": "Red",
   "tiers.preview.accent.violet": "Violet",
   "tiers.preview.accentNote": "The colour shows on the storefront after saving, and only with Won switched on in the theme.",
+  "tiers.preview.accentEmbedOff": "Won is switched off on your storefront, so the colour will not show there.",
+  "tiers.preview.accentEmbedOn": "Switch Won on",
   "tiers.preview.lookSaved": "The site uses the {preset} look. Change it in Appearance.",
   "tiers.preview.theme": "Colours and font from the {theme} theme.",
   "tiers.preview.noTheme": "The theme could not be read; the preview uses neutral colours.",

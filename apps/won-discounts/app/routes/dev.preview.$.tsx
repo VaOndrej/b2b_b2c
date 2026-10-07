@@ -113,7 +113,8 @@ import {
 //                                 ?result=refreshed | saved | invalid | unreadable | fixes (sanitizer notes of a save)
 //   /dev/preview/tiers           Množstevní slevy (MVP 3): Free by default, ?plan=pro; ?state=empty | dawn |
 //                                 failed | pending | block-unknown | no-scope | custom (a stored Pro custom
-//                                 look + a changed text in the preview); ?theme=dawn;
+//                                 look + a changed text in the preview); ?theme=dawn; ?accent=green (a stored
+//                                 colour); ?embed=off | noscope (Won on the storefront off / not readable);
 //                                 ?result=saved | invalid | unreadable | too-large (does not fit at checkout)
 //   /dev/preview/appearance      Vzhled: the four looks on the theme; ?state=empty (an example set) | custom |
 //                                 issue, ?theme=dawn
@@ -455,7 +456,7 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
     }
     case "tiers":
       return {
-        ...devTiersScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, theme: q.get("theme") }),
+        ...devTiersScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, theme: q.get("theme"), accent: q.get("accent"), embed: q.get("embed") }),
         result: devTiersResult(q.get("result")),
         suggest: devSuggest(q),
       };

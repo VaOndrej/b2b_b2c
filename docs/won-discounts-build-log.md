@@ -15,6 +15,35 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > Odložené věci jsou ve Second Brain: `won-discounts-overeni-po-nasazeni`, `won-discounts-billing-nazivo`,
 > `won-discounts-pristup-k-objednavkam`, `won-discounts-preklady-nastaveni-rozsireni`.
 > **Známá chyba:** vzhled a barva množstevní slevy se 7. 10. nepropsaly na živý web dev obchodu (blok je tam bez stylů), úkol 1.
+> Příčina: obchod ukazuje dev preview, jehož soubory vrací 404 (viz níž); kód je v pořádku.
+
+**Dotažení 7. 10. (zadání `won-discounts/prompt-dotazeni-2026-10-07.md`), stav po úkolech:**
+
+- **Úkol 1 (vzhled množstevní slevy na webu) — příčina nalezena, není v kódu; oprava je na Ondřejovi (dev preview).**
+  - Měřeno na živé stránce produktu `the-inventory-not-tracked-snowboard` („Elektrolyty Hydratace“, vzhled „test-data“), jen čtení:
+    blok má `class="won-tiers won-tiers--chips"`, `data-preset="chips"`, `data-state="ready"`; data pro web mají
+    `appearance.preset = "chips"` a `appearance.css` se zelenou `#1a7f45`; Won na webu je zapnutý a `<style id="won-discounts-custom">`
+    na stránce je. Stránka ale odkazuje všech 7 souborů rozšíření (3 CSS, 4 JS) na adresu
+    `cdn.shopify.com/extensions/<id>/dev-5dc73830-…/assets/…` a **všechny vrací 404** (prohlížeč: `ERR_BLOCKED_BY_ORB`).
+    Obchod tedy ukazuje dev preview z `shopify app dev`, jehož soubory na CDN nejsou. Totéž platí pro `won-toasts` (také `dev-…`, 404).
+  - Ze tří možných příčin platí první (styl se nenačte, chybí soubory v dev balíku). Nastavení na web zapsané je, značka bloku sedí.
+  - Důkaz opačným směrem: když se na téže živé stránce chybějící soubory podstrčí z disku (Playwright `route`, bez zápisu),
+    vykreslí se všechny čtyři vzhledy i zelená správně, 390 i 1440 px, bez vodorovného posuvu
+    (`Apps/.playwright-mcp/dotazeni/u1-zive-bez-souboru-*.png`, `u1-zive-se-soubory-<vzhled>-*.png`; tři vzhledy mimo uložený
+    „chips“ jsou ukázané přepnutím třídy v prohlížeči, ne uložením).
+  - CLI 3.92.1 soubory rozšíření při `shopify app dev` podává jen přes místní adresu (`127.0.0.1:9293`, přepis na `/ext/cdn/`),
+    ta ale kreslí vlastní hostitelský vzhled „App Ext. Host“, kde tabulka vložená není.
+  - **Co má Ondřej spustit:** znovu `npm run dev -w won-discounts` (nový dev preview), nebo vrátit vydanou verzi
+    `npx shopify app dev clean` v `apps/won-discounts`; trvale to řeší `shopify app deploy`. Potom ověřit:
+    `node apps/won-discounts/scripts/check-storefront-assets.mjs the-inventory-not-tracked-snowboard` (dnes: 7 ze 7 souborů chybí, exit 1).
+  - V kódu přibylo: sdílená kontrola `assertExtensionAssetsLoaded` (`packages/testing/src/playwright/extension-assets.ts`, 3 testy),
+    použitá ve zkoušce `tests/e2e/storefront.tiers.spec.ts` spolu s kontrolou, že se styl bloku uplatnil; skript
+    `scripts/check-storefront-assets.mjs`; na stránce Množstevní slevy věta „Won na webu je vypnutý, barva se proto na webu neukáže.“
+    s odkazem na zapnutí (`TiersPreview.tsx`, test v `tests/ui/audit-2026-10-06.test.ts`).
+  - **Naživo neověřeno:** Horizon a Dawn (nepublikované vzhledy z headless prohlížeče nejdou, zkouška z úkolu 4 potřebuje běžící
+    `shopify app dev`), a screenshot nové věty v aplikaci (dev náhled neběží).
+  - **`shopify app dev` 7. 10. kolem 14:55 skončil** (proces 24103, běžel od 8:04). Stalo se to mezi dvěma mými čteními místní
+    adresy `127.0.0.1:9293`; žádný signál jsem mu neposlal a příčinu neznám. Dev náhled `/dev/preview/*` proto neběží.
 
 Zadání: [`won-discounts/audit-dlazdice-trhy-2026-10-06.md`](won-discounts/audit-dlazdice-trhy-2026-10-06.md) (stav po nálezech je na jeho
 konci). Práce inline, commitnuto lokálně, nepushnuto, nenasazeno.

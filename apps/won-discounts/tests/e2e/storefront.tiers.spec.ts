@@ -1,5 +1,5 @@
 import type { Page, TestInfo } from "@playwright/test";
-import { assertResponsiveSane } from "@won/testing/playwright";
+import { assertExtensionAssetsLoaded, assertResponsiveSane } from "@won/testing/playwright";
 
 import { appBlockType, TIERS_BLOCK_NAME } from "../../scripts/make-e2e-overlay.mjs";
 import {
@@ -163,6 +163,9 @@ async function emptyCartAndOpen(page: Page, handle: string): Promise<void> {
   await storefrontJson(page, "POST", "/cart/clear.js", {});
   await gotoStorefront(page, `/products/${handle}`);
   await expect(tiersBlock(page), "the quantity tiers block rendered (template overlay + live storefront config)").toHaveCount(1);
+  // 7 Oct 2026: the block's markup was on the page but none of the extension's files loaded (bare text, no script).
+  await assertExtensionAssetsLoaded(page, { match: "won-discounts" });
+  expect(await tiersBlock(page).locator(".won-tiers__list").evaluate((el) => getComputedStyle(el).listStyleType), "the block's stylesheet applies (no list numbers)").toBe("none");
 }
 
 /** The block's offered row with the highest min ≤ count (what K8 marks active). */

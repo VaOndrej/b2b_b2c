@@ -303,6 +303,7 @@ Zapisuje se po bodech během práce.
 | 6 | hotovo | `shell/pro-marked.ts`; Pro značí hlavička sekce, uvnitř nic jantarového. Platí pro všechny sekce Pro najednou. |
 | 15 | hotovo | „Vlastní sleva“ / „Custom discount“ s větou, čárkovaná karta. |
 | 4 | v kódu, brána zelená, **chybí E2E na Horizonu a Dawnu** (čeká na „go“) | `extensions/won-discounts-storefront/assets/won-discounts-tiers.js` (`refresh`); na živém tématu dev obchodu ověřeno. |
+| 4, vzhled na webu (dotažení, úkol 1) | příčina nalezena 7. 10., oprava mimo kód | Blok na živém webu byl bez stylů, protože obchod ukazuje dev preview a jeho soubory vrací 404. Kód, uložené nastavení i značka sedí. Kontrola: `scripts/check-storefront-assets.mjs`, `assertExtensionAssetsLoaded`. Podrobnosti v build logu. |
 | 7 | nezačato | dávka C, čeká na schválení nákresu |
 | 9, 10 | nezačato | dávka D |
 | 11, 12, 13, 14 | nezačato | dávka E |

@@ -17,6 +17,11 @@ export {
   type StorefrontTestOptions,
 } from "./test-base.ts";
 export {
+  assertExtensionAssetsLoaded,
+  missingExtensionAssets,
+  type ExtensionAssetRead,
+} from "./extension-assets.ts";
+export {
   assertResponsiveSane,
   assertHeadingBodyAlignment,
   assertCarousel,

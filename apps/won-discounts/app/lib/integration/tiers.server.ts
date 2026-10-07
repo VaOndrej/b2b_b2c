@@ -37,6 +37,7 @@ import { graphqlOf, type ShopCtx } from "./context.server";
 import { readSaveOptions, saveConfigSection, type SaveOptions } from "./settings.server";
 import { ctxPlan, loadSyncView } from "./sync-status.server";
 import { readAmountSuggest, readMarketNames, readPreviewProduct, readShopContext, readStorefrontSync, readThemeLook } from "./themes.server";
+import { loadAdminSignals } from "../ui-actions.server";
 
 /** The Pro capabilities of this module (plan-gate.ts): their gate sentences go on this page. */
 const TIER_CAPABILITIES: readonly ProCapability[] = ["tier_set_scope", "tier_sets_extra", "tier_count_across_cart"];
@@ -138,12 +139,14 @@ export async function loadTiersScreen(ctx: ShopCtx, opts: { scopes: string; fres
   const graphql = graphqlOf(ctx);
   const loaded = await loadConfig(ctx.db, ctx.shop);
   const stored = loaded.config;
-  const [plan, shopContext, marketNames, look, titles] = await Promise.all([
+  const [plan, shopContext, marketNames, look, titles, signals] = await Promise.all([
     ctxPlan(ctx),
     readShopContext(graphql),
     readMarketNames(graphql, ctx.shop, opts.scopes),
     readThemeLook(ctx, { scopes: opts.scopes, fresh: opts.fresh }),
     tierTitles(ctx, scopeIds(stored.modules.tiers.sets)),
+    // The picked colour goes to the storefront through the app embed only: the preview says so when it is off.
+    loadAdminSignals({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql, fresh: opts.fresh }),
   ]);
   const timezone = shopContext.timezone;
   const sync = await loadSyncView(ctx, loaded, timezone);
@@ -168,6 +171,7 @@ export async function loadTiersScreen(ctx: ShopCtx, opts: { scopes: string; fres
     preview: { tokens: look.tokens, preset: presetOf(stored.storefront.appearancePreset), product, look: previewLookOf(stored, plan) },
     productsWithSets: counts,
     outletWithAnything: stored.engine.combination.outletWithAnything === true,
+    embed: signals.embed,
   };
 }
 

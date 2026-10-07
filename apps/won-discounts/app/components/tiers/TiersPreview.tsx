@@ -44,8 +44,8 @@ import { useT } from "../../i18n/context";
 import type { Locale } from "../../i18n";
 import { presetLabel } from "../model/appearance";
 import { formatLiquidMoney, previewTiersLiquid, TIERS_SAMPLE_SET, TIER_MIN_QTY_MAX } from "../model/tiers";
-import type { AppearancePresetView, PreviewLookView, PreviewProductView, ThemeTokensView, TierSetView } from "../model/types";
-import { selectionRing, WON_AMBER_TEXT, WON_FAINT, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SURFACE } from "../shell/tokens";
+import type { AppearancePresetView, EmbedView, PreviewLookView, PreviewProductView, ThemeTokensView, TierSetView } from "../model/types";
+import { selectionRing, WON_AMBER_TEXT, WON_ATTENTION, WON_FAINT, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SURFACE } from "../shell/tokens";
 import { scopeCss } from "./scope-css";
 
 /** The texts the block uses (extension locales, `tiers.*`). */
@@ -116,6 +116,8 @@ export interface TiersPreviewProps {
   lookField?: string;
   /** With `controls`: the form field of the ready-made highlight colour (every plan). Absent = no colour picker. */
   accentField?: string;
+  /** Won on the storefront: a ready-made colour reaches the storefront only with it on — off, the picker says so. Absent = not known, nothing is claimed. */
+  embed?: EmbedView | null;
 }
 
 /**
@@ -170,6 +172,7 @@ export function TiersPreview({
   extras = null,
   lookField,
   accentField,
+  embed = null,
 }: TiersPreviewProps) {
   const tr = useT();
   const { t, locale } = tr;
@@ -179,6 +182,8 @@ export function TiersPreview({
   const accentLabelId = useId();
   const storedAccent = extras?.accent && extras.accent in ACCENT_COLORS ? extras.accent : "theme";
   const [accentPick, setAccentPick] = useState<string>(storedAccent);
+  // "Podle webu" is the storefront's own colour and needs nothing from Won; any other colour is written by the app embed.
+  const accentNeedsEmbed = accentPick !== "theme" && (embed?.state === "off" || embed?.state === "draft_only");
   const changed = extras?.texts[locale];
   const text = (key: TextKey, params: Record<string, string | number> = {}) => storefrontText(locale, key, params, changed);
   const shown = set && set.breaks.length > 0 ? set : TIERS_SAMPLE_SET;
@@ -342,7 +347,18 @@ export function TiersPreview({
                     </label>
                   ))}
                 </div>
-                {accentPick !== storedAccent ? <div style={{ fontSize: 12, color: WON_MUTED }}>{t("tiers.preview.accentNote")}</div> : null}
+                {accentNeedsEmbed ? (
+                  <div data-won-accent-embed-off style={{ fontSize: 12.5, lineHeight: 1.4, color: WON_ATTENTION }}>
+                    {t("tiers.preview.accentEmbedOff")}{" "}
+                    {embed?.activateUrl ? (
+                      <s-link href={embed.activateUrl} target="_top">
+                        {t("tiers.preview.accentEmbedOn")}
+                      </s-link>
+                    ) : null}
+                  </div>
+                ) : accentPick !== storedAccent ? (
+                  <div style={{ fontSize: 12, color: WON_MUTED }}>{t("tiers.preview.accentNote")}</div>
+                ) : null}
               </div>
             ) : null}
             {look !== preset ? (

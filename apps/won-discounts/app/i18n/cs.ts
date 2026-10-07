@@ -1099,6 +1099,8 @@ export const cs = {
   "tiers.preview.accent.red": "Červená",
   "tiers.preview.accent.violet": "Fialová",
   "tiers.preview.accentNote": "Barva se na webu projeví po uložení a jen se zapnutým Won na webu.",
+  "tiers.preview.accentEmbedOff": "Won na webu je vypnutý, barva se proto na webu neukáže.",
+  "tiers.preview.accentEmbedOn": "Zapnout Won na webu",
   "tiers.preview.lookSaved": "Na webu je vzhled {preset}. Změníte ho ve Vzhledu.",
   "tiers.preview.theme": "Barvy a písmo ze vzhledu obchodu {theme}.",
   "tiers.preview.noTheme": "Téma se nepodařilo načíst, náhled má neutrální barvy.",

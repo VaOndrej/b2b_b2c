@@ -296,6 +296,7 @@ export function TiersScreen(props: TiersScreenProps) {
                   accentField={F.accent}
                   extras={preview.look ?? null}
                   marginOn={marginOn}
+                  embed={props.embed ?? null}
                 />
                 {/* Pro: colours, corners and the shop's own CSS live on Vzhled; the preview above already shows them. */}
                 <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>

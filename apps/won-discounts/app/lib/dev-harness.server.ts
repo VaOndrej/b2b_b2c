@@ -22,7 +22,7 @@ import { analyticsScreenOf } from "./integration/analytics-admin.server";
 import type { PlanActionResult, PlanScreenData } from "../components/model/plan";
 import { codeRuleLimit } from "./ui-actions.server";
 import { codeHash } from "@won/core/discounts/code-hash";
-import { CONFIG_LIMITS, DEFAULT_CONFIG, readStoredConfig, sanitizeConfig, type Campaign, type WonDiscountsConfig } from "@won/core/discounts/config";
+import { ACCENT_PRESETS, CONFIG_LIMITS, DEFAULT_CONFIG, readStoredConfig, sanitizeConfig, type Campaign, type WonDiscountsConfig } from "@won/core/discounts/config";
 import { CAMPAIGN_LIMITS } from "@won/core/discounts/campaigns";
 import type { MarginVariant } from "@won/core/discounts/margin";
 import { explainGate, gateConfigForPlan } from "@won/core/discounts/plan-gate";
@@ -1017,8 +1017,11 @@ function devStorefront(state: string | null): StorefrontSyncView {
  *   dawn           Dawn's tokens + a block accent; failed / pending — the
  *                  storefront config; block-unknown / no-scope — the block check.
  */
-export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; theme?: string | null }): TiersScreenData {
-  const config = opts.state === "empty" ? DEV_EMPTY_FIXTURE : DEV_TIERS_FIXTURE;
+export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; theme?: string | null; accent?: string | null; embed?: string | null }): TiersScreenData {
+  const base = opts.state === "empty" ? DEV_EMPTY_FIXTURE : DEV_TIERS_FIXTURE;
+  // ?accent=green: a stored ready-made colour; ?embed=off | noscope: Won on the storefront is off / not readable.
+  const accent = ACCENT_PRESETS.find((a) => a === opts.accent);
+  const config = accent ? { ...base, storefront: { ...base.storefront, accent } } : base;
   return {
     plan: opts.plan,
     shopCurrency: "CZK",
@@ -1039,6 +1042,7 @@ export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | nul
     // Pro only (BILL-1): products per Pro set as the last sync wrote them (tierProductCounts).
     productsWithSets: opts.plan === "pro" && opts.state !== "empty" ? { t_devautumn: 14 } : null,
     outletWithAnything: opts.state === "outlet",
+    embed: opts.embed === "off" ? DEV_EMBED_OFF : opts.embed === "noscope" ? { state: "no_scope", activateUrl: null } : DEV_EMBED_ON,
   };
 }
 

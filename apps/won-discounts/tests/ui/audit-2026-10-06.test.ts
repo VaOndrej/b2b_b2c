@@ -277,3 +277,22 @@ test("7 Oct 2026: Ochrana marže says 'Takhle by zasáhla' only above rows it de
   const off = (await render("margin?state=off&plan=pro")).replace(/<[^>]+>/g, " ");
   if (/Žádná aktivní sleva teď pod hranici nejde/.test(off)) assert.doesNotMatch(off, /Takhle by zasáhla/);
 });
+
+test("úkol 1 (7 Oct 2026): with Won switched off on the storefront, the colour picker says the colour cannot show there", async () => {
+  // Won on: a picked colour needs no warning.
+  const on = await render("tiers?accent=green");
+  assert.ok(/<input type="radio" name="accentPreset"[^>]*checked=""[^>]*value="green"/.test(on), "the stored colour is the picked one");
+  assert.ok(!on.includes("data-won-accent-embed-off"), "Won on: no warning");
+  // Won off: the sentence and the one way to switch it on.
+  const off = await render("tiers?accent=green&embed=off");
+  const note = off.slice(off.indexOf("data-won-accent-embed-off"));
+  assert.ok(off.includes("data-won-accent-embed-off"), "the note is there");
+  assert.match(note.slice(0, 900).replace(/<[^>]+>/g, " "), /Won na webu je vypnutý, barva se proto na webu neukáže\.\s+Zapnout Won na webu/);
+  assert.ok(/href="[^"]*activateAppId=/.test(note.slice(0, 900)), "the link switches Won on");
+  // The colour of the storefront itself ("Podle webu") needs nothing from Won: no warning.
+  assert.ok(!(await render("tiers?embed=off")).includes("data-won-accent-embed-off"), "the storefront's own colour: no warning");
+  // Not known (no permission to read the storefront): the page does not claim it is off.
+  assert.ok(!(await render("tiers?accent=green&embed=noscope")).includes("data-won-accent-embed-off"), "not known: nothing claimed");
+  const en = (await render("tiers?accent=green&embed=off&locale=en")).replace(/<[^>]+>/g, " ");
+  assert.match(en, /Won is switched off on your storefront, so the colour will not show there\./);
+});
