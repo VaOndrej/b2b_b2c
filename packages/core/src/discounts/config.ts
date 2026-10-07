@@ -12,6 +12,7 @@
 // one sanitizer per module, and the top-level sanitize/migrate/read).
 
 export {
+  ACCENT_PRESETS,
   APPEARANCE_PRESETS,
   CODE_BATCH_ALPHABETS,
   COMBINATION_CATEGORIES,
@@ -28,6 +29,7 @@ export {
   TIER_COUNT_ACROSS_MODES,
 } from "./config/enums.ts";
 export type {
+  AccentPreset,
   AppearancePreset,
   CodeBatchAlphabet,
   CombinationCategory,

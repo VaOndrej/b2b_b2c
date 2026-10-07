@@ -19,6 +19,12 @@ konci). Práce inline, commitnuto lokálně, nepushnuto, nenasazeno.
 - **Rozhodl Ondřej 7. 10.:** (1) štítek „Pro“ zůstává na dlaždicích i na tarifu Pro; (2) návrh částky jen z ručního kurzu trhu
   v Shopify (`CurrencySetting.manualRate`, `readMarketRates` v `themes.server.ts`, `shell/AmountSuggestions.tsx`), kde není, formulář
   to řekne; (3) překlady nastavení rozšíření webu se zatím neřeší. Návrh 6 je součást dávky D (Milníky), návrh 8 se nedělá.
+- **Ondřej 7. 10. odpoledne (po vyzkoušení naživo):** úrovně množstevní slevy jsou očíslované karty (`TierSetEditor.tsx`), návrh
+  částky má vlastní rámeček (`shell/AmountSuggestions.tsx`), náhled má jeden nadpis „Vzhled na webu“, v Ochraně marže zmizela
+  věta „Takhle by zasáhla“ nad prázdným přehledem. **Nové: barva zvýraznění na každém tarifu** — `config.storefront.accent`
+  (core `ACCENT_PRESETS`, `custom-look.ts accentCss`), jde na web jako jedna CSS proměnná před vlastním vzhledem Pro, vybírá se
+  v náhledu na stránce Množstevní slevy. Na webu se projeví jen se zapnutým Won na webu (stejná cesta jako vlastní vzhled).
+  Naživo na webu neověřeno.
 - **T1 po opravě naživo:** Ondřejův screenshot úvodní stránky 7. 10. ukazuje „2 trhy“ a chybějící částky pro slovensko.
 - **Naživo neověřeno:** nové čtení trhů v dev obchodě (po změně oprávnění ho Shopify nechá znovu potvrdit), úprava vzhledu obchodu.
 - Screenshoty 390 a 1440 px: `Apps/.playwright-mcp/audit-opravy` (28), skript `Apps/.playwright-mcp/audit-fix-shots.mjs`.

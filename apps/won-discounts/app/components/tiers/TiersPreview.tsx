@@ -36,6 +36,8 @@ import csStorefront from "../../../extensions/won-discounts-storefront/locales/c
 import enStorefront from "../../../extensions/won-discounts-storefront/locales/en.default.json?raw";
 import tiersCss from "../../../extensions/won-discounts-storefront/assets/won-discounts-tiers.css?raw";
 import { APPEARANCE_PRESETS } from "@won/core/discounts/config";
+import { ACCENT_PRESETS } from "@won/core/discounts/config";
+import { ACCENT_COLORS } from "@won/core/discounts/custom-look";
 import { currencyExponent } from "@won/core/discounts/money";
 
 import { useT } from "../../i18n/context";
@@ -112,6 +114,8 @@ export interface TiersPreviewProps {
   extras?: PreviewLookView | null;
   /** With `controls`: the form field the picked look is submitted as (the page saves it). Absent = the switcher only changes the preview. */
   lookField?: string;
+  /** With `controls`: the form field of the ready-made highlight colour (every plan). Absent = no colour picker. */
+  accentField?: string;
 }
 
 /**
@@ -165,12 +169,16 @@ export function TiersPreview({
   withStyles = true,
   extras = null,
   lookField,
+  accentField,
 }: TiersPreviewProps) {
   const tr = useT();
   const { t, locale } = tr;
   const [look, setLook] = useState<AppearancePresetView>(preset);
   const [lookFocus, setLookFocus] = useState<AppearancePresetView | null>(null);
   const lookLabelId = useId();
+  const accentLabelId = useId();
+  const storedAccent = extras?.accent && extras.accent in ACCENT_COLORS ? extras.accent : "theme";
+  const [accentPick, setAccentPick] = useState<string>(storedAccent);
   const changed = extras?.texts[locale];
   const text = (key: TextKey, params: Record<string, string | number> = {}) => storefrontText(locale, key, params, changed);
   const shown = set && set.breaks.length > 0 ? set : TIERS_SAMPLE_SET;
@@ -184,7 +192,10 @@ export function TiersPreview({
   const model = useMemo(() => previewTiersLiquid(shown, { unitPrice, currency: shopCurrency, quantity }), [shown, unitPrice, shopCurrency, quantity]);
   const priceCents = Math.round(unitPrice * 10 ** (2 - currencyExponent(shopCurrency)));
   const activePreset = controls ? look : preset;
-  const accent = tokens?.colorAccent ?? null;
+  // The ready-made colour goes over the theme's (as on the storefront); a Pro custom look that sets its own accent goes over both.
+  const customAccent = /--won-tiers-accent\s*:/.test(extras?.customCss ?? "");
+  const pickedColor = ACCENT_COLORS[controls && accentField ? accentPick : storedAccent];
+  const accent = customAccent ? null : (pickedColor ?? tokens?.colorAccent ?? null);
 
   const block = (
     <div
@@ -246,17 +257,20 @@ export function TiersPreview({
   return (
     <div style={{ fontFamily: WON_FONT, display: "grid", gap: 10, minWidth: 0 }}>
       {bare ? null : (
-        <div style={{ fontSize: 13, fontWeight: 700, color: WON_INK }}>
-          {t("tiers.preview.title")}
+        <div id={controls ? lookLabelId : undefined} style={{ fontSize: 13, fontWeight: 700, color: WON_INK }}>
+          {/* With the look picker the block IS "Vzhled na webu": one heading, not "Náhled" over "Vzhled". */}
+          {t(controls ? "tiers.preview.look" : "tiers.preview.title")}
           {sample ? <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 700, color: WON_AMBER_TEXT }}>{t("tiers.sample")}</span> : null}
         </div>
       )}
       {controls ? (
         <div style={{ display: "grid", gap: 8 }}>
           <div style={{ display: "grid", gap: 5 }}>
-            <div id={lookLabelId} style={{ fontSize: 13, fontWeight: 500, color: WON_INK }}>
-              {t("tiers.preview.look")}
-            </div>
+            {bare ? (
+              <div id={lookLabelId} style={{ fontSize: 13, fontWeight: 500, color: WON_INK }}>
+                {t("tiers.preview.look")}
+              </div>
+            ) : null}
             <div role="radiogroup" aria-labelledby={lookLabelId} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {APPEARANCE_PRESETS.map((p) => (
                 <label
@@ -288,6 +302,49 @@ export function TiersPreview({
                 </label>
               ))}
             </div>
+            {accentField ? (
+              <div style={{ display: "grid", gap: 5, marginTop: 4 }}>
+                <div id={accentLabelId} style={{ fontSize: 13, fontWeight: 500, color: WON_INK }}>
+                  {t("tiers.preview.accent")}
+                </div>
+                <div role="radiogroup" aria-labelledby={accentLabelId} data-won-accent-picker style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {ACCENT_PRESETS.map((a) => (
+                    <label
+                      key={a}
+                      style={{
+                        ...selectionRing(accentPick === a),
+                        position: "relative",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        borderRadius: 999,
+                        padding: "4px 10px 4px 6px",
+                        fontSize: 12.5,
+                        fontWeight: accentPick === a ? 700 : 500,
+                        color: WON_INK,
+                        cursor: "pointer",
+                        fontFamily: WON_FONT,
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name={accentField}
+                        value={a}
+                        checked={accentPick === a}
+                        onChange={() => setAccentPick(a)}
+                        style={{ position: "absolute", opacity: 0, width: 1, height: 1, margin: 0, pointerEvents: "none" }}
+                      />
+                      <span
+                        aria-hidden="true"
+                        style={{ width: 14, height: 14, borderRadius: 999, flex: "0 0 auto", background: ACCENT_COLORS[a] ?? "conic-gradient(#111418 0 50%, #c9d0d8 0 100%)", border: "1px solid rgba(17,20,24,.18)" }}
+                      />
+                      {t(`tiers.preview.accent.${a}` as "tiers.preview.accent.theme")}
+                    </label>
+                  ))}
+                </div>
+                {accentPick !== storedAccent ? <div style={{ fontSize: 12, color: WON_MUTED }}>{t("tiers.preview.accentNote")}</div> : null}
+              </div>
+            ) : null}
             {look !== preset ? (
               <div style={{ fontSize: 12, color: WON_MUTED }}>{t(lookField ? "tiers.preview.lookUnsaved" : "tiers.preview.lookSaved", { preset: presetLabel(preset, tr) })}</div>
             ) : null}

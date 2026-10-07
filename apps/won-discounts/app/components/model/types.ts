@@ -624,6 +624,8 @@ export interface TiersPreviewView {
  * merchant changed, per language, by the extension's key (`tiers.heading`).
  */
 export interface PreviewLookView {
+  /** The stored ready-made highlight colour (core ACCENT_PRESETS); absent = "theme". */
+  accent?: string;
   customCss: string | null;
   texts: Partial<Record<"cs" | "sk" | "en", Record<string, string>>>;
 }

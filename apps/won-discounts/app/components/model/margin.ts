@@ -261,7 +261,8 @@ export function impactSummary(impact: MarginImpactView | null, pro: boolean, ena
   const n = impact.rules.length;
   let text = n === 0 ? tr.t("margin.impact.none") : tr.tp("margin.impact.rules", n);
   if (impact.status === "updating") text = `${text} · ${tr.t("margin.impact.updating")}`;
-  return enabled ? text : `${text} · ${tr.t("margin.impact.off")}`;
+  // "Takhle by zasáhla" only with rows to show under it; with none there is nothing it could point at.
+  return enabled ? text : `${text} · ${tr.t(n === 0 ? "margin.impact.offShort" : "margin.impact.off")}`;
 }
 
 /** The collections header: their names (P4), the first five and how many more. */

@@ -293,6 +293,7 @@ export function TiersScreen(props: TiersScreenProps) {
                   currency={shopCurrency}
                   controls
                   lookField={F.preset}
+                  accentField={F.accent}
                   extras={preview.look ?? null}
                   marginOn={marginOn}
                 />

@@ -65,6 +65,14 @@ export type TierCountAcross = (typeof TIER_COUNT_ACROSS_MODES)[number];
 export const APPEARANCE_PRESETS = ["default", "highlight", "chips", "tiles"] as const;
 export type AppearancePreset = (typeof APPEARANCE_PRESETS)[number];
 
+/**
+ * The highlight colour of the storefront blocks every plan can pick (7 Oct 2026): `theme` = the theme's text
+ * colour (what the blocks did before), the rest are ready-made colours (custom-look.ts ACCENT_COLORS).
+ * `config.storefront.accent`; absent or unknown = `theme`. The Pro custom look's own accent goes over it.
+ */
+export const ACCENT_PRESETS = ["theme", "green", "blue", "orange", "red", "violet"] as const;
+export type AccentPreset = (typeof ACCENT_PRESETS)[number];
+
 export const OUTLET_DISPLAY_MODES = [
   "silent",
   "strike",

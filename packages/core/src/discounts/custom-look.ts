@@ -34,6 +34,24 @@ export interface CustomLook {
   css: string;
 }
 
+/**
+ * The ready-made highlight colours of every plan (config/enums.ts ACCENT_PRESETS). Dark enough to read as text on
+ * white (the highlighted tier's label is drawn in the accent); the tint behind it is mixed from it in the block's CSS.
+ */
+export const ACCENT_COLORS: Readonly<Record<string, string>> = {
+  green: "#1a7f45",
+  blue: "#1a5fd0",
+  orange: "#b45309",
+  red: "#b42318",
+  violet: "#6d28d9",
+};
+
+/** The stylesheet text of a ready-made highlight colour: one variable on the block roots; "" = the theme's colour. */
+export function accentCss(accent: string | undefined | null): string {
+  const color = typeof accent === "string" ? ACCENT_COLORS[accent] : undefined;
+  return color ? `${WON_BLOCK_ROOT}{${CUSTOM_LOOK_VARS.accent}:${color}}` : "";
+}
+
 export const CUSTOM_LOOK_RADIUS_MAX = 32;
 const COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 

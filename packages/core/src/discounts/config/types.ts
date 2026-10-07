@@ -4,6 +4,7 @@
 import type { CustomLook } from "../custom-look.ts";
 import type { CurrencyCode, MoneyByCurrency } from "../money.ts";
 import type {
+  AccentPreset,
   AppearancePreset,
   CodeBatchAlphabet,
   DiscountMethod,
@@ -234,6 +235,8 @@ export interface Campaign {
 export interface StorefrontSettings {
   /** K7: one of APPEARANCE_PRESETS (the sanitizer turns anything else into "default"). */
   appearancePreset: AppearancePreset;
+  /** The blocks' highlight colour, on every plan (ACCENT_PRESETS). Absent = "theme": the theme's text colour. */
+  accent?: AccentPreset;
   cardPricesEnabled: boolean; // BETA: quantity prices on cards/search
   /** MVP 7 (Pro): the custom look — validated variables + the merchant's CSS as typed (custom-look.ts). Absent = none. */
   custom?: CustomLook;

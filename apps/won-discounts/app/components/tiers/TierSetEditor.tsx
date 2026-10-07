@@ -24,7 +24,7 @@ import { SegmentedChoice } from "../shell/SegmentedChoice";
 import { AmountSuggestions } from "../shell/AmountSuggestions";
 import type { AmountSuggestView } from "../model/markets";
 import { RowNote } from "../shell/WonSection";
-import { WON_LINE } from "../shell/tokens";
+import { WON_INK, WON_LINE, WON_MUTED, WON_SURFACE, WON_WASH } from "../shell/tokens";
 
 const F = TIERS_FIELD;
 
@@ -175,7 +175,7 @@ export function TierSetEditor({
             ) : null}
           </s-stack>
         ) : null}
-        {rows.map((row) => {
+        {rows.map((row, index) => {
           const amountNow = (code: string): string => {
             const typed = live(F.amount(sid, row.key, code));
             if (typed !== null) return typed.trim();
@@ -194,8 +194,23 @@ export function TierSetEditor({
             amounts: [...codes, ...kept].map(amountNow),
           });
           return (
-            <div key={row.key} style={{ padding: "12px 0", borderTop: `1px solid ${WON_LINE}` }}>
+            // Each level is its own card with a numbered header (Ondřej 7 Oct 2026: the rows ran together): the number,
+            // "od X ks" from what is typed, and the remove button where the eye expects it.
+            <div key={row.key} data-won-tier-row style={{ marginTop: index === 0 ? 0 : 10, border: `1px solid ${WON_LINE}`, borderRadius: 12, background: WON_SURFACE, overflow: "hidden" }}>
               <input type="hidden" name={F.row(sid)} value={row.key} />
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "6px 12px", padding: "8px 12px", background: WON_WASH, borderBottom: `1px solid ${WON_LINE}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                  <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 999, background: WON_INK, color: "#fff", fontSize: 12.5, fontWeight: 700, flex: "0 0 auto" }}>
+                    {index + 1}
+                  </span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: WON_INK }}>{t("tiers.break.title", { n: index + 1 })}</span>
+                  {Number.isFinite(minNow) && minNow > 0 ? <span style={{ fontSize: 13, color: WON_MUTED }}>{t("tiers.break.titleFrom", { min: minNow })}</span> : null}
+                </div>
+                <s-button variant="tertiary" onClick={() => remove(row.key)}>
+                  {t("tiers.break.remove")}
+                </s-button>
+              </div>
+              <div style={{ padding: 12 }}>
               <s-stack direction="block" gap="small-200">
                 {/* One row per break: "od X ks" and its value side by side, wrapping on a phone (§8). */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 150px), 1fr))", gap: 12, alignItems: "start" }}>
@@ -264,17 +279,13 @@ export function TierSetEditor({
                       <RowNote>{t("tiers.break.kept", { currency: code, value: formatMoney(row.initial.amount[code]!, code, tr.locale) })}</RowNote>
                     </div>
                   ))}
-                <div>
-                  <s-button variant="tertiary" onClick={() => remove(row.key)}>
-                    {t("tiers.break.remove")}
-                  </s-button>
-                </div>
               </s-stack>
+              </div>
             </div>
           );
         })}
         <FieldMessage text={errorFor(F.row(sid))} />
-        <div style={{ paddingTop: 8, borderTop: rows.length > 0 ? `1px solid ${WON_LINE}` : undefined }}>
+        <div style={{ paddingTop: 12 }}>
           <s-stack direction="inline" gap="base" alignItems="center">
             <s-button onClick={add} disabled={full ? true : undefined}>
               {t("tiers.break.add")}

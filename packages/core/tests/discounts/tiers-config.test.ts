@@ -216,3 +216,29 @@ test("K7: the appearance preset is one of APPEARANCE_PRESETS; an unknown one bec
   assert.deepEqual(sanitizeConfig({ storefront: {} }).issues, []);
   assert.equal(sanitizeConfig({}).config.storefront.appearancePreset, "highlight");
 });
+
+test("the highlight colour is one of ACCENT_PRESETS on every plan; 'theme' is stored as absent; it ships as one CSS variable before the custom look", async () => {
+  const { accentCss, ACCENT_COLORS } = await import("../../src/discounts/custom-look.ts");
+  const { gateConfigForPlan } = await import("../../src/discounts/plan-gate.ts");
+  const { buildStorefrontConfig } = await import("../../src/discounts/storefront-config.ts");
+  const green = sanitizeConfig({ storefront: { appearancePreset: "chips", accent: "green" } });
+  assert.equal(green.config.storefront.accent, "green");
+  assert.deepEqual(green.issues, []);
+  assert.equal(sanitizeConfig({ storefront: { accent: "theme" } }).config.storefront.accent, undefined);
+  const junk = sanitizeConfig({ storefront: { accent: "#ff0000" } });
+  assert.equal(junk.config.storefront.accent, undefined);
+  assert.deepEqual(junk.issues.map((i) => i.code), ["unknown_accent"]);
+
+  assert.equal(accentCss("theme"), "");
+  assert.equal(accentCss(undefined), "");
+  assert.match(accentCss("green"), new RegExp(`\\{--won-tiers-accent:${ACCENT_COLORS.green}\\}$`));
+
+  // Free keeps the colour (the gate removes only the Pro custom look); Pro's own accent comes later in the CSS, so it wins.
+  const both = sanitizeConfig({ storefront: { accent: "blue", custom: { vars: { accent: "#ff0000" }, css: "" } } }).config;
+  const opts = { configVersion: "v", shopCurrency: "CZK" };
+  const free = buildStorefrontConfig(gateConfigForPlan(both, "free").config, opts);
+  assert.equal(free.appearance.css, accentCss("blue"));
+  const pro = buildStorefrontConfig(gateConfigForPlan(both, "pro").config, opts);
+  assert.ok(pro.appearance.css!.startsWith(accentCss("blue")) && pro.appearance.css!.endsWith("{--won-tiers-accent:#ff0000}"));
+  assert.equal(buildStorefrontConfig(gateConfigForPlan(sanitizeConfig({}).config, "free").config, opts).appearance.css, undefined, "no colour: nothing is added");
+});

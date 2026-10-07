@@ -140,7 +140,8 @@ export function ImpactSection({
             ) : null}
             {impact.status === "computing" ? <s-text color="subdued">{t("margin.impact.computingBody")}</s-text> : null}
             {impact.status === "updating" ? <s-text color="subdued">{t("margin.impact.updatingBody")}</s-text> : null}
-            {!enabled ? <s-text>{t("margin.impact.off")}</s-text> : null}
+            {/* Said only above rows it describes; with none the header already says the protection is off. */}
+            {!enabled && impact.rules.length > 0 ? <s-text>{t("margin.impact.off")}</s-text> : null}
             {impact.status !== "computing" && impact.rules.length === 0 ? <s-text color="subdued">{t("margin.impact.none")}</s-text> : null}
             {productRules.map((rule) => (
               <RuleGroup key={rule.ruleId} rule={rule} currency={currency} focused={!!focus} />

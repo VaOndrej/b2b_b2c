@@ -255,3 +255,25 @@ test("slovníček: the words a merchant does not know are gone from the screens"
     assert.doesNotMatch(text, /V tématu|Chybí v tématu|editor(u)? tématu|Synchronizovat znovu|Synchronizace se Shopify|zapsáno do Shopify|Počítání prahu|strop slevy/i, path);
   }
 });
+
+test("7 Oct 2026: quantity levels are numbered cards, suggestions sit in their own box, the preview has one heading and a colour picker", async () => {
+  const html = await render("tiers");
+  assert.equal((html.match(/data-won-tier-row/g) ?? []).length, 3);
+  assert.match(html, />Úroveň 1<\/span><span[^>]*>od 3 ks</);
+  assert.match(html, />Úroveň 3<\/span><span[^>]*>od 10 ks</);
+  const text = html.replace(/<style[\s\S]*?<\/style>/g, "").replace(/<[^>]+>/g, " ");
+  assert.doesNotMatch(text, /Náhled na webu/, "one heading: Vzhled na webu");
+  assert.equal((text.match(/Vzhled na webu/g) ?? []).length, 1);
+  // The ready-made colours are offered on Free; the stored one ("theme") is checked.
+  const picker = html.slice(html.indexOf("data-won-accent-picker"));
+  for (const value of ["theme", "green", "blue", "orange", "red", "violet"]) assert.match(picker.slice(0, 6000), new RegExp(`<input type="radio" name="accentPreset"[^>]*value="${value}"`), value);
+  assert.match(picker.slice(0, 6000), /Podle webu[\s\S]*Zelená[\s\S]*Fialová/);
+  const rewards = await render("rewards");
+  assert.match(rewards, /data-won-suggest="offer"[^>]*>\s*<span[^>]*>Návrh<\/span>/);
+  assert.match(await render("rewards?rates=none"), /data-won-suggest="none"[^>]*>\s*<span[^>]*>Bez návrhu<\/span>/);
+});
+
+test("7 Oct 2026: Ochrana marže says 'Takhle by zasáhla' only above rows it describes", async () => {
+  const off = (await render("margin?state=off&plan=pro")).replace(/<[^>]+>/g, " ");
+  if (/Žádná aktivní sleva teď pod hranici nejde/.test(off)) assert.doesNotMatch(off, /Takhle by zasáhla/);
+});

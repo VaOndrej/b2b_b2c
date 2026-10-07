@@ -19,6 +19,7 @@
 // Pro sets travel back as hidden fields and stay; the sync gates them (K1: on
 // Free a scoped set is inert, its products never fall into the global set).
 
+import { ACCENT_PRESETS, type AccentPreset } from "@won/core/discounts/config";
 import type { DiscountRule, TierSet, WonDiscountsConfig } from "@won/core/discounts/config";
 import { explainGate, gateConfigForPlan, type ProCapability } from "@won/core/discounts/plan-gate";
 
@@ -200,18 +201,30 @@ export function nextTierSets(sets: readonly TierSetView[], keep?: ReadonlyMap<st
 export function saveTiers(
   ctx: ShopCtx,
   sets: readonly TierSetView[],
-  opts: SaveOptions & { keep?: ReadonlyMap<string, TierSet>; preset?: AppearancePresetView },
+  opts: SaveOptions & { keep?: ReadonlyMap<string, TierSet>; preset?: AppearancePresetView; accent?: AccentPreset },
 ): Promise<UiResult> {
   const next = nextTierSets(sets, opts.keep);
   const preset = opts.preset;
+  const accent = opts.accent;
+  /** The ready-made highlight colour, when the form carried it ("theme" = none stored). */
+  const withAccent = (config: WonDiscountsConfig): WonDiscountsConfig => {
+    if (accent === undefined) return config;
+    const storefront = { ...config.storefront };
+    if (accent === "theme") delete storefront.accent;
+    else storefront.accent = accent;
+    return { ...config, storefront };
+  };
   return saveConfigSection(ctx, {
     configVersion: opts.configVersion,
     ...(opts.replaceUnreadable !== undefined ? { replaceUnreadable: opts.replaceUnreadable } : {}),
     path: "modules.tiers",
-    pick: (config) => (preset === undefined ? config.modules.tiers : { tiers: config.modules.tiers, preset: presetOf(config.storefront.appearancePreset) }),
+    pick: (config) =>
+      preset === undefined && accent === undefined
+        ? config.modules.tiers
+        : { tiers: config.modules.tiers, preset: presetOf(config.storefront.appearancePreset), accent: config.storefront.accent ?? "theme" },
     apply: (config) => {
       const withTiers = { ...config, modules: { ...config.modules, tiers: { ...config.modules.tiers, sets: next } } };
-      return preset === undefined ? withTiers : withAppearancePreset(withTiers, preset);
+      return withAccent(preset === undefined ? withTiers : withAppearancePreset(withTiers, preset));
     },
   });
 }
@@ -315,6 +328,9 @@ export async function tiersAction(ctx: ShopCtx, form: FormDataLike): Promise<UiR
     if (!look.ok) return { ok: false, reason: "invalid", errors: look.errors };
     preset = look.preset;
   }
+  // The highlight colour picked next to it: one of the ready-made ones (SEC-1); a form without the field, or with junk, leaves it.
+  const rawAccent = form.get(TIERS_FIELD.accent);
+  const accent = typeof rawAccent === "string" && (ACCENT_PRESETS as readonly string[]).includes(rawAccent) ? (rawAccent as AccentPreset) : undefined;
   const sizeErrors = await collectionSizeErrors(
     ctx,
     parsed.sets.filter((s) => !parsed.kept.includes(s.id)),
@@ -325,7 +341,7 @@ export async function tiersAction(ctx: ShopCtx, form: FormDataLike): Promise<UiR
   // The checkout's room for tiers (CONFIG_LIMITS.tierPayloadBytes, audit): refused with what to do, never "bytes".
   const use = tierPayloadUse(nextTierSets(parsed.sets, keep));
   if (!use.fits) return { ok: false, reason: "invalid", errors: [{ field: TIERS_FIELD.set, key: "tiers.error.tooLarge", params: { percent: use.percent } }] };
-  return saveTiers(ctx, parsed.sets, { ...readSaveOptions(form), keep, ...(preset !== undefined ? { preset } : {}) });
+  return saveTiers(ctx, parsed.sets, { ...readSaveOptions(form), keep, ...(preset !== undefined ? { preset } : {}), ...(accent !== undefined ? { accent } : {}) });
 }
 
 // --- Přehled --------------------------------------------------------------------------------------------------------

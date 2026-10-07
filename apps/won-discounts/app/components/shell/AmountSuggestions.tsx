@@ -14,7 +14,10 @@ import { currencyExponent } from "@won/core/discounts/money";
 import { useT } from "../../i18n/context";
 import { suggestedAmount, type AmountSuggestView } from "../model/markets";
 import type { CurrencyView } from "../model/types";
-import { RowNote } from "./WonSection";
+import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_WASH } from "./tokens";
+
+const BOX = { display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 10px", marginTop: 8, padding: "8px 10px", borderRadius: 10, fontFamily: WON_FONT } as const;
+const CHIP = { flex: "0 0 auto", padding: "2px 8px", borderRadius: 999, fontSize: 11.5, fontWeight: 700, letterSpacing: "0.01em" } as const;
 
 function majorOf(raw: string | undefined): number {
   return Number((raw ?? "").trim().replace(/\s/g, "").replace(",", "."));
@@ -74,11 +77,20 @@ export function AmountSuggestions({
         const market = c.markets.length > 0 ? `${c.markets.map((m) => m.name).join(", ")} (${c.code})` : c.code;
         const exponent = currencyExponent(c.code);
         const major = suggestedAmount(baseMajor, suggest?.rates[c.code], exponent);
-        if (major === null) return <RowNote key={c.code}>{t("suggest.none", { market })}</RowNote>;
+        // A box of its own, apart from the field notes (Ondřej 7 Oct 2026): blue = something to pick (§11a), grey = nothing to offer.
+        if (major === null) {
+          return (
+            <div key={c.code} data-won-suggest="none" style={{ ...BOX, background: WON_WASH, border: `1px solid ${WON_LINE}` }}>
+              <span style={{ ...CHIP, background: "#e3e7ec", color: WON_MUTED }}>{t("suggest.labelNone")}</span>
+              <span style={{ flex: "1 1 220px", minWidth: 0, fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED }}>{t("suggest.none", { market })}</span>
+            </div>
+          );
+        }
         const amount = formatMoney(Math.round(major * 10 ** exponent), c.code, tr.locale);
         return (
-          <div key={c.code} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 12px", marginTop: 4 }}>
-            <RowNote>{t("suggest.offer", { market, amount })}</RowNote>
+          <div key={c.code} data-won-suggest="offer" style={{ ...BOX, background: "#f2f7ff", border: "1px solid rgba(26,115,232,.3)" }}>
+            <span style={{ ...CHIP, background: WON_SELECT, color: "#fff" }}>{t("suggest.label")}</span>
+            <span style={{ flex: "1 1 220px", minWidth: 0, fontSize: 12.5, lineHeight: 1.4, color: WON_INK }}>{t("suggest.offer", { market, amount })}</span>
             <s-button variant="secondary" onClick={() => use(c.code, String(major))}>
               {t("suggest.use", { amount })}
             </s-button>

@@ -124,7 +124,7 @@ export function previewLookOf(stored: WonDiscountsConfig, plan: ShopPlan): Previ
     const changed = Object.fromEntries(Object.entries(gated.locales[lang] ?? {}).filter(([, text]) => typeof text === "string" && text !== ""));
     if (Object.keys(changed).length > 0) texts[lang] = changed;
   }
-  return { customCss: customLookCss(gated.storefront.custom) || null, texts };
+  return { customCss: customLookCss(gated.storefront.custom) || null, texts, ...(gated.storefront.accent ? { accent: gated.storefront.accent } : {}) };
 }
 
 /**

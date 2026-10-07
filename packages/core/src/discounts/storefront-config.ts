@@ -38,7 +38,7 @@ import { currencyExponent, moneyFor } from "./money.ts";
 import { variantNumber } from "./rewards.ts";
 import { campaignTierSets } from "./campaign-tiers.ts";
 import { shopLocalToUtc } from "./campaigns.ts";
-import { customLookCss } from "./custom-look.ts";
+import { accentCss, customLookCss } from "./custom-look.ts";
 import { globalTierSet, reachableTierSets } from "./tiers.ts";
 
 /** App-data metafield (AppInstallation) the storefront reads. */
@@ -284,7 +284,8 @@ export function buildStorefrontConfig(gated: ReadonlyDeep<WonDiscountsConfig>, o
   const run = campaign ? campaignTierSets(gated.modules.tiers, campaign) : null;
   const shown = campaign && run && run.applied.length > 0 ? { tiers: storefrontTiers(run.sets), bt: base, tc: campaign.id } : { tiers: base };
   const preset = gated.storefront.appearancePreset;
-  const customCss = customLookCss(gated.storefront.custom);
+  // The ready-made colour first: the Pro custom look's own accent (a later rule of the same weight) goes over it.
+  const customCss = accentCss(gated.storefront.accent) + customLookCss(gated.storefront.custom);
   return {
     v: STOREFRONT_CONFIG_VERSION,
     cv: opts.configVersion,

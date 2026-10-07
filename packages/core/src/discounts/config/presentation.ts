@@ -2,7 +2,7 @@
 
 import { sanitizeCustomLook } from "../custom-look.ts";
 import { DEFAULT_CONFIG } from "./defaults.ts";
-import { APPEARANCE_PRESETS, type AppearancePreset, ONBOARDING_GOALS, type OnboardingGoal } from "./enums.ts";
+import { ACCENT_PRESETS, type AccentPreset, APPEARANCE_PRESETS, type AppearancePreset, ONBOARDING_GOALS, type OnboardingGoal } from "./enums.ts";
 import { CONFIG_LIMITS } from "./limits.ts";
 import { isRecord, listParams, listPreview, preview, pushIssue, sanitizeBool } from "./sanitize-helpers.ts";
 import type { ConfigIssue, LocaleDictionary, OnboardingState, StorefrontSettings } from "./types.ts";
@@ -28,11 +28,17 @@ export function sanitizeStorefront(v: unknown, issues: ConfigIssue[]): Storefron
   const def = DEFAULT_CONFIG.storefront;
   const rec = isRecord(v) ? v : {};
   const custom = sanitizeCustomLook(rec.custom, issues);
+  // The highlight colour: one of ACCENT_PRESETS; "theme" (and anything unknown) is stored as absent.
+  const accent = typeof rec.accent === "string" && rec.accent !== "theme" && (ACCENT_PRESETS as readonly string[]).includes(rec.accent) ? (rec.accent as AccentPreset) : undefined;
+  if (rec.accent !== undefined && rec.accent !== null && rec.accent !== "theme" && accent === undefined) {
+    pushIssue(issues, "storefront.accent", "unknown_accent", `Highlight colour ${preview(rec.accent, 60)} is not one of ${ACCENT_PRESETS.join(", ")}; the theme's colour was used.`, { value: preview(rec.accent, 60) });
+  }
   return {
     // A stored config without a (valid) look keeps the look it always had, the table: only a NEW shop
     // starts with DEFAULT_CONFIG's look (2026-10-06), so no existing storefront changes on its own.
     appearancePreset: sanitizeAppearancePreset(rec.appearancePreset, rec.appearancePreset === undefined && v === undefined ? def.appearancePreset : "default", issues),
     cardPricesEnabled: sanitizeBool(rec.cardPricesEnabled, def.cardPricesEnabled),
+    ...(accent ? { accent } : {}),
     ...(custom ? { custom } : {}),
   };
 }

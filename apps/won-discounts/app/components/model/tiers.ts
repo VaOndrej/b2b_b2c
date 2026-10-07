@@ -63,6 +63,8 @@ export const TIERS_FIELD = {
    * page. The same field name and parser as Vzhled (model/appearance.ts readAppearanceForm); absent = unchanged.
    */
   preset: "preset",
+  /** The ready-made highlight colour (config.storefront.accent, every plan), picked next to the look; absent = unchanged. */
+  accent: "accentPreset",
 } as const;
 
 export const TIERS_INTENT = { save: "save" } as const;
