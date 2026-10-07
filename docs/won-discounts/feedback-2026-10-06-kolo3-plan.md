@@ -302,8 +302,8 @@ Zapisuje se po bodech během práce.
 | 5 | hotovo, naživo neověřeno | `WonSection placement / action`, `themePlacementsIn()`; tabulka, Won v šabloně, blok v košíku, průběh odměn, pruh nahoře, banner kampaně, štítek výprodeje. |
 | 6 | hotovo | `shell/pro-marked.ts`; Pro značí hlavička sekce, uvnitř nic jantarového. Platí pro všechny sekce Pro najednou. |
 | 15 | hotovo | „Vlastní sleva“ / „Custom discount“ s větou, čárkovaná karta. |
-| 4 | v kódu, brána zelená, **chybí E2E na Horizonu a Dawnu** (čeká na „go“) | `extensions/won-discounts-storefront/assets/won-discounts-tiers.js` (`refresh`); na živém tématu dev obchodu ověřeno. |
-| 4, vzhled na webu (dotažení, úkol 1) | příčina nalezena 7. 10., oprava mimo kód | Blok na živém webu byl bez stylů, protože obchod ukazuje dev preview a jeho soubory vrací 404. Kód, uložené nastavení i značka sedí. Kontrola: `scripts/check-storefront-assets.mjs`, `assertExtensionAssetsLoaded`. Podrobnosti v build logu. |
+| 4 | hotovo, E2E 7. 10.: Horizon 8/8, Dawn 8/8 (`evidence/dotazeni-u4/`) | `extensions/won-discounts-storefront/assets/won-discounts-tiers.js` (`refresh`); na živém tématu dev obchodu ověřeno. |
+| 4, vzhled na webu (dotažení, úkol 1) | vyřešeno 7. 10. restartem `shopify app dev`, naživo ověřeno | Blok na živém webu byl bez stylů, protože obchod ukazuje dev preview a jeho soubory vrací 404. Kód, uložené nastavení i značka sedí. Kontrola: `scripts/check-storefront-assets.mjs`, `assertExtensionAssetsLoaded`. Podrobnosti v build logu. |
 | návrh částky v kampaních (dotažení, úkol 3) | v kódu, test zelený, screenshoty chybí | `CampaignsScreen.tsx` + `AmountSuggestions`; `/dev/preview/campaigns?plan=pro&state=suggest&edit=bf`. |
 | 7 | v kódu, testy zelené, klikání naživo neověřeno | `tiers/ProTierSets.tsx`, `TierSetEditor.tsx` (`inherit`), `TiersScreen.tsx` (`addSet`); testy `tests/ui/kolo3-c.test.ts`; rozhodnutí v build logu. |
 | 9, 10 | nezačato | dávka D |

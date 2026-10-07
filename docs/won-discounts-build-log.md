@@ -45,8 +45,9 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   - **`shopify app dev` 7. 10. kolem 14:55 skončil** (proces 24103, běžel od 8:04). Stalo se to mezi dvěma mými čteními místní
     adresy `127.0.0.1:9293`; žádný signál jsem mu neposlal a příčinu neznám. Dev náhled `/dev/preview/*` proto neběží.
 
-- **Úkol 2 (sloučení do `main`, push) — neprovedeno, čeká na Ondřejovo potvrzení.** Větev je 7. 10. přímo před `origin/main`
-  (posun bez slučovacího commitu), `codex/won-quantity-bootstrap` a `won-toasts` mají 0 commitů před `main`.
+- **Úkol 2 (sloučení do `main`, push) ✅** Ondřej potvrdil 7. 10. `main` posunut na `08a210c` bez slučovacího commitu a pushnut
+  (`git push origin won-discounts-feedback-2026-10-06:main`). Další práce je na větvi `won-discounts-dotazeni-2026-10-07`, po každém
+  zeleném úkolu se stejně posune `main`.
 - **Úkol 3 (návrh částky v kampaních) — v kódu, commitnuto na větvi, screenshoty chybí (dev náhled neběží).**
   - `CampaignsScreen.tsx`: pod poli „Sleva v kampani“ i „Sleva za kus v kampani“ je `AmountSuggestions`; pole částky za kus se
     nově jmenuje podle trhu (`campaign.tiers.amountMarket`). Kurzy: `loadCampaignsScreen` → `readAmountSuggest`.
@@ -55,8 +56,16 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   - Zjištěno: kampaň smí úroveň jen zlepšit pro každou měnu základu, uložená kampaň proto nemá u částky za kus prázdný trh;
     návrh se tam ukáže, když obchodník pole trhu vymaže (nebo po odmítnutém uložení).
   - Test: `tests/ui/audit-2026-10-06.test.ts` „úkol 3“.
-- **Úkol 4 (zkouška Horizon + Dawn) — nespuštěno:** potřebuje běžící `shopify app dev` (ten 7. 10. skončil) a zapisuje do dev obchodu.
-
+- **Úkol 4 (zkouška Horizon + Dawn) ✅ 7. 10.** Profil `tiers` (`scripts/e2e/runbook/profile.sh tiers dotazeni-u4 free`): **Horizon 8/8,
+  Dawn 8/8**, včetně „bod 4“ (tabulka sleduje košík bez načtení stránky) a nové kontroly, že se soubory rozšíření načtou. Žádný
+  opakovaný test. Evidence: `won-discounts/evidence/dotazeni-u4/` (25 souborů, screenshoty 390 a 1440 px obou šablon).
+  - Dry-run před ostrým během: zkouška přepisuje uložené nastavení obchodu (1 sleva, úrovně od 3 a 5 ks, doprava zdarma) zkušebním.
+    Po doběhnutí ho vrátila ze zálohy (`cleanup`, `costs-clear`, `verify-clean` exit 0); živý web má zase vzhled „chips“ a zelenou.
+  - Váha skriptů stránky produktu: **10 800 B z 12 288 B před i po** (rozšíření se v tomto zadání neměnilo; `tests/contracts/perf-budget.contract.test.ts`).
+- **Úkol 1, dovětek po restartu `shopify app dev` (7. 10. 15:47):** obchod přešel na nový dev balík (`dev-eba91699…`), všech 7 souborů
+  vrací 200 a blok na živém vzhledu „test-data“ je nastylovaný (štítky, zelená `rgb(26, 127, 69)`, 390 i 1440 px bez posuvu;
+  `Apps/.playwright-mcp/dotazeni/u1-zive-po-restartu-*.png`). Starý balík zůstal viset zhruba do první synchronizace po restartu.
+  Tím je potvrzená příčina (zastaralý dev preview) i náprava. Horizon a Dawn ověřila zkouška z úkolu 4.
 - **Úkol 5 (výjimky, dávka C, bod 7) — v kódu, commitnuto na větvi.** Podle nákresu `won-discounts/nakres-bod7-vyjimky.md`:
   - `tiers/ProTierSets.tsx`: seznam výjimek (název = první dva vybrané názvy a „a další N“, pod ním co výjimka dává, „Upravit“
     a „Odebrat“), rozbalená je jen upravovaná. Sbalená výjimka zůstává ve formuláři (skrytá, ne odpojená), ukládá se dál jedním „Uložit“.
