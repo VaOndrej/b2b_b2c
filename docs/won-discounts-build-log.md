@@ -110,7 +110,7 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   - **Rezerva funkce je po změně 323 B a asi 0,05 bodu.** Další funkce v pokladně musí nejdřív uvolnit místo.
   - **Pozor:** změnil jsem `extensions/` za běhu `shopify app dev`; podle runbooku to rozbije soubory rozšíření na webu do dalšího
     restartu. Ověření: `node apps/won-discounts/scripts/check-storefront-assets.mjs the-inventory-not-tracked-snowboard`.
-- **Další krok:** úkol 7 (Milníky), potom 8, 9.
+- **Další krok:** úkol 7 (Milníky) v nové session podle [`won-discounts/prompt-ukol7-milniky.md`](won-discounts/prompt-ukol7-milniky.md), potom 8, 9.
 
 Zadání: [`won-discounts/audit-dlazdice-trhy-2026-10-06.md`](won-discounts/audit-dlazdice-trhy-2026-10-06.md) (stav po nálezech je na jeho
 konci). Práce inline, commitnuto lokálně, nepushnuto, nenasazeno.
