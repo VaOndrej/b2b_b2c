@@ -9,7 +9,7 @@ Pracuješ **výhradně inline, bez subagentů**. Úkoly dělej v pořadí, v jak
 ## Kde to je
 
 - Repo: `~/Development/WonCommerce/Apps/b2b_b2c` (monorepo). Aplikace `apps/won-discounts`, sdílené jádro `packages/core/src/discounts`.
-- Větev: `won-discounts-feedback-2026-10-06`, 12 commitů před `main`, nepushnuto. Poslední commit `0d7833b`.
+- Větev: `won-discounts-feedback-2026-10-06`, 14 commitů před `main`, nepushnuto. Poslední commit s kódem je `0d7833b`, po něm už jen tohle zadání.
 - Stav běhu: `docs/won-discounts-build-log.md`, oddíl „Aktuální stav“. **Začni tím, že ho přečteš**, a po každé kompakci kontextu znovu.
 - Dev náhled bez přihlášení do Shopify: `http://localhost:<port>/dev/preview/<obrazovka>`. Port se mění. Zjistíš ho takhle:
 
@@ -92,7 +92,7 @@ Po každém úkolu zapiš stav do build logu a do tabulky „Stav implementace�
 
 Ondřej: „klidně vše push do mainu, vše pro Won Discounts pomergovat do mainu“.
 
-- Lokální větve 7. 10.: `won-discounts-feedback-2026-10-06` (12 commitů před `main`), `codex/won-quantity-bootstrap` a `won-toasts` (obě 0 commitů před `main`, není co slučovat). Ověř to znovu: `git rev-list --count main..<větev>`.
+- Lokální větve 7. 10.: `won-discounts-feedback-2026-10-06` (14 commitů před `main`), `codex/won-quantity-bootstrap` a `won-toasts` (obě 0 commitů před `main`, není co slučovat). Ověř to znovu: `git rev-list --count main..<větev>`.
 - Před sloučením musí projít brána. Slučuj až po úkolu 1, ať do `main` nejde známá chyba na webu; když se úkol 1 zasekne na něčem, co neopravíš, sluč i tak a napiš to.
 - `git fetch`, pak sloučit větev do `main` bez přepisování historie, pushnout `main`. Žádný `--force`.
 - Cizí necommitnuté soubory zůstanou necommitnuté. Pokud brání přepnutí větve, nepoužívej `stash` ani `checkout --`; sluč jinou cestou (například `git push origin won-discounts-feedback-2026-10-06:main`, když jde o posun bez slučovacího commitu) a lokální `main` dorovnej později.
