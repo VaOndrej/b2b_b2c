@@ -305,7 +305,7 @@ export function TiersScreen(props: TiersScreenProps) {
             }
           >
             <s-stack direction="block" gap="base">
-              <TierSetEditor set={globalSet} currencies={currencies} kept={kept} pro={pro} live={live} errorFor={errorFor} onChange={reread} attempted={errors.length > 0} />
+              <TierSetEditor set={globalSet} currencies={currencies} kept={kept} pro={pro} live={live} errorFor={errorFor} onChange={reread} attempted={errors.length > 0} suggest={props.suggest} />
               <HonestNotes marginOn={marginOn} competingRules={competingRules} outletWithAnything={props.outletWithAnything === true} />
             </s-stack>
           </WonSection>

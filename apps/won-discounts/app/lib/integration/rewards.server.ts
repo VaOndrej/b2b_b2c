@@ -25,7 +25,7 @@ import { loadAdminSignals } from "../ui-actions.server";
 import { graphqlOf, type ShopCtx } from "./context.server";
 import { readSaveOptions, saveConfigSection } from "./settings.server";
 import { ctxPlan, loadSyncView } from "./sync-status.server";
-import { readMarketNames, readShopContext, readThemeLook } from "./themes.server";
+import { readAmountSuggest, readMarketNames, readShopContext, readThemeLook } from "./themes.server";
 import { resourceLabels } from "./titles.server";
 
 const REWARD_CAPABILITIES: readonly ProCapability[] = ["gift_ladder", "gift_choices"];
@@ -112,6 +112,7 @@ export async function loadRewardsScreen(ctx: ShopCtx, opts: { scopes: string; fr
     cartBlockAddUrl: cartBlockAddUrl(ctx.shop, ctx.apiKey),
     placements: placementLinks(ctx.shop, ctx.apiKey, REWARDS_PROGRESS_BLOCK_HANDLE),
     placed: look.placements,
+    suggest: await readAmountSuggest(graphql, ctx.shop, opts.scopes, shopContext.currencyCode),
   };
 }
 

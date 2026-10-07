@@ -1,0 +1,90 @@
+// An amount suggested for the other markets (audit 6 Oct 2026, návrh 2; Ondřej 7 Oct 2026: only from the rate set
+// by hand in Shopify, and say so where there is none). The merchant types the amount in the shop currency; under
+// the fields each other market whose field is still empty gets one row — the suggestion with the button that
+// fills the field, or the sentence that no rate is set. Nothing is filled or saved without the click (MKT-1).
+//
+// The component reads its form itself (native input / change — React 18 fires no onChange on `s-*` fields), so it
+// works in every amount form: Odměny, Množstevní slevy, the discount editor.
+
+import { useEffect, useRef, useState } from "react";
+
+import { formatMoney } from "@won/core/discounts/describe";
+import { currencyExponent } from "@won/core/discounts/money";
+
+import { useT } from "../../i18n/context";
+import { suggestedAmount, type AmountSuggestView } from "../model/markets";
+import type { CurrencyView } from "../model/types";
+import { RowNote } from "./WonSection";
+
+function majorOf(raw: string | undefined): number {
+  return Number((raw ?? "").trim().replace(/\s/g, "").replace(",", "."));
+}
+
+export function AmountSuggestions({
+  suggest,
+  currencies,
+  field,
+  initial,
+}: {
+  /** Absent = the shop currency is not known: nothing is shown. */
+  suggest?: AmountSuggestView;
+  currencies: readonly CurrencyView[];
+  /** The name of the amount field of a currency. */
+  field: (code: string) => string;
+  /** What the fields hold when rendered (major units as typed; "" = empty). */
+  initial: Readonly<Record<string, string>>;
+}) {
+  const tr = useT();
+  const { t } = tr;
+  const ref = useRef<HTMLDivElement>(null);
+  const [values, setValues] = useState<Readonly<Record<string, string>>>(initial);
+  const codes = currencies.map((c) => c.code);
+  const names = codes.map(field).join("|");
+  useEffect(() => {
+    const form = ref.current?.closest("form");
+    if (!form) return;
+    const read = () => {
+      const data = new FormData(form);
+      setValues(Object.fromEntries(codes.map((code) => [code, typeof data.get(field(code)) === "string" ? String(data.get(field(code))) : ""])));
+    };
+    form.addEventListener("input", read);
+    form.addEventListener("change", read);
+    return () => {
+      form.removeEventListener("input", read);
+      form.removeEventListener("change", read);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the field names say when the set of fields changed
+  }, [names]);
+
+  const base = suggest?.base;
+  const baseMajor = base ? majorOf(values[base]) : NaN;
+  const rows = suggest && base && codes.includes(base) && baseMajor > 0 ? currencies.filter((c) => c.code !== base && (values[c.code] ?? "").trim() === "") : [];
+  const use = (code: string, value: string) => {
+    const form = ref.current?.closest("form");
+    const el = form?.querySelector(`[name="${CSS.escape(field(code))}"]`) as (HTMLElement & { value?: string }) | null;
+    if (!el) return;
+    el.value = value;
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+
+  return (
+    <div ref={ref} data-won-amount-suggest>
+      {rows.map((c) => {
+        const market = c.markets.length > 0 ? `${c.markets.map((m) => m.name).join(", ")} (${c.code})` : c.code;
+        const exponent = currencyExponent(c.code);
+        const major = suggestedAmount(baseMajor, suggest?.rates[c.code], exponent);
+        if (major === null) return <RowNote key={c.code}>{t("suggest.none", { market })}</RowNote>;
+        const amount = formatMoney(Math.round(major * 10 ** exponent), c.code, tr.locale);
+        return (
+          <div key={c.code} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 12px", marginTop: 4 }}>
+            <RowNote>{t("suggest.offer", { market, amount })}</RowNote>
+            <s-button variant="secondary" onClick={() => use(c.code, String(major))}>
+              {t("suggest.use", { amount })}
+            </s-button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

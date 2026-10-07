@@ -21,6 +21,7 @@ import { describeRuleLine, missingAmountCurrencies, type RuleLineNames } from ".
 import { FIELD, NAME_MAX } from "../model/rule-form";
 import { needsAttention, needsResync, statusAnchor, statusText, type RuleStatus } from "../model/rule-status";
 import type { MarginRuleImpactView } from "../model/types";
+import { AmountSuggestions } from "../shell/AmountSuggestions";
 import { CustomerPreview } from "./CustomerPreview";
 import { MarginNote } from "./MarginNote";
 import { TiersNote } from "./TiersNote";
@@ -209,6 +210,7 @@ export function DiscountSection({
                   />
                 ))}
               </FieldGrid>
+              {off ? null : <AmountSuggestions suggest={ed.suggest} currencies={ed.currencyViews} field={FIELD.amount} initial={defaults.amounts} />}
               {valueKind === "fixed" && noAmount.length > 0 ? (
                 // P3: the empty amount field is what keeps the rule from running (in every currency, or in these).
                 <FieldMark

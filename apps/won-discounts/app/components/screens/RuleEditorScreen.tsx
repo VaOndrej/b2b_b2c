@@ -28,7 +28,7 @@ import { useT } from "../../i18n/context";
 import { pickCollections, pickProducts } from "../model/app-bridge";
 import { ruleName } from "../model/describe";
 import { marketView } from "../model/markets";
-import { currencyCodes, currencyViews, marketViews, type MarketNames } from "../model/markets";
+import { type AmountSuggestView, currencyCodes, currencyViews, marketViews, type MarketNames } from "../model/markets";
 import {
   FIELD,
   readRuleForm,
@@ -51,6 +51,8 @@ import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
 
 export interface RuleEditorScreenProps {
+  /** The manual rates the amount fields suggest with (návrh 2). Absent = no suggestions. */
+  suggest?: AmountSuggestView;
   mode: "new" | "edit";
   /** The stored rule (edit) or null (new: the draft comes from `recipe`, in the admin language). */
   rule: DiscountRule | null;
@@ -324,7 +326,7 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
     const e = errors.find((x) => x.field === field);
     return e ? t(e.key, e.params) : undefined;
   };
-  const ed: EditorView = { draft, defaults, codes, currencyViews: currencies, timezone, readOnly, errorFor, tr };
+  const ed: EditorView = { draft, defaults, codes, currencyViews: currencies, suggest: props.suggest, timezone, readOnly, errorFor, tr };
   // The plan gate is the server's verdict on the STORED rule; the live draft is off only while it still holds that targeting.
   const gateOffLive = !!props.gateOff && !!rule && ((draft.targeting?.markets?.length ?? 0) > 0 || (draft.targeting?.segments?.length ?? 0) > 0);
   const status = ruleStatus(draft, {

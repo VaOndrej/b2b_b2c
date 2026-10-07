@@ -35,7 +35,7 @@ import { tierProductCounts } from "../sync/storefront";
 import { graphqlOf, type ShopCtx } from "./context.server";
 import { readSaveOptions, saveConfigSection, type SaveOptions } from "./settings.server";
 import { ctxPlan, loadSyncView } from "./sync-status.server";
-import { readMarketNames, readPreviewProduct, readShopContext, readStorefrontSync, readThemeLook } from "./themes.server";
+import { readAmountSuggest, readMarketNames, readPreviewProduct, readShopContext, readStorefrontSync, readThemeLook } from "./themes.server";
 
 /** The Pro capabilities of this module (plan-gate.ts): their gate sentences go on this page. */
 const TIER_CAPABILITIES: readonly ProCapability[] = ["tier_set_scope", "tier_sets_extra", "tier_count_across_cart"];
@@ -159,6 +159,7 @@ export async function loadTiersScreen(ctx: ShopCtx, opts: { scopes: string; fres
     shopCurrency: shopContext.currencyCode ?? "",
     configVersion: loaded.version ?? null,
     currencies: currencyViews(stored.markets, { shopCurrency: shopContext.currencyCode, marketNames }),
+    suggest: await readAmountSuggest(graphql, ctx.shop, opts.scopes, shopContext.currencyCode),
     ...tiersScreenFacts(stored, { plan, locale: ctx.locale, titles, syncable }),
     block: look.block,
     status: tiersSectionStatus(stored, plan, look.block, sync),

@@ -5,6 +5,7 @@
 // P3: a minimum set for some currencies only takes the rule out of the others;
 // the marker says in which.
 
+import { AmountSuggestions } from "../shell/AmountSuggestions";
 import { describeItemMinimums, describeMinimum, missingMinimumCurrencies } from "../model/describe";
 import { FIELD } from "../model/rule-form";
 import { boolAttr } from "../shell/attrs";
@@ -49,6 +50,7 @@ export function ConditionsSection({ ed }: { ed: EditorView }) {
             disabled={off}
           />
         </FieldGrid>
+        {off ? null : <AmountSuggestions suggest={ed.suggest} currencies={ed.currencyViews} field={FIELD.minimum} initial={defaults.minimums} />}
         {noMinimum.length > 0 ? <FieldMark text={t("editor.mark.minimumMissing", { currencies: tr.list(noMinimum) })} /> : null}
         <Shown when={targetsProducts && hasMinimum}>
           <SegmentedChoice

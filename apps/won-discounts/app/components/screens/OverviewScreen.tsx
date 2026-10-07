@@ -311,8 +311,8 @@ export function OverviewScreen({
   const waitText = writtenOf(status.sync) === "failed" ? (failedRules.length === 1 ? t("tile.waitsForRule", { rule: failedRules[0]! }) : t("tile.waitsForWrite")) : undefined;
   const waits = (key: "tiers" | "rewards" | "campaigns" | "margin") =>
     states[key]?.state === "attention" && !(key === "margin" && status.margin?.mirror.state === "failed") ? waitText : undefined;
-  // §19b: the shop that has Pro is not told "Pro" on every tile; the marker is for the plan that lacks it.
-  const proMark = plan !== "pro";
+  // Ondřej, 7 Oct 2026: a Pro part says "Pro" on its tile on every plan (on Pro the plain marker, on Free "Pro · odemknout").
+  const proMark = true;
   const moduleRows = moduleAttention(status, currencies, tr);
   // N5: "Aktivní" only when something runs. A new shop with everything connected is ready, not live.
   const somethingRuns = Object.values(states).some((s) => s?.state === "active");

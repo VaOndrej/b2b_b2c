@@ -60,6 +60,31 @@ export function currencyMarketNames(code: string, views: readonly CurrencyView[]
   return names.length > 0 ? names.join(", ") : code;
 }
 
+// --- An amount suggested for another market (audit 6 Oct 2026, návrh 2) ----------------------------------------
+// Only from the exchange rate the merchant set BY HAND for the market in Shopify (CurrencySetting.manualRate): the
+// Admin API does not give Shopify's automatic rate. Nothing is ever filled in or saved without a click (MKT-1: no
+// silent conversion); a market without a manual rate says so and asks for the amount.
+
+export interface AmountSuggestView {
+  /** The shop currency: the amount the merchant types first. */
+  base: string;
+  /** Manual rates from the shop currency, by target currency (1 base = rate target). Only markets that have one. */
+  rates: Record<string, number>;
+}
+
+/** A round number a merchant would type: 59,76 € → 60 €, 1 494 Kč → 1 490 Kč. */
+function roundNice(major: number): number {
+  const step = major < 10 ? 0.5 : major < 50 ? 1 : major < 200 ? 5 : major < 1000 ? 10 : major < 5000 ? 50 : 100;
+  return Math.max(step, Math.round(major / step) * step);
+}
+
+/** The suggested amount in `target` (major units) for `baseMajor` of the shop currency; null without a usable rate. */
+export function suggestedAmount(baseMajor: number, rate: number | undefined, exponent: number): number | null {
+  if (!Number.isFinite(baseMajor) || baseMajor <= 0 || typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0) return null;
+  const nice = roundNice(baseMajor * rate);
+  return exponent === 0 ? Math.max(1, Math.round(nice)) : nice;
+}
+
 export function currencyCodes(views: readonly CurrencyView[]): string[] {
   return views.map((v) => v.code);
 }

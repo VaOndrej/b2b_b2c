@@ -177,6 +177,11 @@ export function harnessScreen(pathname: string): HarnessScreen | null {
 
 const notFound = () => new Response("Not Found", { status: 404 });
 
+/** Návrh 2 in the harness: Slovakia has a manual rate (1 Kč = 0,04 €); ?rates=none = no market has one. */
+function devSuggest(q: URLSearchParams) {
+  return { base: "CZK", rates: q.get("rates") === "none" ? {} : { EUR: 0.04 } };
+}
+
 export const loader = ({ request }: LoaderFunctionArgs) => {
   if (!isDevHarnessEnabled()) {
     throw notFound();
@@ -354,6 +359,7 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       const pickedLabels = Object.fromEntries(picked.slice(0, -1).map((id, i) => [id, { title: `${["Mikina Won", "Tričko Won", "Čepice Won", "Ponožky Won"][i % 4]} ${i + 1}` }]));
       return {
         ...props,
+        suggest: devSuggest(q),
         ...(productCount > 0 && props.rule
           ? { rule: { ...props.rule, target: { kind: "products" as const, productIds: picked, variantIds: [], ...(q.get("mins") === "1" ? { itemMinimums: [{ id: picked[0]!, quantity: 3 }, { id: picked[1] ?? picked[0]!, quantity: 4 }] } : {}) } }, labels: pickedLabels }
           : { labels: { "gid://shopify/Collection/7": { title: "Doplňky" } } }),
@@ -451,10 +457,11 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       return {
         ...devTiersScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, theme: q.get("theme") }),
         result: devTiersResult(q.get("result")),
+        suggest: devSuggest(q),
       };
     case "rewards":
       // ?start=shipping: opened from the setup guide (free shipping switched on, amounts prefilled — N1).
-      return { ...devRewardsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale }), result: devRewardsResult(q.get("result")), start: q.get("start") === "shipping" ? ("shipping" as const) : null };
+      return { ...devRewardsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale }), result: devRewardsResult(q.get("result")), start: q.get("start") === "shipping" ? ("shipping" as const) : null, suggest: devSuggest(q) };
     case "campaigns":
       return {
         ...devCampaignsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, edit: q.get("edit") }),

@@ -9,6 +9,7 @@ import { useT } from "../../i18n/context";
 import { EDITOR_ANCHOR_ALIASES, type EditorAnchor } from "../model/describe";
 import type { RuleFormDefaults } from "../model/rule-form";
 import type { CurrencyView } from "../model/types";
+import type { AmountSuggestView } from "../model/markets";
 import { boolAttr } from "../shell/attrs";
 import { WON_ATTENTION, WON_FAINT, WON_FONT, WON_MUTED } from "../shell/tokens";
 
@@ -20,6 +21,8 @@ export interface EditorView {
   codes: string[];
   /** The same currencies with the markets that sell in them (the preview lists only the targeted ones). */
   currencyViews: CurrencyView[];
+  /** The manual rates the amount fields suggest with (návrh 2). Absent = no suggestions. */
+  suggest?: AmountSuggestView;
   timezone: string | null;
   /** B11: the stored config is read-only — every field and button is disabled, not just Save. */
   readOnly: boolean;

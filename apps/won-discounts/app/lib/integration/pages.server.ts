@@ -26,6 +26,7 @@ import { buildDiscountsProps } from "../../components/screens/DiscountsScreen";
 import { rewardsStatus } from "../../components/model/module-status";
 import { buildOnboardingProps, rewardsStored } from "../../components/screens/OnboardingScreen";
 import { rewardsOverviewOf } from "./rewards.server";
+import { readAmountSuggest } from "./themes.server";
 import { buildOverviewProps } from "../../components/screens/OverviewScreen";
 import { buildRuleEditorProps } from "../../components/screens/RuleEditorScreen";
 import { buildTryCartProps } from "../../components/screens/TryCartScreen";
@@ -251,6 +252,9 @@ export async function ruleEditorPage(
     now: nowOf(ctx),
   });
   if (!props) return null;
+  // Návrh 2: the amounts of the other markets are suggested from the rates set by hand in Shopify.
+  const suggest = await readAmountSuggest(graphql(ctx), ctx.shop, opts.scopes, reads.shopContext.currencyCode);
+  if (suggest) props.suggest = suggest;
   const target = props.rule?.target;
   const targetIds = target?.kind === "products" ? [...target.productIds, ...target.variantIds] : target?.kind === "collections" ? target.ids : [];
   const [result, labels] = await Promise.all([

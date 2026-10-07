@@ -16,8 +16,10 @@ konci). Práce inline, commitnuto lokálně, nepushnuto, nenasazeno.
   `read_markets` je povinné oprávnění, trhy se slučují do `config.markets` (`app/lib/sync/markets.ts` `withShopMarkets`) při
   uložení a jednou za hodinu z úvodní stránky; obchod bez uloženého nastavení dostane první nastavení s trhy.
 - **Hotovo:** T1, N1–N21 (N22 jen v dev náhledu bez signálů, viz audit), návrhy 1, 3, 4, 5, 7, slovníček.
-- **Nehotovo, čeká na rozhodnutí:** návrh 2 (návrh částky kurzem) — Admin API Shopify dává jen ručně nastavený kurz trhu
-  (`CurrencySetting.manualRate`), automatický ne. Návrh 6 je součást dávky D (Milníky). Návrh 8 audit nedoporučuje.
+- **Rozhodl Ondřej 7. 10.:** (1) štítek „Pro“ zůstává na dlaždicích i na tarifu Pro; (2) návrh částky jen z ručního kurzu trhu
+  v Shopify (`CurrencySetting.manualRate`, `readMarketRates` v `themes.server.ts`, `shell/AmountSuggestions.tsx`), kde není, formulář
+  to řekne; (3) překlady nastavení rozšíření webu se zatím neřeší. Návrh 6 je součást dávky D (Milníky), návrh 8 se nedělá.
+- **T1 po opravě naživo:** Ondřejův screenshot úvodní stránky 7. 10. ukazuje „2 trhy“ a chybějící částky pro slovensko.
 - **Naživo neověřeno:** nové čtení trhů v dev obchodě (po změně oprávnění ho Shopify nechá znovu potvrdit), úprava vzhledu obchodu.
 - Screenshoty 390 a 1440 px: `Apps/.playwright-mcp/audit-opravy` (28), skript `Apps/.playwright-mcp/audit-fix-shots.mjs`.
 - Testy: `tests/ui/audit-2026-10-06.test.ts` (13), `tests/lib/sync/f2-resync.test.ts` (+2), `tests/lib/sync/markets.test.ts` (+1).

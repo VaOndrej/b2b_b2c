@@ -10,10 +10,12 @@ import { createStaticHandler, createStaticRouter, StaticRouterProvider } from "r
 import { sanitizeConfig } from "@won/core/discounts/config";
 
 import { codesStatus, tiersStatus } from "../../app/components/model/module-status.ts";
+import { suggestedAmount } from "../../app/components/model/markets.ts";
 import { marketRows, sharedCurrencyGroups } from "../../app/components/model/markets-overview.ts";
 import type { RuleStatus } from "../../app/components/model/rule-status.ts";
 import type { SyncView } from "../../app/components/model/types.ts";
 import { campaignRuleChoices } from "../../app/lib/integration/campaigns-admin.server.ts";
+import { readMarketRates } from "../../app/lib/integration/themes.server.ts";
 import { tiersOverviewOf } from "../../app/lib/integration/tiers.server.ts";
 
 // Audit of 6 Oct 2026 (docs/won-discounts/audit-dlazdice-trhy-2026-10-06.md): the findings N1–N21 and the
@@ -94,11 +96,53 @@ test("N13: a failed write names its one cause on the tiles that wait for it; no 
   assert.match(html, /nebo tu slevu přesuňte do Won\./);
 });
 
-test("N17: a shop on Pro is not told 'Pro' on its tiles", async () => {
+test("N17 (changed by Ondřej, 7 Oct 2026): a Pro part says 'Pro' on its tile on every plan; a running sale is worded 'Běží výprodej'", async () => {
   const pro = await render("overview?state=modules&plan=pro");
-  assert.doesNotMatch(tile(pro, "outlet"), /data-won-plan-badge/);
+  for (const key of ["outlet", "campaigns", "tryCart"]) {
+    assert.match(tile(pro, key), /data-won-plan-badge="pro"/, key);
+    assert.doesNotMatch(tile(pro, key), /data-won-tile-locked/, `${key}: not locked on Pro`);
+  }
   assert.match(tile(pro, "outlet"), /Běží výprodej: /);
-  assert.match(tile(await render("overview?state=modules"), "outlet"), /data-won-plan-badge="pro"/, "Free still sees what is Pro");
+  assert.match(tile(await render("overview?state=modules"), "tryCart"), /data-won-tile-locked/, "Free: locked");
+});
+
+test("návrh 2: an amount for another market is suggested only from the rate set by hand in Shopify; without one the form says so", async () => {
+  // 1 500 Kč × 0,04 = 60 €; 1 494 × 0,04 = 59,76 → a round 60; forints have no decimals.
+  assert.equal(suggestedAmount(1500, 0.04, 2), 60);
+  assert.equal(suggestedAmount(1494, 0.04, 2), 60);
+  assert.equal(suggestedAmount(100, 0.04, 2), 4);
+  assert.equal(suggestedAmount(1500, 15.8, 0), 23700);
+  assert.equal(suggestedAmount(1500, undefined, 2), null, "no manual rate: nothing is suggested");
+  assert.equal(suggestedAmount(0, 0.04, 2), null);
+
+  let asked = 0;
+  const graphql = async () => {
+    asked += 1;
+    return {
+      data: {
+        markets: {
+          nodes: [
+            { status: "ACTIVE", currencySettings: { baseCurrency: { currencyCode: "EUR", manualRate: "0.04" } } },
+            { status: "ACTIVE", currencySettings: { baseCurrency: { currencyCode: "PLN", manualRate: null } } },
+            { status: "DRAFT", currencySettings: { baseCurrency: { currencyCode: "HUF", manualRate: "15.8" } } },
+            { status: "ACTIVE", currencySettings: { baseCurrency: { currencyCode: "USD", manualRate: "0.043" } } },
+            { status: "ACTIVE", currencySettings: { baseCurrency: { currencyCode: "USD", manualRate: "0.05" } } },
+          ],
+        },
+      },
+    };
+  };
+  assert.deepEqual(await readMarketRates(graphql, "audit-rates.myshopify.com", "read_markets"), { EUR: 0.04 }, "automatic, switched-off and disagreeing markets have no rate to suggest with");
+  assert.deepEqual(await readMarketRates(graphql, "audit-rates-2.myshopify.com", "read_products"), {}, "without the scope nothing is read");
+  assert.equal(asked, 1);
+
+  // The gift of the fixture has 1 500 Kč and no amount for Slovakia: the suggestion, or the sentence that no rate is set.
+  const withRate = await render("rewards");
+  assert.match(withRate, /Slovensko \(EUR\): navrhujeme 60\s€ \(podle kurzu, který máte u trhu nastavený v Shopify, zaokrouhleno\)\./);
+  assert.match(withRate, /Použít 60\s€/);
+  const without = await render("rewards?rates=none");
+  assert.match(without, /Slovensko \(EUR\): částku nenavrhujeme\. Trh nemá v Shopify ručně nastavený kurz, zadejte ji sami\./);
+  assert.doesNotMatch(without, /navrhujeme 60/);
 });
 
 test("N9 + N1: Odměny opened from the guide has free shipping on with the recipe's amounts; a new form shows no error yet", async () => {

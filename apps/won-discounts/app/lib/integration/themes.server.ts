@@ -115,6 +115,44 @@ export async function readMarketNames(graphql: AdminGraphqlFn, shop: string, sco
   });
 }
 
+/**
+ * The exchange rates the merchant set by hand for the shop's markets (read_markets; CurrencySetting.manualRate,
+ * "applies to this currency when converting from shop currency"), by currency. A currency whose markets disagree
+ * is left out (no single rate to suggest with). {} without the scope or when the read fails: nothing is suggested.
+ */
+export async function readMarketRates(graphql: AdminGraphqlFn, shop: string, scopes?: string | null): Promise<Record<string, number>> {
+  if (!canReadMarkets(scopes)) return {};
+  return cachedRead(`market-rates:${shop}`, async () => {
+    try {
+      const json = (await graphql(`#graphql
+        query WonDiscountsMarketRates { markets(first: 50) { nodes { status currencySettings { baseCurrency { currencyCode manualRate } } } } }`)) as {
+        data?: { markets?: { nodes?: { status?: unknown; currencySettings?: { baseCurrency?: { currencyCode?: unknown; manualRate?: unknown } | null } | null }[] } };
+      };
+      const out: Record<string, number> = {};
+      const conflict = new Set<string>();
+      for (const node of json?.data?.markets?.nodes ?? []) {
+        const currency = node?.currencySettings?.baseCurrency;
+        const rate = Number(currency?.manualRate);
+        if (node?.status !== "ACTIVE" || typeof currency?.currencyCode !== "string" || currency.manualRate === null || currency.manualRate === undefined) continue;
+        if (!Number.isFinite(rate) || rate <= 0) continue;
+        const code = currency.currencyCode;
+        if (code in out && Math.abs(out[code]! - rate) > 1e-9) conflict.add(code);
+        out[code] = rate;
+      }
+      for (const code of conflict) delete out[code];
+      return out;
+    } catch {
+      return {};
+    }
+  });
+}
+
+/** What the amount fields suggest with (model/markets.ts AmountSuggestView); undefined when the shop currency is unknown. */
+export async function readAmountSuggest(graphql: AdminGraphqlFn, shop: string, scopes: string | null | undefined, shopCurrency: string | null | undefined): Promise<{ base: string; rates: Record<string, number> } | undefined> {
+  if (!shopCurrency) return undefined;
+  return { base: shopCurrency, rates: await readMarketRates(graphql, shop, scopes) };
+}
+
 // --- Parsing theme files (pure) -----------------------------------------------------------------------
 
 /** A theme JSON file → its value. Shopify prepends a generated `/* … *\/` comment that is not JSON; junk → null. */

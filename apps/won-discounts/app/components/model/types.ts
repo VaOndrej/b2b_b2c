@@ -632,6 +632,8 @@ export interface PreviewLookView {
 export type AppearancePresetView = "default" | "highlight" | "chips" | "tiles";
 
 export interface TiersScreenData {
+  /** What the amount fields suggest for the other markets with (the manual rates set in Shopify; návrh 2). Absent = no suggestions. */
+  suggest?: import("./markets").AmountSuggestView;
   plan: "free" | "pro";
   shopCurrency: string;
   /** F12 expected-version token for the save. */
@@ -763,6 +765,8 @@ export interface RewardsScreenData {
   placements?: PlacementLinks;
   /** Which of those places the live theme already has (absent key = not verified). */
   placed?: ThemePlacements;
+  /** What the amount fields suggest for the other markets with (the manual rates set in Shopify; návrh 2). Absent = no suggestions. */
+  suggest?: import("./markets").AmountSuggestView;
 }
 
 /** Přehled card. */

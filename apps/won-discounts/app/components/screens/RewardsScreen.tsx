@@ -32,6 +32,7 @@ import type { EmbedState, GiftTierView, GiftVariantView, RewardsScreenData, UiRe
 import type { MessageKey } from "../../i18n";
 import { pickGiftVariants } from "../rewards/gift-picker";
 import { FieldMessage, Shown } from "../rule-editor/parts";
+import { AmountSuggestions } from "../shell/AmountSuggestions";
 import { boolAttr } from "../shell/attrs";
 import { GateNotes } from "../shell/GateNotes";
 import { Notice } from "../shell/Notice";
@@ -195,6 +196,7 @@ export function RewardsScreen(props: RewardsScreenProps) {
   };
 
   const amountFields = (field: (c: string) => string, initial: Record<string, number> | null) => (
+    <>
     <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
       {codes.map((code) => (
         <s-number-field
@@ -210,6 +212,9 @@ export function RewardsScreen(props: RewardsScreenProps) {
         />
       ))}
     </div>
+    {/* Návrh 2: the other markets' amounts, suggested from the rate set by hand in Shopify — or the sentence that none is set. */}
+    <AmountSuggestions suggest={props.suggest} currencies={currencies} field={field} initial={Object.fromEntries(codes.map((code) => [code, amountInput(initial, code)]))} />
+    </>
   );
   // MKT-1 notes follow the fields: a currency whose field is empty NOW — once there was an attempt (see `left`).
   const missingNotes = (field: (c: string) => string, stored: Record<string, number> | null, isStored: boolean) =>

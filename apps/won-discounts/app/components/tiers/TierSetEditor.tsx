@@ -21,6 +21,8 @@ import { countLabel, tierPresetLabel, tierRowGap, TIERS_FIELD, TIER_COUNT_MODES,
 import type { CurrencyView, TierBreakView, TierSetView } from "../model/types";
 import { FieldMessage, Shown } from "../rule-editor/parts";
 import { SegmentedChoice } from "../shell/SegmentedChoice";
+import { AmountSuggestions } from "../shell/AmountSuggestions";
+import type { AmountSuggestView } from "../model/markets";
 import { RowNote } from "../shell/WonSection";
 import { WON_LINE } from "../shell/tokens";
 
@@ -49,6 +51,7 @@ export function TierSetEditor({
   errorFor,
   onChange,
   attempted = false,
+  suggest,
 }: {
   set: TierSetView;
   /** Currencies of the enabled markets (amount fields). */
@@ -61,6 +64,8 @@ export function TierSetEditor({
   errorFor: (field: string) => string | undefined;
   /** A row was added or removed: the page re-reads its form (the state line and the preview follow, §17b). */
   onChange?: () => void;
+  /** The manual rates the amount fields suggest with (návrh 2). */
+  suggest?: AmountSuggestView;
   /** A save was refused: every row says what it lacks (before that only rows the merchant has left, audit N8). */
   attempted?: boolean;
 }) {
@@ -234,6 +239,12 @@ export function TierSetEditor({
                 </div>
                 {gap && tried ? <RowNote tone="attention">{t(gap === "min" ? "tiers.break.incompleteMin" : kind === "percent" ? "tiers.break.incompletePercent" : "tiers.break.incompleteAmount")}</RowNote> : null}
                 <Shown when={kind === "amount"}>
+                  <AmountSuggestions
+                    suggest={suggest}
+                    currencies={currencies}
+                    field={(code) => F.amount(sid, row.key, code)}
+                    initial={Object.fromEntries(codes.map((code) => [code, row.initial.amount[code] !== undefined ? minorToInput(row.initial.amount[code]!, code) : ""]))}
+                  />
                   <FieldMessage text={errorFor(F.amounts(sid, row.key))} />
                   {/* One sentence per level: an incomplete level says only that; a complete one names the markets it misses. */}
                   {!gap && tried && missing.length > 0 ? (

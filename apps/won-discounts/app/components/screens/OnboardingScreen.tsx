@@ -414,7 +414,7 @@ export function OnboardingScreen({ step, rules, liveRules = 0, goals, native, em
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <RowNote>{t("onboarding.check.tryCart")}</RowNote>
-                  {plan === "pro" ? null : <PlanBadge tier="pro" />}
+                  <PlanBadge tier="pro" />
                 </div>
               </WonRow>
             )}

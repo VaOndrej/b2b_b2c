@@ -234,16 +234,16 @@ T1 je ověřené naživo: dev obchod má v Shopify dva aktivní trhy a aplikace 
 | N1, N11, N12 | hotovo: cíl „Doprava zdarma nebo dárek“ vede do Odměn s předvyplněnou částkou, na Free „Otevřít obchod“, počet aktivních slev sedí s dlaždicí. |
 | N2, N4, N5, návrh 5 | hotovo: chybějící trh je věc k vyřešení u dárku, dopravy i úrovní; dlaždice a seznam počítají stejně; nový obchod je „Připraveno“. |
 | N3 | hotovo: krátký popis na úzké dlaždici, stav se neořezává, začíná „3 aktivní z 6“. |
-| N6, N7, N9, N10, N18, N19, N21 | hotovo na stránce Odměny. N7: název volby v úpravě vzhledu zůstává anglicky (je v rozšíření webu), text v aplikaci to říká. |
+| N6, N7, N9, N10, N18, N19, N21 | hotovo na stránce Odměny. N7: název volby v úpravě vzhledu zůstává anglicky (je v rozšíření webu), text v aplikaci to říká. Překlady nastavení rozšíření se zatím neřeší (Ondřej 7. 10.). |
 | N8, návrh 7 | hotovo: chyby až po opuštění pole nebo odmítnutém uložení, jedna věta na úroveň. |
 | N13 | hotovo: bez anglické závorky, vykání, dlaždice říkají, na kterou slevu čekají. |
 | N14 | hotovo: kampaň se ptá jen na měny zapnutých trhů a řekne, kde se sleva nenabízí. |
 | N15, návrh 4 | hotovo: tabulka trhů v Nastavení. |
 | N16 | hotovo: seznam „K vyřešení“ nahoře, počítá se jen to, s čím jde něco udělat. |
-| N17, N20 | hotovo: na Pro bez štítku „Pro“, Nastavení říká počet trhů. Přehledy a Vzhled beze změny (Vzhled zaniká v dávce E). |
+| N17, N20 | N17 změněno rozhodnutím Ondřeje 7. 10.: štítek „Pro“ je na dlaždici na každém tarifu (na Pro prostý, na Free „Pro · odemknout“). Stav výprodeje „Běží výprodej“. Nastavení říká počet trhů. Přehledy a Vzhled beze změny (Vzhled zaniká v dávce E). |
 | N22 | beze změny: stav bez štítků je jen v náhledu `overview?state=empty`, který nemá data o modulech. Ostrá aplikace je má vždy. |
 | návrh 3 | hotovo: pole se jmenují podle trhu, měna v závorce (Odměny, úrovně, editor slevy, kampaně, upozornění). |
-| návrh 2 | **nehotovo.** Shopify aplikaci dává jen ručně nastavený kurz trhu, automatický ne. Čeká na rozhodnutí o zdroji kurzu. |
+| návrh 2 | hotovo podle rozhodnutí Ondřeje 7. 10.: částka se navrhuje jen z kurzu, který je u trhu v Shopify nastavený ručně; kde není, formulář to řekne a částku chce zadat. Nic se nevyplní bez kliknutí. V Odměnách, Množstevních slevách a editoru slevy; v kampaních ne. Naživo neověřeno. |
 | návrh 6 | součást dávky D (Milníky). |
 | návrh 8 | neděláno (audit nedoporučuje); Nastavení říká větou, že trhy se stejnou měnou sdílejí částku. |
 | slovníček | hotovo v češtině. |
