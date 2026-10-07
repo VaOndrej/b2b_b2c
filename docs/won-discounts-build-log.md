@@ -9,6 +9,13 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ### Opravy po auditu srozumitelnosti (7. 10. 2026) — větev `won-discounts-feedback-2026-10-06`
 
+> **Další krok (7. 10. večer):** celé pokračování je zadané v
+> [`won-discounts/prompt-dotazeni-2026-10-07.md`](won-discounts/prompt-dotazeni-2026-10-07.md) (chyba vzhledu na webu, sloučení
+> do `main`, návrh částky v kampaních, zkouška Horizon + Dawn, výjimky, částky podle trhu, Milníky, Překlady, scénáře košíku).
+> Odložené věci jsou ve Second Brain: `won-discounts-overeni-po-nasazeni`, `won-discounts-billing-nazivo`,
+> `won-discounts-pristup-k-objednavkam`, `won-discounts-preklady-nastaveni-rozsireni`.
+> **Známá chyba:** vzhled a barva množstevní slevy se 7. 10. nepropsaly na živý web dev obchodu (blok je tam bez stylů), úkol 1.
+
 Zadání: [`won-discounts/audit-dlazdice-trhy-2026-10-06.md`](won-discounts/audit-dlazdice-trhy-2026-10-06.md) (stav po nálezech je na jeho
 konci). Práce inline, commitnuto lokálně, nepushnuto, nenasazeno.
 
