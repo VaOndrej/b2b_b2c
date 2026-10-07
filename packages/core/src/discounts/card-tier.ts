@@ -21,6 +21,8 @@ export interface CardTierInput {
   cfg: Pick<StorefrontConfigV1, "tiers" | "margin"> & { cards?: 1; ow?: 1 };
   /** The page's currency (cart.currency.iso_code). */
   currency: string;
+  /** The handle of the storefront's market (Liquid `localization.market.handle`): its own amount is read before its currency's. */
+  market?: string | null;
   /** The product metafield value (`$app:won_discounts`/`product`), null when the product has none. */
   product: { tierRef?: unknown; marginRefs?: unknown } | null;
   /** Some variant has a purchase cost mirrored (variant metafield `variant` or `pdp`). */
@@ -69,7 +71,9 @@ export function cardTier(input: CardTierInput): CardTier {
     return { min: first.min, pct: first.pct };
   }
   if (marginOn) return null;
-  const off = Object.hasOwn(first.off, input.currency) ? first.off[input.currency]! : null;
+  // Amounts per market (7 Oct 2026): the market's own amount ("EUR@sk") first, then its currency's.
+  const own = input.market ? `${input.currency}@${input.market}` : null;
+  const off = own !== null && Object.hasOwn(first.off, own) ? first.off[own]! : Object.hasOwn(first.off, input.currency) ? first.off[input.currency]! : null;
   if (off === null || !(off > 0) || off > input.priceMin) return null;
   return { min: first.min, off };
 }

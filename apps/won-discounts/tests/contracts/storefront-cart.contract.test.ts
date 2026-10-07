@@ -497,19 +497,26 @@ test("property: the panel's free-shipping and gift progress = planCart's (before
   const doc = { readyState: "complete", documentElement: { lang: "cs" }, getElementById: () => ({ textContent: "{}" }), querySelector: () => ({ setAttribute() {} }), addEventListener() {} };
   const run = vm.createContext({ window: {} as Record<string, unknown>, document: doc, Intl, JSON, Math });
   vm.runInContext(SOURCES[0]!, run);
-  const wd = (run.window as { WonDiscounts: { plan: (cart: unknown, rw: unknown, facts: unknown) => { base: number; ship: unknown; tiers: { id: string; reached: boolean; remaining: number; lost: boolean }[] } } }).WonDiscounts;
+  const wd = (run.window as { WonDiscounts: { plan: (cart: unknown, rw: unknown, facts: unknown, mk?: string) => { base: number; ship: unknown; tiers: { id: string; reached: boolean; remaining: number; lost: boolean }[] } } }).WonDiscounts;
   let seed = 7;
   const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31);
   const pick = <T,>(list: T[]) => list[Math.floor(rnd() * list.length)]!;
   for (let n = 0; n < 1500; n++) {
     const other = rnd() < 0.5;
+    // Amounts per market (7 Oct 2026): sometimes Germany has its own threshold ("EUR@de") next to the euro one.
+    const own = rnd() < 0.4;
     const { config } = sanitizeConfig({
+      markets: [
+        { handle: "cz", currency: "CZK", enabled: true, countries: ["CZ"] },
+        { handle: "sk", currency: "EUR", enabled: true, countries: ["SK"] },
+        { handle: "de", currency: "EUR", enabled: true, countries: ["DE"] },
+      ],
       modules: {
         codes: { rules: [] },
         rewards: {
-          freeShipping: { threshold: { CZK: pick([50000, 100000, 1]), ...(rnd() < 0.5 ? { EUR: 4000 } : {}) } },
+          freeShipping: { threshold: { CZK: pick([50000, 100000, 1]), ...(rnd() < 0.5 ? { EUR: 4000 } : {}), ...(own ? { "EUR@de": 9000 } : {}) } },
           gifts: [
-            { id: "g1", threshold: { CZK: pick([30000, 150000]), EUR: 6000 }, choices: ["gid://shopify/ProductVariant/9001"] },
+            { id: "g1", threshold: { CZK: pick([30000, 150000]), EUR: 6000, ...(own ? { "EUR@de": pick([1000, 200000]) } : {}) }, choices: ["gid://shopify/ProductVariant/9001"] },
             { id: "g2", threshold: { CZK: 300000 }, choices: ["gid://shopify/ProductVariant/9002"] },
           ],
           countOtherDiscounts: other,
@@ -519,6 +526,8 @@ test("property: the panel's free-shipping and gift progress = planCart's (before
     const sf = buildStorefrontConfig(config, { configVersion: "x", variantHandles: { "gid://shopify/ProductVariant/9001": "a", "gid://shopify/ProductVariant/9002": "b" } });
     const payload = buildShopFunctionConfig(config, { now: "2026-10-01T12:00:00", shopTimezone: "Europe/Prague" }).payload;
     const currency = pick(["CZK", "CZK", "EUR"]);
+    const country = currency === "CZK" ? "CZ" : pick(["SK", "DE", "FR"]);
+    const market = { CZ: "cz", SK: "sk", DE: "de" }[country] ?? "";
     const items = Array.from({ length: 1 + Math.floor(rnd() * 5) }, (_, i) => {
       const gift = rnd() < 0.2 ? pick(["g1", "g2"]) : null;
       const price = pick([1000, 9990, 25000, 70000, 125000]);
@@ -528,10 +537,11 @@ test("property: the panel's free-shipping and gift progress = planCart's (before
     });
     const orderOff = rnd() < 0.3 ? 5000 : 0;
     const cart = cartOf(items, { currency, cart_level_discount_applications: orderOff ? [{ total_allocated_amount: orderOff }] : [] });
-    const js = JSON.parse(JSON.stringify(wd.plan(cart, sf.rewards, {}))) as ReturnType<typeof wd.plan>;
+    const js = JSON.parse(JSON.stringify(wd.plan(cart, sf.rewards, {}, `${currency}@${market}`))) as ReturnType<typeof wd.plan>;
     const plan = planCart(
       {
         currency,
+        countryCode: country,
         enteredCodes: [],
         lines: items.map((it) => ({
           id: it.key,
@@ -552,7 +562,8 @@ test("property: the panel's free-shipping and gift progress = planCart's (before
     // After discounts (countOtherDiscounts): the engine's line discounts are 0 here, so the JS side
     // sees only the cart's own reductions — compare the rule itself: lost ⇔ reached && after < threshold.
     for (const x of js.tiers) {
-      const threshold = (sf.rewards!.gifts.find((g) => g.id === x.id)!.t as Record<string, number>)[currency]!;
+      const t = sf.rewards!.gifts.find((g) => g.id === x.id)!.t as Record<string, number>;
+      const threshold = t[`${currency}@${market}`] ?? t[currency]!;
       const after = items.filter((i) => !i.properties._won_gift).reduce((s, i) => s + i.final_line_price, 0) - orderOff;
       assert.equal(x.lost, other && x.reached && after < threshold, `lost, case ${n}`);
     }

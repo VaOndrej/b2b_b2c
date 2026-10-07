@@ -89,6 +89,7 @@ keys! {
     Codes = "codes",
     Rules = "rules",
     MarketCountries = "marketCountries",
+    AmountMarkets = "am",
     Campaigns = "campaigns",
     CampaignVarsVersion = "campaignVarsVersion",
     Engine = "engine",

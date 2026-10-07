@@ -22,7 +22,7 @@
       .then((r) => r.json())
       .then((c) => {
         cart = c;
-        view = wd.plan(c, data.rw || {}, data.g || {});
+        view = wd.plan(c, data.rw || {}, data.g || {}, data.mk);
         render();
       })
       .catch(() => {});

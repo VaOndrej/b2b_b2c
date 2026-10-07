@@ -66,6 +66,13 @@ const marginOn = (/** @type {Record<string, number>} */ global, /** @type {Recor
 
 // --- Shared configs ------------------------------------------------------------------------
 
+/** Markets of the "amounts per market" scenarios: two euro markets (Germany's has two countries) and the Czech one. */
+const MARKET_AMOUNT_MARKETS = [
+  { handle: "cz", currency: "CZK", enabled: true, countries: ["CZ"] },
+  { handle: "sk", currency: "EUR", enabled: true, countries: ["SK"] },
+  { handle: "de", currency: "EUR", enabled: true, countries: ["DE", "AT"] },
+];
+
 /** modules.tiers of the merchant config (MVP 3): `sets` = TierSet[]. */
 const tiers = (/** @type {Record<string, unknown>[]} */ ...sets) => ({ sets });
 /** A tier set: `scope` "global" or `{ productIds }` (Pro), counted per `countAcross`. */
@@ -1241,6 +1248,103 @@ function allScenarios() {
       { n: 1, price: "10.0", qty: 5, won: won() },
       { n: 2, price: "10.0", qty: 1, won: won() },
     ],
+    expected: out(products(pc(fromAmount(2, `2${NBSP}€`), [1], perItem("2.00")))),
+  },
+  // --- amounts per market (7 Oct 2026): "EUR@sk" is Slovakia's own amount, "EUR" every other euro market's ---
+  {
+    name: "lines-market-amount-own",
+    description:
+      "Amounts per market: the order discount is 16 € in Slovakia and 20 € in Germany (keys EUR@sk / EUR@de), the config says so with `am` and ships both markets' countries. A Slovak EUR cart gets 16 €.",
+    target: "lines",
+    rules: [{ id: "obj", name: "Sleva na objednávku", enabled: true, method: "automatic", value: { kind: "fixed", amount: { CZK: 40000, "EUR@sk": 1600, "EUR@de": 2000 } }, target: { kind: "order" } }],
+    configExtra: { markets: MARKET_AMOUNT_MARKETS },
+    role: AUTO,
+    currency: "EUR",
+    country: "SK",
+    lines: [{ n: 1, price: "100.0", qty: 2, won: won() }],
+    expected: out(order("Sleva na objednávku", [], amountOff("16.00"))),
+  },
+  {
+    name: "lines-market-amount-other-market",
+    description: "The same config, a German EUR cart: Germany's own 20 €.",
+    target: "lines",
+    rules: [{ id: "obj", name: "Sleva na objednávku", enabled: true, method: "automatic", value: { kind: "fixed", amount: { CZK: 40000, "EUR@sk": 1600, "EUR@de": 2000 } }, target: { kind: "order" } }],
+    configExtra: { markets: MARKET_AMOUNT_MARKETS },
+    role: AUTO,
+    currency: "EUR",
+    country: "AT",
+    lines: [{ n: 1, price: "100.0", qty: 2, won: won() }],
+    expected: out(order("Sleva na objednávku", [], amountOff("20.00"))),
+  },
+  {
+    name: "lines-market-amount-unknown-country",
+    description: "The same config, an EUR cart from a country in no market (FR): no market's own amount applies and there is no amount for the currency alone, so nothing is given — never another market's amount.",
+    target: "lines",
+    rules: [{ id: "obj", name: "Sleva na objednávku", enabled: true, method: "automatic", value: { kind: "fixed", amount: { CZK: 40000, "EUR@sk": 1600, "EUR@de": 2000 } }, target: { kind: "order" } }],
+    configExtra: { markets: MARKET_AMOUNT_MARKETS },
+    role: AUTO,
+    currency: "EUR",
+    country: "FR",
+    lines: [{ n: 1, price: "100.0", qty: 2, won: won() }],
+    expected: NONE,
+  },
+  {
+    name: "lines-market-amount-falls-back-to-currency",
+    description:
+      "Germany has its own amount and minimum spend (20 € from 200 €), every other euro market the currency's (10 € from 50 €). A Slovak cart of 60 € gets the currency's 10 €: its market has no key of its own.",
+    target: "lines",
+    rules: [
+      { id: "obj", name: "Sleva na objednávku", enabled: true, method: "automatic", value: { kind: "fixed", amount: { EUR: 1000, "EUR@de": 2000 } }, target: { kind: "order" }, minimum: { subtotal: { EUR: 5000, "EUR@de": 20000 } } },
+    ],
+    configExtra: { markets: MARKET_AMOUNT_MARKETS },
+    role: AUTO,
+    currency: "EUR",
+    country: "SK",
+    lines: [{ n: 1, price: "30.0", qty: 2, won: won() }],
+    expected: out(order("Sleva na objednávku", [], amountOff("10.00"))),
+  },
+  {
+    name: "lines-market-amount-minimum-of-own-market",
+    description: "The same config, a German cart of 60 €: Germany needs 200 €, so nothing — the currency's 50 € minimum is not Germany's.",
+    target: "lines",
+    rules: [
+      { id: "obj", name: "Sleva na objednávku", enabled: true, method: "automatic", value: { kind: "fixed", amount: { EUR: 1000, "EUR@de": 2000 } }, target: { kind: "order" }, minimum: { subtotal: { EUR: 5000, "EUR@de": 20000 } } },
+    ],
+    configExtra: { markets: MARKET_AMOUNT_MARKETS },
+    role: AUTO,
+    currency: "EUR",
+    country: "DE",
+    lines: [{ n: 1, price: "30.0", qty: 2, won: won() }],
+    expected: NONE,
+  },
+  {
+    name: "lines-market-amount-tiers",
+    description:
+      "Quantity tiers per market: from 2 items −2 € in every euro market, from 5 items −3 € in Slovakia and −4 € in Germany. The set's columns are EUR, EUR@de, EUR@sk; a German cart reads Germany's column in every break: 2 items −2 €, 5 items −4 €.",
+    target: "lines",
+    rules: [],
+    tiers: tiers(tierSet("castka", "line", [{ minQty: 2, amountOff: { CZK: 5000, EUR: 200 } }, { minQty: 5, amountOff: { CZK: 8000, "EUR@sk": 300, "EUR@de": 400 } }])),
+    configExtra: { markets: MARKET_AMOUNT_MARKETS },
+    role: AUTO,
+    currency: "EUR",
+    country: "DE",
+    lines: [
+      { n: 1, price: "10.0", qty: 5, won: won() },
+      { n: 2, price: "10.0", qty: 2, won: won() },
+    ],
+    expected: out(products(pc(fromAmount(5, `4${NBSP}€`), [1], perItem("4.00")), pc(fromAmount(2, `2${NBSP}€`), [2], perItem("2.00")))),
+  },
+  {
+    name: "lines-market-amount-tiers-unknown-country",
+    description: "The same set, an EUR cart from a country in no market: only the currency's column counts — 5 items reach the last break with an EUR amount, −2 €.",
+    target: "lines",
+    rules: [],
+    tiers: tiers(tierSet("castka", "line", [{ minQty: 2, amountOff: { CZK: 5000, EUR: 200 } }, { minQty: 5, amountOff: { CZK: 8000, "EUR@sk": 300, "EUR@de": 400 } }])),
+    configExtra: { markets: MARKET_AMOUNT_MARKETS },
+    role: AUTO,
+    currency: "EUR",
+    country: "FR",
+    lines: [{ n: 1, price: "10.0", qty: 5, won: won() }],
     expected: out(products(pc(fromAmount(2, `2${NBSP}€`), [1], perItem("2.00")))),
   },
   {

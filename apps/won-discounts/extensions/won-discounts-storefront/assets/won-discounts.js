@@ -24,17 +24,19 @@
     plain(cart).reduce((s, item) => s + (item.final_line_price || 0), 0) -
     (cart.cart_level_discount_applications || []).reduce((s, a) => s + (a.total_allocated_amount || 0), 0);
 
-  const plan = (cart, rw, facts) => {
+  const plan = (cart, rw, facts, mk) => {
     const cur = cart.currency;
+    // A threshold of the cart's own market ("EUR@sk", `mk`) first, then its currency's.
+    const at = (m) => (m && typeof m[mk] === "number" ? m[mk] : m?.[cur]);
     const b = base(cart);
     const after = afterBase(cart);
     const declined = declinedOf(cart);
     const out = { base: b, ship: null, tiers: [], add: null, remove: [] };
-    const ship = rw.ship?.[cur];
+    const ship = at(rw.ship);
     if (typeof ship === "number") out.ship = { threshold: ship, remaining: Math.max(0, ship - b), reached: b >= ship };
     const ok = (o) => o && facts[o.v]?.a !== false;
     for (const g of rw.gifts || []) {
-      const threshold = g.t?.[cur];
+      const threshold = at(g.t);
       const offered = [...(g.c || []), g.f].filter(Boolean).map((o) => o.v);
       const tagged = (cart.items || []).filter((item) => giftOf(item) === g.id);
       const mine = tagged.filter((item) => offered.includes(item.variant_id));

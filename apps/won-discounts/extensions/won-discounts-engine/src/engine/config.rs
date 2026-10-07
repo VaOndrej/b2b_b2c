@@ -380,6 +380,36 @@ fn read_max_code_length(value: &Value) -> usize {
 
 // --- Reading from the input -------------------------------------------------------------------
 
+// Amounts per market (7 Oct 2026, docs/won-discounts/navrh-castky-podle-trhu.md): an amount key is a currency
+// ("EUR") or a currency with a market ("EUR@sk", that market's own amount). While a run reads its config, this
+// holds the cart's own key — its currency and the market holding its country — when the config says some amount
+// is a market's own (`am`); empty otherwise. A function run is one thread, so a plain static costs the least
+// Wasm (a thread_local was +1.4 kB, over the size limit); the tests run in threads and keep one per thread.
+#[cfg(not(test))]
+static mut MARKET_KEY: String = String::new();
+
+#[cfg(not(test))]
+#[allow(static_mut_refs)]
+fn market_key() -> &'static str {
+    unsafe { MARKET_KEY.as_str() }
+}
+
+#[cfg(test)]
+thread_local! {
+    static MARKET_KEY: std::cell::RefCell<&'static str> = const { std::cell::RefCell::new("") };
+}
+
+#[cfg(test)]
+fn market_key() -> &'static str {
+    MARKET_KEY.with(|k| *k.borrow())
+}
+
+#[cfg(test)]
+fn set_market_key(key: Option<(&str, &str)>) {
+    let text: &'static str = key.map_or("", |(cur, handle)| Box::leak(format!("{cur}@{handle}").into_boxed_str()));
+    MARKET_KEY.with(|k| *k.borrow_mut() = text);
+}
+
 /// A MoneyByCurrency value. With the cart currency (`cur`, the function run),
 /// only that entry is read — the engine never looks another one up — and
 /// whether the record has any key (`Money::is_non_empty_record`): a
@@ -391,7 +421,11 @@ fn read_money(value: &Value, cur: Option<&str>) -> Money {
     }
     match cur {
         Some(_) if value.obj_len() == Some(0) => Money::Record(Vec::new()),
-        Some(cur) => Money::Record(vec![(cur.to_string(), number(&value.get_obj_prop(cur)))]),
+        Some(cur) => {
+            let own = market_key();
+            let own = if own.is_empty() { None } else { number(&value.get_obj_prop(own)) };
+            Money::Record(vec![(cur.to_string(), own.or_else(|| number(&value.get_obj_prop(cur))))])
+        }
         None => Money::Record(entries(value).into_iter().map(|(k, v)| (k, number(&v))).collect()),
     }
 }
@@ -617,10 +651,24 @@ fn read_tier_currencies(list: Option<Value>, cur: Option<&str>) -> (Vec<Option<S
     match cur {
         Some(cur) => {
             if !cur.is_empty() {
+                let own = market_key();
+                let mut at = None;
                 for i in 0..len {
-                    if list.get_at_index(i).as_string().as_deref() == Some(cur) {
-                        return (vec![Some(cur.to_string())], vec![i]);
+                    let entry = list.get_at_index(i).as_string();
+                    let entry = entry.as_deref().unwrap_or("");
+                    if !own.is_empty() && entry == own {
+                        at = Some(i);
+                        break;
                     }
+                    if at.is_none() && entry == cur {
+                        at = Some(i);
+                        if own.is_empty() {
+                            break;
+                        }
+                    }
+                }
+                if let Some(i) = at {
+                    return (vec![Some(cur.to_string())], vec![i]);
                 }
             }
             (Vec::new(), Vec::new())
@@ -790,6 +838,25 @@ impl Config {
             }
         }
         let here: Vec<String> = market_countries.iter().filter(|(_, list)| !list.is_empty()).map(|(h, _)| h.clone()).collect();
+        // `am`: some amount is a market's own; the cart's market is the first shipped one holding its country
+        // (market-amounts.ts marketAmountsView). Set before any amount is read, cleared for every other read.
+        let am = country.is_some() && is_true(&prop(value, Key::AmountMarkets));
+        #[cfg(test)]
+        set_market_key(match (cur, here.first()) {
+            (Some(cur), Some(handle)) if am => Some((cur, handle.as_str())),
+            _ => None,
+        });
+        // Written in place (not through a function, no tuple of references): the size limit leaves 368 B.
+        #[cfg(not(test))]
+        #[allow(static_mut_refs)]
+        unsafe {
+            MARKET_KEY.clear();
+            if let (Some(cur), Some(handle), true) = (cur, here.first(), am) {
+                MARKET_KEY.push_str(cur);
+                MARKET_KEY.push('@');
+                MARKET_KEY.push_str(handle);
+            }
+        }
         let markets = if country.is_some() { HandleRead::Here(&here) } else { HandleRead::All };
         let campaign_id = string(&prop(value, Key::CampaignId));
         let campaign_vars_version = string(&prop(value, Key::CampaignVarsVersion));

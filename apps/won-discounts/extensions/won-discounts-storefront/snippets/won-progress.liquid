@@ -12,11 +12,13 @@
       assign won_base = won_base | plus: won_item.original_line_price
     endif
   endfor
-  assign won_ship = rw.ship[cur]
+  # Amounts per market: the market's own threshold ("EUR@sk") first, then its currency's.
+  assign won_mk = cur | append: '@' | append: localization.market.handle
+  assign won_ship = rw.ship[won_mk] | default: rw.ship[cur]
   assign won_gift_at = nil
   assign won_gift_any = false
   for won_g in rw.gifts
-    assign won_t = won_g.t[cur]
+    assign won_t = won_g.t[won_mk] | default: won_g.t[cur]
     if won_t != blank
       assign won_gift_any = true
       if won_t > won_base and won_gift_at == nil

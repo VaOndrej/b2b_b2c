@@ -123,7 +123,7 @@
     {%- endfor -%}
   {%- endcapture -%}
   {%- capture won_cart_data -%}
-    {"on":true,"rw":{{ rw | json }},"exp":{{ exp }},"lang":{{ request.locale.iso_code | json }},"proxy":{{ proxy | json }},"g":{ {{- won_gift_facts -}} },"tx":{
+    {"on":true,"rw":{{ rw | json }},"mk":{{ cur | append: '@' | append: localization.market.handle | json }},"exp":{{ exp }},"lang":{{ request.locale.iso_code | json }},"proxy":{{ proxy | json }},"g":{ {{- won_gift_facts -}} },"tx":{
     "ship_left":{{ 'cart.ship_left' | t | json }},"ship_done":{{ 'cart.ship_done' | t | json }},
     "gift_left":{{ 'cart.gift_left' | t | json }},"gift_done":{{ 'cart.gift_done' | t | json }},
     "gift_decline":{{ 'cart.gift_decline' | t | json }},"gift_declined":{{ 'cart.gift_declined' | t | json }},

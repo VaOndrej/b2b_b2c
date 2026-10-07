@@ -20,6 +20,8 @@
   assign cfg = app.metafields.won_discounts.storefront_config.value
   assign pmf = product.metafields['$app:won_discounts'].product.value
   assign cur = cart.currency.iso_code
+  # Amounts per market (7 Oct 2026): the market's own amount ("EUR@sk") first, then its currency's ("EUR").
+  assign mk = cur | append: '@' | append: localization.market.handle
   assign variant = product.selected_or_first_available_variant
 
   assign presets = 'default,highlight,chips,tiles' | split: ','
@@ -217,7 +219,7 @@
       assign d = b.pct | times: price | divided_by: 100.0 | divided_by: g | floor | times: g
       assign brk = ',"pct":' | append: b.pct
     else
-      assign d = b.off[cur]
+      assign d = b.off[mk] | default: b.off[cur]
       if d == nil
         continue
       endif
@@ -309,7 +311,7 @@
               assign pct = d | times: 1000 | divided_by: price | floor | divided_by: 10.0
             endif
           else
-            assign d = b.off[cur]
+            assign d = b.off[mk] | default: b.off[cur]
             if d == nil
               continue
             endif

@@ -83,7 +83,8 @@
             assign won_ct = t_pct | replace: '{min}', b.min | replace: '{pct}', pct
           endif
         elsif margin_on == false
-          assign off = b.off[cur]
+          assign mk = cur | append: '@' | append: localization.market.handle
+          assign off = b.off[mk] | default: b.off[cur]
           if off != nil and off > 0 and off <= p.price_min
             assign t_off = 'cards.off' | t
             assign t_off = tx['cards.off'] | default: t_off

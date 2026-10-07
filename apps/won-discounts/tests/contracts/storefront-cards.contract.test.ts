@@ -27,7 +27,7 @@ test("the snippet holds every condition of core cardTier, in a fail-closed form"
     ["a purchase cost under margin protection", /vmf\.variant != nil or vmf\.pdp != nil[\s\S]*if margin_on and costed\s+assign show = false/],
     ["a percent within the ceiling", /if b\.pct > 0 and b\.pct <= cap/],
     ["the ceiling of more than 4 refs = the lowest of all collections", /if pmf\.marginRefs\.size > 4\s+for pair in cfg\.margin\.col\s+assign cap = cap \| at_most: pair\.last/],
-    ["an amount only without margin protection", /elsif margin_on == false\s+assign off = b\.off\[cur\]/],
+    ["an amount only without margin protection", /elsif margin_on == false\s+assign mk = cur \| append: '@' \| append: localization\.market\.handle\s+assign off = b\.off\[mk\] \| default: b\.off\[cur\]/],
     ["an amount at most the cheapest variant's price", /if off != nil and off > 0 and off <= p\.price_min/],
     ["a merchant text wins", /tx\['cards\.pct'\] \| default: t_pct[\s\S]*tx\['cards\.off'\] \| default: t_off/],
   ] as const) {

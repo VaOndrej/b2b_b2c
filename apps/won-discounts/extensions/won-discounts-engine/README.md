@@ -303,6 +303,18 @@ base 99.83 % (MVP 6 build: 99.80 %), a live campaign without sets 99.58 %, value
 overrides **99.90 %** (99.86 %), campaign sets 98.77 %, campaign sets + re-target 99.31 %; none ≥ 100 %.
 **The reserve of a live campaign is 0.10 point** — the function has no room for new per-line work.
 
+**Amounts per market (2026-10-07; docs/won-discounts/navrh-castky-podle-trhu.md), measured.** An amount key is a
+currency ("EUR") or a currency with a market ("EUR@sk"). With `am: true` in the shop config, the run composes the
+cart's own key from its currency and the first shipped market holding its country (`config.rs` `MARKET_KEY`, set in
+`read_with` before any amount is read) and looks it up before the currency's — in `read_money` and as the column of a
+tier set (`read_tier_currencies`). Without `am` nothing else is read. **Wasm 255 677 B of 256 000 B (+714 B; 323 B
+left)** — a `thread_local` key was 256 917 B and a separate `am: {market: [countries]}` map 256 226 B, both over the
+limit. Instructions on the 150 costliest cap-550 inputs, against the build before: a config without market amounts
++844 to +1 054 a run (**+0.010 point**); the same inputs with a market's own key next to every amount and tier
+column **+0.043 point** (1 516 to 4 744 a run). 7 fixtures (`lines-market-amount-*`), every output equal to the TS
+reference, the 150 variant inputs included. **The reserve is now about 0.05 point and 323 B: the next engine feature
+needs room first.**
+
 Wasm size (2026-10-06, per-item minimums + generated code batches): **254 963 B** of 256 000 B (+5 852 B: `apply_item_minimums` 1.7 kB, `collect_item_refs` + `rule_of_text` 1.9 kB, `batch::is_batch_code` + SipHash 1.3 kB, the rest in `build_plan`). **1 037 B are left**: the next feature needs room first (the reserve below: `-C llvm-args=-inline-threshold=150`, −10.2 kB for +0.9 points of the instruction limit). What kept it under the limit: the batch is ONE text with its numbers as single characters and its key as raw bytes (a tuple reader with a hex key cost 3 kB), the middle and suffix are covered by the check instead of being compared, no new config field (the batch texts ride in `codeHashes`), no table for the item groups, the gate untouched.
 
 Wasm size (MVP 6.1): 249 111 B of 256 000 B (+3 614 B: the choice of the tier part in the config reader).
