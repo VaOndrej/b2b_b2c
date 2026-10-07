@@ -125,6 +125,7 @@ import { planGifts, rewardBase, rewardsProgress, SHIPPING_REWARD_ID, SHIPPING_RE
 import { readRewardsPayload } from "./rewards.ts";
 import { prepareTiers, TIER_CANDIDATE_PREFIX, tierCandidateId, TIER_LABEL, tierHint, tierOutcomes, tierStepBreak } from "./plan-tiers.ts";
 import { lineTargeting } from "./targeting.ts";
+import { marketAmountsView } from "./market-amounts.ts";
 
 export { TIER_CANDIDATE_PREFIX, tierCandidateId, TIER_LABEL, tierStepBreak };
 
@@ -1297,8 +1298,10 @@ function buildOutcomes(
 
 // --- The plan -------------------------------------------------------------------------------
 
-function buildPlan(cart: NormalizedCart, config: Rec, opts: { hint: boolean } = { hint: true }): CartPlan {
+function buildPlan(cart: NormalizedCart, shipped: Rec, opts: { hint: boolean } = { hint: true }): CartPlan {
   const { currency, locale } = cart;
+  // 7 Oct 2026: the cart's own market's amounts stand in for its currency's (market-amounts.ts); everything below reads by currency.
+  const config = marketAmountsView(shipped, cart);
   const engine = readEngine(config);
   const { campaign, rules, retargeted, byId: rulesById } = resolveRules(config, cart);
   const codes = matchCodes(rules, cart, readMaxCodeLength(config));

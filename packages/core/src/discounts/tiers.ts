@@ -57,7 +57,7 @@
 import type { ReadonlyDeep, TierCountAcross, TierSet, TiersModule } from "./config.ts";
 import { TIER_COUNT_ACROSS_MODES } from "./config/enums.ts";
 import { CONFIG_LIMITS } from "./config/limits.ts";
-import { moneyFor } from "./money.ts";
+import { moneyFor, splitAmountKey } from "./money.ts";
 
 /** One break in the shop config: [minQty, percent] or [minQty, amounts aligned with the set's currencies]. */
 export type FunctionTierBreak = [minQty: number, value: number | (number | null)[]];
@@ -145,7 +145,11 @@ function shipSet(set: SetLike): FunctionTierSet {
       shipped.push([b.minQty, b.percent]);
       continue;
     }
-    const amounts = currencies.map((c) => (b.amountOff ? moneyFor(b.amountOff, c) : null));
+    // A market's column ("EUR@sk") holds its own amount, else its currency's: every break is read by the same column.
+    const amounts = currencies.map((c) => {
+      const key = splitAmountKey(c);
+      return b.amountOff && key ? moneyFor(b.amountOff, key.currency, key.market) : null;
+    });
     if (amounts.some((a) => a !== null)) shipped.push([b.minQty, amounts]);
   }
   return [set.id, set.countAcross, currencies, shipped];

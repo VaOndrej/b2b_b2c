@@ -74,6 +74,7 @@
 // gateConfigForPlan(config, plan), never from the stored config: only then does
 // none of its Pro data (targeting, combinesWith, campaigns) ship.
 
+import { marketsWithOwnAmounts } from "./market-amounts.ts";
 import { codeBatchCodeLength, codeBatchPayload, type FunctionCodeBatch, listBatchCodes, matchesCodeBatch, readCodeBatch } from "./code-batch.ts";
 import { codeHash } from "./code-hash.ts";
 import { normalizeCode, type CartCampaignInput } from "./cart.ts";
@@ -153,8 +154,10 @@ export interface FunctionConfigPayload {
   /** Must equal a node's `varsVersion` for that node to apply the campaign. */
   campaignVarsVersion: string | null;
   engine: EngineSettings;
-  /** Market handle → upper-case countries, for enabled markets some rule or the selected campaign targets. */
+  /** Market handle → upper-case countries, for enabled markets some rule or the selected campaign targets, or that have an amount of their own. */
   marketCountries: Record<string, string[]>;
+  /** True when some amount is one market's own ("EUR@sk", market-amounts.ts): a cart reads its market's amount before its currency's. Absent = none. */
+  am?: true;
   modules: {
     /**
      * `maxCodeLength`: the longest Won code (UTF-16 units, trimmed and
@@ -470,8 +473,8 @@ function shipPatch(patch: ReadonlyDeep<Record<string, unknown>>): Record<string,
  * without its countries that rule could never apply). Only the selected campaign
  * ships, so the worst-case builder measures each campaign's markets too.
  */
-function shipMarketCountries(config: ConfigInput, selected: CampaignInput | null): Record<string, string[]> {
-  const targeted = new Set<string>();
+function shipMarketCountries(config: ConfigInput, selected: CampaignInput | null, withOwnAmounts: ReadonlySet<string> = new Set()): Record<string, string[]> {
+  const targeted = new Set<string>(withOwnAmounts);
   const addFrom = (targeting: unknown) => {
     if (typeof targeting !== "object" || targeting === null) return;
     const markets = (targeting as { markets?: unknown }).markets;
@@ -504,18 +507,25 @@ function build(config: ConfigInput, selected: CampaignInput | null, shopTimezone
   const { codes, tiers, rewards, margin } = config.modules;
   const ruleIds = new Set(codes.rules.map((r) => r.id));
   const campaignTiers = selected ? campaignTiersPayload(tiers, selected) : null;
+  const modules = {
+    codes: shipCodes(codes.rules, shopTimezone),
+    tiers: buildTiersPayload(tiers),
+    rewards: buildRewardsPayload(rewards),
+    margin: buildMarginPayload(margin, shopCurrency),
+  };
+  const overrides = selected ? selected.overrides.filter((o) => ruleIds.has(o.ruleId)).map((o) => ({ ruleId: o.ruleId, patch: shipPatch(o.patch) })) : [];
+  // 7 Oct 2026: markets with an amount of their own ("EUR@sk") ship their countries too — the function finds the
+  // cart's market by its country — and `am` tells it to look. A config without such an amount ships as before.
+  const ownMarkets = marketsWithOwnAmounts([modules.codes, modules.tiers, modules.rewards, overrides, campaignTiers]);
+  const marketCountries = shipMarketCountries(config, selected, ownMarkets);
   return encode({
     schemaVersion: config.schemaVersion,
     campaignId: selected ? selected.id : null,
     campaignVarsVersion: campaignVarsVersion(selected),
     engine: copy<EngineSettings>(config.engine),
-    marketCountries: shipMarketCountries(config, selected),
-    modules: {
-      codes: shipCodes(codes.rules, shopTimezone),
-      tiers: buildTiersPayload(tiers),
-      rewards: buildRewardsPayload(rewards),
-      margin: buildMarginPayload(margin, shopCurrency),
-    },
+    marketCountries,
+    ...(ownMarkets.size > 0 ? { am: true as const } : {}),
+    modules,
     campaigns: selected
       ? [
           {
@@ -523,9 +533,7 @@ function build(config: ConfigInput, selected: CampaignInput | null, shopTimezone
             window: { start: selected.window.start, end: selected.window.end },
             // MVP 6 D1/K2: `overrides` carry discount rule overrides only. MVP 6.1 (L3): tier set overrides ship
             // as the campaign's whole sets in `tiers`; a gift tier's never ship (the stored config keeps them).
-            overrides: selected.overrides
-              .filter((o) => ruleIds.has(o.ruleId))
-              .map((o) => ({ ruleId: o.ruleId, patch: shipPatch(o.patch) })),
+            overrides,
             ...(campaignTiers ? { tiers: campaignTiers } : {}),
           },
         ]

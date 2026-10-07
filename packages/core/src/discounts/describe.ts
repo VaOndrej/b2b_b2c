@@ -5,7 +5,7 @@
 
 import type { PlanLocale } from "./cart.ts";
 import type { DiscountMethod, DiscountRuleValue, DiscountTargetKind, MinimumScope } from "./config.ts";
-import { currencyExponent, type MoneyByCurrency, moneyFor } from "./money.ts";
+import { amountKeyCurrency, currencyExponent, type MoneyByCurrency, moneyFor } from "./money.ts";
 
 export type UiLocale = PlanLocale;
 
@@ -34,7 +34,8 @@ function groupThousands(digits: string, separator: string): string {
 
 /** 123450 minor units of CZK → "1 234,50 Kč" (cs) / "CZK 1,234.50" (en); whole amounts drop the decimals. */
 export function formatMoney(minor: number, currency: string, locale: UiLocale): string {
-  const code = currency.toUpperCase();
+  // An amount key ("EUR@sk") is formatted in its currency.
+  const code = amountKeyCurrency(currency).toUpperCase();
   const digits = currencyExponent(code);
   const n = Math.round(Math.abs(minor));
   const scale = 10 ** digits;

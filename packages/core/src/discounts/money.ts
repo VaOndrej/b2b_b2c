@@ -5,14 +5,46 @@
 // that as "not offered in this market", not as zero.
 
 export type CurrencyCode = string; // ISO 4217, upper-case, e.g. "CZK"
+/**
+ * Amounts by key. A key is a currency ("EUR": every market selling in it that has no key of its own) or a
+ * currency with a market handle ("EUR@sk": that market only — 7 Oct 2026: every market has its own amount, even
+ * when another one sells in the same currency; docs/won-discounts/navrh-castky-podle-trhu.md). A stored config
+ * from before has currency keys only and reads exactly as it did.
+ */
 export type MoneyByCurrency = Readonly<Record<CurrencyCode, number>>;
 
 const CURRENCY_CODE_RE = /^[A-Z]{3}$/;
 
+/** Between the currency and the market handle of an amount key ("EUR@sk"). */
+export const MARKET_KEY_SEPARATOR = "@";
+/** Longest market handle of an amount key (config/markets.ts keeps a handle to 100 characters). */
+const MARKET_HANDLE_LENGTH = 100;
+
+/** "EUR@sk": the amount key of one market. */
+export function marketAmountKey(currency: CurrencyCode, handle: string): string {
+  return `${currency}${MARKET_KEY_SEPARATOR}${handle}`;
+}
+
+/** An amount key in its parts: "EUR" → { currency: "EUR", market: null }, "EUR@sk" → { currency: "EUR", market: "sk" }; anything else null. */
+export function splitAmountKey(key: string): { currency: CurrencyCode; market: string | null } | null {
+  const at = key.indexOf(MARKET_KEY_SEPARATOR);
+  const currency = at < 0 ? key : key.slice(0, at);
+  if (!CURRENCY_CODE_RE.test(currency)) return null;
+  if (at < 0) return { currency, market: null };
+  const market = key.slice(at + 1);
+  return market.length > 0 && market.length <= MARKET_HANDLE_LENGTH ? { currency, market } : null;
+}
+
+/** The currency of an amount key ("EUR@sk" → "EUR"); a plain code is returned as it is. */
+export function amountKeyCurrency(key: string): CurrencyCode {
+  const at = key.indexOf(MARKET_KEY_SEPARATOR);
+  return at < 0 ? key : key.slice(0, at);
+}
+
 /**
  * Sanitize an arbitrary value into a MoneyByCurrency (DATA-2: never throws).
- * - Keys are upper-cased and must look like an ISO 4217 code (3 letters); anything
- *   else is dropped.
+ * - A key is an ISO 4217 code (3 letters, upper-cased), alone or followed by "@" and a
+ *   market handle (kept as written); anything else is dropped.
  * - Values must be a finite `number` >= 0 (strings, NaN, Infinity, negatives are
  *   dropped, not coerced).
  * - Fractional values are floored to the minor unit.
@@ -26,8 +58,9 @@ export function sanitizeMoneyByCurrency(
   if (typeof v !== "object" || v === null || Array.isArray(v)) return out;
 
   for (const [rawKey, rawValue] of Object.entries(v as Record<string, unknown>)) {
-    const key = rawKey.toUpperCase();
-    if (!CURRENCY_CODE_RE.test(key)) continue;
+    const at = rawKey.indexOf(MARKET_KEY_SEPARATOR);
+    const key = at < 0 ? rawKey.toUpperCase() : rawKey.slice(0, at).toUpperCase() + rawKey.slice(at);
+    if (!splitAmountKey(key)) continue;
     if (typeof rawValue !== "number" || !Number.isFinite(rawValue) || rawValue < 0) {
       continue;
     }
@@ -46,9 +79,15 @@ export function sanitizeMoneyByCurrency(
 export function moneyFor(
   m: MoneyByCurrency | undefined,
   currency: CurrencyCode,
+  market?: string | null,
 ): number | null {
   if (!m) return null;
-  const v = m[currency];
+  // The market's own amount first, then its currency's; never another market's.
+  if (market) {
+    const own = Object.hasOwn(m, marketAmountKey(currency, market)) ? m[marketAmountKey(currency, market)] : undefined;
+    if (typeof own === "number") return own;
+  }
+  const v = Object.hasOwn(m, currency) ? m[currency] : undefined;
   return typeof v === "number" ? v : null;
 }
 
@@ -67,7 +106,8 @@ const MINOR_DIGITS: Readonly<Record<string, number>> = {
 
 /** Number of minor-unit digits of a currency (CZK/EUR 2, JPY 0, KWD 3). */
 export function currencyExponent(currency: CurrencyCode): number {
-  return MINOR_DIGITS[String(currency).toUpperCase()] ?? 2;
+  // An amount key ("JPY@jp") has the digits of its currency.
+  return MINOR_DIGITS[amountKeyCurrency(String(currency)).toUpperCase()] ?? 2;
 }
 
 const DECIMAL_RE = /^(\d+)(?:\.(\d+))?$/;
