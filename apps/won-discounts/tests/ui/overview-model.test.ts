@@ -20,7 +20,7 @@ const tr = translator("cs");
 const NATIVE = { id: "gid://shopify/DiscountCodeNode/1001", title: "LETO15", method: "code" as const, movable: true, losses: [] };
 const MOVED = { backupId: "b1", title: "JARO10", movedAt: "2026-09-20T10:00:00" };
 
-test("P2: 'Slevy mimo Won' exists only when there is something to act on", () => {
+test("P2: 'Slevy vytvořené přímo v Shopify' exists only when there is something to act on", () => {
   assert.equal(nativeNeedsSection(undefined), false);
   assert.equal(nativeNeedsSection({ state: "not_wired" }), false);
   assert.equal(nativeNeedsSection({ state: "loading" }), false, "still loading: nothing to do yet");
@@ -39,7 +39,7 @@ test("P2: 'Slevy mimo Won' exists only when there is something to act on", () =>
 test("B10: the store status reaches 'all good' — checkout verification is not counted", () => {
   const good: AdminSignals = { ...NOT_WIRED_SIGNALS, embed: { state: "on", activateUrl: null }, sync: { state: "ok", at: "2026-09-28T16:20:00" } };
   assert.equal(good.checkout.state, "not_wired");
-  assert.equal(statusSummary(good, tr), "Slevy platí na webu i v pokladně");
+  assert.equal(statusSummary(good, tr), "Slevy platí na webu i v pokladně (poslední krok objednávky)");
   assert.equal(statusSummary({ ...good, sync: { state: "pending" } }, tr), "1 ze 2 zatím neověřeno");
   // Feedback 2, bod 1: the section carries the green "Aktivní" pill exactly when both hold.
   assert.equal(statusAllGood(good), true);

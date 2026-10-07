@@ -87,6 +87,8 @@ export function DiscountSection({
   tiersActive?: boolean;
 }) {
   const { draft, defaults, codes, errorFor, tr, readOnly } = ed;
+  /** "Slovensko" for EUR; "" when no market is known for the currency (the field is then named by the currency). */
+  const marketsOf = (code: string) => ed.currencyViews.find((v) => v.code === code)?.markets.map((m) => m.name).join(", ") ?? "";
   const { t } = tr;
   const off = boolAttr(readOnly);
   const valueKind = draft.value.kind;
@@ -190,18 +192,18 @@ export function DiscountSection({
           <Shown when={valueKind === "fixed"}>
             <s-stack direction="block" gap="small-200">
               {/* One currency: just the amount. Several: one amount each, said once (a shop with one currency never reads about markets). */}
-              {codes.length === 0 ? <s-text color="subdued">{t("editor.amount.noCurrencies")}</s-text> : codes.length > 1 ? <s-text color="subdued">{t("editor.amount.intro", { currencies: tr.list(codes) })}</s-text> : null}
+              {codes.length === 0 ? <s-text color="subdued">{t("editor.amount.noCurrencies")}</s-text> : codes.length > 1 ? <s-text color="subdued">{t("editor.amount.intro", { currencies: tr.list(codes.map((c) => (marketsOf(c) ? `${marketsOf(c)} (${c})` : c))) })}</s-text> : null}
               <FieldGrid>
                 {codes.map((c) => (
                   <s-number-field
                     key={c}
                     name={FIELD.amount(c)}
-                    label={codes.length > 1 ? t("editor.amount.label", { currency: c }) : t("editor.amount.labelSingle")}
+                    label={codes.length > 1 ? (marketsOf(c) ? t("editor.amount.labelMarket", { currency: c, markets: marketsOf(c) }) : t("editor.amount.label", { currency: c })) : t("editor.amount.labelSingle")}
                     value={defaults.amounts[c] ?? ""}
                     min={0}
                     suffix={c}
                     inputMode="decimal"
-                    details={codes.length > 1 ? t("editor.amount.details", { currency: c }) : undefined}
+                    details={codes.length > 1 ? (marketsOf(c) ? t("editor.amount.detailsMarket", { markets: marketsOf(c) }) : t("editor.amount.details", { currency: c })) : undefined}
                     error={errorFor(FIELD.amount(c))}
                     disabled={off}
                   />

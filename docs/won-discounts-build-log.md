@@ -7,6 +7,21 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
+### Opravy po auditu srozumitelnosti (7. 10. 2026) — větev `won-discounts-feedback-2026-10-06`
+
+Zadání: [`won-discounts/audit-dlazdice-trhy-2026-10-06.md`](won-discounts/audit-dlazdice-trhy-2026-10-06.md) (stav po nálezech je na jeho
+konci). Práce inline, commitnuto lokálně, nepushnuto, nenasazeno.
+
+- **T1 potvrzeno naživo Ondřejem** (dev obchod: 2 aktivní trhy v Shopify, aplikace hlásila „Zatím žádné trhy“). Opraveno:
+  `read_markets` je povinné oprávnění, trhy se slučují do `config.markets` (`app/lib/sync/markets.ts` `withShopMarkets`) při
+  uložení a jednou za hodinu z úvodní stránky; obchod bez uloženého nastavení dostane první nastavení s trhy.
+- **Hotovo:** T1, N1–N21 (N22 jen v dev náhledu bez signálů, viz audit), návrhy 1, 3, 4, 5, 7, slovníček.
+- **Nehotovo, čeká na rozhodnutí:** návrh 2 (návrh částky kurzem) — Admin API Shopify dává jen ručně nastavený kurz trhu
+  (`CurrencySetting.manualRate`), automatický ne. Návrh 6 je součást dávky D (Milníky). Návrh 8 audit nedoporučuje.
+- **Naživo neověřeno:** nové čtení trhů v dev obchodě (po změně oprávnění ho Shopify nechá znovu potvrdit), úprava vzhledu obchodu.
+- Screenshoty 390 a 1440 px: `Apps/.playwright-mcp/audit-opravy` (28), skript `Apps/.playwright-mcp/audit-fix-shots.mjs`.
+- Testy: `tests/ui/audit-2026-10-06.test.ts` (13), `tests/lib/sync/f2-resync.test.ts` (+2), `tests/lib/sync/markets.test.ts` (+1).
+
 ### Třetí kolo feedbacku (6. 10. 2026, 16 bodů) — větev `won-discounts-feedback-2026-10-06`
 
 Zadání: [`won-discounts/prompt-kolo3.md`](won-discounts/prompt-kolo3.md). Plán, rozpisy dávek a stav po bodech:

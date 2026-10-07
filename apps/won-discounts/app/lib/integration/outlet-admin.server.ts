@@ -336,7 +336,8 @@ export function outletOverviewOf(rows: readonly RunRow[], titles: ReadonlyMap<st
     // P4: the running sales by name (a sale whose title could not be read is left out of the names, not of the count).
     runningTitles: rows.filter((r) => r.status !== "ended").map((r) => titles.get(r.variantId) ?? "").filter(Boolean),
     pendingReturns: rows.filter((r) => r.status === "ended" && r.returnPending > 0).map((r) => ({ runId: r.id, title: titles.get(r.variantId) ?? "", qty: r.returnPending })),
-    oversold: rows.filter((r) => outletOversold(r) > 0 && r.status !== "ended").length,
+    // Only where there is something to do about it (audit N16): a sale that is ACTIVE can be ended; one that is starting or ending cannot.
+    oversold: rows.filter((r) => outletOversold(r) > 0 && r.status === "active").length,
     problems: rows.filter((r) => r.error !== null && r.status !== "ended").length,
     ordersCounted,
   };

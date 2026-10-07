@@ -40,7 +40,8 @@ import { graphqlOf, nowOf, type ShopCtx } from "./context.server";
 import { readSaveOptions, saveConfigSection } from "./settings.server";
 import { campaignsStatus } from "../../components/model/module-status";
 import { ctxPlan, loadSyncView } from "./sync-status.server";
-import { readShopContext, readThemeLook } from "./themes.server";
+import { readMarketNames, readShopContext, readThemeLook } from "./themes.server";
+import { currenciesWithoutAmount, currencyViews, enabledCurrencies } from "../../components/model/markets";
 
 const STATUS_ORDER = { running: 0, scheduled: 1, ended: 2, killed: 3 } as const;
 
@@ -81,6 +82,16 @@ function majorOf(minor: number, currency: string): string {
 const tierKind = (breaks: readonly BreakLike[]): "percent" | "amount" => (breaks.length > 0 && typeof breaks[0]!.percent !== "number" ? "amount" : "percent");
 const tierCurrencies = (breaks: readonly BreakLike[]): string[] => [...new Set(breaks.flatMap((b) => Object.keys(b.amountOff ?? {})))].sort();
 
+/**
+ * The currencies a campaign asks for: the ones the discount has an amount in AND whose market is enabled — the same
+ * fields as the discount's own editor (audit 6 Oct 2026, N14: a switched-off market is not asked about). A shop
+ * without any market configured keeps every stored currency.
+ */
+function shownCurrencies(config: ReadonlyDeep<WonDiscountsConfig>, stored: readonly string[]): string[] {
+  const enabled = enabledCurrencies(config.markets);
+  return enabled.length > 0 ? stored.filter((code) => enabled.includes(code)) : [...stored];
+}
+
 function tierRows(breaks: readonly BreakLike[]): CampaignTierRow[] {
   return [...breaks]
     .sort((a, b) => a.minQty - b.minQty)
@@ -109,7 +120,7 @@ export function campaignTierChoices(config: ReadonlyDeep<WonDiscountsConfig>, lo
     id: set.id,
     label: tierSetLabel(set, locale),
     kind: tierKind(set.breaks),
-    currencies: tierCurrencies(set.breaks),
+    currencies: shownCurrencies(config, tierCurrencies(set.breaks)),
     baseText: set.breaks.length > 0 ? tierBreaksText(set.breaks, locale) : t(locale, "campaign.tiers.noBreaks"),
     rows: tierRows(set.breaks),
   }));
@@ -185,7 +196,9 @@ export function campaignRuleChoices(config: ReadonlyDeep<WonDiscountsConfig>, lo
     enabled: r.enabled,
     method: r.method,
     valueText: ruleValueText(r.value, locale),
-    currencies: r.value.kind === "fixed" ? Object.keys(r.value.amount).sort() : [],
+    currencies: r.value.kind === "fixed" ? shownCurrencies(config, Object.keys(r.value.amount).sort()) : [],
+    // N14: an enabled market the discount has no amount for does not get it in a campaign either — the form says so.
+    ...(r.value.kind === "fixed" ? { missing: currenciesWithoutAmount([r.value.amount], enabledCurrencies(config.markets)) } : {}),
   }));
 }
 
@@ -212,7 +225,11 @@ export async function loadCampaignsScreen(ctx: ShopCtx, opts: { edit?: string | 
     .map((c) => campaignView(c, viewOpts))
     .sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || (a.start.date + a.start.time).localeCompare(b.start.date + b.start.time));
   const editing = opts.edit ? (campaigns.find((c) => c.id === opts.edit && (c.status === "running" || c.status === "scheduled")) ?? null) : null;
-  const [sync, look] = await Promise.all([loadSyncView(ctx, loaded, timezone), readThemeLook(ctx, { scopes: ctx.scopes })]);
+  const [sync, look, marketNames] = await Promise.all([
+    loadSyncView(ctx, loaded, timezone),
+    readThemeLook(ctx, { scopes: ctx.scopes }),
+    readMarketNames(graphqlOf(ctx), ctx.shop, ctx.scopes),
+  ]);
   return {
     plan,
     // The same function, on the same view, as the home tile (model/module-status.ts).
@@ -224,6 +241,7 @@ export async function loadCampaignsScreen(ctx: ShopCtx, opts: { edit?: string | 
     campaigns,
     rules: campaignRuleChoices(config, ctx.locale),
     tierSets: campaignTierChoices(config, ctx.locale),
+    currencies: currencyViews(config.markets as WonDiscountsConfig["markets"], { marketNames }),
     editing,
     limits: { campaigns: CONFIG_LIMITS.campaigns, maxDays: CAMPAIGN_LIMITS.maxDays, minLeadMinutes: CAMPAIGN_LIMITS.minLeadMinutes },
     placements: placementLinks(ctx.shop, ctx.apiKey, CAMPAIGN_BLOCK_HANDLE),
@@ -282,10 +300,10 @@ function saved(result: UiResult, kind: "saved" | "killed" | "deleted"): Campaign
 export async function campaignsAction(ctx: ShopCtx, form: FormDataLike): Promise<CampaignsActionResult | UiResult> {
   const loaded = await loadConfig(ctx.db, ctx.shop);
   const kinds = new Map(
-    loaded.config.modules.codes.rules.map((r) => [r.id, { kind: r.value.kind, currencies: r.value.kind === "fixed" ? Object.keys(r.value.amount) : [] }]),
+    loaded.config.modules.codes.rules.map((r) => [r.id, { kind: r.value.kind, currencies: r.value.kind === "fixed" ? shownCurrencies(loaded.config, Object.keys(r.value.amount)) : [] }]),
   );
   const sets = new Map(
-    loaded.config.modules.tiers.sets.map((set) => [set.id, { kind: tierKind(set.breaks), currencies: tierCurrencies(set.breaks), exponent: currencyExponent }]),
+    loaded.config.modules.tiers.sets.map((set) => [set.id, { kind: tierKind(set.breaks), currencies: shownCurrencies(loaded.config, tierCurrencies(set.breaks)), exponent: currencyExponent }]),
   );
   const { intent, id, draft } = readCampaignForm(form, kinds, sets);
   // B14: a refused save gets back what the form posted, so the screen shows it again.

@@ -14,6 +14,8 @@ import { FieldGrid, FieldMark, Shown, type EditorView } from "./parts";
 
 export function ConditionsSection({ ed }: { ed: EditorView }) {
   const { draft, defaults, codes, errorFor, tr, readOnly } = ed;
+  /** "Slovensko" for EUR; "" when no market is known for the currency (the field is then named by the currency). */
+  const marketsOf = (code: string) => ed.currencyViews.find((v) => v.code === code)?.markets.map((m) => m.name).join(", ") ?? "";
   const { t } = tr;
   const off = boolAttr(readOnly);
   const targetsProducts = draft.target.kind === "products" || draft.target.kind === "collections";
@@ -28,7 +30,7 @@ export function ConditionsSection({ ed }: { ed: EditorView }) {
             <s-number-field
               key={c}
               name={FIELD.minimum(c)}
-              label={codes.length > 1 ? t("editor.minimum.label", { currency: c }) : t("editor.minimum.labelSingle")}
+              label={codes.length > 1 ? (marketsOf(c) ? t("editor.minimum.labelMarket", { currency: c, markets: marketsOf(c) }) : t("editor.minimum.label", { currency: c })) : t("editor.minimum.labelSingle")}
               value={defaults.minimums[c] ?? ""}
               min={0}
               suffix={c}

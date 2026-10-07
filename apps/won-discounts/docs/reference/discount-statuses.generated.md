@@ -27,8 +27,8 @@ Each discount in the list shows one status. Only **Active** and
 | Scheduled | Naplánováno | Scheduled from ‹date› |
 | Ended | Skončilo | Ended ‹date› |
 | Unsaved | Neuloženo | Not saved yet |
-| Not synced | Nezapsáno | Saved, not written to Shopify yet |
-| Not synced | Nezapsáno | Not in Shopify: the sync failed. |
+| Not synced | Zatím neplatí | Saved, not written to Shopify yet |
+| Not synced | Zatím neplatí | Not in Shopify: the sync failed. |
 | Syncing | Propisuje se | Running, but its product targeting is being written to Shopify right now. New products get the discount within minutes. |
 | Inactive | Neaktivní | Inactive: this code discount has no code yet |
 | Inactive | Neaktivní | Inactive: no products or collections are picked. |

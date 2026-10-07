@@ -88,6 +88,9 @@ function OutletBanner({ result }: { result: OutletActionResult }) {
   return loose ? <s-banner tone="critical" heading={t(loose.key, loose.params)} /> : null;
 }
 
+/** The anchor of a sale's card ("K vyřešení" links to it). */
+const runAnchor = (id: string) => `run-${id.replace(/[^A-Za-z0-9_-]/g, "")}`;
+
 function RunCard({ run, pro, money, badgeOn = false }: { run: OutletRunView; pro: boolean; money: (minor: number, currency: string) => string; /** The shop's display level shows a badge at all. */ badgeOn?: boolean }) {
   const { t } = useT();
   const ended = run.status === "ended";
@@ -98,6 +101,7 @@ function RunCard({ run, pro, money, badgeOn = false }: { run: OutletRunView; pro
     </s-button>
   ) : null;
   return (
+    <div id={runAnchor(run.id)} style={{ scrollMarginTop: 16 }}>
     <s-box padding="base" border="base" borderRadius="base">
       <s-stack direction="block" gap="small-300">
         <s-heading>{run.title || t("outlet.run.unknown")}</s-heading>
@@ -201,6 +205,7 @@ function RunCard({ run, pro, money, badgeOn = false }: { run: OutletRunView; pro
         ) : null}
       </s-stack>
     </s-box>
+    </div>
   );
 }
 
@@ -437,6 +442,13 @@ export function OutletScreen(props: OutletScreenProps) {
       <s-stack direction="block" gap="base">{children}</s-stack>
     </div>
   );
+  // N16: "3 věci k vyřešení" names them — one row each at the top of the panel, with the link to the sale.
+  const titleOf = (run: OutletRunView) => run.title || t("outlet.run.unknown");
+  const todo: { key: string; text: string; runId: string }[] = [
+    ...running.filter((r) => r.status === "active" && r.oversold > 0).map((r) => ({ key: `o${r.id}`, text: t("outlet.todo.oversold", { title: titleOf(r), n: r.oversold }), runId: r.id })),
+    ...running.filter((r) => r.problem).map((r) => ({ key: `p${r.id}`, text: t("outlet.todo.problem", { title: titleOf(r), problem: r.problem ?? "" }), runId: r.id })),
+    ...ended.filter((r) => r.returnPending > 0).map((r) => ({ key: `r${r.id}`, text: t("outlet.todo.pending", { title: titleOf(r), n: r.returnPending }), runId: r.id })),
+  ];
   const runningTitles = running.map((r) => r.title).filter(Boolean);
   const salesActive =
     running.length > 0
@@ -487,6 +499,25 @@ export function OutletScreen(props: OutletScreenProps) {
                 }
               />
             ) : null}
+        {todo.length > 0 ? (
+          <WonSection title={t("outlet.todo.title")} glyph="alert" summary={tr.tp("tile.issues", todo.length)} anchor="todo">
+            <div data-won-outlet-todo>
+              {todo.map((item) => (
+                <WonRow
+                  key={item.key}
+                  tone="attention"
+                  action={
+                    <s-button href={`#${runAnchor(item.runId)}`} variant="secondary">
+                      {t("outlet.todo.show")}
+                    </s-button>
+                  }
+                >
+                  <RowNote tone="attention">{item.text}</RowNote>
+                </WonRow>
+              ))}
+            </div>
+          </WonSection>
+        ) : null}
         {running.length > 0 ? (
           <WonSection title={t("outlet.running.title")} glyph="calendar" state={props.status} summary={tr.tp("overview.outlet.running", running.length)} anchor="running">
             <s-stack direction="block" gap="base">

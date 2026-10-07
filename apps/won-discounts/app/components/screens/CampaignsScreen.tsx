@@ -210,6 +210,8 @@ function TierSetFields({
 export function CampaignsScreen(props: CampaignsScreenProps) {
   const tr = useT();
   const { t } = tr;
+  /** "Slovensko" for EUR: the markets that sell in a currency ("" = not known, the field is named by the currency). */
+  const marketsOf = (code: string) => props.currencies?.find((c) => c.code === code)?.markets.map((m) => m.name).join(", ") ?? "";
   const { plan, result, campaigns, rules, tierSets, editing, today, nowTime, timezone, configVersion, limits } = props;
   const pro = plan === "pro";
   const submit = useSubmit();
@@ -428,7 +430,7 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
                             <s-number-field
                               key={cur}
                               name={`${F.amount}${r.id}.${cur}`}
-                              label={t("campaign.rule.amount", { currency: cur })}
+                              label={marketsOf(cur) ? t("campaign.rule.amountMarket", { currency: cur, markets: marketsOf(cur) }) : t("campaign.rule.amount", { currency: cur })}
                               value={init.one(`${F.amount}${r.id}.${cur}`, "")}
                               min={0}
                               step={0.01}
@@ -436,6 +438,12 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
                               inputMode="decimal"
                             />
                           ))}
+                          {(r.missing ?? []).length > 0 ? (
+                            <div data-won-campaign-missing>
+                              <RowNote tone="attention">{t("campaign.rule.notOffered", { markets: tr.list((r.missing ?? []).map((cur) => marketsOf(cur) || cur)) })}</RowNote>
+                              <s-link href={`/app/discounts/${encodeURIComponent(r.id)}#value`}>{t("campaign.rule.addAmount")}</s-link>
+                            </div>
+                          ) : null}
                         </s-stack>
                       ) : (
                         <RowNote>{t("campaign.rule.noValue")}</RowNote>

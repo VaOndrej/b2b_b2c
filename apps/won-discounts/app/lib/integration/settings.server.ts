@@ -13,6 +13,7 @@ import { createDefaultConfig, readStoredConfig, type WonDiscountsConfig } from "
 
 import { COMBINATION_FIELD, COMBINATION_INTENT, readCombinationForm } from "../../components/model/combination";
 import { currencyViews } from "../../components/model/markets";
+import { marketRows } from "../../components/model/markets-overview";
 import type { FormDataLike } from "../../components/model/rule-form";
 import type { CombinationView, SettingsScreenData, UiResult } from "../../components/model/types";
 import { configVersionToken, loadConfig, type LoadedConfig } from "../config.server";
@@ -130,6 +131,8 @@ export async function loadSettingsScreen(ctx: ShopCtx, opts: { scopes: string })
     configVersion: loaded.version ?? null,
     currencies: currencyViews(loaded.config.markets, { shopCurrency: shopContext.currencyCode, marketNames }),
     combination: combinationOf(loaded.config),
+    // N15: every market with what it gets and what it misses.
+    markets: marketRows(loaded.config, { plan, names: marketNames, locale: ctx.locale }),
   };
 }
 

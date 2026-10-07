@@ -223,6 +223,9 @@ export function TiersScreen(props: TiersScreenProps) {
   const hasTiers = globalDraft.breaks.length > 0;
   // Typed rows that do not count yet (P3/P5): said in the state line, marked at the row (TierSetEditor).
   const incomplete = Math.max(0, (rowCounts?.get(globalSet.id) ?? globalDraft.breaks.length) - globalDraft.breaks.length);
+  // N8: the label is about what is STORED. While the form holds no finished level (the kind was just switched), a
+  // green "Aktivní" next to "Bez množstevních slev" contradicts itself — the tile then shows the sentence alone.
+  const globalTileStatus = props.status?.global?.state === "active" && !hasTiers ? undefined : props.status?.global;
   const globalSummary = incomplete > 0 ? `${tierSummary(globalDraft, tr, codes)} · ${tr.tp("tiers.incomplete", incomplete)}` : tierSummary(globalDraft, tr, codes);
   // "The tiers do not fit at checkout" is shown at the room-for-tiers line (P3); the page scrolls to it.
   const tooLarge = errors.find((e) => e.field === F.set && e.key === "tiers.error.tooLarge");
@@ -256,7 +259,7 @@ export function TiersScreen(props: TiersScreenProps) {
           <input type="hidden" name={F.scope(globalSet.id)} value="global" />
           {/* Three tiles, one panel at a time (doctrine §19e); the panels stay in the one form with its one Save. */}
           <ModuleTiles label={t("tiers.view.label")}>
-            <ViewTile id="global" title={t("tiers.view.global.title")} glyph="layers" about={t("tiers.view.global.about")} active={globalSummary} status={props.status?.global} selected={view === "global"} onPick={() => setView("global")} />
+            <ViewTile id="global" title={t("tiers.view.global.title")} glyph="layers" about={t("tiers.view.global.about")} active={globalSummary} status={globalTileStatus} selected={view === "global"} onPick={() => setView("global")} />
             <ViewTile id="table" title={t("tiers.view.table.title")} glyph="store" about={t("tiers.view.table.about")} active={blockText(block, tr)} selected={view === "table"} onPick={() => setView("table")} />
             <ViewTile
               id="exceptions"
@@ -302,7 +305,7 @@ export function TiersScreen(props: TiersScreenProps) {
             }
           >
             <s-stack direction="block" gap="base">
-              <TierSetEditor set={globalSet} currencies={currencies} kept={kept} pro={pro} live={live} errorFor={errorFor} onChange={reread} />
+              <TierSetEditor set={globalSet} currencies={currencies} kept={kept} pro={pro} live={live} errorFor={errorFor} onChange={reread} attempted={errors.length > 0} />
               <HonestNotes marginOn={marginOn} competingRules={competingRules} outletWithAnything={props.outletWithAnything === true} />
             </s-stack>
           </WonSection>

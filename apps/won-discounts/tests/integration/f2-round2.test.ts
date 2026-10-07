@@ -26,7 +26,7 @@ import { FakeStore, formOf, quiet, renderPage, testCtx, text } from "./helpers.t
 
 // F2 fix round 2 (f2-rereview.md), through the real admin / sync paths:
 //   I-1  the targeting refresh never holds the config lock for a product pass
-//        (webhook refresher, Přehled auto-refresh, "Obnovit cílení": the pass is
+//        (webhook refresher, Přehled auto-refresh, "Obnovit produkty ve slevách": the pass is
 //        queued in the sync queue, a newer save cancels it); every admin write
 //        waits for the lock at most a deadline → an honest "busy"; while syncs
 //        keep failing the Přehled refresh keeps the 5-min retry backoff;
@@ -152,7 +152,7 @@ async function collectionShop(members = 60) {
   return { store, products, collection };
 }
 
-test("I-1: 'Obnovit cílení' answers at once and releases the lock; the pass runs in the sync queue and a save right after cancels it", async () => {
+test("I-1: 'Obnovit produkty ve slevách' answers at once and releases the lock; the pass runs in the sync queue and a save right after cancels it", async () => {
   const { store, products, collection } = await collectionShop();
   const ctx = testCtx(db.prisma, shop, store);
   await overviewPage(ctx, PAGE);
@@ -278,7 +278,7 @@ test("I-2: a pre-F2 Pro config on a Free shop — the admin and Try Cart say che
   assert.equal(discounts.gatePending, true);
   const html = text(await renderPage(createElement(DiscountsScreen, discounts)));
   assert.match(html, /V pokladně zatím běží starší nastavení s Pro funkcemi — zapisujeme…/);
-  assert.doesNotMatch(html, /Pro funkce není aktivní/);
+  assert.doesNotMatch(html, /Tohle je v tarifu Pro, zákazník to nedostane/);
   assert.equal(discounts.ruleSync?.stack, "pending", "the combined rule is not 'Aktivní' as the plan wants it");
 
   const editor = await ruleEditorPage(ctx, { ...PAGE, ruleId: "stack", recipe: null, saved: false });
@@ -301,7 +301,7 @@ test("I-2: a pre-F2 Pro config on a Free shop — the admin and Try Cart say che
   void overview;
   const after = await discountsPage(ctx, { ...PAGE, deleted: false });
   assert.equal(after.gatePending, undefined);
-  assert.match(text(await renderPage(createElement(DiscountsScreen, after))), /Pro funkce není aktivní — v pokladně se neuplatní/);
+  assert.match(text(await renderPage(createElement(DiscountsScreen, after))), /Tohle je v tarifu Pro, zákazník to nedostane/);
 });
 
 test("I-2: a downgrade (config applied for Pro, the shop is Free now) → resyncIfPending resyncs with why 'plan'", async () => {

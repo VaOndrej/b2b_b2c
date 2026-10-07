@@ -31,7 +31,7 @@ import { NativeDiscountsPanel, nativeSummary } from "../NativeDiscounts";
 import { collectWarnings, warningCounts, type RuleWarning } from "../model/describe";
 import { currencyCodes, currencyMarketNames, currencyViews } from "../model/markets";
 import { embedPlacement } from "../model/embed";
-import { moduleStatuses, type ModuleStatus } from "../model/module-status";
+import { moduleStatuses, writtenOf, type ModuleStatus } from "../model/module-status";
 import { shopToday } from "../model/rule-form";
 import { needsAttention, ruleStatus, ruleStatusSummary, type RuleStatus, type RuleStatusKind } from "../model/rule-status";
 import { tierSummary } from "../model/tiers";
@@ -116,10 +116,10 @@ export function buildOverviewProps(
   return props;
 }
 
-function warningText(w: RuleWarning, tr: Translator): string {
+function warningText(w: RuleWarning, tr: Translator, currencies: readonly CurrencyView[] = []): string {
   const rule = w.ruleName.trim() || tr.t("common.untitled");
   if (w.kind === "unsupported") return tr.t("overview.warning.unsupported", { rule });
-  if (w.kind === "missingCurrency") return tr.t("overview.warning.missingCurrency", { rule, currencies: tr.list(w.currencies ?? []) });
+  if (w.kind === "missingCurrency") return tr.t("overview.warning.missingCurrency", { rule, currencies: tr.list((w.currencies ?? []).map((code) => currencyMarketNames(code, currencies))) });
   if (w.kind === "noCode") return tr.t("overview.warning.noCode", { rule });
   if (w.kind === "marketOff") return tr.t("overview.warning.marketOff", { rule });
   return tr.t("overview.warning.noTarget", { rule });
@@ -300,14 +300,35 @@ export function OverviewScreen({
   const allGood = statusAllGood(status);
   // The same function the module pages call (model/module-status.ts): a tile and its page cannot disagree.
   const states: Partial<Record<string, ModuleStatus>> = moduleStatuses(status, { plan: plan ?? "pro", rules: statuses, warned: warningCounts(rules ?? [], warnings) });
-  const bodies = tileBodies(status, { codes: summary, plan, currencies }, tr);
+  // N3: the tile leads with what matters ("3 aktivní z 6"), so a narrow tile never hides it behind the total.
+  const liveCount = statuses.filter((s) => s.kind === "live").length;
+  const tileSummary = rules && liveCount > 0 ? [t("tile.codes.liveOf", { live: liveCount, total: statuses.length }), ...summary.split(" · ").slice(2)].join(" · ") : summary;
+  const bodies = tileBodies(status, { codes: tileSummary, plan, currencies }, tr);
   const free = plan === "free";
+  // N13: a failed write stops every part that travels with it. Those tiles say what they wait for (the one discount
+  // to fix, when the sync names it) instead of each claiming a thing of its own to resolve.
+  const failedRules = status.sync.state === "error" ? [...new Set((status.sync.problems ?? []).map((p) => p.params?.rule).filter((r): r is string => typeof r === "string" && r !== ""))] : [];
+  const waitText = writtenOf(status.sync) === "failed" ? (failedRules.length === 1 ? t("tile.waitsForRule", { rule: failedRules[0]! }) : t("tile.waitsForWrite")) : undefined;
+  const waits = (key: "tiers" | "rewards" | "campaigns" | "margin") =>
+    states[key]?.state === "attention" && !(key === "margin" && status.margin?.mirror.state === "failed") ? waitText : undefined;
   // §19b: the shop that has Pro is not told "Pro" on every tile; the marker is for the plan that lacks it.
   const proMark = plan !== "pro";
   const moduleRows = moduleAttention(status, currencies, tr);
   // N5: "Aktivní" only when something runs. A new shop with everything connected is ready, not live.
   const somethingRuns = Object.values(states).some((s) => s?.state === "active");
   const marketCount = (enabledMarkets ?? []).length;
+  // Nastavení tile: which markets miss an amount somewhere (a discount, a reward, a quantity level).
+  const missingCodes = new Set<string>([
+    ...warnings.flatMap((w) => (w.kind === "missingCurrency" ? (w.currencies ?? []) : [])),
+    ...(status.rewards?.missing?.shipping ?? []),
+    ...(status.rewards?.missing?.gifts ?? []).flat(),
+    ...(status.tiers?.missing?.global ?? []),
+    ...(status.tiers?.missing?.sets ?? []).flat(),
+  ]);
+  const missingMarkets = currencies.filter((c) => missingCodes.has(c.code)).flatMap((c) => c.markets.map((m) => m.name));
+  const planName = plan === "pro" ? "Pro" : "Free";
+  const marketsLine = marketCount > 0 ? tr.tp("tile.settings.markets", marketCount, { plan: planName }) : t(plan === "pro" ? "tile.settings.pro" : "tile.settings.free");
+  const settingsLine = missingMarkets.length > 0 ? t("tile.settings.missing", { summary: marketsLine, markets: tr.list(missingMarkets) }) : marketsLine;
   const lockedTile = (key: "outlet" | "campaigns") => states[key]?.state === "locked";
 
   return (
@@ -349,7 +370,7 @@ export function OverviewScreen({
                   }
                 >
                   <span style={{ color: WON_ATTENTION, fontWeight: 600, fontSize: 12.5 }}>{t("common.attention")} · </span>
-                  <s-text>{warningText(w, tr)}</s-text>
+                  <s-text>{warningText(w, tr, currencies)}</s-text>
                 </WonRow>
               ))}
               {/* N2: a reward or a quantity level that some market does not get, with the link to its field. */}
@@ -439,16 +460,16 @@ export function OverviewScreen({
         ) : null}
 
         <ModuleTiles label={t("overview.tiles.label")}>
-          <ModuleTile id="codes" href="/app/discounts" title={t("nav.discounts")} glyph="tag" about={t("tile.about.codes")} active={bodies.codes} status={states.codes} />
-          <ModuleTile id="tiers" href="/app/tiers" title={t("module.tiers")} glyph="layers" about={t("tile.about.tiers")} active={bodies.tiers} status={states.tiers} />
-          <ModuleTile id="rewards" href="/app/rewards" title={t("nav.rewards")} glyph="spark" about={t("tile.about.rewards")} active={bodies.rewards} status={states.rewards} />
-          <ModuleTile id="outlet" href="/app/outlet" title={t("module.outlet")} glyph="receipt" about={t("tile.about.outlet")} active={bodies.outlet} status={states.outlet} pro={proMark} locked={lockedTile("outlet") || (free && !states.outlet)} />
-          <ModuleTile id="campaigns" href="/app/campaigns" title={t("module.campaigns")} glyph="calendar" about={t("tile.about.campaigns")} active={bodies.campaigns} status={states.campaigns} pro={proMark} locked={lockedTile("campaigns") || (free && !states.campaigns)} />
-          <ModuleTile id="margin" href="/app/margin" title={t("module.margin")} glyph="shield" about={t("tile.about.margin")} active={bodies.margin} status={states.margin} />
-          <ModuleTile id="analytics" href="/app/analytics" title={t("nav.analytics")} glyph="check" about={t("tile.about.analytics")} active={bodies.analytics} />
-          <ModuleTile id="appearance" href="/app/appearance" title={t("nav.appearance")} glyph="store" about={t("tile.about.appearance")} />
-          <ModuleTile id="tryCart" href="/app/try-cart" title={t("nav.tryCart")} glyph="cart" about={t("tile.about.tryCart")} active={free ? t("tile.tryCart.locked") : undefined} pro={proMark} locked={free} />
-          <ModuleTile id="settings" href="/app/settings" title={t("nav.settings")} glyph="sliders" about={t("tile.about.settings")} active={plan ? (marketCount > 0 ? tr.tp("tile.settings.markets", marketCount, { plan: plan === "pro" ? "Pro" : "Free" }) : t(plan === "pro" ? "tile.settings.pro" : "tile.settings.free")) : undefined} />
+          <ModuleTile id="codes" href="/app/discounts" title={t("nav.discounts")} glyph="tag" about={t("tile.about.codes")} aboutShort={t("tile.short.codes")} active={bodies.codes} status={states.codes} />
+          <ModuleTile id="tiers" href="/app/tiers" title={t("module.tiers")} glyph="layers" about={t("tile.about.tiers")} aboutShort={t("tile.short.tiers")} active={bodies.tiers} status={states.tiers} issueText={waits("tiers")} />
+          <ModuleTile id="rewards" href="/app/rewards" title={t("nav.rewards")} glyph="spark" about={t("tile.about.rewards")} aboutShort={t("tile.short.rewards")} active={bodies.rewards} status={states.rewards} issueText={waits("rewards")} />
+          <ModuleTile id="outlet" href="/app/outlet" title={t("module.outlet")} glyph="receipt" about={t("tile.about.outlet")} aboutShort={t("tile.short.outlet")} active={bodies.outlet} status={states.outlet} pro={proMark} locked={lockedTile("outlet") || (free && !states.outlet)} />
+          <ModuleTile id="campaigns" href="/app/campaigns" title={t("module.campaigns")} glyph="calendar" about={t("tile.about.campaigns")} aboutShort={t("tile.short.campaigns")} active={bodies.campaigns} status={states.campaigns} issueText={waits("campaigns")} pro={proMark} locked={lockedTile("campaigns") || (free && !states.campaigns)} />
+          <ModuleTile id="margin" href="/app/margin" title={t("module.margin")} glyph="shield" about={t("tile.about.margin")} aboutShort={t("tile.short.margin")} active={bodies.margin} status={states.margin} issueText={waits("margin")} />
+          <ModuleTile id="analytics" href="/app/analytics" title={t("nav.analytics")} glyph="check" about={t("tile.about.analytics")} aboutShort={t("tile.short.analytics")} active={bodies.analytics} />
+          <ModuleTile id="appearance" href="/app/appearance" title={t("nav.appearance")} glyph="store" about={t("tile.about.appearance")} aboutShort={t("tile.short.appearance")} />
+          <ModuleTile id="tryCart" href="/app/try-cart" title={t("nav.tryCart")} glyph="cart" about={t("tile.about.tryCart")} aboutShort={t("tile.short.tryCart")} active={free ? t("tile.tryCart.locked") : undefined} pro={proMark} locked={free} />
+          <ModuleTile id="settings" href="/app/settings" title={t("nav.settings")} glyph="sliders" about={t("tile.about.settings")} aboutShort={t("tile.short.settings")} active={plan ? settingsLine : undefined} />
         </ModuleTiles>
       </s-stack>
     </s-page>

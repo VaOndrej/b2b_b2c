@@ -56,7 +56,8 @@ const DEFAULTS: CombinationView = {
 test("load: the stored switches (defaults on a new shop), the plan, the version token and the market currencies", async () => {
   const store = new FakeStore();
   const data = await loadSettingsScreen(ctxFor(store), { scopes: "write_discounts" });
-  assert.deepEqual(data, { plan: "free", configVersion: null, currencies: [{ code: "CZK", markets: [] }], combination: DEFAULTS });
+  // A new shop has no market stored yet (the Přehled's check brings them in, T1): the table is empty.
+  assert.deepEqual(data, { plan: "free", configVersion: null, currencies: [{ code: "CZK", markets: [] }], combination: DEFAULTS, markets: [] });
 });
 
 test("save: the switches go into the config and into the shop config checkout runs", async () => {

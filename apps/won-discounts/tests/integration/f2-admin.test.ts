@@ -38,8 +38,8 @@ import { FakeStore, formOf, renderPage, testCtx, text } from "./helpers.ts";
 //   item 1  what the Free plan does not run is said on Přehled, Slevy a kódy
 //           and in the editor; such a rule is "Neběží";
 //   item 2  Try Cart reads the refs checkout reads; stale targeting is said;
-//           "Obnovit cílení"; Přehled refreshes a targeting older than 24 h;
-//   item 4  a config no applying run synced: "Synchronizovat znovu";
+//           "Obnovit produkty ve slevách"; Přehled refreshes a targeting older than 24 h;
+//   item 4  a config no applying run synced: "Zkusit zapsat znovu";
 //   item 5  "Běží" needs the automatic node live and the product step through;
 //   item 8  Try Cart shows checkout's amounts with its warnings;
 //   item 10 a code rule's save reads native codes FRESH for the hash check;
@@ -111,7 +111,7 @@ test("BILL-1: on Free, Přehled / Slevy a kódy / the editor say which Pro setti
   assert.ok(overview.gate && overview.gate.length === 2, JSON.stringify(overview.gate));
   assert.deepEqual(overview.gateOff, ["sk-only"]);
   const html = text(await renderPage(createElement(OverviewScreen, overview)));
-  assert.match(html, /Pro funkce není aktivní — v pokladně se neuplatní/);
+  assert.match(html, /Tohle je v tarifu Pro, zákazník to nedostane/);
   assert.match(html, /Sleva „Jen Slovensko“ cílí na vybrané trhy/);
   // The home tile counts the discount among what needs attention; the list of discounts says why.
   assert.match(html, /1 neaktivní/);
@@ -120,14 +120,14 @@ test("BILL-1: on Free, Přehled / Slevy a kódy / the editor say which Pro setti
   assert.doesNotMatch(JSON.stringify(shipped), /combinesWith/);
 
   const discounts = await discountsPage(ctx, { ...PAGE, deleted: false });
-  assert.match(text(await renderPage(createElement(DiscountsScreen, discounts))), /Pro funkce není aktivní/);
+  assert.match(text(await renderPage(createElement(DiscountsScreen, discounts))), /Tohle je v tarifu Pro, zákazník to nedostane/);
 
   const editor = await ruleEditorPage(ctx, { ...PAGE, ruleId: "sk-only", recipe: null, saved: false });
   assert.ok(editor);
   assert.equal(editor.gate?.length, 1, "only this rule's sentence");
   assert.equal(editor.gateOff, true);
   const editorHtml = text(await renderPage(createElement(RuleEditorScreen, editor)));
-  assert.match(editorHtml, /Pro funkce není aktivní — v pokladně se neuplatní/);
+  assert.match(editorHtml, /Tohle je v tarifu Pro, zákazník to nedostane/);
   assert.match(editorHtml, /Neaktivní/);
 });
 
@@ -165,7 +165,7 @@ test("P2-3: the automatic node deleted or switched off in Shopify → automatic 
   assert.deepEqual(inactive.ruleSync, { a1: "failed" });
   const html = text(await renderPage(createElement(OverviewScreen, inactive)));
   assert.match(html, /Automatická sleva „Won Discounts“ je v Shopify vypnutá/);
-  assert.match(html, /Synchronizovat znovu/);
+  assert.match(html, /Zkusit zapsat znovu/);
 
   store.sync.nodes.delete(node.id);
   clearResyncDebounce();
@@ -210,11 +210,11 @@ test("item 2: a targeting marked stale by a webhook → the product rule 'Propis
   const html = text(await renderPage(createElement(OverviewScreen, props)));
   // The targeting line says it; the discount itself counts as running (the home tile is green).
   assert.match(html, /Propisuje se do Shopify|Právě se obnovuje/);
-  assert.match(html, /Cílení na produkty a kolekce/);
-  assert.match(html, /Obnovit cílení/);
+  assert.match(html, /Produkty a kolekce ve slevách/);
+  assert.match(html, /Obnovit produkty ve slevách/);
 });
 
-test("item 2: 'Obnovit cílení' re-reads the collection now; the Přehled refreshes a targeting older than 24 h by itself", async () => {
+test("item 2: 'Obnovit produkty ve slevách' re-reads the collection now; the Přehled refreshes a targeting older than 24 h by itself", async () => {
   const store = new FakeStore();
   const [a, b] = [store.sync.addProduct(1), store.sync.addProduct(2)];
   const collection = store.sync.addCollection(7, [a.id]);
@@ -276,9 +276,9 @@ test("item 2: Try Cart uses the refs checkout reads — a product that left the 
   assert.ok(!store.calls.some((c) => c.op === "WonTryCartProductCollections"), "one page of collections was enough, no extra pages");
 });
 
-// --- item 4: Synchronizovat znovu when the stored config is not in Shopify --------------------------
+// --- item 4: Zkusit zapsat znovu when the stored config is not in Shopify --------------------------
 
-test("P2-2: a stored config no applying run synced shows 'čeká na zápis' with 'Synchronizovat znovu' (debounced load)", async () => {
+test("P2-2: a stored config no applying run synced shows 'čeká na zápis' with 'Zkusit zapsat znovu' (debounced load)", async () => {
   await seed({ modules: { codes: { rules: [auto("a1")] } } });
   const store = new FakeStore();
   const ctx = testCtx(db.prisma, shop, store);
@@ -286,12 +286,12 @@ test("P2-2: a stored config no applying run synced shows 'čeká na zápis' with
   await settle();
   const { config } = await loadConfig(db.prisma, shop);
   await saveConfig(db.prisma, shop, { ...config, modules: { ...config.modules, codes: { rules: [...config.modules.codes.rules, auto("a2")] } } });
-  // Within the Přehled debounce: no resync on this load — the line must not say "Synchronizováno".
+  // Within the Přehled debounce: no resync on this load — the line must not say "Zapsáno".
   const props = await overviewPage(ctx, PAGE);
   assert.equal(props.signals?.sync.state, "pending");
   const html = text(await renderPage(createElement(OverviewScreen, props)));
   assert.match(html, /Uloženo, čeká na zápis do Shopify/);
-  assert.match(html, /Synchronizovat znovu/);
+  assert.match(html, /Zkusit zapsat znovu/);
 });
 
 // --- item 10: fresh native codes at a code rule's save ---------------------------------------------

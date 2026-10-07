@@ -17,7 +17,7 @@
 // A presentational component: app/routes/app.settings.tsx renders it from
 // loadSettingsScreen (app/lib/integration/settings.server.ts) and loadPlanScreen.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Form, useSubmit } from "react-router";
 
 import { useT } from "../../i18n/context";
@@ -35,7 +35,9 @@ import type { CombinationView, SettingsScreenData, UiResult } from "../model/typ
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
 import { PlanBadge } from "../shell/PlanBadge";
+import { sharedCurrencyGroups, type MarketCell } from "../model/markets-overview";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
+import { WON_INK, WON_LINE, WON_MUTED } from "../shell/tokens";
 import { PlanSections } from "./PlanScreen";
 
 /** Shopify's own Markets settings (opens in the admin frame, outside the app). */
@@ -49,10 +51,52 @@ export interface SettingsScreenProps extends SettingsScreenData {
   planAction?: string;
 }
 
-export function SettingsScreen({ currencies, combination: stored, configVersion, plan, result, planScreen, planAction = PLAN_ACTION }: SettingsScreenProps) {
+const MARKETS_CSS = `
+.won-markets{display:grid;gap:0}
+.won-market{display:grid;grid-template-columns:minmax(0,1.3fr) repeat(4,minmax(0,1fr));gap:6px 14px;padding:12px 0;border-top:1px solid ${WON_LINE};align-items:start}
+.won-market--head{border-top:0;padding:0 0 8px;font-size:12px;font-weight:600;color:${WON_MUTED}}
+.won-market__label{display:none;font-size:12px;color:${WON_MUTED}}
+.won-market--off{color:${WON_MUTED}}
+@media (max-width:720px){.won-market{grid-template-columns:1fr}.won-market--head{display:none}.won-market__label{display:block}.won-market__cell{display:flex;justify-content:space-between;gap:12px}}
+`;
+
+/** One cell of the markets table: the amount, or what is missing with the link to the field that adds it. */
+function MarketCellView({ cell, label, off }: { cell: MarketCell; label: string; off: boolean }) {
+  const tr = useT();
+  const { t } = tr;
+  let body: ReactNode;
+  if (cell.kind === "amount") body = <span style={{ fontWeight: 600 }}>{cell.text}</span>;
+  else if (cell.kind === "ok") body = t("settings.markets.cell.ok");
+  else if (cell.kind === "percent") body = t("settings.markets.cell.percent");
+  else if (cell.kind === "none") body = <span style={{ color: WON_MUTED }}>{t("settings.markets.cell.none")}</span>;
+  else if (off) body = <span>{cell.count ? tr.tp("settings.markets.cell.missingN", cell.count) : t("settings.markets.cell.missing")}</span>;
+  else
+    body = (
+      <s-link href={cell.href} tone="critical">
+        {cell.count ? tr.tp("settings.markets.cell.missingN", cell.count) : t("settings.markets.cell.missing")}
+      </s-link>
+    );
+  return (
+    <div className="won-market__cell" {...(cell.kind === "missing" && !off ? { "data-won-market-missing": "" } : {})} style={{ fontSize: 13, minWidth: 0, overflowWrap: "anywhere" }}>
+      <span className="won-market__label">{label}</span>
+      <span>{body}</span>
+    </div>
+  );
+}
+
+export function SettingsScreen({ currencies, combination: stored, configVersion, plan, result, planScreen, planAction = PLAN_ACTION, markets = [] }: SettingsScreenProps) {
   const tr = useT();
   const { t } = tr;
   const withMarkets = currencies.filter((c) => c.markets.length > 0);
+  const liveMarkets = markets.filter((m) => m.enabled);
+  const missingIn = liveMarkets.filter((m) => m.missing > 0).map((m) => m.name);
+  const shared = sharedCurrencyGroups(markets);
+  const columns = [
+    ["shipping", t("settings.markets.col.shipping")],
+    ["gift", t("settings.markets.col.gift")],
+    ["discounts", t("settings.markets.col.discounts")],
+    ["tiers", t("settings.markets.col.tiers")],
+  ] as const;
 
   // §2/§17b: the live switches, re-read from the form on native events.
   const formRef = useRef<HTMLFormElement>(null);
@@ -150,20 +194,55 @@ export function SettingsScreen({ currencies, combination: stored, configVersion,
           title={t("settings.markets.title")}
           glyph="store"
           summary={
-            withMarkets.length === 0
-              ? t("settings.markets.none")
-              : t("settings.markets.list", {
-                  currencies: tr.list(withMarkets.map((c) => `${c.code} (${c.markets.map((m) => m.name).join(", ")})`)),
-                })
+            liveMarkets.length > 0
+              ? `${tr.tp("settings.markets.count", liveMarkets.length)} · ${missingIn.length > 0 ? t("settings.markets.missingIn", { markets: tr.list(missingIn) }) : t("settings.markets.allSet")}`
+              : withMarkets.length === 0
+                ? t("settings.markets.none")
+                : t("settings.markets.list", {
+                    currencies: tr.list(withMarkets.map((c) => `${c.code} (${c.markets.map((m) => m.name).join(", ")})`)),
+                  })
           }
           hint={t("settings.language")}
           anchor="markets"
         >
-          <div>
-            <s-button href={SHOPIFY_MARKETS_URL} target="_top" variant="secondary">
-              {t("settings.markets.manage")}
-            </s-button>
-          </div>
+          <s-stack direction="block" gap="base">
+            {markets.length > 0 ? (
+              // N15: every market next to the others — what it gets, and in red what it does not, with the link to the field.
+              <div className="won-markets" data-won-markets>
+                <style dangerouslySetInnerHTML={{ __html: MARKETS_CSS }} />
+                <div className="won-market won-market--head">
+                  <span>{t("settings.markets.title")}</span>
+                  {columns.map(([key, label]) => (
+                    <span key={key}>{label}</span>
+                  ))}
+                </div>
+                {markets.map((m) => (
+                  <div key={m.handle} className={m.enabled ? "won-market" : "won-market won-market--off"} data-won-market={m.handle} {...(m.enabled ? {} : { "data-won-market-off": "" })}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: m.enabled ? WON_INK : WON_MUTED, overflowWrap: "anywhere" }}>
+                        {m.name} ({m.currency})
+                      </div>
+                      {m.enabled ? null : <div style={{ fontSize: 12.5 }}>{t("settings.markets.off")}</div>}
+                    </div>
+                    {columns.map(([key, label]) => (
+                      <MarketCellView key={key} cell={m[key]} label={label} off={!m.enabled} />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {markets.some((m) => !m.enabled) ? <RowNote>{t("settings.markets.offNote")}</RowNote> : null}
+            {/* Návrh 8 (not built): two markets with one currency share every amount — said here, in words. */}
+            {shared.map((group) => (
+              <RowNote key={group.currency}>{t("settings.markets.sameCurrency", { markets: `${tr.list(group.names)} (${group.currency})` })}</RowNote>
+            ))}
+            {markets.length > 0 ? <RowNote>{t("settings.markets.source")}</RowNote> : null}
+            <div>
+              <s-button href={SHOPIFY_MARKETS_URL} target="_top" variant="secondary">
+                {t("settings.markets.manage")}
+              </s-button>
+            </div>
+          </s-stack>
         </WonSection>
 
         <WonSection title={t("settings.tools.title")} glyph="cart" summary={t("settings.tools.summary")} anchor="tools">

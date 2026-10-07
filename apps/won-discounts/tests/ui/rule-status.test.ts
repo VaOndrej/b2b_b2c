@@ -42,14 +42,14 @@ test("a past schedule is 'Skončilo …'; the start and end days themselves run"
   assert.equal(ruleStatus(rule({ schedule: blackFriday }), ctx("2026-11-30")).kind, "live");
 });
 
-test("not synced to Shopify yet → 'Uloženo, zatím nezapsáno', never green", () => {
+test("not synced to Shopify yet → 'Uloženo, zatím neplatí', never green", () => {
   const s = ruleStatus(rule(), ctx("2026-09-28", NOT_WIRED));
   assert.equal(s.kind, "not_synced");
-  assert.equal(statusText(s, cs), "Uloženo, zatím nezapsáno do Shopify");
+  assert.equal(statusText(s, cs), "Uloženo, zatím neplatí");
   // A failed sync says so (not "waiting").
   const failed = ruleStatus(rule(), ctx("2026-09-28", { state: "error", at: "x" }));
   assert.equal(failed.kind, "sync_failed");
-  assert.match(statusText(failed, cs) ?? "", /synchronizace selhala/);
+  assert.match(statusText(failed, cs) ?? "", /Zápis do Shopify se nepovedl/);
   assert.equal(ruleStatus(rule(), ctx("2026-09-28")).kind, "live");
 });
 
@@ -75,7 +75,7 @@ test("switched off, segment-targeted, unsaved draft", () => {
   assert.equal(ruleStatus(rule({ enabled: false, schedule: blackFriday }), ctx("2026-11-28")).kind, "off");
   const seg = ruleStatus(rule({ targeting: { segments: ["gid://shopify/Segment/1"] } }), ctx("2026-09-28"));
   assert.equal(seg.kind, "unsupported");
-  assert.equal(statusText(seg, cs), "Neaktivní: cílení na segmenty se v pokladně zatím neuplatní");
+  assert.equal(statusText(seg, cs), "Neaktivní: sleva jen pro skupiny zákazníků se v pokladně zatím neuplatní");
   assert.equal(ruleStatus(rule(), { ...ctx("2026-09-28"), draft: true }).kind, "draft");
 });
 
@@ -145,7 +145,7 @@ test("P3: every 'does not run' status names the editor field that fixes it; the 
   assert.equal(anchorOf(rule({ targeting: { segments: ["gid://shopify/Segment/1"] } }), { kind: "unsupported" }), "segments");
   assert.equal(anchorOf(rule(), { kind: "scheduled", date: "2026-11-27" }), "schedule");
   assert.equal(anchorOf(rule(), { kind: "ended", date: "2026-11-27" }), "schedule");
-  // Nothing to fix in a field: switched off, running, a draft, waiting for / failed sync (those get "Synchronizovat znovu").
+  // Nothing to fix in a field: switched off, running, a draft, waiting for / failed sync (those get "Zkusit zapsat znovu").
   for (const kind of ["live", "off", "draft", "refreshing", "not_synced", "sync_failed"] as const) {
     assert.equal(anchorOf(rule(), { kind }), null, kind);
   }

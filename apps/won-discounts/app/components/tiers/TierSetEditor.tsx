@@ -48,6 +48,7 @@ export function TierSetEditor({
   live,
   errorFor,
   onChange,
+  attempted = false,
 }: {
   set: TierSetView;
   /** Currencies of the enabled markets (amount fields). */
@@ -60,10 +61,27 @@ export function TierSetEditor({
   errorFor: (field: string) => string | undefined;
   /** A row was added or removed: the page re-reads its form (the state line and the preview follow, §17b). */
   onChange?: () => void;
+  /** A save was refused: every row says what it lacks (before that only rows the merchant has left, audit N8). */
+  attempted?: boolean;
 }) {
   const tr = useT();
   const { t } = tr;
   const sid = set.id;
+  // N8: "není úplná" and "se nenabízí" are said once the merchant has had a go at the row — a field of it was
+  // left, a save was refused, or the row is stored (then it is a fact about the shop). Never nine red lines
+  // the moment "Částka za kus" is picked.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [left, setLeft] = useState<ReadonlySet<string>>(new Set());
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const onLeave = (event: Event) => {
+      const name = (event.target as { name?: unknown } | null)?.name;
+      if (typeof name === "string" && name) setLeft((prev) => (prev.has(name) ? prev : new Set(prev).add(name)));
+    };
+    el.addEventListener("focusout", onLeave);
+    return () => el.removeEventListener("focusout", onLeave);
+  }, []);
   const counter = useRef(set.breaks.length);
   const [rows, setRows] = useState<Row[]>(() => set.breaks.map((b, i) => ({ key: `r${i}`, initial: b })));
   const mounted = useRef(false);
@@ -91,6 +109,7 @@ export function TierSetEditor({
   };
   const remove = (key: string) => setRows((list) => list.filter((r) => r.key !== key));
   const codes = currencies.map((c) => c.code);
+  const marketsOf = (code: string) => currencies.find((c) => c.code === code)?.markets.map((m) => m.name).join(", ") ?? "";
   const count = set.countAcross as TierCountMode;
   const liveCount = live(F.count(sid));
   const countNow: TierCountMode = (TIER_COUNT_MODES as readonly string[]).includes(liveCount ?? "") ? (liveCount as TierCountMode) : count;
@@ -102,6 +121,7 @@ export function TierSetEditor({
   const kind: "percent" | "amount" = liveKind === "amount" || liveKind === "percent" ? liveKind : setKind;
 
   return (
+    <div ref={rootRef}>
     <s-stack direction="block" gap="base">
       <s-stack direction="block" gap="small-200">
         <SegmentedChoice
@@ -158,6 +178,10 @@ export function TierSetEditor({
           };
           const minNow = Number(live(F.min(sid, row.key)) ?? row.initial.minQty);
           const missing = kind === "amount" ? currencies.filter((c) => amountNow(c.code) === "") : [];
+          const rowFields = [F.min(sid, row.key), F.percent(sid, row.key), ...codes.map((code) => F.amount(sid, row.key, code))];
+          // Stored in the kind shown now = a fact about the shop; else only after a go at the row.
+          const storedSoFar = kind === "amount" ? Object.keys(row.initial.amount).length > 0 : row.initial.percent !== null;
+          const tried = attempted || storedSoFar || rowFields.some((field) => left.has(field));
           // What the row still lacks, from what is typed (before the first read: from what is stored).
           const gap = tierRowGap(kind, {
             min: live(F.min(sid, row.key)) ?? (row.initial.minQty > 0 ? String(row.initial.minQty) : ""),
@@ -197,7 +221,8 @@ export function TierSetEditor({
                     <Shown key={code} when={kind === "amount"}>
                       <s-number-field
                         name={F.amount(sid, row.key, code)}
-                        label={t("tiers.break.amount", { currency: code })}
+                        // Proposal 3: named by the market, the currency in brackets.
+                        label={marketsOf(code) ? t("tiers.break.amountMarket", { currency: code, markets: marketsOf(code) }) : t("tiers.break.amount", { currency: code })}
                         value={row.initial.amount[code] !== undefined ? minorToInput(row.initial.amount[code]!, code) : ""}
                         min={0}
                         suffix={code}
@@ -207,18 +232,18 @@ export function TierSetEditor({
                     </Shown>
                   ))}
                 </div>
-                {gap ? <RowNote tone="attention">{t(gap === "min" ? "tiers.break.incompleteMin" : kind === "percent" ? "tiers.break.incompletePercent" : "tiers.break.incompleteAmount")}</RowNote> : null}
+                {gap && tried ? <RowNote tone="attention">{t(gap === "min" ? "tiers.break.incompleteMin" : kind === "percent" ? "tiers.break.incompletePercent" : "tiers.break.incompleteAmount")}</RowNote> : null}
                 <Shown when={kind === "amount"}>
                   <FieldMessage text={errorFor(F.amounts(sid, row.key))} />
-                  {missing.map((c) => (
-                    <RowNote key={c.code} tone="attention">
-                      {t("tiers.missingCurrency", {
-                        currency: c.code,
-                        markets: c.markets.map((m) => m.name).join(", ") || c.code,
+                  {/* One sentence per level: an incomplete level says only that; a complete one names the markets it misses. */}
+                  {!gap && tried && missing.length > 0 ? (
+                    <RowNote tone="attention">
+                      {t("tiers.missingMarkets", {
+                        markets: tr.list(missing.map((c) => (c.markets.length > 0 ? `${c.markets.map((m) => m.name).join(", ")} (${c.code})` : c.code))),
                         mins: t("tiers.from", { n: Number.isFinite(minNow) && minNow > 0 ? minNow : row.initial.minQty }).toLocaleLowerCase(tr.locale),
                       })}
                     </RowNote>
-                  ))}
+                  ) : null}
                 </Shown>
                 {kept
                   .filter((code) => row.initial.amount[code] !== undefined)
@@ -248,6 +273,7 @@ export function TierSetEditor({
         </div>
       </div>
     </s-stack>
+    </div>
   );
 }
 

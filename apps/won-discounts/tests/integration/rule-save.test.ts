@@ -76,7 +76,7 @@ test("a new rule is saved AND written to Shopify in one action; the landing page
   assert.equal(page.sync.state, "ok");
 
   const html = text(await renderPage(createElement(RuleEditorScreen, page)));
-  assert.match(html, /Uloženo a zapsáno do Shopify/);
+  assert.match(html, /Uloženo, v obchodě platí/);
   assert.match(html, /Aktivní/);
 });
 
@@ -157,7 +157,7 @@ test("unreadable stored config: refused with 'Nahradit neplatnou konfiguraci'; t
   assert.equal(shopConfigRules(store).length, 1, "synced after the replacement");
 });
 
-test("saved but NOT in Shopify: the result says what did not get through, 'Synchronizovat znovu', and the rule is 'Nezapsáno'", async () => {
+test("saved but NOT in Shopify: the result says what did not get through, 'Zkusit zapsat znovu', and the rule is 'Nezapsáno'", async () => {
   const store = new FakeStore();
   const ctx = testCtx(db.prisma, shop, store);
   // Every shop-config write fails (GraphQL error, not retried).
@@ -175,8 +175,8 @@ test("saved but NOT in Shopify: the result says what did not get through, 'Synch
   const html = text(await renderPage(createElement(RuleEditorScreen, page)));
   assert.match(html, /Uloženo, ale do Shopify se zatím nezapsalo/);
   assert.match(html, /Nové nastavení slev se do pokladny zatím nezapsalo, platí předchozí/);
-  assert.match(html, /Synchronizovat znovu/);
-  assert.match(html, /Nezapsáno/);
+  assert.match(html, /Zkusit zapsat znovu/);
+  assert.match(html, /Zatím neplatí/);
   assert.doesNotMatch(html, />Aktivní</);
 
   // Editing an existing rule answers in place (no redirect) with the same honest result.

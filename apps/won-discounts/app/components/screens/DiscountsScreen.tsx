@@ -13,7 +13,7 @@ import { useT } from "../../i18n/context";
 import { RecipeGrid } from "../RecipeGrid";
 import { RuleRow } from "../RuleRow";
 import { collectWarnings, missingCurrencies, ruleName, warningCounts } from "../model/describe";
-import { currencyCodes, currencyViews, type MarketNames } from "../model/markets";
+import { currencyCodes, currencyMarketNames, currencyViews, type MarketNames } from "../model/markets";
 import { shopToday } from "../model/rule-form";
 import { codesStatus } from "../model/module-status";
 import { ruleEditHref, ruleStatus, ruleStatusSummary, type RuleStatus } from "../model/rule-status";
@@ -204,7 +204,7 @@ export function DiscountsScreen({
                     names={names}
                     attention={
                       missing.length > 0
-                        ? t("overview.warning.missingCurrency", { rule: ruleName(rule, tr), currencies: tr.list(missing) })
+                        ? t("overview.warning.missingCurrency", { rule: ruleName(rule, tr), currencies: tr.list(missing.map((code) => currencyMarketNames(code, currencies))) })
                         : undefined
                     }
                     action={

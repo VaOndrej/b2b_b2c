@@ -588,7 +588,7 @@ function moveErrorParts(item: MoveErrorItem, locale: NativeLocale): { what: stri
           },
           locale,
         ),
-        next: pick({ cs: "Otevřete nastavení a uložte ho znovu, pak slevu přesuň.", en: "Open the settings, save them again, then move the discount." }, locale),
+        next: pick({ cs: "Otevřete nastavení a uložte ho znovu, pak slevu přesuňte.", en: "Open the settings, save them again, then move the discount." }, locale),
       };
     case "code_hash_collision":
       return {
@@ -613,12 +613,12 @@ function moveErrorParts(item: MoveErrorItem, locale: NativeLocale): { what: stri
           },
           locale,
         ),
-        next: pick({ cs: "Uber kódy nebo pravidla ve Won, pak ji přesuň.", en: "Remove codes or rules in Won, then move it." }, locale),
+        next: pick({ cs: "Uberte kódy nebo slevy ve Won, pak ji přesuňte.", en: "Remove codes or rules in Won, then move it." }, locale),
       };
     case "config_too_large":
       return {
         what: pick({ cs: "Nastavení Won by s touhle slevou bylo příliš velké.", en: "With this discount the Won settings would be too large." }, locale),
-        next: pick({ cs: "Uber pravidla ve Won, pak ji přesuň.", en: "Remove rules in Won, then move it." }, locale),
+        next: pick({ cs: "Uberte slevy ve Won, pak ji přesuňte.", en: "Remove rules in Won, then move it." }, locale),
       };
     case "internal_error":
       return { what: pick({ cs: `Přesun se přerušil (${item.detail}).`, en: `The move was interrupted (${item.detail}).` }, locale) };
@@ -628,7 +628,7 @@ function moveErrorParts(item: MoveErrorItem, locale: NativeLocale): { what: stri
           { cs: "Předchozí pokus o přesun už slevu vrátil do Shopify.", en: "An earlier attempt to move it already put the discount back into Shopify." },
           locale,
         ),
-        next: pick({ cs: "Obnovte seznam slev a přesuň ji znovu.", en: "Refresh the list and move it again." }, locale),
+        next: pick({ cs: "Obnovte seznam slev a přesuňte ji znovu.", en: "Refresh the list and move it again." }, locale),
       };
     case "skipped_after_limit":
       return {
@@ -801,7 +801,7 @@ export function staleClaimText(locale: NativeLocale, kind: StaleNote = "interrup
     case "interrupted":
       return pick(
         {
-          cs: "Přesun nebo vrácení se přerušilo (aplikace se mezitím restartovala). Záloha je uložená: klikni na „Vrátit zpět“, nebo slevu přesuň znovu.",
+          cs: "Přesun nebo vrácení se přerušilo (aplikace se mezitím restartovala). Záloha je uložená: klikněte na „Vrátit zpět“, nebo slevu přesuňte znovu.",
           en: "A move or undo was interrupted (the app restarted meanwhile). The backup is saved: click “Undo”, or move the discount again.",
         },
         locale,

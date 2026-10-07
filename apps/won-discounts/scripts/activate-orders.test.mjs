@@ -21,11 +21,11 @@ test("the committed shopify.app.toml is not activated: no read_orders scope, no 
 test("activation adds the scope and the subscription before [access_scopes]; nothing else changes", () => {
   const { toml, changed } = activateOrders(real);
   assert.equal(changed, true);
-  assert.match(toml, /^scopes = "write_discounts,read_products,write_products,read_themes,read_orders"$/m);
+  assert.match(toml, /^scopes = "write_discounts,read_products,write_products,read_themes,read_markets,read_orders"$/m);
   const added = lineDiff(real, toml).filter((line) => line.startsWith("+ ")).join("\n");
   assert.match(added, /topics = \[ "orders\/create", "orders\/cancelled", "refunds\/create" \]\n\+   uri = "\/webhooks\/outlet"/);
   assert.equal((toml.match(/"orders\/create"/g) ?? []).length, 1, "a topic is subscribed once");
-  assert.deepEqual(lineDiff(real, toml).filter((line) => line.startsWith("- ")), ['- scopes = "write_discounts,read_products,write_products,read_themes"']);
+  assert.deepEqual(lineDiff(real, toml).filter((line) => line.startsWith("- ")), ['- scopes = "write_discounts,read_products,write_products,read_themes,read_markets"']);
   assert.ok(toml.indexOf('uri = "/webhooks/outlet"') < toml.indexOf("[access_scopes]"));
   assert.ok(toml.indexOf('uri = "/webhooks/outlet"') > toml.indexOf("[webhooks]"));
 });

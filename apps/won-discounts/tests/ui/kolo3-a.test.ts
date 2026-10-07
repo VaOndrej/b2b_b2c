@@ -138,20 +138,20 @@ test("bod 1: the English label is 'Active'", async () => {
 
 test("bod 5: a theme placement says where it stands — green in the theme, red missing with the add button in the header, grey not verified", async () => {
   const on = section(await render("tiers"), "block");
-  assert.match(on, /data-won-placement="in_theme"[^>]*>.*?V tématu/s);
-  assert.doesNotMatch(on, /Přidat do tématu/);
+  assert.match(on, /data-won-placement="in_theme"[^>]*>.*?Na webu/s);
+  assert.doesNotMatch(on, /Přidat na web/);
   const off = section(await render("tiers?state=alternate"), "block");
-  assert.match(off, /data-won-placement="missing"[^>]*>.*?Chybí v tématu/s);
-  assert.match(off, /data-won-section-action[^>]*>\s*<s-button[^>]*variant="primary"[^>]*>Přidat do tématu/);
+  assert.match(off, /data-won-placement="missing"[^>]*>.*?Na webu chybí/s);
+  assert.match(off, /data-won-section-action[^>]*>\s*<s-button[^>]*variant="primary"[^>]*>Přidat na web/);
   const unknown = section(await render("tiers?state=block-unknown"), "block");
-  assert.match(unknown, /data-won-placement="unknown"[^>]*>.*?Neověřeno/s);
+  assert.match(unknown, /data-won-placement="unknown"[^>]*>.*?Nepodařilo se zjistit/s);
   assert.match(unknown, /Zkontrolovat znovu/);
   // The same pattern for every placement: Won in the theme, the cart block, the rewards progress, the top bar,
   // the campaign banner, the sale badge.
   const rewards = await render("rewards");
   assert.match(section(rewards, "cart"), /data-won-placement="in_theme"/);
   assert.equal(count(section(rewards, "places"), /data-won-placement="/g), 3);
-  assert.match(section(rewards, "places"), /data-won-placement="missing"[\s\S]*Přidat do tématu/);
+  assert.match(section(rewards, "places"), /data-won-placement="missing"[\s\S]*Přidat na web/);
   const draft = section(await render("rewards?state=embed-draft"), "cart");
   assert.match(draft, /data-won-placement="missing"/);
   assert.match(draft, /data-won-section-action/);
@@ -203,10 +203,10 @@ test("home tiles: each says what is under it, and below that what is active now"
     assert.match(tile(html, key), /data-won-tile-about/, `${key}: what the part is for`);
   }
   const rewards = tile(html, "rewards");
-  assert.match(rewards, /data-won-tile-about[^>]*>[^<]*doprava zdarma[^<]*dárek/i, "Odměny: what it covers");
+  assert.match(rewards, /data-won-tile-about[^>]*><span[^>]*>[^<]*doprava zdarma[^<]*dárek/i, "Odměny: what it covers");
   assert.match(rewards, /data-won-tile-active[^>]*>[^<]*Doprava zdarma od 1\s000\sKč/, "…and what is set");
   assert.ok(rewards.indexOf("data-won-tile-about") < rewards.indexOf("data-won-tile-active"), "the explanation first, the state under it");
-  assert.match(tile(html, "tiers"), /data-won-tile-about[^>]*>[^<]*podle počtu kusů/);
+  assert.match(tile(html, "tiers"), /data-won-tile-about[^>]*><span[^>]*>[^<]*podle počtu kusů/);
   assert.match(tile(html, "tiers"), /data-won-tile-active[^>]*>[^<]*Od 3 ks/);
   // Nothing set up: the explanation stays, the state line says so.
   const off = await render("overview?state=modules-off");

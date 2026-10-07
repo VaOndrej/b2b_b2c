@@ -27,7 +27,11 @@ const GRID_CSS = `
 .won-tile__active{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .won-tile-button{display:grid;width:100%;margin:0;padding:0;border:0;background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer;border-radius:14px}
 .won-tile-button:focus-visible{outline:2px solid #1a73e8;outline-offset:2px}
-@media (max-width:520px){.won-tile{padding:12px!important;min-height:138px}.won-tile__head{flex-direction:column;align-items:flex-start!important;gap:8px!important}}
+.won-tile__about-short{display:none}
+@media (max-width:520px){.won-tile{padding:12px!important;min-height:138px}.won-tile__head{flex-direction:column;align-items:flex-start!important;gap:8px!important}
+.won-tile__about{-webkit-line-clamp:2}
+.won-tile__about--long{display:none}.won-tile__about-short{display:inline}
+.won-tile__active{display:block;overflow:visible;-webkit-line-clamp:unset}}
 `;
 
 /** `columns={4}`: a page with four parts keeps them in one row on a desktop. */
@@ -49,10 +53,17 @@ export interface TileContent {
   glyph: SectionGlyphName;
   /** What the part is for: what the merchant finds under the tile (never more than three lines). */
   about: string;
-  /** What is active / set now, from the real settings (never more than two lines). Absent = nothing to say. */
+  /** The same in one short sentence, for a narrow tile (two columns at 390 px), so it is never cut mid-sentence (audit N3). */
+  aboutShort?: string;
+  /**
+   * What is active / set now, from the real settings. Absent = nothing to say. Two lines on a wide tile; on a narrow
+   * one it is never cut (it wraps): this line is why the tile exists (audit N3).
+   */
   active?: string;
   /** The module's state; absent for a part that neither runs nor stops (Přehledy, Nastavení). */
   status?: ModuleStatus;
+  /** Said instead of the count when the thing to resolve is not on this part's page (another part's failed write holds it back, audit N13). */
+  issueText?: string;
   /** Things to resolve under a tile that has no state of its own (a page's "na webu" panel: what is missing in the theme). */
   issues?: number;
   /** A Pro part. `locked` = the shop's plan does not run it. */
@@ -64,7 +75,7 @@ export interface ModuleTileProps extends TileContent {
   href: string;
 }
 
-function TileBody({ title, glyph, about, active, status, issues: ownIssues, pro = false, locked = false, selected = false, marker }: TileContent & { selected?: boolean; marker: Record<string, string> }) {
+function TileBody({ title, glyph, about, aboutShort, active, status, issues: ownIssues, issueText, pro = false, locked = false, selected = false, marker }: TileContent & { selected?: boolean; marker: Record<string, string> }) {
   const tr = useT();
   const issues = status?.issues ?? ownIssues ?? 0;
   return (
@@ -110,7 +121,14 @@ function TileBody({ title, glyph, about, active, status, issues: ownIssues, pro 
         </span>
       </div>
       <div className="won-tile__about" data-won-tile-about style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED, overflowWrap: "anywhere" }}>
-        {about}
+        {aboutShort ? (
+          <>
+            <span className="won-tile__about--long">{about}</span>
+            <span className="won-tile__about-short">{aboutShort}</span>
+          </>
+        ) : (
+          about
+        )}
       </div>
       {active || issues > 0 ? (
         <div style={{ marginTop: 10, paddingTop: 9, borderTop: `1px solid ${WON_LINE}` }}>
@@ -121,7 +139,7 @@ function TileBody({ title, glyph, about, active, status, issues: ownIssues, pro 
           ) : null}
           {issues > 0 ? (
             <div data-won-tile-issues style={{ marginTop: active ? 4 : 0, fontSize: 12.5, fontWeight: 600, color: WON_ATTENTION }}>
-              {tr.tp("tile.issues", issues)}
+              {issueText ?? tr.tp("tile.issues", issues)}
             </div>
           ) : null}
         </div>

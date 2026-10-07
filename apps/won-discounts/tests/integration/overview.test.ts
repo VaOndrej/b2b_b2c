@@ -18,7 +18,7 @@ import { FakeStore, formOf, renderPage, testCtx, text } from "./helpers.ts";
 
 // Přehled (integration step 2): the loader is the sync retry trigger
 // (resyncIfPending) bounded by a deadline (REL-1), shows the real sync state
-// with "Synchronizovat znovu", and the native discounts from a cached detection
+// with "Zkusit zapsat znovu", and the native discounts from a cached detection
 // (movable with Přesunout, not-movable with their reason, conflicts).
 
 let db: TestDatabase;
@@ -62,9 +62,9 @@ test("a saved config that never reached Shopify is synced by the Přehled load; 
   assert.deepEqual(props.ruleSync, { a1: "synced" });
   assert.ok(store.sync.shopMetafieldValue("function_config"), "the shop config was written");
   const html = text(await renderPage(createElement(OverviewScreen, props)));
-  assert.match(html, /Synchronizováno 28\. 9\. 2026|Synchronizováno \d+\. \d+\. \d{4} \d{2}:\d{2}/);
-  assert.match(html, /1 sleva · 1 aktivní/);
-  assert.doesNotMatch(html, /Synchronizovat znovu/);
+  assert.match(html, /Zapsáno 28\. 9\. 2026|Zapsáno \d+\. \d+\. \d{4} \d{2}:\d{2}/);
+  assert.match(html, /1 aktivní z 1/);
+  assert.doesNotMatch(html, /Zkusit zapsat znovu/);
 });
 
 test("REL-1: a slow Shopify does not hold the page — 'synchronizace právě běží', the sync finishes in the background", async () => {
@@ -77,9 +77,9 @@ test("REL-1: a slow Shopify does not hold the page — 'synchronizace právě b�
   assert.equal(props.signals?.sync.state, "running");
   assert.equal(props.signals?.native.state, "loading");
   const html = text(await renderPage(createElement(OverviewScreen, props)));
-  assert.match(html, /Synchronizace právě běží/);
-  // P2: a detection that is still running has neither content nor an action — "Slevy mimo Won" is not rendered.
-  assert.doesNotMatch(html, /Slevy mimo Won|Slevy v Shopify se ještě načítají/);
+  assert.match(html, /Zápis právě běží/);
+  // P2: a detection that is still running has neither content nor an action — "Slevy vytvořené přímo v Shopify" is not rendered.
+  assert.doesNotMatch(html, /Slevy vytvořené přímo v Shopify|Slevy v Shopify se ještě načítají/);
 
   // The background resync finishes: the next load sees it (and does not resync again). Wait for
   // the work the loader started and for the config lock it holds — not for the SyncRun row,
@@ -93,7 +93,7 @@ test("REL-1: a slow Shopify does not hold the page — 'synchronizace právě b�
   assert.equal(next.signals?.sync.state, "ok");
 });
 
-test("a failed sync: the problem in words + 'Synchronizovat znovu'; the button resyncs and reports it", async () => {
+test("a failed sync: the problem in words + 'Zkusit zapsat znovu'; the button resyncs and reports it", async () => {
   await seed([auto("a1")]);
   const store = new FakeStore();
   store.sync.fail("WonSyncMetafieldsSet", { graphqlError: "Internal error" }, 50);
@@ -102,18 +102,18 @@ test("a failed sync: the problem in words + 'Synchronizovat znovu'; the button r
   assert.equal(props.signals?.sync.state, "error");
   assert.deepEqual(props.ruleSync, { a1: "failed" });
   const html = text(await renderPage(createElement(OverviewScreen, props)));
-  assert.match(html, /Synchronizace selhala/);
+  assert.match(html, /Zápis se nepovedl/);
   assert.match(html, /Nové nastavení slev se do pokladny zatím nezapsalo, platí předchozí \(could not write the shop config/);
-  assert.match(html, /Synchronizovat znovu/);
+  assert.match(html, /Zkusit zapsat znovu/);
   // The home tile of Slevy a kódy: nothing runs, one discount did not reach Shopify.
-  assert.match(html, /1 nezapsaná/);
+  assert.match(html, /1 zatím neplatí/);
   assert.match(html, /Vyžaduje pozornost/);
 
   // Still failing → an honest refusal with the problems.
   const again = await overviewAction(ctx, formOf([["intent", "resync"]]));
   assert.ok(!again.ok && again.reason === "sync_failed" && again.problems.length > 0, JSON.stringify(again));
 
-  // Shopify recovers → "Synchronizováno", the rule runs.
+  // Shopify recovers → "Zapsáno", the rule runs.
   (store.sync as unknown as { failures: Map<string, unknown[]> }).failures.clear();
   const fixed = await overviewAction(ctx, formOf([["intent", "resync"]]));
   assert.deepEqual(fixed, { ok: true, message: "synced", sync: { ok: true, problems: [], warnings: [] } });

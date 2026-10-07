@@ -632,9 +632,17 @@ export function formatShopMoney(minor: number, currency: string, format: string 
 
 // --- The table on the product page and the storefront config --------------------------------------------------
 
-/** The alternate product templates that also have the table ("Také v šabloně product.bundle."), or null. */
+/**
+ * A product template as the merchant knows it from Shopify's template picker: „bundle“, not the file name
+ * "product.bundle" (audit 6 Oct 2026, slovníček).
+ */
+function templateNames(alternates: readonly string[], tr: Translator): string {
+  return tr.list(alternates.map((name) => `„${name.replace(/^product\./, "")}“`));
+}
+
+/** The alternate product templates that also have the table ("Je i u produktů se šablonou „bundle“."), or null. */
 export function blockAlternatesText(block: TiersBlockView, tr: Translator): string | null {
-  return block.state === "on" && block.alternates && block.alternates.length > 0 ? tr.t("tiers.block.alsoAlternate", { templates: tr.list(block.alternates) }) : null;
+  return block.state === "on" && block.alternates && block.alternates.length > 0 ? tr.t("tiers.block.alsoAlternate", { templates: templateNames(block.alternates, tr) }) : null;
 }
 
 /** Is the table on the live theme's product page (read_themes)? One sentence (§11d, §12). */
@@ -645,7 +653,7 @@ export function blockText(block: TiersBlockView, tr: Translator): string {
     case "off":
       // Only in an alternate template: most products do not use it (audit P3-8).
       return block.alternates && block.alternates.length > 0
-        ? tr.t("tiers.block.onlyAlternate", { templates: tr.list(block.alternates) })
+        ? tr.t("tiers.block.onlyAlternate", { templates: templateNames(block.alternates, tr) })
         : tr.t("tiers.block.off");
     case "no_scope":
       return tr.t("tiers.block.noScope");

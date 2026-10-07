@@ -15,7 +15,7 @@ import { createStaticHandler, createStaticRouter, StaticRouterProvider } from "r
 const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "overview", expect: [/data-won-tile="codes"/, /Slevy a kódy/, /Stav v obchodě/, /čeká na zápis|čekají na zápis/, /Zobrazení slev na webu/, /Zkontrolovat znovu/] },
   // Plan 6 Oct 2026 (P2/P3): Přehled shows only what has content or an action, and every problem carries its fix.
-  { path: "overview?state=clean", expect: [/Slevy platí na webu i v pokladně/, /Zapnuto v živém tématu/] },
+  { path: "overview?state=clean", expect: [/Slevy platí na webu i v pokladně/, /Zapnuto na webu/] },
   { path: "overview?state=native-error", expect: [/id="native"/, /Slevy v Shopify se nepodařilo načíst/, /Načíst znovu/] },
   {
     path: "overview?state=conflict",
@@ -25,11 +25,11 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "overview?state=pro-cards&plan=pro", expect: [/Žádná kampaň není naplánovaná/, /Žádný výprodej není aktivní/] },
   {
     path: "overview?state=live",
-    expect: [/Vyžaduje pozornost/, /LETO15/, /Přesunout vše \(2\)/, /Vrátit zpět/, /3 aktivní · 1 naplánovaná · 1 neaktivní/, /cílí na segmenty zákazníků/, /Upravit cílení/],
+    expect: [/Vyžaduje pozornost/, /LETO15/, /Přesunout vše \(2\)/, /Vrátit zpět/, /3 aktivní z 6 · 1 naplánovaná · 1 neaktivní/, /platí jen pro skupiny zákazníků/, /Upravit, pro koho platí/],
   },
   {
     path: "overview?state=sync-failed",
-    expect: [/Synchronizace selhala 28\. 9\. 2026 16:20/, /Kód slevy „VIP10“ už v Shopify používá jiná sleva/, /Synchronizovat znovu/, /2 aktivní · 1 naplánovaná · 1 nezapsaná · 1 neaktivní · 1 vypnutá/, /data-won-tile-issues/],
+    expect: [/Zápis se nepovedl 28\. 9\. 2026 16:20/, /Kód slevy „VIP10“ už v Shopify používá jiná sleva/, /Zkusit zapsat znovu/, /2 aktivní z 6 · 1 naplánovaná · 1 zatím neplatí · 1 neaktivní · 1 vypnutá/, /data-won-tile-issues/],
   },
   {
     path: "overview?state=moved",
@@ -38,22 +38,22 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "overview?state=empty", expect: [/Zatím žádná sleva/, /Nastavení za 3 minuty/, /Pokračovat v průvodci/] },
   { path: "overview?readOnly=1", expect: [/Nastavení jen pro čtení/] },
   // P3: "Upravit" of a rule that needs attention opens the editor at the field that fixes it. P5: the line carries the limits.
-  { path: "discounts", expect: [/Vaše slevy/, /Černý pátek/, /v EUR se nenabízí/, /nezapsáno do Shopify/, /href="\/app\/discounts\/dev-fixture-4#value"/, /href="\/app\/discounts\/dev-fixture-6#segments"/, /kód VIP10 · od 1\u00a0000\u00a0Kč · 1× na zákazníka/] },
+  { path: "discounts", expect: [/Vaše slevy/, /Černý pátek/, /v EUR se nenabízí/, /Uloženo, zatím neplatí/, /href="\/app\/discounts\/dev-fixture-4#value"/, /href="\/app\/discounts\/dev-fixture-6#segments"/, /kód VIP10 · od 1\u00a0000\u00a0Kč · 1× na zákazníka/] },
   { path: "discounts?sync=ok", expect: [/6 slev · 3 aktivní · 1 naplánovaná · 1 neaktivní · 1 vypnutá/, /Naplánováno od 27\. 11\. 2026/] },
   // The empty list is the recipes themselves (§15b), not a sentence pointing at another section.
-  { path: "discounts?state=empty", expect: [/Vyberte recept/, /\/app\/discounts\/new\?recipe=percentAll/, /Uvítací kód/, /Vlastní sleva/] },
-  { path: "discounts?sync=failed", expect: [/Nezapsáno/, /synchronizace selhala/, /Synchronizace selhala 28\. 9\. 2026/, /Synchronizovat znovu/] },
+  { path: "discounts?state=empty", expect: [/Vyberte hotovou slevu/, /\/app\/discounts\/new\?recipe=percentAll/, /Uvítací kód/, /Vlastní sleva/] },
+  { path: "discounts?sync=failed", expect: [/Zatím neplatí/, /Zápis do Shopify se nepovedl/, /Zápis se nepovedl 28\. 9\. 2026/, /Zkusit zapsat znovu/] },
   // The five sections, all there; the markers at the fields (the missing EUR amount, the start date); the status sentence links to its field.
   {
     path: "rule-editor",
-    expect: [/Částka v CZK/, /Částka v EUR/, /nenabízí se/, /Europe\/Prague/, /Pro · odemknout/, /Naplánováno/, /Podmínky/, /Jak se uplatní/, /Kdy platí/, /Zapnuto/, /V EUR chybí částka/, /Sleva začne platit 27\. 11\. 2026\./, /href="#schedule"/, /id="conditions"/, /id="target"/, /id="markets"/],
+    expect: [/Částka: Česko \(CZK\)/, /Částka: Slovensko \(EUR\)/, /nenabízí se/, /Europe\/Prague/, /Pro · odemknout/, /Naplánováno/, /Podmínky/, /Jak se uplatní/, /Kdy platí/, /Zapnuto/, /V EUR chybí částka/, /Sleva začne platit 27\. 11\. 2026\./, /href="#schedule"/, /id="conditions"/, /id="target"/, /id="markets"/],
   },
   { path: "rule-editor?rule=dev-fixture-2", expect: [/VIP10/, /1× na zákazníka/, /Jednou na zákazníka/, /Zákazník zadá kód VIP10\./, /V EUR chybí minimum/, /Vrátit automatický název/] },
   { path: "rule-editor?rule=dev-fixture-3", expect: [/HUF/, /Uloženo i pro HUF: 3\u00a0000\u00a0HUF\. Trh je vypnutý, hodnota zůstává\./, /Odebrat hodnotu v HUF/] },
   // B9: stored segments are said at their own block and can be removed there.
-  { path: "rule-editor?rule=dev-fixture-6", expect: [/Neaktivní/, /Pokladna ho neumí vyhodnotit, proto sleva není aktivní/, /Odebrat cílení na segmenty/, /href="#segments"/, /id="segments"/] },
+  { path: "rule-editor?rule=dev-fixture-6", expect: [/Neaktivní/, /Pokladna je neumí vyhodnotit, proto sleva není aktivní/, /Odebrat omezení na skupiny zákazníků/, /href="#segments"/, /id="segments"/] },
   { path: "rule-editor?result=unreadable", expect: [/Uložené nastavení se nepodařilo přečíst/, /Nahradit neplatnou konfiguraci/] },
-  { path: "rule-editor?result=sync-failed", expect: [/Uloženo, ale do Shopify se zatím nezapsalo/, /Sleva „Černý pátek“ se do Shopify nezapsala/, /Synchronizovat znovu/] },
+  { path: "rule-editor?result=sync-failed", expect: [/Uloženo, ale do Shopify se zatím nezapsalo/, /Sleva „Černý pátek“ se do Shopify nezapsala/, /Zkusit zapsat znovu/] },
   { path: "rule-editor?rule=dev-fixture-2&result=collision", expect: [/nejde použít zároveň, pokladna je nerozliší/, /Upravit kódy/] },
   { path: "rule-editor?rule=dev-fixture-2&result=too-many", expect: [/Aktivních slev s kódem může být nejvýš 20, po uložení by jich bylo 21/] },
   { path: "rule-editor?rule=new&recipe=welcomeCode", expect: [/Uvítací sleva/, /VITEJ10/, /Neuloženo/, /Vrátit automatický název/] },
@@ -62,8 +62,8 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   // B11: read-only disables the fields, not just Save.
   { path: "rule-editor?rule=dev-fixture-2&readOnly=1", expect: [/Nastavení jen pro čtení/, /<s-text-area[^>]*disabled/, /<s-switch[^>]*disabled/] },
   // P3 on Free: the Pro setting the plan does not run is marked where it is set, with a way to remove it.
-  { path: "rule-editor?rule=dev-f2-market", expect: [/Cílení na trhy je v tarifu Pro\. Váš tarif ho nespouští, proto sleva není aktivní\./, /Odebrat cílení na trhy/, /Odebrat sčítání s dalšími slevami/, /href="#markets"/, /jen trhy Slovensko · sčítá se s Podzimní sleva 10.%/] },
-  { path: "rule-editor?rule=dev-fixture-2&plan=pro", expect: [/Cílení a kombinace/, /Česko/, /Slovensko/, /Sčítá se s/, /Kombinování slev v Nastavení/, /\/app\/settings#combination/] },
+  { path: "rule-editor?rule=dev-f2-market", expect: [/Sleva jen pro vybrané trhy je v tarifu Pro\. Váš tarif ji nespouští, proto sleva není aktivní\./, /Odebrat omezení na trhy/, /Odebrat sčítání s dalšími slevami/, /href="#markets"/, /jen trhy Slovensko · sčítá se s Podzimní sleva 10.%/] },
+  { path: "rule-editor?rule=dev-fixture-2&plan=pro", expect: [/Pro koho platí a kombinace/, /Česko/, /Slovensko/, /Sčítá se s/, /Kombinování slev v Nastavení/, /\/app\/settings#combination/] },
   // Vyzkoušet košík is Pro: Free sees the locked frame with what the tool is for; ?plan=pro the tool with the shop's discounts to tick.
   { path: "try-cart", expect: [/S Pro si košík vyzkoušíte předem/, /href="\/app\/plan"/, /Košík je prázdný\. Přidejte produkty\./, /<s-button type="submit" variant="primary" disabled="[^"]*">Spočítat/] },
   {
@@ -72,14 +72,14 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   },
   { path: "try-cart?plan=pro&date=2026-11-27&time=00:00", expect: [/Začátek kampaně \(27\. 11\. 2026 00:00\)/, /<input type="hidden" name="date" value="2026-11-27"\/>/, /<input type="hidden" name="time" value="00:00"\/>/] },
   { path: "try-cart?state=margin", expect: [/href="\/app\/margin#costs"/] },
-  { path: "try-cart?state=warnings", expect: [/Pokladna se může lišit/, /Synchronizovat znovu/] },
+  { path: "try-cart?state=warnings", expect: [/Pokladna se může lišit/, /Zkusit zapsat znovu/] },
   { path: "try-cart?state=not-wired", expect: [/Výpočet košíku zatím není zapojený/] },
   { path: "onboarding", expect: [/1\. Co chcete řešit/, /Doprava zdarma nebo dárek/, /na první místo/] },
   { path: "onboarding?step=3&embed=on", expect: [/Zapnuto. Web je připravený/, /4\. První sleva/, /5\. Hotovo/] },
   // B16: step 3 can be skipped (the first discount does not need the website on); without anything outside Won there are four steps.
   { path: "onboarding?step=3", expect: [/Přeskočit, zapnu později/, /<input type="hidden" name="step" value="4"\/>/, /Sleva v pokladně platí i bez toho/] },
   { path: "onboarding?step=3&native=none", expect: [/4 kroky, zhruba 3 minuty/, /2\. Zapnout na webu/, /3\. První sleva/, /4\. Hotovo/] },
-  { path: "onboarding?step=3&embed=none", expect: [/Odkaz do editoru tématu teď nemáme/, /Zkontrolovat znovu/] },
+  { path: "onboarding?step=3&embed=none", expect: [/Odkaz teď nemáme/, /Zkontrolovat znovu/] },
   // N12: the guide counts what really runs, like the Slevy a kódy tile ("6 slev · 3 aktivní"); "Všechno je aktivní" only when all do.
   { path: "onboarding?step=5&embed=on&rules=1", expect: [/Slevy platí na webu i v pokladně/, /Aktivní slevy: 3 z 6/], absent: [/Všechno je aktivní/, /6 slev je aktivních/] },
   { path: "onboarding?step=5&embed=on&rules=1&live=6", expect: [/Všechno je aktivní/, /6 slev je aktivních/] },
@@ -119,7 +119,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   },
   // Vzhled (MVP 7): the custom look (locked amber on Free), card prices BETA, the storefront texts, the AI brief.
   { path: "appearance", expect: [/Vlastní vzhled/, /V Pro sladíte tabulku s webem: vlastní barvy, zaoblení rohů a vlastní CSS/, /href="\/app\/plan"/, /Ceny podle množství na kartách produktů · BETA/, /Texty na webu/, /Výchozí texty/, /Zkopírovat zadání pro AI/] },
-  { path: "appearance?plan=pro&state=custom", expect: [/Vlastní barvy nebo CSS jsou nastavené/, /Zapnuto: karty ukazují první úroveň/, /Upravených textů: 1/, /Přidat blok do karty produktu/, /--won-tiers-accent/] },
+  { path: "appearance?plan=pro&state=custom", expect: [/Vlastní barvy nebo CSS jsou nastavené/, /Zapnuto: karty ukazují první úroveň/, /Upravených textů: 1/, /Přidat prvek do karty produktu/, /--won-tiers-accent/] },
   { path: "appearance?plan=pro&state=issue", expect: [/Uložené vlastní CSS nejde použít/] },
   // Tarif (MVP 7): the plan in force, the Pro offer with its price and trial, cancel with what runs on, uninstall prep.
   {
@@ -163,7 +163,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "campaigns?plan=pro&result=invalid", expect: [/Kampaň se překrývá s „Black Friday“/, /Zaškrtněte aspoň jednu slevu/, /value="Podzimní akce"/, /value="08:15"/] },
   // An error about one discount sits at that discount, a time error at the time control; the typed values stay (B14).
   { path: "campaigns?plan=pro&result=invalid-rule", expect: [/Vyberte čas\./, /value="150"/, /Hodnota u slevy „Podzimní sleva 10 %“ nesedí/, /Podzimní akce · /] },
-  { path: "campaigns?plan=pro&result=sync-pending", expect: [/V Shopify zatím změna není celá/, /Synchronizovat znovu/] },
+  { path: "campaigns?plan=pro&result=sync-pending", expect: [/V Shopify zatím změna není celá/, /Zkusit zapsat znovu/] },
   { path: "campaigns?plan=pro&state=empty", expect: [/Nová kampaň/, /Vyplňte název, začátek a konec/] },
   { path: "campaigns?state=finishing", expect: [/Běžela při přechodu na Free, doběhne do konce/] },
   { path: "overview?state=campaigns", expect: [/Kampaně/, /Aktivní: Víkend −20 % do 29\. 9\. 2026 0:00/, /<s-clickable href="\/app\/campaigns"/] },
@@ -171,7 +171,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "outlet", expect: [/Výprodej/, /S Pro doprodáte zvolený počet kusů varianty se slevou/, /Zobrazit tarif Pro/, /Aktivní výprodeje/, /Mikina Won — L/, /Znovu otevřít výprodej jde v tarifu Pro/, /Zobrazení a vratky/] },
   {
     path: "outlet?plan=pro",
-    expect: [/Spustit výprodej/, /Vyberte variantu, počet kusů a slevu/, /Prodáno 7 z 10 ks, vráceno 1, zbývá 4/, /Prodáno o 1 ks víc, než bylo k doprodeji/, /Upravené ceníky: Slovensko/, /Zkusit znovu/, /Ukončit výprodej „Mikina Won — L“\?/, /Znovu otevřít/],
+    expect: [/Spustit výprodej/, /Vyberte variantu, počet kusů a slevu/, /Prodáno 7 z 10 ks, vráceno 1, zbývá 4/, /Prodáno o 1 ks víc, než bylo k doprodeji/, /Upravené trhy s vlastní cenou: Slovensko/, /Zkusit znovu/, /Ukončit výprodej „Mikina Won — L“\?/, /Znovu otevřít/],
   },
   { path: "outlet?plan=pro&result=invalid", expect: [/Vyberte variantu/, /Kusů k doprodeji zadejte celým číslem od 1 do/, /0 ks · −30\s% · do 12\. 10\. 2026/, /value="2026-10-12"/] },
   // B14: a failed start keeps the picked variant and the typed values; the price before → after is computed.
@@ -188,10 +188,10 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /Min\. marže 20\u00a0% · bez nákupní ceny sleva nejvýš 40\u00a0%/,
       /\(cena po slevách − nákupní cena\) \/ cena po slevách, z ceny, kterou platí zákazník — u cen s DPH včetně DPH/,
       /nikdy neblokuje objednávku/,
-      /Ochrana hlídá jen slevy, které běží přes Won Discounts\. Slevy mimo Won nevidí\./,
+      /Ochrana hlídá jen slevy, které běží přes Won Discounts\. O slevách vytvořených přímo v Shopify neví\./,
       /href="\/app#native"/,
       /step="0\.1"/,
-      /Strop slevy pro produkty bez nákupní ceny/,
+      /Nejvyšší sleva pro produkty bez nákupní ceny/,
       /8 produktů nemá nákupní cenu/,
       /Ponožky Won/,
       /shopify:\/\/admin\/products\/3/,
@@ -223,12 +223,12 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   // Audit P2-1: before the first complete read, unread products have only the ceiling — said, and the impact is still being computed.
   {
     path: "margin?plan=pro&state=running",
-    expect: [/Právě načítáme nákupní ceny: 340 z 1\u00a0240/, /Dokud nenačteme nákupní ceny \(340 z 1\u00a0240\), platí u nenačtených produktů jen strop slevy 40\u00a0%/, /href="#costs"/, /Počítáme, kde ochrana zasáhne/],
+    expect: [/Právě načítáme nákupní ceny: 340 z 1\u00a0240/, /Dokud nenačteme nákupní ceny \(340 z 1\u00a0240\), platí u nenačtených produktů jen nejvyšší sleva 40\u00a0%/, /href="#costs"/, /Počítáme, kde ochrana zasáhne/],
   },
-  { path: "margin?state=running", expect: [/Dokud nenačteme nákupní ceny \(340 z 1\u00a0240\), platí u nenačtených produktů jen strop slevy 40\u00a0%/, /href="#costs"/] },
+  { path: "margin?state=running", expect: [/Dokud nenačteme nákupní ceny \(340 z 1\u00a0240\), platí u nenačtených produktů jen nejvyšší sleva 40\u00a0%/, /href="#costs"/] },
   {
     path: "margin?state=failed-first",
-    expect: [/Dokud nenačteme nákupní ceny, platí u nenačtených produktů jen strop slevy 40\u00a0%/, /href="#costs"/, /Nákupní ceny se nepodařilo načíst ze Shopify/, /Technický detail: costs\.read: Throttled/],
+    expect: [/Dokud nenačteme nákupní ceny, platí u nenačtených produktů jen nejvyšší sleva 40\u00a0%/, /href="#costs"/, /Nákupní ceny se nepodařilo načíst ze Shopify/, /Technický detail: costs\.read: Throttled/],
   },
   { path: "margin?state=reauth", expect: [/Otevřete aplikaci, ať můžeme pokračovat na pozadí/] },
   // P1-1: a Pro collection over the 10 000-product limit says so at its row.
@@ -239,18 +239,18 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "margin?plan=pro&state=impact-computing", expect: [/Počítáme, kde ochrana zasáhne/, /Počítá se na pozadí z nastavení slev a nákupních cen/] },
   { path: "margin?plan=pro&state=zero", expect: [/Nákupní cenu mají všechny produkty/] },
   { path: "margin?state=off", expect: [/Ochrana marže je vypnutá/, /Neaktivní/, /Načteme je ze Shopify, až ochranu zapnete a uložíte/] },
-  { path: "margin?state=gate", expect: [/Pro funkce není aktivní/, /Ochrana marže pro jednotlivé kolekce je funkce Pro/, /Min\. marže 30\u00a0% · bez nákupní ceny sleva nejvýš 10\u00a0%/] },
+  { path: "margin?state=gate", expect: [/Tohle je v tarifu Pro, zákazník to nedostane/, /Ochrana marže pro jednotlivé kolekce je funkce Pro/, /Min\. marže 30\u00a0% · bez nákupní ceny sleva nejvýš 10\u00a0%/] },
   { path: "margin?state=failed&result=refreshed", expect: [/Načtení selhalo 28\. 9\. 2026 06:10/, /Načítání nákupních cen běží/] },
   { path: "margin?plan=pro&rule=dev-f2-collection", expect: [/Jen sleva „Podzimní kolekce 20 %“/, /Zobrazit všechny zásahy/, /Ochrana sníží 1 slevu/, /Sníží se u 4 variant/] },
   { path: "margin?result=invalid", expect: [/Zadejte 0 až 95 %/, /value="150"/] },
   // B14: the refused values come back as typed (also the refused 120 of a collection row); Přehled zásahů says it shows the saved state.
-  { path: "margin?plan=pro&result=invalid", expect: [/value="150"/, /value="120"/, /Strop slevy bez nákupní ceny: Zadejte 0 až 100 %/, /Přehled počítá s uloženým nastavením/] },
+  { path: "margin?plan=pro&result=invalid", expect: [/value="150"/, /value="120"/, /Nejvyšší sleva bez nákupní ceny: Zadejte 0 až 100 %/, /Přehled počítá s uloženým nastavením/] },
   // The save's fixes worded like the server words them (issue-copy), never the core's English message.
   { path: "margin?result=fixes", expect: [/Uloženo\. Pár věcí jsme upravili/, /Procenta marže mají jedno desetinné místo\. 12,55\u00a0% se zaokrouhlilo na 12,6\u00a0%/] },
   { path: "margin?result=fixes&locale=en", expect: [/Margin percents have one decimal\. 12\.55% was rounded to 12\.6%/] },
   { path: "overview?state=margin", expect: [/id="native"/, /Ochrana marže/, /Min\. marže 20\u00a0%/, /data-won-state="active"/] },
   { path: "overview?state=margin-off", expect: [/Ochrana marže je vypnutá/, /data-won-state="inactive"/, /<s-clickable href="\/app\/margin"/] },
-  { path: "overview?state=margin-running", expect: [/Nákupní ceny se ještě načítají, zatím platí jen strop slevy/, /data-won-state="active"/] },
+  { path: "overview?state=margin-running", expect: [/Nákupní ceny se ještě načítají, zatím platí jen nejvyšší sleva/, /data-won-state="active"/] },
   { path: "overview?state=margin-reauth", expect: [/data-won-state="attention"/, /1 věc k vyřešení/] },
   { path: "overview?state=margin-too-large", expect: [/data-won-state="active"/, /1 věc k vyřešení/] },
   { path: "rule-editor?rule=dev-f2-collection&margin=1&plan=pro", expect: [/Na 4 variantách se sleva sníží na hranici marže/, /\/app\/margin\?rule=dev-f2-collection#impact/] },
@@ -268,7 +268,12 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
     path: "settings",
     expect: [
       /Trhy a měny/,
-      /CZK \(Česko\)/,
+      // N15: every market with what it gets; a missing amount is a link to its field; the switched-off market is listed, greyed.
+      /2 trhy · chybí částky: Slovensko/,
+      /data-won-market="sk"/,
+      /data-won-market-missing=""[^>]*>[\s\S]*?href="\/app\/rewards#gift"/,
+      /data-won-market-off=""/,
+      /Vypnuté v Shopify/,
       /href="shopify:\/\/admin\/settings\/markets" target="_top"/,
       /Spravovat trhy v Shopify/,
       /Nástroje/,
@@ -295,7 +300,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
     expect: [
       /Množstevní sleva pro celý obchod/,
       /Od 3 ks −10\u00a0%, od 5 ks −15\u00a0%, od 10 ks −20\u00a0%/,
-      /Pro funkce není aktivní/,
+      /Tohle je v tarifu Pro, zákazník to nedostane/,
       /Produkty v ní ve Free nedostanou žádnou množstevní slevu/,
       /Varianty produktu dohromady/,
       /S jinou slevou na stejný produkt se nesčítá: platí ta, která dá zákazníkovi víc\./,
@@ -318,7 +323,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /Vlastní barvy a CSS/,
       /href="\/app\/appearance#custom"/,
       /Náhled nepočítá s ochranou marže/,
-      /Tabulka je na stránce produktu v tématu Horizon/,
+      /Tabulka je na stránce produktu \(vzhled Horizon\)/,
       /Zobrazit na mém webu/,
       /Výjimky pro produkty a kolekce/,
       /Produkt s výjimkou se řídí jen jí, úrovně pro celý obchod pro něj neplatí/,
@@ -336,7 +341,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   },
   {
     path: "tiers?plan=pro",
-    expect: [/Vybrat produkty/, /Vybrat kolekce/, /Mikina Won/, /Podzimní kolekce/, /Celý košík/, /V EUR \(Slovensko\) se úroveň od 6 ks nenabízí/, /Od 2 ks −30\u00a0Kč \/ 1,20\u00a0€ za kus/],
+    expect: [/Vybrat produkty/, /Vybrat kolekce/, /Mikina Won/, /Podzimní kolekce/, /Celý košík/, /Slovensko \(EUR\): úroveň od 6 ks se nenabízí/, /Od 2 ks −30\u00a0Kč \/ 1,20\u00a0€ za kus/],
   },
   {
     path: "tiers?state=empty",
@@ -347,21 +352,21 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /3 \/ 5 \/ 10 ks → 5 \/ 10 \/ 15 %/,
       /Ukázka: zatím nemáte žádnou úroveň/,
       /Tabulka zatím na stránce produktu není/,
-      /Chybí v tématu/,
-      /Přidat do tématu/,
+      /Na webu chybí/,
+      /Přidat na web/,
       /addAppBlockId=dev-api-key\/quantity_tiers&amp;target=mainSection/,
       /Žádná výjimka/,
     ],
   },
   {
     path: "tiers?state=failed",
-    expect: [/Uložení na web selhalo 28\. 9\. 2026 16:20\. Do opravy může web ukazovat starší \(i vyšší\) úrovně, pokladna platí nové/, /Synchronizovat znovu/, /Nastavení tabulky na stránce produktu se na web nezapsalo \(metafieldsSet: Throttled/],
+    expect: [/Uložení na web selhalo 28\. 9\. 2026 16:20\. Do opravy může web ukazovat starší \(i vyšší\) úrovně, pokladna platí nové/, /Zkusit zapsat znovu/, /Nastavení tabulky na stránce produktu se na web nezapsalo \(metafieldsSet: Throttled/],
   },
   // Review fix 7: never written before → no "previous settings" to show.
-  { path: "tiers?state=failed-first", expect: [/Uložení na web selhalo 28\. 9\. 2026 16:20\. Tabulka se na webu zatím neukazuje/, /Synchronizovat znovu/] },
+  { path: "tiers?state=failed-first", expect: [/Uložení na web selhalo 28\. 9\. 2026 16:20\. Tabulka se na webu zatím neukazuje/, /Zkusit zapsat znovu/] },
   { path: "tiers?state=pending", expect: [/Poslední změna na webu ještě není/] },
   // Audit P3-8: only in an alternate template → not "on the product page"; the fix button stays.
-  { path: "tiers?state=alternate", expect: [/Tabulka je jen v šabloně product\.bundle\. Na stránce produktu, kterou používá většina produktů, zatím není\./, /Chybí v tématu/, /Přidat do tématu/] },
+  { path: "tiers?state=alternate", expect: [/Tabulka je jen u produktů se šablonou „bundle“\. Na stránce produktu, kterou používá většina produktů, zatím není\./, /Na webu chybí/, /Přidat na web/] },
   // Review fix 5: clearance items combine → they can get a tier; gifts never.
   { path: "tiers?state=outlet", expect: [/Dárky úroveň nedostanou\. Zboží ve výprodeji ji dostat může/] },
   // Review fix 18: Pro sees how many products each Pro set reaches (Free sees nothing).
@@ -372,14 +377,14 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   // A stored Pro custom look and a changed storefront text reach the preview (Pro only: BILL-1).
   { path: "tiers?plan=pro&state=custom", expect: [/data-won-custom-look=""/, /--won-tiers-accent:#0a7d4f/, /<p class="won-tiers__heading">Kup víc, plať míň<\/p>/] },
   // Odměny: the state lines say the real values; every state of the app embed check has its sentence and action.
-  { path: "rewards", expect: [/Doprava zdarma od 1\u00a0000\u00a0Kč \/ 40\u00a0€/, /Ponožky Won — M od 1\u00a0500\u00a0Kč/, /Práh dárku se počítá před slevami/, /Košík ukazuje odměny, dárek a pole pro kód/, /V Pro nastavíte víc prahů/] },
-  { path: "rewards?plan=pro", expect: [/2\. práh/, /Kšiltovka Won, Plátěná taška Won nebo Hrnek Won od 3\u00a0000\u00a0Kč \/ 120\u00a0€/, /Přidat další práh/, /Změnit záložní dárek/] },
-  { path: "rewards?state=empty", expect: [/Doprava zdarma vypnutá/, /Žádný dárek/, /Košík odměny neukazuje\. Won není v tématu zapnutý/, /Zapnout v tématu/] },
-  { path: "rewards?state=embed-draft", expect: [/Won je zapnutý jen v nepublikovaném tématu/, /Zapněte Won i v živém tématu/] },
-  { path: "rewards?state=embed-unknown", expect: [/Nepodařilo se ověřit, jestli je Won v tématu zapnutý/, /Otevřít editor tématu/] },
-  { path: "rewards?state=embed-no-scope", expect: [/Won nemá přístup k tématu/, /Otevřít editor tématu/] },
+  { path: "rewards", expect: [/Doprava zdarma od 1\u00a0000\u00a0Kč \/ 40\u00a0€/, /Ponožky Won — M od 1\u00a0500\u00a0Kč/, /Částka pro dárek se počítá před slevami/, /Košík ukazuje odměny, dárek a pole pro kód/, /V Pro nastavíte víc stupňů/] },
+  { path: "rewards?plan=pro", expect: [/2\. stupeň/, /Kšiltovka Won, Plátěná taška Won nebo Hrnek Won od 3\u00a0000\u00a0Kč \/ 120\u00a0€/, /Přidat další stupeň/, /Změnit záložní dárek/] },
+  { path: "rewards?state=empty", expect: [/Doprava zdarma vypnutá/, /Žádný dárek/, /Košík odměny neukazuje\. Won není na webu zapnutý/, /Zapnout na webu/] },
+  { path: "rewards?state=embed-draft", expect: [/Won je zapnutý jen v nepublikovaném vzhledu obchodu/, /Zapněte Won i ve vzhledu, který zákazníci vidí/] },
+  { path: "rewards?state=embed-unknown", expect: [/Nepodařilo se zjistit, jestli je Won na webu zapnutý/, /Otevřít úpravu vzhledu obchodu/] },
+  { path: "rewards?state=embed-no-scope", expect: [/Won nemá přístup ke vzhledu obchodu/, /Otevřít úpravu vzhledu obchodu/] },
   { path: "rewards?result=invalid", expect: [/Vyberte dárek\./] },
-  { path: "rewards?plan=pro&result=too-many", expect: [/Prahů může být nejvýš 5\./] },
+  { path: "rewards?plan=pro&result=too-many", expect: [/Stupňů může být nejvýš 5\./] },
   // Review fix 3: plan-aware — on Pro a rule may stack with the ones its editor combines.
   { path: "settings?plan=pro", expect: [/V Pro se sečtou jen ty, které v editoru slevy spojíte\. Množstevní sleva se s jinou slevou na stejný produkt nesčítá nikdy/] },
   { path: "tiers?state=dawn", expect: [/--won-tiers-accent:#c0392b/, /--inputs-radius:0px/] },
@@ -409,7 +414,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /<s-color-field/,
     ],
   },
-  { path: "appearance?state=empty", expect: [/Ukázka: zatím nemáte žádnou úroveň/, /Přidat do tématu/, /Zapnutí Won v tématu/, /Košík na webu ukáže slevy a odměny až po zapnutí Won v tématu/, /Zapnout v editoru tématu/] },
+  { path: "appearance?state=empty", expect: [/Ukázka: zatím nemáte žádnou úroveň/, /Přidat na web/, /Zapnutí Won na webu/, /Košík na webu ukáže slevy a odměny až po zapnutí Won na webu/, /Zapnout na webu/] },
   // The stored custom look and the changed text are in the four previews (Pro).
   { path: "appearance?plan=pro&state=custom", expect: [/data-won-custom-look=""/, /<p class="won-tiers__heading">Kup víc, plať míň<\/p>/] },
   {
@@ -438,7 +443,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
     path: "overview?state=live&locale=en",
     expect: [/Discounts &amp; codes/, /Needs attention/, /Discounts outside Won/, /Move all \(2\)/, /1 scheduled/],
   },
-  { path: "rule-editor?locale=en", expect: [/Amount in EUR/, /not offered/] },
+  { path: "rule-editor?locale=en", expect: [/Amount: Slovensko \(EUR\)/, /not offered/] },
 ];
 
 let prevEnv: string | undefined;
@@ -547,7 +552,7 @@ test("plan 2026-10-06, dávka 5: nothing without content or action — no room-f
   assert.match((await render("tiers?state=no-scope")).html, /data-won-placement="unknown"[\s\S]*Zkontrolovat znovu/);
   assert.doesNotMatch((await render("tiers?plan=pro&state=custom&plan=free")).html, /Kolekce Doplňky/);
   const appearance = (await render("appearance")).html;
-  assert.doesNotMatch(appearance, /row_qty · cs|>tiers\.heading|Tady vidíte|Zapnutí Won v tématu/);
+  assert.doesNotMatch(appearance, /row_qty · cs|>tiers\.heading|Tady vidíte|Zapnutí Won na webu/);
   assert.doesNotMatch((await render("tiers?state=custom")).html, /data-won-custom-look/, "Free never previews the Pro custom look (BILL-1)");
   const rewards = (await render("rewards")).html;
   // The green label is the STORED state (the same as the home tile), never the page's own unsaved form: both
@@ -609,7 +614,7 @@ test("Ochrana marže: one save for the whole form, last on the page — after th
 });
 
 test("P2 (plan 6 Oct 2026): what has neither content nor an action is not rendered", async () => {
-  // Přehled: no checkout row, no config footer, no targeting lecture; "Slevy mimo Won" only when there is something to do.
+  // Přehled: no checkout row, no config footer, no targeting lecture; "Slevy vytvořené přímo v Shopify" only when there is something to do.
   const clean = (await render("overview?state=clean")).html;
   assert.doesNotMatch(clean, /id="native"/, "nothing outside Won: the section is not there");
   assert.doesNotMatch(clean, /Slevy platí v pokladně<|přijde v další verzi|Konfigurace: verze|Nejpozději po 24 hodinách/);

@@ -719,6 +719,8 @@ export interface SettingsScreenData {
   configVersion: string | null;
   currencies: CurrencyView[];
   combination: CombinationView;
+  /** The shop's Shopify markets and what each part of the app offers in them (model/markets-overview.ts). Absent = not built (older callers). */
+  markets?: import("./markets-overview").MarketRowView[];
 }
 
 // --- MVP 4: Odměny (contracts R1–R9, plan docs/plans/2026-10-01-won-discounts-mvp4.md) ----------------------------
@@ -895,8 +897,10 @@ export interface CampaignRuleChoice {
   method: "automatic" | "code";
   /** The rule's own value, worded ("10 %", "200 Kč / 8 €"). */
   valueText: string;
-  /** Fixed rules: the currencies of the rule's amount. */
+  /** Fixed rules: the currencies of the rule's amount whose market is enabled (the same fields as the discount's editor). */
   currencies: string[];
+  /** Fixed rules: currencies of enabled markets the discount has no amount in — not offered there, in a campaign either (N14). */
+  missing?: string[];
 }
 
 export interface CampaignOverrideView {
@@ -978,6 +982,8 @@ export interface CampaignsScreenData {
   rules: CampaignRuleChoice[];
   /** MVP 6.1: the quantity tier sets a campaign can change (the sets a product can reach). */
   tierSets: CampaignTierChoice[];
+  /** The enabled markets by currency, for naming a field by its market (absent = fields are named by the currency). */
+  currencies?: CurrencyView[];
   /** The campaign the form edits (?edit=<id>), when it can be edited. */
   editing: CampaignView | null;
   limits: { campaigns: number; maxDays: number; minLeadMinutes: number };

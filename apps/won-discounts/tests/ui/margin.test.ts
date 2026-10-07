@@ -167,7 +167,7 @@ test("Přehled zásahů is counted per rule from the full counts (audit P2-2), n
   assert.equal(impactRuleSummary(rule("a", 1), cs), "Sníží se u 1 varianty");
   assert.match(impactRuleSummary(rule("o", 5, "order"), cs), /^U 5 variant by sleva šla pod hranici/);
   assert.equal(impactReason({ basis: "cost", source: "global" }, cs), "hranice z nákupní ceny");
-  assert.equal(impactReason({ basis: "max_percent", source: "collection" }, cs), "nemá nákupní cenu, platí strop slevy · nastavení kolekce");
+  assert.equal(impactReason({ basis: "max_percent", source: "collection" }, cs), "nemá nákupní cenu, platí nejvyšší sleva · nastavení kolekce");
   for (const tr of [cs, en]) {
     for (const basis of ["cost", "max_percent"] as const) {
       for (const source of ["global", "collection"] as const) {
@@ -195,9 +195,9 @@ test("before the first complete read of the costs, the screen and the card say o
   const running: CostMirrorView = { state: "running", done: 340, total: 1240, since: "2026-09-28T13:55:00" };
   const failed: CostMirrorView = { state: "failed", at: "2026-09-28T06:10:00", problems: [] };
   const on = { enabled: true, costsKnown: false, maxDiscountPercent: 40 };
-  assert.equal(ceilingOnlyText({ ...on, mirror: running }, cs), "Dokud nenačteme nákupní ceny (340 z 1\u00a0240), platí u nenačtených produktů jen strop slevy 40\u00a0%.");
-  assert.equal(ceilingOnlyText({ ...on, mirror: failed }, cs), "Dokud nenačteme nákupní ceny, platí u nenačtených produktů jen strop slevy 40\u00a0%.");
-  assert.equal(ceilingOnlyText({ ...on, mirror: { state: "stale", at: null } }, cs), "Dokud nenačteme nákupní ceny, platí u nenačtených produktů jen strop slevy 40\u00a0%.");
+  assert.equal(ceilingOnlyText({ ...on, mirror: running }, cs), "Dokud nenačteme nákupní ceny (340 z 1\u00a0240), platí u nenačtených produktů jen nejvyšší sleva 40\u00a0%.");
+  assert.equal(ceilingOnlyText({ ...on, mirror: failed }, cs), "Dokud nenačteme nákupní ceny, platí u nenačtených produktů jen nejvyšší sleva 40\u00a0%.");
+  assert.equal(ceilingOnlyText({ ...on, mirror: { state: "stale", at: null } }, cs), "Dokud nenačteme nákupní ceny, platí u nenačtených produktů jen nejvyšší sleva 40\u00a0%.");
   assert.equal(ceilingOnlyText({ ...on, mirror: running, costsKnown: true }, cs), null, "after a complete read its costs stay in force");
   assert.equal(ceilingOnlyText({ ...on, mirror: running, enabled: false }, cs), null);
   assert.equal(ceilingOnlyText({ ...on, mirror: { state: "fresh", at: "2026-09-28T06:10:00" } }, cs), null);
@@ -226,7 +226,7 @@ test("Notice: 'Obnovit nákupní ceny' answers that the read runs in the backgro
   assert.match(refreshed, /Načítání nákupních cen běží/);
   assert.match(refreshed, /Nákupní ceny načítáme ze Shopify na pozadí/);
   const saved = render({ ok: true, message: "saved", sync: { ok: true, problems: [], warnings: [] }, syncing: { costs: true } });
-  assert.match(saved, /Uloženo a zapsáno do Shopify/);
+  assert.match(saved, /Uloženo, v obchodě platí/);
   assert.match(saved, /Nákupní ceny načítáme ze Shopify na pozadí/);
   assert.match(render({ ok: true, message: "synced", syncing: { costs: true } }, "en"), /Reading cost prices/);
 });

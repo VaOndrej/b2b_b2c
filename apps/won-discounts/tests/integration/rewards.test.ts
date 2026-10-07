@@ -204,7 +204,7 @@ test("screen: Free shows the first gift editable and the Pro threshold as stored
   const free = text(await renderPage(createElement(RewardsScreen, devRewardsScreen({ plan: "free", state: null, locale: "cs" }))));
   assert.match(free, /Doprava zdarma/);
   assert.match(free, /Ponožky Won — M/);
-  assert.match(free, /Uložený další práh \(Kšiltovka Won, Plátěná taška Won, Hrnek Won\) ve Free neplatí/);
+  assert.match(free, /Uložený další stupeň \(Kšiltovka Won, Plátěná taška Won, Hrnek Won\) ve Free neplatí/);
   // The plan signal is amber only (doctrine §16b): the stored Pro threshold sits in the Pro frame, never in the attention red.
   const freeHtml = await renderPage(createElement(RewardsScreen, devRewardsScreen({ plan: "free", state: null, locale: "cs" })));
   const keptAt = freeHtml.indexOf("Uložený další práh");
@@ -215,7 +215,7 @@ test("screen: Free shows the first gift editable and the Pro threshold as stored
   // Proposal 3: the market by name, the currency in brackets. A stored gift says it at once (N2).
   assert.match(free, /Slovensko \(EUR\): částka chybí, v tomto trhu se odměna nenabízí/);
   assert.match(free, /Slovensko: dárek se nenabízí · /, "the tile names the market too");
-  assert.match(free, /V Pro nastavíte víc prahů a u každého výběr až ze 3 dárků/);
+  assert.match(free, /V Pro nastavíte víc stupňů a u každého výběr až ze 3 dárků/);
   assert.match(freeHtml, /href="\/app\/plan"/, "the Pro note leads to the plan");
   // P5: the state lines say the real values.
   assert.match(free, /Doprava zdarma od 1 000 Kč \/ 40 €/);
@@ -225,25 +225,25 @@ test("screen: Free shows the first gift editable and the Pro threshold as stored
   const noStatus = { ...devRewardsScreen({ plan: "free", state: null, locale: "cs" }), status: undefined };
   assert.doesNotMatch(text(await renderPage(createElement(RewardsScreen, noStatus))), /Aktivní/, "never a green pill from this page's own form");
   const pro = text(await renderPage(createElement(RewardsScreen, devRewardsScreen({ plan: "pro", state: null, locale: "cs" }))));
-  assert.match(pro, /2\. práh/);
+  assert.match(pro, /2\. stupeň/);
   assert.match(pro, /Dárek \(na výběr až 3\)/);
   assert.match(pro, /Hrnek Won/);
-  assert.match(pro, /Přidat další práh/);
+  assert.match(pro, /Přidat další stupeň/);
   assert.match(pro, /Kšiltovka Won, Plátěná taška Won nebo Hrnek Won od 3 000 Kč \/ 120 €/);
   const empty = text(await renderPage(createElement(RewardsScreen, devRewardsScreen({ plan: "free", state: "empty", locale: "cs" }))));
   assert.match(empty, /Přidat dárek/);
-  assert.match(empty, /Zapnout v tématu/);
-  assert.match(empty, /Košík odměny neukazuje\. Won není v tématu zapnutý/);
+  assert.match(empty, /Zapnout na webu/);
+  assert.match(empty, /Košík odměny neukazuje\. Won není na webu zapnutý/);
   assert.match(empty, /Doprava zdarma vypnutá/);
   assert.match(empty, /Žádný dárek/);
   // Every state of the app embed check has its own sentence and action.
   const embed = async (state: string) => text(await renderPage(createElement(RewardsScreen, devRewardsScreen({ plan: "free", state, locale: "cs" }))));
-  assert.match(await embed("embed-draft"), /Chybí v tématu.*Won je zapnutý jen v nepublikovaném tématu.*Zapnout v tématu.*Zapněte Won i v živém tématu/);
-  assert.match(await embed("embed-unknown"), /Nepodařilo se ověřit, jestli je Won v tématu zapnutý.*Otevřít editor tématu/);
-  assert.match(await embed("embed-no-scope"), /Won nemá přístup k tématu.*Otevřít editor tématu/);
+  assert.match(await embed("embed-draft"), /Na webu chybí.*Won je zapnutý jen v nepublikovaném vzhledu obchodu.*Zapnout na webu.*Zapněte Won i ve vzhledu, který zákazníci vidí/);
+  assert.match(await embed("embed-unknown"), /Nepodařilo se zjistit, jestli je Won na webu zapnutý.*Otevřít úpravu vzhledu obchodu/);
+  assert.match(await embed("embed-no-scope"), /Won nemá přístup ke vzhledu obchodu.*Otevřít úpravu vzhledu obchodu/);
   // B12: the limit of thresholds is said, and the server's refusal is rendered.
   const tooMany = text(await renderPage(createElement(RewardsScreen, { ...devRewardsScreen({ plan: "pro", state: null, locale: "cs" }), result: devRewardsResult("too-many") })));
-  assert.match(tooMany, /Prahů může být nejvýš 5\./);
+  assert.match(tooMany, /Stupňů může být nejvýš 5\./);
   const invalid = text(
     await renderPage(createElement(RewardsScreen, { ...devRewardsScreen({ plan: "free", state: null, locale: "cs" }), result: devRewardsResult("invalid") })),
   );

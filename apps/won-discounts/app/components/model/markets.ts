@@ -44,7 +44,7 @@ export function currencyViews(
 }
 
 /** Currencies of the enabled markets, each once; none configured → the shop currency (the same source order as currencyViews). */
-export function enabledCurrencies(markets: readonly MarketSetting[], shopCurrency?: string | null): string[] {
+export function enabledCurrencies(markets: readonly Pick<MarketSetting, "currency" | "enabled">[], shopCurrency?: string | null): string[] {
   const codes = [...new Set(markets.filter((m) => m.enabled).map((m) => m.currency))];
   return codes.length > 0 ? codes : shopCurrency && /^[A-Z]{3}$/.test(shopCurrency) ? [shopCurrency] : [];
 }

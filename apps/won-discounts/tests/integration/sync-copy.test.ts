@@ -25,7 +25,8 @@ test("failed steps → sentences that name the rule and keep the detail", () => 
 
   assert.equal(
     say({ step: "node.create:code:vip", ok: false, detail: '"VIP10": could not create "VIP10": Code must be unique.' }),
-    'Kód slevy „VIP10“ už v Shopify používá jiná sleva. Změňte kód, nebo tu slevu přesuň do Won ("VIP10": could not create "VIP10": Code must be unique.).',
+    // N13: no English system message in brackets; the sentence itself says what to do.
+    "Kód slevy „VIP10“ už v Shopify používá jiná sleva. Změňte kód, nebo tu slevu přesuňte do Won.",
   );
   assert.equal(
     say({ step: "codes:code:vip", ok: false, detail: "code bulk add job 1 still running" }, "en"),

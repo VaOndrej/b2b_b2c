@@ -63,6 +63,7 @@ import type {
 import { presetOf } from "../components/model/appearance";
 import { CAMPAIGN_BLOCK_HANDLE, cartBlockAddUrl, outletBlockAddUrl, placementLinks, REWARDS_PROGRESS_BLOCK_HANDLE, tiersBlockAddUrl } from "../components/model/embed";
 import { REWARDS_FIELD } from "../components/model/rewards";
+import { marketRows } from "../components/model/markets-overview";
 import { rewardsOverviewOf, rewardsScreenFacts, rewardsSectionStatus } from "./integration/rewards.server";
 import { campaignsStatus, marginStatus, outletStatus } from "../components/model/module-status";
 import { currencyViews } from "../components/model/markets";
@@ -1119,6 +1120,11 @@ export function devSettingsScreen(opts: { plan: "free" | "pro"; state: string | 
     configVersion: "dev-config-version",
     currencies: currencyViews(DEV_OVERVIEW_FIXTURE.markets, { marketNames: DEV_MARKET_NAMES }),
     combination: opts.state === "changed" ? { ...combination, productWithOrder: false, productWithShipping: false } : combination,
+    // The same shop as the home page's ?state=modules: the discounts, rewards and tiers of the three fixtures.
+    markets: marketRows(
+      { ...DEV_OVERVIEW_FIXTURE, modules: { ...DEV_OVERVIEW_FIXTURE.modules, rewards: DEV_REWARDS_FIXTURE.modules.rewards, tiers: DEV_TIERS_FIXTURE.modules.tiers } },
+      { plan: opts.plan, names: DEV_MARKET_NAMES, locale: "cs" },
+    ),
   };
 }
 
@@ -1521,6 +1527,7 @@ export function devCampaignsScreen(opts: { plan: "free" | "pro"; state: string |
     campaigns: views,
     rules: campaignRuleChoices(DEV_OVERVIEW_FIXTURE, opts.locale),
     tierSets: campaignTierChoices(DEV_TIERS_FIXTURE, opts.locale),
+    currencies: currencyViews(DEV_OVERVIEW_FIXTURE.markets, { marketNames: DEV_MARKET_NAMES }),
     editing: opts.edit ? (views.find((v) => v.id === opts.edit && (v.status === "running" || v.status === "scheduled")) ?? null) : null,
     limits: { campaigns: CONFIG_LIMITS.campaigns, maxDays: CAMPAIGN_LIMITS.maxDays, minLeadMinutes: CAMPAIGN_LIMITS.minLeadMinutes },
     placements: placementLinks(DEV_SHOP, "dev-api-key", CAMPAIGN_BLOCK_HANDLE),
