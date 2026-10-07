@@ -1516,10 +1516,40 @@ const DEV_CAMPAIGNS: Campaign[] = [
 ];
 
 /** Kampaně screen: Free by default (?plan=pro), ?state=empty, ?edit=<id>, ?state=finishing (Free, A6). */
+/** The tiers fixture with the whole-store set in amounts per item, for both markets (?state=suggest). */
+const DEV_CAMPAIGN_AMOUNT_TIERS_FIXTURE: WonDiscountsConfig = {
+  ...DEV_TIERS_FIXTURE,
+  modules: {
+    ...DEV_TIERS_FIXTURE.modules,
+    tiers: {
+      ...DEV_TIERS_FIXTURE.modules.tiers,
+      sets: DEV_TIERS_FIXTURE.modules.tiers.sets.map((set) =>
+        set.scope === "global" ? { ...set, breaks: [{ minQty: 3, amountOff: { CZK: 30_00, EUR: 1_20 } }, { minQty: 5, amountOff: { CZK: 50_00, EUR: 2_00 } }] } : set,
+      ),
+    },
+  },
+};
+
+/** "Black Friday" with the campaign's amounts typed only in the shop currency (?state=suggest). */
+const DEV_CAMPAIGN_SUGGEST: Campaign = {
+  id: "bf",
+  name: "Black Friday",
+  window: { start: "2026-11-27T00:00:00", end: "2026-11-30T23:59:00" },
+  overrides: [
+    { ruleId: "dev-fixture-3", patch: { value: { kind: "fixed", amount: { CZK: 400_00 } } } },
+    { ruleId: "global", patch: { breaks: [{ minQty: 3, amountOff: { CZK: 40_00, EUR: 1_60 } }, { minQty: 5, amountOff: { CZK: 60_00, EUR: 2_40 } }] } },
+  ],
+  killed: false,
+};
+
 export function devCampaignsScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; edit: string | null }): CampaignsScreenData {
-  const campaigns = opts.state === "empty" ? [] : DEV_CAMPAIGNS;
+  // ?state=suggest: "Black Friday" has its amounts only in the shop currency (the whole-store tiers are amounts per
+  // item too), so the other market's fields are empty and get a suggested amount.
+  const suggest = opts.state === "suggest";
+  const tiersConfig = suggest ? DEV_CAMPAIGN_AMOUNT_TIERS_FIXTURE : DEV_TIERS_FIXTURE;
+  const campaigns = opts.state === "empty" ? [] : suggest ? DEV_CAMPAIGNS.map((c) => (c.id === "bf" ? DEV_CAMPAIGN_SUGGEST : c)) : DEV_CAMPAIGNS;
   const rules = new Map(DEV_OVERVIEW_FIXTURE.modules.codes.rules.map((r) => [r.id, r]));
-  const viewOpts: CampaignViewOptions = { locale: opts.locale, now: DEV_CAMPAIGN_NOW, rules, tiers: DEV_TIERS_FIXTURE.modules.tiers, finishing: new Set(opts.state === "finishing" ? ["weekend"] : []), plan: opts.plan };
+  const viewOpts: CampaignViewOptions = { locale: opts.locale, now: DEV_CAMPAIGN_NOW, rules, tiers: tiersConfig.modules.tiers, finishing: new Set(opts.state === "finishing" ? ["weekend"] : []), plan: opts.plan };
   const views = campaigns.map((c) => campaignView(c, viewOpts));
   return {
     plan: opts.plan,
@@ -1530,7 +1560,7 @@ export function devCampaignsScreen(opts: { plan: "free" | "pro"; state: string |
     timezone: DEV_TIMEZONE,
     campaigns: views,
     rules: campaignRuleChoices(DEV_OVERVIEW_FIXTURE, opts.locale),
-    tierSets: campaignTierChoices(DEV_TIERS_FIXTURE, opts.locale),
+    tierSets: campaignTierChoices(tiersConfig, opts.locale),
     currencies: currencyViews(DEV_OVERVIEW_FIXTURE.markets, { marketNames: DEV_MARKET_NAMES }),
     editing: opts.edit ? (views.find((v) => v.id === opts.edit && (v.status === "running" || v.status === "scheduled")) ?? null) : null,
     limits: { campaigns: CONFIG_LIMITS.campaigns, maxDays: CAMPAIGN_LIMITS.maxDays, minLeadMinutes: CAMPAIGN_LIMITS.minLeadMinutes },
@@ -1571,6 +1601,32 @@ export function devCampaignsResult(kind: string | null): CampaignsActionResult |
         [CAMPAIGN_FIELD.endDate]: ["2026-10-12"],
         [CAMPAIGN_FIELD.use]: ["dev-fixture-1"],
         [`${CAMPAIGN_FIELD.percent}dev-fixture-1`]: ["150"],
+      },
+    };
+  }
+  // With ?state=suggest&edit=bf: the merchant raised the amounts per item in the shop currency and emptied the other
+  // market's — refused (a campaign may only improve a level), the form comes back and suggests the missing amounts.
+  if (kind === "invalid-tier") {
+    return {
+      ok: false,
+      reason: "invalid",
+      errors: [{ field: CAMPAIGN_FIELD.tierUse, key: "campaign.error.tierLess", params: { set: "Celý obchod", qty: 3, currency: " (EUR)" }, at: "global" }],
+      values: {
+        [CAMPAIGN_FIELD.name]: ["Black Friday"],
+        [CAMPAIGN_FIELD.startDate]: ["2026-11-27"],
+        [CAMPAIGN_FIELD.startTime]: ["00:00"],
+        [CAMPAIGN_FIELD.endDate]: ["2026-11-30"],
+        [CAMPAIGN_FIELD.endTime]: ["23:59"],
+        [CAMPAIGN_FIELD.use]: ["dev-fixture-3"],
+        [`${CAMPAIGN_FIELD.amount}dev-fixture-3.CZK`]: ["400"],
+        [`${CAMPAIGN_FIELD.amount}dev-fixture-3.EUR`]: [""],
+        [CAMPAIGN_FIELD.tierUse]: ["global"],
+        [`${CAMPAIGN_FIELD.tierQty}global.0`]: ["3"],
+        [`${CAMPAIGN_FIELD.tierAmount}global.0.CZK`]: ["40"],
+        [`${CAMPAIGN_FIELD.tierAmount}global.0.EUR`]: [""],
+        [`${CAMPAIGN_FIELD.tierQty}global.1`]: ["5"],
+        [`${CAMPAIGN_FIELD.tierAmount}global.1.CZK`]: ["60"],
+        [`${CAMPAIGN_FIELD.tierAmount}global.1.EUR`]: [""],
       },
     };
   }

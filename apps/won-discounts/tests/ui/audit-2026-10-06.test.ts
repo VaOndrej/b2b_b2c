@@ -296,3 +296,29 @@ test("úkol 1 (7 Oct 2026): with Won switched off on the storefront, the colour 
   const en = (await render("tiers?accent=green&embed=off&locale=en")).replace(/<[^>]+>/g, " ");
   assert.match(en, /Won is switched off on your storefront, so the colour will not show there\./);
 });
+
+test("úkol 3 (7 Oct 2026): a campaign's amount fields suggest the other market's amount, or say there is no rate", async () => {
+  const text = (part: string) => part.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  const boxesOf = (html: string) => html.match(/<div data-won-suggest="[a-z]+"[\s\S]*?<\/div>/g) ?? [];
+  // "Black Friday": 400 Kč off, typed only for Česko. Rate 0,04 → 16 € for Slovensko, offered with its button.
+  const html = await render("campaigns?plan=pro&state=suggest&edit=bf");
+  const boxes = boxesOf(html);
+  assert.equal(boxes.length, 1, "the discount; the levels have both markets' amounts");
+  assert.ok(boxes[0]!.startsWith('<div data-won-suggest="offer"'), "an offer");
+  assert.ok(/Návrh\s+Slovensko \(EUR\): navrhujeme 16\s€/.test(text(boxes[0]!)), text(boxes[0]!));
+  assert.ok(/<s-button[^>]*>Použít 16\s€<\/s-button>/.test(boxes[0]!), "the button fills the field");
+  // Nothing is filled without the click.
+  assert.ok(/<s-number-field name="cp\.amount\.dev-fixture-3\.EUR"[^>]*value=""/.test(html), "the field stays empty");
+  assert.ok(html.includes('label="Sleva za kus v kampani: Slovensko (EUR)"'), "an amount per item is named by its market");
+  // The amounts per item (40 and 60 Kč from 3 and 5 pieces), the other market's fields emptied: one suggestion per level.
+  const levels = boxesOf(await render("campaigns?plan=pro&state=suggest&edit=bf&result=invalid-tier"));
+  assert.equal(levels.length, 3, "the discount and the two levels");
+  assert.deepEqual(levels.map((b) => (text(b).match(/navrhujeme ([\d,]+)\s€/) ?? [])[1]), ["16", "1,50", "2,50"], "1,60 and 2,40 € rounded like every suggestion");
+  // No rate set by hand in Shopify: the form says so instead of guessing.
+  const none = await render("campaigns?plan=pro&state=suggest&edit=bf&result=invalid-tier&rates=none");
+  assert.equal((none.match(/data-won-suggest="none"/g) ?? []).length, 3);
+  assert.equal((none.match(/data-won-suggest="offer"/g) ?? []).length, 0);
+  assert.ok(/Bez návrhu/.test(text(boxesOf(none)[0]!)), text(boxesOf(none)[0]!));
+  // Both markets already have their amount: nothing is suggested.
+  assert.equal(((await render("campaigns?plan=pro&edit=bf")).match(/data-won-suggest=/g) ?? []).length, 0);
+});

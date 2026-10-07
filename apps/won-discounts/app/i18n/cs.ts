@@ -1421,6 +1421,7 @@ export const cs = {
   "campaign.tiers.qtyExtra": "Další úroveň od (nepovinné)",
   "campaign.tiers.percent": "Sleva v kampani",
   "campaign.tiers.amount": "Sleva za kus v kampani ({currency})",
+  "campaign.tiers.amountMarket": "Sleva za kus v kampani: {markets} ({currency})",
   "campaign.tiers.timing": "Pokladna dává kampaňové úrovně od první vteřiny kampaně až do jejího konce. Tabulka na stránce produktu se přepne minutu po začátku a 7 minut před koncem se vrátí, aby web nikdy nesliboval víc než pokladna.",
   "campaign.tiers.scoped": "Vybrané produkty a kolekce ({n})",
   "campaign.tiers.break": "od {qty} ks −{value}",

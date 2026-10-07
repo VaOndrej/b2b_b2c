@@ -132,7 +132,8 @@ import {
 //   /dev/preview/outlet          Výprodej (MVP 5): Free by default, ?plan=pro; ?state=empty; ?result=started | ended |
 //                                 invalid | failed (both with the posted values, B14) | settings-pro (B15).
 //                                 Přehled: ?state=outlet (the card with a question)
-//   /dev/preview/campaigns       Kampaně (MVP 6): Free by default, ?plan=pro; ?state=empty | finishing; ?edit=<id>;
+//   /dev/preview/campaigns       Kampaně (MVP 6): Free by default, ?plan=pro; ?state=empty | finishing | suggest
+//                                 (&edit=bf: the discount only in the shop currency; &result=invalid-tier: the levels too; &rates=none: no rate set); ?edit=<id>;
 //                                 ?result=saved | killed | invalid | invalid-rule (an error at one discount and at
 //                                 the time control) | sync-pending. Přehled: ?state=campaigns (+ &finishing=1)
 //   /dev/preview/plan            Tarif as its own page; ?plan=pro, ?state=dev | unknown | clean | production
@@ -467,6 +468,7 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       return {
         ...devCampaignsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, edit: q.get("edit") }),
         result: devCampaignsResult(q.get("result")),
+        suggest: devSuggest(q),
       };
     case "analytics":
       // Přehledy (MVP 7): Free by default (?plan=pro), ?state=empty (no order yet), ?state=unavailable (no access to orders).

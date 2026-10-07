@@ -1417,6 +1417,7 @@ export const en: Record<keyof typeof cs, string> = {
   "campaign.tiers.qtyExtra": "Another break from (optional)",
   "campaign.tiers.percent": "Discount in the campaign",
   "campaign.tiers.amount": "Discount per item in the campaign ({currency})",
+  "campaign.tiers.amountMarket": "Discount per item in the campaign: {markets} ({currency})",
   "campaign.tiers.timing": "Checkout gives the campaign's breaks from the first second of the campaign until its end. The table on the product page switches a minute after the start and goes back 7 minutes before the end, so the site never promises more than checkout gives.",
   "campaign.tiers.scoped": "Selected products and collections ({n})",
   "campaign.tiers.break": "from {qty} items −{value}",

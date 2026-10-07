@@ -37,8 +37,10 @@ import {
 } from "../model/campaigns";
 import { formatDateTime } from "../model/signals";
 import { seedOf, submittedOf, useRefusedSeed, type Seed } from "../model/submitted";
-import type { CampaignsActionResult, CampaignsScreenData, CampaignTierChoice, CampaignView, SubmittedValues, UiResult } from "../model/types";
+import type { AmountSuggestView } from "../model/markets";
+import type { CampaignsActionResult, CampaignsScreenData, CampaignTierChoice, CampaignView, CurrencyView, SubmittedValues, UiResult } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
+import { AmountSuggestions } from "../shell/AmountSuggestions";
 import { boolAttr } from "../shell/attrs";
 import { Notice, ResyncButton } from "../shell/Notice";
 import { ProFrame } from "../shell/ProFrame";
@@ -134,6 +136,11 @@ function CampaignCard({ c, pro }: { c: CampaignView; pro: boolean }) {
   );
 }
 
+/** The markets of the currencies a discount asks for, in the form's order; a currency without a known market is still offered, by its code. */
+function suggestFor(currencies: readonly CurrencyView[], codes: readonly string[]): CurrencyView[] {
+  return codes.map((code) => currencies.find((c) => c.code === code) ?? { code, markets: [] });
+}
+
 /** One quantity tier set in the form (MVP 6.1): tick it, then its breaks during the campaign. */
 function TierSetFields({
   set,
@@ -143,6 +150,8 @@ function TierSetFields({
   ticked,
   disabled,
   error,
+  currencies,
+  suggest,
 }: {
   set: CampaignTierChoice;
   rowCount: number;
@@ -152,8 +161,12 @@ function TierSetFields({
   ticked: boolean;
   disabled: boolean;
   error?: string;
+  /** The enabled markets by currency: a field is named by its market, and the other markets get a suggested amount. */
+  currencies: readonly CurrencyView[];
+  suggest?: AmountSuggestView;
 }) {
   const { t } = useT();
+  const marketsOf = (code: string) => currencies.find((c) => c.code === code)?.markets.map((m) => m.name).join(", ") ?? "";
   return (
     <s-box padding="small-300" border="base" borderRadius="base">
       <s-stack direction="block" gap="small-300">
@@ -188,7 +201,7 @@ function TierSetFields({
                       <s-number-field
                         key={cur}
                         name={`${F.tierAmount}${set.id}.${i}.${cur}`}
-                        label={t("campaign.tiers.amount", { currency: cur })}
+                        label={marketsOf(cur) ? t("campaign.tiers.amountMarket", { currency: cur, markets: marketsOf(cur) }) : t("campaign.tiers.amount", { currency: cur })}
                         value={init.one(`${F.tierAmount}${set.id}.${i}.${cur}`, "")}
                         min={0}
                         step={0.01}
@@ -196,6 +209,13 @@ function TierSetFields({
                         inputMode="decimal"
                       />
                     ))}
+                    {/* Úkol 3 (7 Oct 2026): the other markets' amounts, suggested from the rate set by hand in Shopify. */}
+                    <AmountSuggestions
+                      suggest={suggest}
+                      currencies={suggestFor(currencies, set.currencies)}
+                      field={(code) => `${F.tierAmount}${set.id}.${i}.${code}`}
+                      initial={Object.fromEntries(set.currencies.map((cur) => [cur, init.one(`${F.tierAmount}${set.id}.${i}.${cur}`, "")]))}
+                    />
                   </s-stack>
                 )}
               </s-grid>
@@ -438,6 +458,13 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
                               inputMode="decimal"
                             />
                           ))}
+                          {/* Úkol 3 (7 Oct 2026): the same suggestion as in the discount editor — nothing is filled without the click. */}
+                          <AmountSuggestions
+                            suggest={props.suggest}
+                            currencies={suggestFor(props.currencies ?? [], r.currencies)}
+                            field={(code) => `${F.amount}${r.id}.${code}`}
+                            initial={Object.fromEntries(r.currencies.map((cur) => [cur, init.one(`${F.amount}${r.id}.${cur}`, "")]))}
+                          />
                           {(r.missing ?? []).length > 0 ? (
                             <div data-won-campaign-missing>
                               <RowNote tone="attention">{t("campaign.rule.notOffered", { markets: tr.list((r.missing ?? []).map((cur) => marketsOf(cur) || cur)) })}</RowNote>
@@ -476,6 +503,8 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
               ticked={usedSets.includes(set.id)}
               disabled={!pro}
               error={errAt(F.tierUse, set.id)}
+              currencies={props.currencies ?? []}
+              suggest={props.suggest}
             />
           ))}
           <FieldMessage text={err(F.tierUse)} />

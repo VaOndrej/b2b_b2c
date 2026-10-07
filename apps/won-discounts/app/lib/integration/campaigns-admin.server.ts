@@ -40,7 +40,7 @@ import { graphqlOf, nowOf, type ShopCtx } from "./context.server";
 import { readSaveOptions, saveConfigSection } from "./settings.server";
 import { campaignsStatus } from "../../components/model/module-status";
 import { ctxPlan, loadSyncView } from "./sync-status.server";
-import { readMarketNames, readShopContext, readThemeLook } from "./themes.server";
+import { readAmountSuggest, readMarketNames, readShopContext, readThemeLook } from "./themes.server";
 import { currenciesWithoutAmount, currencyViews, enabledCurrencies } from "../../components/model/markets";
 
 const STATUS_ORDER = { running: 0, scheduled: 1, ended: 2, killed: 3 } as const;
@@ -202,10 +202,10 @@ export function campaignRuleChoices(config: ReadonlyDeep<WonDiscountsConfig>, lo
   }));
 }
 
-async function shopNow(ctx: ShopCtx): Promise<{ now: string; timezone: string | null }> {
-  const { timezone } = await readShopContext(graphqlOf(ctx));
+async function shopNow(ctx: ShopCtx): Promise<{ now: string; timezone: string | null; currencyCode: string | null }> {
+  const { timezone, currencyCode } = await readShopContext(graphqlOf(ctx));
   const now = shopLocalDateTime(nowOf(ctx), timezone ?? "UTC");
-  return { now, timezone };
+  return { now, timezone, currencyCode: currencyCode ?? null };
 }
 
 async function finishingOf(ctx: ShopCtx): Promise<Set<string>> {
@@ -217,7 +217,7 @@ async function finishingOf(ctx: ShopCtx): Promise<Set<string>> {
 }
 
 export async function loadCampaignsScreen(ctx: ShopCtx, opts: { edit?: string | null } = {}): Promise<CampaignsScreenData> {
-  const [loaded, plan, { now, timezone }, finishing] = await Promise.all([loadConfig(ctx.db, ctx.shop), ctxPlan(ctx), shopNow(ctx), finishingOf(ctx)]);
+  const [loaded, plan, { now, timezone, currencyCode }, finishing] = await Promise.all([loadConfig(ctx.db, ctx.shop), ctxPlan(ctx), shopNow(ctx), finishingOf(ctx)]);
   const config = loaded.config;
   const rules = new Map(config.modules.codes.rules.map((r) => [r.id, r]));
   const viewOpts: CampaignViewOptions = { locale: ctx.locale, now, rules, tiers: config.modules.tiers, finishing, plan };
@@ -225,10 +225,11 @@ export async function loadCampaignsScreen(ctx: ShopCtx, opts: { edit?: string | 
     .map((c) => campaignView(c, viewOpts))
     .sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || (a.start.date + a.start.time).localeCompare(b.start.date + b.start.time));
   const editing = opts.edit ? (campaigns.find((c) => c.id === opts.edit && (c.status === "running" || c.status === "scheduled")) ?? null) : null;
-  const [sync, look, marketNames] = await Promise.all([
+  const [sync, look, marketNames, suggest] = await Promise.all([
     loadSyncView(ctx, loaded, timezone),
     readThemeLook(ctx, { scopes: ctx.scopes }),
     readMarketNames(graphqlOf(ctx), ctx.shop, ctx.scopes),
+    readAmountSuggest(graphqlOf(ctx), ctx.shop, ctx.scopes, currencyCode),
   ]);
   return {
     plan,
@@ -242,6 +243,7 @@ export async function loadCampaignsScreen(ctx: ShopCtx, opts: { edit?: string | 
     rules: campaignRuleChoices(config, ctx.locale),
     tierSets: campaignTierChoices(config, ctx.locale),
     currencies: currencyViews(config.markets as WonDiscountsConfig["markets"], { marketNames }),
+    ...(suggest ? { suggest } : {}),
     editing,
     limits: { campaigns: CONFIG_LIMITS.campaigns, maxDays: CAMPAIGN_LIMITS.maxDays, minLeadMinutes: CAMPAIGN_LIMITS.minLeadMinutes },
     placements: placementLinks(ctx.shop, ctx.apiKey, CAMPAIGN_BLOCK_HANDLE),

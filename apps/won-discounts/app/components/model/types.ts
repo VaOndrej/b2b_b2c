@@ -992,6 +992,8 @@ export interface CampaignsScreenData {
   tierSets: CampaignTierChoice[];
   /** The enabled markets by currency, for naming a field by its market (absent = fields are named by the currency). */
   currencies?: CurrencyView[];
+  /** What the amount fields suggest for the other markets with (the manual rates set in Shopify). Absent = no suggestions. */
+  suggest?: import("./markets").AmountSuggestView;
   /** The campaign the form edits (?edit=<id>), when it can be edited. */
   editing: CampaignView | null;
   limits: { campaigns: number; maxDays: number; minLeadMinutes: number };

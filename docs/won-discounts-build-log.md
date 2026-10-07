@@ -45,6 +45,18 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   - **`shopify app dev` 7. 10. kolem 14:55 skončil** (proces 24103, běžel od 8:04). Stalo se to mezi dvěma mými čteními místní
     adresy `127.0.0.1:9293`; žádný signál jsem mu neposlal a příčinu neznám. Dev náhled `/dev/preview/*` proto neběží.
 
+- **Úkol 2 (sloučení do `main`, push) — neprovedeno, čeká na Ondřejovo potvrzení.** Větev je 7. 10. přímo před `origin/main`
+  (posun bez slučovacího commitu), `codex/won-quantity-bootstrap` a `won-toasts` mají 0 commitů před `main`.
+- **Úkol 3 (návrh částky v kampaních) — v kódu, commitnuto na větvi, screenshoty chybí (dev náhled neběží).**
+  - `CampaignsScreen.tsx`: pod poli „Sleva v kampani“ i „Sleva za kus v kampani“ je `AmountSuggestions`; pole částky za kus se
+    nově jmenuje podle trhu (`campaign.tiers.amountMarket`). Kurzy: `loadCampaignsScreen` → `readAmountSuggest`.
+  - Dev náhled: `/dev/preview/campaigns?plan=pro&state=suggest&edit=bf` (sleva jen v měně obchodu), `&result=invalid-tier`
+    (i částky za kus), `&rates=none` (kurz není).
+  - Zjištěno: kampaň smí úroveň jen zlepšit pro každou měnu základu, uložená kampaň proto nemá u částky za kus prázdný trh;
+    návrh se tam ukáže, když obchodník pole trhu vymaže (nebo po odmítnutém uložení).
+  - Test: `tests/ui/audit-2026-10-06.test.ts` „úkol 3“.
+- **Úkol 4 (zkouška Horizon + Dawn) — nespuštěno:** potřebuje běžící `shopify app dev` (ten 7. 10. skončil) a zapisuje do dev obchodu.
+
 Zadání: [`won-discounts/audit-dlazdice-trhy-2026-10-06.md`](won-discounts/audit-dlazdice-trhy-2026-10-06.md) (stav po nálezech je na jeho
 konci). Práce inline, commitnuto lokálně, nepushnuto, nenasazeno.
 

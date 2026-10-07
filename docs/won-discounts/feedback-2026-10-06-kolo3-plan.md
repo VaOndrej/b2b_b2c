@@ -304,6 +304,7 @@ Zapisuje se po bodech během práce.
 | 15 | hotovo | „Vlastní sleva“ / „Custom discount“ s větou, čárkovaná karta. |
 | 4 | v kódu, brána zelená, **chybí E2E na Horizonu a Dawnu** (čeká na „go“) | `extensions/won-discounts-storefront/assets/won-discounts-tiers.js` (`refresh`); na živém tématu dev obchodu ověřeno. |
 | 4, vzhled na webu (dotažení, úkol 1) | příčina nalezena 7. 10., oprava mimo kód | Blok na živém webu byl bez stylů, protože obchod ukazuje dev preview a jeho soubory vrací 404. Kód, uložené nastavení i značka sedí. Kontrola: `scripts/check-storefront-assets.mjs`, `assertExtensionAssetsLoaded`. Podrobnosti v build logu. |
+| návrh částky v kampaních (dotažení, úkol 3) | v kódu, test zelený, screenshoty chybí | `CampaignsScreen.tsx` + `AmountSuggestions`; `/dev/preview/campaigns?plan=pro&state=suggest&edit=bf`. |
 | 7 | nezačato | dávka C, čeká na schválení nákresu |
 | 9, 10 | nezačato | dávka D |
 | 11, 12, 13, 14 | nezačato | dávka E |
