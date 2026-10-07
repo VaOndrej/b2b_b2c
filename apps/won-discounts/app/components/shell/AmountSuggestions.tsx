@@ -79,7 +79,9 @@ export function AmountSuggestions({
         const market = c.markets.length > 0 ? `${c.markets.map((m) => m.name).join(", ")} (${amountKeyCurrency(c.code)})` : amountKeyCurrency(c.code);
         const exponent = currencyExponent(c.code);
         const currency = amountKeyCurrency(c.code);
-        const major = currency === suggest?.base ? baseMajor : suggestedAmount(baseMajor, suggest?.rates[currency], exponent);
+        // The market's own manual rate first (two markets of one currency may have different ones), then its currency's.
+        const rate = c.markets.map((m) => suggest?.marketRates?.[m.handle]).find((r) => typeof r === "number") ?? suggest?.rates[currency];
+        const major = currency === suggest?.base ? baseMajor : suggestedAmount(baseMajor, rate, exponent);
         // A box of its own, apart from the field notes (Ondřej 7 Oct 2026): blue = something to pick (§11a), grey = nothing to offer.
         if (major === null) {
           return (

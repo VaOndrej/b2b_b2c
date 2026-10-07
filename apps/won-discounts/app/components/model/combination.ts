@@ -22,6 +22,8 @@ export const COMBINATION_FIELD = {
   productWithOrder: "productWithOrder",
   productWithShipping: "productWithShipping",
   orderWithShipping: "orderWithShipping",
+  /** Nastavení → "Zákazník ze země mimo vaše trhy" (engine.unknownMarketLowest): the lowest amount of the currency's markets. */
+  unknownMarketLowest: "unknownMarketLowest",
 } as const;
 
 export const COMBINATION_INTENT = { save: "save" } as const;
@@ -41,6 +43,11 @@ export function readCombinationForm(form: FormDataLike): CombinationView {
     productWithShipping: checked(form.get(COMBINATION_FIELD.productWithShipping)),
     orderWithShipping: checked(form.get(COMBINATION_FIELD.orderWithShipping)),
   };
+}
+
+/** The "customer from a country in no market" switch as posted (not checked = not in the form = off). */
+export function readUnknownMarketForm(form: FormDataLike): boolean {
+  return checked(form.get(COMBINATION_FIELD.unknownMarketLowest));
 }
 
 export function combinationLabel(key: CombinationKey, tr: Translator): string {

@@ -108,9 +108,34 @@ function shownCurrencies(amount: MoneyByCurrency, currencies: readonly string[])
  * a currency no enabled market uses is not offered anywhere, so it is not shown
  * here (the editor lists it separately). "" when none.
  */
-export function formatAmounts(amount: MoneyByCurrency, currencies: readonly string[], locale: UiLocale): string {
-  // Two markets of one currency with the same amount ("EUR@sk", "EUR@de") are said once.
-  return [...new Set(shownCurrencies(amount, currencies).map((c) => formatMoney(moneyFor(amount, c) ?? 0, c, locale)))].join(" / ");
+export function formatAmounts(amount: MoneyByCurrency, currencies: readonly string[], locale: UiLocale, labels?: AmountLabels): string {
+  // Amounts per market (7 Oct 2026): two markets of one currency with the same amount ("EUR@sk", "EUR@de") are
+  // said once; with different amounts each says whose it is — "16 € (Slovensko) / 20 € (Německo)".
+  const shown = shownCurrencies(amount, currencies).map((key) => ({ key, text: formatMoney(moneyFor(amount, key) ?? 0, key, locale) }));
+  const texts = new Map<string, Set<string>>();
+  for (const item of shown) texts.set(amountKeyCurrency(item.key), (texts.get(amountKeyCurrency(item.key)) ?? new Set()).add(item.text));
+  const out = shown.map((item) => ((texts.get(amountKeyCurrency(item.key))?.size ?? 0) > 1 ? `${item.text} (${amountLabel(item.key, labels)})` : item.text));
+  return [...new Set(out)].join(" / ");
+}
+
+/** Names of the amount keys' markets ("EUR@sk" → "Slovensko"), as the caller knows them. */
+export type AmountLabels = Readonly<Record<string, string>>;
+
+/** An amount key in words: its market's name (else the market's handle), a plain currency as its code. */
+export function amountLabel(key: string, labels?: AmountLabels): string {
+  const named = labels && Object.hasOwn(labels, key) ? labels[key] : undefined;
+  if (named) return named;
+  const at = key.indexOf("@");
+  return at < 0 ? key : key.slice(at + 1);
+}
+
+/** "v EUR se nenabízí" for currencies; once a key is one market's ("EUR@sk"): "pro Slovensko se nenabízí". */
+function notOfferedPhrase(missing: readonly string[], locale: UiLocale, labels?: AmountLabels): string {
+  const words = [...new Set(missing.map((key) => amountLabel(key, labels)))];
+  // Named by the market wherever the caller knows its name ("pro Slovensko"), also for a currency one market sells in.
+  const perMarket = missing.some((key) => key.includes("@") || (labels !== undefined && Object.hasOwn(labels, key)));
+  if (locale === "cs") return perMarket ? `pro ${joinWords(words, locale)} se nenabízí` : `v ${joinWords(words, locale)} se nenabízí`;
+  return perMarket ? `not offered for ${joinWords(words, locale)}` : `not offered in ${joinWords(words, locale)}`;
 }
 
 /**
@@ -175,6 +200,7 @@ function describeValue(
   locale: UiLocale,
   currency: string | undefined,
   currencies: readonly string[] | undefined,
+  labels?: AmountLabels,
 ): string {
   const cs = locale === "cs";
   const target = rule.target.kind;
@@ -182,7 +208,7 @@ function describeValue(
   if (value.kind === "freeShipping") return cs ? "Doprava zdarma" : "Free shipping";
   if (value.kind === "percentage") return valuePhrase("percentage", target, formatPercent(value.percent, locale), locale);
   if (currency === undefined && currencies) {
-    const all = formatAmounts(value.amount, currencies, locale);
+    const all = formatAmounts(value.amount, currencies, locale, labels);
     if (!all) return cs ? "Pevná sleva zatím bez hodnoty" : "Fixed amount, no value yet";
     return valuePhrase("fixed", target, all, locale);
   }
@@ -301,6 +327,7 @@ function describeMinimum(
   locale: UiLocale,
   currency: string | undefined,
   currencies: readonly string[] | undefined,
+  labels?: AmountLabels,
 ): string[] {
   const cs = locale === "cs";
   const target = rule.target.kind;
@@ -315,7 +342,7 @@ function describeMinimum(
   const subtotal = rule.minimum?.subtotal;
   if (subtotal && Object.keys(subtotal).length > 0) {
     if (currency === undefined && currencies) {
-      const all = formatAmounts(subtotal, currencies, locale);
+      const all = formatAmounts(subtotal, currencies, locale, labels);
       if (all) parts.push(moneyPhrase(all));
     } else {
       const code = currency ?? firstCurrency(subtotal);
@@ -358,6 +385,8 @@ export interface DescribeRuleOptions {
   currencies?: readonly string[];
   /** The caller knows the rule's codes (admin): a code rule without one says "zatím bez kódu". */
   codesKnown?: boolean;
+  /** Names of the markets of the amount keys ("EUR@sk" → "Slovensko"), for amounts that differ within a currency. */
+  labels?: AmountLabels;
 }
 
 export interface RuleDescriptionParts {
@@ -377,15 +406,10 @@ export function describeRuleParts(
   const list = opts.currency === undefined ? opts.currencies : undefined;
   const missing = list ? currenciesWithoutValue(rule, list) : [];
   return {
-    value: describeValue(rule, locale, opts.currency, list),
+    value: describeValue(rule, locale, opts.currency, list, opts.labels),
     method: describeMethod(rule, locale, opts.codesKnown === true),
-    minimum: describeMinimum(rule, locale, opts.currency, list),
-    notOffered:
-      missing.length === 0
-        ? null
-        : locale === "cs"
-          ? `v ${joinWords(missing, locale)} se nenabízí`
-          : `not offered in ${joinWords(missing, locale)}`,
+    minimum: describeMinimum(rule, locale, opts.currency, list, opts.labels),
+    notOffered: missing.length === 0 ? null : notOfferedPhrase(missing, locale, opts.labels),
   };
 }
 
@@ -426,8 +450,8 @@ export interface DescribeTierOptions {
    * given: every currency the amount has.
    */
   currencies?: readonly string[];
-  /** Names of the amount keys' markets ("EUR@sk" → "Slovensko"), for "not offered in …"; absent = the currency code. */
-  labels?: Readonly<Record<string, string>>;
+  /** Names of the amount keys' markets ("EUR@sk" → "Slovensko"); absent = the market's handle. */
+  labels?: AmountLabels;
 }
 
 /** The currencies a tier break's amount is described in (`opts`), and those of them it has an amount for. */
@@ -447,7 +471,7 @@ export function describeTierValue(b: DescribableTierBreak, opts: DescribeTierOpt
   if (typeof b.percent === "number") return `−${formatPercent(b.percent, locale)}`;
   const { shown } = tierCurrencies(b, opts);
   if (shown.length === 0) return "";
-  return `−${formatAmounts(b.amountOff ?? {}, shown, locale)} ${locale === "cs" ? "za kus" : "per item"}`;
+  return `−${formatAmounts(b.amountOff ?? {}, shown, locale, opts.labels)} ${locale === "cs" ? "za kus" : "per item"}`;
 }
 
 /** "od 3 ks −10 %" (lower case: describeTierSet joins them; describeTierBreak capitalizes). */
@@ -459,19 +483,7 @@ function tierBreakPhrase(b: DescribableTierBreak, opts: DescribeTierOptions): st
   if (typeof b.percent === "number") return `${from} ${describeTierValue(b, opts)}`;
   const { listed, shown } = tierCurrencies(b, opts);
   const missing = listed.filter((c) => !shown.includes(c));
-  // Named by the market when the caller knows its name (`labels`), else by the currency (an amount key "EUR@sk" as "EUR").
-  const named = opts.labels ? missing.map((c) => opts.labels![c] ?? amountKeyCurrency(c)) : null;
-  const codes = [...new Set(missing.map(amountKeyCurrency))];
-  const notOffered =
-    missing.length === 0
-      ? ""
-      : named
-        ? cs
-          ? ` (${joinWords(named, locale)}: nenabízí se)`
-          : ` (not offered: ${joinWords(named, locale)})`
-        : cs
-          ? ` (v ${joinWords(codes, locale)} se nenabízí)`
-          : ` (not offered in ${joinWords(codes, locale)})`;
+  const notOffered = missing.length === 0 ? "" : ` (${notOfferedPhrase(missing, locale, opts.labels)})`;
   if (shown.length === 0) return missing.length > 0 ? `${from}${notOffered}` : `${from} ${cs ? "(bez hodnoty)" : "(no value)"}`;
   return `${from} ${describeTierValue(b, opts)}${notOffered}`;
 }

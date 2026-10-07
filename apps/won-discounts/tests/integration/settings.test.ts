@@ -57,7 +57,25 @@ test("load: the stored switches (defaults on a new shop), the plan, the version 
   const store = new FakeStore();
   const data = await loadSettingsScreen(ctxFor(store), { scopes: "write_discounts" });
   // A new shop has no market stored yet (the Přehled's check brings them in, T1): the table is empty.
-  assert.deepEqual(data, { plan: "free", configVersion: null, currencies: [{ code: "CZK", markets: [] }], combination: DEFAULTS, markets: [] });
+  assert.deepEqual(data, { plan: "free", configVersion: null, currencies: [{ code: "CZK", markets: [] }], combination: DEFAULTS, unknownMarketLowest: false, markets: [] });
+});
+
+test("save: 'a customer from a country in no market gets the lowest amount' is stored only when on, and a save that does not post it leaves it", async () => {
+  const store = new FakeStore();
+  const ctx = ctxFor(store);
+  const on = await saveCombination(ctx, DEFAULTS, { configVersion: null, unknownMarketLowest: true });
+  assert.equal(on.ok, true, JSON.stringify(on));
+  await syncIdle(shop);
+  let data = await loadSettingsScreen(ctx, { scopes: "write_discounts" });
+  assert.equal(data.unknownMarketLowest, true);
+  // Another caller of the same save (no switch posted) does not switch it off.
+  assert.equal((await saveCombination(ctx, { ...DEFAULTS, productWithOrder: false }, { configVersion: data.configVersion })).ok, true);
+  await syncIdle(shop);
+  data = await loadSettingsScreen(ctx, { scopes: "write_discounts" });
+  assert.equal(data.unknownMarketLowest, true);
+  assert.equal((await saveCombination(ctx, DEFAULTS, { configVersion: data.configVersion, unknownMarketLowest: false })).ok, true);
+  await syncIdle(shop);
+  assert.equal((await loadSettingsScreen(ctx, { scopes: "write_discounts" })).unknownMarketLowest, false);
 });
 
 test("save: the switches go into the config and into the shop config checkout runs", async () => {

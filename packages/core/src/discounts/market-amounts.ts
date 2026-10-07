@@ -270,3 +270,39 @@ export function collapseConfigAmounts<T extends ConfigLike>(config: T): T {
     (list) => collapseTierAmounts(list, config.markets),
   );
 }
+
+// --- A cart from a country in no market (engine.unknownMarketLowest) -----------------------------------
+// Where the markets of a currency have different amounts there is no amount "for the currency", so such a cart gets
+// nothing. With the setting on, the SHIPPED maps (never the stored ones) also carry the currency's key with the
+// LOWEST of its markets' amounts — the engines read a market's own key first and the currency's after it, so it is
+// what a cart in no market reads. A market the merchant left without an amount must still get nothing, not that
+// lowest amount: its key ships as NOT_OFFERED, a number no reader accepts as an amount (every reader takes ≥ 0 or
+// > 0 only), which stops the fall to the currency's key. No engine code is involved (the Wasm has 323 B left).
+
+/** The value shipped under a market's key when that market has no amount while its currency has a fallback. */
+export const NOT_OFFERED = -1;
+
+function withLowest(money: MoneyByCurrency, markets: Markets): Record<string, number> {
+  const out: Record<string, number> = { ...money };
+  const enabled = enabledMarkets(markets);
+  for (const currency of new Set(enabled.map((m) => m.currency))) {
+    const group = enabled.filter((m) => m.currency === currency);
+    if (group.length < 2 || own(money, currency) !== undefined) continue;
+    const values = group.map((m) => own(money, marketAmountKey(currency, m.handle)));
+    const set = values.filter((v): v is number => v !== undefined);
+    if (set.length === 0) continue;
+    out[currency] = Math.min(...set);
+    group.forEach((m, i) => values[i] === undefined && (out[marketAmountKey(currency, m.handle)] = NOT_OFFERED));
+  }
+  return out;
+}
+
+/** The (collapsed) config as it ships when `engine.unknownMarketLowest` is on; unchanged otherwise. */
+export function withUnknownMarketFallback<T extends ConfigLike & { engine?: { unknownMarketLowest?: true } }>(config: T): T {
+  if (config.engine?.unknownMarketLowest !== true || !usesMarketAmounts([config.modules, config.campaigns])) return config;
+  return mapConfigAmounts(
+    config,
+    (m) => withLowest(m, config.markets),
+    (list) => list.map((b) => (b.amountOff ? { ...b, amountOff: withLowest(b.amountOff, config.markets) } : b)),
+  );
+}

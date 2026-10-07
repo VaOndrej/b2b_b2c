@@ -27,7 +27,11 @@
   const plan = (cart, rw, facts, mk) => {
     const cur = cart.currency;
     // A threshold of the cart's own market ("EUR@sk", `mk`) first, then its currency's.
-    const at = (m) => (m && typeof m[mk] === "number" ? m[mk] : m?.[cur]);
+    // A negative one = this market is left without a threshold (not the currency's fallback).
+    const at = (m) => {
+      const v = m && typeof m[mk] === "number" ? m[mk] : m?.[cur];
+      return v > 0 ? v : undefined;
+    };
     const b = base(cart);
     const after = afterBase(cart);
     const declined = declinedOf(cart);

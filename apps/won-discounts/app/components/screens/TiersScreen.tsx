@@ -29,7 +29,7 @@ import { Form, useSubmit } from "react-router";
 
 import { useT } from "../../i18n/context";
 import { pickCollections, pickProducts } from "../model/app-bridge";
-import { currencyCodes } from "../model/markets";
+import { amountLabels, currencyCodes } from "../model/markets";
 import { freeGlobalSetId, newTierSetId, readTiersForm, tierPayloadUse, tierSetToConfig, TIERS_FIELD, TIERS_INTENT, tierSummary, blockText } from "../model/tiers";
 import type { FieldError, TierSetView, TiersScreenData, UiResult } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
@@ -232,7 +232,7 @@ export function TiersScreen(props: TiersScreenProps) {
   // N8: the label is about what is STORED. While the form holds no finished level (the kind was just switched), a
   // green "Aktivní" next to "Bez množstevních slev" contradicts itself — the tile then shows the sentence alone.
   const globalTileStatus = props.status?.global?.state === "active" && !hasTiers ? undefined : props.status?.global;
-  const globalSummary = incomplete > 0 ? `${tierSummary(globalDraft, tr, codes)} · ${tr.tp("tiers.incomplete", incomplete)}` : tierSummary(globalDraft, tr, codes);
+  const globalSummary = incomplete > 0 ? `${tierSummary(globalDraft, tr, codes, amountLabels(currencies))} · ${tr.tp("tiers.incomplete", incomplete)}` : tierSummary(globalDraft, tr, codes, amountLabels(currencies));
   // "The tiers do not fit at checkout" is shown at the room-for-tiers line (P3); the page scrolls to it.
   const tooLarge = errors.find((e) => e.field === F.set && e.key === "tiers.error.tooLarge");
   const capacityError = tooLarge ? t(tooLarge.key, tooLarge.params) : undefined;

@@ -96,9 +96,17 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
     Dev náhled: `?markets=shared` u `tiers`, `rewards`, `settings`. Screenshoty `Apps/.playwright-mcp/dotazeni/u6-*.png`.
   - **Rozhodl jsem sám:** (1) obchod, kde má každá měna jeden trh, nevidí žádnou změnu klíčů ani dat; (2) kde se trhy jedné měny
     liší, zmizí společný klíč měny, takže košík ze země mimo trhy nedostane nic (nikdy částku jiného trhu).
-  - **Známé mezery:** návrh částky bere kurz podle měny, ne podle trhu; souhrnné věty u dvou trhů jedné měny s různou částkou
-    vypíšou obě částky bez názvu trhu; trh bez seznamu zemí pokladna nepozná; editor slevy a kampaně se dvěma trhy v eurech
-    nemají vlastní stav v dev náhledu ani screenshot (používají stejné sloupce jako Odměny a Úrovně).
+  - **Mezery dodělané 7. 10. večer:** návrh částky bere ruční kurz konkrétního trhu (`readAmountSuggest` → `marketRates`,
+    `AmountSuggestions.tsx`); souhrnné věty jmenují trh tam, kde se částky jedné měny liší („16 € (Slovensko) / 20 € (Německo)“),
+    a chybějící trh říkají jménem („pro Německo se nenabízí“; core `formatAmounts`, `notOfferedPhrase`).
+  - **Přepínač „Zákazník ze země mimo vaše trhy“ (Ondřej 7. 10.):** Nastavení → `engine.unknownMarketLowest`. Vypnuto (výchozí):
+    košík ze země mimo trhy nedostane nic, kde se trhy jeho měny liší. Zapnuto: dostane nejnižší z těch částek. Bez zásahu do
+    funkce pokladny: do odesílaného nastavení se přidá klíč měny s nejnižší částkou a trhu bez částky hodnota `-1` pod jeho klíčem
+    (žádná čtečka ji nevezme jako částku, takže nespadne na klíč měny). Uložené nastavení tyto hodnoty nikdy neobsahuje.
+    `market-amounts.ts` `withUnknownMarketFallback`, 4 nové fixtures (celkem 138, parita 643), testy v `market-amounts.test.ts`
+    (12), `tests/ui/market-amounts.test.ts` (8), `tests/integration/settings.test.ts`. Dev náhled: `settings?markets=shared&fallback=1`.
+  - **Zbývající mezery:** trh bez seznamu zemí pokladna nepozná; editor slevy a kampaně se dvěma trhy v eurech nemají vlastní
+    stav v dev náhledu ani screenshot (používají stejné sloupce jako Odměny a Úrovně).
   - **Rezerva funkce je po změně 323 B a asi 0,05 bodu.** Další funkce v pokladně musí nejdřív uvolnit místo.
   - **Pozor:** změnil jsem `extensions/` za běhu `shopify app dev`; podle runbooku to rozbije soubory rozšíření na webu do dalšího
     restartu. Ověření: `node apps/won-discounts/scripts/check-storefront-assets.mjs the-inventory-not-tracked-snowboard`.

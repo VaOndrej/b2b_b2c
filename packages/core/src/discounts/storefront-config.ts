@@ -20,7 +20,7 @@
 // makes it stale; any change of the margin settings or the shop currency
 // changes `k`. pdpMaxDiscountPercent (K4 v1) stays until the sync switches.
 
-import { collapseConfigAmounts } from "./market-amounts.ts";
+import { collapseConfigAmounts, NOT_OFFERED, withUnknownMarketFallback } from "./market-amounts.ts";
 import { variantKey } from "./cart.ts";
 import {
   APPEARANCE_PRESETS,
@@ -223,6 +223,11 @@ function storefrontSet(set: SetLike): StorefrontTierSet {
     for (const currency of Object.keys(b.amountOff ?? {}).sort()) {
       const minor = moneyFor(b.amountOff, currency);
       if (minor === null) continue;
+      // A market left without an amount while its currency has a fallback (market-amounts.ts): the mark is kept.
+      if (minor < 0) {
+        setOwn(off, currency, NOT_OFFERED);
+        continue;
+      }
       setOwn(off, currency, liquidUnits(minor, currency));
       any = true;
     }
@@ -281,7 +286,7 @@ function storefrontTiers(setsOf: ReadonlyDeep<WonDiscountsConfig>["modules"]["ti
  */
 export function buildStorefrontConfig(given: ReadonlyDeep<WonDiscountsConfig>, opts: StorefrontConfigOptions): StorefrontConfigV1 {
   // Amounts per market are written as short as they can be, whatever form the caller holds.
-  const gated = collapseConfigAmounts(given as never) as ReadonlyDeep<WonDiscountsConfig>;
+  const gated = withUnknownMarketFallback(collapseConfigAmounts(given as never)) as ReadonlyDeep<WonDiscountsConfig>;
   const base = storefrontTiers(gated.modules.tiers.sets);
   const campaign = opts.campaignId ? gated.campaigns.find((c) => c.id === opts.campaignId && !c.killed) : undefined;
   const run = campaign ? campaignTierSets(gated.modules.tiers, campaign) : null;
@@ -328,6 +333,7 @@ function liquidThreshold(money: ReadonlyDeep<Record<string, number>> | undefined
   let any = false;
   for (const currency of Object.keys(money ?? {}).sort()) {
     const minor = moneyFor(money, currency);
+    if (minor === NOT_OFFERED) setOwn(out, currency, NOT_OFFERED);
     if (minor === null || minor <= 0) continue;
     setOwn(out, currency, liquidUnits(minor, currency));
     any = true;

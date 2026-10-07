@@ -196,3 +196,58 @@ test("the admin's columns: a currency one market sells in keeps its plain key, a
   assert.equal(expandConfigAmounts(plain), plain);
   assert.equal(collapseConfigAmounts(plain), plain);
 });
+
+test("a cart from a country in no market: nothing by default, the lowest of the currency's amounts with the setting on", () => {
+  const rules = [orderFixed("r", { CZK: 40000, "EUR@sk": 1600, "EUR@de": 2000 }, { minimum: { subtotal: { CZK: 100000, "EUR@sk": 5000, "EUR@de": 8000 } } })];
+  const tiers = { sets: [{ id: "g", scope: "global", countAcross: "product", breaks: [{ minQty: 3, amountOff: { CZK: 3000, "EUR@sk": 120, "EUR@de": 150 } }] }] };
+  const rewards = { freeShipping: { threshold: { CZK: 150000, "EUR@sk": 6000, "EUR@de": 8000 } }, gifts: [] };
+  const build = (on: boolean, extra: Record<string, unknown> = {}) =>
+    payloadFor(sanitizeConfig({ markets: MARKETS, ...(on ? { engine: { unknownMarketLowest: true } } : {}), modules: { codes: { rules }, tiers, rewards, ...extra } }).config);
+  const off = build(false).payload;
+  const on = build(true).payload;
+  assert.equal("unknownMarketLowest" in off.engine, false, "off is not stored at all");
+  assert.equal(on.engine.unknownMarketLowest, true);
+  const plan = (payload: typeof on, countryCode: string, quantity: number) => planCart(cartOf([L(10_00, quantity)], { currency: "EUR", countryCode }), payload);
+  // France is in no market. Off: nothing. On: Slovakia's 16 € from 50 € (the lowest amount and the lowest minimum).
+  assert.equal(plan(off, "FR", 10).totals.orderDiscount, 0);
+  assert.equal(plan(on, "FR", 10).totals.orderDiscount, 1600);
+  assert.equal(plan(on, "FR", 4).totals.orderDiscount, 0, "under the lowest minimum spend");
+  assert.equal(lineOf(plan(off, "FR", 3), "L1").product ?? null, null);
+  assert.equal(lineOf(plan(on, "FR", 3), "L1").product?.amount, 360, "3 × 1,20 €, the lower of the two markets");
+  assert.equal(plan(off, "FR", 6).progress.freeShipping ?? null, null);
+  assert.equal(plan(on, "FR", 6).progress.freeShipping?.threshold, 6000);
+  // The markets themselves are untouched by the setting.
+  for (const payload of [off, on]) {
+    assert.equal(plan(payload, "SK", 10).totals.orderDiscount, 1600);
+    assert.equal(plan(payload, "DE", 10).totals.orderDiscount, 2000);
+    assert.equal(plan(payload, "DE", 6).progress.freeShipping?.threshold, 8000);
+  }
+});
+
+test("with the setting on, a market the merchant left without an amount still gets nothing — not the fallback", () => {
+  // Germany has no amount at all: only Slovakia is asked for. With one market's amount there is no "lowest of several",
+  // but the currency key is shipped for carts in no market, and Germany's key says "not offered".
+  const config = sanitizeConfig({
+    markets: MARKETS,
+    engine: { unknownMarketLowest: true },
+    modules: {
+      codes: { rules: [orderFixed("r", { CZK: 40000, "EUR@sk": 1600 })] },
+      tiers: { sets: [{ id: "g", scope: "global", countAcross: "product", breaks: [{ minQty: 3, amountOff: { CZK: 3000, "EUR@sk": 120 } }] }] },
+      rewards: { freeShipping: { threshold: { CZK: 150000, "EUR@sk": 6000 } }, gifts: [] },
+    },
+  }).config;
+  const { payload } = payloadFor(config);
+  assert.deepEqual((payload.modules.codes.rules[0]!.value as { amount: unknown }).amount, { CZK: 40000, "EUR@sk": 1600, EUR: 1600, "EUR@de": -1 });
+  const plan = (countryCode: string, quantity: number) => planCart(cartOf([L(10_00, quantity)], { currency: "EUR", countryCode }), payload);
+  assert.equal(plan("DE", 10).totals.orderDiscount, 0, "Germany: not offered");
+  assert.equal(lineOf(plan("DE", 3), "L1").product ?? null, null);
+  assert.equal(plan("DE", 10).progress.freeShipping ?? null, null);
+  assert.equal(plan("SK", 10).totals.orderDiscount, 1600);
+  assert.equal(plan("FR", 10).totals.orderDiscount, 1600, "a country in no market: the fallback");
+  assert.equal(lineOf(plan("FR", 3), "L1").product?.amount, 360);
+  // The stored config never holds the mark or the fallback key; the storefront config carries both.
+  assert.equal(JSON.stringify(config).includes("-1"), false);
+  const sf = buildStorefrontConfig(config, { now: FIXTURE_NOW, shopTimezone: FIXTURE_TZ, configVersion: "t" } as never) as unknown as { tiers: { sets: Record<string, { breaks: { off: Record<string, number> }[] }> }; rewards: { ship: Record<string, number> } };
+  assert.deepEqual(sf.tiers.sets.g.breaks[0]!.off, { CZK: 3000, EUR: 120, "EUR@de": -1, "EUR@sk": 120 });
+  assert.deepEqual(sf.rewards.ship, { CZK: 150000, EUR: 6000, "EUR@de": -1, "EUR@sk": 6000 });
+});

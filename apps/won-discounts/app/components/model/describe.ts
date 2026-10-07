@@ -20,7 +20,7 @@ import { unsupportedInFunction } from "@won/core/discounts/plan";
 
 import type { Translator } from "../../i18n";
 import type { MarketNames } from "./markets";
-import { marketView } from "./markets";
+import { amountLabelsOf, marketView } from "./markets";
 
 const SEP = " · ";
 
@@ -61,8 +61,9 @@ export function ruleDays(rule: Pick<DiscountRule, "schedule">, timezone: string 
   }
 }
 
-function parts(rule: DiscountRule, tr: Translator, currencies: readonly string[]) {
-  return describeRuleParts(rule, tr.locale, { currencies, codesKnown: true });
+function parts(rule: DiscountRule, tr: Translator, currencies: readonly string[], marketNames?: MarketNames) {
+  // Amounts per market: an amount that differs between two markets of a currency says whose it is, by the market's name.
+  return describeRuleParts(rule, tr.locale, { currencies, codesKnown: true, labels: amountLabelsOf(currencies, marketNames) });
 }
 
 /** "10 % z objednávky" · "100 Kč / 4 € z objednávky" · "Doprava zdarma". */
@@ -154,7 +155,7 @@ export function describeRuleLine(
   timezone: string | null,
   names: RuleLineNames = {},
 ): string {
-  const p = parts(rule, tr, currencies);
+  const p = parts(rule, tr, currencies, names.marketNames);
   return [
     p.value,
     p.method,

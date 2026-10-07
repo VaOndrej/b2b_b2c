@@ -220,7 +220,8 @@
       assign brk = ',"pct":' | append: b.pct
     else
       assign d = b.off[mk] | default: b.off[cur]
-      if d == nil
+      # A negative amount = this market is left without one (never the currency's fallback).
+      if d == nil or d < 0
         continue
       endif
       assign brk = ',"off":{' | append: cur_json | append: ':' | append: d | append: '}'
@@ -312,7 +313,7 @@
             endif
           else
             assign d = b.off[mk] | default: b.off[cur]
-            if d == nil
+            if d == nil or d < 0
               continue
             endif
           endif

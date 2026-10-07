@@ -725,6 +725,8 @@ export interface SettingsScreenData {
   configVersion: string | null;
   currencies: CurrencyView[];
   combination: CombinationView;
+  /** engine.unknownMarketLowest: a customer from a country in no market gets the lowest amount of the markets of their currency (off = nothing). */
+  unknownMarketLowest?: boolean;
   /** The shop's Shopify markets and what each part of the app offers in them (model/markets-overview.ts). Absent = not built (older callers). */
   markets?: import("./markets-overview").MarketRowView[];
 }

@@ -25,7 +25,7 @@ import { CONFIG_LIMITS } from "@won/core/discounts/config";
 
 import { useT } from "../../i18n/context";
 import { exceptionTitle, tierCapacityShown, TIERS_FIELD, tierSummary, type TierCountMode, type TierPayloadUse } from "../model/tiers";
-import type { AmountSuggestView } from "../model/markets";
+import { amountLabels, type AmountSuggestView } from "../model/markets";
 import type { ModuleStatus } from "../model/module-status";
 import type { CurrencyView, TierSetView } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
@@ -197,7 +197,7 @@ export function ProTierSets({
                   const open = editable && openId === sid;
                   const mode = modeOf(set);
                   const name = exceptionTitle(set.scope, tr);
-                  const gives = mode === "none" ? t("tiers.pro.mode.none") : tierSummary(draft, tr, codes);
+                  const gives = mode === "none" ? t("tiers.pro.mode.none") : tierSummary(draft, tr, codes, amountLabels(currencies));
                   const nothingPicked = set.scope.kind === "selection" && set.scope.products.length === 0 && set.scope.collections.length === 0;
                   return (
                     <div key={sid} data-won-exception={open ? "open" : "closed"} style={{ borderTop: i === 0 ? "none" : `1px solid ${WON_LINE}` }}>

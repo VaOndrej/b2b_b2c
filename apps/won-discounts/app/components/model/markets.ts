@@ -9,7 +9,7 @@
 
 import type { DiscountRule, MarketSetting } from "@won/core/discounts/config";
 import { amountColumns } from "@won/core/discounts/market-amounts";
-import { amountKeyCurrency } from "@won/core/discounts/money";
+import { amountKeyCurrency, splitAmountKey } from "@won/core/discounts/money";
 
 import type { CurrencyView, MarketView } from "./types";
 
@@ -70,6 +70,8 @@ export interface AmountSuggestView {
   base: string;
   /** Manual rates from the shop currency, by target currency (1 base = rate target). Only markets that have one. */
   rates: Record<string, number>;
+  /** The same by market handle: a market's own rate wins over its currency's (two markets of a currency may differ). */
+  marketRates?: Record<string, number>;
 }
 
 /** A round number a merchant would type: 59,76 € → 60 €, 1 494 Kč → 1 490 Kč. */
@@ -83,6 +85,21 @@ export function suggestedAmount(baseMajor: number, rate: number | undefined, exp
   if (!Number.isFinite(baseMajor) || baseMajor <= 0 || typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0) return null;
   const nice = roundNice(baseMajor * rate);
   return exponent === 0 ? Math.max(1, Math.round(nice)) : nice;
+}
+
+/** Names of the amount keys' markets ("EUR@sk" → "Slovensko") for the core's texts: from the columns the page shows… */
+export function amountLabels(views: readonly CurrencyView[]): Record<string, string> {
+  return Object.fromEntries(views.filter((v) => v.markets.length > 0).map((v) => [v.code, v.markets.map((m) => m.name).join(", ")]));
+}
+
+/** …or from the markets' names by handle, for a list of amount keys. */
+export function amountLabelsOf(keys: readonly string[], names: MarketNames = {}): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const key of keys) {
+    const market = splitAmountKey(key)?.market;
+    if (market && names[market]) out[key] = names[market]!;
+  }
+  return out;
 }
 
 export function currencyCodes(views: readonly CurrencyView[]): string[] {

@@ -7,6 +7,7 @@ export function sanitizeEngine(v: unknown, issues: ConfigIssue[]): EngineSetting
   const def = DEFAULT_CONFIG.engine.combination;
   const c = isRecord(v) && isRecord(v.combination) ? v.combination : {};
   return {
+    ...(isRecord(v) && v.unknownMarketLowest === true ? { unknownMarketLowest: true as const } : {}),
     combination: {
       outletWithAnything: sanitizeBoolWithIssue(
         c.outletWithAnything,

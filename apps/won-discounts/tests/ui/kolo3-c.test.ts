@@ -59,7 +59,7 @@ test("stav 1: every exception is one row — its name, what it gives, Upravit an
   assert.deepEqual(
     rows.map((r) => [text(r.match(/data-won-exception-name[^>]*>([\s\S]*?)<\/div>/)![1]!).trim(), text(r.match(/data-won-exception-gives[^>]*>([\s\S]*?)<\/div>/)![1]!).trim()]),
     [
-      ["Mikina Won, Podzimní kolekce", "Od 2 ks −30 Kč / 1,20 € za kus, od 6 ks −60 Kč za kus (v EUR se nenabízí)"],
+      ["Mikina Won, Podzimní kolekce", "Od 2 ks −30 Kč / 1,20 € za kus, od 6 ks −60 Kč za kus (pro Slovensko se nenabízí)"],
       ["Dárkový poukaz, Vzorek zdarma a další 2", "Bez množstevní slevy"],
     ],
   );
@@ -105,7 +105,7 @@ test("stav 2: a refused save opens the exception it is about — the sentence, w
   ok(second!.startsWith('<div data-won-exception="closed"'), "the other stays a row");
   const body = first!.slice(first!.indexOf("data-won-exception-body"));
   ok(/data-won-exception-body="true" style="display:block/.test(first!), "its fields are in sight");
-  ok(text(body).includes("Mikina Won, Podzimní kolekce: od 2 ks −30 Kč / 1,20 € za kus, od 6 ks −60 Kč za kus (v EUR se nenabízí). Zbytek obchodu beze změny."), text(body).slice(0, 200));
+  ok(text(body).includes("Mikina Won, Podzimní kolekce: od 2 ks −30 Kč / 1,20 € za kus, od 6 ks −60 Kč za kus (pro Slovensko se nenabízí). Zbytek obchodu beze změny."), text(body).slice(0, 200));
   ok(/Pro které produkty a kolekce[\s\S]*Mikina Won[\s\S]*Podzimní kolekce[\s\S]*Vybrat produkty[\s\S]*Vybrat kolekce/.test(text(body)), "what it is for, and the two pickers");
   // The two cards say what each means; "Jiné úrovně" is the stored one.
   const cards = body.slice(body.indexOf("data-won-exception-mode"));

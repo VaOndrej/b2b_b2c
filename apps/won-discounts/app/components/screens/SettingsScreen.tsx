@@ -84,9 +84,11 @@ function MarketCellView({ cell, label, off }: { cell: MarketCell; label: string;
   );
 }
 
-export function SettingsScreen({ currencies, combination: stored, configVersion, plan, result, planScreen, planAction = PLAN_ACTION, markets = [] }: SettingsScreenProps) {
+export function SettingsScreen({ currencies, combination: stored, configVersion, plan, result, planScreen, planAction = PLAN_ACTION, markets = [], unknownMarketLowest = false }: SettingsScreenProps) {
   const tr = useT();
   const { t } = tr;
+  // Two enabled markets of one currency, by name: only there can their amounts differ (the switch below).
+  const sameCurrency = markets.filter((m) => m.enabled && markets.some((o) => o.enabled && o.handle !== m.handle && o.currency === m.currency));
   const withMarkets = currencies.filter((c) => c.markets.length > 0);
   const liveMarkets = markets.filter((m) => m.enabled);
   const missingIn = liveMarkets.filter((m) => m.missing > 0).map((m) => m.name);
@@ -179,6 +181,28 @@ export function SettingsScreen({ currencies, combination: stored, configVersion,
                     <RowNote>{t("settings.combination.tryCartHint")}</RowNote>
                   </WonRow>
                 )}
+              </s-stack>
+            </WonSection>
+            {/* 7 Oct 2026: amounts are per market. What a customer from a country in none of them gets is the merchant's call. */}
+            <WonSection
+              title={t("settings.unknownMarket.title")}
+              glyph="store"
+              summary={t(unknownMarketLowest ? "settings.unknownMarket.summary.on" : "settings.unknownMarket.summary.off")}
+              anchor="unknown-market"
+            >
+              <s-stack direction="block" gap="base">
+                <s-text color="subdued">{t("settings.unknownMarket.body")}</s-text>
+                <WonRow>
+                  <s-switch name={COMBINATION_FIELD.unknownMarketLowest} value="on" label={t("settings.unknownMarket.label")} checked={boolAttr(unknownMarketLowest)} />
+                  <RowNote>{t("settings.unknownMarket.on")}</RowNote>
+                  <RowNote>{t("settings.unknownMarket.off")}</RowNote>
+                  <RowNote>{t("settings.unknownMarket.empty")}</RowNote>
+                </WonRow>
+                <RowNote>
+                  {sameCurrency.length > 0
+                    ? t("settings.unknownMarket.yours", { markets: tr.list(sameCurrency.map((m) => `${m.name} (${m.currency})`)) })
+                    : t("settings.unknownMarket.notNow")}
+                </RowNote>
               </s-stack>
             </WonSection>
             <div>

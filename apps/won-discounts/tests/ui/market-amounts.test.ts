@@ -126,3 +126,66 @@ test("the quantity levels of an exception: a field per market, the suggestion fo
   const offers = (html.match(/<div data-won-suggest="offer"[\s\S]*?<\/div>/g) ?? []).map(text);
   ok(offers.some((o) => /Slovensko \(EUR\): navrhujeme/.test(o)) && offers.some((o) => /Německo \(EUR\): navrhujeme/.test(o)), offers.join(" | "));
 });
+
+test("mezery úkolu 6: a suggestion uses the market's own rate, and a summary names the market where a currency's amounts differ", async () => {
+  // Germany has its own manual rate (0,05), Slovakia the euro's 0,04: 60 Kč per item → 2,50 € and 3 €.
+  const html = await render("tiers?plan=pro&markets=shared&rates=market&state=exceptions&result=invalid-exception");
+  const offers = (html.match(/<div data-won-suggest="offer"[\s\S]*?<\/div>/g) ?? []).map(text);
+  ok(offers.some((o) => /Slovensko \(EUR\): navrhujeme 2,50\s€/.test(o)), offers.join(" | "));
+  ok(offers.some((o) => /Německo \(EUR\): navrhujeme 3\s€/.test(o)), offers.join(" | "));
+  // The rate is read per market handle next to the per-currency one (a currency whose markets disagree has none).
+  const { readAmountSuggest } = await import("../../app/lib/integration/themes.server.ts");
+  const graphql = async () => ({
+    data: {
+      markets: {
+        nodes: [
+          { handle: "sk", status: "ACTIVE", currencySettings: { baseCurrency: { currencyCode: "EUR", manualRate: "0.04" } } },
+          { handle: "de", status: "ACTIVE", currencySettings: { baseCurrency: { currencyCode: "EUR", manualRate: "0.05" } } },
+          { handle: "pl", status: "ACTIVE", currencySettings: { baseCurrency: { currencyCode: "PLN", manualRate: "0.17" } } },
+        ],
+      },
+    },
+  });
+  assert.deepEqual(await readAmountSuggest(graphql as never, "market-rates-test.myshopify.com", "read_markets", "CZK"), { base: "CZK", rates: { PLN: 0.17 }, marketRates: { sk: 0.04, de: 0.05, pl: 0.17 } });
+
+  const { describeRuleParts, describeTierSet } = await import("@won/core/discounts/describe");
+  const labels = { "EUR@sk": "Slovensko", "EUR@de": "Německo" };
+  const keys = ["CZK", "EUR@sk", "EUR@de"];
+  const rule = (amount: Record<string, number>) => ({ id: "r", name: "Sleva", enabled: true, method: "automatic" as const, value: { kind: "fixed" as const, amount }, target: { kind: "order" as const } });
+  const value = (amount: Record<string, number>) => describeRuleParts(rule(amount) as never, "cs", { currencies: keys, labels }).value.replace(/\s/g, " ");
+  assert.equal(value({ CZK: 40000, "EUR@sk": 1600, "EUR@de": 1600 }), "400 Kč / 16 € z objednávky", "the same amount is said once");
+  assert.equal(value({ CZK: 40000, "EUR@sk": 1600, "EUR@de": 2000 }), "400 Kč / 16 € (Slovensko) / 20 € (Německo) z objednávky");
+  assert.equal(describeRuleParts(rule({ CZK: 40000, "EUR@sk": 1600 }) as never, "cs", { currencies: keys, labels }).notOffered, "pro Německo se nenabízí", "a missing market is named, never shown as a key");
+  assert.equal(describeRuleParts(rule({ CZK: 40000 }) as never, "cs", { currencies: ["CZK", "EUR"] }).notOffered, "v EUR se nenabízí", "a plain currency reads as before");
+  const set: { breaks: { minQty: number; amountOff: Record<string, number> }[] } = { breaks: [{ minQty: 3, amountOff: { CZK: 3000, "EUR@sk": 120, "EUR@de": 150 } }, { minQty: 5, amountOff: { CZK: 5000, "EUR@sk": 200 } }] };
+  assert.equal(
+    describeTierSet(set, { locale: "cs", currencies: keys, labels }).replace(/\s/g, " "),
+    "Od 3 ks −30 Kč / 1,20 € (Slovensko) / 1,50 € (Německo) za kus, od 5 ks −50 Kč / 2 € za kus (pro Německo se nenabízí)",
+  );
+});
+
+test("Nastavení: the switch for a customer from a country in no market explains both positions and whom it concerns", async () => {
+  const shared = await render("settings?markets=shared");
+  const page = text(shared);
+  ok(/<s-switch name="unknownMarketLowest" value="on" label="Dát mu nejnižší částku z trhů se stejnou měnou"(?![^>]*checked)/.test(shared), "off by default");
+  ok(page.includes("Zákazník ze země mimo vaše trhy") && page.includes("Slevy a odměny s částkou nedostane"), "the section and its state");
+  ok(page.includes("doprava zdarma je na Slovensku od 60 € a v Německu od 80 €. Zákazník z Francie platí v eurech"), "the example");
+  ok(page.includes("Zapnuto: platí pro něj nejnižší z částek, v příkladu 60 €.") && page.includes("Vypnuto: nic z toho nedostane."), "both positions in words");
+  ok(page.includes("Trh, u kterého necháte pole částky prázdné, nedostane nic ani při zapnutém přepínači."), "an empty market stays empty");
+  ok(page.includes("U vás se to týká trhů se stejnou měnou: Slovensko (EUR) a Německo (EUR)."), "whom it concerns");
+  ok(text(await render("settings")).includes("Teď se vás to netýká: žádné dva vaše trhy nemají stejnou měnu."), "one market per currency");
+  const on = await render("settings?markets=shared&fallback=1");
+  ok(/<s-switch name="unknownMarketLowest"[^>]*checked/.test(on) && text(on).includes("Dostane nejnižší částku z trhů se stejnou měnou"), "on");
+  // Stored only when on; what ships then: the lowest amount for the currency, the stored config untouched.
+  const { readUnknownMarketForm } = await import("../../app/components/model/combination.ts");
+  const form = new FormData();
+  assert.equal(readUnknownMarketForm(form), false);
+  form.set("unknownMarketLowest", "on");
+  assert.equal(readUnknownMarketForm(form), true);
+  const rewards = { freeShipping: { threshold: { CZK: 150000, "EUR@sk": 6000, "EUR@de": 8000 } }, gifts: [] };
+  const saved = validateConfigForSave({ markets: MARKETS, engine: { unknownMarketLowest: true }, modules: { rewards } });
+  assert.equal(saved.ok && saved.config.engine.unknownMarketLowest, true);
+  assert.deepEqual(saved.ok ? saved.config.modules.rewards.freeShipping?.threshold : null, { CZK: 150000, "EUR@sk": 6000, "EUR@de": 8000 });
+  const off = validateConfigForSave({ markets: MARKETS, engine: { unknownMarketLowest: false }, modules: { rewards } });
+  assert.equal(off.ok && "unknownMarketLowest" in off.config.engine, false);
+});

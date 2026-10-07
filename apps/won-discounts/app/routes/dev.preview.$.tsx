@@ -183,7 +183,8 @@ const notFound = () => new Response("Not Found", { status: 404 });
 
 /** Návrh 2 in the harness: Slovakia has a manual rate (1 Kč = 0,04 €); ?rates=none = no market has one. */
 function devSuggest(q: URLSearchParams) {
-  return { base: "CZK", rates: q.get("rates") === "none" ? {} : { EUR: 0.04 } };
+  // ?rates=market: Germany's own manual rate (0,05) next to the euro's 0,04 — its suggestion differs from Slovakia's.
+  return { base: "CZK", rates: q.get("rates") === "none" ? {} : { EUR: 0.04 }, ...(q.get("rates") === "market" ? { marketRates: { de: 0.05 } } : {}) };
 }
 
 export const loader = ({ request }: LoaderFunctionArgs) => {
@@ -453,7 +454,7 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       const plan = q.get("plan") === "pro" ? "pro" : "free";
       const planState = q.get("planState");
       return {
-        ...devSettingsScreen({ plan, state, shared: q.get("markets") === "shared" }),
+        ...devSettingsScreen({ plan, state, shared: q.get("markets") === "shared", fallback: q.get("fallback") === "1" }),
         planScreen: { ...devPlanScreen({ plan, state: planState, result: null }), production: planState === "production" },
       };
     }

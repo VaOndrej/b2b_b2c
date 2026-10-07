@@ -121,14 +121,23 @@ export async function readMarketNames(graphql: AdminGraphqlFn, shop: string, sco
  * is left out (no single rate to suggest with). {} without the scope or when the read fails: nothing is suggested.
  */
 export async function readMarketRates(graphql: AdminGraphqlFn, shop: string, scopes?: string | null): Promise<Record<string, number>> {
-  if (!canReadMarkets(scopes)) return {};
+  return (await readRates(graphql, shop, scopes)).byCurrency;
+}
+
+/**
+ * The same rates as readMarketRates, and each market's own by its handle: amounts are per market (7 Oct 2026), so
+ * two markets of one currency with different manual rates each get their own suggestion.
+ */
+async function readRates(graphql: AdminGraphqlFn, shop: string, scopes?: string | null): Promise<{ byCurrency: Record<string, number>; byMarket: Record<string, number> }> {
+  if (!canReadMarkets(scopes)) return { byCurrency: {}, byMarket: {} };
   return cachedRead(`market-rates:${shop}`, async () => {
     try {
       const json = (await graphql(`#graphql
-        query WonDiscountsMarketRates { markets(first: 50) { nodes { status currencySettings { baseCurrency { currencyCode manualRate } } } } }`)) as {
-        data?: { markets?: { nodes?: { status?: unknown; currencySettings?: { baseCurrency?: { currencyCode?: unknown; manualRate?: unknown } | null } | null }[] } };
+        query WonDiscountsMarketRates { markets(first: 50) { nodes { handle status currencySettings { baseCurrency { currencyCode manualRate } } } } }`)) as {
+        data?: { markets?: { nodes?: { handle?: unknown; status?: unknown; currencySettings?: { baseCurrency?: { currencyCode?: unknown; manualRate?: unknown } | null } | null }[] } };
       };
       const out: Record<string, number> = {};
+      const byMarket: Record<string, number> = {};
       const conflict = new Set<string>();
       for (const node of json?.data?.markets?.nodes ?? []) {
         const currency = node?.currencySettings?.baseCurrency;
@@ -136,21 +145,23 @@ export async function readMarketRates(graphql: AdminGraphqlFn, shop: string, sco
         if (node?.status !== "ACTIVE" || typeof currency?.currencyCode !== "string" || currency.manualRate === null || currency.manualRate === undefined) continue;
         if (!Number.isFinite(rate) || rate <= 0) continue;
         const code = currency.currencyCode;
+        if (typeof node.handle === "string" && node.handle) byMarket[node.handle] = rate;
         if (code in out && Math.abs(out[code]! - rate) > 1e-9) conflict.add(code);
         out[code] = rate;
       }
       for (const code of conflict) delete out[code];
-      return out;
+      return { byCurrency: out, byMarket };
     } catch {
-      return {};
+      return { byCurrency: {}, byMarket: {} };
     }
   });
 }
 
 /** What the amount fields suggest with (model/markets.ts AmountSuggestView); undefined when the shop currency is unknown. */
-export async function readAmountSuggest(graphql: AdminGraphqlFn, shop: string, scopes: string | null | undefined, shopCurrency: string | null | undefined): Promise<{ base: string; rates: Record<string, number> } | undefined> {
+export async function readAmountSuggest(graphql: AdminGraphqlFn, shop: string, scopes: string | null | undefined, shopCurrency: string | null | undefined): Promise<{ base: string; rates: Record<string, number>; marketRates: Record<string, number> } | undefined> {
   if (!shopCurrency) return undefined;
-  return { base: shopCurrency, rates: await readMarketRates(graphql, shop, scopes) };
+  const rates = await readRates(graphql, shop, scopes);
+  return { base: shopCurrency, rates: rates.byCurrency, marketRates: rates.byMarket };
 }
 
 // --- Parsing theme files (pure) -----------------------------------------------------------------------

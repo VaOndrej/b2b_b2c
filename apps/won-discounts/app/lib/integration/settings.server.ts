@@ -11,7 +11,7 @@
 
 import { createDefaultConfig, readStoredConfig, type WonDiscountsConfig } from "@won/core/discounts/config";
 
-import { COMBINATION_FIELD, COMBINATION_INTENT, readCombinationForm } from "../../components/model/combination";
+import { COMBINATION_FIELD, COMBINATION_INTENT, readCombinationForm, readUnknownMarketForm } from "../../components/model/combination";
 import { currencyViews } from "../../components/model/markets";
 import { marketRows } from "../../components/model/markets-overview";
 import type { FormDataLike } from "../../components/model/rule-form";
@@ -131,23 +131,29 @@ export async function loadSettingsScreen(ctx: ShopCtx, opts: { scopes: string })
     configVersion: loaded.version ?? null,
     currencies: currencyViews(loaded.config.markets, { shopCurrency: shopContext.currencyCode, marketNames }),
     combination: combinationOf(loaded.config),
+    unknownMarketLowest: loaded.config.engine.unknownMarketLowest === true,
     // N15: every market with what it gets and what it misses.
     markets: marketRows(loaded.config, { plan, names: marketNames, locale: ctx.locale }),
   };
 }
 
 /** Save the four Free switches (product with product stays "best", A1). */
-export function saveCombination(ctx: ShopCtx, combination: CombinationView, opts: SaveOptions): Promise<UiResult> {
+export function saveCombination(ctx: ShopCtx, combination: CombinationView, opts: SaveOptions & { unknownMarketLowest?: boolean }): Promise<UiResult> {
   return saveConfigSection(ctx, {
     ...opts,
     path: "engine.combination",
-    pick: (config) => combinationOf(config),
-    apply: (config) => ({ ...config, engine: { ...config.engine, combination: { ...config.engine.combination, ...combination } } }),
+    pick: (config) => ({ ...combinationOf(config), unknownMarketLowest: config.engine.unknownMarketLowest === true }),
+    apply: (config) => {
+      // The switch is stored only when on; a caller that does not post it (undefined) leaves it as stored.
+      const { unknownMarketLowest: stored, ...engine } = config.engine;
+      const lowest = opts.unknownMarketLowest ?? stored === true;
+      return { ...config, engine: { ...engine, ...(lowest ? { unknownMarketLowest: true as const } : {}), combination: { ...config.engine.combination, ...combination } } };
+    },
   });
 }
 
 /** The Nastavení action: `intent=save` with the switches, parsed here on the server (SEC-1). */
 export async function settingsAction(ctx: ShopCtx, form: FormDataLike): Promise<UiResult> {
   if (form.get(COMBINATION_FIELD.intent) !== COMBINATION_INTENT.save) return { ok: false, reason: "bad_request" };
-  return saveCombination(ctx, readCombinationForm(form), readSaveOptions(form));
+  return saveCombination(ctx, readCombinationForm(form), { ...readSaveOptions(form), unknownMarketLowest: readUnknownMarketForm(form) });
 }

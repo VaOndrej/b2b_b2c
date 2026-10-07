@@ -41,6 +41,11 @@ zadá různé částky. Testy: skutečné tvary nastavení (dev obchod, E2E prof
 **Když se trh nepozná** (země není v žádném trhu, košík bez země): použije se klíč měny. Když ani ten není, částka se nenabídne.
 Nikdy se nepoužije částka jiného trhu.
 
+**Přepínač v Nastavení (doplněno 7. 10. 2026, rozhodl Ondřej):** „Zákazník ze země mimo vaše trhy“.
+Vypnuto (výchozí): kde se trhy jeho měny liší, nedostane nic. Zapnuto: dostane nejnižší z částek trhů jeho měny.
+Funkce pokladny se kvůli tomu nemění: do odesílaného nastavení se doplní klíč měny s nejnižší částkou a trh, kterému
+obchodník nechal pole prázdné, dostane pod svým klíčem `-1`, aby na klíč měny nespadl a dál nedostal nic.
+
 ## 4. Limity — změřeno 7. 10. 2026
 
 Slevová funkce má dva limity blízko hrany (README funkce): velikost Wasm 256 000 B (bylo volných 1 037 B) a instrukce

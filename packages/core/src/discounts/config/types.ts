@@ -37,6 +37,12 @@ export interface EngineSettings {
     productWithShipping: boolean; // default true
     orderWithShipping: boolean; // default true
   };
+  /**
+   * Amounts per market (7 Oct 2026): what a cart from a country in NO market gets where the markets of its currency
+   * have different amounts. true = the lowest of those amounts; absent = nothing (never another market's amount).
+   * Stored only when true.
+   */
+  unknownMarketLowest?: true;
 }
 
 export interface DiscountRuleValuePercentage {

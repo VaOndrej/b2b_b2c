@@ -386,8 +386,8 @@ function describable(set: TierSetView): { breaks: DescribableTierBreak[] } {
  * market currencies (`currencies`), those without a value named (MKT-1); no set
  * or no break → core's "Bez množstevních slev".
  */
-export function tierSummary(set: TierSetView | null, tr: Translator, currencies?: readonly string[]): string {
-  return describeTierSet(set ? describable(set) : { breaks: [] }, { locale: tr.locale, ...(currencies ? { currencies } : {}) });
+export function tierSummary(set: TierSetView | null, tr: Translator, currencies?: readonly string[], labels?: Readonly<Record<string, string>>): string {
+  return describeTierSet(set ? describable(set) : { breaks: [] }, { locale: tr.locale, ...(currencies ? { currencies } : {}), ...(labels ? { labels } : {}) });
 }
 
 /** One break in words (core describeTierBreak), in one currency when given. */

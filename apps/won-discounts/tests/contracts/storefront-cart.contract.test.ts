@@ -506,6 +506,8 @@ test("property: the panel's free-shipping and gift progress = planCart's (before
     // Amounts per market (7 Oct 2026): sometimes Germany has its own threshold ("EUR@de") next to the euro one.
     const own = rnd() < 0.4;
     const { config } = sanitizeConfig({
+      // …and sometimes a customer from a country in no market gets the lowest of the euro amounts (engine.unknownMarketLowest).
+      ...(rnd() < 0.5 ? { engine: { unknownMarketLowest: true } } : {}),
       markets: [
         { handle: "cz", currency: "CZK", enabled: true, countries: ["CZ"] },
         { handle: "sk", currency: "EUR", enabled: true, countries: ["SK"] },
@@ -563,7 +565,8 @@ test("property: the panel's free-shipping and gift progress = planCart's (before
     // sees only the cart's own reductions — compare the rule itself: lost ⇔ reached && after < threshold.
     for (const x of js.tiers) {
       const t = sf.rewards!.gifts.find((g) => g.id === x.id)!.t as Record<string, number>;
-      const threshold = t[`${currency}@${market}`] ?? t[currency]!;
+      const own = t[`${currency}@${market}`];
+      const threshold = own ?? t[currency]!;
       const after = items.filter((i) => !i.properties._won_gift).reduce((s, i) => s + i.final_line_price, 0) - orderOff;
       assert.equal(x.lost, other && x.reached && after < threshold, `lost, case ${n}`);
     }
