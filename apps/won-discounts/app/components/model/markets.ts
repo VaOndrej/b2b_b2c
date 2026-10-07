@@ -43,6 +43,23 @@ export function currencyViews(
   return [...byCode].map(([code, list]) => ({ code, markets: list }));
 }
 
+/** Currencies of the enabled markets, each once; none configured → the shop currency (the same source order as currencyViews). */
+export function enabledCurrencies(markets: readonly MarketSetting[], shopCurrency?: string | null): string[] {
+  const codes = [...new Set(markets.filter((m) => m.enabled).map((m) => m.currency))];
+  return codes.length > 0 ? codes : shopCurrency && /^[A-Z]{3}$/.test(shopCurrency) ? [shopCurrency] : [];
+}
+
+/** The currencies (of `currencies`) that some of the amounts lacks (MKT-1: no amount = not offered in that market). */
+export function currenciesWithoutAmount(amounts: readonly Readonly<Record<string, number>>[], currencies: readonly string[]): string[] {
+  return currencies.filter((code) => amounts.some((amount) => typeof amount[code] !== "number"));
+}
+
+/** "Slovensko" for EUR — the markets that sell in a currency, by name; the code when no market is known for it. */
+export function currencyMarketNames(code: string, views: readonly CurrencyView[]): string {
+  const names = views.find((v) => v.code === code)?.markets.map((m) => m.name).filter(Boolean) ?? [];
+  return names.length > 0 ? names.join(", ") : code;
+}
+
 export function currencyCodes(views: readonly CurrencyView[]): string[] {
   return views.map((v) => v.code);
 }

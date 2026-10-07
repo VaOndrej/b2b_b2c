@@ -17,6 +17,8 @@ export interface PlacementRow {
   key: PlacementKey;
   /** What shows there. */
   text: MessageKey;
+  /** The sentence once the place is in the theme (a place that is switched on needs no how-to any more, audit N7). */
+  textOn?: MessageKey;
   /** The button of a place that is switched on in the embed's settings (the top bar); a block's button is "Přidat do tématu". */
   action?: MessageKey;
 }
@@ -40,7 +42,7 @@ export function StorefrontPlacements({ links, rows, placed = {} }: { links: Plac
             }
           >
             <PlacementPill placement={placement} />
-            <RowNote>{t(row.text)}</RowNote>
+            <RowNote>{t(placement === "in_theme" && row.textOn ? row.textOn : row.text)}</RowNote>
           </WonRow>
         );
       })}

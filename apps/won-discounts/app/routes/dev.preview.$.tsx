@@ -5,7 +5,8 @@ import { useActionData, useLoaderData, useLocation } from "react-router";
 import { resolveLocale } from "../i18n";
 import { LocaleProvider, useT } from "../i18n/context";
 import { MoveDialog, MoveDialogBody, moveDialogHeading } from "../components/MoveDialog";
-import { isRecipeKey } from "../components/model/rule-form";
+import { isRecipeKey, shopToday } from "../components/model/rule-form";
+import { ruleStatus } from "../components/model/rule-status";
 import type { NativeDiscountView } from "../components/model/types";
 import { WonSection } from "../components/shell/WonSection";
 import { buildDiscountsProps, DiscountsScreen, type DiscountsScreenProps } from "../components/screens/DiscountsScreen";
@@ -37,6 +38,7 @@ import {
   DEV_NOW,
   DEV_ONBOARDING_FIXTURE,
   DEV_OVERVIEW_FIXTURE,
+  DEV_REWARDS_FIXTURE,
   DEV_RULE_SYNC_FAILED,
   DEV_RULE_SYNC_OK,
   DEV_SIGNALS,
@@ -409,11 +411,20 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       const embed =
         embedParam === "on" ? DEV_EMBED_ON : embedParam === "none" ? { state: "unknown" as const, activateUrl: null } : embedParam === "noscope" ? { state: "no_scope" as const, activateUrl: null } : DEV_EMBED_OFF;
       const live = q.get("live");
-      const props = buildOnboardingProps(config, {
+      // ?goal=rewards: the goal "Doprava zdarma nebo dárek" is picked (step 4 leads to Odměny, N1); ?rewards=set | live.
+      const goalConfig = q.get("goal") === "rewards" ? { ...config, onboarding: { ...config.onboarding, goals: ["rewards" as const] } } : config;
+      const rewardsParam = q.get("rewards");
+      const withRewards = rewardsParam === "set" || rewardsParam === "live" ? { ...goalConfig, modules: { ...goalConfig.modules, rewards: DEV_REWARDS_FIXTURE.modules.rewards } } : goalConfig;
+      // The default count is what really runs in the fixture (N12: never "all of them" next to a tile that says three).
+      const liveDefault = withRewards.modules.codes.rules.filter((rule) => ruleStatus(rule, { today: shopToday(DEV_TIMEZONE, DEV_NOW), timezone: DEV_TIMEZONE, sync: DEV_SIGNALS.sync, currencies: ["CZK", "EUR"] }).kind === "live").length;
+      const props = buildOnboardingProps(withRewards, {
         native,
         embed,
         readOnly,
-        liveRules: live !== null && /^\d+$/.test(live) ? Number(live) : config.modules.codes.rules.length,
+        liveRules: live !== null && /^\d+$/.test(live) ? Number(live) : liveDefault,
+        rewardsLive: rewardsParam === "live",
+        plan: q.get("plan") === "pro" ? "pro" : "free",
+        storeUrl: "https://won-dev.myshopify.com",
       });
       // The shown step follows the state as on the real page (past step 3 → 4, a first discount → 5; step 2 only with something outside Won).
       return { ...props, step: onboardingStep(Number.isFinite(step) ? step : 1, { embedOn: embedParam === "on", rules: props.rules, hasNative: onboardingHasNative(native) }) };
@@ -442,7 +453,8 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
         result: devTiersResult(q.get("result")),
       };
     case "rewards":
-      return { ...devRewardsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale }), result: devRewardsResult(q.get("result")) };
+      // ?start=shipping: opened from the setup guide (free shipping switched on, amounts prefilled — N1).
+      return { ...devRewardsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale }), result: devRewardsResult(q.get("result")), start: q.get("start") === "shipping" ? ("shipping" as const) : null };
     case "campaigns":
       return {
         ...devCampaignsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, edit: q.get("edit") }),

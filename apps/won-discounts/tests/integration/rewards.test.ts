@@ -12,6 +12,8 @@ import { createSync, syncIdle } from "../../app/lib/sync/sync.server.ts";
 import { productionSyncDeps } from "../../app/lib/sync/wiring.server.ts";
 import { clearSignalCache } from "../../app/lib/ui-actions.server.ts";
 import { REWARDS_FIELD as F } from "../../app/components/model/rewards.ts";
+import { rewardsGiftStatus, rewardsShippingStatus, rewardsStatus } from "../../app/components/model/module-status.ts";
+import type { SyncView } from "../../app/components/model/types.ts";
 import { createTestDatabase, type TestDatabase } from "../lib/test-db.ts";
 import { FakeStore, formOf, quiet, testCtx } from "./helpers.ts";
 
@@ -163,9 +165,32 @@ test("Přehled card: the thresholds the PLAN runs in the shop currency (Free: th
       },
     },
   });
-  assert.deepEqual(rewardsOverviewOf(config, "pro", "CZK"), { shipping: 1000_00, gifts: [500_00, null], currency: "CZK" });
+  // No market configured: only the shop currency is asked for. `missing` names what that currency does not get (N2).
+  assert.deepEqual(rewardsOverviewOf(config, "pro", "CZK"), { shipping: 1000_00, gifts: [500_00, null], currency: "CZK", missing: { shipping: [], gifts: [[], ["CZK"]] } });
   assert.deepEqual(rewardsOverviewOf(config, "free", "CZK"), { shipping: 1000_00, gifts: [500_00], currency: "CZK" });
-  assert.deepEqual(rewardsOverviewOf(config, "pro", "EUR"), { shipping: null, gifts: [null, 20_00], currency: "EUR" });
+  assert.deepEqual(rewardsOverviewOf(config, "pro", "EUR"), { shipping: null, gifts: [null, 20_00], currency: "EUR", missing: { shipping: ["EUR"], gifts: [["EUR"], []] } });
+});
+
+test("N2: a reward without an amount for an enabled market is something to resolve, on the tile and on the page", () => {
+  const { config } = sanitizeConfig({
+    markets: [
+      { handle: "cz", currency: "CZK", enabled: true },
+      { handle: "sk", currency: "EUR", enabled: true },
+      { handle: "hu", currency: "HUF", enabled: false },
+    ],
+    modules: {
+      rewards: {
+        freeShipping: { threshold: { CZK: 1000_00, EUR: 40_00 } },
+        gifts: [{ id: "g1", threshold: { CZK: 1500_00 }, choices: ["gid://shopify/ProductVariant/1"] }],
+      },
+    },
+  });
+  const overview = rewardsOverviewOf(config, "free", "CZK");
+  assert.deepEqual(overview.missing, { shipping: [], gifts: [["EUR"]] }, "the switched-off market (HUF) is not asked for");
+  const ok: SyncView = { state: "ok", at: "2026-09-28T16:20:00" };
+  assert.deepEqual(rewardsShippingStatus(overview, ok), { state: "active", issues: 0 });
+  assert.deepEqual(rewardsGiftStatus(overview, ok), { state: "active", issues: 1 }, "it runs in Czechia; Slovakia is one thing to resolve");
+  assert.deepEqual(rewardsStatus(overview, ok), { state: "active", issues: 1 });
 });
 
 // --- The screen (dev harness data = loadRewardsScreen's pure part) -----------------------------------------
@@ -187,7 +212,9 @@ test("screen: Free shows the first gift editable and the Pro threshold as stored
   const around = freeHtml.slice(Math.max(0, keptAt - 600), keptAt);
   assert.ok(around.includes(WON_AMBER), "inside the amber Pro frame");
   assert.ok(!around.slice(around.lastIndexOf("<div")).includes(WON_ATTENTION), "not the attention colour");
-  assert.match(free, /V měně EUR \(.*\) není částka, v tomto trhu se odměna nenabízí/);
+  // Proposal 3: the market by name, the currency in brackets. A stored gift says it at once (N2).
+  assert.match(free, /Slovensko \(EUR\): částka chybí, v tomto trhu se odměna nenabízí/);
+  assert.match(free, /Slovensko: dárek se nenabízí · /, "the tile names the market too");
   assert.match(free, /V Pro nastavíte víc prahů a u každého výběr až ze 3 dárků/);
   assert.match(freeHtml, /href="\/app\/plan"/, "the Pro note leads to the plan");
   // P5: the state lines say the real values.

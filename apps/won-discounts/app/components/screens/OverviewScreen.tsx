@@ -28,8 +28,8 @@ import type { Translator } from "../../i18n";
 import { describeMarginSettings, formatMoney } from "@won/core/discounts/describe";
 
 import { NativeDiscountsPanel, nativeSummary } from "../NativeDiscounts";
-import { collectWarnings, type RuleWarning } from "../model/describe";
-import { currencyCodes, currencyViews } from "../model/markets";
+import { collectWarnings, warningCounts, type RuleWarning } from "../model/describe";
+import { currencyCodes, currencyMarketNames, currencyViews } from "../model/markets";
 import { embedPlacement } from "../model/embed";
 import { moduleStatuses, type ModuleStatus } from "../model/module-status";
 import { shopToday } from "../model/rule-form";
@@ -161,16 +161,20 @@ const reload = () => window.location.reload();
  * What is active under each tile, one sentence from the real settings (P5). A part whose state the signals
  * do not know has no such line — the tile then only says what the part is for, never an invented state (§12).
  */
-function tileBodies(signals: AdminSignals, opts: { codes: string; plan?: "free" | "pro" }, tr: Translator): Record<"codes", string> & Partial<Record<"tiers" | "rewards" | "outlet" | "campaigns" | "margin" | "analytics", string>> {
+function tileBodies(signals: AdminSignals, opts: { codes: string; plan?: "free" | "pro"; currencies: readonly CurrencyView[] }, tr: Translator): Record<"codes", string> & Partial<Record<"tiers" | "rewards" | "outlet" | "campaigns" | "margin" | "analytics", string>> {
   const { t } = tr;
   const free = opts.plan === "free";
   const { tiers, rewards, outlet, campaigns, margin, analytics } = signals;
+  const marketsOf = (codes: readonly string[]) => tr.list(codes.map((code) => currencyMarketNames(code, opts.currencies)));
 
   let tiersBody: string | undefined;
   if (tiers) {
     const names = (tiers.setNames ?? []).filter(Boolean);
     const sets = names.length > 0 ? t("overview.tiers.setsNamed", { names: tr.list(names) }) : t("overview.tiers.sets", { sets: tr.tp("count.tierSet", tiers.sets) });
     tiersBody = tiers.global ? tierSummary(tiers.global, tr) : tiers.sets > 0 ? sets : t("overview.tiers.none");
+    // N2: a level that is not offered in some market is said on the tile, by the market's name.
+    const missing = [...new Set([...(tiers.missing?.global ?? []), ...(tiers.missing?.sets ?? []).flat()])];
+    if (missing.length > 0) tiersBody = `${tiersBody} · ${t("overview.tiers.missing", { markets: marketsOf(missing) })}`;
   }
 
   let rewardsBody: string | undefined;
@@ -183,6 +187,11 @@ function tileBodies(signals: AdminSignals, opts: { codes: string; plan?: "free" 
       if (g === null) lines.push(t("overview.rewards.giftNoCurrency", { currency: rewards.currency }));
       else lines.push(name ? t("overview.rewards.giftNamed", { name, amount: money(g) }) : t("overview.rewards.gift", { amount: money(g) }));
     });
+    // N2: what is NOT offered in some market comes first — it is the part the merchant has to act on.
+    const noShip = rewards.missing?.shipping ?? [];
+    const noGift = [...new Set((rewards.missing?.gifts ?? []).flat())].filter((code) => code !== rewards.currency || rewards.gifts.every((g) => g !== null));
+    if (noGift.length > 0) lines.unshift(t("overview.rewards.giftMissing", { markets: marketsOf(noGift) }));
+    if (noShip.length > 0) lines.unshift(t("overview.rewards.shipMissing", { markets: marketsOf(noShip) }));
     rewardsBody = lines.length > 0 ? lines.join(" · ") : t("overview.rewards.none");
   }
 
@@ -216,6 +225,32 @@ function tileBodies(signals: AdminSignals, opts: { codes: string; plan?: "free" 
       : undefined;
 
   return { codes: opts.codes, tiers: tiersBody, rewards: rewardsBody, outlet: outletBody, campaigns: campaignsBody, margin: marginBody, analytics: analyticsBody };
+}
+
+/**
+ * Rewards and quantity levels some enabled market does not get (N2): one row each, said by the market's name,
+ * with the link to the panel that holds the amount fields.
+ */
+function moduleAttention(signals: AdminSignals, currencies: readonly CurrencyView[], tr: Translator): { key: string; text: string; href: string }[] {
+  const marketsOf = (codes: readonly string[]) => tr.list(codes.map((code) => currencyMarketNames(code, currencies)));
+  const rows: { key: string; text: string; href: string }[] = [];
+  const { rewards, tiers } = signals;
+  if (rewards?.missing) {
+    if (rewards.missing.shipping.length > 0) {
+      rows.push({ key: "ship", text: tr.t("overview.attention.shipMissing", { markets: marketsOf(rewards.missing.shipping) }), href: "/app/rewards#shipping" });
+    }
+    rewards.missing.gifts.forEach((codes, i) => {
+      if (codes.length === 0) return;
+      const name = rewards.giftNames?.[i]?.trim();
+      const text = name ? tr.t("overview.attention.giftMissingNamed", { name, markets: marketsOf(codes) }) : tr.t("overview.attention.giftMissing", { markets: marketsOf(codes) });
+      rows.push({ key: `gift${i}`, text, href: "/app/rewards#gift" });
+    });
+  }
+  if (tiers?.missing) {
+    if (tiers.missing.global.length > 0) rows.push({ key: "tiers", text: tr.t("overview.attention.tiersMissing", { markets: marketsOf(tiers.missing.global) }), href: "/app/tiers#global" });
+    tiers.missing.sets.forEach((codes, i) => rows.push({ key: `set${i}`, text: tr.t("overview.attention.tierSetMissing", { markets: marketsOf(codes) }), href: "/app/tiers#pro" }));
+  }
+  return rows;
 }
 
 export function OverviewScreen({
@@ -264,9 +299,15 @@ export function OverviewScreen({
     ruleCount === 0 ? t("overview.running.none") : rules ? ruleStatusSummary(statuses, tr) : tr.tp("count.discount", ruleCount);
   const allGood = statusAllGood(status);
   // The same function the module pages call (model/module-status.ts): a tile and its page cannot disagree.
-  const states: Partial<Record<string, ModuleStatus>> = moduleStatuses(status, { plan: plan ?? "pro", rules: statuses });
-  const bodies = tileBodies(status, { codes: summary, plan }, tr);
+  const states: Partial<Record<string, ModuleStatus>> = moduleStatuses(status, { plan: plan ?? "pro", rules: statuses, warned: warningCounts(rules ?? [], warnings) });
+  const bodies = tileBodies(status, { codes: summary, plan, currencies }, tr);
   const free = plan === "free";
+  // §19b: the shop that has Pro is not told "Pro" on every tile; the marker is for the plan that lacks it.
+  const proMark = plan !== "pro";
+  const moduleRows = moduleAttention(status, currencies, tr);
+  // N5: "Aktivní" only when something runs. A new shop with everything connected is ready, not live.
+  const somethingRuns = Object.values(states).some((s) => s?.state === "active");
+  const marketCount = (enabledMarkets ?? []).length;
   const lockedTile = (key: "outlet" | "campaigns") => states[key]?.state === "locked";
 
   return (
@@ -293,8 +334,8 @@ export function OverviewScreen({
 
         {gate.length > 0 ? <GateNotes notes={gate} pending={gatePending} /> : null}
 
-        {warnings.length > 0 ? (
-          <WonSection title={t("overview.warnings.title")} glyph="alert" summary={tr.tp("count.warning", warnings.length)}>
+        {warnings.length + moduleRows.length > 0 ? (
+          <WonSection title={t("overview.warnings.title")} glyph="alert" summary={tr.tp("count.warning", warnings.length + moduleRows.length)}>
             <div>
               {warnings.map((w) => (
                 <WonRow
@@ -311,6 +352,21 @@ export function OverviewScreen({
                   <s-text>{warningText(w, tr)}</s-text>
                 </WonRow>
               ))}
+              {/* N2: a reward or a quantity level that some market does not get, with the link to its field. */}
+              {moduleRows.map((row) => (
+                <WonRow
+                  key={row.key}
+                  tone="attention"
+                  action={
+                    <s-button href={row.href} variant="secondary">
+                      {t("overview.warning.missingCurrency.fix")}
+                    </s-button>
+                  }
+                >
+                  <span style={{ color: WON_ATTENTION, fontWeight: 600, fontSize: 12.5 }}>{t("common.attention")} · </span>
+                  <s-text>{row.text}</s-text>
+                </WonRow>
+              ))}
             </div>
           </WonSection>
         ) : null}
@@ -320,8 +376,8 @@ export function OverviewScreen({
           key={allGood ? "status-ok" : "status-open"}
           title={t("overview.status.title")}
           glyph="store"
-          summary={statusSummary(status, tr)}
-          {...(allGood ? { on: true } : {})}
+          summary={allGood && !somethingRuns ? t("overview.status.ready") : statusSummary(status, tr)}
+          {...(allGood && somethingRuns ? { on: true } : {})}
           collapsible
           defaultOpen={!allGood}
           anchor="status"
@@ -386,13 +442,13 @@ export function OverviewScreen({
           <ModuleTile id="codes" href="/app/discounts" title={t("nav.discounts")} glyph="tag" about={t("tile.about.codes")} active={bodies.codes} status={states.codes} />
           <ModuleTile id="tiers" href="/app/tiers" title={t("module.tiers")} glyph="layers" about={t("tile.about.tiers")} active={bodies.tiers} status={states.tiers} />
           <ModuleTile id="rewards" href="/app/rewards" title={t("nav.rewards")} glyph="spark" about={t("tile.about.rewards")} active={bodies.rewards} status={states.rewards} />
-          <ModuleTile id="outlet" href="/app/outlet" title={t("module.outlet")} glyph="receipt" about={t("tile.about.outlet")} active={bodies.outlet} status={states.outlet} pro locked={lockedTile("outlet") || (free && !states.outlet)} />
-          <ModuleTile id="campaigns" href="/app/campaigns" title={t("module.campaigns")} glyph="calendar" about={t("tile.about.campaigns")} active={bodies.campaigns} status={states.campaigns} pro locked={lockedTile("campaigns") || (free && !states.campaigns)} />
+          <ModuleTile id="outlet" href="/app/outlet" title={t("module.outlet")} glyph="receipt" about={t("tile.about.outlet")} active={bodies.outlet} status={states.outlet} pro={proMark} locked={lockedTile("outlet") || (free && !states.outlet)} />
+          <ModuleTile id="campaigns" href="/app/campaigns" title={t("module.campaigns")} glyph="calendar" about={t("tile.about.campaigns")} active={bodies.campaigns} status={states.campaigns} pro={proMark} locked={lockedTile("campaigns") || (free && !states.campaigns)} />
           <ModuleTile id="margin" href="/app/margin" title={t("module.margin")} glyph="shield" about={t("tile.about.margin")} active={bodies.margin} status={states.margin} />
           <ModuleTile id="analytics" href="/app/analytics" title={t("nav.analytics")} glyph="check" about={t("tile.about.analytics")} active={bodies.analytics} />
           <ModuleTile id="appearance" href="/app/appearance" title={t("nav.appearance")} glyph="store" about={t("tile.about.appearance")} />
-          <ModuleTile id="tryCart" href="/app/try-cart" title={t("nav.tryCart")} glyph="cart" about={t("tile.about.tryCart")} active={free ? t("tile.tryCart.locked") : undefined} pro locked={free} />
-          <ModuleTile id="settings" href="/app/settings" title={t("nav.settings")} glyph="sliders" about={t("tile.about.settings")} active={plan ? t(plan === "pro" ? "tile.settings.pro" : "tile.settings.free") : undefined} />
+          <ModuleTile id="tryCart" href="/app/try-cart" title={t("nav.tryCart")} glyph="cart" about={t("tile.about.tryCart")} active={free ? t("tile.tryCart.locked") : undefined} pro={proMark} locked={free} />
+          <ModuleTile id="settings" href="/app/settings" title={t("nav.settings")} glyph="sliders" about={t("tile.about.settings")} active={plan ? (marketCount > 0 ? tr.tp("tile.settings.markets", marketCount, { plan: plan === "pro" ? "Pro" : "Free" }) : t(plan === "pro" ? "tile.settings.pro" : "tile.settings.free")) : undefined} />
         </ModuleTiles>
       </s-stack>
     </s-page>

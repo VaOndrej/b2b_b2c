@@ -12,7 +12,7 @@ import type { DiscountRule, WonDiscountsConfig } from "@won/core/discounts/confi
 import { useT } from "../../i18n/context";
 import { RecipeGrid } from "../RecipeGrid";
 import { RuleRow } from "../RuleRow";
-import { missingCurrencies, ruleName } from "../model/describe";
+import { collectWarnings, missingCurrencies, ruleName, warningCounts } from "../model/describe";
 import { currencyCodes, currencyViews, type MarketNames } from "../model/markets";
 import { shopToday } from "../model/rule-form";
 import { codesStatus } from "../model/module-status";
@@ -138,6 +138,8 @@ export function DiscountsScreen({
   const codes = currencyCodes(currencies);
   const statuses = rules.map((rule) => ruleStatus(rule, { today, timezone, sync, ruleSync, gateOff, currencies: codes, enabledMarkets }));
   const summary = rules.length === 0 ? t("discounts.list.none") : ruleStatusSummary(statuses, tr);
+  // N4: the same count as the home page's "Vyžaduje pozornost" and its tile.
+  const warned = warningCounts(rules, collectWarnings(rules, codes, { enabledMarkets }));
   const hints = [
     // §12: say when saved rules are not (all) in Shopify, and why.
     sync.state === "error" || sync.state === "blocked" || sync.state === "running" ? sentence(syncText(sync, tr)) : "",
@@ -175,7 +177,7 @@ export function DiscountsScreen({
           title={t("discounts.list.title")}
           glyph="tag"
           // The same function as the home tile (model/module-status.ts).
-          state={rules.length > 0 ? codesStatus(statuses) : undefined}
+          state={rules.length > 0 ? codesStatus(statuses, warned) : undefined}
           anchor="list"
           summary={summary}
           hint={hints.join(" ") || undefined}

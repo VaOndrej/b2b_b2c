@@ -12,7 +12,7 @@ import { createStaticHandler, createStaticRouter, StaticRouterProvider } from "r
 // screen component in both admin languages. Rendered through React Router's static
 // handler, i.e. the same loader → component path as a real request.
 
-const SCREENS: { path: string; expect: RegExp[] }[] = [
+const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "overview", expect: [/data-won-tile="codes"/, /Slevy a kódy/, /Stav v obchodě/, /čeká na zápis|čekají na zápis/, /Zobrazení slev na webu/, /Zkontrolovat znovu/] },
   // Plan 6 Oct 2026 (P2/P3): Přehled shows only what has content or an action, and every problem carries its fix.
   { path: "overview?state=clean", expect: [/Slevy platí na webu i v pokladně/, /Zapnuto v živém tématu/] },
@@ -80,10 +80,17 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
   { path: "onboarding?step=3", expect: [/Přeskočit, zapnu později/, /<input type="hidden" name="step" value="4"\/>/, /Sleva v pokladně platí i bez toho/] },
   { path: "onboarding?step=3&native=none", expect: [/4 kroky, zhruba 3 minuty/, /2\. Zapnout na webu/, /3\. První sleva/, /4\. Hotovo/] },
   { path: "onboarding?step=3&embed=none", expect: [/Odkaz do editoru tématu teď nemáme/, /Zkontrolovat znovu/] },
-  { path: "onboarding?step=5&embed=on&rules=1", expect: [/Všechno je aktivní/, /slev běží|slevy běží|sleva běží/] },
+  // N12: the guide counts what really runs, like the Slevy a kódy tile ("6 slev · 3 aktivní"); "Všechno je aktivní" only when all do.
+  { path: "onboarding?step=5&embed=on&rules=1", expect: [/Slevy platí na webu i v pokladně/, /Aktivní slevy: 3 z 6/], absent: [/Všechno je aktivní/, /6 slev je aktivních/] },
+  { path: "onboarding?step=5&embed=on&rules=1&live=6", expect: [/Všechno je aktivní/, /6 slev je aktivních/] },
+  // N1: the goal "Doprava zdarma nebo dárek" leads to Odměny (prefilled), not to a discount recipe.
+  { path: "onboarding?step=4&embed=on&goal=rewards", expect: [/Nastavit dopravu zdarma a dárek/, /href="\/app\/rewards\?start=shipping#shipping"/, /Nebo začněte slevou/] },
+  { path: "onboarding?step=4&embed=on&goal=rewards&rewards=live", expect: [/Odměny jsou nastavené/, /Odměny jsou aktivní\./, /5\. Hotovo/] },
   { path: "onboarding?step=5&embed=on&rules=1&live=0", expect: [/Ještě něco zbývá/, /Žádná zatím není aktivní/, /Sleva je uložená, ale zatím není aktivní/] },
   // MVP 7: steps 4 and 5 — the recipes in the onboarding itself, the checklist from real signals.
-  { path: "onboarding", expect: [/5 kroků, zhruba 3 minuty/, /4\. První sleva/, /Sleva na všechno|% na vše/, /5\. Hotovo/, /Ještě něco zbývá/, /Web ještě není zapnutý/, /Vyzkoušejte košík/] },
+  { path: "onboarding", expect: [/5 kroků, zhruba 3 minuty/, /4\. První sleva/, /Sleva na všechno|% na vše/, /5\. Hotovo/, /Ještě něco zbývá/, /Web ještě není zapnutý/, /Otevřete obchod a dejte zboží do košíku/, /Otevřít obchod/], absent: [/Vyzkoušejte košík/] },
+  // N11: the cart test is offered to the plan that has it.
+  { path: "onboarding?plan=pro", expect: [/Vyzkoušejte košík/], absent: [/Otevřít obchod/] },
   { path: "move-dialog", expect: [/Co se stane/, /Co se ztratí/, /Počítadlo použití \(zatím 42×\) se smazáním slevy v Shopify ztratí/, /Na co myslet/, /zbývajících 58/] },
   { path: "move-dialog?all=1", expect: [/Přesunout 2 slevy do Won/, /LETO15/, /Doprava zdarma nad 2 000 Kč/, /Doplňte ji pro EUR/] },
   // Kampaně (MVP 6): Free locked in amber, Pro form + list by status, an edit, the errors, the Přehled card.
@@ -464,6 +471,7 @@ for (const screen of SCREENS) {
     assert.equal(status, 200);
     assert.match(html, /<s-page/);
     for (const re of screen.expect) assert.match(html, re, `${screen.path}: expected ${re}`);
+    for (const re of screen.absent ?? []) assert.doesNotMatch(html, re, `${screen.path}: not expected ${re}`);
     // §4c: nothing machine-shaped leaks into the page text (the serialized
     // loader data in <script> is data, not text, so it is left out).
     // MVP 7: the storefront text editor shows the extension's own texts as input placeholders — those DO contain

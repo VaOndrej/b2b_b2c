@@ -53,6 +53,8 @@ export interface TileContent {
   active?: string;
   /** The module's state; absent for a part that neither runs nor stops (Přehledy, Nastavení). */
   status?: ModuleStatus;
+  /** Things to resolve under a tile that has no state of its own (a page's "na webu" panel: what is missing in the theme). */
+  issues?: number;
   /** A Pro part. `locked` = the shop's plan does not run it. */
   pro?: boolean;
   locked?: boolean;
@@ -62,9 +64,9 @@ export interface ModuleTileProps extends TileContent {
   href: string;
 }
 
-function TileBody({ title, glyph, about, active, status, pro = false, locked = false, selected = false, marker }: TileContent & { selected?: boolean; marker: Record<string, string> }) {
+function TileBody({ title, glyph, about, active, status, issues: ownIssues, pro = false, locked = false, selected = false, marker }: TileContent & { selected?: boolean; marker: Record<string, string> }) {
   const tr = useT();
-  const issues = status?.issues ?? 0;
+  const issues = status?.issues ?? ownIssues ?? 0;
   return (
     <div
       className="won-tile"
@@ -73,14 +75,14 @@ function TileBody({ title, glyph, about, active, status, pro = false, locked = f
       style={{
         fontFamily: WON_FONT,
         background: locked ? WON_AMBER_TINT : selected ? "#f2f7ff" : WON_SURFACE,
-        border: `1px solid ${pro ? "rgba(217,168,58,.55)" : WON_LINE}`,
+        // ONE `border` declaration (never the shorthand plus `borderColor`): React drops the colour of a tile that
+        // stops being selected and the border then falls back to the text colour — a third, dark border (audit N18).
+        // Blue = selected (§11a), also on a Pro tile: which panel is open is not a plan signal.
+        border: `1px solid ${selected ? WON_SELECT : locked ? WON_AMBER : pro ? "rgba(217,168,58,.55)" : WON_LINE}`,
         borderRadius: 14,
-        boxShadow: WON_CARD_SHADOW,
+        boxShadow: selected ? `0 0 0 1px ${WON_SELECT}, 0 2px 8px rgba(26,115,232,.16)` : WON_CARD_SHADOW,
         padding: 16,
         minWidth: 0,
-        ...(locked ? { borderColor: WON_AMBER } : null),
-        // Blue = selected (§11a), also on a Pro tile: which panel is open is not a plan signal.
-        ...(selected ? { borderColor: WON_SELECT, boxShadow: `0 0 0 1px ${WON_SELECT}, 0 2px 8px rgba(26,115,232,.16)` } : null),
       }}
     >
       <div className="won-tile__head" style={{ display: "flex", alignItems: "center", gap: 10 }}>

@@ -34,7 +34,7 @@ import { PrismaClient } from "../../app/generated/prisma/client.ts";
 import type { AdminClient } from "../../app/lib/admin-client.server.ts";
 import { createCliAdminClient, DEV_STORE } from "../../app/lib/admin-client-cli.server.ts";
 import { loadConfig } from "../../app/lib/config.server.ts";
-import { loadShopMarketsWith, targetsMarkets, withMarketCountries } from "../../app/lib/sync/markets.ts";
+import { loadShopMarketsWith, targetsMarkets, withShopMarkets } from "../../app/lib/sync/markets.ts";
 import { createSync } from "../../app/lib/sync/sync.server.ts";
 import type { ConfigView } from "../../app/lib/sync/types.ts";
 import { consoleSyncLogger, productionSyncDeps } from "../../app/lib/sync/wiring.server.ts";
@@ -130,7 +130,7 @@ async function main(): Promise<void> {
     }
   }
   if (targetsMarkets(config)) {
-    const merged = withMarketCountries(config, await loadShopMarketsWith(createCliAdminClient({ appDir: APP_DIR, cwd: REPO_ROOT, store: args.shop })));
+    const merged = withShopMarkets(config, await loadShopMarketsWith(createCliAdminClient({ appDir: APP_DIR, cwd: REPO_ROOT, store: args.shop })));
     config = merged.config;
     if (merged.missing.length) console.log(`markets not in Shopify: ${merged.missing.join(", ")}`);
   }

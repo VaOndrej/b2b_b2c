@@ -119,7 +119,8 @@ test("refusals are rendered with their reason and fix: 21st code rule, colliding
   assert.equal(outcome.result.ok, false);
   assert.ok(!outcome.result.ok && outcome.result.reason === "too_many_code_rules");
   assert.equal(
-    store.ops.slice(opsBefore).filter((op) => op.startsWith("WonSync") && op !== "WonSyncShop").length,
+    // The shop's zone and markets are read before the save is judged (T1: a config without markets reads them); nothing is written.
+    store.ops.slice(opsBefore).filter((op) => op.startsWith("WonSync") && op !== "WonSyncShop" && !op.startsWith("WonSyncMarket")).length,
     0,
     "no sync write for a refused save",
   );

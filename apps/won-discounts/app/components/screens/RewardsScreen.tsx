@@ -27,6 +27,7 @@ import { CONFIG_LIMITS } from "@won/core/discounts/config";
 import { useT } from "../../i18n/context";
 import { currencyCodes } from "../model/markets";
 import { amountInput, giftSummary, liveMissingCurrencies, liveThreshold, newGiftTierId, REWARDS_FIELD, REWARDS_INTENT, shippingSummary } from "../model/rewards";
+import { freeShippingDefaults } from "../model/rule-form";
 import type { EmbedState, GiftTierView, GiftVariantView, RewardsScreenData, UiResult } from "../model/types";
 import type { MessageKey } from "../../i18n";
 import { pickGiftVariants } from "../rewards/gift-picker";
@@ -46,6 +47,8 @@ const F = REWARDS_FIELD;
 
 export interface RewardsScreenProps extends RewardsScreenData {
   result?: UiResult | null;
+  /** "shipping": opened from the setup guide — free shipping starts switched on, with its amounts prefilled (audit N1). */
+  start?: "shipping" | null;
 }
 
 function errorText(result: UiResult | null | undefined, field: string, t: ReturnType<typeof useT>["t"]): string | undefined {
@@ -91,8 +94,12 @@ function GiftList({ items, onRemove, removeLabel, unknown }: { items: readonly G
 export function RewardsScreen(props: RewardsScreenProps) {
   const tr = useT();
   const { t } = tr;
-  const { plan, configVersion, currencies, shipping, gifts, countOther, gateNotes, embed, cartBlockAddUrl, result } = props;
+  const { plan, configVersion, currencies, shipping, gifts, countOther, gateNotes, embed, cartBlockAddUrl, result, start = null } = props;
   const codes = useMemo(() => currencyCodes(currencies), [currencies]);
+  // N9: a shop that has no free shipping yet gets the same amounts as the recipe, to check and save — never two
+  // empty fields with two errors. What is stored always wins.
+  const shipStart = useMemo(() => shipping ?? freeShippingDefaults(codes), [shipping, codes]);
+  const startOn = start === "shipping" && shipping === null;
   const pro = plan === "pro";
   // The first tier is edited on every plan; on Free the rest are kept as stored (hidden fields).
   const storedTiers = useMemo(() => (pro ? gifts : gifts.slice(0, 1)), [pro, gifts]);
@@ -102,6 +109,7 @@ export function RewardsScreen(props: RewardsScreenProps) {
   const submit = useSubmit();
   const err = (field: string) => errorText(result, field, t);
   const marketsOf = (code: string) => currencies.find((c) => c.code === code)?.markets.map((m) => m.name).join(", ") || code;
+  const hasMarkets = (code: string) => (currencies.find((c) => c.code === code)?.markets.length ?? 0) > 0;
 
   // §2 / B2: the live form. null = not read yet (the server render, before the first event): what is stored.
   const formRef = useRef<HTMLFormElement>(null);
@@ -120,7 +128,22 @@ export function RewardsScreen(props: RewardsScreenProps) {
     };
   }, [recompute]);
   const typed = (field: string): string | null => (snapshot ? (snapshot.get(field) ?? "") : null);
-  const shipOn = snapshot ? snapshot.get(F.shipOn) === "1" : shipping !== null;
+  const shipOn = snapshot ? snapshot.get(F.shipOn) === "1" : shipping !== null || startOn;
+
+  // N8 / N9: "částka chybí" is said once the merchant has had a go — a field of the group was left, a save was
+  // refused, or the reward is already stored (then it is a fact about the shop, not about an unfinished form).
+  const [left, setLeft] = useState<ReadonlySet<string>>(new Set());
+  useEffect(() => {
+    const el = formRef.current;
+    if (!el) return;
+    const onLeave = (event: Event) => {
+      const name = (event.target as { name?: unknown } | null)?.name;
+      if (typeof name === "string" && name) setLeft((prev) => (prev.has(name) ? prev : new Set(prev).add(name)));
+    };
+    el.addEventListener("focusout", onLeave);
+    return () => el.removeEventListener("focusout", onLeave);
+  }, []);
+  const refused = !!result && !result.ok;
   const countOtherNow = snapshot ? snapshot.get(F.other) === "1" : countOther;
 
   // A gift picked, a threshold added or removed: React changes hidden fields, which fire no event of their own —
@@ -177,7 +200,8 @@ export function RewardsScreen(props: RewardsScreenProps) {
         <s-number-field
           key={code}
           name={field(code)}
-          label={t("rewards.amount", { currency: code })}
+          // Proposal 3: the merchant thinks "Slovensko", so the field is named by the market; the currency is in brackets.
+          label={hasMarkets(code) ? t("rewards.amountMarket", { currency: code, markets: marketsOf(code) }) : t("rewards.amount", { currency: code })}
           value={amountInput(initial, code)}
           min={0}
           suffix={code}
@@ -187,25 +211,50 @@ export function RewardsScreen(props: RewardsScreenProps) {
       ))}
     </div>
   );
-  // MKT-1 notes follow the fields: a currency whose field is empty NOW.
-  const missingNotes = (field: (c: string) => string, stored: Record<string, number> | null) =>
-    liveMissingCurrencies((c) => typed(field(c)), stored, codes).map((c) => (
-      <RowNote key={c} tone="attention">
-        {t("rewards.missingCurrency", { currency: c, markets: marketsOf(c) })}
-      </RowNote>
-    ));
+  // MKT-1 notes follow the fields: a currency whose field is empty NOW — once there was an attempt (see `left`).
+  const missingNotes = (field: (c: string) => string, stored: Record<string, number> | null, isStored: boolean) =>
+    isStored || refused || codes.some((c) => left.has(field(c)))
+      ? liveMissingCurrencies((c) => typed(field(c)), stored, codes).map((c) => (
+          <RowNote key={c} tone="attention">
+            {t("rewards.missingCurrency", { currency: c, markets: marketsOf(c) })}
+          </RowNote>
+        ))
+      : [];
 
   // The state lines, from what the form holds now.
-  const shipSummary = shippingSummary(shipOn, liveThreshold((c) => typed(F.shipAmount(c)), shipping, codes), codes, tr);
+  const shipSummary = shippingSummary(shipOn, liveThreshold((c) => typed(F.shipAmount(c)), shipStart, codes), codes, tr);
   const giftLine = giftSummary(
     tiers.map((tier) => ({ threshold: liveThreshold((c) => typed(F.tierAmount(tier.id, c)), tier.threshold, codes), choices: tier.choices })),
     codes,
     tr,
   );
+  // N2: the tile names the markets a set reward is not offered in ("Slovensko: dárek se nenabízí"), from the live form.
+  const marketList = (list: readonly string[]) => tr.list(list.map(marketsOf));
+  const shipMissing = shipOn && Object.keys(liveThreshold((c) => typed(F.shipAmount(c)), shipStart, codes)).length > 0 ? liveMissingCurrencies((c) => typed(F.shipAmount(c)), shipStart, codes) : [];
+  const giftMissing = [
+    ...new Set(
+      tiers.flatMap((tier) => {
+        const field = (c: string) => F.tierAmount(tier.id, c);
+        return Object.keys(liveThreshold((c) => typed(field(c)), tier.threshold, codes)).length > 0 ? liveMissingCurrencies((c) => typed(field(c)), tier.threshold, codes) : [];
+      }),
+    ),
+  ];
+  const shipTile = shipMissing.length > 0 ? `${t("overview.rewards.shipMissing", { markets: marketList(shipMissing) })} · ${shipSummary}` : shipSummary;
+  const giftTile = giftMissing.length > 0 ? `${t("overview.rewards.giftMissing", { markets: marketList(giftMissing) })} · ${giftLine}` : giftLine;
   const maxTiers = CONFIG_LIMITS.giftTiers;
   const tiersFull = tiers.length + kept.length >= maxTiers;
   const embedCopy = embed.state === "on" ? null : EMBED_COPY[embed.state];
   const cartBlock = placementOf(props.placed?.cartBlock);
+  // N6: the "na webu" tile says where the rewards show and where they do not, and counts what is missing.
+  const placed = props.placed ?? {};
+  const webParts: string[] = [t(embed.state === "on" ? "rewards.web.cart.yes" : embed.state === "off" || embed.state === "draft_only" ? "rewards.web.cart.no" : "rewards.web.cart.unknown")];
+  if (placed.rewardsProduct !== undefined) webParts.push(t(placed.rewardsProduct ? "rewards.web.product.yes" : "rewards.web.product.no"));
+  if (placed.rewardsHome !== undefined) webParts.push(t(placed.rewardsHome ? "rewards.web.home.yes" : "rewards.web.home.no"));
+  if (placed.topBarRewards !== undefined) webParts.push(t(placed.topBarRewards ? "rewards.web.topBar.yes" : "rewards.web.topBar.no"));
+  const webLine = webParts.join(" · ").replace(/^./, (ch) => ch.toLocaleUpperCase(tr.locale));
+  // The cart is where a reward must show; the other places are a choice — only the cart counts as "to resolve".
+  const webIssues = embed.state === "off" || embed.state === "draft_only" ? 1 : 0;
+  const saved = !!result && result.ok;
 
   const [view, setView] = useView<"shipping" | "gift" | "web">({
     initial: () => (shipping === null && gifts.length > 0 ? "gift" : "shipping"),
@@ -221,25 +270,54 @@ export function RewardsScreen(props: RewardsScreenProps) {
         {configVersion ? <input type="hidden" name="configVersion" value={configVersion} /> : null}
         <s-stack key={formKey} direction="block" gap="base">
           <Notice result={result} onReplace={replaceUnreadable} />
-          <GateNotes notes={gateNotes} />
+          {/* N10: a save says what the customer sees now and what is still to do, with the button that does it. */}
+          {saved ? (
+            <WonSection title={t("rewards.next.title")} glyph="store" anchor="next">
+              <div data-won-rewards-next>
+                <WonRow
+                  tone={embed.state === "on" ? undefined : "attention"}
+                  action={
+                    embed.state !== "on" && embed.activateUrl ? (
+                      <s-button href={embed.activateUrl} target="_top" variant="primary">
+                        {t("rewards.cart.activate")}
+                      </s-button>
+                    ) : undefined
+                  }
+                >
+                  <RowNote tone={embed.state === "on" ? undefined : "attention"}>{t(embed.state === "on" ? "rewards.next.cart.on" : "rewards.next.cart.off")}</RowNote>
+                </WonRow>
+                {placed.rewardsProduct === false && props.placements?.product ? (
+                  <WonRow
+                    action={
+                      <s-button href={props.placements.product} target="_top" variant="secondary">
+                        {t("rewards.next.product.add")}
+                      </s-button>
+                    }
+                  >
+                    <RowNote>{t("rewards.next.product.missing")}</RowNote>
+                  </WonRow>
+                ) : null}
+              </div>
+            </WonSection>
+          ) : null}
 
           {/* Three tiles, one panel at a time (doctrine §19e); the panels stay in the one form with its one Save. */}
           <ModuleTiles label={t("rewards.view.label")}>
-            <ViewTile id="shipping" title={t("rewards.ship.title")} glyph="receipt" about={t("rewards.view.shipping.about")} active={shipSummary} status={props.status?.shipping} selected={view === "shipping"} onPick={() => setView("shipping")} />
-            <ViewTile id="gift" title={t("rewards.gift.title")} glyph="spark" about={t("rewards.view.gift.about")} active={giftLine} status={props.status?.gift} selected={view === "gift"} onPick={() => setView("gift")} />
-            <ViewTile id="web" title={t("rewards.view.web.title")} glyph="store" about={t("rewards.view.web.about")} active={t(embedCopy ? embedCopy.summary : "rewards.cart.on")} selected={view === "web"} onPick={() => setView("web")} />
+            <ViewTile id="shipping" title={t("rewards.ship.title")} glyph="receipt" about={t("rewards.view.shipping.about")} active={shipTile} status={props.status?.shipping} selected={view === "shipping"} onPick={() => setView("shipping")} />
+            <ViewTile id="gift" title={t("rewards.gift.title")} glyph="spark" about={t("rewards.view.gift.about")} active={giftTile} status={props.status?.gift} selected={view === "gift"} onPick={() => setView("gift")} />
+            <ViewTile id="web" title={t("rewards.view.web.title")} glyph="store" about={t("rewards.view.web.about")} active={webLine} issues={webIssues} selected={view === "web"} onPick={() => setView("web")} />
           </ModuleTiles>
 
           <ViewPanel id="shipping" view={view}>
           <WonSection title={t("rewards.ship.title")} glyph="receipt" state={props.status?.shipping} summary={shipSummary} hint={t("rewards.ship.hint")} anchor="shipping">
             <s-stack direction="block" gap="base">
               {/* `checked` is what is STORED; the live state is read from the form (never React's onChange on an s-* element). */}
-              <s-switch name={F.shipOn} value="1" label={t("rewards.ship.on")} checked={boolAttr(shipping !== null)} />
+              <s-switch name={F.shipOn} value="1" label={t("rewards.ship.on")} checked={boolAttr(shipping !== null || startOn)} />
               {/* Hidden, never unmounted: an amount typed before the switch was flipped is not lost. The server ignores it while off. */}
               <Shown when={shipOn}>
                 <s-stack direction="block" gap="small-200">
-                  {amountFields(F.shipAmount, shipping)}
-                  {missingNotes(F.shipAmount, shipping)}
+                  {amountFields(F.shipAmount, shipStart)}
+                  {missingNotes(F.shipAmount, shipStart, shipping !== null)}
                 </s-stack>
               </Shown>
             </s-stack>
@@ -247,6 +325,8 @@ export function RewardsScreen(props: RewardsScreenProps) {
 
           </ViewPanel>
           <ViewPanel id="gift" view={view}>
+          {/* N21: the plan note is about the stored gift thresholds, so it sits with them, not over the whole page. */}
+          <GateNotes notes={gateNotes} />
           <WonSection title={t("rewards.gift.title")} glyph="spark" state={props.status?.gift} summary={giftLine} hint={t("rewards.gift.hint")} anchor="gift">
             <s-stack direction="block" gap="base">
               {tiers.map((tier, i) => {
@@ -261,7 +341,7 @@ export function RewardsScreen(props: RewardsScreenProps) {
                     <s-stack direction="block" gap="small-300">
                       <s-heading>{tiers.length > 1 ? t("rewards.gift.tierN", { n: i + 1 }) : t("rewards.gift.threshold")}</s-heading>
                       {amountFields((c) => F.tierAmount(tier.id, c), tier.threshold)}
-                      {missingNotes((c) => F.tierAmount(tier.id, c), tier.threshold)}
+                      {missingNotes((c) => F.tierAmount(tier.id, c), tier.threshold, Object.keys(tier.threshold).length > 0)}
                       <s-text>{t(pro ? "rewards.gift.choicesPro" : "rewards.gift.choice")}</s-text>
                       <GiftList
                         items={tier.choices}
@@ -387,7 +467,7 @@ export function RewardsScreen(props: RewardsScreenProps) {
                 rows={[
                   { place: "product", key: "rewardsProduct", text: "rewards.places.product" },
                   { place: "home", key: "rewardsHome", text: "rewards.places.home" },
-                  { place: "topBar", key: "topBarRewards", text: "rewards.places.topBar", action: "placements.openEmbed" },
+                  { place: "topBar", key: "topBarRewards", text: "rewards.places.topBar", textOn: "rewards.places.topBar.on", action: "placements.openEmbed" },
                 ]}
               />
             </WonSection>
@@ -395,7 +475,8 @@ export function RewardsScreen(props: RewardsScreenProps) {
 
           </ViewPanel>
 
-          <div>
+          {/* N19: "Odměny na webu" has nothing to save — every button there leads to the theme editor. */}
+          <div style={{ display: view === "web" ? "none" : "block" }}>
             <s-button type="submit" variant="primary">
               {t("common.save")}
             </s-button>

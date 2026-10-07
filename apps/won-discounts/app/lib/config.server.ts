@@ -22,7 +22,7 @@ import { buildShopFunctionConfigWorstCase } from "@won/core/discounts/function-p
 
 import type { PrismaClient } from "../generated/prisma/client";
 import { checkActiveCodeRuleLimit, checkCodeHashCollisions } from "./config-guards.server";
-import { withMarketCountries, type ShopMarket } from "./sync/markets";
+import { withShopMarkets, type ShopMarket } from "./sync/markets";
 
 /** How long ConfigVersion rows are kept before being pruned (support/rollback window). */
 export const CONFIG_HISTORY_RETENTION_DAYS = 90;
@@ -279,7 +279,7 @@ export function withExpectedConfigVersion<T>(shop: string, version: string | nul
 export function validateConfigForSave(input: unknown, options: Omit<SaveConfigOptions, "replaceUnreadable" | "expectedVersion"> = {}): ConfigValidationResult {
   const sanitized = sanitizeConfig(input);
   const issues = sanitized.issues;
-  const config = options.shopMarkets ? withMarketCountries(sanitized.config, options.shopMarkets).config : sanitized.config;
+  const config = options.shopMarkets ? withShopMarkets(sanitized.config, options.shopMarkets).config : sanitized.config;
   const codeRules = checkActiveCodeRuleLimit(config, { shopLocalNow: options.shopLocalNow });
   if (!codeRules.ok) {
     return {

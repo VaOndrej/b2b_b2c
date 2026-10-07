@@ -15,7 +15,7 @@ import type { GiftTier, WonDiscountsConfig } from "@won/core/discounts/config";
 import { explainGate, gateConfigForPlan, type ProCapability } from "@won/core/discounts/plan-gate";
 
 import { cartBlockAddUrl, placementLinks, REWARDS_PROGRESS_BLOCK_HANDLE } from "../../components/model/embed";
-import { currencyCodes, currencyViews } from "../../components/model/markets";
+import { currenciesWithoutAmount, currencyCodes, currencyViews, enabledCurrencies } from "../../components/model/markets";
 import { giftTierView, readRewardsForm, REWARDS_FIELD, REWARDS_INTENT } from "../../components/model/rewards";
 import type { FormDataLike } from "../../components/model/rule-form";
 import { rewardsGiftStatus, rewardsShippingStatus } from "../../components/model/module-status";
@@ -173,9 +173,16 @@ export async function loadRewardsOverview(
 /** The Přehled card: free shipping and the gift thresholds the PLAN runs, in the shop currency (§17c). */
 export function rewardsOverviewOf(config: WonDiscountsConfig, plan: "free" | "pro", currency: string): RewardsOverviewView {
   const rewards = gateConfigForPlan(config, plan).config.modules.rewards;
+  // N2: a reward without an amount in the currency of an enabled market is not offered there — the tile has to say so.
+  const currencies = enabledCurrencies(config.markets, currency);
+  const missing = {
+    shipping: rewards.freeShipping ? currenciesWithoutAmount([rewards.freeShipping.threshold], currencies) : [],
+    gifts: rewards.gifts.map((g) => currenciesWithoutAmount([g.threshold], currencies)),
+  };
   return {
     shipping: rewards.freeShipping?.threshold[currency] ?? null,
     gifts: rewards.gifts.map((g) => g.threshold[currency] ?? null),
     currency,
+    ...(missing.shipping.length > 0 || missing.gifts.some((g) => g.length > 0) ? { missing } : {}),
   };
 }

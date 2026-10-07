@@ -19,7 +19,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const locale = await adminLocale(request, session, db);
   // eslint-disable-next-line no-undef
   const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "", scopes: session.scope });
-  return loadRewardsScreen(ctx, { scopes: session.scope ?? "" });
+  // N1: the setup guide opens the page with free shipping switched on and its amounts prefilled.
+  const start = new URL(request.url).searchParams.get("start") === "shipping" ? ("shipping" as const) : null;
+  return { ...(await loadRewardsScreen(ctx, { scopes: session.scope ?? "" })), start };
 };
 
 export const action = async ({ request }: ActionFunctionArgs): Promise<UiResult> => {

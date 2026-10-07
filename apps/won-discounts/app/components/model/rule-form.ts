@@ -656,6 +656,11 @@ const AMOUNT_OFF: Readonly<Record<string, number>> = { CZK: 10000, EUR: 400, USD
 const AMOUNT_OFF_MIN: Readonly<Record<string, number>> = { CZK: 100000, EUR: 4000, USD: 5000, GBP: 4000, PLN: 20000 };
 const FREE_SHIPPING_MIN: Readonly<Record<string, number>> = { CZK: 150000, EUR: 6000, USD: 7500, GBP: 6000, PLN: 30000 };
 
+/** The free-shipping amounts a new setup starts from (the recipe and Odměny prefill the same ones — audit N9). */
+export function freeShippingDefaults(currencies: readonly string[]): Record<string, number> {
+  return pick(FREE_SHIPPING_MIN, currencies);
+}
+
 function pick(table: Readonly<Record<string, number>>, currencies: readonly string[]): Record<string, number> {
   const out: Record<string, number> = {};
   for (const c of currencies) if (typeof table[c] === "number") out[c] = table[c];

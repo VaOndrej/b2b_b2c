@@ -4,7 +4,7 @@ import { after, before, beforeEach, test } from "node:test";
 import type { PrismaClient } from "../../../app/generated/prisma/client.ts";
 import type { AdminClient } from "../../../app/lib/admin-client.server.ts";
 import { loadConfig } from "../../../app/lib/config.server.ts";
-import { loadShopMarkets, withMarketCountries } from "../../../app/lib/sync/markets.ts";
+import { loadShopMarkets, withShopMarkets } from "../../../app/lib/sync/markets.ts";
 import { resyncShop, saveAndSync } from "../../../app/lib/sync/save-and-sync.server.ts";
 import { createSync } from "../../../app/lib/sync/sync.server.ts";
 import { Transport } from "../../../app/lib/sync/transport.ts";
@@ -66,10 +66,41 @@ test("loadShopMarkets pages markets (without regions) and each market's countrie
   );
   assert.equal(fake.callsOf("WonSyncMarkets").length, 2, "2 pages of markets");
   assert.equal(fake.callsOf("WonSyncMarketRegions").length, 4, "eu's 3 countries need 2 pages");
-  const merged = withMarketCountries(configWith([], { markets: [...MARKETS, { handle: "hu", currency: "HUF", enabled: true }] }), markets);
+  const merged = withShopMarkets(configWith([], { markets: [...MARKETS, { handle: "hu", currency: "HUF", enabled: true }] }), markets);
   assert.deepEqual(merged.missing, ["hu"]);
   assert.equal(merged.changed, true);
-  assert.deepEqual(merged.config.markets.map((m) => m.countries ?? null), [["CZ"], ["SK"], null]);
+  // T1: a Shopify market the config does not know is added, an inactive one as disabled.
+  assert.deepEqual(merged.added, ["eu"]);
+  assert.deepEqual(
+    merged.config.markets.map((m) => [m.handle, m.currency, m.enabled, m.countries ?? null]),
+    [
+      ["cz", "CZK", true, ["CZ"]],
+      ["sk", "EUR", true, ["SK"]],
+      ["hu", "HUF", true, null],
+      ["eu", "EUR", false, ["DE", "AT", "FR"]],
+    ],
+  );
+});
+
+test("T1: withShopMarkets fills an empty list, follows Shopify's currency and status, and reports no change the second time", () => {
+  const shopMarkets = [
+    { handle: "cz", name: "Česko", active: true, currency: "CZK", countries: ["CZ"] },
+    { handle: "sk", name: "Slovensko", active: true, currency: "EUR", countries: ["SK"] },
+    { handle: "draft", name: "Koncept", active: false, currency: null, countries: [] },
+  ];
+  const first = withShopMarkets(configWith([]), shopMarkets);
+  assert.deepEqual(first.added, ["cz", "sk"], "a market without a currency is not added");
+  assert.equal(first.changed, true);
+  assert.deepEqual(first.config.markets, [
+    { handle: "cz", currency: "CZK", enabled: true, countries: ["CZ"] },
+    { handle: "sk", currency: "EUR", enabled: true, countries: ["SK"] },
+  ]);
+  const again = withShopMarkets(first.config, shopMarkets);
+  assert.deepEqual([again.added, again.changed, again.missing], [[], false, []]);
+  // Slovakia switched off and moved to another currency in Shopify.
+  const later = withShopMarkets(first.config, [shopMarkets[0]!, { ...shopMarkets[1]!, active: false, currency: "CZK" }]);
+  assert.equal(later.changed, true);
+  assert.deepEqual(later.config.markets[1], { handle: "sk", currency: "CZK", enabled: false, countries: ["SK"] });
 });
 
 test("the sync itself never reads or swaps market countries: it ships the config as saved", async () => {
@@ -83,7 +114,7 @@ test("the sync itself never reads or swaps market countries: it ships the config
   assert.deepEqual(deps.log.shopConfigs.at(-1)!.markets.map((m) => m.countries ?? null), [["CZ"], null]);
 });
 
-test("saveAndSync resolves Shopify countries BEFORE saving and saves them; no market target → no markets read", async () => {
+test("saveAndSync resolves Shopify markets BEFORE saving and saves them; a config that knows its markets and targets none reads nothing", async () => {
   const fake = new FakeShopify();
   seedMarkets(fake);
   const result = await saveAndSync({
@@ -96,16 +127,29 @@ test("saveAndSync resolves Shopify countries BEFORE saving and saves them; no ma
   assert.equal(result.save.ok, true, JSON.stringify(result.save));
   assert.equal(result.sync?.ok, true, JSON.stringify(result.sync?.errors));
   const stored = await loadConfig(db.prisma, shop);
-  assert.deepEqual(stored.config.markets.map((m) => [m.handle, m.countries]), [
-    ["cz", ["CZ"]],
-    ["sk", ["SK"]],
+  assert.deepEqual(stored.config.markets.map((m) => [m.handle, m.enabled, m.countries]), [
+    ["cz", true, ["CZ"]],
+    ["sk", true, ["SK"]],
+    ["eu", false, ["DE", "AT", "FR"]],
   ]);
   assert.deepEqual(JSON.parse(fake.shopMetafieldValue("function_config")!).marketCountries, { cz: ["CZ"] });
 
+  // T1: a config without any market gets the shop's markets with its first save …
   const plain = new FakeShopify();
   seedMarkets(plain);
-  await saveAndSync({ client: plain, db: db.prisma, shop: `${shop}-plain`, input: { modules: { codes: { rules: [autoRule("all")] } } }, createSync: realSync });
-  assert.equal(plain.callsOf("WonSyncMarkets").length, 0);
+  const plainShop = `${shop}-plain`;
+  await saveAndSync({ client: plain, db: db.prisma, shop: plainShop, input: { modules: { codes: { rules: [autoRule("all")] } } }, createSync: realSync });
+  assert.equal(plain.callsOf("WonSyncMarkets").length, 1);
+  const first = await loadConfig(db.prisma, plainShop);
+  assert.deepEqual(first.config.markets.map((m) => [m.handle, m.currency, m.enabled]), [
+    ["cz", "CZK", true],
+    ["sk", "EUR", true],
+    ["eu", "EUR", false],
+  ]);
+  assert.deepEqual(JSON.parse(plain.shopMetafieldValue("function_config")!).marketCountries, {}, "no rule targets a market: no countries ship");
+  // … and the next save, which knows them and targets none, reads nothing.
+  await saveAndSync({ client: plain, db: db.prisma, shop: plainShop, input: first.config, createSync: realSync });
+  assert.equal(plain.callsOf("WonSyncMarkets").length, 1);
 });
 
 test("M11/I2: the save-time budget is measured WITH Shopify's countries — an accepted save never fails the sync budget", async () => {

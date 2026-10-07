@@ -671,6 +671,11 @@ export interface TiersOverviewView {
   /** The global set's breaks, for one sentence ("Od 3 ks −10 %, od 5 ks −15 %"); null = no global set. */
   global: TierSetView | null;
   block: TiersBlockView;
+  /**
+   * Currencies of the enabled markets a set with an amount per piece has no amount in, on some level (MKT-1: the
+   * level is not offered there). `sets` = one entry per own set that misses some. Absent = none. Audit 6 Oct 2026, N2.
+   */
+  missing?: { global: string[]; sets: string[][] };
 }
 
 export interface AppearanceScreenData {
@@ -767,6 +772,11 @@ export interface RewardsOverviewView {
   currency: string;
   /** The gift of each threshold by name (same order as `gifts`), when the loader read the titles (P4). */
   giftNames?: (string | null)[];
+  /**
+   * Currencies of the enabled markets a reward has no amount in (MKT-1: it is not offered there). Absent = none.
+   * `gifts` follows the order of `gifts` above. Audit 6 Oct 2026, N2.
+   */
+  missing?: { shipping: string[]; gifts: string[][] };
 }
 
 // --- Výprodej (MVP 5, Pro; contract O10) --------------------------------------------------------------

@@ -5,8 +5,8 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 // F2 configuration contracts (checked with the Shopify dev MCP, 2026-04 docs):
-//   item 9  read_markets is an OPTIONAL scope ([access_scopes] optional_scopes),
-//           requested with App Bridge shopify.scopes.request only when needed;
+//   item 9  read_markets was an optional scope; since the audit of 6 Oct 2026 (T1)
+//           it is REQUIRED: the app reads the shop's markets and currencies for everyone;
 //   item 2  products/create (MVP 2), products/update, products/delete,
 //           collections/update and collections/delete are delivered to
 //           /webhooks/targeting (all five need read_products), and that route exists;
@@ -31,11 +31,11 @@ function stringValue(block: string, key: string): string | null {
   return new RegExp(`^\\s*${key}\\s*=\\s*"([^"]*)"`, "m").exec(block)?.[1] ?? null;
 }
 
-test("item 9: read_markets is optional, not required; every required scope stays", () => {
+test("T1: read_markets is a required scope; no optional scope is left", () => {
   const section = /\[access_scopes\]([\s\S]*?)(?=\n\[[a-z_]+\]|$)/.exec(toml)?.[1] ?? "";
   const required = (stringValue(section, "scopes") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  assert.deepEqual(required.sort(), ["read_products", "read_themes", "write_discounts", "write_products"]);
-  assert.deepEqual(arrayValue(section, "optional_scopes"), ["read_markets"]);
+  assert.deepEqual(required.sort(), ["read_markets", "read_products", "read_themes", "write_discounts", "write_products"]);
+  assert.equal(arrayValue(section, "optional_scopes"), null);
 });
 
 test("item 2: the targeting topics go to /webhooks/targeting (the create/update topics trimmed with include_fields)", () => {

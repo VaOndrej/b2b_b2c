@@ -10,7 +10,7 @@
 //       the payload the sync will ship.
 //       Options: `expectedVersion` (F12: save only on top of the config the
 //       caller read — `base_changed` otherwise), `grantedScopes` (markets are
-//       read only with read_markets, an optional scope), `productWrites:
+//       read only with read_markets), `productWrites:
 //       "background"` + `deadlineMs` (item 7: the request waits for the save,
 //       the nodes and the shop config; products that only gain rules are
 //       written in the background, and a sync still running at the deadline
@@ -40,7 +40,7 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import { adminClientFromApp, type AdminClient, type AppAdminGraphql } from "../admin-client.server";
 import { loadConfig, saveConfig, type SaveConfigResult } from "../config.server";
 import { withinDeadline } from "../integration/deadline";
-import { loadShopMarkets, targetsMarkets, withMarketCountries, type ShopMarket } from "./markets";
+import { loadShopMarkets, targetsMarkets, withShopMarkets, type ShopMarket } from "./markets";
 import { appliedPlanMismatch, appliedRun, storedConfigNotApplied } from "./runs";
 import { storefrontOutcome } from "./storefront";
 import { loadShopSyncFacts, recordMarketsChecked } from "./sync-state.server";
@@ -49,10 +49,10 @@ import { errorText, Transport } from "./transport";
 import type { ConfigView, PendingWork, SyncLogger, SyncResult, SyncStep } from "./types";
 import { consoleSyncLogger, createProductionSync } from "./wiring.server";
 
-/** How often the Přehled compares Shopify market countries with the config (item 12). */
+/** How often the Přehled compares the Shopify markets with the config (item 12; audit 6 Oct 2026, T1: for every shop). */
 export const MARKETS_CHECK_INTERVAL_MS = 60 * 60_000;
 
-/** False only when the granted scopes are KNOWN and lack read_markets (an optional scope, item 9). */
+/** False only when the granted scopes are KNOWN and lack read_markets (required since the audit of 6 Oct 2026; an older install may not have granted it yet). */
 export function canReadMarkets(grantedScopes: string | null | undefined): boolean {
   if (grantedScopes === null || grantedScopes === undefined) return true;
   return grantedScopes
@@ -91,6 +91,8 @@ export interface SaveAndSyncArgs extends Common {
   productWrites?: "inline" | "background";
   /** Wait at most this long for the sync; it goes on in the background after (item 7). Absent = wait. */
   deadlineMs?: number;
+  /** The shop's Shopify markets when the caller has just read them (a resync that found them changed): merged instead of reading again. */
+  shopMarkets?: readonly ShopMarket[];
 }
 
 export interface SaveAndSyncResult {
@@ -109,8 +111,17 @@ interface ShopContext {
   warnings: string[];
 }
 
-/** Time zone always; markets only when the config targets one (read_markets). */
-async function readShopContext(args: Common, config: ConfigView): Promise<ShopContext> {
+/**
+ * The config needs the Shopify markets read at save time: it targets one (the
+ * countries are measured with the save, I2) or it knows no market yet (T1: the
+ * first save brings them in; later changes come from the Přehled's check).
+ */
+function needsShopMarkets(config: ConfigView): boolean {
+  return targetsMarkets(config) || config.markets.length === 0;
+}
+
+/** Time zone always; markets when the config needs them (read_markets). */
+async function readShopContext(args: Common, config: ConfigView, opts: { markets?: "always" | "given" } = {}): Promise<ShopContext> {
   const transport = new Transport(args.client, undefined, undefined, args.logger ?? consoleSyncLogger);
   const out: ShopContext = { warnings: [] };
   try {
@@ -120,16 +131,22 @@ async function readShopContext(args: Common, config: ConfigView): Promise<ShopCo
     if (error instanceof Response) throw error;
     out.warnings.push(`could not read the shop's time zone (${errorText(error)}); campaign windows were judged conservatively`);
   }
-  if (targetsMarkets(config) && !canReadMarkets(args.grantedScopes)) {
-    out.warnings.push("Shopify markets are not read: the optional read_markets scope is not granted; market-targeted rules keep the countries saved in the config");
-  } else if (targetsMarkets(config)) {
+  if (opts.markets === "given") return out;
+  if (!canReadMarkets(args.grantedScopes)) {
+    if (targetsMarkets(config)) {
+      out.warnings.push("Shopify markets are not read: the read_markets scope is not granted; market-targeted rules keep the countries saved in the config");
+    }
+  } else if (opts.markets === "always" || needsShopMarkets(config)) {
     try {
       out.markets = await loadShopMarkets(transport);
     } catch (error) {
       if (error instanceof Response) throw error;
-      out.warnings.push(
-        `could not read Shopify markets (${errorText(error)}); market-targeted rules keep the countries saved in the config (needs the read_markets scope)`,
-      );
+      // A config that only lacks its market list saves without it; the Přehled's check brings the markets in later.
+      if (targetsMarkets(config)) {
+        out.warnings.push(
+          `could not read Shopify markets (${errorText(error)}); market-targeted rules keep the countries saved in the config (needs the read_markets scope)`,
+        );
+      }
     }
   }
   return out;
@@ -137,10 +154,10 @@ async function readShopContext(args: Common, config: ConfigView): Promise<ShopCo
 
 export async function saveAndSync(args: SaveAndSyncArgs): Promise<SaveAndSyncResult> {
   const { client, db, shop, input } = args;
-  const context = await readShopContext(args, sanitizeConfig(input).config);
+  const context = await readShopContext(args, sanitizeConfig(input).config, args.shopMarkets ? { markets: "given" } : {});
   const save = await saveConfig(db, shop, input, {
     otherCodes: args.otherCodes,
-    shopMarkets: context.markets,
+    shopMarkets: args.shopMarkets ?? context.markets,
     shopLocalNow: context.shopLocalNow,
     replaceUnreadable: args.replaceUnreadable,
     ...(args.expectedVersion !== undefined ? { expectedVersion: args.expectedVersion } : {}),
@@ -188,12 +205,15 @@ function refusal(reason: ResyncRefusal["reason"], detail: string): ResyncRefusal
   return { ok: false, reason, steps: [{ step: "config.load", ok: false, detail }], errors: [detail], pending: [], runId: null };
 }
 
-/** Sync the stored config again (no save), refreshing market countries through the save path when Shopify's changed. */
-export async function resyncShop(args: Common & { productWrites?: "inline" | "background" }): Promise<ResyncResult> {
+/**
+ * Sync the stored config again (no save), refreshing the markets through the save path when Shopify's changed.
+ * `markets: "always"` reads them even for a config that neither targets a market nor lacks its list (the Přehled's check found a change).
+ */
+export async function resyncShop(args: Common & { productWrites?: "inline" | "background"; markets?: "always" }): Promise<ResyncResult> {
   return resyncStored(args, 1);
 }
 
-async function resyncStored(args: Common & { productWrites?: "inline" | "background" }, retries: number): Promise<ResyncResult> {
+async function resyncStored(args: Common & { productWrites?: "inline" | "background"; markets?: "always" }, retries: number): Promise<ResyncResult> {
   const { client, db, shop } = args;
   const loaded = await loadConfig(db, shop);
   if (!loaded.exists) return refusal("no_config", "nothing has been saved yet, so there is nothing to sync");
@@ -205,16 +225,16 @@ async function resyncStored(args: Common & { productWrites?: "inline" | "backgro
   }
   const sync = (args.createSync ?? createProductionSync)(client, db);
   const warnings: string[] = [];
-  if (targetsMarkets(loaded.config)) {
-    const context = await readShopContext(args, loaded.config);
+  if (args.markets === "always" || needsShopMarkets(loaded.config)) {
+    const context = await readShopContext(args, loaded.config, { markets: args.markets });
     warnings.push(...context.warnings);
-    if (context.markets && withMarketCountries(loaded.config, context.markets).changed) {
+    if (context.markets && withShopMarkets(loaded.config, context.markets).changed) {
       // F12: re-saved only on top of the config just read; another writer in between → read again.
-      const saved = await saveAndSync({ ...args, input: loaded.config, expectedVersion: loaded.version });
-      if (saved.sync) return { ...saved.sync, warnings: [...warnings, "Shopify market countries changed; the config was saved again with them"] };
+      const saved = await saveAndSync({ ...args, input: loaded.config, expectedVersion: loaded.version, shopMarkets: context.markets });
+      if (saved.sync) return { ...saved.sync, warnings: [...warnings, "Shopify markets changed; the config was saved again with them"] };
       if (!saved.save.ok && saved.save.reason === "base_changed" && retries > 0) return resyncStored(args, retries - 1);
       warnings.push(
-        `Shopify market countries changed but the updated config could not be saved (${saved.save.ok ? "" : saved.save.reason}); synced with the saved countries`,
+        `Shopify markets changed but the updated config could not be saved (${saved.save.ok ? "" : saved.save.reason}); synced with the saved markets`,
       );
     }
   }
@@ -295,7 +315,7 @@ export interface ResyncIfPendingArgs extends Common {
   minIntervalMs?: number;
   /** The shop's IANA zone as the page just read it: a different zone than the last sync used → resync (item 12). */
   timezone?: string | null;
-  /** Compare Shopify market countries with the config (at most every MARKETS_CHECK_INTERVAL_MS; needs read_markets). */
+  /** Compare the Shopify markets with the config (at most every MARKETS_CHECK_INTERVAL_MS; needs read_markets). */
   checkMarkets?: boolean;
   productWrites?: "inline" | "background";
 }
@@ -314,15 +334,28 @@ export interface ResyncIfPendingArgs extends Common {
  *     config (no storefront step), at most once per `minIntervalMs` when its
  *     write failed (a later run — a products-only refresh — may be ok);
  *   - the shop's time zone changed since the last sync (rule days move);
- *   - Shopify's market countries changed (market-targeted configs).
+ *   - the shop's Shopify markets changed: a market was added, switched on or
+ *     off, changed its currency or its countries (T1). A shop that has saved
+ *     nothing yet gets its first config here, the defaults with its markets,
+ *     so the very first form already asks for every market currency.
  */
 export async function resyncIfPending(args: ResyncIfPendingArgs): Promise<ResyncIfPendingResult> {
   const now = (args.now ?? (() => new Date()))();
-  const resync = async (why: ResyncReason): Promise<ResyncIfPendingResult> => ({ resynced: true, why, result: await resyncShop(args) });
+  const resync = async (why: ResyncReason): Promise<ResyncIfPendingResult> => ({
+    resynced: true,
+    why,
+    result: await resyncShop(why === "markets" ? { ...args, markets: "always" } : args),
+  });
   const status = await loadSyncStatus(args.db, args.shop);
   if (!status) {
     const loaded = await loadConfig(args.db, args.shop);
-    if (!loaded.exists) return { resynced: false, reason: "nothing_saved" };
+    if (!loaded.exists) {
+      if (args.checkMarkets && canReadMarkets(args.grantedScopes)) {
+        const first = await saveFirstMarkets(args, loaded, now);
+        if (first) return { resynced: true, why: "markets", result: first };
+      }
+      return { resynced: false, reason: "nothing_saved" };
+    }
     return resync("never_synced");
   }
   if (!status.ok || status.pending.length > 0) {
@@ -349,15 +382,46 @@ export async function resyncIfPending(args: ResyncIfPendingArgs): Promise<Resync
   if (args.timezone && facts.timezone && args.timezone !== facts.timezone) return resync("timezone");
   if (args.checkMarkets && canReadMarkets(args.grantedScopes)) {
     const due = !facts.marketsCheckedAt || now.getTime() - facts.marketsCheckedAt.getTime() >= MARKETS_CHECK_INTERVAL_MS;
-    if (due && (await marketCountriesChanged(args, now))) return resync("markets");
+    if (due && (await shopMarketsChanged(args, now))) return resync("markets");
   }
   return { resynced: false, reason: "up_to_date" };
 }
 
-/** Shopify's market countries differ from the stored config's (only for configs that target a market). */
-async function marketCountriesChanged(args: Common, now: Date): Promise<boolean> {
+/**
+ * A shop that has saved nothing yet (T1): at most once per MARKETS_CHECK_INTERVAL_MS its
+ * Shopify markets are read and, when there are any, the default config is saved with them
+ * (and synced like any first save). Null = nothing was saved (no markets, unreadable, raced).
+ */
+async function saveFirstMarkets(
+  args: ResyncIfPendingArgs,
+  loaded: { config: ConfigView; version: string | null; unreadable: boolean; readOnly: boolean },
+  now: Date,
+): Promise<ResyncResult | null> {
+  if (loaded.unreadable || loaded.readOnly) return null;
+  const facts = await loadShopSyncFacts(args.db, args.shop);
+  if (facts.marketsCheckedAt && now.getTime() - facts.marketsCheckedAt.getTime() < MARKETS_CHECK_INTERVAL_MS) return null;
+  let markets: ShopMarket[];
+  try {
+    markets = await loadShopMarkets(new Transport(args.client, undefined, undefined, args.logger ?? consoleSyncLogger));
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    return null;
+  }
+  try {
+    await recordMarketsChecked(args.db, args.shop, now);
+  } catch {
+    // bookkeeping only
+  }
+  const merged = withShopMarkets(loaded.config, markets);
+  if (merged.added.length === 0) return null;
+  const saved = await saveAndSync({ ...args, input: merged.config, expectedVersion: loaded.version, shopMarkets: markets });
+  return saved.sync ? { ...saved.sync, warnings: saved.warnings } : null;
+}
+
+/** The shop's Shopify markets differ from the stored config's (handles, currency, status, countries). */
+async function shopMarketsChanged(args: Common, now: Date): Promise<boolean> {
   const loaded = await loadConfig(args.db, args.shop);
-  if (!loaded.exists || loaded.unreadable || loaded.readOnly || !targetsMarkets(loaded.config)) return false;
+  if (!loaded.exists || loaded.unreadable || loaded.readOnly) return false;
   let markets: ShopMarket[];
   try {
     markets = await loadShopMarkets(new Transport(args.client, undefined, undefined, args.logger ?? consoleSyncLogger));
@@ -370,7 +434,7 @@ async function marketCountriesChanged(args: Common, now: Date): Promise<boolean>
   } catch {
     // bookkeeping only
   }
-  return withMarketCountries(loaded.config, markets).changed;
+  return withShopMarkets(loaded.config, markets).changed;
 }
 
 // --- Thin wrappers for routes (the embedded admin object) -----------------------

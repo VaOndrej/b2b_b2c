@@ -122,6 +122,59 @@ test("item 12: changed Shopify market countries trigger a resync that saves them
   assert.deepEqual((await loadConfig(db.prisma, shop)).config.markets[0]!.countries, ["CZ", "SK"]);
 });
 
+test("T1: a shop that saved nothing gets its Shopify markets on the first Přehled check; a market added later is picked up within the hour", async () => {
+  const fake = new FakeShopify();
+  fake.markets = [
+    { handle: "cz", name: "Česko", status: "ACTIVE", currency: "CZK", countries: ["CZ"] },
+    { handle: "sk", name: "Slovensko", status: "ACTIVE", currency: "EUR", countries: ["SK"] },
+  ];
+  let clock = NOW.getTime();
+  const now = () => new Date(clock);
+  const args = () => ({ client: fake, db: db.prisma, shop, createSync: realSync("free", now), now });
+
+  // Without the check (any page but the Přehled) and without the scope nothing is read or saved.
+  assert.deepEqual(await resyncIfPending(args()), { resynced: false, reason: "nothing_saved" });
+  assert.deepEqual(await resyncIfPending({ ...args(), checkMarkets: true, grantedScopes: "read_products" }), { resynced: false, reason: "nothing_saved" });
+  assert.equal(fake.callsOf("WonSyncMarkets").length, 0);
+  assert.equal((await loadConfig(db.prisma, shop)).exists, false);
+
+  const first = await resyncIfPending({ ...args(), checkMarkets: true });
+  assert.equal(first.resynced && first.why, "markets");
+  assert.equal(first.resynced && first.result.ok, true);
+  const stored = await loadConfig(db.prisma, shop);
+  assert.deepEqual(stored.config.markets, [
+    { handle: "cz", currency: "CZK", enabled: true, countries: ["CZ"] },
+    { handle: "sk", currency: "EUR", enabled: true, countries: ["SK"] },
+  ]);
+  assert.deepEqual(stored.config.modules.codes.rules, [], "nothing but the markets was added to the defaults");
+
+  // Hungary is added in Shopify and Slovakia switched off: the next hourly check saves both, although no rule targets a market.
+  fake.markets.push({ handle: "hu", name: "Maďarsko", status: "ACTIVE", currency: "HUF", countries: ["HU"] });
+  fake.markets[1]!.status = "DRAFT";
+  clock += 10 * 60_000;
+  assert.deepEqual(await resyncIfPending({ ...args(), checkMarkets: true }), { resynced: false, reason: "up_to_date" }, "checked less than an hour ago");
+  clock += 60 * 60_000;
+  const later = await resyncIfPending({ ...args(), checkMarkets: true });
+  assert.equal(later.resynced && later.why, "markets");
+  assert.deepEqual(
+    (await loadConfig(db.prisma, shop)).config.markets.map((m) => [m.handle, m.currency, m.enabled]),
+    [
+      ["cz", "CZK", true],
+      ["sk", "EUR", false],
+      ["hu", "HUF", true],
+    ],
+  );
+  clock += 61 * 60_000;
+  assert.deepEqual(await resyncIfPending({ ...args(), checkMarkets: true }), { resynced: false, reason: "up_to_date" }, "nothing changed: no save");
+});
+
+test("T1: a shop whose Shopify has no market (or cannot be read) still saves nothing on the check", async () => {
+  const fake = new FakeShopify();
+  const args = { client: fake, db: db.prisma, shop, createSync: realSync("free"), now: () => NOW, checkMarkets: true };
+  assert.deepEqual(await resyncIfPending(args), { resynced: false, reason: "nothing_saved" });
+  assert.equal((await loadConfig(db.prisma, shop)).exists, false);
+});
+
 test("item 9: without read_markets (known from the session) markets are never read; the save says so", async () => {
   const fake = new FakeShopify();
   fake.markets = [{ handle: "cz", name: "Česko", status: "ACTIVE", currency: "CZK", countries: ["CZ"] }];

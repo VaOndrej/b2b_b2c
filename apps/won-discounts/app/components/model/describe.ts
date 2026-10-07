@@ -237,6 +237,11 @@ export interface RuleWarning {
  * target field. `enabledMarkets` (handles) adds `marketOff` — a rule limited to
  * markets that are all switched off (B3); without it that check is skipped.
  */
+/** How many warnings each rule has (same order as `rules`): what the Slevy a kódy tile counts next to stopped rules (N4). */
+export function warningCounts(rules: readonly { id: string }[], warnings: readonly RuleWarning[]): number[] {
+  return rules.map((rule) => warnings.filter((w) => w.ruleId === rule.id).length);
+}
+
 export function collectWarnings(
   rules: readonly DiscountRule[],
   currencies: readonly string[],

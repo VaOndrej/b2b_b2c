@@ -23,7 +23,9 @@ import { ruleStatus } from "../../components/model/rule-status";
 import { resolveRuleCodes } from "../../components/model/try-cart-form";
 import type { GateNoteView, NativeView, UiResult } from "../../components/model/types";
 import { buildDiscountsProps } from "../../components/screens/DiscountsScreen";
-import { buildOnboardingProps } from "../../components/screens/OnboardingScreen";
+import { rewardsStatus } from "../../components/model/module-status";
+import { buildOnboardingProps, rewardsStored } from "../../components/screens/OnboardingScreen";
+import { rewardsOverviewOf } from "./rewards.server";
 import { buildOverviewProps } from "../../components/screens/OverviewScreen";
 import { buildRuleEditorProps } from "../../components/screens/RuleEditorScreen";
 import { buildTryCartProps } from "../../components/screens/TryCartScreen";
@@ -365,7 +367,23 @@ export async function onboardingPage(ctx: ShopCtx, opts: PageOptions & { fresh: 
     // "Všechno je aktivní" comes from the discounts' real statuses, never from how many there are (B16).
     rules.length > 0 ? liveRuleCount(ctx, loaded, shopContext).catch(() => 0) : Promise.resolve(0),
   ]);
-  return buildOnboardingProps(loaded.config, { native: signals.native, embed: signals.embed, readOnly: loaded.readOnly, liveRules });
+  // N1: a stored reward finishes step 4 too; it is "live" by the same function as its tile (model/module-status.ts).
+  const plan = await ctxPlan(ctx);
+  const rewardsLive = rewardsStored(loaded.config)
+    ? await loadSyncView(ctx, loaded, shopContext.timezone)
+        .then((sync) => rewardsStatus(rewardsOverviewOf(loaded.config, plan, shopContext.currencyCode || ""), sync).state === "active")
+        .catch(() => false)
+    : false;
+  return buildOnboardingProps(loaded.config, {
+    native: signals.native,
+    embed: signals.embed,
+    readOnly: loaded.readOnly,
+    liveRules,
+    rewardsLive,
+    plan,
+    // N11: the store itself is how a Free shop sees its discounts work.
+    storeUrl: `https://${ctx.shop}`,
+  });
 }
 
 /** How many discounts really run right now: the same judgement as the list and Přehled (model/rule-status "live"). */

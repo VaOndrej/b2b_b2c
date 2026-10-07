@@ -74,17 +74,16 @@ api_version = "2026-10"
 #   inventoryItem.unitCost, inventory_items/update webhooks — both covered by
 #   read_products, no read_inventory) and, from MVP 5, outlet price / compare-at changes.
 # - read_themes: app-embed auto-detection (onboarding step 3, embed-status pattern).
-# Optional (requested after install, only when needed — API-1, MVP 1 audit P3-2):
-# - read_markets: Pro market targeting — the sync reads each Shopify market's
-#   countries (`markets { conditions.regionsCondition.regions }`) into the shared
-#   function config (`marketCountries`), app/lib/sync/markets.ts; the admin shows
-#   market names. Requested with App Bridge `shopify.scopes.request` when the
-#   merchant picks a market in the editor's Pro section; without it the sync
-#   keeps the saved countries and the admin shows market handles. Read only.
+# - read_markets: the shop's markets and their currencies (audit 6 Oct 2026, T1) —
+#   the admin asks for every amount per market currency (MKT-1), so the app reads
+#   the Shopify markets into its config (app/lib/sync/markets.ts) and shows their
+#   names. Pro market targeting reads each market's countries from the same query
+#   (`markets { conditions.regionsCondition.regions }`) into the shared function
+#   config (`marketCountries`). Read only. Was optional until 6 Oct 2026; an
+#   install from before grants it on the next open of the app.
 # Later MVPs add read_orders (outlet quota, analytics — protected customer data),
 # price lists (MVP 4–5). Do not add scopes "for later".
-scopes = "write_discounts,read_products,write_products,read_themes"
-optional_scopes = [ "read_markets" ]
+scopes = "write_discounts,read_products,write_products,read_themes,read_markets"
 
 [app_proxy]
 url = "https://example.com/won-discounts"

@@ -1,9 +1,11 @@
-// Shopify Markets → `config.markets[].countries` (Pro market targeting: the
-// engine matches the cart's country against each targeted market's countries,
-// shipped in the shop payload as `marketCountries`).
+// Shopify Markets → `config.markets` (audit 6 Oct 2026, T1): the shop's markets
+// with their currency and status, so the admin asks for an amount per market
+// currency (MKT-1), and their countries (Pro market targeting: the engine
+// matches the cart's country against each targeted market's countries, shipped
+// in the shop payload as `marketCountries`).
 //
-// Countries are resolved at SAVE time (I2): saveAndSync reads the markets once
-// when the config targets a market, merges their countries into the config
+// Markets are resolved at SAVE time (I2): saveAndSync reads the markets once
+// when the config targets a market or knows no market yet, merges them into the config
 // BEFORE saveConfig measures the function budget, and saves them. The sync
 // never swaps countries, so what was measured is exactly what ships — no
 // accepted save can fail the sync budget. resyncShop refreshes them through
@@ -12,7 +14,8 @@
 // Cost (I1): Shopify refuses a query whose REQUESTED cost exceeds 1 000 points
 // (connection = 2 + first × node cost). markets(first: 50) × regions(first:
 // 250) requested ~12 500, so markets are paged 10 at a time without regions,
-// and each market's countries are paged 50 at a time. read_markets scope.
+// and each market's countries are paged 50 at a time. read_markets scope
+// (required since the audit of 6 Oct 2026).
 
 import type { AdminClient } from "../admin-client.server";
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
@@ -98,26 +101,50 @@ export function targetsMarkets(config: ConfigView): boolean {
 }
 
 /**
- * A copy of `config` whose markets carry the countries Shopify has for the same
- * handle. Markets Shopify does not know keep what was saved and are reported in
- * `missing`; `changed` = some market's countries differ from the config's.
+ * A copy of `config` whose markets are the shop's Shopify markets (MKT-1: the
+ * admin asks for an amount per market currency, so it has to know the markets).
+ * A market the config already has keeps its place and takes Shopify's currency,
+ * countries and status (`enabled` = ACTIVE in Shopify; Won has no switch of its
+ * own). A Shopify market the config does not know is added, an inactive one as
+ * disabled. Markets Shopify does not know keep what was saved and are reported
+ * in `missing`; `added` = the handles that are new; `changed` = the list differs
+ * from the config's.
  */
-export function withMarketCountries<C extends ConfigView>(
+export function withShopMarkets<C extends ConfigView>(
   config: C,
   markets: readonly ShopMarket[],
-): { config: C; missing: string[]; changed: boolean } {
+): { config: C; missing: string[]; added: string[]; changed: boolean } {
   const byHandle = new Map(markets.map((m) => [m.handle, m]));
   const missing: string[] = [];
-  let changed = false;
+  const added: string[] = [];
+  const validCurrency = (code: string | null): code is string => typeof code === "string" && /^[A-Z]{3}$/.test(code);
   const merged = config.markets.map((market) => {
     const shopMarket = byHandle.get(market.handle);
     if (!shopMarket) {
       missing.push(market.handle);
       return market;
     }
-    const countries = shopMarket.countries.slice(0, CONFIG_LIMITS.listItems);
-    if ((market.countries ?? []).join(",") !== countries.join(",")) changed = true;
-    return { ...market, countries };
+    return {
+      ...market,
+      currency: validCurrency(shopMarket.currency) ? shopMarket.currency : market.currency,
+      enabled: shopMarket.active,
+      countries: shopMarket.countries.slice(0, CONFIG_LIMITS.listItems),
+    };
   });
-  return { config: { ...config, markets: merged }, missing, changed };
+  const known = new Set(config.markets.map((m) => m.handle));
+  for (const shopMarket of markets) {
+    if (known.has(shopMarket.handle) || !shopMarket.handle || !validCurrency(shopMarket.currency)) continue;
+    if (merged.length >= CONFIG_LIMITS.markets) break;
+    known.add(shopMarket.handle);
+    added.push(shopMarket.handle);
+    merged.push({
+      handle: shopMarket.handle,
+      currency: shopMarket.currency,
+      enabled: shopMarket.active,
+      countries: shopMarket.countries.slice(0, CONFIG_LIMITS.listItems),
+    });
+  }
+  const shape = (list: readonly ConfigView["markets"][number][]) =>
+    JSON.stringify(list.map((m) => [m.handle, m.currency, m.enabled, m.countries ?? null]));
+  return { config: { ...config, markets: merged }, missing, added, changed: shape(merged) !== shape(config.markets) };
 }

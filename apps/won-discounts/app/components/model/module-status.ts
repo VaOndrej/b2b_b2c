@@ -71,36 +71,44 @@ export function moduleStateLabel(state: ModuleState, tr: Translator): string {
 
 // --- The six modules --------------------------------------------------------------------------------------------
 
-/** Slevy a kódy, from the rules' own statuses (model/rule-status.ts already knows the per-rule sync facts). */
-export function codesStatus(rules: readonly RuleStatus[]): ModuleStatus {
-  const issues = rules.filter(needsAttention).length;
+/**
+ * Slevy a kódy, from the rules' own statuses (model/rule-status.ts already knows the per-rule sync facts).
+ * `warned[i]` = how many warnings rule `i` has on the home page's "Vyžaduje pozornost" (a discount that runs but is
+ * not offered in one currency is a warning without being a stopped rule): the tile and that list count the same
+ * things (audit 6 Oct 2026, N4).
+ */
+export function codesStatus(rules: readonly RuleStatus[], warned: readonly number[] = []): ModuleStatus {
+  const issues = rules.reduce((sum, rule, i) => sum + Math.max(warned[i] ?? 0, needsAttention(rule) ? 1 : 0), 0);
   if (rules.some(runsNow)) return { state: "active", issues };
   return { state: issues > 0 ? "attention" : "inactive", issues };
 }
 
 /** The section "Množstevní sleva pro celý obchod". */
 export function tiersGlobalStatus(tiers: TiersOverviewView, sync: SyncView): ModuleStatus {
-  return moduleState({ on: tiers.global !== null && tiers.global.breaks.length > 0, written: writtenOf(sync) });
+  // A level without an amount in a market's currency is not offered there (MKT-1): something to resolve (N2).
+  return moduleState({ on: tiers.global !== null && tiers.global.breaks.length > 0, written: writtenOf(sync), issues: (tiers.missing?.global ?? []).length > 0 ? 1 : 0 });
 }
 
 /** The section "Výjimky pro produkty a kolekce" (Pro; `tiers.sets` is what the plan runs). */
 export function tiersSetsStatus(tiers: TiersOverviewView, sync: SyncView, plan: "free" | "pro"): ModuleStatus {
-  return moduleState({ on: tiers.sets > 0, planRuns: plan === "pro", written: writtenOf(sync) });
+  return moduleState({ on: tiers.sets > 0, planRuns: plan === "pro", written: writtenOf(sync), issues: (tiers.missing?.sets ?? []).length });
 }
 
 export function tiersStatus(tiers: TiersOverviewView, sync: SyncView): ModuleStatus {
   const on = (tiers.global !== null && tiers.global.breaks.length > 0) || tiers.sets > 0;
   // The discount applies at checkout without the table; a missing table is something to resolve.
-  return moduleState({ on, written: writtenOf(sync), issues: on && tiers.block.state === "off" ? 1 : 0 });
+  const missing = ((tiers.missing?.global ?? []).length > 0 ? 1 : 0) + (tiers.missing?.sets ?? []).length;
+  return moduleState({ on, written: writtenOf(sync), issues: (on && tiers.block.state === "off" ? 1 : 0) + missing });
 }
 
 export function rewardsShippingStatus(rewards: RewardsOverviewView, sync: SyncView): ModuleStatus {
-  return moduleState({ on: rewards.shipping !== null, written: writtenOf(sync) });
+  // Free shipping without an amount in a market's currency is not offered there (MKT-1): something to resolve (N2).
+  return moduleState({ on: rewards.shipping !== null, written: writtenOf(sync), issues: (rewards.missing?.shipping ?? []).length > 0 ? 1 : 0 });
 }
 
 export function rewardsGiftStatus(rewards: RewardsOverviewView, sync: SyncView): ModuleStatus {
-  // A threshold without an amount in the shop currency is not offered there (MKT-1).
-  const missing = rewards.gifts.filter((g) => g === null).length;
+  // A gift without an amount in the currency of some enabled market is not offered there (MKT-1; N2: every market, not only the shop's).
+  const missing = rewards.gifts.filter((g, i) => g === null || (rewards.missing?.gifts[i] ?? []).length > 0).length;
   return moduleState({ on: rewards.gifts.some((g) => g !== null), written: writtenOf(sync), issues: missing });
 }
 
@@ -149,10 +157,13 @@ export function marginStatus(margin: MarginOverviewView, sync: SyncView): Module
 }
 
 /** Every module the signals know (absent view = not known: no status, never a guess — §12). */
-export function moduleStatuses(signals: AdminSignals, opts: { plan: "free" | "pro"; rules: readonly RuleStatus[] }): Partial<Record<ModuleKey, ModuleStatus>> {
+export function moduleStatuses(
+  signals: AdminSignals,
+  opts: { plan: "free" | "pro"; rules: readonly RuleStatus[]; warned?: readonly number[] },
+): Partial<Record<ModuleKey, ModuleStatus>> {
   const { sync } = signals;
   return {
-    codes: codesStatus(opts.rules),
+    codes: codesStatus(opts.rules, opts.warned),
     ...(signals.tiers ? { tiers: tiersStatus(signals.tiers, sync) } : {}),
     ...(signals.rewards ? { rewards: rewardsStatus(signals.rewards, sync) } : {}),
     ...(signals.outlet ? { outlet: outletStatus(signals.outlet, opts.plan) } : {}),

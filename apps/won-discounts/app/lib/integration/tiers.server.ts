@@ -23,7 +23,7 @@ import type { DiscountRule, TierSet, WonDiscountsConfig } from "@won/core/discou
 import { explainGate, gateConfigForPlan, type ProCapability } from "@won/core/discounts/plan-gate";
 
 import { presetOf, readAppearanceForm } from "../../components/model/appearance";
-import { currencyCodes, currencyViews } from "../../components/model/markets";
+import { currenciesWithoutAmount, currencyCodes, currencyViews, enabledCurrencies } from "../../components/model/markets";
 import type { FormDataLike } from "../../components/model/rule-form";
 import { readTiersForm, tierPayloadUse, tierSetToConfig, tierSetView, TIERS_FIELD, TIERS_INTENT } from "../../components/model/tiers";
 import { tiersGlobalStatus, tiersSetsStatus } from "../../components/model/module-status";
@@ -351,9 +351,17 @@ export function tiersOverviewOf(config: WonDiscountsConfig, plan: "free" | "pro"
   const gated = gateConfigForPlan(config, plan).config;
   const withTiers = gated.modules.tiers.sets.filter((s) => s.breaks.length > 0);
   const global = withTiers.find((s) => s.scope === "global") ?? null;
+  // N2: a level with an amount per piece and no amount in the currency of an enabled market is not offered there.
+  const currencies = enabledCurrencies(config.markets);
+  const missingOf = (set: TierSet) => currenciesWithoutAmount(set.breaks.flatMap((b) => (b.amountOff ? [b.amountOff] : [])), currencies);
+  const missing = {
+    global: global ? missingOf(global) : [],
+    sets: withTiers.filter((s) => s.scope !== "global").map(missingOf).filter((codes) => codes.length > 0),
+  };
   return {
     sets: withTiers.filter((s) => s.scope !== "global").length,
     global: global ? tierSetView(global, new Map()) : null,
     block,
+    ...(missing.global.length > 0 || missing.sets.length > 0 ? { missing } : {}),
   };
 }

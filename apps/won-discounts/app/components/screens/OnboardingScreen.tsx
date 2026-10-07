@@ -45,15 +45,43 @@ export interface OnboardingScreenProps {
   embed: EmbedView;
   readOnly: boolean;
   result?: UiResult | null;
+  /**
+   * Odměny (free shipping / a gift): nothing stored, stored, or running. With the goal "Doprava zdarma nebo dárek"
+   * step 4 leads to that page and a stored reward finishes it like a first discount does (audit 6 Oct 2026, N1).
+   */
+  rewards?: "none" | "set" | "live";
+  /** The plan in force: on Free the last step offers the store itself, not the Pro cart test (N11). Absent = not known. */
+  plan?: "free" | "pro";
+  /** The storefront's address, for "Otevřít obchod". */
+  storeUrl?: string | null;
+}
+
+/** Free shipping or a gift is stored (whatever the plan runs of it). */
+export function rewardsStored(config: WonDiscountsConfig): boolean {
+  return config.modules.rewards.freeShipping !== undefined || config.modules.rewards.gifts.length > 0;
 }
 
 export function buildOnboardingProps(
   config: WonDiscountsConfig,
-  opts: { native: NativeView; embed: EmbedView; readOnly: boolean; result?: UiResult | null; liveRules?: number },
+  opts: {
+    native: NativeView;
+    embed: EmbedView;
+    readOnly: boolean;
+    result?: UiResult | null;
+    liveRules?: number;
+    rewardsLive?: boolean;
+    plan?: "free" | "pro";
+    storeUrl?: string | null;
+  },
 ): OnboardingScreenProps {
   const rules = config.modules.codes.rules.length;
+  const rewards = !rewardsStored(config) ? "none" : opts.rewardsLive ? "live" : "set";
   return {
-    step: onboardingStep(config.onboarding.step, { embedOn: opts.embed.state === "on", rules, hasNative: onboardingHasNative(opts.native) }),
+    // N1: a stored reward is a first discount too.
+    step: onboardingStep(config.onboarding.step, { embedOn: opts.embed.state === "on", rules: rules + (rewards === "none" ? 0 : 1), hasNative: onboardingHasNative(opts.native) }),
+    rewards,
+    ...(opts.plan ? { plan: opts.plan } : {}),
+    ...(opts.storeUrl ? { storeUrl: opts.storeUrl } : {}),
     rules,
     liveRules: Math.min(rules, opts.liveRules ?? 0),
     goals: [...config.onboarding.goals],
@@ -108,9 +136,12 @@ export function firstRecipe(goals: readonly OnboardingGoal[]): RecipeKey {
   return goals.includes("rewards") ? "freeShipping" : "percentAll";
 }
 
+/** N1: Odměny with the free-shipping switch on and its amounts prefilled (RewardsScreen reads `start`). */
+export const REWARDS_FIRST_HREF = "/app/rewards?start=shipping#shipping";
+
 const RECHECK_MIN_MS = 3000;
 
-export function OnboardingScreen({ step, rules, liveRules = 0, goals, native, embed, readOnly, result }: OnboardingScreenProps) {
+export function OnboardingScreen({ step, rules, liveRules = 0, goals, native, embed, readOnly, result, rewards = "none", plan, storeUrl }: OnboardingScreenProps) {
   const tr = useT();
   const { t } = tr;
   const embedOn = embed.state === "on";
@@ -118,8 +149,11 @@ export function OnboardingScreen({ step, rules, liveRules = 0, goals, native, em
   const steps = onboardingSteps(hasNative);
   /** "3. Zapnout na webu": the position among the steps shown. */
   const numbered = (id: number, key: MessageKey) => `${steps.indexOf(id) + 1}. ${t(key)}`;
-  const running = liveRules > 0;
+  const running = liveRules > 0 || rewards === "live";
   const allDone = embedOn && running;
+  // N1: the goal "Doprava zdarma nebo dárek" is set up in Odměny, not by a discount recipe.
+  const rewardsGoal = goals.includes("rewards");
+  const first = rules > 0 || rewards !== "none";
 
   // "Aplikace sama pozná, že je zapnuto": when the merchant comes back from the
   // theme editor tab, re-read the embed state bypassing the short theme cache
@@ -151,7 +185,8 @@ export function OnboardingScreen({ step, rules, liveRules = 0, goals, native, em
 
   const goalsSummary =
     goals.length === 0 ? t("onboarding.goals.none") : t("onboarding.goals.picked", { goals: tr.list(goals.map((g) => t(GOAL_KEYS[g]))) });
-  const firstSummary = rules === 0 ? t("onboarding.first.none") : running ? tr.tp("onboarding.first.done", rules) : `${tr.tp("onboarding.first.done", rules)}. ${t("onboarding.first.notLive")}`;
+  const firstDone = rules === 0 ? t("onboarding.first.rewards.done") : tr.tp("onboarding.first.done", rules);
+  const firstSummary = !first ? t("onboarding.first.none") : running ? firstDone : `${firstDone}. ${t("onboarding.first.notLive")}`;
 
   /** "Pokračovat" / "Přeskočit": stores the step the guide goes on with. */
   const stepForm = (next: number, label: string, variant: "primary" | "secondary" | "tertiary") => (
@@ -277,13 +312,25 @@ export function OnboardingScreen({ step, rules, liveRules = 0, goals, native, em
           glyph="tag"
           summary={firstSummary}
           // Green only when a discount really runs (rule statuses), not when one merely exists.
-          on={rules > 0 ? running : false}
+          on={first ? running : false}
           collapsible
           defaultOpen={step === 4}
           anchor="first"
         >
           <s-stack direction="block" gap="base">
-            <s-text color="subdued">{t("onboarding.first.body")}</s-text>
+            {rewardsGoal ? (
+              <div data-won-onboarding-rewards>
+                <s-stack direction="block" gap="small-200">
+                  <s-text>{t("onboarding.first.rewards.body")}</s-text>
+                  <div>
+                    <s-button href={REWARDS_FIRST_HREF} variant="primary">
+                      {t("onboarding.first.rewards.cta")}
+                    </s-button>
+                  </div>
+                </s-stack>
+              </div>
+            ) : null}
+            <s-text color="subdued">{t(rewardsGoal ? "onboarding.first.rewards.or" : "onboarding.first.body")}</s-text>
             <RecipeGrid />
           </s-stack>
         </WonSection>
@@ -292,7 +339,8 @@ export function OnboardingScreen({ step, rules, liveRules = 0, goals, native, em
           key={`done-${step}`}
           title={numbered(5, "onboarding.done.title")}
           glyph="check"
-          summary={t(allDone ? "onboarding.done.all" : "onboarding.done.left")}
+          // "Všechno je aktivní" only when every discount runs; with some stopped the line says what does work (N12).
+          summary={t(!allDone ? "onboarding.done.left" : liveRules < rules ? "overview.status.allGood" : "onboarding.done.all")}
           on={allDone}
           collapsible
           defaultOpen={step === 5}
@@ -315,11 +363,15 @@ export function OnboardingScreen({ step, rules, liveRules = 0, goals, native, em
             </WonRow>
             <WonRow
               action={
-                rules === 0 ? (
-                  <s-button href={recipeHref(firstRecipe(goals))} variant="secondary">
-                    {t("onboarding.finish")}
+                !first ? (
+                  <s-button href={rewardsGoal ? REWARDS_FIRST_HREF : recipeHref(firstRecipe(goals))} variant="secondary">
+                    {t(rewardsGoal ? "onboarding.first.rewards.cta" : "onboarding.finish")}
                   </s-button>
-                ) : running ? undefined : (
+                ) : running ? undefined : rules === 0 ? (
+                  <s-button href="/app/rewards" variant="secondary">
+                    {t("nav.rewards")}
+                  </s-button>
+                ) : (
                   // A discount exists but none runs: the list says why for each one.
                   <s-button href="/app/discounts" variant="secondary">
                     {t("result.action.showDiscounts")}
@@ -328,21 +380,44 @@ export function OnboardingScreen({ step, rules, liveRules = 0, goals, native, em
               }
             >
               <RowNote tone={running ? undefined : "attention"}>
-                {rules === 0 ? t("onboarding.check.first.off") : running ? tr.tp("onboarding.check.live", liveRules) : t("onboarding.check.first.notLive")}
+                {!first
+                  ? t("onboarding.check.first.off")
+                  : rules === 0
+                    ? t(rewards === "live" ? "onboarding.check.rewards.live" : "onboarding.check.rewards.set")
+                    : liveRules === 0
+                      ? t("onboarding.check.first.notLive")
+                      : liveRules < rules
+                        ? // N12: the same numbers as the Slevy a kódy tile ("6 slev · 3 aktivní"), never "6 are active".
+                          t("onboarding.check.liveOf", { live: liveRules, total: rules })
+                        : tr.tp("onboarding.check.live", liveRules)}
               </RowNote>
+              {rules > 0 && rewards !== "none" ? <RowNote>{t(rewards === "live" ? "onboarding.check.rewards.live" : "onboarding.check.rewards.set")}</RowNote> : null}
             </WonRow>
-            <WonRow
-              action={
-                <s-button href="/app/try-cart" variant="secondary">
-                  {t("nav.tryCart")}
-                </s-button>
-              }
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <RowNote>{t("onboarding.check.tryCart")}</RowNote>
-                <PlanBadge tier="pro" />
-              </div>
-            </WonRow>
+            {/* N11: the cart test is Pro. On Free the way to see the discounts work is the store itself. */}
+            {plan === "free" && storeUrl ? (
+              <WonRow
+                action={
+                  <s-button href={storeUrl} target="_blank" variant="secondary">
+                    {t("onboarding.check.store.open")}
+                  </s-button>
+                }
+              >
+                <RowNote>{t("onboarding.check.store")}</RowNote>
+              </WonRow>
+            ) : (
+              <WonRow
+                action={
+                  <s-button href="/app/try-cart" variant="secondary">
+                    {t("nav.tryCart")}
+                  </s-button>
+                }
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <RowNote>{t("onboarding.check.tryCart")}</RowNote>
+                  {plan === "pro" ? null : <PlanBadge tier="pro" />}
+                </div>
+              </WonRow>
+            )}
             <WonRow
               action={
                 <s-button href="/app" variant={allDone ? "primary" : "secondary"}>
