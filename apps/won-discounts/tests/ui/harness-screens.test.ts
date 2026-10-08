@@ -117,11 +117,65 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /Black Friday · 27\. 11\. 2026 00:00 – 30\. 11\. 2026 23:59 · mění: 2 slevy a 1 množstevní slevu/,
     ],
   },
-  // Vzhled (MVP 7): the custom look (locked amber on Free), card prices BETA, the AI brief.
-  // Překlady: a table per language with human names, the default text and the merchant's own; Free's limit and the Pro CSV in amber.
+  // The table's look (MVP 7): the custom look (locked amber on Free), card prices BETA, the AI brief.
   { path: "tiers", expect: [/Vlastní vzhled tabulky/, /V Pro sladíte tabulku s webem: vlastní barvy, zaoblení rohů a vlastní CSS/, /href="\/app\/plan"/, /Ceny podle množství na kartách produktů · BETA/, /Zkopírovat zadání pro AI/, /data-won-ai-prompt="tiers"/] },
   { path: "tiers?plan=pro&state=custom", expect: [/Vlastní barvy nebo CSS jsou nastavené/, /Zapnuto: karty ukazují první úroveň/, /Přidat prvek do karty produktu/, /--won-tiers-accent/, /data-won-custom-look=""/, /Platí jen uvnitř tabulky/] },
   { path: "tiers?plan=pro&state=issue", expect: [/Uložené vlastní CSS nejde použít/] },
+  // Překlady: a table per language with human names, the default text and the merchant's own; Free's limit and the Pro CSV in amber.
+  {
+    path: "translations",
+    expect: [
+      /<s-page heading="Překlady"/,
+      /čeština · výchozí jazyk obchodu/,
+      /slovenština/,
+      /Upravených textů: 3/,
+      /Upravených textů: 1/,
+      // Grouped by where the text shows; a row = its place, the extension's text, the merchant's own.
+      /data-won-text-group="tiers"[\s\S]*data-won-text-group="milestones"[\s\S]*data-won-text-group="cart"[\s\S]*data-won-text-group="outlet"[\s\S]*data-won-text-group="campaigns"[\s\S]*data-won-text-group="cards"/,
+      /Nadpis tabulky<\/div><div data-won-text-default="true"[^>]*>Množstevní sleva<\/div>/,
+      /name="tx\.cs\.tiers\.heading"[^>]*value="Kup víc, plať míň"/,
+      /name="tx\.sk\.tiers\.heading"[^>]*value="Kúp viac, zaplať menej"/,
+      // A Milníky discount step's own name is a row, named by the step.
+      /Vlastní název odměny: Sleva 5[\s\u00a0]% od 2[\s\u00a0]000[\s\u00a0]Kč/,
+      /name="tx\.cs\.cart\.ms_name\.ms-five"[^>]*value="Věrnostní sleva \{value\}"/,
+      // Free at its two languages: the next one is Pro's, said in amber with the way to it; so is the CSV.
+      /Ve Free přeložíte texty do výchozího jazyka a jednoho dalšího/,
+      /V Pro si texty stáhnete do tabulky/,
+      /href="\/app\/plan"/,
+    ],
+  },
+  // Kontrola kombinací (bod 16): the common carts the app planned itself, first on Vyzkoušet košík; the counts on Přehled.
+  {
+    path: "try-cart?plan=pro&combos=on",
+    expect: [
+      /Časté kombinace/,
+      /\d+ v pořádku, \d+ upozornění/,
+      /Je to výpočet, ne skutečná objednávka/,
+      /data-won-combos=""/,
+      /data-won-combo="tiers" data-won-combo-status="warning"/,
+      /Množstevní sleva \+ sleva z objednávky \+ doprava zdarma \+ dárek ze stupně/,
+      /Stupeň se slevou · Slovensko/,
+      /Ceny v této měně jsou odhad podle vašich částek/,
+      /data-won-combo-finding="margin"[^>]*>Ochrana marže slevu snížila nebo zrušila[^<]*(<!-- -->)? <s-link href="\/app\/margin">Otevřít nastavení/,
+      /data-won-combo-finding="step_superseded"[^>]*>[^<]*(<!-- -->)? <s-link href="\/app\/rewards#steps">/,
+      /<s-link href="\/app\/try-cart\?scenario=tiers">Otevřít v košíku/,
+    ],
+    absent: [/data-won-combos-locked/],
+  },
+  // Free: how many have a warning, never which or why — the list is the amber locked block with what Pro gives.
+  {
+    path: "try-cart?combos=on",
+    expect: [/Časté kombinace/, /\d+ v pořádku, \d+ upozornění/, /V Pro uvidíte, která kombinace má upozornění a proč/, /data-won-combos-locked=""/, /href="\/app\/plan"/],
+    absent: [/data-won-combo=/, /data-won-combo-finding/, /Ochrana marže slevu snížila/, /scenario=/],
+  },
+  { path: "try-cart?plan=pro&combos=sample", expect: [/košíky proto počítá s ukázkovým/, /data-won-combo="tiers"/], absent: [/Otevřít v košíku/] },
+  { path: "overview?combos=on", expect: [/data-won-tile="tryCart"[\s\S]{0,3000}\d+ v pořádku, \d+ upozornění<\/div>/] },
+  { path: "try-cart?plan=pro", expect: [/Vyzkoušet košík/], absent: [/Časté kombinace/] },
+  { path: "translations?plan=pro", expect: [/data-won-add-language/, /<s-option[^>]*value="de"[^>]*>němčina/, /Stáhnout CSV/, /Nahrát CSV/] },
+  { path: "translations?state=empty", expect: [/čeština · výchozí jazyk obchodu/, /Výchozí texty/, /data-won-add-language/] },
+  { path: "translations?state=no-scope", expect: [/Aplikace nemá svolení číst jazyky zapnuté v Shopify/, /Povolit čtení jazyků/] },
+  { path: "translations?state=downgraded", expect: [/němčina/, /Ve Free se v tomto jazyce na webu ukazují výchozí texty/] },
+  { path: "translations?plan=pro&state=import", expect: [/data-won-import-preview/, /Změní se: 1/, /Odmítnuto: 2/, /Množstevní tabulka: Nadpis tabulky · slovenština/, /V textu chybí \{amount\}/, /neznámý text „tiers\.unknown“/, /Uložit změny z importu/] },
   // Every other element's look is on its module's page: ready-made looks previewed with the extension's own markup,
   // the colour, and the Pro part (amber and locked on Free, with what Pro gives and the way to it).
   {

@@ -31,6 +31,7 @@ import { productRuleIndex, variantKey } from "@won/core/discounts/targeting";
 
 import type {
   AdminSignals,
+  CombinationCheckView,
   LookView,
   TranslationsScreenData,
   CartPlanView,
@@ -75,6 +76,8 @@ import { translator } from "../i18n";
 import { lookView, previewLookOf } from "./integration/looks.server";
 import { tiersOverviewOf, tiersScreenFacts, tiersSectionStatus } from "./integration/tiers.server";
 import { translationsScreenData } from "./integration/translations.server";
+import { runScenarios, type ScenarioProduct } from "./integration/combination-check";
+import { combinationView } from "./integration/combination-check.server";
 import { lossText, undoCostTexts, warningText } from "./native/copy";
 import { isDevHarnessEnvironment } from "./dev-harness-env";
 import { wordIssues } from "./integration/issue-copy";
@@ -1810,4 +1813,38 @@ export function devModuleSignals(opts: { mode: "on" | "off" | "failed"; plan: "f
     campaigns: pro && !off ? devCampaignsOverview({ locale }) : { running: null, next: null, finishing: false },
     analytics: { available: true, empty: true, days: 30, tiles: [] },
   };
+}
+
+/**
+ * A shop with everything the combination check looks at: the whole-store tiers, the Milníky ladder with two
+ * discount steps, margin protection and a code — and the products the app would have stored for it (the first has
+ * a purchase cost close to its price, so margin protection lowers what the tiers and the steps give).
+ */
+const DEV_COMBOS_FIXTURE: WonDiscountsConfig = readStoredConfig({
+  ...DEV_MILESTONES_FIXTURE,
+  modules: {
+    ...DEV_MILESTONES_FIXTURE.modules,
+    tiers: DEV_TIERS_FIXTURE.modules.tiers,
+    margin: { enabled: true, global: { minMarginPercent: 20, maxDiscountPercent: 40 }, perCollection: [] },
+    codes: {
+      rules: [
+        ...DEV_MILESTONES_FIXTURE.modules.codes.rules,
+        { id: "dev-combo-code", enabled: true, name: "VIP10", method: "code", codes: ["VIP10"], value: { kind: "percentage", percent: 10 }, target: { kind: "order" } },
+      ],
+    },
+  },
+});
+
+const DEV_COMBO_PRODUCTS: ScenarioProduct[] = [
+  { variantId: "gid://shopify/ProductVariant/101", productId: "gid://shopify/Product/1", title: "Mikina Won — M / černá", unitPrice: 1290_00, unitCost: 980, unitCostCurrency: "CZK", role: "lowMargin" },
+];
+
+/**
+ * Kontrola kombinací as combinationCheck hands it over, on fixtures: the REAL scenarios and the real planCart.
+ * `sample` = a shop with no stored product. Free gets the counts only, as from the server.
+ */
+export function devCombinations(opts: { plan: "free" | "pro"; locale: "cs" | "en"; sample?: boolean }): CombinationCheckView | null {
+  const gated = gateConfigForPlan(DEV_COMBOS_FIXTURE, opts.plan, { now: "2026-09-28T14:00:00" }).config;
+  const facts = { products: opts.sample ? [] : DEV_COMBO_PRODUCTS, shopCurrency: "CZK", shopTimezone: DEV_TIMEZONE, date: "2026-09-28", time: "14:00:00", locale: opts.locale };
+  return combinationView(runScenarios(gated, facts), { plan: opts.plan, locale: opts.locale, marketNames: DEV_MARKET_NAMES, sample: opts.sample === true });
 }

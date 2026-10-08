@@ -78,6 +78,8 @@ export interface OverviewScreenProps {
   gatePending?: boolean;
   /** Handles of the enabled Won markets (a rule targeting only others never runs). */
   enabledMarkets?: string[];
+  /** Kontrola kombinací: how many common carts are fine and how many have a warning (every plan sees the counts). */
+  combos?: { ok: number; warnings: number };
   /** Překlady: the languages with a changed storefront text and how many texts are changed in all. */
   translations?: { languages: string[]; changed: number };
   /** The plan in force: on Free the Pro cards (Kampaně, Výprodej) say so instead of offering their setup. Absent = not known. */
@@ -299,6 +301,7 @@ export function OverviewScreen({
   gatePending = false,
   enabledMarkets,
   translations,
+  combos,
   plan,
 }: OverviewScreenProps) {
   const tr = useT();
@@ -495,7 +498,7 @@ export function OverviewScreen({
           <ModuleTile id="margin" href="/app/margin" title={t("module.margin")} glyph="shield" about={t("tile.about.margin")} aboutShort={t("tile.short.margin")} active={bodies.margin} status={states.margin} issueText={waits("margin")} />
           <ModuleTile id="analytics" href="/app/analytics" title={t("nav.analytics")} glyph="check" about={t("tile.about.analytics")} aboutShort={t("tile.short.analytics")} active={bodies.analytics} />
           <ModuleTile id="translations" href="/app/translations" title={t("nav.translations")} glyph="code" about={t("tile.about.translations")} aboutShort={t("tile.short.translations")} active={translationsLine} />
-          <ModuleTile id="tryCart" href="/app/try-cart" title={t("nav.tryCart")} glyph="cart" about={t("tile.about.tryCart")} aboutShort={t("tile.short.tryCart")} active={free ? t("tile.tryCart.locked") : undefined} pro={proMark} locked={free} />
+          <ModuleTile id="tryCart" href="/app/try-cart" title={t("nav.tryCart")} glyph="cart" about={t("tile.about.tryCart")} aboutShort={t("tile.short.tryCart")} active={combos ? t("combos.summary", combos) : free ? t("tile.tryCart.locked") : undefined} pro={proMark} locked={free} />
           <ModuleTile id="settings" href="/app/settings" title={t("nav.settings")} glyph="sliders" about={t("tile.about.settings")} aboutShort={t("tile.short.settings")} active={plan ? settingsLine : undefined} />
         </ModuleTiles>
 

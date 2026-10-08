@@ -72,6 +72,7 @@ import {
   DEV_TRY_CART_MARGIN_LINES,
   DEV_TIERS_FIXTURE,
   devTranslationsScreen,
+  devCombinations,
   devPlanScreen,
   devSettingsScreen,
   devTiersOverview,
@@ -121,6 +122,8 @@ import {
 //                                 look + a changed text in the preview); ?theme=dawn; ?accent=green (a stored
 //                                 colour); ?embed=off | noscope (Won on the storefront off / not readable);
 //                                 ?result=saved | invalid | unreadable | too-large (does not fit at checkout)
+//                                Kontrola kombinací: overview and try-cart with ?combos=on | sample (Free: the
+//                                 counts; ?plan=pro: the scenarios)
 //   /dev/preview/translations    Překlady: the default language and Slovak with texts changed, Free by default,
 //                                 ?plan=pro; ?state=empty | no-scope (the shop's languages cannot be read) |
 //                                 downgraded (a third stored language) | import (a planned CSV import, Pro)
@@ -227,9 +230,23 @@ function devDiscountNav(q: URLSearchParams): DiscountNavData {
 
 export const loader = (args: LoaderFunctionArgs) => {
   // The guard first: screenProps 404s outside development.
-  const screen = screenProps(args);
+  const screen = withCombinations(screenProps(args), new URL(args.request.url));
   return { screen, discountNav: devDiscountNav(new URL(args.request.url).searchParams) };
 };
+
+/**
+ * Kontrola kombinací on Přehled (the tile's counts) and Vyzkoušet košík (the list): `?combos=on` (a shop whose
+ * products the app has stored) | `sample` (none stored). Free gets the counts, ?plan=pro the scenarios.
+ */
+function withCombinations<T>(screen: T, url: URL): T {
+  const mode = url.searchParams.get("combos");
+  const which = harnessScreen(url.pathname);
+  if ((mode !== "on" && mode !== "sample") || (which !== "overview" && which !== "try-cart")) return screen;
+  const plan = url.searchParams.get("plan") === "pro" ? ("pro" as const) : ("free" as const);
+  const combos = devCombinations({ plan, locale: resolveLocale(url.searchParams.get("locale")), sample: mode === "sample" });
+  if (!combos) return screen;
+  return which === "overview" ? { ...screen, combos: { ok: combos.ok, warnings: combos.warnings } } : { ...screen, combos };
+}
 
 const screenProps = ({ request }: LoaderFunctionArgs) => {
   if (!isDevHarnessEnabled()) {

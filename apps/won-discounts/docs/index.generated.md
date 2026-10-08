@@ -72,7 +72,7 @@ Step-by-step: how do I set X up.
 | [Start a clearance sale](tasks/start-a-clearance-sale.md) | `start-a-clearance-sale` | outlet | pro | beta | Pick a variant, enter the pieces to sell and the percent, optionally an end date and price lists, and start the sale. |
 | [Start the Pro trial](tasks/start-the-pro-trial.md) | `start-the-pro-trial` | plans | free | beta | Open Settings, scroll to Plan, click Try Pro free for 14 days, approve the subscription on Shopify's page, and you are back in the app on Pro. |
 | [Switch combination categories in Settings](tasks/switch-combination-categories.md) | `switch-combination-categories` | engine | free | stable | Settings lets you switch, by category, whether Won's discounts add up or compete, instead of the fixed defaults. |
-| [Try a cart](tasks/try-a-cart.md) | `try-a-cart` | try-cart | pro | stable | (Pro) Build a test cart with products, a market, discounts with a code and a day, and see which Won discounts apply at checkout and why. Nothing is ordered. |
+| [Try a cart](tasks/try-a-cart.md) | `try-a-cart` | try-cart | pro | stable | The app checks the common combinations of your discounts by itself and warns ahead; on Pro you also build your own test cart and see which discounts apply at checkout and why. Nothing is ordered. |
 | [Turn on margin protection](tasks/turn-on-margin-protection.md) | `turn-on-margin-protection` | margin | free | stable | Switch margin protection on, set the minimum margin and the ceiling for products without a cost price, and check where it lowers discounts. |
 | [Undo a move](tasks/undo-a-move.md) | `undo-a-move` | native-discounts | free | stable | Put a moved discount back into Shopify from Won's backup, and why to do it before uninstalling the app. |
 

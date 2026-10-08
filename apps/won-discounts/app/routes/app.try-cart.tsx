@@ -16,7 +16,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   // eslint-disable-next-line no-undef
   const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "", scopes: session.scope });
   const q = new URL(request.url).searchParams;
-  return tryCartPage(ctx, { scopes: session.scope ?? "", date: q.get("date"), time: q.get("time") });
+  return tryCartPage(ctx, { scopes: session.scope ?? "", date: q.get("date"), time: q.get("time"), scenario: q.get("scenario") });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {

@@ -45,7 +45,7 @@ import { currencyViews, marketView, type MarketNames } from "../model/markets";
 import { TRY_CART_LIMITS, type TryCartWhen, firstRuleCode } from "../model/try-cart-form";
 import { shopToday } from "../model/rule-form";
 import { uiText } from "../model/result-copy";
-import type { CartPlanView, CurrencyView, ExplainView, FieldError, TryCartLineView, UiResult } from "../model/types";
+import type { CartPlanView, CombinationCheckView, CurrencyView, ExplainView, FieldError, TryCartLineView, UiResult } from "../model/types";
 import { boolAttr } from "../shell/attrs";
 import { Notice, ResyncButton } from "../shell/Notice";
 import { ProFrame } from "../shell/ProFrame";
@@ -53,6 +53,7 @@ import { ProSell } from "../shell/ProSell";
 import { SegmentedChoice } from "../shell/SegmentedChoice";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 import { WON_ATTENTION, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
+import { CombinationsSection } from "../try-cart/CombinationsSection";
 
 /** One of the shop's discounts as the cart form offers it. */
 export interface TryCartRuleView {
@@ -92,6 +93,10 @@ export interface TryCartScreenProps {
   time?: string;
   plan: CartPlanView | null;
   result: UiResult | null;
+  /** The common combinations the app planned itself; absent = nothing runs yet (or the shop's currency is not known). */
+  combos?: CombinationCheckView | null;
+  /** The combination the cart was prepared from (?scenario=): said above the cart until it is calculated. */
+  opened?: string;
 }
 
 export function buildTryCartProps(
@@ -554,6 +559,10 @@ export function TryCartScreen(props: TryCartScreenProps) {
     <s-page heading={t("tryCart.title")}>
       <s-stack direction="block" gap="base">
         <s-paragraph color="subdued">{t("tryCart.intro")}</s-paragraph>
+
+        {/* The main way in: the common combinations, already calculated. The manual cart below is the second. */}
+        {props.combos ? <CombinationsSection check={props.combos} pro={pro} /> : null}
+        {props.opened && !plan ? <RowNote>{t("combos.opened", { title: props.opened })}</RowNote> : null}
 
         {locked ? (
           // Free: what the tool is for + the plan link, above the amber locked form (nothing runs; the server refuses too).

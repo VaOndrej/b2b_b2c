@@ -688,6 +688,35 @@ export interface TiersOverviewView {
   missing?: { global: string[]; sets: string[][] };
 }
 
+/** Kontrola kombinací: one common cart the app planned itself (combination-check.server.ts). */
+export interface CombinationScenarioView {
+  id: string;
+  /** "Množstevní sleva + kód LETO10". */
+  title: string;
+  /** The market's name when the scenario is not the shop's own market. */
+  market: string | null;
+  status: "ok" | "warning";
+  /** What went otherwise than set up, each with the setting behind it. */
+  findings: { kind: string; text: string; href: string }[];
+  /** Priced with a rate implied by the merchant's amounts (another currency): an estimate. */
+  estimate: boolean;
+  currency: string;
+  /** Minor units of `currency`. */
+  subtotal: number;
+  discount: number;
+  /** Opens the scenario in the manual cart; null = it uses a sample product. */
+  open: string | null;
+}
+
+export interface CombinationCheckView {
+  ok: number;
+  warnings: number;
+  /** The shop has no product stored: the carts use a sample one. */
+  sample: boolean;
+  /** Pro only: on Free the server sends the counts alone. */
+  scenarios?: CombinationScenarioView[];
+}
+
 /** One storefront element's stored look, as its section shows it (looks.server.ts lookView). */
 export interface LookView {
   element: "tiers" | "milestones" | "outlet" | "campaign";

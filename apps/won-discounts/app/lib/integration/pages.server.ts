@@ -35,6 +35,7 @@ import { campaignsOverviewOf, finishingOf } from "./campaigns-admin.server";
 import { buildOverviewProps } from "../../components/screens/OverviewScreen";
 import { buildRuleEditorProps } from "../../components/screens/RuleEditorScreen";
 import { buildTryCartProps } from "../../components/screens/TryCartScreen";
+import { combinationCheck, scenarioCart } from "./combination-check.server";
 import {
   codeRuleLimit,
   deleteRule,
@@ -216,7 +217,9 @@ function withConflictRules(native: NativeView, config: WonDiscountsConfig): Nati
 
 export async function overviewPage(ctx: ShopCtx, opts: PageOptions) {
   const { config, options } = await overviewData(ctx, opts);
-  return buildOverviewProps(config, options);
+  // Kontrola kombinací: the two counts for the tile, from the database alone (no further Shopify read).
+  const combos = await combinationCheck(ctx, { config, plan: options.plan, shopCurrency: options.shopCurrency, timezone: options.timezone });
+  return { ...buildOverviewProps(config, options), ...(combos ? { combos: { ok: combos.ok, warnings: combos.warnings } } : {}) };
 }
 
 /** Přehled actions: "Přesunout" / "Přesunout vše" / "Vrátit zpět" / "Synchronizovat znovu" / "Obnovit cílení". */
@@ -338,13 +341,13 @@ export async function ruleEditorAction(ctx: ShopCtx, form: FormData, ruleId: str
 
 // --- Vyzkoušet košík --------------------------------------------------------------------------
 
-export async function tryCartPage(ctx: ShopCtx, opts: PageOptions & { date?: string | null; time?: string | null }) {
+export async function tryCartPage(ctx: ShopCtx, opts: PageOptions & { date?: string | null; time?: string | null; scenario?: string | null }) {
   const [{ config }, reads, plan] = await Promise.all([
     loadConfig(ctx.db, ctx.shop),
     readAdminContext({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql: graphql(ctx) }),
     ctxPlan(ctx),
   ]);
-  return buildTryCartProps(config, {
+  const props = buildTryCartProps(config, {
     // Vyzkoušet košík is Pro (BILL-1): Free sees the locked frame, and tryCartAction refuses a run.
     pro: plan === "pro",
     timezone: reads.shopContext.timezone,
@@ -354,6 +357,13 @@ export async function tryCartPage(ctx: ShopCtx, opts: PageOptions & { date?: str
     date: opts.date ?? null,
     time: opts.time ?? null,
   });
+  // Kontrola kombinací: planned from what the database holds — the page's Shopify reads above are all there are.
+  const facts = { config, plan, shopCurrency: reads.shopContext.currencyCode, timezone: reads.shopContext.timezone, marketNames: reads.marketNames };
+  const combos = await combinationCheck(ctx, facts);
+  if (!combos) return props;
+  // ?scenario=<id> (Pro): the manual cart prepared from that combination — its products, codes, market and time.
+  const opened = plan === "pro" && opts.scenario ? await scenarioCart(ctx, facts, opts.scenario) : null;
+  return { ...props, combos, ...(opened ?? {}) };
 }
 
 /**
