@@ -184,7 +184,7 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   - **Naživo neověřeno:** (1) pokladna (Bogus) na Dawnu v profilu `rewards` (429, zopakovat po pauze; na Horizonu prošla).
     (2) Boční košík na Dawnu: zkušební kopie ho nemá. (3) Klikání v běžící aplikaci (výběr dárku, „Navrhnout ostatní trhy“,
     uložení). (4) Limit po trzích naživo se dvěma trhy na Free (ověřeno testy, ne v obchodě).
-- **Další krok:** úkol 8 (Překlady, vzhled žebříčku), potom 9.
+- **Další krok:** úkoly 8 a 9 v nové session podle [`won-discounts/prompt-ukol8-9.md`](won-discounts/prompt-ukol8-9.md) (Překlady a vzhled u modulů, potom scénáře ve Vyzkoušet košík).
 
 Zadání: [`won-discounts/audit-dlazdice-trhy-2026-10-06.md`](won-discounts/audit-dlazdice-trhy-2026-10-06.md) (stav po nálezech je na jeho
 konci). Práce inline, commitnuto lokálně, nepushnuto, nenasazeno.
