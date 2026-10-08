@@ -39,6 +39,7 @@ import { FieldMessage, Shown } from "../rule-editor/parts";
 import { AmountSuggestions } from "../shell/AmountSuggestions";
 import { boolAttr } from "../shell/attrs";
 import { GateNotes } from "../shell/GateNotes";
+import { JumpRow, type JumpRowItem } from "../shell/JumpRow";
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
 import { Notice } from "../shell/Notice";
 import { ProSell } from "../shell/ProSell";
@@ -97,6 +98,9 @@ const TABLE_CSS = `
 `;
 /** More market columns than fit side by side on a desktop: the table is stacked at every width. */
 const TABLE_MAX_COLUMNS = 6;
+
+/** The DOM id of the card of the step at a position (the row of numbers jumps to it; positions follow the live list). */
+const stepAnchor = (index: number) => `step-${index + 1}`;
 
 const BADGE = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 999, background: WON_INK, color: "#fff", fontSize: 12.5, fontWeight: 700, flex: "0 0 auto" } as const;
 
@@ -287,6 +291,14 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
         : firstAmounts.length === 1 || firstAmounts[0] === firstAmounts[firstAmounts.length - 1]
           ? `${tr.tp("milestones.summary.count", open.length)} ${t("milestones.step.titleFrom", { amount: money(firstAmounts[0]!) })}`
           : `${tr.tp("milestones.summary.count", open.length)} ${t("milestones.summary.range", { from: money(firstAmounts[0]!), to: money(firstAmounts[firstAmounts.length - 1]!) })}`;
+  // The row of numbers in the section's header: red where a step is not offered in some market (the same check
+  // as the tile's sentence), from the live form — a step added, removed or filled in changes it at once.
+  const stepJumps: JumpRowItem[] = open.map(({ live }, index) => ({
+    target: stepAnchor(index),
+    mark: String(index + 1),
+    name: t("milestones.step.title", { n: index + 1 }),
+    ...(stepMissingColumns(live, codes).length > 0 ? { state: "attention" as const } : {}),
+  }));
   const stepsTile = missingMarkets.length > 0 ? `${t("milestones.summary.missing", { markets: tr.list(missingMarkets.map(marketName)) })} · ${ladderShort}` : ladderShort;
 
   // Limits: the plan's number of steps; a gift for at most CONFIG_LIMITS.giftTiers of them.
@@ -438,7 +450,15 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
             {/* The plan note is about the stored steps, so it sits with them. */}
             <GateNotes notes={gateNotes} />
 
-            <WonSection title={t("milestones.steps.title")} glyph="spark" summary={ladderLine} hint={t("milestones.steps.hint")} anchor="steps">
+            <WonSection
+              title={t("milestones.steps.title")}
+              glyph="spark"
+              summary={ladderLine}
+              hint={t("milestones.steps.hint")}
+              anchor="steps"
+              // The section is most of the page: its landmarks are the steps themselves (two or more of them).
+              proof={stepJumps.length > 1 ? <JumpRow label={t("milestones.steps.jump")} items={stepJumps} /> : undefined}
+            >
               <s-stack direction="block" gap="base">
                 {/* The amounts: a row per step, a column per market. */}
                 {rows.length > 0 ? (
@@ -558,7 +578,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
                   const offField = (code: string) => F.off(row.uid, code);
                   const offMissing = live.kind === "discount" && live.value === "fixed" ? codes.filter((c) => typeof live.threshold[c] === "number" && typeof live.off[c] !== "number") : [];
                   return (
-                    <div key={row.uid} data-won-ms-step={row.uid} style={{ border: `1px solid ${WON_LINE}`, borderRadius: 12, background: WON_SURFACE, overflow: "hidden", fontFamily: WON_FONT }}>
+                    <div key={row.uid} id={stepAnchor(index)} data-won-ms-step={row.uid} style={{ border: `1px solid ${WON_LINE}`, borderRadius: 12, background: WON_SURFACE, overflow: "hidden", fontFamily: WON_FONT, scrollMarginTop: 16 }}>
                       <input type="hidden" name={F.step} value={row.uid} />
                       {row.choices.map((c) => (
                         <input key={c.id} type="hidden" name={F.choice(row.uid)} value={c.id} />

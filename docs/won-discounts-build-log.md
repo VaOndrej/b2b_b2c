@@ -33,7 +33,10 @@ Evidence: `docs/won-discounts/evidence/navigace-stav/` (`pred-*` a `po-*`, 390 a
   (`model/rule-form.ts` `fieldSection`). Sekce „Sleva“ má kotvu `#discount`; staré kotvy a alias `#more` beze změny.
   Rozbalení sbalené sekce je jedna cesta (`shell/WonSection.tsx` `openSectionsAround`) pro přímé odkazy i sloupec.
   Šířka: 1024–1440 px formulář 403 px + panel „Co uvidí zákazník“ 303 px vedle sebe, bez úpravy rozložení.
-- **Body 6–7 — čeká:** řádek stupňů v Milnících, Přehled.
+- **Bod 6 — hotovo:** Milníky mají v hlavičce „Stupně a odměny“ řádek s čísly stupňů (`shell/JumpRow.tsx`, od dvou stupňů),
+  stupeň bez částky v některém trhu je červeně se stejnou tečkou; karty stupňů mají `id="step-N"`. Plynulost scrollu je na
+  jednom místě (`shell/scroll.ts`), přímé odkazy editoru tím nově respektují `prefers-reduced-motion`.
+- **Bod 7 — čeká:** Přehled (dlaždice modulů nad „Slevy vytvořené přímo v Shopify“), doktrína, e2e, „zkus to rozbít“.
 
 ### Opravy po auditu srozumitelnosti (7. 10. 2026) — větev `won-discounts-feedback-2026-10-06`
 

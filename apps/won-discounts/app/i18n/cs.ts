@@ -1765,6 +1765,7 @@ export const cs = {
   "milestones.summary.missing": "{markets}: některý stupeň se nenabízí",
   "milestones.steps.title": "Stupně a odměny",
   "milestones.steps.hint": "Počítá se cena zboží v košíku před slevami, dárek se nepočítá. Každý trh má vlastní žebříček: platí v něm stupně, které pro něj mají částku.",
+  "milestones.steps.jump": "Přejít na stupeň",
   "milestones.steps.empty": "Zatím žádný stupeň. Přidejte první: zvolíte částku košíku a co za ni zákazník dostane.",
   "milestones.table.title": "Od jaké hodnoty košíku",
   "milestones.table.hint": "Zadejte, od jaké hodnoty košíku stupeň platí.",

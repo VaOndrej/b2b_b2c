@@ -11,6 +11,7 @@ import type { RuleFormDefaults } from "../model/rule-form";
 import type { CurrencyView } from "../model/types";
 import type { AmountSuggestView } from "../model/markets";
 import { boolAttr } from "../shell/attrs";
+import { jumpBehavior } from "../shell/scroll";
 import { openSectionsAround } from "../shell/WonSection";
 import { WON_ATTENTION, WON_FAINT, WON_FONT, WON_MUTED } from "../shell/tokens";
 
@@ -102,7 +103,7 @@ export function jumpToAnchor(raw: string): boolean {
   if (!el) return false;
   openSectionsAround(el);
   window.requestAnimationFrame(() => {
-    el.scrollIntoView({ block: "start", behavior: "smooth" });
+    el.scrollIntoView({ block: "start", behavior: jumpBehavior() });
     const visible = (candidate: Element) => (candidate as HTMLElement).offsetParent !== null && !(candidate as { disabled?: boolean }).disabled;
     const fields = [...el.querySelectorAll(FIELDS)].filter(visible);
     const target = fields.find((f) => !(f as unknown as { value?: string }).value) ?? fields[0] ?? [...el.querySelectorAll(CONTROLS)].filter(visible)[0];

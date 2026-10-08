@@ -231,8 +231,12 @@ export type DotState = Exclude<ModuleState, "locked">;
 /** The tone of a module's state: the pill and the dot read the same table, so they cannot drift (§11b). */
 const STATE_TONE: Readonly<Record<DotState, PillTone>> = { active: "live", attention: "attention", inactive: "neutral" };
 
-/** Text for screen readers only (a dot alone says nothing to them). */
 const READER_ONLY: CSSProperties = { position: "absolute", width: 1, height: 1, margin: -1, padding: 0, overflow: "hidden", clipPath: "inset(50%)", whiteSpace: "nowrap", border: 0 };
+
+/** Text for screen readers only (a dot or a bare number says too little to them). */
+export function ReaderOnly({ children }: { children: ReactNode }) {
+  return <span style={READER_ONLY}>{children}</span>;
+}
 
 /**
  * A state as a dot alone, where a pill would not fit (the strip under "Slevy", the list of a page's sections,
@@ -245,7 +249,7 @@ export function StatusDot({ state }: { state: DotState }) {
     <span data-won-dot={state} style={{ display: "inline-flex", flex: "0 0 auto" }}>
       <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 999, background: PILL_COLOR[STATE_TONE[state]].dot }} />
       {/* Read before the label the dot stands at: "Aktivní: Slevy a kódy". */}
-      <span style={READER_ONLY}>{`${moduleStateLabel(state, tr)}: `}</span>
+      <ReaderOnly>{`${moduleStateLabel(state, tr)}: `}</ReaderOnly>
     </span>
   );
 }

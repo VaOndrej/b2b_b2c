@@ -738,7 +738,8 @@ test("navigace a stav, bod 3: the strip under 'Slevy' carries a dot per module, 
   assert.match(link(free, "discounts"), /data-won-dot="active"[\s\S]*>Aktivní: <\/span>/, "the state in words for screen readers");
   assert.doesNotMatch(link(free, "outlet"), /data-won-dot/);
   // The strip is the same on the five pages; pages outside "Slevy" have neither the strip nor its dots.
-  for (const path of ["discounts", "tiers", "rewards", "outlet", "campaigns"]) assert.equal(((await render(path)).html.match(/data-won-dot=/g) ?? []).length, 3, path);
+  const stripOf = (html: string) => html.slice(html.indexOf("data-won-subnav"), html.indexOf("</nav>", html.indexOf("data-won-subnav")));
+  for (const path of ["discounts", "tiers", "rewards", "outlet", "campaigns"]) assert.equal((stripOf((await render(path)).html).match(/data-won-dot=/g) ?? []).length, 3, path);
   for (const path of ["margin", "appearance", "analytics"]) assert.doesNotMatch((await render(path)).html, /data-won-subnav|data-won-dot=/, path);
 });
 
@@ -770,4 +771,28 @@ test("navigace a stav, bod 5: the rule editor has the list of its sections; a re
   assert.match(nav(en), />Needs attention: <\/span><\/span><\/span>Discount<\/a>[\s\S]*>How it applies<\/a>/);
   // One form, one Save: the list sits inside the form and wraps every section.
   assert.equal((html.match(/<form /g) ?? []).length, 1);
+});
+
+test("navigace a stav, bod 6: Milníky — a row of step numbers in the header of 'Stupně a odměny'; a step not offered in a market is red", async () => {
+  const row = (html: string) => {
+    const start = html.indexOf('<nav class="won-jumps"');
+    return start < 0 ? null : html.slice(start, html.indexOf("</nav>", start));
+  };
+  const marks = (html: string) => [...(row(html) ?? "").matchAll(/<a class="won-jumps__link" href="#(step-\d+)" title="([^"]+)"( data-won-jump-state="(\w+)")?/g)].map((m) => `${m[1]}${m[4] ? `:${m[4]}` : ""}`);
+  const html = (await render("rewards")).html;
+  // Three steps; the second has no amount for Slovensko (the row under it says so) — its number is red, with the dot.
+  assert.deepEqual(marks(html), ["step-1", "step-2:attention", "step-3"]);
+  assert.match(row(html) ?? "", /aria-label="Přejít na stupeň"/);
+  assert.match(row(html) ?? "", /href="#step-2"[^>]*><span data-won-dot="attention"[\s\S]{0,600}?>Vyžaduje pozornost: <\/span><\/span><span aria-hidden="true">2<\/span><span[^>]*>2\. stupeň<\/span><\/a>/);
+  assert.doesNotMatch((row(html) ?? "").split('href="#step-2"')[0] ?? "", /data-won-dot/, "the first step has nothing to say");
+  // Every number has its card; the row sits in the section's header, above the table.
+  for (const id of ["step-1", "step-2", "step-3"]) assert.match(html, new RegExp(`<div id="${id}" data-won-ms-step=`), id);
+  assert.ok(html.indexOf('<section id="steps"') < html.indexOf("data-won-jump-row") && html.indexOf("data-won-jump-row") < html.indexOf('id="amounts"'));
+  // The tiles stay; there is no list of sections on this page (it would be a third navigation).
+  assert.match(html, /data-won-view-tile="steps"/);
+  assert.doesNotMatch(html, /data-won-section-nav/);
+  // No step, or one: nothing to jump between, no row (P2).
+  assert.equal(row((await render("rewards?state=empty")).html), null);
+  // English.
+  assert.match(row((await render("rewards?locale=en")).html) ?? "", /aria-label="Go to step"[\s\S]*title="Step 2" data-won-jump-state="attention"/);
 });

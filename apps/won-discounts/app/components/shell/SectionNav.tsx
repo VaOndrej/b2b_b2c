@@ -15,6 +15,7 @@
 
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
+import { jumpBehavior } from "./scroll";
 import { openSectionsAround, StatusDot, type DotState } from "./WonSection";
 import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE } from "./tokens";
 
@@ -133,10 +134,10 @@ export function SectionNav({ label, items, children }: SectionNavProps) {
     lock.current = window.setTimeout(() => {
       lock.current = 0;
     }, 900);
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const behavior = jumpBehavior();
     const scroll = () => {
       jump.current = 0;
-      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset(), behavior: still ? "auto" : "smooth" });
+      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset(), behavior });
     };
     window.cancelAnimationFrame(jump.current);
     // A section that was collapsed makes the page taller only after React has rendered its body: scrolling now

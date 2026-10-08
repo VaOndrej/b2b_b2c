@@ -19,6 +19,7 @@ import {
 import type { DiscountNavData } from "../../app/components/model/modules.ts";
 import { DiscountNav, DiscountsSubNav } from "../../app/components/shell/SubNav.tsx";
 import { SectionNav } from "../../app/components/shell/SectionNav.tsx";
+import { JumpRow } from "../../app/components/shell/JumpRow.tsx";
 
 // The menu after 6 Oct 2026 (docs/won-discounts/plan-zmen-2026-10-06.md, P1): the
 // Shopify sidebar has five items after the home link; the discount pages share
@@ -189,6 +190,21 @@ test("SectionNav: a dot only at a section that has a state, the same dot as the 
   // The links stay plain anchors (they work before hydration); the first one is the current one.
   assert.match(html, /<a class="won-jump__link" href="#a" aria-current="location">/);
   assert.equal(html.match(/data-won-dot=/g)?.length, 2);
+});
+
+test("JumpRow: plain anchors with the part's name for screen readers; red and dotted only where a part has a state", () => {
+  const items = [
+    { target: "step-1", mark: "1", name: "1. stupeň" },
+    { target: "step-2", mark: "2", name: "2. stupeň", state: "attention" as const },
+  ];
+  // eslint-disable-next-line react/no-children-prop -- LocaleProvider types `children` as a required prop
+  const html = renderToStaticMarkup(createElement(LocaleProvider, { locale: "cs", children: createElement(JumpRow, { label: "Přejít na stupeň", items }) }));
+  assert.match(html, /<nav class="won-jumps" aria-label="Přejít na stupeň"/);
+  assert.match(html, /<a class="won-jumps__link" href="#step-1" title="1\. stupeň"><span aria-hidden="true">1<\/span><span[^>]*>1\. stupeň<\/span><\/a>/);
+  assert.match(html, /<a class="won-jumps__link" href="#step-2" title="2\. stupeň" data-won-jump-state="attention"><span data-won-dot="attention"/);
+  assert.equal(html.match(/data-won-dot=/g)?.length, 1);
+  // It wraps instead of scrolling sideways.
+  assert.match(html, /\.won-jumps__list\{display:flex;flex-wrap:wrap/);
 });
 
 test("@won/app-kit WonNavMenu: homeLabel is optional, default unchanged", async () => {

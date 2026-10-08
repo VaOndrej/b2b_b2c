@@ -1761,6 +1761,7 @@ export const en: Record<keyof typeof cs, string> = {
   "milestones.summary.missing": "{markets}: a step is not offered",
   "milestones.steps.title": "Steps and rewards",
   "milestones.steps.hint": "The price of the goods in the cart before discounts counts; the gift does not. Each market has its own ladder: the steps that have an amount for it apply there.",
+  "milestones.steps.jump": "Go to step",
   "milestones.steps.empty": "No step yet. Add the first one: pick a cart value and what the customer gets for it.",
   "milestones.table.title": "From what cart value",
   "milestones.table.hint": "Enter the cart value the step starts at.",
