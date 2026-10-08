@@ -54,7 +54,7 @@ export function CostsSection({
   const missing = coverage?.productsWithoutCost ?? 0;
   const sample = coverage?.sample ?? [];
   return (
-    <WonSection title={t("margin.costs.title")} glyph="receipt" summary={coverageSummary(coverage, mirror, tr)} anchor="costs">
+    <WonSection title={t("margin.costs.title")} glyph="receipt" summary={t("margin.view.costs.about")} anchor="costs">
       <div>
         {coverage ? (
           <s-stack direction="block" gap="small-200">

@@ -19,15 +19,13 @@
 import { formatMoney } from "@won/core/discounts/describe";
 
 import { useT } from "../../i18n/context";
-import { impactReason, impactRuleSummary, impactSummary, marginImpactHref } from "../model/margin";
+import { impactReason, impactRuleSummary, marginImpactHref } from "../model/margin";
 import type { MarginImpactRowView, MarginImpactRuleView, MarginImpactView } from "../model/types";
 import { ProSell } from "../shell/ProSell";
 import { RowNote, WonBlock, WonRow, WonSection } from "../shell/WonSection";
 
 /** Rows shown per rule before "a další" (§3i: never an endless list). */
 const ROWS_PER_RULE = 5;
-
-export { impactSummary };
 
 function ImpactRow({ row, currency }: { row: MarginImpactRowView; currency: string }) {
   const tr = useT();
@@ -115,7 +113,7 @@ export function ImpactSection({
       glyph="target"
       pro
       locked={!pro}
-      summary={impactSummary(impact, pro, enabled, tr)}
+      summary={t("margin.view.impact.about")}
       collapsible
       defaultOpen={pro || !!focus}
       anchor="impact"

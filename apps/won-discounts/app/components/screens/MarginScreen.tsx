@@ -42,6 +42,8 @@ import { useT } from "../../i18n/context";
 import { pickCollections } from "../model/app-bridge";
 import {
   ceilingOnlyText,
+  collectionsSummary,
+  impactSummary,
   percentText,
   MARGIN_FIELD,
   MARGIN_INTENT,
@@ -232,28 +234,26 @@ export function MarginScreen(props: MarginScreenProps) {
           <Notice result={result} onReplace={replaceUnreadable} />
           {/* Four tiles, one panel at a time (doctrine §19e); the panels stay in the one form with its one Save. */}
           <ModuleTiles label={t("margin.view.label")} columns={4}>
-            <ViewTile id="settings" title={t("margin.view.settings.title")} glyph="shield" about={t("margin.view.settings.about")} active={marginSummary(draft, plan, tr)} status={props.status} selected={view === "settings"} onPick={() => setView("settings")} />
-            <ViewTile id="costs" title={t("margin.costs.title")} glyph="receipt" about={t("margin.view.costs.about")} active={coverageSummary(coverage, mirror, tr)} selected={view === "costs"} onPick={() => setView("costs")} />
+            <ViewTile id="settings" title={t("margin.view.settings.title")} glyph="shield" active={marginSummary(draft, plan, tr)} status={props.status} selected={view === "settings"} onPick={() => setView("settings")} />
+            <ViewTile id="costs" title={t("margin.costs.title")} glyph="receipt" active={coverageSummary(coverage, mirror, tr)} selected={view === "costs"} onPick={() => setView("costs")} />
             <ViewTile
               id="collections"
               title={t("margin.collections.title")}
               glyph="target"
-              about={t("margin.view.collections.about")}
-              active={collections.length > 0 ? tr.tp("count.collection", collections.length) : undefined}
+              // Pro: the collections by name (P4). Free: how many are stored, none of them applies.
+              active={collections.length === 0 ? undefined : pro ? collectionsSummary(collections, tr) : tr.tp("count.collection", collections.length)}
               pro={!pro}
               locked={!pro}
               selected={view === "collections"}
               onPick={() => setView("collections")}
             />
-            <ViewTile id="impact" title={t("margin.view.impact.title")} glyph="alert" about={t("margin.view.impact.about")} pro={!pro} locked={!pro} selected={view === "impact"} onPick={() => setView("impact")} />
+            <ViewTile id="impact" title={t("margin.view.impact.title")} glyph="alert" active={pro ? impactSummary(impact, pro, draft.enabled, tr) : undefined} pro={!pro} locked={!pro} selected={view === "impact"} onPick={() => setView("impact")} />
           </ModuleTiles>
           <ViewPanel id="settings" view={view}>
           <WonSection
             title={t("module.margin")}
             glyph="shield"
-            summary={marginSummary(draft, plan, tr)}
-            // The stored state, the same as the home tile says (an unsaved switch does not change it).
-            state={props.status}
+            // The label and the sentence of what is set are on the tile above (§19e); here only what the section is for.
             hint={t("soon.margin")}
             anchor="settings"
             aside={<MarginProof settings={inForce} currency={shopCurrency} />}

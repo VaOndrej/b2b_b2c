@@ -479,9 +479,9 @@ export function OutletScreen(props: OutletScreenProps) {
         {!pro && running.length > 0 ? <RowNote>{t("outlet.pro.running")}</RowNote> : null}
 
         <ModuleTiles label={t("outlet.view.label")}>
-          <ViewTile id="sales" title={t("outlet.view.sales.title")} glyph="calendar" about={t("outlet.view.sales.about")} active={salesActive} status={running.length > 0 ? props.status : undefined} selected={view === "sales"} onPick={() => setView("sales")} />
-          <ViewTile id="new" title={t("outlet.view.new.title")} glyph="tag" about={t("outlet.view.new.about")} active={pro ? undefined : t("overview.outlet.locked")} pro={!pro} locked={!pro} selected={view === "new"} onPick={() => setView("new")} />
-          <ViewTile id="info" title={t("outlet.view.info.title")} glyph="sliders" about={t("outlet.view.info.about")} active={t(withOthers ? "outlet.combine.summary.on" : "outlet.combine.summary.off")} selected={view === "info"} onPick={() => setView("info")} />
+          <ViewTile id="sales" title={t("outlet.view.sales.title")} glyph="calendar" active={salesActive} status={running.length > 0 ? props.status : undefined} selected={view === "sales"} onPick={() => setView("sales")} />
+          <ViewTile id="new" title={t("outlet.view.new.title")} glyph="tag" active={pro ? undefined : t("overview.outlet.locked")} pro={!pro} locked={!pro} selected={view === "new"} onPick={() => setView("new")} />
+          <ViewTile id="info" title={t("outlet.view.info.title")} glyph="sliders" active={t(withOthers ? "outlet.combine.summary.on" : "outlet.combine.summary.off")} selected={view === "info"} onPick={() => setView("info")} />
         </ModuleTiles>
 
         {panel(
@@ -500,7 +500,7 @@ export function OutletScreen(props: OutletScreenProps) {
               />
             ) : null}
         {todo.length > 0 ? (
-          <WonSection title={t("outlet.todo.title")} glyph="alert" summary={tr.tp("tile.issues", todo.length)} anchor="todo">
+          <WonSection title={t("outlet.todo.title")} glyph="alert" anchor="todo">
             <div data-won-outlet-todo>
               {todo.map((item) => (
                 <WonRow
@@ -519,7 +519,7 @@ export function OutletScreen(props: OutletScreenProps) {
           </WonSection>
         ) : null}
         {running.length > 0 ? (
-          <WonSection title={t("outlet.running.title")} glyph="calendar" state={props.status} summary={tr.tp("overview.outlet.running", running.length)} anchor="running">
+          <WonSection title={t("outlet.running.title")} glyph="calendar" anchor="running">
             <s-stack direction="block" gap="base">
               {running.map((run) => (
                 <RunCard key={run.id} run={run} pro={pro} money={money} badgeOn={display.startsWith("strike_badge")} />
@@ -543,7 +543,7 @@ export function OutletScreen(props: OutletScreenProps) {
         )}
 
         {panel("new", <>
-        <WonSection title={t("outlet.new.title")} glyph="tag" pro={!pro} locked={!pro} summary={pro ? summary : undefined} anchor="new">
+        <WonSection title={t("outlet.new.title")} glyph="tag" pro={!pro} locked={!pro} summary={pro ? summary : undefined} hint={t("outlet.view.new.about")} anchor="new">
           {pro ? (
             form
           ) : (
@@ -560,7 +560,7 @@ export function OutletScreen(props: OutletScreenProps) {
           "info",
           <>
         {/* What a clearance item combines with: said here in full, computed from the one switch in Nastavení (never left to guesswork). */}
-        <WonSection title={t("outlet.combine.title")} glyph="sliders" summary={t(withOthers ? "outlet.combine.summary.on" : "outlet.combine.summary.off")} anchor="combine">
+        <WonSection title={t("outlet.combine.title")} glyph="sliders" anchor="combine">
           <div>
             <WonRow>
               <RowNote>{t("outlet.combine.price")}</RowNote>

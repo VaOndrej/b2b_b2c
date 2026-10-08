@@ -172,7 +172,7 @@ export function ProTierSets({
   const modeOf = (set: TierSetView): Mode => modes[set.id] ?? (storedIds?.has(set.id) && set.breaks.length === 0 ? "none" : "own");
   const add = () => setOpenId(onAdd());
   return (
-    <WonSection title={t("tiers.pro.title")} glyph="target" pro locked={!pro} state={sets.length > 0 ? status : undefined} summary={summary} anchor="pro">
+    <WonSection title={t("tiers.pro.title")} glyph="target" pro locked={!pro} summary={t("tiers.view.exceptions.about")} anchor="pro">
       <s-stack direction="block" gap="base">
         {!pro ? <ProSell benefit={t("tiers.pro.benefit")} /> : null}
         {capacity && capacityLine ? (

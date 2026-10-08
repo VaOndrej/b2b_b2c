@@ -564,8 +564,8 @@ test("plan 2026-10-06, dávka 5: nothing without content or action — no room-f
   assert.doesNotMatch((await render("tiers?state=custom")).html, /data-won-custom-look/, "Free never previews the Pro custom look (BILL-1)");
   const rewards = (await render("rewards")).html;
   // The green label is the STORED state (the same as the home tile), never the page's own unsaved form: the
-  // "Stupně" tile and its section carry it.
-  assert.equal((rewards.replace(/<script[\s\S]*?<\/script>/g, "").match(/data-won-state="active"/g) ?? []).length, 2, "the tile + its section");
+  // "Stupně" tile carries it, once (the section under the tile does not repeat it).
+  assert.equal((rewards.replace(/<script[\s\S]*?<\/script>/g, "").match(/data-won-state="active"/g) ?? []).length, 1, "the tile alone");
 });
 
 test("the tier note is only for a product rule (an order rule does not compete with a tier)", async () => {
@@ -652,4 +652,56 @@ test("P2 (plan 6 Oct 2026): what has neither content nor an action is not render
   assert.doesNotMatch((await render("try-cart")).html, /Co se uplatní|Celkem/, "Free: the locked frame, never a result");
   // Onboarding: one count for the guide and Přehled's card.
   assert.match((await render("overview?state=empty")).html, /Krok 1 z/);
+});
+
+test("navigace a stav, body 1 a 2: a view tile says only what changes; the section under it does not repeat the label or the sentence", async () => {
+  const section = (html: string, id: string) => {
+    const start = html.indexOf(`<section id="${id}"`);
+    assert.ok(start >= 0, `section #${id}`);
+    return html.slice(start, html.indexOf("</section>", start));
+  };
+  const viewTile = (html: string, id: string) => {
+    const start = html.indexOf(`data-won-view-tile="${id}"`);
+    assert.ok(start >= 0, `view tile ${id}`);
+    return html.slice(start, html.indexOf("</button>", start));
+  };
+  const count = (html: string, text: string) => html.replace(/<script[\s\S]*?<\/script>/g, "").split(text).length - 1;
+
+  // Množstevní slevy: the label and the levels on the tile, once; the section keeps its name and what it is for.
+  const tiers = (await render("tiers")).html;
+  assert.match(viewTile(tiers, "global"), /data-won-state="active"[\s\S]*Od 3 ks −10\s%, od 5 ks −15\s%, od 10 ks −20\s%/);
+  assert.doesNotMatch(viewTile(tiers, "global"), /data-won-tile-about|Úrovně slevy podle počtu kusů/);
+  assert.match(section(tiers, "global"), /Množstevní sleva pro celý obchod[\s\S]*Platí pro všechny produkty\./);
+  assert.doesNotMatch(section(tiers, "global").slice(0, 2500), /data-won-state=|Od 3 ks −10\s%, od 5 ks −15\s%/);
+  // The table: where it stands is the tile's sentence; the section says what it is for (Vzhled, with no tile, keeps the sentence).
+  assert.equal(count(tiers, "Tabulka je na stránce produktu (vzhled Horizon)."), 1);
+  assert.match(section(tiers, "block"), /Tabulka úrovní na stránce produktu: jestli je na webu a jak ji přidat\./);
+  assert.match(section((await render("appearance")).html, "block"), /Tabulka je na stránce produktu/);
+  // A locked Pro tile keeps the amber look and its marker, also without the description.
+  assert.match(viewTile(tiers, "exceptions"), /data-won-tile-locked[\s\S]*Pro · odemknout[\s\S]*Uložena 1 výjimka, ve Free neplatí/);
+  assert.equal(count(tiers, "Uložena 1 výjimka, ve Free neplatí"), 1);
+
+  // Ochrana marže: every view's sentence once.
+  const margin = (await render("margin?plan=pro")).html;
+  assert.match(viewTile(margin, "settings"), /data-won-state="active"/);
+  assert.doesNotMatch(section(margin, "settings").slice(0, 2500), /data-won-state=/);
+  for (const anchor of ["costs", "collections", "impact"]) assert.match(viewTile(margin, anchor), /data-won-tile-active/, `${anchor}: the tile says what is set`);
+  assert.match(section(margin, "costs"), /Ke kolika produktům známe nákupní cenu a které ji nemají\./);
+  assert.match(section(margin, "impact"), /Které slevy ochrana sníží a u kolika variant\./);
+
+  // Milníky, Výprodej, Kampaně: the green / red label is the tile's alone; the home tile still describes the module.
+  for (const [path, view, anchor] of [
+    ["rewards", "steps", "steps"],
+    ["outlet?plan=pro", "sales", "running"],
+    ["campaigns?plan=pro", "list", "list"],
+  ] as const) {
+    const html = (await render(path)).html;
+    assert.match(viewTile(html, view), /data-won-state="(active|attention)"/, path);
+    assert.doesNotMatch(section(html, anchor).slice(0, 2500), /data-won-state=/, path);
+    assert.doesNotMatch(html, /data-won-tile-about/, path);
+  }
+  const outlet = (await render("outlet?plan=pro")).html;
+  assert.equal(count(outlet, "2 věci k vyřešení"), 1, "the count is on the tile, not again over the list");
+  assert.match((await render("campaigns?plan=pro")).html, /Co právě běží, co je naplánované a co už skončilo\./);
+  assert.match((await render("overview?state=modules")).html, /data-won-tile="tiers"[\s\S]*?data-won-tile-about/);
 });

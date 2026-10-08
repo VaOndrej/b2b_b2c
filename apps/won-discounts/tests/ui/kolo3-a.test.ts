@@ -47,6 +47,22 @@ function tile(html: string, key: string): string {
   return html.slice(start, next < 0 ? undefined : next);
 }
 
+/** A view tile of a module page (the button that opens one panel). */
+function viewTile(html: string, id: string): string {
+  const start = html.indexOf(`data-won-view-tile="${id}"`);
+  assert.ok(start >= 0, `view tile ${id} is on the page`);
+  return html.slice(start, html.indexOf("</button>", start));
+}
+
+/**
+ * The state of a view: said ONCE, by the tile on top — the header of the section the tile opens does not repeat
+ * the label (doctrine §19e: the state once and on top).
+ */
+function viewState(html: string, view: string, anchor: string): string | null {
+  assert.equal(stateOf(section(html, anchor)), null, `section #${anchor} does not repeat the tile's label`);
+  return stateOf(viewTile(html, view));
+}
+
 const stateOf = (markup: string) => /data-won-state="(\w+)"/.exec(markup)?.[1] ?? null;
 const count = (markup: string, re: RegExp) => (markup.match(re) ?? []).length;
 /** Plan markers: "Pro" and "Pro · odemknout". */
@@ -95,23 +111,23 @@ test("body 1 a 8: the home tile and the module page say the same state", async (
     const margin = await render(`margin${q}`);
     // Množstevní slevy: set up, written → "Aktivní" on both.
     assert.equal(stateOf(tile(home, "tiers")), "active", `tiers tile ${plan}`);
-    assert.equal(stateOf(section(tiers, "global")), "active", `tiers page ${plan}`);
+    assert.equal(viewState(tiers, "global", "global"), "active", `tiers page ${plan}`);
     // Milníky: the ladder carries the label, the same as its tile (bod 8).
     assert.equal(stateOf(tile(home, "rewards")), "active", `rewards tile ${plan}`);
-    assert.equal(stateOf(section(rewards, "steps")), "active", `steps ${plan}`);
+    assert.equal(viewState(rewards, "steps", "steps"), "active", `steps ${plan}`);
     // Ochrana marže (the label was missing on both).
     assert.equal(stateOf(tile(home, "margin")), "active", `margin tile ${plan}`);
-    assert.equal(stateOf(section(margin, "settings")), "active", `margin page ${plan}`);
-    assert.match(section(margin, "settings"), />Aktivní</);
+    assert.equal(viewState(margin, "settings", "settings"), "active", `margin page ${plan}`);
+    assert.match(viewTile(margin, "settings"), />Aktivní</);
   }
   // Pro modules: running → active on both; on Free → locked (the Pro marker), never a green or grey label.
   const pro = await render("overview?state=modules&plan=pro");
   // (the sale fixture has a failed step: "Vyžaduje pozornost" on both, with the count on the tile)
   assert.equal(stateOf(tile(pro, "outlet")), "attention");
   assert.match(tile(pro, "outlet"), /data-won-tile-issues/);
-  assert.equal(stateOf(section(await render("outlet?plan=pro&orders=on"), "running")), "attention");
+  assert.equal(viewState(await render("outlet?plan=pro&orders=on"), "sales", "running"), "attention");
   assert.equal(stateOf(tile(pro, "campaigns")), "active");
-  assert.equal(stateOf(section(await render("campaigns?plan=pro"), "list")), "active");
+  assert.equal(viewState(await render("campaigns?plan=pro"), "list", "list"), "active");
   assert.equal(stateOf(tile(pro, "codes")), "active");
   assert.equal(stateOf(section(await render("discounts?sync=ok"), "list")), "active");
   // Off → "Neaktivní" on both, in words.
@@ -119,14 +135,14 @@ test("body 1 a 8: the home tile and the module page say the same state", async (
   assert.equal(stateOf(tile(off, "tiers")), "inactive");
   assert.equal(stateOf(tile(off, "margin")), "inactive");
   assert.match(tile(off, "margin"), />Neaktivní</);
-  assert.equal(stateOf(section(await render("tiers?state=empty"), "global")), "inactive");
-  assert.equal(stateOf(section(await render("margin?state=off"), "settings")), "inactive");
-  assert.equal(stateOf(section(await render("rewards?state=empty"), "steps")), "inactive");
+  assert.equal(viewState(await render("tiers?state=empty"), "global", "global"), "inactive");
+  assert.equal(viewState(await render("margin?state=off"), "settings", "settings"), "inactive");
+  assert.equal(viewState(await render("rewards?state=empty"), "steps", "steps"), "inactive");
   // A failed write: "Vyžaduje pozornost" on both.
   const failed = await render("overview?state=modules-failed");
   assert.equal(stateOf(tile(failed, "tiers")), "attention");
   assert.match(tile(failed, "tiers"), />Vyžaduje pozornost</);
-  assert.equal(stateOf(section(await render("tiers?state=sync-failed"), "global")), "attention");
+  assert.equal(viewState(await render("tiers?state=sync-failed"), "global", "global"), "attention");
 });
 
 test("bod 1: the English label is 'Active'", async () => {
@@ -253,8 +269,9 @@ test("the module pages are tiles and one panel at a time: Množstevní slevy, Od
     const html = await render(path);
     assert.deepEqual([...html.matchAll(/data-won-view-tile="(\w+)"/g)].map((m) => m[1]), views, path);
     for (const view of views) {
-      // Every tile says what the part is for; exactly the open panel is shown, the others stay mounted (their fields submit).
-      assert.match(html, new RegExp(`data-won-view-tile="${view}"[\\s\\S]*?data-won-tile-about`), `${path} ${view}`);
+      // A view tile carries what changes, never the standing description (that is the home tile's and the section's);
+      // exactly the open panel is shown, the others stay mounted (their fields submit).
+      assert.doesNotMatch(viewTile(html, view), /data-won-tile-about/, `${path} ${view}`);
       const shown = new RegExp(`data-won-view-panel="${view}" style="display:(block|none)"`).exec(html)?.[1];
       assert.equal(shown, view === open ? "block" : "none", `${path}: panel ${view}`);
     }

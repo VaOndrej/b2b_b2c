@@ -7,6 +7,22 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
+### Navigace a stav uvnitř stránek (8. 10. 2026) — zadání `won-discounts/prompt-navigace-stav.md`
+
+Větev `won-discounts-milniky` → `origin/main`, commit po každém bodu. `git pull --rebase` v tomto stromu neprojde
+(cizí necommitované soubory, stash zakázán): místo něj `git fetch` + kontrola `git rev-list --left-right --count HEAD...origin/main`
+a `git push origin HEAD:main` jen jako fast-forward. Náhled běží na `http://localhost:54481/dev/preview/<stránka>`.
+Evidence: `docs/won-discounts/evidence/navigace-stav/` (`pred-*` a `po-*`, 390 a 1440 px).
+
+- **Krok 0 — hotovo** (`0867661`): SectionNav v Nastavení, audit, zadání.
+- **Body 1 a 2 — hotovo:** nízké dlaždice pohledů (`shell/ModuleTile.tsx`: `ViewTile` bez popisu; `ModuleTile` na Přehledu
+  beze změny) a hlavičky sekcí pod dlaždicí bez štítku a bez věty souhrnu. Měřeno na 1440 × 900, řada dlaždic / začátek obsahu:
+  Množstevní slevy 166 → 95 px / 495 → 424; Milníky 208 → 115 / 345 → 252; Výprodej (Pro) 190 → 115 / 435 → 360;
+  Kampaně (Pro) 166 → 78 / 303 → 215; Ochrana marže 184 → 113 / 264 → 193. Nad 90 px jsou řady, kde má dlaždice větu na
+  dva až tři řádky nebo řádek „k vyřešení“ (text se nezkracuje).
+  Smazaná hesla (cs i en): `*.view.*.about` u pohledů, kde sekce už vysvětlující větu má, a `campaign.list.live.*`.
+- **Body 3–7 — čeká:** tečka v pruhu, tečka ve sloupci, sloupec v editoru slevy, řádek stupňů v Milnících, Přehled.
+
 ### Opravy po auditu srozumitelnosti (7. 10. 2026) — větev `won-discounts-feedback-2026-10-06`
 
 > **Další krok (7. 10. večer):** celé pokračování je zadané v

@@ -426,8 +426,8 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
 
           {/* Two tiles, one panel at a time (doctrine §19e); the panels stay in the one form with its one Save. */}
           <ModuleTiles label={t("milestones.view.label")}>
-            <ViewTile id="steps" title={t("milestones.view.steps.title")} glyph="spark" about={t("milestones.view.steps.about")} active={stepsTile} status={props.status} selected={view === "steps"} onPick={() => setView("steps")} />
-            <ViewTile id="web" title={t("milestones.view.web.title")} glyph="store" about={t("milestones.view.web.about")} active={webLine} issues={webIssues} selected={view === "web"} onPick={() => setView("web")} />
+            <ViewTile id="steps" title={t("milestones.view.steps.title")} glyph="spark" active={stepsTile} status={props.status} selected={view === "steps"} onPick={() => setView("steps")} />
+            <ViewTile id="web" title={t("milestones.view.web.title")} glyph="store" active={webLine} issues={webIssues} selected={view === "web"} onPick={() => setView("web")} />
           </ModuleTiles>
 
           <ViewPanel id="steps" view={view}>
@@ -438,7 +438,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
             {/* The plan note is about the stored steps, so it sits with them. */}
             <GateNotes notes={gateNotes} />
 
-            <WonSection title={t("milestones.steps.title")} glyph="spark" state={props.status} summary={ladderLine} hint={t("milestones.steps.hint")} anchor="steps">
+            <WonSection title={t("milestones.steps.title")} glyph="spark" summary={ladderLine} hint={t("milestones.steps.hint")} anchor="steps">
               <s-stack direction="block" gap="base">
                 {/* The amounts: a row per step, a column per market. */}
                 {rows.length > 0 ? (

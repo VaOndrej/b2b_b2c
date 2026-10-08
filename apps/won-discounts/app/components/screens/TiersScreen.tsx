@@ -265,13 +265,12 @@ export function TiersScreen(props: TiersScreenProps) {
           <input type="hidden" name={F.scope(globalSet.id)} value="global" />
           {/* Three tiles, one panel at a time (doctrine §19e); the panels stay in the one form with its one Save. */}
           <ModuleTiles label={t("tiers.view.label")}>
-            <ViewTile id="global" title={t("tiers.view.global.title")} glyph="layers" about={t("tiers.view.global.about")} active={globalSummary} status={globalTileStatus} selected={view === "global"} onPick={() => setView("global")} />
-            <ViewTile id="table" title={t("tiers.view.table.title")} glyph="store" about={t("tiers.view.table.about")} active={blockText(block, tr)} selected={view === "table"} onPick={() => setView("table")} />
+            <ViewTile id="global" title={t("tiers.view.global.title")} glyph="layers" active={globalSummary} status={globalTileStatus} selected={view === "global"} onPick={() => setView("global")} />
+            <ViewTile id="table" title={t("tiers.view.table.title")} glyph="store" active={blockText(block, tr)} selected={view === "table"} onPick={() => setView("table")} />
             <ViewTile
               id="exceptions"
               title={t("tiers.view.exceptions.title")}
               glyph="target"
-              about={t("tiers.view.exceptions.about")}
               active={proSets.length === 0 ? t("tiers.pro.none") : pro ? tr.tp("count.tierSet", proSets.length) : tr.tp("tiers.pro.storedFree", proSets.length)}
               status={pro && proSets.length > 0 ? props.status?.sets : undefined}
               pro={!pro}
@@ -284,10 +283,8 @@ export function TiersScreen(props: TiersScreenProps) {
           <WonSection
             title={t("tiers.global.title")}
             glyph="layers"
-            summary={globalSummary}
+            // The label and the sentence of what is set are on the tile above (§19e); here only what the section is for.
             hint={t("tiers.global.hint")}
-            // The stored state, the same as the home tile says (an unsaved row does not change it).
-            state={props.status?.global}
             anchor="global"
             aside={
               <div style={{ display: "grid", gap: 10 }}>
@@ -319,7 +316,7 @@ export function TiersScreen(props: TiersScreenProps) {
           </WonSection>
           </ViewPanel>
           <ViewPanel id="table" view={view}>
-            <TiersBlockSection block={block} storefront={storefront} product={preview.product} />
+            <TiersBlockSection block={block} storefront={storefront} product={preview.product} about={t("tiers.view.table.about")} />
           </ViewPanel>
           <ViewPanel id="exceptions" view={view}>
           <ProTierSets

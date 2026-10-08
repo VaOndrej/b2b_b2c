@@ -352,16 +352,23 @@ form as §18: each rule names its symptom.
 
 - **§19e — A module page is a few tiles and one panel at a time.** The tiles
   on top are the page's parts (what runs · make a new one · how it works, or
-  the page's two to four areas). Each says what the part is **for** and, under
-  a line, what is **set now**, with the §19a label; a click opens its panel
-  below. What runs is the first panel, never under a form; after an action the
+  the page's two to four areas). A view tile is low and carries only what
+  **changes**: the name, the §19a label, one sentence of what is **set now**
+  (it wraps, never cut), the count of things to resolve; a click opens its
+  panel below. What the part is **for** is said once, in the header of the
+  section the tile opens — and that header does not repeat the tile's label
+  or its sentence. **The state is shown once and on top, the explanation once
+  and at the content.** Further sections of the same panel, which have no
+  tile, keep their own summary (§17). What runs is the first panel, never under a form; after an action the
   page opens the panel that shows its result. A panel that is not shown is
   hidden, never unmounted, so the page keeps one form and one Save; a refused
   save opens the panel with the error, and a deep link to a section opens its
-  panel. A home tile carries the same two lines (what it covers, what is
-  active), so the merchant knows what is under it before clicking. *Tightens
-  §8 / §9. Symptom:* a page that scrolls through every section to reach the
-  running thing; a tile that only names a module.
+  panel. A home tile (§19d) is a signpost, so it carries both lines (what it
+  covers, what is active): the merchant knows what is under it before
+  clicking. *Tightens §8 / §9; narrows §17 for the section under a tile.
+  Symptom:* a page that scrolls through every section to reach the running
+  thing; a tile that only names a module; the same label or sentence on a
+  tile and again in the header right under it.
   *Example:* `shell/views.tsx` (`useView`, `ViewPanel`), `ViewTile` (Won Discounts).
 
 ## Architecture decisions (cross-cutting) `[WON]` unless tagged

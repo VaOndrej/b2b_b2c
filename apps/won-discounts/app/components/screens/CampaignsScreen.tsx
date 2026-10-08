@@ -566,10 +566,10 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
 
         {/* Three tiles, one panel at a time (doctrine §19e): what runs is the first thing seen. */}
         <ModuleTiles label={t("campaign.view.label")}>
-          <ViewTile id="list" title={t("campaign.list.title")} glyph="calendar" about={t("campaign.view.list.about")} active={listActive} status={running ? props.status : undefined} selected={view === "list"} onPick={() => setView("list")} />
-          <ViewTile id="form" title={t(editing ? "campaign.edit.title" : "campaign.new.title")} glyph="tag" about={t("campaign.view.form.about")} active={pro ? undefined : t("overview.campaigns.locked")} pro={!pro} locked={!pro} selected={view === "form"} onPick={() => setView("form")} />
+          <ViewTile id="list" title={t("campaign.list.title")} glyph="calendar" active={listActive} status={running ? props.status : undefined} selected={view === "list"} onPick={() => setView("list")} />
+          <ViewTile id="form" title={t(editing ? "campaign.edit.title" : "campaign.new.title")} glyph="tag" active={pro ? undefined : t("overview.campaigns.locked")} pro={!pro} locked={!pro} selected={view === "form"} onPick={() => setView("form")} />
           {showPlaces ? (
-            <ViewTile id="places" title={t("campaign.places.title")} glyph="store" about={t("campaign.view.places.about")} active={placesActive} selected={view === "places"} onPick={() => setView("places")} />
+            <ViewTile id="places" title={t("campaign.places.title")} glyph="store" active={placesActive} selected={view === "places"} onPick={() => setView("places")} />
           ) : null}
         </ModuleTiles>
 
@@ -578,7 +578,7 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
             <WonSection
               title={t("campaign.list.title")}
               glyph="calendar"
-              summary={t("overview.campaigns.none")}
+              summary={t("campaign.view.list.about")}
               action={
                 <s-button variant="primary" onClick={() => setView("form")}>
                   {t("campaign.new.title")}
@@ -590,9 +590,8 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
           <WonSection
             title={t("campaign.list.title")}
             glyph="tag"
-            // Running → the module's state (the same as the home tile); only scheduled or past ones → no label.
-            state={campaigns.some((c) => c.status === "running") ? props.status : undefined}
-            summary={liveCount > 0 ? tr.tp("campaign.list.live", liveCount) : undefined}
+            // What runs and its label are on the tile above (§19e); here only what the list holds.
+            summary={t("campaign.view.list.about")}
             anchor="list"
           >
             <s-stack direction="block" gap="base">

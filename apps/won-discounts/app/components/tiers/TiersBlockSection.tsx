@@ -22,11 +22,14 @@ export function TiersBlockSection({
   block,
   storefront,
   product,
+  about,
 }: {
   block: TiersBlockView;
   /** Absent: the page does not know it (Vzhled). */
   storefront?: StorefrontSyncView;
   product: PreviewProductView | null;
+  /** Under a view tile that already says where the table stands (§19e): what the section is for, shown instead of that sentence. */
+  about?: string;
 }) {
   const tr = useT();
   const { t } = tr;
@@ -49,7 +52,7 @@ export function TiersBlockSection({
       </s-button>
     ) : undefined;
   return (
-    <WonSection title={t("tiers.block.title")} glyph="store" summary={blockText(block, tr)} anchor="block" placement={placement} action={action}>
+    <WonSection title={t("tiers.block.title")} glyph="store" summary={about ?? blockText(block, tr)} anchor="block" placement={placement} action={action}>
       <div>
         {needsAction ? (
           // The state and the button are in the header; the row says what the button does (§13a).

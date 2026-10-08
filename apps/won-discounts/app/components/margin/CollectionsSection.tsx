@@ -21,7 +21,7 @@
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
 
 import { useT } from "../../i18n/context";
-import { COLLECTION_READ_LIMIT, collectionsSummary, MARGIN_FIELD, MARGIN_PERCENT_STEP, percentInput } from "../model/margin";
+import { COLLECTION_READ_LIMIT, MARGIN_FIELD, MARGIN_PERCENT_STEP, percentInput } from "../model/margin";
 import type { GateNoteView, MarginCollectionView, MarginTooLargeView } from "../model/types";
 import { FieldGrid, FieldMessage } from "../rule-editor/parts";
 import { boolAttr } from "../shell/attrs";
@@ -114,15 +114,13 @@ export function CollectionsSection({
     const raw = at >= 0 ? posted![which][at] : undefined;
     return raw ?? percentInput(which === "min" ? c.minMarginPercent : c.maxDiscountPercent);
   };
-  // §17c: on Free one setting applies to the whole shop, whatever is stored. P4: the collections by name.
-  const summary = collectionsSummary(pro ? collections : [], tr);
   return (
     <WonSection
       title={t("margin.collections.title")}
       glyph="layers"
       pro
       locked={!pro}
-      summary={summary}
+      summary={t("margin.view.collections.about")}
       collapsible
       defaultOpen={pro || collections.length > 0 || gateNotes.length > 0 || !!error}
       anchor="collections"
