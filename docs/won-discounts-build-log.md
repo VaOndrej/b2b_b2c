@@ -122,7 +122,7 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   - **Pozor:** změnil jsem `extensions/` za běhu `shopify app dev`; podle runbooku to rozbije soubory rozšíření na webu do dalšího
     restartu. Ověření: `node apps/won-discounts/scripts/check-storefront-assets.mjs the-inventory-not-tracked-snowboard`.
 - **Úkol 7 (Milníky, dávka D, body 9 a 10) — v kódu, brána zelená, sloučeno do `main` 8. 10. 2026; web na Horizonu a Dawnu naživo ověřen na Free
-  (profil `rewards`), profil Pro se stupněm se slevou ještě ne.** Větev `won-discounts-milniky`.
+  i Pro (profily `rewards` a `rewards-pro`).** Větev `won-discounts-milniky`.
   - **Tvar dat (rozhodl jsem sám):** nic nového se neukládá a funkce pokladny se nezměnila (`git diff origin/main --stat --
     apps/won-discounts/extensions/won-discounts-engine/src` je prázdný). Žebříček je pohled na to, co nastavení už má
     (`packages/core/src/discounts/milestones.ts`): doprava zdarma = `modules.rewards.freeShipping`, dárek = `modules.rewards.gifts[]`,
@@ -174,12 +174,17 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
     produktu (`compact`, 0/2 → 1/2 → 2/2 bez načtení stránky), stránka košíku (`full`, oba stupně odškrtnuté), snímky 390 a
     1440 px. Boční košík: na Horizonu ověřen (`compact` 2/2), kopie Dawnu boční košík nemá (košík je stránka). Úklid a
     `verify-clean` exit 0, obchod je vrácený ze zálohy. `check-storefront-assets.mjs`: 7 ze 7 souborů se načítá.
-  - **Naživo neověřeno:** (1) profil `rewards-pro` (stupeň se slevou na webu a v pokladně, žebříček o 4 stupních): potřebuje
-    `shopify app dev` spuštěný s `NODE_ENV=development WON_DEV_PLAN=pro`. (2) Pokladna na Dawnu v profilu `rewards` (429,
-    zopakovat). (3) Boční košík na Dawnu. (4) Klikání v běžící aplikaci (výběr dárku, „Navrhnout ostatní trhy“, uložení).
-  - **Co spustit pro Pro:** restart `npm run dev -w won-discounts` s `NODE_ENV=development WON_DEV_PLAN=pro`, potom
-    `apps/won-discounts/scripts/e2e/runbook/profile.sh rewards-pro milniky-pro pro`.
-- **Další krok:** živá zkouška `rewards-pro` (viz „Co spustit pro Pro“), potom úkol 8 (Překlady, vzhled žebříčku), 9.
+  - **Živá zkouška Pro 8. 10. (profil `rewards-pro`, `profile.sh rewards-pro milniky-pro pro`, evidence
+    `won-discounts/evidence/milniky-pro/`):** **Horizon 4/4.** Žebříček o čtyřech stupních (doprava, dárek, výběr dárků, sleva
+    10 % od 300 Kč) prošel 0/4 → 4/4 bez načtení stránky v pruhu nahoře, na stránce produktu i v bočním košíku; stránka košíku
+    má všechny čtyři odškrtnuté a pokladna dala slevu ze stupně 30 Kč = `planCart`. Původní test Pro (dva dárky, výběr ze 3)
+    prošel i s novým stupněm. **Dawn:** test dárků prošel; průchod stupni v hlavním běhu dvakrát spadl na HTTP 429 obchodu a
+    prošel při opakování po pauze (`debug-run.sh rewards-pro "Milníky" --only dawn`): 0/4 → 4/4, sleva 30 Kč. Úklid a
+    `verify-clean` po obou bězích exit 0.
+  - **Naživo neověřeno:** (1) pokladna (Bogus) na Dawnu v profilu `rewards` (429, zopakovat po pauze; na Horizonu prošla).
+    (2) Boční košík na Dawnu: zkušební kopie ho nemá. (3) Klikání v běžící aplikaci (výběr dárku, „Navrhnout ostatní trhy“,
+    uložení). (4) Limit po trzích naživo se dvěma trhy na Free (ověřeno testy, ne v obchodě).
+- **Další krok:** úkol 8 (Překlady, vzhled žebříčku), potom 9.
 
 Zadání: [`won-discounts/audit-dlazdice-trhy-2026-10-06.md`](won-discounts/audit-dlazdice-trhy-2026-10-06.md) (stav po nálezech je na jeho
 konci). Práce inline, commitnuto lokálně, nepushnuto, nenasazeno.

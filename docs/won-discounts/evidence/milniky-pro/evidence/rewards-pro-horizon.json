@@ -1,0 +1,59 @@
+{
+  "at": "2026-10-08T10:18:38.259Z",
+  "theme": "Horizon",
+  "rows": [
+    {
+      "variant": 48468678967537,
+      "quantity": 1,
+      "gift": "e2e-gift-choice",
+      "unitPrice": 1500,
+      "plan": {
+        "ruleIds": [
+          "gift:e2e-gift-choice"
+        ],
+        "amount": 1500
+      }
+    },
+    {
+      "variant": 48468679164145,
+      "quantity": 1,
+      "gift": "e2e-gift",
+      "unitPrice": 19900,
+      "plan": {
+        "ruleIds": [
+          "gift:e2e-gift"
+        ],
+        "amount": 19900
+      }
+    },
+    {
+      "variant": 48468678902001,
+      "quantity": 8,
+      "gift": null,
+      "unitPrice": 1000,
+      "plan": null
+    }
+  ],
+  "plan": {
+    "totals": {
+      "subtotal": 29400,
+      "productDiscount": 21400,
+      "orderDiscount": 0,
+      "total": 8000
+    },
+    "gifts": [
+      {
+        "tierId": "e2e-gift",
+        "lineId": "gid://shopify/CartLine/1",
+        "state": "earned"
+      },
+      {
+        "tierId": "e2e-gift-choice",
+        "lineId": "gid://shopify/CartLine/0",
+        "state": "earned"
+      }
+    ]
+  },
+  "chosen": 48468678967537,
+  "numericGift": 48468679164145
+}

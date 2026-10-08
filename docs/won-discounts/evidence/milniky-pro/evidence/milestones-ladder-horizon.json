@@ -1,0 +1,303 @@
+{
+  "at": "2026-10-08T10:20:48.429Z",
+  "theme": "Horizon",
+  "walk": [
+    3,
+    4,
+    5,
+    8,
+    30
+  ],
+  "seen": [
+    {
+      "quantity": 3,
+      "ladder": [
+        {
+          "kind": "s",
+          "at": 4000,
+          "done": false
+        },
+        {
+          "kind": "g",
+          "at": 5000,
+          "done": false
+        },
+        {
+          "kind": "g",
+          "at": 8000,
+          "done": false
+        },
+        {
+          "kind": "d",
+          "at": 30000,
+          "done": false
+        }
+      ],
+      "top": {
+        "size": "bar",
+        "now": 10,
+        "text": "Ještě 10 Kč a získáte: Doprava zdarma",
+        "marks": 0,
+        "marksDone": 0,
+        "rows": []
+      },
+      "product": {
+        "size": "compact",
+        "now": 10,
+        "text": "Ještě 10 Kč a získáte: Doprava zdarma",
+        "marks": 4,
+        "marksDone": 0,
+        "rows": []
+      },
+      "drawer": null
+    },
+    {
+      "quantity": 4,
+      "ladder": [
+        {
+          "kind": "s",
+          "at": 4000,
+          "done": true
+        },
+        {
+          "kind": "g",
+          "at": 5000,
+          "done": false
+        },
+        {
+          "kind": "g",
+          "at": 8000,
+          "done": false
+        },
+        {
+          "kind": "d",
+          "at": 30000,
+          "done": false
+        }
+      ],
+      "top": {
+        "size": "bar",
+        "now": 13,
+        "text": "Ještě 10 Kč a získáte: Dárek: Won E2E — Spare",
+        "marks": 0,
+        "marksDone": 0,
+        "rows": []
+      },
+      "product": {
+        "size": "compact",
+        "now": 13,
+        "text": "Ještě 10 Kč a získáte: Dárek: Won E2E — Spare",
+        "marks": 4,
+        "marksDone": 1,
+        "rows": []
+      },
+      "drawer": null
+    },
+    {
+      "quantity": 5,
+      "ladder": [
+        {
+          "kind": "s",
+          "at": 4000,
+          "done": true
+        },
+        {
+          "kind": "g",
+          "at": 5000,
+          "done": true
+        },
+        {
+          "kind": "g",
+          "at": 8000,
+          "done": false
+        },
+        {
+          "kind": "d",
+          "at": 30000,
+          "done": false
+        }
+      ],
+      "top": {
+        "size": "bar",
+        "now": 17,
+        "text": "Ještě 30 Kč a získáte: Dárek zdarma",
+        "marks": 0,
+        "marksDone": 0,
+        "rows": []
+      },
+      "product": {
+        "size": "compact",
+        "now": 17,
+        "text": "Ještě 30 Kč a získáte: Dárek zdarma",
+        "marks": 4,
+        "marksDone": 2,
+        "rows": []
+      },
+      "drawer": {
+        "size": "compact",
+        "now": 17,
+        "text": "Ještě 30 Kč a získáte: Dárek zdarma",
+        "marks": 4,
+        "marksDone": 2,
+        "rows": []
+      }
+    },
+    {
+      "quantity": 8,
+      "ladder": [
+        {
+          "kind": "s",
+          "at": 4000,
+          "done": true
+        },
+        {
+          "kind": "g",
+          "at": 5000,
+          "done": true
+        },
+        {
+          "kind": "g",
+          "at": 8000,
+          "done": true
+        },
+        {
+          "kind": "d",
+          "at": 30000,
+          "done": false
+        }
+      ],
+      "top": {
+        "size": "bar",
+        "now": 27,
+        "text": "Ještě 220 Kč a získáte: Sleva 10 %",
+        "marks": 0,
+        "marksDone": 0,
+        "rows": []
+      },
+      "product": {
+        "size": "compact",
+        "now": 27,
+        "text": "Ještě 220 Kč a získáte: Sleva 10 %",
+        "marks": 4,
+        "marksDone": 3,
+        "rows": []
+      },
+      "drawer": {
+        "size": "compact",
+        "now": 27,
+        "text": "Ještě 220 Kč a získáte: Sleva 10 %",
+        "marks": 4,
+        "marksDone": 3,
+        "rows": []
+      }
+    },
+    {
+      "quantity": 30,
+      "ladder": [
+        {
+          "kind": "s",
+          "at": 4000,
+          "done": true
+        },
+        {
+          "kind": "g",
+          "at": 5000,
+          "done": true
+        },
+        {
+          "kind": "g",
+          "at": 8000,
+          "done": true
+        },
+        {
+          "kind": "d",
+          "at": 30000,
+          "done": true
+        }
+      ],
+      "top": {
+        "size": "bar",
+        "now": 100,
+        "text": "Máte všechny odměny.",
+        "marks": 0,
+        "marksDone": 0,
+        "rows": []
+      },
+      "product": {
+        "size": "compact",
+        "now": 100,
+        "text": "Máte všechny odměny.",
+        "marks": 4,
+        "marksDone": 4,
+        "rows": []
+      },
+      "drawer": {
+        "size": "compact",
+        "now": 100,
+        "text": "Máte všechny odměny.",
+        "marks": 4,
+        "marksDone": 4,
+        "rows": []
+      }
+    }
+  ],
+  "cartPage": {
+    "size": "full",
+    "now": 100,
+    "text": "Máte všechny odměny.",
+    "marks": 4,
+    "marksDone": 4,
+    "rows": [
+      {
+        "kind": "s",
+        "done": true,
+        "text": "Doprava zdarmaod 40 Kč"
+      },
+      {
+        "kind": "g",
+        "done": true,
+        "text": "Dárek: Won E2E — Spareod 50 Kč"
+      },
+      {
+        "kind": "g",
+        "done": true,
+        "text": "Dárek zdarmaod 80 Kč"
+      },
+      {
+        "kind": "d",
+        "done": true,
+        "text": "Sleva 10 %od 300 Kč"
+      }
+    ]
+  },
+  "plan": {
+    "totals": {
+      "subtotal": 49900,
+      "productDiscount": 19900,
+      "orderDiscount": 3000,
+      "total": 27000
+    },
+    "order": {
+      "components": [
+        {
+          "ruleId": "ms-e2e-step",
+          "method": "automatic",
+          "module": "codes",
+          "amount": 3000
+        }
+      ],
+      "amount": 3000,
+      "ownerRuleId": "ms-e2e-step",
+      "ownerMethod": "automatic",
+      "value": {
+        "percent": 10
+      },
+      "message": "10 % z objednávky",
+      "base": 30000,
+      "excludedLineIds": [
+        "gid://shopify/CartLine/0"
+      ],
+      "marginExcludedLineIds": []
+    }
+  }
+}
