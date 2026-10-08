@@ -18,8 +18,8 @@
 -%}
 {%- if p -%}
   {%- capture won_label -%}{%- render 'won-card-tier', p: p, cfg: cfg, cur: cart.currency.iso_code, lang: lang, tx: tx -%}{%- endcapture -%}
-  {%- comment -%} Shopify wraps an app snippet's output in HTML comments ("BEGIN / END app snippet"): keep the text between them. {%- endcomment -%}
-  {%- assign won_label = won_label | split: '<!-- END' | first | split: '-->' | last | strip -%}
+  {%- comment -%} Shopify wraps an app snippet's output in HTML comments ("BEGIN / END app snippet"): keep the text between them. The text is marked first: `split` drops a trailing empty string, and a snippet that said nothing would leave the opening comment as the label. {%- endcomment -%}
+  {%- assign won_label = won_label | split: '<!-- END' | first | append: '¦' | split: '-->' | last | remove: '¦' | strip -%}
   {%- if won_label != blank -%}
     <p class="won-card-tier" data-won-discounts-card="{{ p.handle | escape }}" {{ block.shopify_attributes }}>{{ won_label }}</p>
   {%- endif -%}

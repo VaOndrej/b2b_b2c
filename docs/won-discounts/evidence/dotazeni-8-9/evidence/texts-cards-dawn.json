@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-08T20:56:33.992Z",
+  "theme": "Dawn",
+  "seen": {
+    "cs": {
+      "line": "E2E od 2 ks −10 %",
+      "lines": [
+        "E2E od 2 ks −10 %",
+        "E2E od 2 ks −10 %"
+      ]
+    },
+    "sk": {
+      "line": "Od 2 ks −10 %",
+      "lines": [
+        "Od 2 ks −10 %",
+        "Od 2 ks −10 %"
+      ]
+    },
+    "en": {
+      "line": "From 2 items −10%",
+      "lines": [
+        "From 2 items −10%",
+        "From 2 items −10%"
+      ]
+    }
+  }
+}

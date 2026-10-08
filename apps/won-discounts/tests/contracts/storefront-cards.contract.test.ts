@@ -200,14 +200,25 @@ test("the AI briefs' class lists are exactly the classes of the extension's styl
 // Found by the live E2E (2026-10-04): Shopify wraps the output of an app snippet in HTML comments
 // ("<!-- BEGIN app snippet: won-card-tier -->…<!-- END app snippet -->"), which the captured label carried onto the
 // card as text. Both callers keep only the text between the comments.
-test("the card label is taken from between Shopify's app-snippet comments, in the block and in the embed", async () => {
-  const strip = /assign won_label = won_label \| split: '<!-- END' \| first \| split: '-->' \| last \| strip/;
+// Found by the live E2E again (2026-10-08): Liquid's `split` drops trailing empty strings, so a snippet that said
+// NOTHING left the opening comment itself as the label ("<!-- BEGIN app snippet: won-card-tier" on the card). The
+// text is now marked before the split, so "nothing" stays nothing.
+test("the card label is taken from between Shopify's app-snippet comments, in the block and in the embed — and a snippet that says nothing gives no label", async () => {
+  const strip = /assign won_label = won_label \| split: '<!-- END' \| first \| append: '¦' \| split: '-->' \| last \| remove: '¦' \| strip/;
   assert.match(await read("blocks/card_tiers.liquid"), strip);
   assert.match(await read("blocks/won_discounts_embed.liquid"), strip);
-  // The same filters in JS: with the comments, without them (production), and an empty snippet.
-  const label = (captured: string) => captured.split("<!-- END")[0]!.split("-->").pop()!.trim();
+  // The same filters as Liquid runs them: `split` without trailing empty strings, `first` / `last` of nothing = "".
+  const split = (text: string, by: string) => {
+    const parts = text.split(by);
+    while (parts.length > 0 && parts[parts.length - 1] === "") parts.pop();
+    return parts;
+  };
+  const label = (captured: string) => (split(`${split(captured, "<!-- END")[0] ?? ""}¦`, "-->").pop() ?? "").replace("¦", "").trim();
   assert.equal(label("<!-- BEGIN app snippet: won-card-tier -->Od 2 ks −10 %<!-- END app snippet -->"), "Od 2 ks −10 %");
   assert.equal(label("Od 2 ks −10 %"), "Od 2 ks −10 %");
   assert.equal(label("<!-- BEGIN app snippet: won-card-tier --><!-- END app snippet -->"), "");
   assert.equal(label(""), "");
+  // What the filters did before: the opening comment as the card's text.
+  const before = (captured: string) => (split(split(captured, "<!-- END")[0] ?? "", "-->").pop() ?? "").trim();
+  assert.equal(before("<!-- BEGIN app snippet: won-card-tier --><!-- END app snippet -->"), "<!-- BEGIN app snippet: won-card-tier");
 });

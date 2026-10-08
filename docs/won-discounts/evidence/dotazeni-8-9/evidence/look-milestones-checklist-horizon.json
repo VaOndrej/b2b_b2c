@@ -1,0 +1,53 @@
+{
+  "at": "2026-10-08T19:38:26.479Z",
+  "theme": "Horizon",
+  "profile": "rewards",
+  "look": {
+    "preset": "checklist",
+    "blink": true
+  },
+  "before": {
+    "text": "block",
+    "track": "none",
+    "list": "grid",
+    "accent": "#1a7f45",
+    "doneColor": null
+  },
+  "strip": {
+    "text": "block",
+    "track": "block",
+    "list": null,
+    "accent": "#1a7f45",
+    "doneColor": null
+  },
+  "reached": {
+    "text": "block",
+    "track": "none",
+    "list": "grid",
+    "accent": "#1a7f45",
+    "doneColor": "rgb(26, 127, 69)"
+  },
+  "calm": [
+    {
+      "step": 0,
+      "at": 5349,
+      "gone": null,
+      "animation": "none"
+    }
+  ],
+  "flash": [
+    {
+      "step": 1,
+      "at": 15775.300000190735,
+      "gone": null,
+      "animation": "won-ms-new"
+    }
+  ],
+  "full": {
+    "text": "block",
+    "track": "none",
+    "list": "grid",
+    "accent": "#1a7f45",
+    "doneColor": "rgb(26, 127, 69)"
+  }
+}

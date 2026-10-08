@@ -6,6 +6,7 @@ import { assertExtensionAssetsLoaded, assertResponsiveSane } from "@won/testing/
 
 import { scopeCss } from "@won/core/discounts/scope-css";
 
+import { CARDS_HANDLES } from "../../scripts/e2e/cards-fixture.mjs";
 import { LOOK_ACCENT_RGB, LOOK_TEXTS, MARK, OLD_LOOK, OLD_ROOT, parseLooks } from "../../scripts/e2e/looks-fixture.mjs";
 import { REWARDS_CART_HANDLE } from "../../scripts/e2e/rewards-fixture.mjs";
 import { clearCartQuietly, storefrontJson } from "./support/cart.ts";
@@ -138,7 +139,7 @@ test.describe(`Won Discounts texts and looks on the storefront (úkol 8) [${E2E_
     await saveEvidence(testInfo, "texts-rewards", { at: new Date().toISOString(), theme: THEME_LABEL || null, profile: E2E_PROFILE, seen });
   });
 
-  test("texts, the quantity table and the card line: Czech shows the merchant's, Slovak its one text, English the extension's", async ({ page }, testInfo) => {
+  test("texts, the quantity table: Czech shows the merchant's, Slovak its one text, English the extension's", async ({ page }, testInfo) => {
     test.skip(!TEXTS || !TIERS, "the tiers seed with --texts");
     test.setTimeout(240_000);
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -157,20 +158,37 @@ test.describe(`Won Discounts texts and looks on the storefront (úkol 8) [${E2E_
         expect(heading, `${lang}: the table's heading`).toBe(text("tiers.heading"));
         expect(quantities.length).toBeGreaterThan(0);
         for (const quantity of quantities) expect(quantity, `${lang}: a row's quantity`).toMatch(shaped(text("tiers.row_qty")));
-        await go(page, `${prefix(lang)}/search?q=${TIERS_PRODUCT_HANDLE}&type=product`);
-        const card = page.locator(`[data-won-discounts-card="${TIERS_PRODUCT_HANDLE}"]`);
-        await expect(card, "the card's line").toHaveCount(1);
-        const line = flat(await card.innerText());
-        expect(line, `${lang}: the card's line`).toMatch(shaped(text("cards.pct")));
-        seen[lang] = { heading, quantities, line };
-        if (lang === "cs") {
-          await shots(page, testInfo, "texts-card", `[data-won-discounts-card="${TIERS_PRODUCT_HANDLE}"]`);
-          await go(page, `/products/${TIERS_PRODUCT_HANDLE}`);
-          await shots(page, testInfo, "texts-table", "[data-won-discounts-tiers]");
-        }
+        seen[lang] = { heading, quantities };
+        if (lang === "cs") await shots(page, testInfo, "texts-table", "[data-won-discounts-tiers]");
       });
     }
     await saveEvidence(testInfo, "texts-tiers", { at: new Date().toISOString(), theme: THEME_LABEL || null, seen });
+  });
+
+  test("texts, the line on a product card: Czech shows the merchant's, the other languages the extension's — and never anything but the line", async ({ page }, testInfo) => {
+    test.skip(!TEXTS || E2E_PROFILE !== "cards", "the cards seed with --texts");
+    test.setTimeout(240_000);
+    const handle = CARDS_HANDLES[0]!;
+    const card = `[data-won-discounts-card="${handle}"]`;
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openThemePreview(page);
+    const seen: Record<string, unknown> = {};
+    for (const lang of ["cs", "sk", "en"] as const) {
+      await test.step(`a page in ${lang}`, async () => {
+        const mine = (LOOK_TEXTS as Record<string, Record<string, string>>)[lang] ?? {};
+        await go(page, `${prefix(lang)}/search?q=${handle}&type=product`);
+        expect(await page.evaluate(() => document.documentElement.lang.slice(0, 2)), "the page's language").toBe(lang);
+        await expect(page.locator(card), "the card's line").toHaveCount(1);
+        const line = flat(await page.locator(card).innerText());
+        expect(line, `${lang}: the card's line`).toMatch(shaped(mine["cards.pct"] ?? own(lang, "cards.pct")));
+        // No card of the page carries anything that is not a line (a product whose line says nothing gets none).
+        const lines = (await page.locator("[data-won-discounts-card]").allInnerTexts()).map(flat);
+        for (const text of lines) expect(text, `${lang}: a card's line is text, never markup`).not.toMatch(/<!--|-->|BEGIN app/u);
+        seen[lang] = { line, lines };
+        if (lang === "cs") await shots(page, testInfo, "texts-card", card);
+      });
+    }
+    await saveEvidence(testInfo, "texts-cards", { at: new Date().toISOString(), theme: THEME_LABEL || null, seen });
   });
 
   test("look, Milníky: the ladder draws as the look picked, in the highlight colour; a step just reached flashes once, never with reduced motion", async ({ page }, testInfo) => {

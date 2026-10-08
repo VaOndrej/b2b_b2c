@@ -1,0 +1,52 @@
+{
+  "at": "2026-10-08T20:08:52.508Z",
+  "theme": "Horizon",
+  "profile": "rewards",
+  "look": {
+    "preset": "sentence"
+  },
+  "before": {
+    "text": "block",
+    "track": "none",
+    "list": "none",
+    "accent": "#1a7f45",
+    "doneColor": null
+  },
+  "strip": {
+    "text": "block",
+    "track": "block",
+    "list": null,
+    "accent": "#1a7f45",
+    "doneColor": null
+  },
+  "reached": {
+    "text": "block",
+    "track": "none",
+    "list": "none",
+    "accent": "#1a7f45",
+    "doneColor": "rgb(0, 0, 0)"
+  },
+  "calm": [
+    {
+      "step": 0,
+      "at": 6778.100000143051,
+      "gone": null,
+      "animation": "none"
+    }
+  ],
+  "flash": [
+    {
+      "step": 1,
+      "at": 17635,
+      "gone": null,
+      "animation": "none"
+    }
+  ],
+  "full": {
+    "text": "block",
+    "track": "none",
+    "list": "none",
+    "accent": "#1a7f45",
+    "doneColor": "rgb(0, 0, 0)"
+  }
+}

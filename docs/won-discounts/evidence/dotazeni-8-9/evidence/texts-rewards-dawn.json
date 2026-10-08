@@ -1,0 +1,133 @@
+{
+  "at": "2026-10-08T19:56:59.660Z",
+  "theme": "Dawn",
+  "profile": "rewards",
+  "seen": {
+    "cs": {
+      "served": [
+        "E2E ještě 40,00 Kč a máte: E2E doprava zdarma",
+        "E2E ještě 40,00 Kč a máte: E2E doprava zdarma"
+      ],
+      "drawn": "E2E ještě 40 Kč a máte: E2E doprava zdarma",
+      "strip": "E2E ještě 40 Kč a máte: E2E doprava zdarma",
+      "rows": [
+        "E2E doprava zdarma",
+        "E2E dárek: Won E2E — Spare"
+      ],
+      "froms": [
+        "E2E od 40 Kč",
+        "E2E od 50 Kč"
+      ],
+      "tx": {
+        "ms_left": "E2E ještě {amount} a máte: {reward}",
+        "ms_done": "E2E máte všechno.",
+        "ms_from": "E2E od {amount}",
+        "ms_ship": "E2E doprava zdarma",
+        "ms_gift": "E2E dárek",
+        "ms_gift_named": "E2E dárek: {name}",
+        "ms_disc": "E2E sleva {value}",
+        "gift_done": "E2E dárek je v košíku.",
+        "gift_decline": "Odmítnout",
+        "gift_declined": "Dárek zdarma jste odmítli.",
+        "gift_pick": "Vyberte si dárek zdarma:",
+        "gift_add": "Přidat dárek",
+        "gift_soldout": "Dárek je bohužel vyprodaný.",
+        "code_label": "E2E slevový kód",
+        "code_apply": "Použít",
+        "code_remove": "Odebrat",
+        "code_invalid": "Kód {code} se na tento košík nevztahuje.",
+        "code_loses_gift": "S kódem {code} klesne nákup pod hranici dárku a dárek zdarma ztratíte.",
+        "keep_code": "Ponechat kód (bez dárku)",
+        "drop_code": "Zrušit kód",
+        "saved": "Ušetříte {amount}.",
+        "hint": "Přidejte {n} ks {product} a dostanete {value}.",
+        "hint_capped": "Přidejte {n} ks {product} a dostanete nižší cenu.",
+        "n": {}
+      }
+    },
+    "sk": {
+      "served": [
+        "Ešte 40,00 Kč a získate: E2E doprava zadarmo",
+        "Ešte 40,00 Kč a získate: E2E doprava zadarmo"
+      ],
+      "drawn": "Ešte 40 CZK a získate: E2E doprava zadarmo",
+      "strip": "Ešte 40 CZK a získate: E2E doprava zadarmo",
+      "rows": [
+        "E2E doprava zadarmo",
+        "Darček: Won E2E — Spare"
+      ],
+      "froms": [
+        "od 40 CZK",
+        "od 50 CZK"
+      ],
+      "tx": {
+        "ms_left": "Ešte {amount} a získate: {reward}",
+        "ms_done": "Máte všetky odmeny.",
+        "ms_from": "od {amount}",
+        "ms_ship": "E2E doprava zadarmo",
+        "ms_gift": "Darček zadarmo",
+        "ms_gift_named": "Darček: {name}",
+        "ms_disc": "Zľava {value}",
+        "gift_done": "Darček zadarmo je v košíku.",
+        "gift_decline": "Odmietnuť",
+        "gift_declined": "Darček zadarmo ste odmietli.",
+        "gift_pick": "Vyberte si darček zadarmo:",
+        "gift_add": "Pridať darček",
+        "gift_soldout": "Darček je, žiaľ, vypredaný.",
+        "code_label": "Zľavový kód",
+        "code_apply": "Použiť",
+        "code_remove": "Odobrať",
+        "code_invalid": "Kód {code} sa na tento košík nevzťahuje.",
+        "code_loses_gift": "S kódom {code} klesne nákup pod hranicu darčeka a darček zadarmo stratíte.",
+        "keep_code": "Ponechať kód (bez darčeka)",
+        "drop_code": "Zrušiť kód",
+        "saved": "Ušetríte {amount}.",
+        "hint": "Pridajte {n} ks {product} a dostanete {value}.",
+        "hint_capped": "Pridajte {n} ks {product} a dostanete nižšiu cenu.",
+        "n": {}
+      }
+    },
+    "en": {
+      "served": [
+        "40,00 Kč more and you get: Free shipping",
+        "40,00 Kč more and you get: Free shipping"
+      ],
+      "drawn": "CZK 40 more and you get: Free shipping",
+      "strip": "CZK 40 more and you get: Free shipping",
+      "rows": [
+        "Free shipping",
+        "Gift: Won E2E — Spare"
+      ],
+      "froms": [
+        "from CZK 40",
+        "from CZK 50"
+      ],
+      "tx": {
+        "ms_left": "{amount} more and you get: {reward}",
+        "ms_done": "You have every reward.",
+        "ms_from": "from {amount}",
+        "ms_ship": "Free shipping",
+        "ms_gift": "Free gift",
+        "ms_gift_named": "Gift: {name}",
+        "ms_disc": "{value} off",
+        "gift_done": "Your free gift is in the cart.",
+        "gift_decline": "No thanks",
+        "gift_declined": "You declined the free gift.",
+        "gift_pick": "Choose your free gift:",
+        "gift_add": "Add gift",
+        "gift_soldout": "Sorry, the gift is sold out.",
+        "code_label": "Discount code",
+        "code_apply": "Apply",
+        "code_remove": "Remove",
+        "code_invalid": "Code {code} does not apply to this cart.",
+        "code_loses_gift": "With code {code} your order drops below the gift threshold and you lose the free gift.",
+        "keep_code": "Keep the code (no gift)",
+        "drop_code": "Remove the code",
+        "saved": "You save {amount}.",
+        "hint": "Add {n} more {product} to get {value}.",
+        "hint_capped": "Add {n} more {product} for a lower price.",
+        "n": {}
+      }
+    }
+  }
+}

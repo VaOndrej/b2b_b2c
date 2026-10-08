@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-08T20:34:27.395Z",
+  "theme": "Dawn",
+  "profile": "tiers",
+  "plan": "free",
+  "oldCss": ":is(.won-tiers,.won-cart,.won-cart-slot,.won-outlet,.won-progress,.won-campaign,.won-topbar){--won-tiers-accent:#1a7f45}",
+  "newCss": ".won-tiers{--won-tiers-accent:#1a7f45}.won-ms{--won-tiers-accent:#1a7f45}",
+  "accent": "#1a7f45",
+  "same": {
+    "390": true,
+    "1440": true
+  }
+}
