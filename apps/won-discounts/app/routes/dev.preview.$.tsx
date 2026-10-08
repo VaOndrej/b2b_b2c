@@ -20,6 +20,7 @@ import { PlanScreen, type PlanScreenProps } from "../components/screens/PlanScre
 import { buildRuleEditorProps, RuleEditorScreen, type RuleEditorScreenProps } from "../components/screens/RuleEditorScreen";
 import { SettingsScreen, type SettingsScreenProps } from "../components/screens/SettingsScreen";
 import { AppearanceScreen, type AppearanceScreenProps } from "../components/screens/AppearanceScreen";
+import { TranslationsScreen, type TranslationsScreenProps } from "../components/screens/TranslationsScreen";
 import { TiersScreen, type TiersScreenProps } from "../components/screens/TiersScreen";
 import { MilestonesScreen, type MilestonesScreenProps } from "../components/screens/MilestonesScreen";
 import { OutletScreen, type OutletScreenProps } from "../components/screens/OutletScreen";
@@ -72,6 +73,7 @@ import {
   DEV_TRY_CART_MARGIN_LINES,
   DEV_TIERS_FIXTURE,
   devAppearanceScreen,
+  devTranslationsScreen,
   devPlanScreen,
   devSettingsScreen,
   devTiersOverview,
@@ -121,6 +123,9 @@ import {
 //                                 look + a changed text in the preview); ?theme=dawn; ?accent=green (a stored
 //                                 colour); ?embed=off | noscope (Won on the storefront off / not readable);
 //                                 ?result=saved | invalid | unreadable | too-large (does not fit at checkout)
+//   /dev/preview/translations    Překlady: the default language and Slovak with texts changed, Free by default,
+//                                 ?plan=pro; ?state=empty | no-scope (the shop's languages cannot be read) |
+//                                 downgraded (a third stored language) | import (a planned CSV import, Pro)
 //   /dev/preview/appearance      Vzhled: the four looks on the theme; ?state=empty (an example set) | custom |
 //                                 issue, ?theme=dawn
 //   /dev/preview/rewards         Milníky: Free by default (the third stored step is past the limit), ?plan=pro;
@@ -175,6 +180,7 @@ export const HARNESS_SCREENS = [
   "outlet",
   "campaigns",
   "appearance",
+  "translations",
 ] as const;
 export type HarnessScreen = (typeof HARNESS_SCREENS)[number];
 
@@ -513,6 +519,8 @@ const screenProps = ({ request }: LoaderFunctionArgs) => {
       return devAnalyticsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale });
     case "outlet":
       return { ...devOutletScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, orders: q.get("orders") === "on" }), result: devOutletResult(q.get("result")) };
+    case "translations":
+      return devTranslationsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale });
     case "appearance":
       return devAppearanceScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, theme: q.get("theme") });
     case "margin":
@@ -602,6 +610,9 @@ export default function DevPreview() {
       break;
     case "outlet":
       content = <OutletScreen {...(data as OutletScreenProps)} result={(data as OutletScreenProps).result} />;
+      break;
+    case "translations":
+      content = <TranslationsScreen {...(data as TranslationsScreenProps)} result={submitted} />;
       break;
     case "appearance":
       content = <AppearanceScreen {...(data as AppearanceScreenProps)} result={submitted} />;

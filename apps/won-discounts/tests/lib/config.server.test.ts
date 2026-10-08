@@ -57,7 +57,7 @@ test("SEC-2 / audit P1-1: mutating shop A's default config never leaks into shop
     target: { kind: "order" },
   });
   a.config.engine.combination.outletWithAnything = true;
-  a.config.locales.cs.banner = "Shop A text";
+  Object.assign(a.config.locales, { cs: { banner: "Shop A text" } });
 
   const b = await loadConfig(db.prisma, "fresh-b.myshopify.com");
   assert.deepEqual(b.config, DEFAULT_CONFIG);
@@ -312,7 +312,7 @@ test("P2-1 backstop: a sanitized config over 256 KiB is refused (config_too_larg
   assert.ok(result.bytes > result.limit, `bytes ${result.bytes}`);
 
   const row = await db.prisma.shopConfig.findUnique({ where: { shop } });
-  assert.deepEqual(JSON.parse(row?.data ?? "{}").locales, { cs: {}, sk: {}, en: {} }, "previous config untouched");
+  assert.deepEqual(JSON.parse(row?.data ?? "{}").locales, {}, "previous config untouched");
   assert.equal((await db.prisma.configVersion.findMany({ where: { shop } })).length, 1, "no history row");
 
   const brandNew = "stored-too-big-new.myshopify.com";

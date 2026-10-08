@@ -25,6 +25,7 @@
 
 import type { DiscountRule, OnboardingGoal, WonDiscountsConfig } from "@won/core/discounts/config";
 import { isMilestoneRule } from "@won/core/discounts/milestones";
+import { storefrontTexts } from "@won/core/discounts/storefront-texts";
 
 import { useT } from "../../i18n/context";
 import type { Translator } from "../../i18n";
@@ -33,6 +34,7 @@ import { describeMarginSettings, formatMoney, formatPercent } from "@won/core/di
 import { NativeDiscountsPanel, nativeSummary } from "../NativeDiscounts";
 import type { RuleWarning } from "../model/describe";
 import { currencyMarketNames, currencyViews } from "../model/markets";
+import { languageName } from "../model/translations";
 import { embedPlacement } from "../model/embed";
 import { storeStatuses, writtenOf } from "../model/module-status";
 import { shopToday } from "../model/rule-form";
@@ -76,6 +78,8 @@ export interface OverviewScreenProps {
   gatePending?: boolean;
   /** Handles of the enabled Won markets (a rule targeting only others never runs). */
   enabledMarkets?: string[];
+  /** Překlady: the languages with a changed storefront text and how many texts are changed in all. */
+  translations?: { languages: string[]; changed: number };
   /** The plan in force: on Free the Pro cards (Kampaně, Výprodej) say so instead of offering their setup. Absent = not known. */
   plan?: "free" | "pro";
 }
@@ -110,6 +114,7 @@ export function buildOverviewProps(
     today: shopToday(timezone, opts.now),
     timezone,
     enabledMarkets: config.markets.filter((m) => m.enabled).map((m) => m.handle),
+    translations: translationsOf(config),
   };
   if (opts.signals) props.signals = opts.signals;
   if (opts.ruleSync) props.ruleSync = { ...opts.ruleSync };
@@ -118,6 +123,12 @@ export function buildOverviewProps(
   if (opts.gatePending) props.gatePending = true;
   if (opts.plan) props.plan = opts.plan;
   return props;
+}
+
+/** What Překlady holds: the languages with a text of the merchant's own, and the texts counted. */
+function translationsOf(config: WonDiscountsConfig): NonNullable<OverviewScreenProps["translations"]> {
+  const texts = storefrontTexts(config);
+  return { languages: Object.keys(texts), changed: Object.values(texts).reduce((n, language) => n + Object.keys(language).length, 0) };
 }
 
 function warningText(w: RuleWarning, tr: Translator, currencies: readonly CurrencyView[] = []): string {
@@ -287,6 +298,7 @@ export function OverviewScreen({
   gateOff,
   gatePending = false,
   enabledMarkets,
+  translations,
   plan,
 }: OverviewScreenProps) {
   const tr = useT();
@@ -344,6 +356,11 @@ export function OverviewScreen({
   const missingMarkets = currencies.filter((c) => missingCodes.has(c.code)).flatMap((c) => c.markets.map((m) => m.name));
   const planName = plan === "pro" ? "Pro" : "Free";
   const marketsLine = marketCount > 0 ? tr.tp("tile.settings.markets", marketCount, { plan: planName }) : t(plan === "pro" ? "tile.settings.pro" : "tile.settings.free");
+  const translationsLine = !translations
+    ? undefined
+    : translations.changed > 0
+      ? t("tile.translations.changed", { languages: tr.list(translations.languages.map((code) => languageName(code, tr))), n: translations.changed })
+      : t("tile.translations.default");
   const settingsLine = missingMarkets.length > 0 ? t("tile.settings.missing", { summary: marketsLine, markets: tr.list(missingMarkets) }) : marketsLine;
   const lockedTile = (key: "outlet" | "campaigns") => states[key]?.state === "locked";
 
@@ -477,7 +494,7 @@ export function OverviewScreen({
           <ModuleTile id="campaigns" href="/app/campaigns" title={t("module.campaigns")} glyph="calendar" about={t("tile.about.campaigns")} aboutShort={t("tile.short.campaigns")} active={bodies.campaigns} status={states.campaigns} issueText={waits("campaigns")} pro={proMark} locked={lockedTile("campaigns") || (free && !states.campaigns)} />
           <ModuleTile id="margin" href="/app/margin" title={t("module.margin")} glyph="shield" about={t("tile.about.margin")} aboutShort={t("tile.short.margin")} active={bodies.margin} status={states.margin} issueText={waits("margin")} />
           <ModuleTile id="analytics" href="/app/analytics" title={t("nav.analytics")} glyph="check" about={t("tile.about.analytics")} aboutShort={t("tile.short.analytics")} active={bodies.analytics} />
-          <ModuleTile id="appearance" href="/app/appearance" title={t("nav.appearance")} glyph="store" about={t("tile.about.appearance")} aboutShort={t("tile.short.appearance")} />
+          <ModuleTile id="translations" href="/app/translations" title={t("nav.translations")} glyph="code" about={t("tile.about.translations")} aboutShort={t("tile.short.translations")} active={translationsLine} />
           <ModuleTile id="tryCart" href="/app/try-cart" title={t("nav.tryCart")} glyph="cart" about={t("tile.about.tryCart")} aboutShort={t("tile.short.tryCart")} active={free ? t("tile.tryCart.locked") : undefined} pro={proMark} locked={free} />
           <ModuleTile id="settings" href="/app/settings" title={t("nav.settings")} glyph="sliders" about={t("tile.about.settings")} aboutShort={t("tile.short.settings")} active={plan ? settingsLine : undefined} />
         </ModuleTiles>

@@ -163,7 +163,7 @@ function proCtx(store: FakeStore): ShopCtx {
 }
 const extras = (version: string | null, more: [string, string][]): [string, string][] => [["intent", "save"], ["configVersion", version ?? ""], ["preset", "chips"], ["extras", "1"], ...more];
 
-test("MVP 7 save (Pro): card prices, the custom look and storefront texts are stored and reach the storefront config — the CSS scoped under the block roots", async () => {
+test("MVP 7 save (Pro): card prices and the custom look are stored and reach the storefront config — the CSS scoped under the block roots", async () => {
   const store = storeWithTheme();
   const ctx = proCtx(store);
   const version = (await loadAppearanceScreen(ctx, { scopes: "read_themes" })).configVersion;
@@ -175,9 +175,8 @@ test("MVP 7 save (Pro): card prices, the custom look and storefront texts are st
         ["look.accent", "#0A7D4F"],
         ["look.radius", "4"],
         ["look.css", ".won-tiers__row { font-weight: 700 }"],
+        // The texts are the Překlady page's: a text field posted here is not taken.
         ["tx.cs.tiers.heading", "Kup víc, plať míň"],
-        ["tx.en.cards.pct", ""],
-        ["tx.cs.not.a.key", "x"],
       ]),
     ),
   );
@@ -185,35 +184,31 @@ test("MVP 7 save (Pro): card prices, the custom look and storefront texts are st
   const stored = (await loadConfig(db.prisma, shop)).config;
   assert.equal(stored.storefront.cardPricesEnabled, true);
   assert.deepEqual(stored.storefront.custom, { vars: { accent: "#0a7d4f", radius: 4 }, css: ".won-tiers__row { font-weight: 700 }" });
-  assert.deepEqual(stored.locales.cs, { "tiers.heading": "Kup víc, plať míň" }, "only keys the extension has");
-  const live = store.sync.storefrontConfig() as { cards?: number; appearance: { preset: string; css?: string }; texts: Record<string, Record<string, string>> };
+  assert.deepEqual(stored.locales, {}, "Vzhled saves no text");
+  const live = store.sync.storefrontConfig() as { cards?: number; appearance: { preset: string; css?: string } };
   assert.equal(live.cards, 1);
   assert.equal(live.appearance.preset, "chips");
   assert.match(live.appearance.css ?? "", /^:is\(\.won-tiers,\.won-cart,\.won-cart-slot,\.won-outlet,\.won-progress,\.won-campaign,\.won-topbar\)\{--won-tiers-accent:#0a7d4f;--won-tiers-radius:4px\}:is\([^)]*\) \.won-tiers__row\{font-weight: 700\}$/);
-  assert.deepEqual(live.texts, { cs: { "tiers.heading": "Kup víc, plať míň" } });
+  assert.deepEqual(store.sync.storefrontTexts(), {});
 
   const screen = await loadAppearanceScreen(ctx, { scopes: "read_themes" });
   assert.equal(screen.cardPrices, true);
   assert.deepEqual(screen.custom, { accent: "#0a7d4f", line: "", tint: "", radius: "4", css: ".won-tiers__row { font-weight: 700 }" });
-  const heading = screen.texts.find((x) => x.key === "tiers.heading")!;
-  assert.deepEqual(heading, { key: "tiers.heading", defaults: { cs: "Množstevní sleva", sk: heading.defaults.sk, en: "Quantity discount" }, values: { cs: "Kup víc, plať míň", sk: "", en: "" } });
-  assert.ok(screen.texts.some((x) => x.key === "cards.pct") && screen.texts.some((x) => x.key === "cart.saved"));
   assert.match(screen.aiPrompt, /--won-tiers-accent/);
   assert.match(screen.aiPrompt, /\.won-tiers__row/);
 });
 
-test("MVP 7 save (Free): the custom look fields are not taken (BILL-1) and a stored look is kept as it is; card prices and texts save on any plan", async () => {
+test("MVP 7 save (Free): the custom look fields are not taken (BILL-1) and a stored look is kept as it is; card prices save on any plan", async () => {
   const store = storeWithTheme();
   const base = (await loadConfig(db.prisma, shop)).config;
   await saveConfig(db.prisma, shop, { ...base, storefront: { ...base.storefront, custom: { vars: { accent: "#111111" }, css: "" } } });
   const ctx = ctxFor(store);
   const version = (await loadAppearanceScreen(ctx, { scopes: "read_themes" })).configVersion;
-  const r = await appearanceAction(ctx, formOf(extras(version, [["cardPrices", "on"], ["look.accent", "#ff0000"], ["look.css", ".a{b:c}"], ["tx.sk.cards.off", "Od {min} ks −{amount}"]])));
+  const r = await appearanceAction(ctx, formOf(extras(version, [["cardPrices", "on"], ["look.accent", "#ff0000"], ["look.css", ".a{b:c}"]])));
   assert.ok(r.ok, JSON.stringify(r));
   const stored = (await loadConfig(db.prisma, shop)).config;
   assert.deepEqual(stored.storefront.custom, { vars: { accent: "#111111" }, css: "" }, "the Pro setup stays saved, untouched");
   assert.equal(stored.storefront.cardPricesEnabled, true);
-  assert.deepEqual(stored.locales.sk, { "cards.off": "Od {min} ks −{amount}" });
   const live = store.sync.storefrontConfig() as { appearance: { css?: string }; cards?: number };
   assert.equal(live.appearance.css, undefined, "Free ships no custom look");
   assert.equal(live.cards, 1);
@@ -231,7 +226,6 @@ test("MVP 7 save: a colour that is not #rgb / #rrggbb, a radius out of range and
   assert.deepEqual(await errors([["look.radius", "99"]]), [{ field: "look.radius", key: "appearance.error.radius", params: { max: 32 } }]);
   assert.deepEqual(await errors([["look.css", ".a{background:url(https://x)}"]]), [{ field: "look.css", key: "appearance.error.css.forbidden", params: { detail: "url(" } }]);
   assert.deepEqual(await errors([["look.css", ".a{b:c"]]), [{ field: "look.css", key: "appearance.error.css.unbalanced", params: { detail: "" } }]);
-  assert.deepEqual(await errors([["tx.cs.tiers.heading", "x".repeat(501)]]), [{ field: "tx.cs.tiers.heading", key: "appearance.error.text", params: { max: 500 } }]);
   const stored = (await loadConfig(db.prisma, shop)).config;
   assert.equal(stored.storefront.custom, undefined);
   assert.equal(stored.storefront.appearancePreset, "highlight");
@@ -241,10 +235,10 @@ test("MVP 7 save: a storefront config over Shopify's metafield limit is refused 
   const store = storeWithTheme();
   const ctx = proCtx(store);
   const version = (await loadAppearanceScreen(ctx, { scopes: "read_themes" })).configVersion;
-  const r = await appearanceAction(ctx, formOf(extras(version, [["tx.cs.tiers.heading", "Dlouhý text"]])), { maxStorefrontBytes: 100 });
+  const r = await appearanceAction(ctx, formOf(extras(version, [["look.css", ".won-tiers__row { font-weight: 700 }"]])), { maxStorefrontBytes: 100 });
   assert.ok(!r.ok && r.reason === "invalid", JSON.stringify(r));
   assert.equal(r.errors![0]!.key, "appearance.error.tooLarge");
-  assert.deepEqual((await loadConfig(db.prisma, shop)).config.locales.cs, {});
+  assert.equal((await loadConfig(db.prisma, shop)).config.storefront.custom, undefined);
 });
 
 test("MVP 7: a form without the extras marker (an older client) changes the look only", async () => {

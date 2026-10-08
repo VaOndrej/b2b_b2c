@@ -31,11 +31,11 @@ function stringValue(block: string, key: string): string | null {
   return new RegExp(`^\\s*${key}\\s*=\\s*"([^"]*)"`, "m").exec(block)?.[1] ?? null;
 }
 
-test("T1: read_markets is a required scope; no optional scope is left", () => {
+test("T1: read_markets is a required scope; the only optional one is read_locales (the Překlady page asks for it)", () => {
   const section = /\[access_scopes\]([\s\S]*?)(?=\n\[[a-z_]+\]|$)/.exec(toml)?.[1] ?? "";
   const required = (stringValue(section, "scopes") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   assert.deepEqual(required.sort(), ["read_markets", "read_products", "read_themes", "write_discounts", "write_products"]);
-  assert.equal(arrayValue(section, "optional_scopes"), null);
+  assert.deepEqual(arrayValue(section, "optional_scopes"), ["read_locales"]);
 });
 
 test("item 2: the targeting topics go to /webhooks/targeting (the create/update topics trimmed with include_fields)", () => {

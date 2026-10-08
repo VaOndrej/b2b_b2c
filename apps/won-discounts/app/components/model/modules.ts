@@ -1,6 +1,6 @@
 // The modules of the admin (docs/won-discounts/rozhodnuti.md, Admin IA; plan
 // docs/won-discounts/plan-zmen-2026-10-06.md, Dávka 1). The Shopify sidebar has
-// five items after the home link (P1): Slevy · Ochrana marže · Vzhled · Přehledy ·
+// five items after the home link (P1): Slevy · Ochrana marže · Překlady · Přehledy ·
 // Nastavení. The discount pages (Slevy a kódy, Množstevní slevy, Odměny, Výprodej,
 // Kampaně) share one sidebar item and a sub-navigation on the page
 // (app/components/shell/SubNav.tsx). Tarif and Vyzkoušet košík live in Nastavení.
@@ -12,7 +12,7 @@ import { t, type Locale, type MessageKey } from "../../i18n";
 import type { ModuleKey, ModuleState, ModuleStatus } from "./module-status";
 
 /** Every module with its own page, in the default order. */
-export const ADMIN_MODULES = ["tiers", "rewards", "outlet", "margin", "campaigns", "appearance"] as const;
+export const ADMIN_MODULES = ["tiers", "rewards", "outlet", "margin", "campaigns", "translations"] as const;
 export type AdminModule = (typeof ADMIN_MODULES)[number];
 
 export interface ModuleMeta {
@@ -30,7 +30,7 @@ export const MODULE_META: Readonly<Record<AdminModule, ModuleMeta>> = {
   outlet: { key: "outlet", title: "module.outlet", nav: "nav.outlet", body: "soon.outlet", pro: true },
   margin: { key: "margin", title: "module.margin", nav: "nav.margin", body: "soon.margin", pro: false },
   campaigns: { key: "campaigns", title: "module.campaigns", nav: "nav.campaigns", body: "soon.campaigns", pro: true },
-  appearance: { key: "appearance", title: "module.appearance", nav: "nav.appearance", body: "soon.appearance", pro: false },
+  translations: { key: "translations", title: "module.translations", nav: "nav.translations", body: "tile.about.translations", pro: false },
 };
 
 /** Onboarding goals that name a module ("migrate" is about Shopify discounts, not a module). */
@@ -60,7 +60,7 @@ export function navItems(locale: Locale): { to: string; label: string }[] {
   return [
     { to: "/app/discounts", label: t(locale, "nav.discountsGroup") },
     { to: "/app/margin", label: t(locale, "nav.margin") },
-    { to: "/app/appearance", label: t(locale, "nav.appearance") },
+    { to: "/app/translations", label: t(locale, "nav.translations") },
     { to: "/app/analytics", label: t(locale, "nav.analytics") },
     { to: "/app/settings", label: t(locale, "nav.settings") },
   ];

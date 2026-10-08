@@ -33,6 +33,7 @@ import { amountLabels, currencyCodes } from "../model/markets";
 import { freeGlobalSetId, newTierSetId, readTiersForm, tierPayloadUse, tierSetToConfig, TIERS_FIELD, TIERS_INTENT, tierSummary, blockText } from "../model/tiers";
 import type { FieldError, TierSetView, TiersScreenData, UiResult } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
+import { snapshotOf } from "../shell/form-snapshot";
 import { GateNotes } from "../shell/GateNotes";
 import { Notice } from "../shell/Notice";
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
@@ -57,13 +58,6 @@ function keptCurrencies(sets: readonly TierSetView[], enabled: readonly string[]
   const out = new Set<string>();
   for (const set of sets) for (const b of set.breaks) for (const code of Object.keys(b.amount)) if (!enabled.includes(code)) out.add(code);
   return [...out];
-}
-
-/** The last read value of every field (the first one of a name). */
-function snapshotOf(form: HTMLFormElement): Map<string, string> {
-  const out = new Map<string, string>();
-  for (const [name, value] of new FormData(form).entries()) if (!out.has(name) && typeof value === "string") out.set(name, value);
-  return out;
 }
 
 function HonestNotes({ marginOn, competingRules, outletWithAnything }: { marginOn: boolean; competingRules: number; outletWithAnything: boolean }) {

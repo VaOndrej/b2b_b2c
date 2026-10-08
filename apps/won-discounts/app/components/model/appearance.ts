@@ -7,7 +7,7 @@
 import { APPEARANCE_PRESETS, type AppearancePreset } from "@won/core/discounts/config";
 import { customLookCss } from "@won/core/discounts/custom-look";
 
-import { CATALOGUES, type MessageKey, type Translator } from "../../i18n";
+import type { MessageKey, Translator } from "../../i18n";
 import type { FormDataLike } from "./rule-form";
 import type { AppearancePresetView, FieldError } from "./types";
 
@@ -26,22 +26,14 @@ export const APPEARANCE_FIELD = {
   tint: "look.tint",
   radius: "look.radius",
   css: "look.css",
-  /** `tx.<lang>.<key>`: a storefront text the merchant changed ("" = the extension's own). */
-  text: "tx.",
 } as const;
 
-export const TEXT_LANGS = ["cs", "sk", "en"] as const;
-export type TextLang = (typeof TEXT_LANGS)[number];
-/** core CONFIG_LIMITS.localeStringLength. */
-export const TEXT_MAX_LENGTH = 500;
 export const RADIUS_MAX = 32;
 
 export interface AppearanceExtras {
   cardPrices: boolean;
   /** null = nothing set (no custom look). */
   custom: { vars: { accent?: string; line?: string; tint?: string; radius?: number }; css: string } | null;
-  /** Per language, only the known keys; "" = back to the extension's own text. */
-  texts: Record<TextLang, Record<string, string>>;
 }
 
 export const APPEARANCE_INTENT = { save: "save" } as const;
@@ -75,11 +67,10 @@ export function readAppearanceForm(form: FormDataLike): { ok: true; preset: Appe
 const COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 
 /**
- * MVP 7: the fields beyond the look — null when the form does not carry them (no `extras` marker). `textKeys` =
- * the extension's text keys; any other `tx.` field is ignored. Values are checked for shape here (the admin's
- * words on the field); whether the CSS can be scoped is core's call (the server).
+ * MVP 7: the fields beyond the look — null when the form does not carry them (no `extras` marker). Values are
+ * checked for shape here (the admin's words on the field); whether the CSS can be scoped is core's call (the server).
  */
-export function readAppearanceExtras(form: FormDataLike, textKeys: readonly string[]): { ok: true; extras: AppearanceExtras | null } | { ok: false; errors: FieldError[] } {
+export function readAppearanceExtras(form: FormDataLike): { ok: true; extras: AppearanceExtras | null } | { ok: false; errors: FieldError[] } {
   if (form.get(APPEARANCE_FIELD.extras) === null) return { ok: true, extras: null };
   const text = (name: string) => String(form.get(name) ?? "").trim();
   const errors: FieldError[] = [];
@@ -97,20 +88,9 @@ export function readAppearanceExtras(form: FormDataLike, textKeys: readonly stri
   }
   // The CSS as typed (not trimmed inside): the merchant gets back exactly what they saved.
   const css = String(form.get(APPEARANCE_FIELD.css) ?? "");
-  const texts: AppearanceExtras["texts"] = { cs: {}, sk: {}, en: {} };
-  for (const lang of TEXT_LANGS) {
-    for (const key of textKeys) {
-      const field = `${APPEARANCE_FIELD.text}${lang}.${key}`;
-      const raw = form.get(field);
-      if (raw === null) continue;
-      const value = String(raw).trim();
-      if (value.length > TEXT_MAX_LENGTH) errors.push({ field, key: "appearance.error.text", params: { max: TEXT_MAX_LENGTH } });
-      else texts[lang][key] = value;
-    }
-  }
   if (errors.length > 0) return { ok: false, errors };
   const custom = Object.keys(vars).length > 0 || css.trim() !== "" ? { vars, css: css.trim() === "" ? "" : css } : null;
-  return { ok: true, extras: { cardPrices: form.get(APPEARANCE_FIELD.cardPrices) === "on", custom, texts } };
+  return { ok: true, extras: { cardPrices: form.get(APPEARANCE_FIELD.cardPrices) === "on", custom } };
 }
 
 // --- The live form (P5): what the page says and previews follows what is typed --------------------------------------
@@ -135,32 +115,4 @@ export function liveCustomLookCss(value: (field: string) => string): string {
   const radius = value(APPEARANCE_FIELD.radius).trim();
   if (/^\d{1,2}$/.test(radius) && Number(radius) <= RADIUS_MAX) vars.radius = Number(radius);
   return customLookCss({ vars, css: value(APPEARANCE_FIELD.css) });
-}
-
-/** The form field of one storefront text. */
-export function textField(lang: TextLang, key: string): string {
-  return `${APPEARANCE_FIELD.text}${lang}.${key}`;
-}
-
-/** How many storefront texts are changed (non-empty), from the form's values by field name. */
-export function changedTextCount(values: Iterable<readonly [string, string]>): number {
-  let n = 0;
-  for (const [name, value] of values) if (name.startsWith(APPEARANCE_FIELD.text) && value.trim() !== "") n += 1;
-  return n;
-}
-
-/**
- * A storefront text's name for the merchant ("Nadpis tabulky") instead of the extension's key (`tiers.heading`).
- * A key the admin has no name for yet (a text added to the extension later) is named by its own default text —
- * never by the raw key.
- */
-export function textLabel(key: string, fallback: string, tr: Translator): string {
-  const message = `appearance.text.${key}`;
-  if (Object.prototype.hasOwnProperty.call(CATALOGUES[tr.locale], message)) return tr.t(message as MessageKey);
-  return fallback.trim() || key;
-}
-
-/** The language of a storefront text, in the admin language ("česky"). */
-export function textLangLabel(lang: TextLang, tr: Translator): string {
-  return tr.t(`appearance.lang.${lang}` as MessageKey);
 }

@@ -627,7 +627,7 @@ export interface PreviewLookView {
   /** The stored ready-made highlight colour (core ACCENT_PRESETS); absent = "theme". */
   accent?: string;
   customCss: string | null;
-  texts: Partial<Record<"cs" | "sk" | "en", Record<string, string>>>;
+  texts: Record<string, Record<string, string>>;
 }
 
 /** Mirrors core APPEARANCE_PRESETS (K7). */
@@ -700,16 +700,27 @@ export interface AppearanceScreenData {
   custom: { accent: string; line: string; tint: string; radius: string; css: string };
   /** The stored custom CSS cannot be used (a hand-made config): why, for the notice. */
   customIssue: string | null;
-  /** MVP 7: the storefront texts — the extension's own per language and what the merchant changed ("" = unchanged). */
-  texts: { key: string; defaults: Record<"cs" | "sk" | "en", string>; values: Record<"cs" | "sk" | "en", string> }[];
   /** The deep link that adds the card block to the theme's product card (themes whose card takes app blocks). */
   cardBlockUrl: string | null;
   /** MVP 7 (Pro): the brief for an AI — the storefront contract a custom look is written against. */
   aiPrompt: string;
   /** The stored custom look and texts as the storefront gets them, for the previews. Additive (plan 2026-10-06). */
   previewLook?: PreviewLookView;
-  /** The shop's storefront languages when the loader knows them (absent = all three are offered). Additive (plan 2026-10-06). */
-  languages?: ("cs" | "sk" | "en")[];
+}
+
+/** Překlady: the storefront texts, one table per language (model/translations.ts). */
+export interface TranslationsScreenData {
+  plan: "free" | "pro";
+  configVersion: string | null;
+  /** The languages switched on in Shopify, the default first; null = the app may not read them (or the read failed). */
+  shopLanguages: string[] | null;
+  /** The page's tables in order: the shop's default language, then the ones the merchant added. */
+  languages: string[];
+  /** Languages the plan puts on the storefront; null = every one. */
+  limit: number | null;
+  rows: import("./translations").TextRow[];
+  /** Per language the texts the merchant changed. */
+  values: Record<string, Record<string, string>>;
 }
 
 /** Free per-category combination switches (A1, engine.combination). */

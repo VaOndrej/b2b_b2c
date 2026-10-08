@@ -32,6 +32,7 @@ import { productRuleIndex, variantKey } from "@won/core/discounts/targeting";
 import type {
   AdminSignals,
   AppearanceScreenData,
+  TranslationsScreenData,
   CartPlanView,
   CostCoverageView,
   CostMirrorView,
@@ -69,8 +70,11 @@ import { rewardsOverviewOf, rewardsScreenFacts, rewardsSectionStatus } from "./i
 import { campaignsStatus, marginStatus, outletStatus } from "../components/model/module-status";
 import { currencyViews } from "../components/model/markets";
 import { TIERS_FIELD } from "../components/model/tiers";
-import { aiPrompt, previewLookOf, sampleSet, storefrontTextDefaults, storefrontTextKeys } from "./integration/appearance.server";
+import { exportCsv, planImport, type ImportPlan } from "../components/model/translations";
+import { translator } from "../i18n";
+import { aiPrompt, previewLookOf, sampleSet } from "./integration/appearance.server";
 import { tiersOverviewOf, tiersScreenFacts, tiersSectionStatus } from "./integration/tiers.server";
+import { translationsScreenData } from "./integration/translations.server";
 import { lossText, undoCostTexts, warningText } from "./native/copy";
 import { isDevHarnessEnvironment } from "./dev-harness-env";
 import { wordIssues } from "./integration/issue-copy";
@@ -1128,18 +1132,35 @@ export function devAppearanceScreen(opts: { plan: "free" | "pro"; state: string 
         ? { accent: "#0a7d4f", line: "", tint: "#f2fbf6", radius: "4", css: opts.state === "issue" ? ".a{background:url(x)}" : ".won-tiers__heading { text-transform: uppercase; }" }
         : { accent: "", line: "", tint: "", radius: "", css: "" },
     customIssue: opts.state === "issue" ? "forbidden" : null,
-    texts: storefrontTextKeys().map((key) => {
-      const d = storefrontTextDefaults();
-      return {
-        key,
-        defaults: { cs: d.cs[key] ?? "", sk: d.sk[key] ?? "", en: d.en[key] ?? "" },
-        values: { cs: opts.state === "custom" && key === "tiers.heading" ? "Kup víc, plať míň" : "", sk: "", en: "" },
-      };
-    }),
     cardBlockUrl: "https://won-dev.myshopify.com/admin/themes/current/editor?template=collection&addAppBlockId=dev/card_tiers&target=mainSection",
     aiPrompt: aiPrompt(),
     previewLook: previewLookOf(opts.state === "custom" ? DEV_CUSTOM_LOOK_FIXTURE : config, opts.plan),
   };
+}
+
+/**
+ * Překlady as loadTranslationsScreen hands it over: the default language and Slovak with a few texts changed, two
+ * more languages on offer; `empty` = nothing changed yet; `no-scope` = the app may not read the shop's languages;
+ * `downgraded` = three languages stored (on Free the third is not on the storefront); `import` = a planned import.
+ */
+export function devTranslationsScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en" }): TranslationsScreenData & { importPreview?: { plan: ImportPlan; csv: string } } {
+  const locales: Record<string, Record<string, string>> =
+    opts.state === "empty"
+      ? {}
+      : {
+          cs: { "tiers.heading": "Kup víc, plať míň", "cart.saved": "Ušetříte celkem {amount}", "cart.ms_name.ms-five": "Věrnostní sleva {value}" },
+          sk: { "tiers.heading": "Kúp viac, zaplať menej" },
+          ...(opts.state === "downgraded" ? { de: { "tiers.heading": "Mehr kaufen, weniger zahlen" } } : {}),
+        };
+  const config = readStoredConfig({ ...DEV_MILESTONES_FIXTURE, storefront: { ...DEV_MILESTONES_FIXTURE.storefront, languages: Object.keys(locales) }, locales });
+  const shop = opts.state === "no-scope" ? null : ["cs", "sk", "de", "en"].map((code, i) => ({ code, primary: i === 0 }));
+  const data = translationsScreenData(config, { plan: opts.plan, configVersion: "dev-config-version", shop, locale: opts.locale });
+  if (opts.state !== "import") return data;
+  const csv = exportCsv(data.rows, data.languages, data.values, translator(opts.locale))
+    .replace("Kúp viac, zaplať menej", "Kúp viac a ušetri")
+    .replace("Ušetříte celkem {amount}", "Ušetříte celkem")
+    .concat("tiers.unknown,,,x,y\r\n");
+  return { ...data, importPreview: { plan: planImport(csv, data.rows, data.languages, data.values), csv } };
 }
 
 /** Nastavení: the switches as stored (`changed` = two switched off, as a shop may have them). */

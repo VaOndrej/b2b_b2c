@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { APPEARANCE_PRESETS, DEFAULT_CONFIG } from "@won/core/discounts/config";
 
-import { APPEARANCE_FIELD, changedTextCount, customLookSet, isAppearancePreset, liveCustomLookCss, presetLabel, readAppearanceForm, textField, textLabel, textLangLabel } from "../../app/components/model/appearance.ts";
+import { APPEARANCE_FIELD, customLookSet, isAppearancePreset, liveCustomLookCss, presetLabel, readAppearanceForm } from "../../app/components/model/appearance.ts";
 import {
   COMBINATION_FIELD,
   COMBINATION_KEYS,
@@ -104,13 +104,4 @@ test("plan 2026-10-06: Vzhled follows its form — the custom look as the storef
   );
   // What the server would refuse never reaches the preview: a colour that is not a hex, a radius out of range, CSS that cannot be scoped.
   assert.equal(liveCustomLookCss(values({ [APPEARANCE_FIELD.accent]: "red", [APPEARANCE_FIELD.radius]: "99", [APPEARANCE_FIELD.css]: ".a{background:url(x)}" })), "");
-});
-
-test("plan 2026-10-06: storefront texts have human names in the admin language, never the extension's key; the count of changed texts follows the fields", () => {
-  assert.equal(textField("cs", "tiers.heading"), "tx.cs.tiers.heading");
-  assert.equal(textLabel("tiers.heading", "Množstevní sleva", cs), "Nadpis tabulky");
-  assert.equal(textLabel("tiers.row_qty", "Od {min} ks", en), "Table row: from how many items");
-  assert.equal(textLabel("cart.brand_new", "Nový text", cs), "Nový text", "a text the admin has no name for yet: its own default, never the key");
-  assert.equal(textLangLabel("sk", cs), "slovensky");
-  assert.equal(changedTextCount([["tx.cs.tiers.heading", "Kup víc"], ["tx.en.tiers.heading", "  "], ["tx.sk.cart.saved", "x"], ["look.css", "a{}"]]), 2);
 });

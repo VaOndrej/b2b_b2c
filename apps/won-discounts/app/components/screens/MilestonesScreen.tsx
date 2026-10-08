@@ -38,6 +38,7 @@ import { MilestonePreview, type PreviewStep } from "../rewards/MilestonePreview"
 import { FieldMessage, Shown } from "../rule-editor/parts";
 import { AmountSuggestions } from "../shell/AmountSuggestions";
 import { boolAttr } from "../shell/attrs";
+import { snapshotOf } from "../shell/form-snapshot";
 import { GateNotes } from "../shell/GateNotes";
 import { JumpRow, type JumpRowItem } from "../shell/JumpRow";
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
@@ -108,13 +109,6 @@ function errorText(result: UiResult | null | undefined, field: string, t: Return
   if (!result || result.ok || result.reason !== "invalid") return undefined;
   const e = result.errors?.find((x) => x.field === field);
   return e ? t(e.key, e.params) : undefined;
-}
-
-/** The last read value of every field (the first one of a name). */
-function snapshotOf(form: HTMLFormElement): Map<string, string> {
-  const out = new Map<string, string>();
-  for (const [name, value] of new FormData(form).entries()) if (!out.has(name) && typeof value === "string") out.set(name, value);
-  return out;
 }
 
 const majorOf = (raw: string | undefined): number => Number((raw ?? "").trim().replace(/\s/g, "").replace(",", "."));

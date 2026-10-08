@@ -7,7 +7,7 @@
 // the product page (the one deep link to add it, §13) and the app embed.
 // MVP 7: the custom look (Pro; amber and locked on Free, §16) — three colours, the corner radius and the merchant's
 // own CSS, which the app scopes under the Won blocks (SEC-3), with a brief to hand to an AI; prices by quantity on
-// product cards (BETA); the storefront texts per language (empty = the extension's own).
+// product cards (BETA). The storefront texts are on Překlady.
 // A presentational component: app/routes/app.appearance.tsx renders it from
 // loadAppearanceScreen (app/lib/integration/appearance.server.ts).
 
@@ -20,21 +20,17 @@ import { useT } from "../../i18n/context";
 import {
   APPEARANCE_FIELD,
   APPEARANCE_INTENT,
-  changedTextCount,
   customLookSet,
   isAppearancePreset,
   liveCustomLookCss,
   presetDetails,
   presetLabel,
-  TEXT_LANGS,
-  textField,
-  textLabel,
-  textLangLabel,
 } from "../model/appearance";
 import { embedPlacement } from "../model/embed";
 import { embedText } from "../model/signals";
 import type { AppearancePresetView, AppearanceScreenData, PreviewLookView, UiResult } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
+import { snapshotOf } from "../shell/form-snapshot";
 import { Notice } from "../shell/Notice";
 import { boolAttr } from "../shell/attrs";
 import { ProFrame } from "../shell/ProFrame";
@@ -48,21 +44,13 @@ export interface AppearanceScreenProps extends AppearanceScreenData {
   result?: UiResult | null;
 }
 
-/** The last read value of every field (the first one of a name). */
-function snapshotOf(form: HTMLFormElement): Map<string, string> {
-  const out = new Map<string, string>();
-  for (const [name, value] of new FormData(form).entries()) if (!out.has(name) && typeof value === "string") out.set(name, value);
-  return out;
-}
-
 export function AppearanceScreen(props: AppearanceScreenProps) {
-  const { plan, configVersion, preset, tokens, sample, product, block, embed, cardPrices, custom, customIssue, texts, cardBlockUrl, aiPrompt, previewLook, result } = props;
+  const { plan, configVersion, preset, tokens, sample, product, block, embed, cardPrices, custom, customIssue, cardBlockUrl, aiPrompt, previewLook, result } = props;
   const pro = plan === "pro";
   const tr = useT();
-  const { t, locale } = tr;
+  const { t } = tr;
   const [chosen, setChosen] = useState<AppearancePresetView>(preset);
   const formRef = useRef<HTMLFormElement>(null);
-  const langs = props.languages && props.languages.length > 0 ? TEXT_LANGS.filter((lang) => props.languages!.includes(lang)) : TEXT_LANGS;
 
   // P5: the state lines and the previews follow the form — re-read on every native input / change (never React's
   // onChange on an `s-*` field). null = nothing typed yet: what is stored.
@@ -98,35 +86,26 @@ export function AppearanceScreen(props: AppearanceScreenProps) {
 
   // What is stored, by field name — the form's values before anything is typed.
   const stored = useMemo(() => {
-    const map = new Map<string, string>([
+    return new Map<string, string>([
       [APPEARANCE_FIELD.accent, custom.accent],
       [APPEARANCE_FIELD.line, custom.line],
       [APPEARANCE_FIELD.tint, custom.tint],
       [APPEARANCE_FIELD.radius, custom.radius],
       [APPEARANCE_FIELD.css, custom.css],
     ]);
-    for (const x of texts) for (const lang of TEXT_LANGS) map.set(textField(lang, x.key), x.values[lang]);
-    return map;
-  }, [custom, texts]);
+  }, [custom]);
   const storedCustomSet = customLookSet((field) => stored.get(field) ?? "");
   // On Free the custom-look fields are locked (disabled fields are not in the form): what is stored is what there is.
   const lookValue = (field: string) => (pro && snapshot ? (snapshot.get(field) ?? "") : (stored.get(field) ?? ""));
   const customSet = customLookSet(lookValue);
   const cardsOn = snapshot ? snapshot.has(APPEARANCE_FIELD.cardPrices) : cardPrices;
-  const textValues: [string, string][] = texts.flatMap((x) => langs.map((lang): [string, string] => [textField(lang, x.key), snapshot ? (snapshot.get(textField(lang, x.key)) ?? "") : x.values[lang]]));
-  const changedTexts = changedTextCount(textValues);
 
-  // The previews: the custom look as the storefront would get it and the texts in the admin language — live on what
-  // is typed; before that (and for the look on Free, which the plan does not ship) what the server read.
+  // The previews: the custom look as the storefront would get it — live on what is typed; before that (and on
+  // Free, which the plan does not ship it to) what the server read. The texts are the stored ones (Překlady).
   const extras: PreviewLookView = useMemo(() => {
-    if (!snapshot) return previewLook ?? { customCss: null, texts: {} };
-    const typed: Record<string, string> = {};
-    for (const x of texts) {
-      const value = (snapshot.get(textField(locale, x.key)) ?? "").trim();
-      if (value !== "") typed[x.key] = value;
-    }
-    return { customCss: pro ? liveCustomLookCss((field) => snapshot.get(field) ?? "") || null : (previewLook?.customCss ?? null), texts: { ...previewLook?.texts, [locale]: typed } };
-  }, [snapshot, previewLook, texts, locale, pro]);
+    const stored = previewLook ?? { customCss: null, texts: {} };
+    return snapshot && pro ? { ...stored, customCss: liveCustomLookCss((field) => snapshot.get(field) ?? "") || null } : stored;
+  }, [snapshot, previewLook, pro]);
 
   // "Zkopírovat zadání pro AI": says when it worked — and when it did not (no clipboard in this browser / frame).
   const [copied, setCopied] = useState<"done" | "failed" | null>(null);
@@ -288,42 +267,6 @@ export function AppearanceScreen(props: AppearanceScreenProps) {
             </s-stack>
           </WonSection>
 
-          <WonSection
-            title={t("appearance.texts.title")}
-            glyph="code"
-            summary={changedTexts > 0 ? t("appearance.texts.summary.some", { n: changedTexts }) : t("appearance.texts.summary.none")}
-            anchor="texts"
-            collapsible
-            defaultOpen={errors.some((e) => e.field.startsWith(APPEARANCE_FIELD.text))}
-          >
-            <s-stack direction="block" gap="base">
-              <RowNote>{t("appearance.texts.hint")}</RowNote>
-              {texts.map((x) => {
-                // A name the merchant understands ("Nadpis tabulky · česky"), never the extension's key; one field per language.
-                const name = textLabel(x.key, x.defaults[locale] || x.defaults.en, tr);
-                return (
-                  <div key={x.key} data-won-text={x.key}>
-                    <s-grid gridTemplateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap="small-300" alignItems="start">
-                      {langs.map((lang) => (
-                        <s-text-field
-                          key={lang}
-                          name={textField(lang, x.key)}
-                          label={`${name} · ${textLangLabel(lang, tr)}`}
-                          value={x.values[lang]}
-                          placeholder={x.defaults[lang]}
-                          error={errorOf(textField(lang, x.key))}
-                        />
-                      ))}
-                    </s-grid>
-                    {/* A language the shop does not use keeps what is stored for it (a save never erases it). */}
-                    {TEXT_LANGS.filter((lang) => !langs.includes(lang) && x.values[lang] !== "").map((lang) => (
-                      <input key={lang} type="hidden" name={textField(lang, x.key)} value={x.values[lang]} />
-                    ))}
-                  </div>
-                );
-              })}
-            </s-stack>
-          </WonSection>
           <TiersBlockSection block={block} product={product} />
           <div>
             <s-button type="submit" variant="primary">

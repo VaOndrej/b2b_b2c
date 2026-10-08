@@ -71,7 +71,7 @@ const PRO_BADGE = /data-won-plan-badge="pro"/g;
 test("body 2 a 3: the home page is a grid of tiles, each one a single link; no module cards, no 'Upravit' buttons", async () => {
   const html = await render("overview?state=modules&plan=pro");
   assert.match(html, /data-won-tiles/);
-  const hrefs = ["/app/discounts", "/app/tiers", "/app/rewards", "/app/outlet", "/app/campaigns", "/app/margin", "/app/analytics", "/app/appearance", "/app/try-cart", "/app/settings"];
+  const hrefs = ["/app/discounts", "/app/tiers", "/app/rewards", "/app/outlet", "/app/campaigns", "/app/margin", "/app/analytics", "/app/translations", "/app/try-cart", "/app/settings"];
   for (const href of hrefs) assert.match(html, new RegExp(`<s-clickable href="${href}"[^>]*>\\s*<div[^>]*data-won-tile=`), `tile → ${href}`);
   assert.equal(count(html, /data-won-tile="/g), hrefs.length);
   // The whole tile is the link: nothing inside it is a button or a second link.
@@ -215,7 +215,7 @@ test("bod 15: 'Prázdná sleva' is 'Vlastní sleva', with what it is, set apart 
 
 test("home tiles: each says what is under it, and below that what is active now", async () => {
   const html = await render("overview?state=modules&plan=pro");
-  for (const key of ["codes", "tiers", "rewards", "outlet", "campaigns", "margin", "analytics", "appearance", "tryCart", "settings"]) {
+  for (const key of ["codes", "tiers", "rewards", "outlet", "campaigns", "margin", "analytics", "translations", "tryCart", "settings"]) {
     assert.match(tile(html, key), /data-won-tile-about/, `${key}: what the part is for`);
   }
   const rewards = tile(html, "rewards");

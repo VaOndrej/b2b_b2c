@@ -37,9 +37,9 @@ test("every admin route authenticates in its loader and action", () => {
       assert.match(firstStatement ?? "", /authenticate\.admin\(request\)/, `${file} ${kind}: authenticate before anything else`);
     }
   }
-  // 11 loaders (app, index, discounts, editor, try-cart, onboarding, settings, plan, margin, tiers, appearance)
-  // + 8 actions (index, editor, try-cart, onboarding, margin, tiers, appearance, settings).
-  assert.ok(checked >= 20, `checked ${checked} loaders/actions`);
+  // 12 loaders (app, index, discounts, editor, try-cart, onboarding, settings, plan, margin, tiers, appearance,
+  // translations) + 9 actions (index, editor, try-cart, onboarding, margin, tiers, appearance, translations, settings).
+  assert.ok(checked >= 22, `checked ${checked} loaders/actions`);
 });
 
 test("no admin route takes the shop from the request; the request context is built from the session shop", () => {
@@ -60,8 +60,8 @@ test("no admin route takes the shop from the request; the request context is bui
     assert.doesNotMatch(source, /\bsaveConfig\(/, `${file} writes config directly instead of through ui-actions`);
   }
   // Přehled (loader + action), Slevy a kódy, editor (loader + action), try-cart (loader + action), onboarding (loader + action),
-  // Ochrana marže, Množstevní slevy, Vzhled, Nastavení (loader + action each).
-  assert.ok(wired >= 17, `${wired} wired contexts`);
+  // Ochrana marže, Množstevní slevy, Vzhled, Překlady, Nastavení (loader + action each).
+  assert.ok(wired >= 19, `${wired} wired contexts`);
 });
 
 test("the integration layer never reads a shop from a form or a URL", () => {
@@ -101,6 +101,7 @@ for (const [file, params] of [
   ["app.margin.tsx", {}],
   ["app.tiers.tsx", {}],
   ["app.appearance.tsx", {}],
+  ["app.translations.tsx", {}],
   ["app.settings.tsx", {}],
 ] as const) {
   test(`${file}: an unauthenticated POST is refused by Shopify auth and writes nothing`, async () => {

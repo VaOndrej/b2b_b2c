@@ -7,17 +7,15 @@
 // none → an example the screen labels) and a real product that set applies to
 // (themes.server.ts readPreviewProduct). Saved
 // like every admin change (settings.server.ts saveConfigSection: lock, F12,
-// unreadable guard, saveAndSync). MVP 7: the Pro custom look (variables + CSS scoped by core), card prices (BETA)
-// and the storefront texts are saved by the same form.
-
-import { readFileSync } from "node:fs";
-import path from "node:path";
+// unreadable guard, saveAndSync). MVP 7: the Pro custom look (variables + CSS scoped by core) and card prices (BETA)
+// are saved by the same form. The storefront texts are the Překlady page's (translations.server.ts).
 
 import type { WonDiscountsConfig } from "@won/core/discounts/config";
 import { CUSTOM_LOOK_VARS, customLookCss, customLookIssue } from "@won/core/discounts/custom-look";
 import { gateConfigForPlan, type ShopPlan } from "@won/core/discounts/plan-gate";
 import { CUSTOM_CSS_MAX_LENGTH } from "@won/core/discounts/scope-css";
 import { buildStorefrontConfig } from "@won/core/discounts/storefront-config";
+import { storefrontTexts } from "@won/core/discounts/storefront-texts";
 
 import {
   APPEARANCE_FIELD,
@@ -25,9 +23,7 @@ import {
   presetOf,
   readAppearanceExtras,
   readAppearanceForm,
-  TEXT_LANGS,
   type AppearanceExtras,
-  type TextLang,
 } from "../../components/model/appearance";
 import { cardBlockAddUrl } from "../../components/model/embed";
 import type { FormDataLike } from "../../components/model/rule-form";
@@ -40,47 +36,6 @@ import { graphqlOf, type ShopCtx } from "./context.server";
 import { readSaveOptions, saveConfigSection, type SaveOptions } from "./settings.server";
 import { ctxPlan } from "./sync-status.server";
 import { readPreviewProduct, readThemeLook } from "./themes.server";
-
-// --- Storefront texts (MVP 7): the extension's own, read once from its locale files ----------------------------
-
-const LOCALE_FILES: Record<TextLang, string> = { cs: "cs.json", sk: "sk.json", en: "en.default.json" };
-/** Texts Shopify fills in itself (`{{ count }}` plurals): not editable here. */
-const NOT_EDITABLE = new Set(["outlet.left"]);
-let extensionTexts: Record<TextLang, Record<string, string>> | null = null;
-
-/** `{group: {key: text}}` → `{"group.key": text}`. */
-function flatten(value: unknown, prefix = "", out: Record<string, string> = {}): Record<string, string> {
-  if (typeof value !== "object" || value === null) return out;
-  for (const [key, v] of Object.entries(value)) {
-    if (typeof v === "string") out[`${prefix}${key}`] = v;
-    else flatten(v, `${prefix}${key}.`, out);
-  }
-  return out;
-}
-
-/**
- * The theme app extension's texts per language (extensions/won-discounts-storefront/locales, relative to the app's
- * working directory — the same in dev, tests and the image). A file that cannot be read gives no texts for that
- * language: the editor then shows keys without placeholders, never a wrong default.
- */
-export function storefrontTextDefaults(): Record<TextLang, Record<string, string>> {
-  if (extensionTexts) return extensionTexts;
-  const out = { cs: {}, sk: {}, en: {} } as Record<TextLang, Record<string, string>>;
-  for (const lang of TEXT_LANGS) {
-    try {
-      out[lang] = flatten(JSON.parse(readFileSync(path.resolve(process.cwd(), "extensions/won-discounts-storefront/locales", LOCALE_FILES[lang]), "utf8")));
-    } catch {
-      out[lang] = {};
-    }
-  }
-  extensionTexts = out;
-  return out;
-}
-
-/** The keys the editor offers: the English file's, in its order. */
-export function storefrontTextKeys(): string[] {
-  return Object.keys(storefrontTextDefaults().en).filter((key) => !NOT_EDITABLE.has(key));
-}
 
 /** Class names a custom look can style (the extension's CSS; tests/contracts pin the list to the files). */
 export const STOREFRONT_CLASSES = [
@@ -116,16 +71,11 @@ export function sampleSet(config: WonDiscountsConfig): TierSetView | null {
 /**
  * What the stored config adds to the faithful preview on this plan (pure; Množstevní slevy uses it too): the custom
  * look exactly as the storefront config carries it (BILL-1: the gate removes it on Free) and the texts the merchant
- * changed.
+ * changed, per language the plan ships.
  */
 export function previewLookOf(stored: WonDiscountsConfig, plan: ShopPlan): PreviewLookView {
   const gated = gateConfigForPlan(stored, plan).config;
-  const texts: PreviewLookView["texts"] = {};
-  for (const lang of TEXT_LANGS) {
-    const changed = Object.fromEntries(Object.entries(gated.locales[lang] ?? {}).filter(([, text]) => typeof text === "string" && text !== ""));
-    if (Object.keys(changed).length > 0) texts[lang] = changed;
-  }
-  return { customCss: customLookCss(gated.storefront.custom) || null, texts, ...(gated.storefront.accent ? { accent: gated.storefront.accent } : {}) };
+  return { customCss: customLookCss(gated.storefront.custom) || null, texts: storefrontTexts(gated), ...(gated.storefront.accent ? { accent: gated.storefront.accent } : {}) };
 }
 
 /**
@@ -147,7 +97,6 @@ export async function loadAppearanceScreen(ctx: ShopCtx, opts: { scopes: string;
   ]);
   const custom = loaded.config.storefront.custom;
   const issue = customLookIssue(custom);
-  const defaults = storefrontTextDefaults();
   return {
     plan,
     configVersion: loaded.version ?? null,
@@ -166,11 +115,6 @@ export async function loadAppearanceScreen(ctx: ShopCtx, opts: { scopes: string;
       css: custom?.css ?? "",
     },
     customIssue: issue ? issue.reason : null,
-    texts: storefrontTextKeys().map((key) => ({
-      key,
-      defaults: { cs: defaults.cs[key] ?? "", sk: defaults.sk[key] ?? "", en: defaults.en[key] ?? "" },
-      values: { cs: loaded.config.locales.cs?.[key] ?? "", sk: loaded.config.locales.sk?.[key] ?? "", en: loaded.config.locales.en?.[key] ?? "" },
-    })),
     cardBlockUrl: cardBlockAddUrl(ctx.shop, ctx.apiKey),
     aiPrompt: aiPrompt(),
     previewLook: previewLookOf(loaded.config, plan),
@@ -182,12 +126,10 @@ export const STOREFRONT_CONFIG_HEADROOM_BYTES = 4_000;
 
 /** The part of the config the Vzhled page owns (the F12 base check compares it). */
 function appearancePart(config: WonDiscountsConfig) {
-  const keys = storefrontTextKeys();
-  const texts = Object.fromEntries(TEXT_LANGS.map((lang) => [lang, Object.fromEntries(keys.map((key) => [key, config.locales[lang]?.[key] ?? ""]))]));
-  return { preset: presetOf(config.storefront.appearancePreset), cards: config.storefront.cardPricesEnabled === true, custom: config.storefront.custom ?? null, texts };
+  return { preset: presetOf(config.storefront.appearancePreset), cards: config.storefront.cardPricesEnabled === true, custom: config.storefront.custom ?? null };
 }
 
-/** `config` with the page's changes: the look, and (MVP 7) card prices, the custom look (Pro only) and the texts. */
+/** `config` with the page's changes: the look, and (MVP 7) card prices and the custom look (Pro only). */
 function applyAppearance(config: WonDiscountsConfig, preset: AppearancePresetView, extras: AppearanceExtras | null, plan: ShopPlan): WonDiscountsConfig {
   if (!extras) return { ...config, storefront: { ...config.storefront, appearancePreset: preset } };
   const storefront: WonDiscountsConfig["storefront"] = { ...config.storefront, appearancePreset: preset, cardPricesEnabled: extras.cardPrices };
@@ -196,16 +138,7 @@ function applyAppearance(config: WonDiscountsConfig, preset: AppearancePresetVie
     if (extras.custom) storefront.custom = extras.custom;
     else delete storefront.custom;
   }
-  const locales = { ...config.locales } as Record<string, Record<string, string>>;
-  for (const lang of TEXT_LANGS) {
-    const next = { ...(locales[lang] ?? {}) };
-    for (const [key, value] of Object.entries(extras.texts[lang])) {
-      if (value === "") delete next[key];
-      else next[key] = value;
-    }
-    locales[lang] = next;
-  }
-  return { ...config, storefront, locales: locales as WonDiscountsConfig["locales"] };
+  return { ...config, storefront };
 }
 
 export function saveAppearance(ctx: ShopCtx, preset: AppearancePresetView, opts: SaveOptions, extras: AppearanceExtras | null = null, plan: ShopPlan = "free"): Promise<UiResult> {
@@ -218,8 +151,8 @@ export function saveAppearance(ctx: ShopCtx, preset: AppearancePresetView, opts:
 }
 
 /**
- * The Vzhled action: `intent=save` with one of the four looks and (MVP 7, with the `extras` marker) card prices,
- * the custom look and the storefront texts — parsed on the server (SEC-1). CSS that cannot be scoped under the
+ * The Vzhled action: `intent=save` with one of the four looks and (MVP 7, with the `extras` marker) card prices
+ * and the custom look — parsed on the server (SEC-1). CSS that cannot be scoped under the
  * blocks is refused on its field (SEC-3); a storefront config that would pass Shopify's metafield limit is refused
  * before the save (it used to be a failed sync step only).
  */
@@ -227,7 +160,7 @@ export async function appearanceAction(ctx: ShopCtx, form: FormDataLike, opts: {
   if (form.get(APPEARANCE_FIELD.intent) !== APPEARANCE_INTENT.save) return { ok: false, reason: "bad_request" };
   const parsed = readAppearanceForm(form);
   if (!parsed.ok) return { ok: false, reason: "invalid", errors: parsed.errors };
-  const read = readAppearanceExtras(form, storefrontTextKeys());
+  const read = readAppearanceExtras(form);
   if (!read.ok) return { ok: false, reason: "invalid", errors: read.errors };
   const extras = read.extras;
   if (!extras) return saveAppearance(ctx, parsed.preset, readSaveOptions(form));

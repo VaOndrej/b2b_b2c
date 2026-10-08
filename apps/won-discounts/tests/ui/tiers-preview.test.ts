@@ -173,7 +173,6 @@ test("the look cards: each radio is named by its look only and described by its 
       cardPrices: false,
       custom: { accent: "", line: "", tint: "", radius: "", css: "" },
       customIssue: null,
-      texts: [],
       cardBlockUrl: null,
       aiPrompt: "",
     }),

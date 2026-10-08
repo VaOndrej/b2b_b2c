@@ -84,6 +84,10 @@ api_version = "2026-10"
 # Later MVPs add read_orders (outlet quota, analytics — protected customer data),
 # price lists (MVP 4–5). Do not add scopes "for later".
 scopes = "write_discounts,read_products,write_products,read_themes,read_markets"
+# read_locales (optional): the languages switched on in the shop, for the Překlady page's tables (`shopLocales`).
+# The merchant grants it there once (App Bridge `shopify.scopes.request`); without it the page works with the
+# languages it has stored and offers no new one.
+optional_scopes = [ "read_locales" ]
 
 [app_proxy]
 url = "https://example.com/won-discounts"

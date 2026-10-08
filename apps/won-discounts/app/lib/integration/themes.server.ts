@@ -26,6 +26,7 @@
 import { CAMPAIGN_BLOCK_HANDLE, CART_BLOCK_HANDLE, EMBED_BLOCK_HANDLE, OUTLET_BLOCK_HANDLE, REWARDS_PROGRESS_BLOCK_HANDLE, tiersBlockAddUrl } from "../../components/model/embed";
 import type { MarketNames } from "../../components/model/markets";
 import { toMinorUnits } from "@won/core/discounts/money";
+import { normalizeLocale } from "@won/core/toasts/locales";
 
 import type {
   PreviewProductView,
@@ -113,6 +114,41 @@ export async function readMarketNames(graphql: AdminGraphqlFn, shop: string, sco
       return {};
     }
   });
+}
+
+export interface ShopLanguage {
+  /** Shopify's locale code, lower-case ("cs", "pt-br"). */
+  code: string;
+  primary: boolean;
+}
+
+/**
+ * The languages the shop has switched on in Shopify (`shopLocales`, read_locales — an OPTIONAL scope the
+ * merchant grants on the Překlady page), the default one first. null without the scope (known from the session)
+ * or when the read fails: the page then works with the languages it has stored.
+ */
+export async function readShopLanguages(graphql: AdminGraphqlFn, shop: string, scopes?: string | null, opts: { fresh?: boolean } = {}): Promise<ShopLanguage[] | null> {
+  if (!hasScope(scopes, "read_locales")) return null;
+  return cachedRead(
+    `locales:${shop}`,
+    async () => {
+      try {
+        const json = (await graphql(`#graphql
+          query WonDiscountsShopLocales { shopLocales { locale primary } }`)) as { data?: { shopLocales?: { locale?: unknown; primary?: unknown }[] } };
+        const nodes = json?.data?.shopLocales;
+        if (!Array.isArray(nodes)) return null;
+        const out: ShopLanguage[] = [];
+        for (const node of nodes) {
+          const code = normalizeLocale(node?.locale);
+          if (code !== "" && !out.some((x) => x.code === code)) out.push({ code, primary: node?.primary === true });
+        }
+        return out.length > 0 ? out.sort((x, y) => Number(y.primary) - Number(x.primary)) : null;
+      } catch {
+        return null;
+      }
+    },
+    opts,
+  );
 }
 
 /**

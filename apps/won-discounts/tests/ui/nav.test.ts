@@ -30,7 +30,7 @@ import { JumpRow } from "../../app/components/shell/JumpRow.tsx";
 
 test("goals put their modules first, in the order picked; every module stays", () => {
   assert.deepEqual(orderedModules([]), [...ADMIN_MODULES]);
-  assert.deepEqual(orderedModules(["margin", "migrate", "rewards", "margin"]), ["margin", "rewards", "tiers", "outlet", "campaigns", "appearance"]);
+  assert.deepEqual(orderedModules(["margin", "migrate", "rewards", "margin"]), ["margin", "rewards", "tiers", "outlet", "campaigns", "translations"]);
   for (const goals of [[], ["outlet"], ["tiers", "rewards", "outlet", "margin"]] as const) {
     assert.deepEqual([...orderedModules(goals)].sort(), [...ADMIN_MODULES].sort());
   }
@@ -40,15 +40,15 @@ test("sidebar: exactly five items after the home link, in a fixed order, whateve
   const items = navItems("cs");
   assert.deepEqual(
     items.map((i) => i.to),
-    ["/app/discounts", "/app/margin", "/app/appearance", "/app/analytics", "/app/settings"],
+    ["/app/discounts", "/app/margin", "/app/translations", "/app/analytics", "/app/settings"],
   );
   assert.deepEqual(
     items.map((i) => i.label),
-    ["Slevy", "Ochrana marže", "Vzhled", "Přehledy", "Nastavení"],
+    ["Slevy", "Ochrana marže", "Překlady", "Přehledy", "Nastavení"],
   );
   assert.deepEqual(
     navItems("en").map((i) => i.label),
-    ["Discounts", "Margin protection", "Appearance", "Reports", "Settings"],
+    ["Discounts", "Margin protection", "Translations", "Reports", "Settings"],
   );
 });
 

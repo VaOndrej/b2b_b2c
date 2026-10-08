@@ -49,6 +49,8 @@ export class FakeStore implements AdminClient {
   calls: { op: string; variables: Record<string, unknown> }[] = [];
   /** Delay (ms) before every answer: a slow Shopify (REL-1 tests). */
   delayMs = 0;
+  /** The languages switched on in Shopify (`shopLocales`, read_locales). */
+  shopLocales: { locale: string; primary: boolean }[] = [{ locale: "cs", primary: true }];
   /** Operation name → a replacement answer (errors, outages). */
   overrides = new Map<string, Handler>();
 
@@ -81,6 +83,8 @@ export class FakeStore implements AdminClient {
         return { shop: { ...this.shop } };
       case "WonDiscountsMarketNames":
         return { markets: { nodes: this.sync.markets.map((m) => ({ handle: m.handle, name: m.name })) } };
+      case "WonDiscountsShopLocales":
+        return { shopLocales: this.shopLocales };
       case "WonDiscountsThemes":
         return { themes: { nodes: [] } };
       case "WonTryCartMarkets":

@@ -117,9 +117,37 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /Black Friday · 27\. 11\. 2026 00:00 – 30\. 11\. 2026 23:59 · mění: 2 slevy a 1 množstevní slevu/,
     ],
   },
-  // Vzhled (MVP 7): the custom look (locked amber on Free), card prices BETA, the storefront texts, the AI brief.
-  { path: "appearance", expect: [/Vlastní vzhled/, /V Pro sladíte tabulku s webem: vlastní barvy, zaoblení rohů a vlastní CSS/, /href="\/app\/plan"/, /Ceny podle množství na kartách produktů · BETA/, /Texty na webu/, /Výchozí texty/, /Zkopírovat zadání pro AI/] },
-  { path: "appearance?plan=pro&state=custom", expect: [/Vlastní barvy nebo CSS jsou nastavené/, /Zapnuto: karty ukazují první úroveň/, /Upravených textů: 1/, /Přidat prvek do karty produktu/, /--won-tiers-accent/] },
+  // Vzhled (MVP 7): the custom look (locked amber on Free), card prices BETA, the AI brief.
+  // Překlady: a table per language with human names, the default text and the merchant's own; Free's limit and the Pro CSV in amber.
+  { path: "appearance", expect: [/Vlastní vzhled/, /V Pro sladíte tabulku s webem: vlastní barvy, zaoblení rohů a vlastní CSS/, /href="\/app\/plan"/, /Ceny podle množství na kartách produktů · BETA/, /Zkopírovat zadání pro AI/] },
+  {
+    path: "translations",
+    expect: [
+      /<s-page heading="Překlady"/,
+      /čeština · výchozí jazyk obchodu/,
+      /slovenština/,
+      /Upravených textů: 3/,
+      /Upravených textů: 1/,
+      // Grouped by where the text shows; a row = its place, the extension's text, the merchant's own.
+      /data-won-text-group="tiers"[\s\S]*data-won-text-group="milestones"[\s\S]*data-won-text-group="cart"[\s\S]*data-won-text-group="outlet"[\s\S]*data-won-text-group="campaigns"[\s\S]*data-won-text-group="cards"/,
+      /Nadpis tabulky<\/div><div data-won-text-default="true"[^>]*>Množstevní sleva<\/div>/,
+      /name="tx\.cs\.tiers\.heading"[^>]*value="Kup víc, plať míň"/,
+      /name="tx\.sk\.tiers\.heading"[^>]*value="Kúp viac, zaplať menej"/,
+      // A Milníky discount step's own name is a row, named by the step.
+      /Vlastní název odměny: Sleva 5[\s\u00a0]% od 2[\s\u00a0]000[\s\u00a0]Kč/,
+      /name="tx\.cs\.cart\.ms_name\.ms-five"[^>]*value="Věrnostní sleva \{value\}"/,
+      // Free at its two languages: the next one is Pro's, said in amber with the way to it; so is the CSV.
+      /Ve Free přeložíte texty do výchozího jazyka a jednoho dalšího/,
+      /V Pro si texty stáhnete do tabulky/,
+      /href="\/app\/plan"/,
+    ],
+  },
+  { path: "translations?plan=pro", expect: [/data-won-add-language/, /<s-option[^>]*value="de"[^>]*>němčina/, /Stáhnout CSV/, /Nahrát CSV/] },
+  { path: "translations?state=empty", expect: [/čeština · výchozí jazyk obchodu/, /Výchozí texty/, /data-won-add-language/] },
+  { path: "translations?state=no-scope", expect: [/Aplikace nemá svolení číst jazyky zapnuté v Shopify/, /Povolit čtení jazyků/] },
+  { path: "translations?state=downgraded", expect: [/němčina/, /Ve Free se v tomto jazyce na webu ukazují výchozí texty/] },
+  { path: "translations?plan=pro&state=import", expect: [/data-won-import-preview/, /Změní se: 1/, /Odmítnuto: 2/, /Množstevní tabulka: Nadpis tabulky · slovenština/, /V textu chybí \{amount\}/, /neznámý text „tiers\.unknown“/, /Uložit změny z importu/] },
+  { path: "appearance?plan=pro&state=custom", expect: [/Vlastní barvy nebo CSS jsou nastavené/, /Zapnuto: karty ukazují první úroveň/, /Přidat prvek do karty produktu/, /--won-tiers-accent/] },
   { path: "appearance?plan=pro&state=issue", expect: [/Uložené vlastní CSS nejde použít/] },
   // Tarif (MVP 7): the plan in force, the Pro offer with its price and trial, cancel with what runs on, uninstall prep.
   {
@@ -420,9 +448,6 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /Kompaktní štítky v řádku/,
       /Uloženo/,
       /V Pro sladíte tabulku s webem/,
-      // Human names of the storefront texts, never the extension's keys.
-      /Nadpis tabulky · česky/,
-      /Košík: tlačítko pro odmítnutí dárku · anglicky/,
       /<s-color-field/,
     ],
   },
@@ -491,9 +516,14 @@ for (const screen of SCREENS) {
     for (const re of screen.absent ?? []) assert.doesNotMatch(html, re, `${screen.path}: not expected ${re}`);
     // §4c: nothing machine-shaped leaks into the page text (the serialized
     // loader data in <script> is data, not text, so it is left out).
-    // MVP 7: the storefront text editor shows the extension's own texts as input placeholders — those DO contain
-    // the storefront's `{n}` / `{value}` slots (the merchant must keep them), so placeholder attributes are data too.
-    const text = html.replace(/<script[\s\S]*?<\/script>/g, "").replace(/ placeholder="[^"]*"/g, "");
+    // Překlady shows the extension's own texts (the default column, the fields' placeholders) and the merchant's
+    // (the fields' values) — those DO contain the storefront's `{n}` / `{value}` slots (the merchant must keep
+    // them), so they are data too.
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/g, "")
+      .replace(/ placeholder="[^"]*"/g, "")
+      .replace(/(<div data-won-text-default="true"[^>]*>)[^<]*/g, "$1")
+      .replace(/(name="tx\.[^"]*"[^>]*) value="[^"]*"/g, "$1");
     assert.doesNotMatch(text, /\{(n|name|value|currency|rule|currencies|date|count)\}/, `${screen.path}: leftover placeholder`);
     assert.doesNotMatch(text, />[^<]*\bundefined\b[^<]*</, `${screen.path}: "undefined" in text`);
     assert.doesNotMatch(text, />[^<]*\b(freeShipping|percentage|not_wired|draft_only|not_synced|max_percent|rateEstimated|linesWithoutCost)\b[^<]*</, `${screen.path}: raw enum in text`);
@@ -564,7 +594,9 @@ test("plan 2026-10-06, dávka 5: nothing without content or action — no room-f
   assert.match((await render("tiers?state=no-scope")).html, /data-won-placement="unknown"[\s\S]*Zkontrolovat znovu/);
   assert.doesNotMatch((await render("tiers?plan=pro&state=custom&plan=free")).html, /Kolekce Doplňky/);
   const appearance = (await render("appearance")).html;
-  assert.doesNotMatch(appearance, /row_qty · cs|>tiers\.heading|Tady vidíte|Zapnutí Won na webu/);
+  assert.doesNotMatch(appearance, /Tady vidíte|Zapnutí Won na webu|name="tx\./);
+  // Překlady never shows a text's key as its name.
+  assert.doesNotMatch((await render("translations")).html.replace(/name="tx\.[^"]*"/g, ""), />(tiers|cart|cards|outlet|campaign)\.[a-z_]+</);
   assert.doesNotMatch((await render("tiers?state=custom")).html, /data-won-custom-look/, "Free never previews the Pro custom look (BILL-1)");
   const rewards = (await render("rewards")).html;
   // The green label is the STORED state (the same as the home tile), never the page's own unsaved form: the
