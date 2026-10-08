@@ -3,7 +3,9 @@
   cart page (Dawn main-cart-footer, Horizon main-cart accept @app blocks). It
   only reserves the place (no layout shift while the embed's cart script
   fills it); without the block the embed puts the panel at the top of the
-  cart summary. Renders nothing when the storefront config offers no reward.
+  cart summary. On the cart page the panel shows the full Milestones ladder
+  (every step, the reached ones ticked). Renders nothing when the storefront
+  config offers no step.
 {% endcomment %}
 {%- assign won_rewards = app.metafields.won_discounts.storefront_config.value.rewards -%}
 {%- if won_rewards != blank -%}
@@ -12,7 +14,7 @@
 
 {% schema %}
 {
-  "name": "Rewards and code",
+  "name": "Milestones and code",
   "target": "section",
   "enabled_on": {
     "templates": ["cart"]

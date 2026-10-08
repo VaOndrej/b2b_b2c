@@ -21,17 +21,100 @@
   display: grid;
   gap: 0.25rem;
 }
-.won-cart__bar {
-  height: 0.375rem;
+/* Milníky (feedback 2026-10-06, bod 10): the ladder of steps by cart value, one component in three sizes —
+   .won-ms--bar (a sentence + a thin track), --compact (+ a mark per step), --full (+ every step, the reached
+   ones ticked). It inherits the theme's font and colours; the highlight is --won-tiers-accent. Sizes in em
+   (Dawn's root font-size is 62.5 %). */
+.won-ms {
+  display: grid;
+  gap: 0.5em;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+}
+.won-ms p,
+.won-ms ol {
+  margin: 0;
+  padding: 0;
+}
+.won-ms__text {
+  font-weight: 600;
+  line-height: 1.35;
+}
+.won-ms__track {
+  position: relative;
+  height: 0.5em;
+  margin: 0.2em 0.45em;
   border-radius: 999px;
   background: color-mix(in srgb, currentColor 15%, transparent);
-  overflow: hidden;
 }
-.won-cart__bar span {
+.won-ms--bar .won-ms__track {
+  height: 0.25em;
+  margin: 0;
+}
+.won-ms__track span {
   display: block;
   height: 100%;
-  background: currentColor;
+  max-width: 100%;
   border-radius: inherit;
+  background: var(--won-tiers-accent, currentColor);
+  transition: width 0.3s ease;
+}
+.won-ms__track i {
+  position: absolute;
+  top: 50%;
+  width: 0.9em;
+  height: 0.9em;
+  margin: -0.45em 0 0 -0.45em;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 35%, transparent);
+}
+.won-ms__track i[data-done] {
+  background: var(--won-tiers-accent, currentColor);
+}
+.won-ms__list {
+  display: grid;
+  gap: 0.35em;
+  list-style: none;
+}
+.won-ms__list li {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75em;
+  padding-inline-start: 1.6em;
+  line-height: 1.35;
+}
+.won-ms__list li::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0.18em;
+  width: 1em;
+  height: 1em;
+  box-sizing: border-box;
+  border: 1.5px solid color-mix(in srgb, currentColor 40%, transparent);
+  border-radius: 50%;
+}
+.won-ms__list li[data-done]::before {
+  content: "✓";
+  top: 0;
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  color: var(--won-tiers-accent, currentColor);
+  font-weight: 700;
+}
+.won-ms__list li span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.won-ms__list li span:last-child {
+  flex: 0 0 auto;
+  opacity: 0.7;
+  white-space: nowrap;
 }
 .won-cart button {
   font: inherit;
@@ -108,7 +191,7 @@
   font-weight: 600;
   color: inherit;
 }
-/* Feedback 2 (2026-10-06): the "Rewards progress" and "Campaign banner" blocks and the embed's top bar. They
+/* Feedback 2 (2026-10-06): the "Milestones" and "Campaign banner" blocks and the embed's top bar. They
    inherit the theme's font and colours; sizes in em (Dawn's root font-size is 62.5 %). */
 .won-progress,
 .won-campaign {
@@ -129,26 +212,8 @@
 .won-topbar[hidden] {
   display: none !important;
 }
-.won-progress p,
 .won-campaign p {
   margin: 0;
-}
-.won-progress__row {
-  display: grid;
-  gap: 0.3em;
-}
-.won-progress__track {
-  height: 0.375em;
-  border-radius: 999px;
-  background: color-mix(in srgb, currentColor 15%, transparent);
-  overflow: hidden;
-}
-.won-progress__track span {
-  display: block;
-  height: 100%;
-  background: currentColor;
-  border-radius: inherit;
-  transition: width 0.3s ease;
 }
 .won-campaign__title {
   font-weight: 600;
@@ -182,8 +247,21 @@
 .won-topbar .won-campaign__time::before {
   content: "· ";
 }
+.won-topbar .won-ms {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em 1em;
+}
+.won-topbar .won-ms__text {
+  font-weight: inherit;
+}
+.won-topbar .won-ms__track {
+  width: min(12em, 40vw);
+}
 @media (prefers-reduced-motion: reduce) {
-  .won-progress__track span {
+  .won-ms__track span {
     transition: none;
   }
 }

@@ -124,8 +124,9 @@
   {%- endcapture -%}
   {%- capture won_cart_data -%}
     {"on":true,"rw":{{ rw | json }},"mk":{{ cur | append: '@' | append: localization.market.handle | json }},"exp":{{ exp }},"lang":{{ request.locale.iso_code | json }},"proxy":{{ proxy | json }},"g":{ {{- won_gift_facts -}} },"tx":{
-    "ship_left":{{ 'cart.ship_left' | t | json }},"ship_done":{{ 'cart.ship_done' | t | json }},
-    "gift_left":{{ 'cart.gift_left' | t | json }},"gift_done":{{ 'cart.gift_done' | t | json }},
+    "ms_left":{{ 'cart.ms_left' | t | json }},"ms_done":{{ 'cart.ms_done' | t | json }},"ms_from":{{ 'cart.ms_from' | t | json }},
+    "ms_ship":{{ 'cart.ms_ship' | t | json }},"ms_gift":{{ 'cart.ms_gift' | t | json }},"ms_gift_named":{{ 'cart.ms_gift_named' | t | json }},"ms_disc":{{ 'cart.ms_disc' | t | json }},
+    "gift_done":{{ 'cart.gift_done' | t | json }},
     "gift_decline":{{ 'cart.gift_decline' | t | json }},"gift_declined":{{ 'cart.gift_declined' | t | json }},
     "gift_pick":{{ 'cart.gift_pick' | t | json }},"gift_add":{{ 'cart.gift_add' | t | json }},"gift_soldout":{{ 'cart.gift_soldout' | t | json }},
     "code_label":{{ 'cart.code_label' | t | json }},"code_apply":{{ 'cart.code_apply' | t | json }},"code_remove":{{ 'cart.code_remove' | t | json }},
@@ -139,7 +140,7 @@
 
 {%- comment -%}
   Feedback 2 (2026-10-06, body 5 a 7): the top bar. The theme's announcement bar takes no app block, so the embed
-  offers its own strip: reward progress and / or the running campaign. It is printed here and moved to the top
+  offers its own strip: the Milestones ladder (one sentence and a thin track) and / or the running campaign. It is printed here and moved to the top
   of <body> by assets/won-discounts-blocks.js, which also hides it while it has nothing to say.
 {%- endcomment -%}
 {%- if block.settings.top_bar_rewards or block.settings.top_bar_campaign -%}
@@ -162,8 +163,8 @@
       </div>
     {%- endif -%}
     {%- if block.settings.top_bar_rewards and rw != blank -%}
-      <div class="won-progress" data-won-discounts-progress data-ship="true" data-gift="true" data-bar="false">
-        {%- render 'won-progress', rw: rw, cur: cur, ship: true, gift: true, bar: false -%}
+      <div class="won-progress" data-won-discounts-progress data-size="bar">
+        {%- render 'won-milestones', rw: rw, cur: cur, size: 'bar' -%}
       </div>
     {%- endif -%}
   </div>

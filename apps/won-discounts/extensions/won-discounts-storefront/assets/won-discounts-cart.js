@@ -141,22 +141,26 @@
         p.setAttribute("data-won-discounts-cart", "");
         slot.prepend(p);
       }
+      /* Milníky: every step on the cart page, the compact ladder in the cart drawer. */
+      p.__size = slot.matches?.(DRAWERS.join(",")) ? "compact" : "full";
       return p;
     });
   };
 
   const render = () => {
     if (!view) return;
-    const markup = wd.html({ view, cart, data, hint, warn });
+    let markup = "";
     for (const p of panels()) {
+      markup = wd.html({ view, cart, data, hint, warn, size: p.__size });
       if (p.__won !== markup) {
         p.__won = markup;
         p.innerHTML = markup;
       }
     }
-    if (shown !== markup) {
-      shown = markup;
-      d.dispatchEvent(new CustomEvent("won-discounts:cart:update", { detail: { base: view.base, shipping: view.ship, gifts: view.tiers } }));
+    const key = markup + view.base;
+    if (shown !== key) {
+      shown = key;
+      d.dispatchEvent(new CustomEvent("won-discounts:cart:update", { detail: { base: view.base, shipping: view.ship, gifts: view.tiers, steps: view.steps } }));
     }
   };
 

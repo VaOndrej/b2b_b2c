@@ -10,9 +10,13 @@
     "next": "Ještě {count} ks a zaplatíte {price}/ks."
   },
   "cart": {
-    "ship_left": "Do dopravy zdarma zbývá {amount}.",
-    "ship_done": "Máte dopravu zdarma.",
-    "gift_left": "Do dárku zdarma zbývá {amount}.",
+    "ms_left": "Ještě {amount} a získáte: {reward}",
+    "ms_done": "Máte všechny odměny.",
+    "ms_from": "od {amount}",
+    "ms_ship": "Doprava zdarma",
+    "ms_gift": "Dárek zdarma",
+    "ms_gift_named": "Dárek: {name}",
+    "ms_disc": "Sleva {value}",
     "gift_done": "Dárek zdarma je v košíku.",
     "gift_decline": "Odmítnout",
     "gift_declined": "Dárek zdarma jste odmítli.",
@@ -39,7 +43,7 @@
     "left": "Zbývá {{ count }} ks"
   },
   "progress": {
-    "empty": "Odměny za košík zatím nejsou nastavené. V aplikaci Won Discounts otevřete Slevy → Odměny."
+    "empty": "Milníky zatím nejsou nastavené. V aplikaci Won Discounts otevřete Slevy → Milníky."
   },
   "campaign": {
     "ends": "Končí za {time}",

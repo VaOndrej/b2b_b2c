@@ -18,9 +18,12 @@ test("every Liquid amount lookup tries the market's key, then the currency's", a
   assert.match(tiers, /assign mk = cur \| append: '@' \| append: localization\.market\.handle/);
   assert.equal((tiers.match(/assign d = b\.off\[mk\] \| default: b\.off\[cur\]/g) ?? []).length, 2, "both passes over the breaks");
   assert.doesNotMatch(tiers, /assign d = b\.off\[cur\]/);
-  const progress = await read("snippets/won-progress.liquid");
-  assert.match(progress, /assign won_ship = rw\.ship\[won_mk\] \| default: rw\.ship\[cur\]/);
+  const progress = await read("snippets/won-milestones.liquid");
+  assert.match(progress, /assign won_t = rw\.ship\[won_mk\] \| default: rw\.ship\[cur\]/);
   assert.match(progress, /assign won_t = won_g\.t\[won_mk\] \| default: won_g\.t\[cur\]/);
+  // Milníky: a discount step reads its cart value and its amount the same way.
+  assert.match(progress, /assign won_t = won_d\.t\[won_mk\] \| default: won_d\.t\[cur\]/);
+  assert.match(progress, /assign won_off = won_d\.off\[won_mk\] \| default: won_d\.off\[cur\]/);
   assert.match(await read("snippets/won-card-tier.liquid"), /assign off = b\.off\[mk\] \| default: b\.off\[cur\]/);
   assert.match(await read("blocks/won_discounts_embed.liquid"), /"mk":\{\{ cur \| append: '@' \| append: localization\.market\.handle \| json \}\}/);
   assert.match(await read("assets/won-discounts-cart.js"), /wd\.plan\(c, data\.rw \|\| \{\}, data\.g \|\| \{\}, data\.mk\)/);
@@ -39,9 +42,10 @@ test("the card text: the market's own amount, else its currency's, never another
 test("a market left without an amount (−1 under its key) is never given the currency's fallback on the storefront", async () => {
   const tiers = await read("blocks/quantity_tiers.liquid");
   assert.equal((tiers.match(/if d == nil or d < 0\s+continue/g) ?? []).length, 2, "both passes skip the break");
-  const progress = await read("snippets/won-progress.liquid");
-  assert.match(progress, /if won_ship != nil and won_ship < 0\s+assign won_ship = nil/);
-  assert.match(progress, /if won_t != nil and won_t < 0\s+assign won_t = nil/);
+  // The ladder takes a step only with a positive amount of its own lookup (−1 is an amount: `default` does not fall past it).
+  const progress = await read("snippets/won-milestones.liquid");
+  assert.equal((progress.match(/if won_t != nil and won_t > 0/g) ?? []).length, 3, "free shipping, a gift, a discount step");
+  assert.match(progress, /if won_off != nil and won_off > 0/);
   assert.match(await read("assets/won-discounts.js"), /return v > 0 \? v : undefined;/);
   const cfg = { cards: 1 as const, margin: { on: false as const }, tiers: { global: "g", sets: { g: { count: "product" as const, breaks: [{ min: 3, off: { EUR: 120, "EUR@de": -1, "EUR@sk": 120 } }] } } } };
   const at = (market: string | null) => cardTier({ cfg, product: null, currency: "EUR", market, costed: false, onSale: false, priceMin: 10000 } as Parameters<typeof cardTier>[0]);

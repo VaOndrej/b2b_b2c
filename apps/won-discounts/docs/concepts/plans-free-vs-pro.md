@@ -9,7 +9,7 @@ app_version: MVP2
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-10-04
+updated: 2026-10-08
 keywords: [free, pro, plan, pricing, 29 usd, trial, upgrade, downgrade, difference, pro settings on free, tarif]
 summary: Free limits scope, never quality. What Pro adds today, and what happens to Pro settings on a Free shop (kept, but not applied at checkout).
 ---
@@ -31,7 +31,7 @@ Try a cart and moving Shopify discounts work in full on Free. Free is not a demo
   ([margin-per-collection](margin-per-collection)).
 - **Quantity discount sets per product or collection** and counting across the
   whole cart ([quantity-tiers](quantity-tiers)).
-- **A ladder of gift thresholds and a choice of up to 3 gifts** in Cart rewards
+- **Up to 6 steps in Milestones (Free: 2) and a choice of up to 3 gifts** at a step
   ([cart-rewards](cart-rewards)).
 
 Clearance (Pro) sells a number of pieces of a variant at a discount, see [clearance](clearance). Campaigns (Pro) change your discounts for a time window, see [campaigns](campaigns); a campaign running when the store moves to Free finishes.

@@ -1,5 +1,5 @@
 import type { Page, TestInfo } from "@playwright/test";
-import { assertResponsiveSane } from "@won/testing/playwright";
+import { assertExtensionAssetsLoaded, assertResponsiveSane } from "@won/testing/playwright";
 import { planCart, type CartPlan } from "@won/core/discounts/plan";
 
 import {
@@ -81,6 +81,8 @@ interface RewardsSf {
     f?: { v: number; h: string };
   }[];
   other: boolean;
+  /** Milníky: the order-discount steps (core storefront-config.ts StorefrontDiscountStep). */
+  disc?: { id: string; t: Record<string, number>; pct?: number; off?: Record<string, number> }[];
 }
 
 function rewardsOf(inputs: TierInputs): RewardsSf {
@@ -250,17 +252,51 @@ async function panelShots(page: Page, testInfo: TestInfo, name: string) {
   await page.setViewportSize({ width: 1440, height: 900 });
 }
 
-/** The progress bars the panel shows: aria-valuenow per kind. */
-async function progressOf(page: Page): Promise<Record<string, number>> {
-  return page
-    .locator(`${PANEL}:visible`)
-    .first()
-    .locator("[data-won-discounts-progress]")
-    .evaluateAll((rows) =>
-      Object.fromEntries(
-        rows.map((row) => [row.getAttribute("data-won-discounts-progress"), Number(row.querySelector('[role="progressbar"]')?.getAttribute("aria-valuenow"))]),
-      ),
-    );
+/** One rendered Milníky ladder (feedback 6 Oct 2026, bod 10): its size, the track's value, the marks and — size "full" — the rows. */
+interface LadderSeen {
+  size: string | null;
+  now: number;
+  text: string;
+  marks: number;
+  marksDone: number;
+  rows: { kind: string | null; done: boolean; text: string }[];
+}
+
+/** The ladder inside `root` (the first one), or null when there is none. */
+async function ladderIn(page: Page, root: string): Promise<LadderSeen | null> {
+  return page.evaluate((selector) => {
+    const ms = document.querySelector(`${selector} .won-ms`);
+    if (!ms) return null;
+    return {
+      size: ms.getAttribute("data-won-ms"),
+      now: Number(ms.querySelector('[role="progressbar"]')?.getAttribute("aria-valuenow")),
+      text: ms.querySelector(".won-ms__text")?.textContent ?? "",
+      marks: ms.querySelectorAll(".won-ms__track i").length,
+      marksDone: ms.querySelectorAll(".won-ms__track i[data-done]").length,
+      rows: [...ms.querySelectorAll(".won-ms__list li")].map((li) => ({ kind: li.getAttribute("data-won-ms-step"), done: li.hasAttribute("data-done"), text: li.textContent ?? "" })),
+    };
+  }, root);
+}
+
+/** The ladder the visible cart panel shows. */
+async function progressOf(page: Page): Promise<LadderSeen | null> {
+  const panel = page.locator(`${PANEL}:visible`).first();
+  await panel.evaluate((el) => el.setAttribute("data-won-e2e-panel", ""));
+  return ladderIn(page, "[data-won-e2e-panel]");
+}
+
+/** The ladder planCart expects for a cart: every step offered in the cart's currency, lowest cart value first, and which are reached. */
+function expectedLadder(plan: CartPlan, rw: RewardsSf, currency: string): { kind: string; at: number; done: boolean }[] {
+  const steps: { kind: string; at: number; done: boolean }[] = [];
+  const ship = plan.progress.freeShipping;
+  if (ship) steps.push({ kind: "s", at: ship.threshold, done: ship.reached });
+  for (const g of plan.progress.gifts ?? []) steps.push({ kind: "g", at: g.threshold, done: g.afterDiscounts ? g.afterDiscounts.reached : g.reached });
+  for (const d of rw.disc ?? []) {
+    const at = d.t[currency];
+    const state = plan.rules.find((r) => r.ruleId === d.id)?.state;
+    if (typeof at === "number" && state !== "currency_missing") steps.push({ kind: "d", at, done: state === "applied" || state === "outranked" || state === "combined" });
+  }
+  return steps.sort((a, b) => a.at - b.at);
 }
 /** Records the cart events the page sees (the theme's and ours) — read back with panelDiagnostics on a failure. */
 async function recordCartEvents(page: Page): Promise<void> {
@@ -298,7 +334,6 @@ async function panelDiagnostics(page: Page) {
     .catch((error: unknown) => ({ error: String(error) }));
 }
 
-const pct = (left: number, threshold: number) => (threshold > 0 ? Math.min(100, Math.round(((threshold - left) * 100) / threshold)) : 100);
 
 test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)${PRO ? " [Pro: ladder, choice of 3]" : OTHER ? " [counting other discounts]" : ""}${THEME_LABEL ? ` — ${THEME_LABEL}` : ""}`, () => {
   test.skip(
@@ -356,10 +391,12 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     const gift = plan.progress.gifts!.find((g) => g.tierId === REWARDS_GIFT_TIER_ID)!;
     const shown = await progressOf(page);
     expect(gift.reached, "precondition: the gift is not reached yet").toBe(false);
-    expect(shown, "the panel's bars = planCart's progress (free shipping, the next gift)").toEqual({
-      shipping: pct(ship.remaining, ship.threshold),
-      gift: pct(gift.remaining, gift.threshold),
-    });
+    // Milníky: the cart page shows the FULL ladder — every step planCart offers, the reached ones ticked.
+    const ladder = expectedLadder(plan, rw, cart.currency);
+    expect(shown?.size, "the cart page shows the full ladder").toBe("full");
+    expect(shown?.rows.map((r) => [r.kind, r.done]), "the ladder's steps and which are reached = planCart").toEqual(ladder.map((s) => [s.kind, s.done]));
+    expect(shown?.marks, "a mark per step on the track").toBe(ladder.length);
+    expect(ship.threshold > 0 && gift.threshold > 0, "both thresholds are set").toBe(true);
     const facts = await page.locator("#won-discounts-cart-data").evaluate(
       (el) =>
         JSON.parse(el.textContent ?? "{}") as {
@@ -734,5 +771,92 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
       chosen,
       numericGift: numericId(inputs.variantsByHandle[REWARDS_GIFT_HANDLE]![0]!.id),
     });
+  });
+  test("Milníky: the ladder walks the steps in all four places — the top strip, the product page, the cart drawer and the cart page — without a page load", async ({
+    page,
+  }, testInfo) => {
+    test.skip(OTHER, "profiles rewards (Free: two steps) and rewards-pro (Pro: the ladder with a discount step)");
+    test.setTimeout(420_000);
+    const inputs = await readTierInputs(REWARDS_HANDLES);
+    const rw = rewardsOf(inputs);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openThemePreview(page);
+    await go(page, `/products/${REWARDS_CART_HANDLE}`);
+    await storefrontJson(page, "POST", "/cart/clear.js", {});
+    await go(page, `/products/${REWARDS_CART_HANDLE}`);
+    // 7 Oct 2026: markup without the extension's files is a bare page — the ladder needs its stylesheet and scripts.
+    await assertExtensionAssetsLoaded(page, { match: "won-discounts" });
+    const probe = await priceProbe(page);
+    const TOP = "[data-won-discounts-topbar]";
+    const PRODUCT = '[data-won-discounts-progress][data-size="compact"]';
+    const DRAWER = "cart-drawer-component .cart-drawer__summary, #CartDrawer .drawer__footer";
+    await expect(page.locator(`${PRODUCT} .won-ms`).first(), "the Milestones block renders on the product page (template overlay)").toBeVisible({ timeout: 20_000 });
+    await expect(page.locator(`${TOP} .won-ms`), "the top strip shows the ladder (the embed's setting in the overlay)").toBeVisible({ timeout: 20_000 });
+    expect(await page.locator(`${PRODUCT} .won-ms`).first().evaluate((el) => getComputedStyle(el.querySelector(".won-ms__track")!).position), "the ladder's stylesheet applies").toBe("relative");
+    let loads = 0;
+    page.on("load", () => (loads += 1));
+
+    // Every amount of the ladder in the cart's currency, and one cart just below the first.
+    const empty = planOf(await storefrontJson<Cart>(page, "GET", "/cart.js"), inputs, "CZ");
+    const amounts = [...new Set(expectedLadder(empty, rw, probe.currency).map((s) => s.at))];
+    expect(amounts.length, PRO ? "Pro: free shipping, two gifts and the discount step" : "Free: free shipping and the gift").toBe(PRO ? 4 : 2);
+    const walk = [Math.max(1, itemsFor(amounts[0]!, probe.price) - 1), ...amounts.map((at) => itemsFor(at, probe.price))];
+    const seen: unknown[] = [];
+    for (const [index, quantity] of walk.entries()) {
+      await test.step(`${quantity} × the cart product`, async () => {
+        // The cart changes as a theme changes it: the AJAX cart, then the theme's cart event (no navigation).
+        await page.evaluate(async (qty) => {
+          const product = (await (await fetch(`${location.pathname}.js`)).json()) as { variants: { id: number }[] };
+          const cart = (await (await fetch("/cart.js", { cache: "no-store" })).json()) as { items: { key: string; variant_id: number; properties?: Record<string, string> }[] };
+          const line = cart.items.find((i) => i.variant_id === product.variants[0]!.id && !i.properties?._won_gift);
+          const init = { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" } };
+          if (line) await fetch("/cart/change.js", { ...init, body: JSON.stringify({ id: line.key, quantity: qty }) });
+          else await fetch("/cart/add.js", { ...init, body: JSON.stringify({ items: [{ id: product.variants[0]!.id, quantity: qty }] }) });
+          document.dispatchEvent(new CustomEvent("cart:update"));
+        }, quantity);
+        // The panel reads the cart 300 ms after the event and keeps its own writes (a gift line) 1.5 s apart.
+        const goods = (c: Cart) => c.items.filter((i) => !giftOf(i)).reduce((sum, i) => sum + i.quantity, 0);
+        const cart = await waitForCart(page, (c) => goods(c) === quantity);
+        await page.waitForTimeout(6_000);
+        const plan = planOf(await storefrontJson<Cart>(page, "GET", "/cart.js"), inputs, "CZ");
+        const ladder = expectedLadder(plan, rw, cart.currency);
+        const done = ladder.filter((s) => s.done).length;
+        const top = await ladderIn(page, TOP);
+        const product = await ladderIn(page, PRODUCT);
+        expect(top?.size, "the top strip: the strip size").toBe("bar");
+        expect(top?.marks, "the strip has no marks").toBe(0);
+        expect(product?.size, "the product page: the compact size").toBe("compact");
+        expect([product?.marks, product?.marksDone], `product page: ${done} of ${ladder.length} steps reached = planCart`).toEqual([ladder.length, done]);
+        expect(top?.text, "the strip and the block say the same sentence").toBe(product?.text);
+        // The cart drawer (a theme with a drawer has its summary in the page): the compact ladder, the same steps.
+        const drawer = (await page.locator(DRAWER).count()) > 0 ? await ladderIn(page, `:is(${DRAWER})`) : null;
+        if (drawer) expect([drawer.size, drawer.marks, drawer.marksDone], "the cart drawer: the compact ladder = planCart").toEqual(["compact", ladder.length, done]);
+        else if (index === 0) testInfo.annotations.push({ type: "note", description: "this theme copy has no cart drawer in the page: the drawer placement is not checked" });
+        seen.push({ quantity, ladder, top, product, drawer });
+        if (index === 1) {
+          await saveScreenshot(page, testInfo, "milestones-product-1440", { fullPage: false });
+          await page.setViewportSize({ width: 390, height: 844 });
+          await page.waitForTimeout(800);
+          await assertResponsiveSane(page, { root: PRODUCT });
+          await saveScreenshot(page, testInfo, "milestones-product-390", { fullPage: false });
+          await page.setViewportSize({ width: 1440, height: 900 });
+        }
+      });
+    }
+    expect(loads, "the ladder followed the cart without a page load").toBe(0);
+
+    // The cart page: the full ladder, every step with its reward, the reached ones ticked.
+    await go(page, "/cart");
+    await expect(page.locator(`${PANEL}:visible`).first()).toBeVisible({ timeout: 20_000 });
+    await page.waitForTimeout(4_000);
+    const plan = planOf(await storefrontJson<Cart>(page, "GET", "/cart.js"), inputs, "CZ");
+    const ladder = expectedLadder(plan, rw, probe.currency);
+    const full = await progressOf(page);
+    expect(full?.size, "the cart page: the full size").toBe("full");
+    expect(full?.rows.map((r) => [r.kind, r.done]), "the cart page lists every step, reached = planCart").toEqual(ladder.map((s) => [s.kind, s.done]));
+    expect(ladder.every((s) => s.done), "the walk reached every step").toBe(true);
+    if (PRO) expect(plan.order?.components.map((c) => c.ruleId), "checkout gives the discount step").toEqual([rw.disc![0]!.id]);
+    await panelShots(page, testInfo, "milestones-cart");
+    await saveEvidence(testInfo, "milestones-ladder", { at: new Date().toISOString(), theme: THEME_LABEL || null, walk, seen, cartPage: full, plan: { totals: plan.totals, order: plan.order } });
   });
 });

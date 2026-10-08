@@ -1,8 +1,9 @@
 {% comment %}
-  Rewards progress (feedback 2 bod 5): "X more for free shipping / a free gift" with a bar, for any section of
-  any template (the product page, the home page, an Apps section under the header). The text is rendered here
-  from the cart; assets/won-discounts-blocks.js updates it when the cart changes. Renders nothing when the shop
-  offers no reward in the cart's currency (in the theme editor it says so instead of leaving a gap).
+  Milestones (feedback 2026-10-06, bod 10; before: "Rewards progress"): the ladder of steps by cart value — free
+  shipping, free gifts, discounts off the order — for any section of any template (the product page, the home
+  page, an Apps section under the header), in the size the merchant picks. The ladder is rendered here from the
+  cart; assets/won-discounts-blocks.js redraws it when the cart changes. Renders nothing when the shop offers no
+  step in the cart's currency (in the theme editor it says so instead of leaving a gap).
 {% endcomment %}
 {%- liquid
   assign won_rw = app.metafields.won_discounts.storefront_config.value.rewards
@@ -10,17 +11,15 @@
 -%}
 {%- capture won_rows -%}
   {%- if won_rw != blank -%}
-    {%- render 'won-progress', rw: won_rw, cur: won_cur, ship: block.settings.show_shipping, gift: block.settings.show_gift, bar: block.settings.show_bar -%}
+    {%- render 'won-milestones', rw: won_rw, cur: won_cur, size: block.settings.size -%}
   {%- endif -%}
 {%- endcapture -%}
 {%- assign won_rows = won_rows | strip -%}
-{%- if won_rows != blank -%}
+{%- if won_rows contains 'won-ms' -%}
   <div
     class="won-progress won-progress--{{ block.settings.align }}"
     data-won-discounts-progress
-    data-ship="{{ block.settings.show_shipping }}"
-    data-gift="{{ block.settings.show_gift }}"
-    data-bar="{{ block.settings.show_bar }}"
+    data-size="{{ block.settings.size }}"
     {{ block.shopify_attributes }}
   >
     {{ won_rows }}
@@ -31,14 +30,22 @@
 
 {% schema %}
 {
-  "name": "Rewards progress",
+  "name": "Milestones",
   "target": "section",
   "stylesheet": "won-discounts.css",
   "javascript": "won-discounts-blocks.js",
   "settings": [
-    { "type": "checkbox", "id": "show_shipping", "label": "Free shipping", "default": true },
-    { "type": "checkbox", "id": "show_gift", "label": "Free gift", "default": true },
-    { "type": "checkbox", "id": "show_bar", "label": "Progress bar", "default": true },
+    {
+      "type": "select",
+      "id": "size",
+      "label": "Size",
+      "default": "compact",
+      "options": [
+        { "value": "bar", "label": "Strip: one sentence and a thin track" },
+        { "value": "compact", "label": "Compact: a track with a mark per step" },
+        { "value": "full", "label": "Full: every step with its reward" }
+      ]
+    },
     {
       "type": "select",
       "id": "align",

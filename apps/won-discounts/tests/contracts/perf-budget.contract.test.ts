@@ -32,7 +32,7 @@ const PAGES: Record<string, string[]> = {
 };
 /**
  * Feedback 2 (2026-10-06, body 5 a 7): scripts NO page loads by default — only where the merchant adds the block
- * ("Rewards progress", "Campaign banner") or switches the embed's top bar on. They are outside the per-page
+ * ("Milestones", "Campaign banner") or switches the embed's top bar on. They are outside the per-page
  * budget above on purpose (a default install stays within it) and have a ceiling of their own; a page that uses
  * them goes over SF-2 by that much (the product page: 10 226 B + this file), which docs/won-discounts/bfs-check.md says.
  */
@@ -42,6 +42,11 @@ const GZIP_BUDGET_BYTES = 10 * 1024; // 10240 B ceiling (SF-2), per page type
  * Feedback 3 (Ondřej 2026-10-06, bod 4 + rozhodnutí 8): the product page's ceiling is 12 kB. The quantity table
  * now follows the cart without a page load (it re-reads its own section after a cart change), which did not fit
  * into the 14 B left under 10 240 B. Measured: 10 226 B before, 10 800 B after.
+ *
+ * Feedback 3, body 9 a 10 (Milníky, 8 Oct 2026): the ladder component (`ladder` in won-discounts.js, the embed)
+ * serves the cart panel, the "Milestones" block and the top strip. Measured (node gzipSync, as this test does): the product page
+ * 10 943 B before, 11 678 B after (of 12 288 B); the cart page 5 778 B → 6 513 B (of 10 240 B);
+ * won-discounts-blocks.js 1 910 B → 1 511 B (it no longer builds the rows itself).
  */
 const PAGE_BUDGET_BYTES: Record<string, number> = { "product page": 12 * 1024 };
 const RAW_THEME_CHECK_BYTES = 10_000; // AssetSizeAppBlockJavaScript default, per file

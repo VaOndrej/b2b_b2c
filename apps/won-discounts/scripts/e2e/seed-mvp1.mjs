@@ -105,7 +105,7 @@ import {
   marginRules,
 } from "./margin-fixture.mjs";
 import { SHAPES_HANDLES, SHAPES_PRODUCT_B_HANDLE, SHAPES_RULE_IDS, shapesRules } from "./shapes-fixture.mjs";
-import { ALL_REWARDS_TIER_IDS, REWARDS_CODE_RULE_ID, REWARDS_HANDLES, rewardsModule, rewardsRules } from "./rewards-fixture.mjs";
+import { ALL_REWARDS_TIER_IDS, milestoneRules, REWARDS_CODE_RULE_ID, REWARDS_HANDLES, REWARDS_STEP_RULE_ID, rewardsModule, rewardsRules } from "./rewards-fixture.mjs";
 import { OUTLET_HANDLES, OUTLET_RULE_IDS, outletRules } from "./outlet-fixture.mjs";
 import { CAMPAIGN_HANDLES, CAMPAIGN_RULE_ID, campaignRules } from "./campaign-fixture.mjs";
 import { CAMPAIGN_TIERS_HANDLES, CAMPAIGN_TIERS_SET_ID, campaignTiersModule } from "./campaign-tiers-fixture.mjs";
@@ -231,9 +231,9 @@ const PROFILES = {
   },
   "rewards-pro": {
     handles: REWARDS_HANDLES,
-    rules: () => [],
+    rules: () => milestoneRules(),
     rewards: (variantIds) => rewardsModule(variantIds, { pro: true }),
-    label: "rewards + Pro: free shipping from 40 Kč / 2 €, the spare from 50 Kč / 3 €, a choice of 3 gifts from 80 Kč / 4 € (fallback: the spare)",
+    label: "rewards + Pro (Milníky): free shipping from 40 Kč / 2 €, the spare from 50 Kč / 3 €, a choice of 3 gifts from 80 Kč / 4 € (fallback: the spare), 10 % off the order from 300 Kč / 15 €",
   },
   outlet: {
     handles: OUTLET_HANDLES,
@@ -262,7 +262,7 @@ const PROFILES = {
 const PROFILE = option("--profile") ?? "mvp1";
 if (!Object.hasOwn(PROFILES, PROFILE)) throw new Error(`unknown --profile ${PROFILE} (${Object.keys(PROFILES).join(", ")})`);
 /** Every E2E rule id of every profile: what a cleanup without a backup removes, and what "the seed is in it" means. */
-const ALL_E2E_RULE_IDS = [...E2E_RULE_IDS, ...SHAPES_RULE_IDS, ...MARGIN_RULE_IDS, REWARDS_CODE_RULE_ID, ...OUTLET_RULE_IDS, CAMPAIGN_RULE_ID];
+const ALL_E2E_RULE_IDS = [...E2E_RULE_IDS, ...SHAPES_RULE_IDS, ...MARGIN_RULE_IDS, REWARDS_CODE_RULE_ID, REWARDS_STEP_RULE_ID, ...OUTLET_RULE_IDS, CAMPAIGN_RULE_ID];
 /** Every E2E tier set id (MVP 3): a cleanup without a backup removes them, and they mean "the seed is in it" too. */
 const ALL_E2E_TIER_SET_IDS = [TIERS_GLOBAL_SET_ID, TIERS_COLLECTION_SET_ID, CAMPAIGN_TIERS_SET_ID, CARDS_SET_ID];
 const tierSetsOf = (config) => (Array.isArray(config?.modules?.tiers?.sets) ? config.modules.tiers.sets : []);

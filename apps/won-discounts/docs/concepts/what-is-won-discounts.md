@@ -9,7 +9,7 @@ app_version: MVP2
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-10-01
+updated: 2026-10-08
 keywords: [overview, what is, modules, discounts, codes, margin, try a cart, won discounts]
 summary: Won Discounts runs a store's discounts through one engine so the merchant knows what applies at checkout and why. What is available today and what is not built yet.
 ---
@@ -36,8 +36,9 @@ and it decides how discounts combine instead of leaving that to chance.
   [combining-discounts](combining-discounts).
 - **Try a cart**: build a cart and see which discounts apply and why, exactly as
   checkout will apply them. See [how-won-plans-discounts](how-won-plans-discounts).
-- **Cart rewards** (beta): free shipping and a free gift from an order amount per
-  currency, shown in the cart on your store. See [cart-rewards](cart-rewards).
+- **Milestones** (beta): one ladder of steps by cart value — a free gift, free
+  shipping or a discount off the order from an amount per market, shown on your
+  store. See [cart-rewards](cart-rewards).
 - **Overview**: what is running, the sync with Shopify, warnings, and the discounts
   in your store that run outside Won.
 - **Moving Shopify discounts into Won**, with Undo. See
@@ -47,7 +48,7 @@ and it decides how discounts combine instead of leaving that to chance.
 
 The menu has five items: **Discounts**, **Margin protection**, **Appearance**,
 **Reports** and **Settings**. **Discounts** has tabs on the page: Discounts & codes,
-Quantity discounts, Cart rewards, Clearance (Pro) and Campaigns (Pro). The plan
+Quantity discounts, Milestones, Clearance (Pro) and Campaigns (Pro). The plan
 and **Try a cart** are in **Settings**.
 
 ## Where customers see Won discounts
@@ -55,7 +56,7 @@ and **Try a cart** are in **Settings**.
 Shopify's checkout applies Won discounts itself and shows the discount name you
 entered. Checkout discounts do not depend on the theme app embed. The embed shows
 discounts in the store itself: the quantity-tiers table on the product page and
-the cart rewards panel in the cart.
+the Milestones ladder in the cart.
 
 ## Admin language
 

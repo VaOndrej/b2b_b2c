@@ -1,33 +1,18 @@
-/* Won Discounts — won-discounts-blocks.js: the "Rewards progress" and "Campaign banner" blocks and the embed's top bar. Notes: extensions/won-discounts-storefront/README.md */
+/* Won Discounts — won-discounts-blocks.js: the "Milestones" and "Campaign banner" blocks and the embed's top bar. Notes: extensions/won-discounts-storefront/README.md */
 ((w, d) => {
   "use strict";
   if (w.__wonBlocks) return;
   w.__wonBlocks = true;
   const all = (sel) => [...d.querySelectorAll(sel)];
 
-  /* Rewards progress: the cart script's numbers (won-discounts:cart:update) replace what Liquid rendered. */
-  const row = (kind, text, pct, bar) =>
-    `<div class="won-progress__row" data-won-progress-row="${kind}"><p class="won-progress__text">${text}</p>${
-      bar ? `<div class="won-progress__track" aria-hidden="true"><span style="width: ${pct}%"></span></div>` : ""
-    }</div>`;
-  const pctOf = (left, threshold) => (threshold > 0 ? Math.max(0, Math.min(100, Math.round(((threshold - left) * 100) / threshold))) : 100);
+  /* Milestones: the cart script's ladder (won-discounts:cart:update) replaces what Liquid rendered, in the element's size. */
   const progress = (e) => {
     const wd = w.WonDiscounts;
-    const tx = wd?.cart?.tx;
     const v = e.detail;
-    if (!tx || !v) return;
+    if (!wd?.cart?.tx || !v?.steps) return;
     const cur = d.querySelector("[data-won-discounts-embed]")?.getAttribute("data-won-discounts-currency") || "";
-    const say = (key, cents) => wd.esc(wd.fill(tx[key] || "", { amount: wd.money(cents, cur) }));
     for (const el of all("[data-won-discounts-progress]")) {
-      const bar = el.getAttribute("data-bar") !== "false";
-      let out = "";
-      const s = v.shipping;
-      if (s && el.getAttribute("data-ship") !== "false") out += row("ship", s.reached ? wd.esc(tx.ship_done) : say("ship_left", s.remaining), pctOf(s.remaining, s.threshold), bar);
-      const gifts = v.gifts || [];
-      if (gifts.length && el.getAttribute("data-gift") !== "false") {
-        const next = gifts.find((g) => !g.due);
-        out += next ? row("gift", say("gift_left", next.left), pctOf(next.left, next.threshold), bar) : row("gift", wd.esc(tx.gift_done), 100, bar);
-      }
+      const out = wd.ladder(v, el.getAttribute("data-size") || "compact", wd.cart, cur);
       if (el.__won !== out) {
         el.__won = out;
         el.innerHTML = out;
@@ -83,7 +68,7 @@
     const bar = d.querySelector("[data-won-discounts-topbar]");
     if (!bar) return;
     if (d.body.firstElementChild !== bar) d.body.prepend(bar);
-    bar.hidden = !bar.querySelector(".won-progress__row, [data-won-discounts-campaign]:not([hidden])");
+    bar.hidden = !bar.querySelector(".won-ms, [data-won-discounts-campaign]:not([hidden])");
   };
   const start = () => {
     campaigns();

@@ -25,6 +25,24 @@ cart). Each note below is the comment that stood above the named line.
   "Odmítnout" / a gift removed by hand → the tier in the cart attribute `_won_gift_declined`, never added again.
 - The quantity hint ("přidej 1 ks") comes from the app proxy (`/apps/won-discounts/cart-plan`, the engine).
 
+## Milníky: the ladder (feedback 6 Oct 2026, body 9 a 10)
+
+- One component, three sizes: `bar` (a sentence + a thin track), `compact` (+ a mark per step), `full` (+ every
+  step with its reward, the reached ones ticked). Markup: `.won-ms.won-ms--<size>[data-won-ms]` › `.won-ms__text`,
+  `.won-ms__track[role=progressbar]` (› `span` the fill, `i[data-done]` a mark per step), `.won-ms__list` ›
+  `li[data-won-ms-step=s|g|d][data-done]`. The highlight colour is `--won-tiers-accent`.
+- `won-discounts.js` `plan()` builds `steps` — free shipping (`s`), the gift tiers (`g`) and the order-discount
+  steps of the storefront config's `rewards.disc` (`d`), lowest cart value first, each read for the cart's market
+  like every amount (`EUR@sk`, then `EUR`; a negative amount = not offered there) — and `ladder(view, size, data,
+  currency)` draws them. A gift step is done when the gift is due (with countOtherDiscounts: after discounts); a
+  discount step when the goods before discounts reach its value, exactly the minimum checkout measures.
+- Where it shows: the cart drawer (`compact`) and the cart page (`full`) inside the cart panel
+  (`won-discounts-cart.js` picks the size by where the panel sits); the "Milestones" block
+  (`blocks/rewards_progress.liquid`, the size is its setting) and the embed's top strip (`bar`) — both rendered by
+  `snippets/won-milestones.liquid` for the first paint and redrawn by `won-discounts-blocks.js` from the
+  `won-discounts:cart:update` event (`detail.steps`), so every place follows the cart without a page load.
+- `scripts/milestones-web-preview.mjs` walks a fake cart through the steps over the real stylesheet and scripts.
+
 ## `won-discounts-tiers-core.js`
 
 Won Discounts quantity tiers: pure logic (MVP 3, contracts K2, K4 v2, K5, K6). No DOM, no network: won-discounts-tiers.js renders with it. Split off so each file stays under Theme Check's 10 000 B raw limit and readable (no build). The block loads it with `defer`; whichever of the two files runs second starts the block (window.__wonTiersBoot). Money = Liquid units (major x 100).

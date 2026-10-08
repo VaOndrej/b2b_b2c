@@ -11,6 +11,9 @@
 // Phase B (Pro, rewards-pro): a ladder — the spare from 50 Kč / 3 €, then a
 // choice of 3 (won-e2e-simple-b, won-e2e-two-variants Small, won-e2e-multiaxis
 // first variant) from 80 Kč / 4 €.
+// Milníky (feedback 6 Oct 2026): rewards-pro also has a DISCOUNT step — 10 % off the order from 300 Kč / 15 € (an
+// automatic order rule with the "ms-" id prefix). It is far above the carts of the gift tests (≤ ~100 Kč), so
+// they never reach it; the ladder test walks up to it.
 // Catalog (CZK base): simple-a 10 Kč (the cart's product), spare 199 Kč in the
 // cesko price list; Slovakia converts (no fixed prices). The expectations are
 // never these numbers: the spec computes them with planCart on the live config.
@@ -26,6 +29,10 @@ export const REWARDS_GIFT_HANDLE = "won-e2e-spare";
 export const REWARDS_CHOICE_HANDLES = ["won-e2e-simple-b", "won-e2e-two-variants", "won-e2e-multiaxis"];
 /** Every product the seed reads a variant of (the gift, the Pro choices) and the spec's cart product. */
 export const REWARDS_HANDLES = [REWARDS_CART_HANDLE, REWARDS_GIFT_HANDLE, ...REWARDS_CHOICE_HANDLES];
+
+export const REWARDS_STEP_RULE_ID = "ms-e2e-step";
+export const REWARDS_STEP_PERCENT = 10;
+export const REWARDS_STEP_THRESHOLD = { CZK: 300_00, EUR: 15_00 };
 
 export const REWARDS_SHIPPING = { CZK: 40_00, EUR: 2_00 };
 export const REWARDS_GIFT_THRESHOLD = { CZK: 50_00, EUR: 3_00 };
@@ -60,6 +67,21 @@ export function rewardsModule(variantIds, { other = false, pro = false } = {}) {
 }
 
 /** The code rule of rewards-other: 50 % on the order. */
+/** The discount step of the Pro ladder (core milestones.ts milestoneRule). */
+export function milestoneRules() {
+  return [
+    {
+      id: REWARDS_STEP_RULE_ID,
+      name: "",
+      method: "automatic",
+      enabled: true,
+      value: { kind: "percentage", percent: REWARDS_STEP_PERCENT },
+      target: { kind: "order" },
+      minimum: { subtotal: { ...REWARDS_STEP_THRESHOLD }, scope: "cart" },
+    },
+  ];
+}
+
 export function rewardsRules() {
   return [
     {

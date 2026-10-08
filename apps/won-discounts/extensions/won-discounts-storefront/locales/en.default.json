@@ -10,9 +10,13 @@
     "next": "Add {count} more to pay {price} each."
   },
   "cart": {
-    "ship_left": "{amount} more for free shipping.",
-    "ship_done": "You have free shipping.",
-    "gift_left": "{amount} more for a free gift.",
+    "ms_left": "{amount} more and you get: {reward}",
+    "ms_done": "You have every reward.",
+    "ms_from": "from {amount}",
+    "ms_ship": "Free shipping",
+    "ms_gift": "Free gift",
+    "ms_gift_named": "Gift: {name}",
+    "ms_disc": "{value} off",
     "gift_done": "Your free gift is in the cart.",
     "gift_decline": "No thanks",
     "gift_declined": "You declined the free gift.",
@@ -39,7 +43,7 @@
     "left": "Only {{ count }} left"
   },
   "progress": {
-    "empty": "Cart rewards are not set up yet. In the Won Discounts app open Discounts → Rewards."
+    "empty": "Milestones are not set up yet. In the Won Discounts app open Discounts → Milestones."
   },
   "campaign": {
     "ends": "Ends in {time}",

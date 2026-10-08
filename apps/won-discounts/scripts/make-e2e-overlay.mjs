@@ -10,7 +10,7 @@
 // partial patch. This script builds exactly that:
 //
 //   canonical b2b_b2c_themes/<Theme>/config/settings_data.json
-//   + current.blocks[<stable key>] = { type: <our embed>, disabled: false, settings: {} }
+//   + current.blocks[<stable key>] = { type: <our embed>, disabled: false, settings: EMBED_SETTINGS }
 //
 // Deterministic and re-runnable: same canonical input → byte-identical output.
 // The canonical header comment and key order are preserved, and any existing
@@ -202,10 +202,32 @@ export function outletTemplateOverlays(themeKey, extensionUuid = resolveExtensio
   throw new Error(`no outlet template overlay for theme ${themeKey}`);
 }
 
-/** Every template overlay of a theme copy (e2e.app.config.mjs): the sale badge and the tiers block on the PDP, the rewards block on the cart. */
-export function e2eTemplateOverlays(themeKey, extensionUuid = resolveExtensionUuid()) {
-  return [...outletTemplateOverlays(themeKey, extensionUuid), ...tiersTemplateOverlays(themeKey, extensionUuid), ...cartTemplateOverlays(themeKey, extensionUuid)];
+/** Stable id of the Milestones block in the theme copies' product template (feedback 6 Oct 2026, bod 10). */
+export const MILESTONES_BLOCK_ID = "won_discounts_milestones";
+export const MILESTONES_BLOCK_NAME = "rewards_progress";
+
+/** The Milestones ladder on the PDP (the compact size), right before the quantity tiers block (same anchors). */
+export function milestonesTemplateOverlays(themeKey, extensionUuid = resolveExtensionUuid()) {
+  const block = { id: MILESTONES_BLOCK_ID, type: appBlockType(MILESTONES_BLOCK_NAME, extensionUuid), settings: { size: "compact", align: "start" } };
+  if (themeKey === "horizon") {
+    return [{ template: "templates/product.json", parentBlockTypes: ["_product-details"], block, position: { beforeType: "buy-buttons" } }];
+  }
+  if (themeKey === "dawn") return [{ template: "templates/product.json", block, position: { beforeType: "quantity_selector" } }];
+  throw new Error(`no milestones template overlay for theme ${themeKey}`);
 }
+
+/** Every template overlay of a theme copy (e2e.app.config.mjs): the sale badge, the Milestones ladder and the tiers block on the PDP, the rewards block on the cart. */
+export function e2eTemplateOverlays(themeKey, extensionUuid = resolveExtensionUuid()) {
+  return [
+    ...outletTemplateOverlays(themeKey, extensionUuid),
+    ...milestonesTemplateOverlays(themeKey, extensionUuid),
+    ...tiersTemplateOverlays(themeKey, extensionUuid),
+    ...cartTemplateOverlays(themeKey, extensionUuid),
+  ];
+}
+
+/** The embed's settings in the theme copies: the top strip with the Milestones ladder is on (the fourth placement). */
+export const EMBED_SETTINGS = { top_bar_rewards: true };
 
 // Theme-editor style numeric key, derived from the block handle so it never
 // changes between runs (and never collides with the editor's random keys in
@@ -235,7 +257,7 @@ export function buildOverlay(canonicalContent, type) {
       blocks[key] = block;
     }
   }
-  blocks[stableBlockKey(type)] = { type, disabled: false, settings: {} };
+  blocks[stableBlockKey(type)] = { type, disabled: false, settings: { ...EMBED_SETTINGS } };
   data.current.blocks = blocks; // keeps its position when it already existed
   return `${header}${JSON.stringify(data, null, 2)}\n`;
 }

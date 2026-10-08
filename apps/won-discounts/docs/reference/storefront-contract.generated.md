@@ -54,11 +54,15 @@ Set them in the admin (Look → Custom look) or in your CSS on the root:
 - `.won-card`
 - `.won-cart`
 - `.won-cart__applied`
-- `.won-cart__bar`
 - `.won-cart__code`
 - `.won-cart__row`
 - `.won-cart__saved`
 - `.won-cart__warn`
+- `.won-ms`
+- `.won-ms--bar`
+- `.won-ms__list`
+- `.won-ms__text`
+- `.won-ms__track`
 - `.won-outlet`
 - `.won-outlet__badge`
 - `.won-outlet__left`
@@ -66,8 +70,6 @@ Set them in the admin (Look → Custom look) or in your CSS on the root:
 - `.won-outlet__variant`
 - `.won-progress`
 - `.won-progress--center`
-- `.won-progress__row`
-- `.won-progress__track`
 - `.won-tiers`
 - `.won-tiers--chips`
 - `.won-tiers--default`

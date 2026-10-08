@@ -22,9 +22,13 @@ const ASSETS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..
 const SOURCES = ["won-discounts.js", "won-discounts-cart.js"].map((f) => readFileSync(path.join(ASSETS, f), "utf8"));
 
 const TX = {
-  ship_left: "Do dopravy zdarma zbývá {amount}.",
-  ship_done: "Máte dopravu zdarma.",
-  gift_left: "Do dárku zdarma zbývá {amount}.",
+  ms_left: "Ještě {amount} a získáte: {reward}",
+  ms_done: "Máte všechny odměny.",
+  ms_from: "od {amount}",
+  ms_ship: "Doprava zdarma",
+  ms_gift: "Dárek zdarma",
+  ms_gift_named: "Dárek: {name}",
+  ms_disc: "Sleva {value}",
   gift_done: "Dárek zdarma je v košíku.",
   gift_decline: "Odmítnout",
   gift_declined: "Dárek zdarma jste odmítli.",
@@ -181,8 +185,10 @@ test("SF-1: on page load the panel renders and nothing is written — even with 
   const p = page(t, { cart: cartOf([item("a", 1, 160000)]) });
   await p.settle(1000);
   assert.deepEqual(p.state.updates, []);
-  assert.match(p.panel(), /data-won-discounts-progress="shipping"/);
-  assert.match(p.panel(), /Máte dopravu zdarma/);
+  // Milníky: the ladder — on the cart page every step, the reached ones marked.
+  assert.match(p.panel(), /<div class="won-ms won-ms--full" data-won-ms="full">/);
+  assert.match(p.panel(), /Máte všechny odměny\./);
+  assert.deepEqual([...p.panel().matchAll(/<li data-won-ms-step="(\w)"( data-done)?>/g)].map((m) => `${m[1]}${m[2] ? "+" : "-"}`), ["s+", "g+"]);
   assert.match(p.panel(), /data-won-discounts-gift="gift-1" data-state="pick"/);
   assert.equal(p.state.proxy.length, 1, "the tier hint is asked (a read)");
 });
@@ -286,7 +292,7 @@ test("below the threshold a gift line still in the cart (its removal pending or 
   const p = page(t, { cart: cartOf([item("a", 1, 100000), giftLine()]) });
   await p.settle(1000);
   assert.doesNotMatch(p.panel(), /data-state="in"/);
-  assert.match(p.panel(), /data-won-discounts-progress="gift"/);
+  assert.match(p.panel(), /<li data-won-ms-step="g">/, "the gift step is ahead, not reached");
   assert.equal(p.state.updates.length, 0, "SF-1: on load nothing is written");
 });
 
@@ -408,7 +414,7 @@ test("countOtherDiscounts: 'Keep the code' removes the gift (the threshold count
   await p.settle(2000);
   assert.deepEqual(p.state.updates[1]!.payload, { lines: [{ id: "g1", quantity: 0 }] }, "Keep the code (no gift): the gift goes");
   assert.doesNotMatch(p.panel(), /data-won-discounts-code-warning/);
-  assert.match(p.panel(), /data-won-discounts-progress="gift"/, "the gift progress counts after discounts again");
+  assert.match(p.panel(), /<li data-won-ms-step="g">/, "the gift step counts after discounts again: not reached");
   p.emit("shopify:cart:lines-update");
   await p.settle(3000);
   assert.equal(p.state.updates.length, 2, "below the threshold after discounts: not added back");
@@ -497,7 +503,7 @@ test("property: the panel's free-shipping and gift progress = planCart's (before
   const doc = { readyState: "complete", documentElement: { lang: "cs" }, getElementById: () => ({ textContent: "{}" }), querySelector: () => ({ setAttribute() {} }), addEventListener() {} };
   const run = vm.createContext({ window: {} as Record<string, unknown>, document: doc, Intl, JSON, Math });
   vm.runInContext(SOURCES[0]!, run);
-  const wd = (run.window as { WonDiscounts: { plan: (cart: unknown, rw: unknown, facts: unknown, mk?: string) => { base: number; ship: unknown; tiers: { id: string; reached: boolean; remaining: number; lost: boolean }[] } } }).WonDiscounts;
+  const wd = (run.window as { WonDiscounts: { plan: (cart: unknown, rw: unknown, facts: unknown, mk?: string) => { base: number; ship: unknown; tiers: { id: string; reached: boolean; remaining: number; lost: boolean }[]; steps: { k: string; at: number; done: boolean; pct?: number; off?: number }[] } } }).WonDiscounts;
   let seed = 7;
   const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31);
   const pick = <T,>(list: T[]) => list[Math.floor(rnd() * list.length)]!;
@@ -514,7 +520,13 @@ test("property: the panel's free-shipping and gift progress = planCart's (before
         { handle: "de", currency: "EUR", enabled: true, countries: ["DE"] },
       ],
       modules: {
-        codes: { rules: [] },
+        // Milníky: two discount steps — a percent and a fixed amount (sometimes without an amount for the euro, or with Germany's own).
+        codes: {
+          rules: [
+            { id: "ms-pct", name: "", method: "automatic", value: { kind: "percentage", percent: 5 }, target: { kind: "order" }, minimum: { subtotal: { CZK: pick([20000, 120000]), ...(rnd() < 0.6 ? { EUR: 5000 } : {}), ...(own ? { "EUR@de": pick([500, 150000]) } : {}) }, scope: "cart" } },
+            { id: "ms-fix", name: "", method: "automatic", value: { kind: "fixed", amount: { CZK: 10000, ...(rnd() < 0.5 ? { EUR: 400 } : {}) } }, target: { kind: "order" }, minimum: { subtotal: { CZK: pick([90000, 250000]), EUR: 8000 }, scope: "cart" } },
+          ],
+        },
         rewards: {
           freeShipping: { threshold: { CZK: pick([50000, 100000, 1]), ...(rnd() < 0.5 ? { EUR: 4000 } : {}), ...(own ? { "EUR@de": 9000 } : {}) } },
           gifts: [
@@ -570,6 +582,15 @@ test("property: the panel's free-shipping and gift progress = planCart's (before
       const after = items.filter((i) => !i.properties._won_gift).reduce((s, i) => s + i.final_line_price, 0) - orderOff;
       assert.equal(x.lost, other && x.reached && after < threshold, `lost, case ${n}`);
     }
+    // Milníky: a discount step is on the ladder exactly where checkout offers it, and reached exactly when
+    // checkout reaches its minimum (applied, or outranked by the higher step — never "below the minimum").
+    const offered = plan.rules.filter((r) => r.ruleId.startsWith("ms-") && r.state !== "currency_missing");
+    const discSteps = js.steps.filter((s) => s.k === "d");
+    assert.equal(discSteps.length, offered.length, `discount steps offered, case ${n}`);
+    assert.deepEqual(discSteps.map((s) => s.done).sort(), offered.map((r) => ["applied", "outranked", "combined"].includes(r.state)).sort(), `discount steps reached, case ${n}`);
+    // The ladder is sorted by cart value and holds every kind once.
+    assert.deepEqual(js.steps.map((s) => s.at), js.steps.map((s) => s.at).sort((a, b) => a - b), `ladder order, case ${n}`);
+    assert.equal(js.steps.length, (js.ship ? 1 : 0) + js.tiers.length + discSteps.length, `ladder size, case ${n}`);
   }
 });
 

@@ -121,7 +121,56 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
     optimalizátoru jako v CLI). Testy funkce: cargo 102, parita 651. Předchozí věta o rezervě 323 B už neplatí.
   - **Pozor:** změnil jsem `extensions/` za běhu `shopify app dev`; podle runbooku to rozbije soubory rozšíření na webu do dalšího
     restartu. Ověření: `node apps/won-discounts/scripts/check-storefront-assets.mjs the-inventory-not-tracked-snowboard`.
-- **Další krok:** úkol 7 (Milníky) v nové session podle [`won-discounts/prompt-ukol7-milniky.md`](won-discounts/prompt-ukol7-milniky.md), potom 8, 9.
+- **Úkol 7 (Milníky, dávka D, body 9 a 10) — v kódu, brána zelená, sloučeno do `main` 8. 10. 2026; web na Horizonu a Dawnu naživo NEOVĚŘEN
+  (`shopify app dev` neběžel).** Větev `won-discounts-milniky`.
+  - **Tvar dat (rozhodl jsem sám):** nic nového se neukládá a funkce pokladny se nezměnila (`git diff origin/main --stat --
+    apps/won-discounts/extensions/won-discounts-engine/src` je prázdný). Žebříček je pohled na to, co nastavení už má
+    (`packages/core/src/discounts/milestones.ts`): doprava zdarma = `modules.rewards.freeShipping`, dárek = `modules.rewards.gifts[]`,
+    **sleva na objednávku = automatické pravidlo na objednávku s minimální útratou a id `ms-…`** v `modules.codes.rules`. Uložené
+    odměny se proto čtou jako stupně beze změny a převod jde vrátit (odebráním pravidel `ms-`). Stupeň se slevou je za `ms-` jen
+    s tvarem, který Milníky zapisují; jiné pravidlo s tou předponou zůstává běžnou slevou (nikdy neviditelné na obou stránkách).
+  - **Limity:** Free 2 stupně, Pro 6 (`MILESTONE_LIMITS`). Na serveru dvakrát: formulář (`readMilestonesForm`, nepustí víc stupňů,
+    než tarif má, pokud už nebyly uložené) a brána tarifu (`plan-gate.ts`, schopnost `milestone_steps` nahradila `gift_ladder`):
+    Free běží první dva stupně žebříčku bez ohledu na typ, další se nepošlou (dárek a doprava) nebo jdou vypnuté (sleva). Dárek smí
+    být nejvýš u 5 stupňů (20 dárkových produktů na stránku webu, starší limit). **Změna proti dřívějšku:** Free dřív = doprava + 1
+    dárek; teď 2 libovolné stupně (třeba 2 dárky).
+  - **Řazení (rozhodl jsem sám):** žebříček se řadí podle částky prvního zapnutého trhu (první sloupec tabulky), ne podle měny
+    obchodu z Shopify. Brána tarifu měnu obchodu nezná a musí vybrat stejné dva stupně jako stránka. V dev obchodě je to totéž.
+  - **Pokladna, ověřeno testem (`packages/core/tests/discounts/milestones.test.ts`, 13 testů; 12 nových fixtures funkce, celkem
+    152; cargo 102, parita 699):** 5 % od 1 000 Kč a 10 % od 2 000 Kč → platí jen vyšší; hranice slevy se měří stejně jako
+    u dárku (zboží před slevami, bez dárku, výprodej se počítá); liší se tím, že sleva se bere ze zboží po slevách na produkty a ne
+    z výprodeje, s kódem na objednávku platí jen ta vyšší, ochrana marže ji může snížit a přepínač „sleva na produkty + na
+    objednávku“ ji může vyřadit. Stránka to říká větou u stupně se slevou.
+  - **Země mimo trhy:** částka slevy stupně spadá do druhu „sleva“, hranice do „minimální útrata“, doprava do „doprava zdarma“,
+    dárek do „dárek“ (test „each step type follows its own kind“). Vlastní druh pro Milníky jsem nepřidal: hranice stupně se
+    slevou je minimální útrata i významem.
+  - **Aplikace:** `app/components/screens/MilestonesScreen.tsx` (Odměny zanikly), model `app/components/model/milestones.ts`,
+    server `app/lib/integration/rewards.server.ts`. Náhled žebříčku z živého formuláře (posuvník hodnoty košíku, přepínač trhu),
+    tabulka stupeň × trh (na 720 px a níž, nebo od 7 trhů, se skládá pod sebe), jedno tlačítko „Navrhnout ostatní trhy“ (vyplní
+    prázdná pole podle ručního kurzu, označí je, jde vrátit; uloží až „Uložit“; trh bez kurzu řekne hned jménem), očíslované
+    karty stupňů s volbou typu, stupně nad limit zamčené a odebíratelné, „Co dál“ po uložení, čtyři umístění na webu.
+    Stupně se slevou nejsou na stránce „Slevy a kódy“ (jen řádek s odkazem), v editoru slevy ani v kampaních.
+    Dlaždice, podmenu, průvodce (`/app/rewards?start=shipping#steps`), přehled trhů a „Vyžaduje pozornost“ jdou přes Milníky.
+  - **Web:** jedna komponenta `.won-ms` ve třech velikostech (`ladder` v `won-discounts.js`, první vykreslení
+    `snippets/won-milestones.liquid`): pruh nahoře (`bar`), blok „Milestones“ (dřív „Rewards progress“, volba velikosti),
+    boční košík (`compact`), stránka košíku (`full`). Data: `rewards.disc` v nastavení pro web. Váha skriptů (gzip):
+    **stránka produktu 10 943 → 11 678 B z 12 288 B**, stránka košíku 5 778 → 6 513 B z 10 240 B, `won-discounts-blocks.js`
+    1 910 → 1 511 B. (Dřívější údaj 10 800 B v tomto logu byl měřený jindy; 10 943 B je `origin/main` před úkolem 7.)
+  - **Důkazy:** aplikace 390 a 1440 px, 15 stavů, bez vodorovného posuvu: `Apps/.playwright-mcp/milniky/app/` (staticky
+    vykreslené, dev náhled neběžel). Web: `node apps/won-discounts/scripts/milestones-web-preview.mjs <složka>` projde košíkem
+    6 hodnot ve 4 umístěních nad skutečnými styly a skripty, 54 kontrol na 390 i 1440 px, bez načtení stránky;
+    snímky `Apps/.playwright-mcp/milniky/web/`. Náhodný test 1 500 košíků porovnává stupně na webu s `planCart`.
+  - **Brána 8. 10.:** `test:packages` 926 + 53, `test:unit` 1 788 + cargo 102 + vitest 699, `typecheck`, `lint` (0 chyb,
+    6 starších varování), `build`, `guard:test:core` 301, `validate:shopify` (0 nálezů), vše exit 0.
+  - **Naživo neověřeno:** (1) Horizon a Dawn: zkouška je připravená (`tests/e2e/storefront.rewards.spec.ts`, nový test průchodu
+    stupni; šablony zkoušky mají nově blok Milníků na stránce produktu a zapnutý pruh nahoře, profil `rewards-pro` má stupeň
+    10 % od 300 Kč), ale neběžela. Pozor: pruh nahoře je nově zapnutý ve všech profilech zkoušky a může pohnout měřením posunu
+    stránky v testu SF-1. (2) Klikání v běžící aplikaci (výběr dárku, „Navrhnout ostatní trhy“, uložení). (3) První vykreslení
+    žebříčku v Liquidu (řazení stupňů a texty); skript ho po načtení překreslí. (4) `check-storefront-assets.mjs`.
+  - **Co spustit:** `npm run dev -w won-discounts`, potom
+    `node apps/won-discounts/scripts/check-storefront-assets.mjs the-inventory-not-tracked-snowboard` a
+    `apps/won-discounts/scripts/e2e/runbook/profile.sh rewards milniky free` (napřed dry-run podle runbooku), pro Pro `rewards-pro`.
+- **Další krok:** naživo ověřit úkol 7 (viz „Co spustit“), potom úkol 8 (Překlady, vzhled žebříčku), 9.
 
 Zadání: [`won-discounts/audit-dlazdice-trhy-2026-10-06.md`](won-discounts/audit-dlazdice-trhy-2026-10-06.md) (stav po nálezech je na jeho
 konci). Práce inline, commitnuto lokálně, nepushnuto, nenasazeno.

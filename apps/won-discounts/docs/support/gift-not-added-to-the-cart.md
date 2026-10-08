@@ -9,7 +9,7 @@ app_version: MVP4
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-10-01
+updated: 2026-10-08
 keywords: [gift not added, no gift in cart, gift missing, gift sold out, declined gift, no thanks, dárek se nepřidal, dárek chybí]
 summary: Why the cart does not add the gift, in the order to check, from the app embed being off to the customer having declined it.
 ---
@@ -21,7 +21,7 @@ Check in this order:
 ## 1. The app embed is off
 
 The gift is added by the cart on your store, which needs the app embed.
-**Cart rewards** shows its state; **Turn on in theme** fixes it. See
+**Milestones** shows its state; **Turn on in theme** fixes it. See
 [../tasks/add-the-cart-panel-to-the-cart-page.md](../tasks/add-the-cart-panel-to-the-cart-page.md).
 
 ## 2. The customer declined it

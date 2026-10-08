@@ -9,15 +9,15 @@ app_version: MVP4
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-10-01
+updated: 2026-10-08
 keywords: [code removes gift, lose the gift, code below threshold, keep the code, remove the code, count other discounts, kód a dárek, přijdu o dárek]
 summary: What happens to the gift when a discount code takes the order below the threshold, with and without counting other discounts.
 ---
 
 # A discount code and the gift
 
-It depends on **Count other discounts toward the gift threshold** in
-**Cart rewards**:
+It depends on **Count the goods into the cart value only after other discounts** in
+**Milestones**:
 
 ## Off (the default)
 
