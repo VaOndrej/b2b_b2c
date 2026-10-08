@@ -46,8 +46,8 @@ margin protection and moving Shopify discounts work in full on Free.
 | Quantity discount sets for chosen products or collections | Quantity discounts | The Pro setting is left out; the rest keeps working. |
 | More than one quantity discount set | Quantity discounts | The Pro setting is left out; the rest keeps working. |
 | Quantity discounts counted across the whole cart | Quantity discounts | Kept within the Free limit. |
-| A ladder of several gift thresholds | Cart rewards | Kept within the Free limit. |
-| A choice of gifts at one threshold | Cart rewards | Kept within the Free limit. |
+| More than 2 steps in Milestones (up to 6) | Milestones | Kept within the Free limit. |
+| A choice of gifts at one step | Milestones | Kept within the Free limit. |
 | Margin protection settings per collection | Margin protection | Merged into the store-wide setting; the strictest value wins. |
 
 Pro also opens **Try a cart** (Settings → Tools): which discounts apply to a cart and why.

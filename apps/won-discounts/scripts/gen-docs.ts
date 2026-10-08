@@ -127,8 +127,8 @@ const CAPABILITY_META: { readonly [K in ProCapability]: { label: string; area: A
   tier_set_scope: { label: "Quantity discount sets for chosen products or collections", area: "tiers" },
   tier_sets_extra: { label: "More than one quantity discount set", area: "tiers" },
   tier_count_across_cart: { label: "Quantity discounts counted across the whole cart", area: "tiers" },
-  gift_ladder: { label: "A ladder of several gift thresholds", area: "rewards" },
-  gift_choices: { label: "A choice of gifts at one threshold", area: "rewards" },
+  milestone_steps: { label: "More than 2 steps in Milestones (up to 6)", area: "rewards" },
+  gift_choices: { label: "A choice of gifts at one step", area: "rewards" },
   margin_per_collection: { label: "Margin protection settings per collection", area: "margin" },
   item_minimum_quantity: { label: "A minimum quantity per product or collection", area: "discounts" },
   code_batch_pattern: { label: "Generated codes with your own pattern", area: "discounts" },
@@ -193,6 +193,8 @@ function freeGateReasons(): Map<ProCapability, StrippedCapability["reason"]> {
   probe.modules.rewards.gifts = [
     { id: "g1", threshold: { USD: 1000 }, choices: ["v1", "v2"] },
     { id: "g2", threshold: { USD: 2000 }, choices: ["v3"] },
+    // Milníky: Free runs two steps of the ladder — a third one is what the gate leaves out.
+    { id: "g3", threshold: { USD: 3000 }, choices: ["v4"] },
   ];
   probe.modules.margin.perCollection = [{ collectionId: "1", minMarginPercent: 20 }];
 

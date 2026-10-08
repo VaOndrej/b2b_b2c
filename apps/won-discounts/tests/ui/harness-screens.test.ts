@@ -84,8 +84,8 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "onboarding?step=5&embed=on&rules=1", expect: [/Slevy platí na webu i v pokladně/, /Aktivní slevy: 3 z 6/], absent: [/Všechno je aktivní/, /6 slev je aktivních/] },
   { path: "onboarding?step=5&embed=on&rules=1&live=6", expect: [/Všechno je aktivní/, /6 slev je aktivních/] },
   // N1: the goal "Doprava zdarma nebo dárek" leads to Odměny (prefilled), not to a discount recipe.
-  { path: "onboarding?step=4&embed=on&goal=rewards", expect: [/Nastavit dopravu zdarma a dárek/, /href="\/app\/rewards\?start=shipping#shipping"/, /Nebo začněte slevou/] },
-  { path: "onboarding?step=4&embed=on&goal=rewards&rewards=live", expect: [/Odměny jsou nastavené/, /Odměny jsou aktivní\./, /5\. Hotovo/] },
+  { path: "onboarding?step=4&embed=on&goal=rewards", expect: [/Nastavit dopravu zdarma a dárek/, /href="\/app\/rewards\?start=shipping#steps"/, /Nebo začněte slevou/] },
+  { path: "onboarding?step=4&embed=on&goal=rewards&rewards=live", expect: [/Milníky jsou nastavené/, /Milníky jsou aktivní\./, /5\. Hotovo/] },
   { path: "onboarding?step=5&embed=on&rules=1&live=0", expect: [/Ještě něco zbývá/, /Žádná zatím není aktivní/, /Sleva je uložená, ale zatím není aktivní/] },
   // MVP 7: steps 4 and 5 — the recipes in the onboarding itself, the checklist from real signals.
   { path: "onboarding", expect: [/5 kroků, zhruba 3 minuty/, /4\. První sleva/, /Sleva na všechno|% na vše/, /5\. Hotovo/, /Ještě něco zbývá/, /Web ještě není zapnutý/, /Otevřete obchod a dejte zboží do košíku/, /Otevřít obchod/], absent: [/Vyzkoušejte košík/] },
@@ -271,7 +271,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       // N15: every market with what it gets; a missing amount is a link to its field; the switched-off market is listed, greyed.
       /2 trhy · chybí částky: Slovensko/,
       /data-won-market="sk"/,
-      /data-won-market-missing=""[^>]*>[\s\S]*?href="\/app\/rewards#gift"/,
+      /data-won-market-missing=""[^>]*>[\s\S]*?href="\/app\/rewards#amounts"/,
       /data-won-market-off=""/,
       /Vypnuté v Shopify/,
       /href="shopify:\/\/admin\/settings\/markets" target="_top"/,
@@ -377,14 +377,17 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   // A stored Pro custom look and a changed storefront text reach the preview (Pro only: BILL-1).
   { path: "tiers?plan=pro&state=custom", expect: [/data-won-custom-look=""/, /--won-tiers-accent:#0a7d4f/, /<p class="won-tiers__heading">Kup víc, plať míň<\/p>/] },
   // Odměny: the state lines say the real values; every state of the app embed check has its sentence and action.
-  { path: "rewards", expect: [/Doprava zdarma od 1\u00a0000\u00a0Kč \/ 40\u00a0€/, /Ponožky Won — M od 1\u00a0500\u00a0Kč/, /Částka pro dárek se počítá před slevami/, /Košík ukazuje odměny, dárek a pole pro kód/, /V Pro nastavíte víc stupňů/] },
-  { path: "rewards?plan=pro", expect: [/2\. stupeň/, /Kšiltovka Won, Plátěná taška Won nebo Hrnek Won od 3\u00a0000\u00a0Kč \/ 120\u00a0€/, /Přidat další stupeň/, /Změnit záložní dárek/] },
-  { path: "rewards?state=empty", expect: [/Doprava zdarma vypnutá/, /Žádný dárek/, /Košík odměny neukazuje\. Won není na webu zapnutý/, /Zapnout na webu/] },
+  { path: "rewards", expect: [/<s-page heading="Milníky"/, /Doprava zdarma od 1\u00a0000\u00a0Kč \/ 40\u00a0€/, /Dárek: Ponožky Won — M od 1\u00a0500\u00a0Kč/, /Hodnota košíku se počítá před slevami/, /Kde je to vidět na webu/, /Free má 2 stupně\. V Pro jich nastavíte až 6/] },
+  { path: "rewards?plan=pro", expect: [/3\. stupeň/, /Kšiltovka Won, Plátěná taška Won nebo Hrnek Won od 3\u00a0000\u00a0Kč \/ 120\u00a0€/, /Přidat stupeň/, /Změnit záložní dárek/] },
+  { path: "rewards?plan=pro&state=discounts", expect: [/Sleva 5\u00a0% od 2\u00a0000\u00a0Kč \/ 80\u00a0€/, /Sleva 500\u00a0Kč \/ 20\u00a0€ od 5\u00a0000\u00a0Kč \/ 200\u00a0€/, /Stupňů: 5 z 6/, /Na rozdíl od dárku se sleva počítá ze zboží po slevách na produkty/] },
+  { path: "rewards?plan=pro&state=discounts&markets=shared", expect: [/data-won-ms-table="3"/, /name="ms\.ms-fixed\.amount\.EUR@de" label="5\. stupeň, Německo \(EUR\)"/, /name="ms\.ms-fixed\.off\.EUR@sk" label="Sleva: Slovensko \(EUR\)"/] },
+  { path: "rewards?state=empty", expect: [/Žádný stupeň/, /Přidat první stupeň/, /Košík žebříček neukazuje\. Won není na webu zapnutý/, /Zapnout na webu/] },
   { path: "rewards?state=embed-draft", expect: [/Won je zapnutý jen v nepublikovaném vzhledu obchodu/, /Zapněte Won i ve vzhledu, který zákazníci vidí/] },
   { path: "rewards?state=embed-unknown", expect: [/Nepodařilo se zjistit, jestli je Won na webu zapnutý/, /Otevřít úpravu vzhledu obchodu/] },
   { path: "rewards?state=embed-no-scope", expect: [/Won nemá přístup ke vzhledu obchodu/, /Otevřít úpravu vzhledu obchodu/] },
   { path: "rewards?result=invalid", expect: [/Vyberte dárek\./] },
-  { path: "rewards?plan=pro&result=too-many", expect: [/Stupňů může být nejvýš 5\./] },
+  { path: "rewards?plan=pro&result=too-many", expect: [/Stupňů může být nejvýš 6\./] },
+  { path: "rewards?result=limit-free", expect: [/Free má 2 stupně\. Odeberte stupeň, nebo přejděte na Pro, kde jich je 6\./] },
   // Review fix 3: plan-aware — on Pro a rule may stack with the ones its editor combines.
   { path: "settings?plan=pro", expect: [/V Pro se sečtou jen ty, které v editoru slevy spojíte\. Množstevní sleva se s jinou slevou na stejný produkt nesčítá nikdy/] },
   { path: "tiers?state=dawn", expect: [/--won-tiers-accent:#c0392b/, /--inputs-radius:0px/] },
@@ -414,7 +417,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /<s-color-field/,
     ],
   },
-  { path: "appearance?state=empty", expect: [/Ukázka: zatím nemáte žádnou úroveň/, /Přidat na web/, /Zapnutí Won na webu/, /Košík na webu ukáže slevy a odměny až po zapnutí Won na webu/, /Zapnout na webu/] },
+  { path: "appearance?state=empty", expect: [/Ukázka: zatím nemáte žádnou úroveň/, /Přidat na web/, /Zapnutí Won na webu/, /Košík na webu ukáže slevy a žebříček Milníků až po zapnutí Won na webu/, /Zapnout na webu/] },
   // The stored custom look and the changed text are in the four previews (Pro).
   { path: "appearance?plan=pro&state=custom", expect: [/data-won-custom-look=""/, /<p class="won-tiers__heading">Kup víc, plať míň<\/p>/] },
   {
@@ -555,9 +558,9 @@ test("plan 2026-10-06, dávka 5: nothing without content or action — no room-f
   assert.doesNotMatch(appearance, /row_qty · cs|>tiers\.heading|Tady vidíte|Zapnutí Won na webu/);
   assert.doesNotMatch((await render("tiers?state=custom")).html, /data-won-custom-look/, "Free never previews the Pro custom look (BILL-1)");
   const rewards = (await render("rewards")).html;
-  // The green label is the STORED state (the same as the home tile), never the page's own unsaved form: both
-  // sections carry it, and it does not depend on the switch.
-  assert.equal((rewards.replace(/<script[\s\S]*?<\/script>/g, "").match(/data-won-state="active"/g) ?? []).length, 4, "two tiles + their two sections");
+  // The green label is the STORED state (the same as the home tile), never the page's own unsaved form: the
+  // "Stupně" tile and its section carry it.
+  assert.equal((rewards.replace(/<script[\s\S]*?<\/script>/g, "").match(/data-won-state="active"/g) ?? []).length, 2, "the tile + its section");
 });
 
 test("the tier note is only for a product rule (an order rule does not compete with a tier)", async () => {

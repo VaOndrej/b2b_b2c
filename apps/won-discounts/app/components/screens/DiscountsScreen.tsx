@@ -8,6 +8,7 @@
 // app/routes/app.discounts._index.tsx and the harness.
 
 import type { DiscountRule, WonDiscountsConfig } from "@won/core/discounts/config";
+import { isMilestoneRule } from "@won/core/discounts/milestones";
 
 import { useT } from "../../i18n/context";
 import { RecipeGrid } from "../RecipeGrid";
@@ -22,7 +23,7 @@ import { syncText } from "../model/signals";
 import type { CodeRuleLimit, CurrencyView, GateNoteView, RuleSyncMap, SyncView, UiResult } from "../model/types";
 import { Notice, ResyncButton } from "../shell/Notice";
 import { DiscountsSubNav } from "../shell/SubNav";
-import { WonSection } from "../shell/WonSection";
+import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 
 export interface DiscountsScreenProps {
   readOnly: boolean;
@@ -43,6 +44,8 @@ export interface DiscountsScreenProps {
   gatePending?: boolean;
   /** Handles of the enabled Won markets. */
   enabledMarkets?: string[];
+  /** Order discounts that are steps of Milníky (set up on that page; not in `rules`). Absent = none. */
+  milestoneDiscounts?: number;
 }
 
 export function buildDiscountsProps(
@@ -62,13 +65,16 @@ export function buildDiscountsProps(
     gatePending?: boolean;
   },
 ): DiscountsScreenProps {
-  const rules = config.modules.codes.rules;
+  // Milníky: an order discount that is a step of the ladder is set up there — never listed here as a discount.
+  const rules = config.modules.codes.rules.filter((rule) => !isMilestoneRule(rule));
+  const milestoneDiscounts = config.modules.codes.rules.length - rules.length;
   const timezone = opts.timezone ?? null;
   return {
     ...(opts.gate && opts.gate.length > 0 ? { gate: opts.gate.map((g) => ({ ...g })) } : {}),
     ...(opts.gateOff && opts.gateOff.length > 0 ? { gateOff: [...opts.gateOff] } : {}),
     ...(opts.gatePending ? { gatePending: true } : {}),
     enabledMarkets: config.markets.filter((m) => m.enabled).map((m) => m.handle),
+    ...(milestoneDiscounts > 0 ? { milestoneDiscounts } : {}),
     readOnly: opts.readOnly,
     rules,
     currencies: currencyViews(config.markets, { shopCurrency: opts.shopCurrency, rules, marketNames: opts.marketNames }),
@@ -132,6 +138,7 @@ export function DiscountsScreen({
   gateOff,
   gatePending = false,
   enabledMarkets,
+  milestoneDiscounts = 0,
 }: DiscountsScreenProps) {
   const tr = useT();
   const { t } = tr;
@@ -172,6 +179,20 @@ export function DiscountsScreen({
         ) : null}
         <Notice result={result} />
         {gate.length > 0 ? <RuleGateNotes notes={gate} pending={gatePending} hrefFor={gateHref} /> : null}
+        {/* Milníky: a discount off the order from a cart value is a step of the ladder — set up there, only linked here. */}
+        {milestoneDiscounts > 0 ? (
+          <div data-won-milestone-discounts>
+            <WonRow
+              action={
+                <s-button href="/app/rewards#steps" variant="secondary">
+                  {t("discounts.milestones.open")}
+                </s-button>
+              }
+            >
+              <RowNote>{tr.tp("discounts.milestones.note", milestoneDiscounts)}</RowNote>
+            </WonRow>
+          </div>
+        ) : null}
 
         <WonSection
           title={t("discounts.list.title")}

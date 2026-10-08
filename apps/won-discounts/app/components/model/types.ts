@@ -741,35 +741,48 @@ export interface GiftVariantView {
   title: string;
 }
 
-/** One gift threshold as the screen edits it. */
-export interface GiftTierView {
+/** One step of the Milníky ladder as the screen edits it (model/milestones.ts). */
+export interface MilestoneStepView {
+  /** The stored step's id ("shipping", a gift tier's id, an "ms-…" rule's id); "new-…" for a row added on the page. */
   id: string;
-  /** Minor units per currency; a currency without a value offers nothing there (MKT-1). */
+  kind: "shipping" | "gift" | "discount";
+  /** The cart value the step starts at: minor units per amount column; a column without one offers nothing there (MKT-1). */
   threshold: Record<string, number>;
-  /** Free: 1, Pro: up to 3 (CONFIG_LIMITS.giftChoices). */
+  /** kind "gift": Free 1, Pro up to 3 (CONFIG_LIMITS.giftChoices). */
   choices: GiftVariantView[];
-  /** The fallback gift (A4), offered when every choice is sold out. */
+  /** kind "gift": the fallback gift (A4), offered when every choice is sold out. */
   fallback: GiftVariantView | null;
+  /** kind "discount": a percentage, or a fixed amount per amount column. */
+  value: "percentage" | "fixed";
+  percent: number | null;
+  off: Record<string, number>;
 }
 
 export interface RewardsScreenData {
   /** The module's state from what is stored (model/module-status.ts, the same as its home tile; absent = not known). */
-  status?: { shipping: ModuleStatus; gift: ModuleStatus };
+  status?: ModuleStatus;
   plan: "free" | "pro";
   configVersion: string | null;
   currencies: CurrencyView[];
-  /** Free shipping threshold per currency (minor units); null = not offered. */
-  shipping: Record<string, number> | null;
-  /** Config order. On Free only the first applies (gateNotes say so); the others are kept as stored. */
-  gifts: GiftTierView[];
-  /** countOtherDiscounts: the threshold counts after the other discounts (the cart warns; checkout never takes the gift). */
+  /** The stored ladder, in ladder order (core milestones.ts). */
+  steps: MilestoneStepView[];
+  /** Ids of the stored steps past the plan's limit: shown and removable, not in force (§14a). */
+  overLimit: string[];
+  /** Steps the plan runs (Free 2, Pro 6) and the Pro figure for the upsell sentence. */
+  limit: number;
+  limitPro: number;
+  /** countOtherDiscounts: the cart value counts after the other discounts (the cart warns; checkout never takes the gift). */
   countOther: boolean;
+  /** engine.combination.productWithOrder: a discount step adds up with product discounts (said at the step). */
+  productWithOrder: boolean;
+  /** Margin protection is on: it may lower a discount step (said at the step). */
+  marginOn: boolean;
   gateNotes: GateNoteView[];
   /** The app embed: the cart panel needs it. */
   embed: EmbedView;
   /** "Přidat blok košíku": the theme editor on the cart template (null when the shop / API key is unknown). */
   cartBlockAddUrl: string | null;
-  /** Feedback 2, bod 5: where else the progress to a reward can show (the "Rewards progress" block, the top bar). */
+  /** Where else the ladder can show (the "Milestones" block, the top bar). */
   placements?: PlacementLinks;
   /** Which of those places the live theme already has (absent key = not verified). */
   placed?: ThemePlacements;
@@ -788,9 +801,14 @@ export interface RewardsOverviewView {
   giftNames?: (string | null)[];
   /**
    * Currencies of the enabled markets a reward has no amount in (MKT-1: it is not offered there). Absent = none.
-   * `gifts` follows the order of `gifts` above. Audit 6 Oct 2026, N2.
+   * `gifts` follows the order of `gifts` above. Audit 6 Oct 2026, N2. `discounts` likewise (Milníky).
    */
-  missing?: { shipping: string[]; gifts: string[][] };
+  missing?: { shipping: string[]; gifts: string[][]; discounts?: string[][] };
+  /**
+   * Milníky: the order-discount steps the PLAN runs — the cart value in the shop currency (minor units, null = none
+   * in that currency) and the discount (`percent`, or `off` in the shop currency).
+   */
+  discounts?: { amount: number | null; percent?: number; off?: number | null }[];
 }
 
 // --- Výprodej (MVP 5, Pro; contract O10) --------------------------------------------------------------

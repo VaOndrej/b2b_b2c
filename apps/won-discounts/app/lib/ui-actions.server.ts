@@ -45,6 +45,7 @@ import {
   type WonDiscountsConfig,
 } from "@won/core/discounts/config";
 import { createCodeBatch } from "@won/core/discounts/code-batch";
+import { isMilestoneRule } from "@won/core/discounts/milestones";
 import { parseEmbedStatus } from "@won/core/toasts/embed-status";
 
 import { EMBED_BLOCK_HANDLE, embedActivationUrl } from "../components/model/embed";
@@ -370,7 +371,8 @@ export async function saveRule(
       if (unreadable && !replaceUnreadable) return { result: { ok: false, reason: "unreadable_config" }, ruleId: null };
 
       const rules = config.modules.codes.rules;
-      const existing = isNew ? null : (rules.find((r) => r.id === opts.ruleId) ?? null);
+      // A step of Milníky is saved by that page only (its own parser and limits): the rule editor does not know it.
+      const existing = isNew ? null : (rules.find((r) => r.id === opts.ruleId && !isMilestoneRule(r)) ?? null);
       if (!isNew && !existing) return { result: { ok: false, reason: "not_found" }, ruleId: null };
       // F12: the rule changed since the editor loaded it, or since this save first read it.
       if (existing && loadedVersion && ruleVersionToken(existing) !== loadedVersion) return { result: { ok: false, reason: "base_changed" }, ruleId: null };
@@ -440,7 +442,7 @@ export async function deleteRule(ctx: ShopCtx, ruleId: string, opts: { ruleVersi
       if (readOnly) return { ok: false, reason: "newer_schema" };
       if (unreadable) return { ok: false, reason: "unreadable_config" };
       const rules = config.modules.codes.rules;
-      const rule = rules.find((r) => r.id === ruleId);
+      const rule = rules.find((r) => r.id === ruleId && !isMilestoneRule(r));
       if (!rule) return { ok: false, reason: "not_found" };
       if (opts.ruleVersion && ruleVersionToken(rule) !== opts.ruleVersion) return { ok: false, reason: "base_changed" };
       const res = await writeAndSync(ctx, { ...config, modules: { ...config.modules, codes: { rules: rules.filter((r) => r.id !== ruleId) } } }, {

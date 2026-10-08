@@ -6,7 +6,8 @@
 // The session shop only (SEC-2).
 
 import type { ReadonlyDeep, WonDiscountsConfig } from "@won/core/discounts/config";
-import { formatMoney } from "@won/core/discounts/describe";
+import { describeRule, formatMoney } from "@won/core/discounts/describe";
+import { isMilestoneRule } from "@won/core/discounts/milestones";
 
 import type { AnalyticsDay, AnalyticsOverviewView, AnalyticsRuleRowView, AnalyticsScreenData, AnalyticsTile } from "../../components/model/analytics";
 import { t, type Locale } from "../../i18n";
@@ -32,6 +33,7 @@ function ruleName(key: string, config: ReadonlyDeep<WonDiscountsConfig>, locale:
   if (key === "gift") return t(locale, "analytics.row.gift");
   if (key === "other") return t(locale, "analytics.row.other");
   const rule = config.modules.codes.rules.find((r) => r.id === key);
+  if (rule && isMilestoneRule(rule)) return t(locale, "analytics.row.milestone", { value: describeRule(rule, locale, undefined, { short: true }) });
   return rule ? rule.name || t(locale, "analytics.row.unnamed") : t(locale, "analytics.row.deleted");
 }
 
@@ -40,7 +42,9 @@ function ruleHref(key: string, config: ReadonlyDeep<WonDiscountsConfig>): string
   if (key === "tiers") return "/app/tiers";
   if (key === "gift") return "/app/rewards";
   if (key === "other") return undefined;
-  return config.modules.codes.rules.some((r) => r.id === key) ? `/app/discounts/${encodeURIComponent(key)}` : undefined;
+  const rule = config.modules.codes.rules.find((r) => r.id === key);
+  if (rule && isMilestoneRule(rule)) return "/app/rewards";
+  return rule ? `/app/discounts/${encodeURIComponent(key)}` : undefined;
 }
 
 /** The screen's data from a summary (pure: the dev harness renders the same). */

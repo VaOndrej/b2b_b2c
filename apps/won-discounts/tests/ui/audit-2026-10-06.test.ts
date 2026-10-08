@@ -61,7 +61,7 @@ const MARKETS = [
 test("N2 + N4: the home page lists a gift a market does not get, and the tile counts what the list shows", async () => {
   const html = await render("overview?state=modules");
   assert.match(html, /Dárek Ponožky Won — M nemá částku pro Slovensko\. Zákazníci ho tam nedostanou\./);
-  assert.match(html, /href="\/app\/rewards#gift"/);
+  assert.match(html, /href="\/app\/rewards#amounts"/);
   const rewards = tile(html, "rewards");
   assert.match(rewards, /data-won-state="active"/, "it still runs in Czechia");
   assert.match(rewards, /Slovensko: dárek se nenabízí · /);
@@ -138,37 +138,41 @@ test("návrh 2: an amount for another market is suggested only from the rate set
   assert.equal(asked, 1);
 
   // The gift of the fixture has 1 500 Kč and no amount for Slovakia: the suggestion, or the sentence that no rate is set.
+  // Milníky: one button for the whole amounts table (the empty cells are filled on the click, to be checked and saved).
   const withRate = await render("rewards");
-  assert.match(withRate, /Slovensko \(EUR\): navrhujeme 60\s€ \(podle kurzu, který máte u trhu nastavený v Shopify, zaokrouhleno\)\./);
-  assert.match(withRate, /Použít 60\s€/);
+  assert.match(withRate, /Vyplňte sloupec Česko \(CZK\)\. Ostatní trhy doplníme podle kurzu, který máte u trhu nastavený v Shopify\./);
+  assert.match(withRate, /data-won-ms-suggest=""[\s\S]{0,900}<s-button variant="secondary">Navrhnout ostatní trhy<\/s-button>/);
   const without = await render("rewards?rates=none");
-  assert.match(without, /Slovensko \(EUR\): částku nenavrhujeme\. Trh nemá v Shopify ručně nastavený kurz, zadejte ji sami\./);
-  assert.doesNotMatch(without, /navrhujeme 60/);
+  assert.match(without, /Bez návrhu: Slovensko\. Trh nemá v Shopify ručně nastavený kurz, částku zadejte sami\./);
+  assert.doesNotMatch(without, /Navrhnout ostatní trhy/);
 });
 
-test("N9 + N1: Odměny opened from the guide has free shipping on with the recipe's amounts; a new form shows no error yet", async () => {
+test("N9 + N1: Milníky opened from the guide has a first step (free shipping) with the recipe's amounts; a new form shows no error yet", async () => {
   const html = await render("rewards?state=empty&start=shipping");
-  assert.match(html, /<s-switch[^>]*name="rw\.ship\.on"[^>]*checked/);
-  assert.match(html, /label="Od částky: Česko \(CZK\)"[^>]*value="1500"/);
-  assert.match(html, /label="Od částky: Slovensko \(EUR\)"[^>]*value="60"/);
-  assert.doesNotMatch(html, /částka chybí, v tomto trhu se odměna nenabízí/);
+  assert.match(html, /<input type="hidden" name="ms\.step" value="shipping"\/>/);
+  assert.match(html, /<input type="radio" name="ms\.shipping\.kind"[^>]*checked=""[^>]*value="shipping"\/>/);
+  assert.match(html, /name="ms\.shipping\.amount\.CZK" label="1\. stupeň, Česko \(CZK\)"[^>]*value="1500"/);
+  assert.match(html, /name="ms\.shipping\.amount\.EUR" label="1\. stupeň, Slovensko \(EUR\)"[^>]*value="60"/);
+  assert.doesNotMatch(html, /částka chybí, v tomto trhu se stupeň nenabízí/);
   const plain = await render("rewards?state=empty");
-  assert.doesNotMatch(plain, /<s-switch[^>]*name="rw\.ship\.on"[^>]*checked/);
+  assert.doesNotMatch(plain, /name="ms\.step"/);
   assert.doesNotMatch(plain, /částka chybí/);
 });
 
-test("N6 + N7 + N10 + N19 + N21: Odměny says where rewards show, what to do after a save, and keeps the plan note with the gifts", async () => {
+test("N6 + N7 + N10 + N19 + N21: Milníky says where the ladder shows, what to do after a save, and keeps the plan note with the steps", async () => {
   const html = await render("rewards?result=saved");
-  assert.match(tile(html, "web", "data-won-view-body"), /V košíku ano · na stránce produktu ne · na úvodní stránce ne · pruh nahoře ano/);
-  assert.match(html, /Pruh nahoře na celém webu je zapnutý\./);
+  assert.match(tile(html, "web", "data-won-view-body"), /Pruh nahoře ano · na stránce produktu ne · v košíku ano/);
+  assert.match(html, /Pruh nahoře je zapnutý: jedna věta a tenký ukazatel na každé stránce\./);
+  // The four places, each with its label.
+  assert.deepEqual([...html.matchAll(/data-won-ms-place="(\w+)"/g)].map((m) => m[1]), ["topBar", "product", "drawer", "cart"]);
   const next = html.slice(html.indexOf("data-won-rewards-next"));
-  assert.match(next.slice(0, 1500), /Zákazník odměny uvidí v košíku\.[\s\S]*Na stránce produktu odměny zatím nejsou\.[\s\S]*Přidat na stránku produktu/);
-  // N21: the plan note sits in the gift panel, under the tiles — not over the whole page.
-  assert.ok(html.indexOf("Tohle je v tarifu Pro, zákazník to nedostane") > html.indexOf('data-won-view-panel="gift"'));
+  assert.match(next.slice(0, 2600), /Zákazník uvidí 2 stupně\.[\s\S]*Slovensko: některý stupeň tam nemá částku a nenabízí se\.[\s\S]*Doplnit částky[\s\S]*Košík žebříček ukazuje\.[\s\S]*Na stránce produktu žebříček zatím není\.[\s\S]*Přidat na stránku produktu/);
+  // N21: the plan note sits in the steps panel, under the tiles — not over the whole page.
+  assert.ok(html.indexOf("Tohle je v tarifu Pro, zákazník to nedostane") > html.indexOf('data-won-view-panel="steps"'));
   // N19: the save button is hidden while "Odměny na webu" is open (nothing to save there) — it is shown for the form panels.
   assert.match(html, /<div style="display:block"><s-button type="submit" variant="primary">Uložit/);
   const empty = await render("rewards?state=empty");
-  assert.match(tile(empty, "web", "data-won-view-body"), /V košíku ne · /);
+  assert.match(tile(empty, "web", "data-won-view-body"), / · v košíku ne/);
   assert.match(tile(empty, "web", "data-won-view-body"), /data-won-tile-issues[^>]*>1 věc k vyřešení/);
 });
 
@@ -237,7 +241,7 @@ test("N15: the markets table — amounts, what is missing with its link, percent
   const sk = rows[1]!;
   assert.equal(sk.shipping.kind, "amount");
   assert.match(sk.shipping.kind === "amount" ? sk.shipping.text : "", /^40\s€$/);
-  assert.deepEqual(sk.gift, { kind: "missing", href: "/app/rewards#gift" });
+  assert.deepEqual(sk.gift, { kind: "missing", href: "/app/rewards#amounts" });
   assert.deepEqual(sk.discounts, { kind: "missing", href: "/app/discounts/czk#value", count: 1 });
   assert.deepEqual(sk.tiers, { kind: "percent" });
   assert.deepEqual(rows[0]!.discounts, { kind: "ok" });
@@ -276,9 +280,10 @@ test("7 Oct 2026: quantity levels are numbered cards, suggestions sit in their o
   const picker = html.slice(html.indexOf("data-won-accent-picker"));
   for (const value of ["theme", "green", "blue", "orange", "red", "violet"]) assert.match(picker.slice(0, 6000), new RegExp(`<input type="radio" name="accentPreset"[^>]*value="${value}"`), value);
   assert.match(picker.slice(0, 6000), /Podle webu[\s\S]*Zelená[\s\S]*Fialová/);
-  const rewards = await render("rewards");
-  assert.match(rewards, /data-won-suggest="offer"[^>]*>\s*<span[^>]*>Návrh<\/span>/);
-  assert.match(await render("rewards?rates=none"), /data-won-suggest="none"[^>]*>\s*<span[^>]*>Bez návrhu<\/span>/);
+  // (a fixed discount step of Milníky uses the same box for its amounts; the amounts table has one button of its own)
+  const rewards = await render("rewards?plan=pro&state=discounts");
+  assert.match(rewards, /data-won-amount-suggest/);
+  assert.match(rewards, /data-won-ms-suggest=""/);
 });
 
 test("7 Oct 2026: Ochrana marže says 'Takhle by zasáhla' only above rows it describes", async () => {

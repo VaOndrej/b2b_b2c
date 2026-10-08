@@ -112,11 +112,18 @@ export function rewardsGiftStatus(rewards: RewardsOverviewView, sync: SyncView):
   return moduleState({ on: rewards.gifts.some((g) => g !== null), written: writtenOf(sync), issues: missing });
 }
 
+/** Milníky: a discount off the order as a step. Without an amount in a market's currency it is not offered there. */
+export function rewardsDiscountStatus(rewards: RewardsOverviewView, sync: SyncView): ModuleStatus {
+  const steps = rewards.discounts ?? [];
+  const missing = steps.filter((d, i) => d.amount === null || d.off === null || (rewards.missing?.discounts?.[i] ?? []).length > 0).length;
+  return moduleState({ on: steps.some((d) => d.amount !== null && d.off !== null), written: writtenOf(sync), issues: missing });
+}
+
+/** Milníky as a whole (the home tile and the page): its steps of every kind. */
 export function rewardsStatus(rewards: RewardsOverviewView, sync: SyncView): ModuleStatus {
-  const shipping = rewardsShippingStatus(rewards, sync);
-  const gift = rewardsGiftStatus(rewards, sync);
-  const issues = shipping.issues + gift.issues;
-  for (const state of ["attention", "active"] as const) if (shipping.state === state || gift.state === state) return { state, issues };
+  const parts = [rewardsShippingStatus(rewards, sync), rewardsGiftStatus(rewards, sync), rewardsDiscountStatus(rewards, sync)];
+  const issues = parts.reduce((sum, part) => sum + part.issues, 0);
+  for (const state of ["attention", "active"] as const) if (parts.some((part) => part.state === state)) return { state, issues };
   return { state: "inactive", issues };
 }
 

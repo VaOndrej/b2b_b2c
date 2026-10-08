@@ -22,10 +22,11 @@
 // outside a router (unit renders).
 
 import type { DiscountRule, OnboardingGoal, WonDiscountsConfig } from "@won/core/discounts/config";
+import { isMilestoneRule } from "@won/core/discounts/milestones";
 
 import { useT } from "../../i18n/context";
 import type { Translator } from "../../i18n";
-import { describeMarginSettings, formatMoney } from "@won/core/discounts/describe";
+import { describeMarginSettings, formatMoney, formatPercent } from "@won/core/discounts/describe";
 
 import { NativeDiscountsPanel, nativeSummary } from "../NativeDiscounts";
 import { collectWarnings, warningCounts, type RuleWarning } from "../model/describe";
@@ -93,7 +94,8 @@ export function buildOverviewProps(
     plan?: "free" | "pro";
   },
 ): OverviewScreenProps {
-  const rules = config.modules.codes.rules;
+  // "Slevy a kódy" counts its own discounts: an order discount that is a step of Milníky belongs to that tile.
+  const rules = config.modules.codes.rules.filter((rule) => !isMilestoneRule(rule));
   const timezone = opts.timezone ?? null;
   const props: OverviewScreenProps = {
     schemaVersion: config.schemaVersion,
@@ -180,16 +182,28 @@ function tileBodies(signals: AdminSignals, opts: { codes: string; plan?: "free" 
   let rewardsBody: string | undefined;
   if (rewards) {
     const money = (minor: number) => formatMoney(minor, rewards.currency, tr.locale);
-    const lines: string[] = [];
-    if (rewards.shipping !== null) lines.push(t("overview.rewards.ship", { amount: money(rewards.shipping) }));
+    // Milníky: one ladder — every step the plan runs, lowest cart value first (a step without an amount in the shop currency last).
+    const steps: { at: number | null; text: string }[] = [];
+    if (rewards.shipping !== null) steps.push({ at: rewards.shipping, text: t("overview.rewards.ship", { amount: money(rewards.shipping) }) });
     rewards.gifts.forEach((g, i) => {
       const name = rewards.giftNames?.[i]?.trim();
-      if (g === null) lines.push(t("overview.rewards.giftNoCurrency", { currency: rewards.currency }));
-      else lines.push(name ? t("overview.rewards.giftNamed", { name, amount: money(g) }) : t("overview.rewards.gift", { amount: money(g) }));
+      if (g === null) steps.push({ at: null, text: t("overview.rewards.giftNoCurrency", { currency: rewards.currency }) });
+      else steps.push({ at: g, text: name ? t("overview.rewards.giftNamed", { name, amount: money(g) }) : t("overview.rewards.gift", { amount: money(g) }) });
     });
+    for (const d of rewards.discounts ?? []) {
+      const value = d.percent !== undefined ? formatPercent(d.percent, tr.locale) : typeof d.off === "number" ? money(d.off) : null;
+      if (d.amount === null || value === null) steps.push({ at: null, text: t("overview.rewards.discountNoCurrency", { currency: rewards.currency }) });
+      else steps.push({ at: d.amount, text: t("overview.rewards.discount", { value, amount: money(d.amount) }) });
+    }
+    const lines = steps
+      .map((step, index) => ({ ...step, index }))
+      .sort((x, y) => (x.at === null ? 1 : 0) - (y.at === null ? 1 : 0) || (x.at ?? 0) - (y.at ?? 0) || x.index - y.index)
+      .map((step) => step.text);
     // N2: what is NOT offered in some market comes first — it is the part the merchant has to act on.
     const noShip = rewards.missing?.shipping ?? [];
     const noGift = [...new Set((rewards.missing?.gifts ?? []).flat())].filter((code) => code !== rewards.currency || rewards.gifts.every((g) => g !== null));
+    const noDiscount = [...new Set((rewards.missing?.discounts ?? []).flat())].filter((code) => code !== rewards.currency || (rewards.discounts ?? []).every((d) => d.amount !== null && d.off !== null));
+    if (noDiscount.length > 0) lines.unshift(t("overview.rewards.discountMissing", { markets: marketsOf(noDiscount) }));
     if (noGift.length > 0) lines.unshift(t("overview.rewards.giftMissing", { markets: marketsOf(noGift) }));
     if (noShip.length > 0) lines.unshift(t("overview.rewards.shipMissing", { markets: marketsOf(noShip) }));
     rewardsBody = lines.length > 0 ? lines.join(" · ") : t("overview.rewards.none");
@@ -228,7 +242,7 @@ function tileBodies(signals: AdminSignals, opts: { codes: string; plan?: "free" 
 }
 
 /**
- * Rewards and quantity levels some enabled market does not get (N2): one row each, said by the market's name,
+ * Steps of Milníky and quantity levels some enabled market does not get (N2): one row each, said by the market's name,
  * with the link to the panel that holds the amount fields.
  */
 function moduleAttention(signals: AdminSignals, currencies: readonly CurrencyView[], tr: Translator): { key: string; text: string; href: string }[] {
@@ -237,13 +251,16 @@ function moduleAttention(signals: AdminSignals, currencies: readonly CurrencyVie
   const { rewards, tiers } = signals;
   if (rewards?.missing) {
     if (rewards.missing.shipping.length > 0) {
-      rows.push({ key: "ship", text: tr.t("overview.attention.shipMissing", { markets: marketsOf(rewards.missing.shipping) }), href: "/app/rewards#shipping" });
+      rows.push({ key: "ship", text: tr.t("overview.attention.shipMissing", { markets: marketsOf(rewards.missing.shipping) }), href: "/app/rewards#amounts" });
     }
     rewards.missing.gifts.forEach((codes, i) => {
       if (codes.length === 0) return;
       const name = rewards.giftNames?.[i]?.trim();
       const text = name ? tr.t("overview.attention.giftMissingNamed", { name, markets: marketsOf(codes) }) : tr.t("overview.attention.giftMissing", { markets: marketsOf(codes) });
-      rows.push({ key: `gift${i}`, text, href: "/app/rewards#gift" });
+      rows.push({ key: `gift${i}`, text, href: "/app/rewards#amounts" });
+    });
+    (rewards.missing.discounts ?? []).forEach((codes, i) => {
+      if (codes.length > 0) rows.push({ key: `discount${i}`, text: tr.t("overview.attention.discountMissing", { markets: marketsOf(codes) }), href: "/app/rewards#amounts" });
     });
   }
   if (tiers?.missing) {
@@ -322,6 +339,7 @@ export function OverviewScreen({
     ...warnings.flatMap((w) => (w.kind === "missingCurrency" ? (w.currencies ?? []) : [])),
     ...(status.rewards?.missing?.shipping ?? []),
     ...(status.rewards?.missing?.gifts ?? []).flat(),
+    ...(status.rewards?.missing?.discounts ?? []).flat(),
     ...(status.tiers?.missing?.global ?? []),
     ...(status.tiers?.missing?.sets ?? []).flat(),
   ]);

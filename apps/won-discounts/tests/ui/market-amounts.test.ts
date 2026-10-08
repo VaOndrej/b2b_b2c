@@ -16,7 +16,8 @@ import { expandConfigAmounts } from "@won/core/discounts/market-amounts";
 import { translator } from "../../app/i18n/index.ts";
 import { currencyLabel, currencyViews, enabledCurrencies } from "../../app/components/model/markets.ts";
 import { marketRows } from "../../app/components/model/markets-overview.ts";
-import { readRewardsForm, REWARDS_FIELD } from "../../app/components/model/rewards.ts";
+import { MS_FIELD, readMilestonesForm } from "../../app/components/model/milestones.ts";
+import { withMilestones } from "@won/core/discounts/milestones";
 import { validateConfigForSave } from "../../app/lib/config.server.ts";
 
 let prevEnv: string | undefined;
@@ -60,30 +61,33 @@ test("one amount column per market: a currency of one market keeps its key, a sh
   assert.equal(translator("cs").t("tiers.break.amountMarket", { currency: "EUR@de", markets: "Německo" }), "Za kus: Německo (EUR)");
 });
 
-test("the rewards form: a field per market, each starting from the amount stored for the euro", async () => {
+test("the Milníky table: a column per market, each starting from the amount stored for the euro", async () => {
   const html = await render("rewards?markets=shared");
-  ok(/<s-number-field name="rw\.ship\.EUR@sk" label="Od částky: Slovensko \(EUR\)" value="40"[^>]*suffix="EUR"/.test(html), "Slovensko");
-  ok(/<s-number-field name="rw\.ship\.EUR@de" label="Od částky: Německo \(EUR\)" value="40"[^>]*suffix="EUR"/.test(html), "Německo");
-  ok(!/name="rw\.ship\.EUR"/.test(html) && !html.includes("EUR@"+"sk)"), "no shared euro field, no key in a label");
+  ok(/<s-number-field name="ms\.shipping\.amount\.EUR@sk" label="1\. stupeň, Slovensko \(EUR\)" labelAccessibilityVisibility="exclusive" value="40"[^>]*suffix="EUR"/.test(html), "Slovensko");
+  ok(/<s-number-field name="ms\.shipping\.amount\.EUR@de" label="1\. stupeň, Německo \(EUR\)" labelAccessibilityVisibility="exclusive" value="40"[^>]*suffix="EUR"/.test(html), "Německo");
+  ok(!/name="ms\.shipping\.amount\.EUR"/.test(html) && !html.includes("EUR@"+"sk)"), "no shared euro field, no key in a label");
+  assert.deepEqual([...html.matchAll(/data-won-ms-column="[^"]+"[^>]*>([^<]+)</g)].map((m) => m[1]), ["Česko (CZK)", "Slovensko (EUR)", "Německo (EUR)"]);
   // Without the second euro market the page is what it was.
-  ok(/<s-number-field name="rw\.ship\.EUR" label="Od částky: Slovensko \(EUR\)" value="40"/.test(await render("rewards")), "one euro market: the plain key");
+  ok(/<s-number-field name="ms\.shipping\.amount\.EUR" label="1\. stupeň, Slovensko \(EUR\)" labelAccessibilityVisibility="exclusive" value="40"/.test(await render("rewards")), "one euro market: the plain key");
 });
 
 test("a save stores each market's amount: different → a key per market, the same → one key, an empty market → not offered there", () => {
-  const F = REWARDS_FIELD;
+  const F = MS_FIELD;
+  const A = (key: string) => F.amount("shipping", key);
   const stored = (fields: Record<string, string>) => {
     const form = new FormData();
-    form.set(F.shipOn, "1");
+    form.set(F.step, "shipping");
+    form.set(F.kind("shipping"), "shipping");
     for (const [key, value] of Object.entries(fields)) form.set(key, value);
-    const read = readRewardsForm(form, { currencies: enabledCurrencies(MARKETS), kept: { shipping: {}, tiers: new Map() }, keep: () => undefined });
+    const read = readMilestonesForm(form, { columns: enabledCurrencies(MARKETS), stored: new Map(), plan: "free" });
     assert.deepEqual(read.errors, []);
-    const saved = validateConfigForSave({ markets: MARKETS, modules: { rewards: read.rewards } });
+    const saved = validateConfigForSave(withMilestones(sanitizeConfig({ markets: MARKETS }).config, read.steps));
     assert.equal(saved.ok, true);
     return saved.ok ? saved.config.modules.rewards.freeShipping?.threshold : null;
   };
-  assert.deepEqual(stored({ [F.shipAmount("CZK")]: "1500", [F.shipAmount("EUR@sk")]: "60", [F.shipAmount("EUR@de")]: "80" }), { CZK: 150000, "EUR@sk": 6000, "EUR@de": 8000 });
-  assert.deepEqual(stored({ [F.shipAmount("CZK")]: "1500", [F.shipAmount("EUR@sk")]: "60", [F.shipAmount("EUR@de")]: "60" }), { CZK: 150000, EUR: 6000 }, "the same amount: stored as before");
-  assert.deepEqual(stored({ [F.shipAmount("CZK")]: "1500", [F.shipAmount("EUR@sk")]: "60", [F.shipAmount("EUR@de")]: "" }), { CZK: 150000, "EUR@sk": 6000 }, "Germany left empty: only Slovakia");
+  assert.deepEqual(stored({ [A("CZK")]: "1500", [A("EUR@sk")]: "60", [A("EUR@de")]: "80" }), { CZK: 150000, "EUR@sk": 6000, "EUR@de": 8000 });
+  assert.deepEqual(stored({ [A("CZK")]: "1500", [A("EUR@sk")]: "60", [A("EUR@de")]: "60" }), { CZK: 150000, EUR: 6000 }, "the same amount: stored as before");
+  assert.deepEqual(stored({ [A("CZK")]: "1500", [A("EUR@sk")]: "60", [A("EUR@de")]: "" }), { CZK: 150000, "EUR@sk": 6000 }, "Germany left empty: only Slovakia");
 });
 
 test("a config stored before reads into the columns and is saved back byte for byte", () => {
@@ -168,7 +172,7 @@ test("Nastavení: the switch for a customer from a country in no market explains
   const shared = await render("settings?markets=shared");
   const page = text(shared);
   ok(/<s-switch name="unknownMarketLowest" value="on" label="Dát mu částku z trhů se stejnou měnou"(?![^>]*checked)/.test(shared), "off by default");
-  ok(page.includes("Zákazník ze země mimo vaše trhy") && page.includes("Slevy a odměny s částkou nedostane"), "the section and its state");
+  ok(page.includes("Zákazník ze země mimo vaše trhy") && page.includes("Slevy a stupně Milníků s částkou nedostane"), "the section and its state");
   ok(page.includes("doprava zdarma je na Slovensku od 60 € a v Německu od 80 €. Zákazník z Francie platí v eurech"), "the example");
   ok(page.includes("Zapnuto: platí pro něj nejnižší, nebo nejvyšší z částek. Kterou, zvolíte níže pro každý druh částky zvlášť.") && page.includes("Vypnuto: nic z toho nedostane."), "both positions in words");
   ok(page.includes("Trh, u kterého necháte pole částky prázdné, nedostane nic ani při zapnutém přepínači."), "an empty market stays empty");

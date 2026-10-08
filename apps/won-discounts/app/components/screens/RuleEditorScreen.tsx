@@ -22,6 +22,7 @@ import { Form, useSubmit } from "react-router";
 
 import { ruleHasCodes, type CodeBatchSpec } from "@won/core/discounts/code-batch";
 import type { DiscountRule, WonDiscountsConfig } from "@won/core/discounts/config";
+import { isMilestoneRule } from "@won/core/discounts/milestones";
 import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
 
 import { useT } from "../../i18n/context";
@@ -128,7 +129,8 @@ export function buildRuleEditorProps(
 ): RuleEditorScreenProps | null {
   const rules = config.modules.codes.rules;
   const isNew = opts.ruleId === "new";
-  const rule = isNew ? null : (rules.find((r) => r.id === opts.ruleId) ?? null);
+  // A step of Milníky is edited on that page, never in this editor.
+  const rule = isNew ? null : (rules.find((r) => r.id === opts.ruleId && !isMilestoneRule(r)) ?? null);
   if (!isNew && !rule) return null;
   return {
     mode: isNew ? "new" : "edit",

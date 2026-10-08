@@ -5,6 +5,7 @@
 import type { DiscountRule, WonDiscountsConfig } from "@won/core/discounts/config";
 import { formatMoney } from "@won/core/discounts/describe";
 import { amountColumns, expandConfigAmounts } from "@won/core/discounts/market-amounts";
+import { isMilestoneRule } from "@won/core/discounts/milestones";
 import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
 
 import type { Locale } from "../../i18n";
@@ -39,6 +40,8 @@ function discountsCell(rules: readonly DiscountRule[], currency: string): Market
   if (asking.length === 0) return { kind: "none" };
   const without = asking.filter((r) => missingCurrencies(r, [currency]).length > 0);
   if (without.length === 0) return { kind: "ok" };
+  // A discount that is a step of Milníky is fixed in that page's amounts table.
+  if (without.every(isMilestoneRule)) return { kind: "missing", href: "/app/rewards#amounts", count: without.length };
   return { kind: "missing", href: without.length === 1 ? `/app/discounts/${encodeURIComponent(without[0]!.id)}#value` : "/app/discounts", count: without.length };
 }
 
@@ -59,13 +62,13 @@ export function marketRows(stored: WonDiscountsConfig, opts: { plan: "free" | "p
       ? { kind: "none" }
       : typeof freeShipping.threshold[c] === "number"
         ? { kind: "amount", text: money(freeShipping.threshold[c]!) }
-        : { kind: "missing", href: "/app/rewards#shipping" };
+        : { kind: "missing", href: "/app/rewards#amounts" };
     const gift: MarketCell =
       gifts.length === 0
         ? { kind: "none" }
         : gifts.every((g) => typeof g.threshold[c] === "number")
           ? { kind: "amount", text: gifts.map((g) => money(g.threshold[c]!)).join(" / ") }
-          : { kind: "missing", href: "/app/rewards#gift" };
+          : { kind: "missing", href: "/app/rewards#amounts" };
     const tiers: MarketCell =
       sets.length === 0
         ? { kind: "none" }

@@ -63,7 +63,7 @@ import type {
 } from "../components/model/types";
 import { presetOf } from "../components/model/appearance";
 import { CAMPAIGN_BLOCK_HANDLE, cartBlockAddUrl, outletBlockAddUrl, placementLinks, REWARDS_PROGRESS_BLOCK_HANDLE, tiersBlockAddUrl } from "../components/model/embed";
-import { REWARDS_FIELD } from "../components/model/rewards";
+import { MS_FIELD } from "../components/model/milestones";
 import { marketRows } from "../components/model/markets-overview";
 import { rewardsOverviewOf, rewardsScreenFacts, rewardsSectionStatus } from "./integration/rewards.server";
 import { campaignsStatus, marginStatus, outletStatus } from "../components/model/module-status";
@@ -1245,15 +1245,35 @@ export const DEV_REWARDS_FIXTURE: WonDiscountsConfig = readStoredConfig({
 });
 
 /**
- * Odměny as loadRewardsScreen hands it over (the same pure rewardsScreenFacts):
- *   default     Free: free shipping, the first gift; the Pro threshold stored (gate note);
- *   plan=pro    the ladder and the choice of 3 editable;
+ * The same shop with discount steps (Milníky): 5 % off the order from 2 000 Kč / 80 €, and 500 Kč / 20 € off
+ * from 5 000 Kč / 200 € — the order rules with the "ms-" prefix that core milestones.ts reads as steps.
+ */
+export const DEV_MILESTONES_FIXTURE: WonDiscountsConfig = readStoredConfig({
+  ...DEV_REWARDS_FIXTURE,
+  modules: {
+    ...DEV_REWARDS_FIXTURE.modules,
+    codes: {
+      rules: [
+        ...DEV_REWARDS_FIXTURE.modules.codes.rules,
+        { id: "ms-five", enabled: true, name: "", method: "automatic", value: { kind: "percentage", percent: 5 }, target: { kind: "order" }, minimum: { subtotal: { CZK: 2000_00, EUR: 80_00 }, scope: "cart" } },
+        { id: "ms-fixed", enabled: true, name: "", method: "automatic", value: { kind: "fixed", amount: { CZK: 500_00, EUR: 20_00 } }, target: { kind: "order" }, minimum: { subtotal: { CZK: 5000_00, EUR: 200_00 }, scope: "cart" } },
+      ],
+    },
+  },
+});
+
+/**
+ * Milníky as loadRewardsScreen hands it over (the same pure rewardsScreenFacts):
+ *   default     the rewards stored BEFORE Milníky (free shipping, two gift tiers) read as three steps; on Free the
+ *               third is past the limit (kept, shown, not in force);
+ *   plan=pro    every step editable, the choice of 3 gifts;
+ *   discounts   the same ladder with two discount steps (a percent and an amount): five steps;
  *   empty       a new shop: nothing set, the app embed off;
  *   embed-draft | embed-unknown | embed-no-scope   the other states of the app embed check (each has its own
  *               sentence and action on the page).
  */
 export function devRewardsScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; shared?: boolean }): RewardsScreenData {
-  const config = devSharedMarket(opts.state === "empty" ? DEV_EMPTY_FIXTURE : DEV_REWARDS_FIXTURE, opts.shared === true);
+  const config = devSharedMarket(opts.state === "empty" ? DEV_EMPTY_FIXTURE : opts.state === "discounts" ? DEV_MILESTONES_FIXTURE : DEV_REWARDS_FIXTURE, opts.shared === true);
   return {
     plan: opts.plan,
     configVersion: "dev-config-version",
@@ -1272,13 +1292,13 @@ export function devRewardsScreen(opts: { plan: "free" | "pro"; state: string | n
               : DEV_EMBED_ON,
     cartBlockAddUrl: cartBlockAddUrl(DEV_SHOP, "dev-api-key"),
     placements: placementLinks(DEV_SHOP, "dev-api-key", REWARDS_PROGRESS_BLOCK_HANDLE),
-    // The cart block and the top bar are there, the progress block is on no page yet; a new shop has nothing; the
+    // The cart block and the top bar are there, the ladder is on no product page yet; a new shop has nothing; the
     // theme could not be read (no scope) → nothing is known.
     placed: opts.state === "embed-no-scope" ? {} : opts.state === "empty" ? { cartBlock: false, rewardsProduct: false, rewardsHome: false, topBarRewards: false } : { cartBlock: true, rewardsProduct: false, rewardsHome: false, topBarRewards: true },
   };
 }
 
-/** Odměny action results (harness `?result=`). */
+/** Milníky action results (harness `?result=`). */
 export function devRewardsResult(kind: string | null): UiResult | null {
   if (kind === "saved") return { ok: true, message: "saved", sync: { ok: true, problems: [], warnings: [] } };
   if (kind === "invalid") {
@@ -1286,13 +1306,14 @@ export function devRewardsResult(kind: string | null): UiResult | null {
       ok: false,
       reason: "invalid",
       errors: [
-        { field: REWARDS_FIELD.tierAmount("gift-socks", "EUR"), key: "rewards.error.amount" },
-        { field: REWARDS_FIELD.choice("gift-socks"), key: "rewards.error.giftChoice" },
+        { field: MS_FIELD.amount("gift-socks", "EUR"), key: "rewards.error.amount" },
+        { field: MS_FIELD.choice("gift-socks"), key: "rewards.error.giftChoice" },
       ],
     };
   }
-  // B12: a form with more thresholds than the limit (an older client) — the refusal is shown at the list.
-  if (kind === "too-many") return { ok: false, reason: "invalid", errors: [{ field: REWARDS_FIELD.tier, key: "rewards.error.tooManyTiers", params: { max: 5 } }] };
+  // A form with more steps than the plan runs (an older client, a crafted request) — the refusal is shown at the list.
+  if (kind === "too-many") return { ok: false, reason: "invalid", errors: [{ field: MS_FIELD.step, key: "milestones.error.limit", params: { max: 6, pro: 6 } }] };
+  if (kind === "limit-free") return { ok: false, reason: "invalid", errors: [{ field: MS_FIELD.step, key: "milestones.error.limitFree", params: { max: 2, pro: 6 } }] };
   return null;
 }
 

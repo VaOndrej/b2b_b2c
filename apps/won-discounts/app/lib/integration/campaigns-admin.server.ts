@@ -14,6 +14,7 @@ import { campaignTierSets } from "@won/core/discounts/campaign-tiers";
 import { CAMPAIGN_LIMITS, addLocalMinutes, campaignStatusAt, validateCampaignDraft, type CampaignDraft, type CampaignDraftError } from "@won/core/discounts/campaigns";
 import { CONFIG_LIMITS, type Campaign, type DiscountRule, type ReadonlyDeep, type TierBreak, type TierSet, type WonDiscountsConfig } from "@won/core/discounts/config";
 import { formatAmounts, formatPercent } from "@won/core/discounts/describe";
+import { isMilestoneRule } from "@won/core/discounts/milestones";
 import { currencyExponent, fromMinorUnits } from "@won/core/discounts/money";
 import { reachableTierSets } from "@won/core/discounts/tiers";
 
@@ -189,7 +190,8 @@ export function campaignView(c: ReadonlyDeep<Campaign>, opts: CampaignViewOption
 
 /** The rules the form can change (every Slevy a kódy rule, in the stored order). */
 export function campaignRuleChoices(config: ReadonlyDeep<WonDiscountsConfig>, locale: Locale): CampaignRuleChoice[] {
-  return config.modules.codes.rules.map((r) => ({
+  // (a step of Milníky is not a discount a campaign changes: it is set up on that page)
+  return config.modules.codes.rules.filter((r) => !isMilestoneRule(r)).map((r) => ({
     id: r.id,
     name: r.name || r.id,
     kind: r.value.kind,

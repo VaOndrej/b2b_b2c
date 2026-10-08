@@ -1,24 +1,23 @@
-// Odměny za košík, the server side of the admin module (MVP 4; contracts R1–R7).
-//   loadRewardsScreen(ctx)   the page (RewardsScreenData): the stored rewards with
-//                            Shopify names of the gift variants (never an id on
-//                            screen), the gate sentences for this plan (BILL-1),
-//                            the market currencies, the app embed (the cart panel
-//                            needs it) and the cart block deep link;
-//   rewardsAction(ctx, form) `intent=save`: the form parsed HERE (SEC-1) against
-//                            the stored markets, kept tiers taken from the stored
-//                            config by id (§14a), saved like every admin change
-//                            (saveConfigSection: lock, F12 on modules.rewards,
+// Milníky (dřív „Odměny za košík“), the server side of the admin module (MVP 4 contracts R1–R7; feedback 6 Oct
+// 2026 bod 9: one ladder of steps — core milestones.ts says where each kind of step is stored).
+//   loadRewardsScreen(ctx)   the page (RewardsScreenData): the stored ladder with Shopify names of the gift
+//                            variants (never an id on screen), which steps the plan does not run (BILL-1), the
+//                            market columns, the app embed (the cart panel needs it) and the placement links;
+//   rewardsAction(ctx, form) `intent=save`: the form parsed HERE (SEC-1) against the stored markets and ladder,
+//                            the plan's limit checked, kept steps taken from the stored config by id (§14a),
+//                            saved like every admin change (saveConfigSection: lock, F12 on the ladder's parts,
 //                            unreadable guard, saveAndSync);
 //   rewardsOverviewOf(...)   the Přehled card: what the PLAN runs (§17c).
 
-import type { GiftTier, WonDiscountsConfig } from "@won/core/discounts/config";
+import type { WonDiscountsConfig } from "@won/core/discounts/config";
+import { isMilestoneRule, MILESTONE_LIMITS, milestoneSteps, milestonesOverLimit, withMilestones, type MilestoneStep } from "@won/core/discounts/milestones";
 import { explainGate, gateConfigForPlan, type ProCapability } from "@won/core/discounts/plan-gate";
 
 import { cartBlockAddUrl, placementLinks, REWARDS_PROGRESS_BLOCK_HANDLE } from "../../components/model/embed";
 import { currenciesWithoutAmount, currencyCodes, currencyViews, enabledCurrencies } from "../../components/model/markets";
-import { giftTierView, readRewardsForm, REWARDS_FIELD, REWARDS_INTENT } from "../../components/model/rewards";
+import { MILESTONES_INTENT, milestoneStepView, MS_FIELD, readMilestonesForm } from "../../components/model/milestones";
 import type { FormDataLike } from "../../components/model/rule-form";
-import { rewardsGiftStatus, rewardsShippingStatus } from "../../components/model/module-status";
+import { rewardsStatus } from "../../components/model/module-status";
 import type { GateNoteView, RewardsOverviewView, RewardsScreenData, SyncView, UiResult } from "../../components/model/types";
 import { loadConfig } from "../config.server";
 import { loadAdminSignals } from "../ui-actions.server";
@@ -28,7 +27,7 @@ import { ctxPlan, loadSyncView } from "./sync-status.server";
 import { readAmountSuggest, readMarketNames, readShopContext, readThemeLook } from "./themes.server";
 import { resourceLabels } from "./titles.server";
 
-const REWARD_CAPABILITIES: readonly ProCapability[] = ["gift_ladder", "gift_choices"];
+const REWARD_CAPABILITIES: readonly ProCapability[] = ["milestone_steps", "gift_choices"];
 
 /** Validated against Admin 2026-04 (Shopify dev MCP): ProductVariant.displayName ("Product - Variant"). */
 export const GIFT_TITLES_DOCUMENT = `#graphql
@@ -78,12 +77,15 @@ function gateNotesOf(config: WonDiscountsConfig, plan: "free" | "pro", locale: S
 export function rewardsScreenFacts(
   stored: WonDiscountsConfig,
   opts: { plan: "free" | "pro"; locale: ShopCtx["locale"]; titles: ReadonlyMap<string, string> },
-): Pick<RewardsScreenData, "shipping" | "gifts" | "countOther" | "gateNotes"> {
-  const rewards = stored.modules.rewards;
+): Pick<RewardsScreenData, "steps" | "overLimit" | "limit" | "limitPro" | "countOther" | "productWithOrder" | "marginOn" | "gateNotes"> {
   return {
-    shipping: rewards.freeShipping ? { ...rewards.freeShipping.threshold } : null,
-    gifts: rewards.gifts.map((g) => giftTierView(g, opts.titles)),
-    countOther: rewards.countOtherDiscounts,
+    steps: milestoneSteps(stored).map((step) => milestoneStepView(step, opts.titles)),
+    overLimit: milestonesOverLimit(stored, opts.plan).map((step) => step.id),
+    limit: MILESTONE_LIMITS[opts.plan],
+    limitPro: MILESTONE_LIMITS.pro,
+    countOther: stored.modules.rewards.countOtherDiscounts,
+    productWithOrder: stored.engine.combination.productWithOrder,
+    marginOn: stored.modules.margin.enabled,
     gateNotes: gateNotesOf(stored, opts.plan, opts.locale),
   };
 }
@@ -116,38 +118,30 @@ export async function loadRewardsScreen(ctx: ShopCtx, opts: { scopes: string; fr
   };
 }
 
-/** The state of "Doprava zdarma" and "Dárek": the same functions, on the same view, as the home tile (model/module-status.ts). */
+/** The state of the ladder: the same function, on the same view, as the home tile (model/module-status.ts). */
 export function rewardsSectionStatus(config: WonDiscountsConfig, plan: "free" | "pro", currency: string, sync: SyncView): NonNullable<RewardsScreenData["status"]> {
-  const overview = rewardsOverviewOf(config, plan, currency);
-  return { shipping: rewardsShippingStatus(overview, sync), gift: rewardsGiftStatus(overview, sync) };
+  return rewardsStatus(rewardsOverviewOf(config, plan, currency), sync);
 }
 
-/** Stored amounts in currencies whose market is off: kept (§14a). */
-function keptAmounts(amounts: Readonly<Record<string, number>> | undefined, enabled: readonly string[]): Record<string, number> {
-  return Object.fromEntries(Object.entries(amounts ?? {}).filter(([code]) => !enabled.includes(code)));
+/** What the page edits (F12 compares it): the rewards module and the order rules that are steps of the ladder. */
+function ladderPart(config: WonDiscountsConfig): unknown {
+  return { rewards: config.modules.rewards, rules: config.modules.codes.rules.filter(isMilestoneRule) };
 }
 
-/** The Odměny action: `intent=save`, parsed on the server (SEC-1), saved through saveConfigSection. */
+/** The Milníky action: `intent=save`, parsed on the server (SEC-1), saved through saveConfigSection. */
 export async function rewardsAction(ctx: ShopCtx, form: FormDataLike): Promise<UiResult> {
-  if (form.get(REWARDS_FIELD.intent) !== REWARDS_INTENT.save) return { ok: false, reason: "bad_request" };
-  const [loaded, shopContext] = await Promise.all([loadConfig(ctx.db, ctx.shop), readShopContext(graphqlOf(ctx))]);
-  const stored = loaded.config.modules.rewards;
-  const enabled = currencyCodes(currencyViews(loaded.config.markets, { shopCurrency: shopContext.currencyCode }));
-  const byId = new Map<string, GiftTier>(stored.gifts.map((g) => [g.id, g]));
-  const parsed = readRewardsForm(form, {
-    currencies: enabled,
-    kept: {
-      shipping: keptAmounts(stored.freeShipping?.threshold, enabled),
-      tiers: new Map(stored.gifts.map((g) => [g.id, keptAmounts(g.threshold, enabled)])),
-    },
-    keep: (id) => byId.get(id),
-  });
+  if (form.get(MS_FIELD.intent) !== MILESTONES_INTENT.save) return { ok: false, reason: "bad_request" };
+  const [loaded, shopContext, plan] = await Promise.all([loadConfig(ctx.db, ctx.shop), readShopContext(graphqlOf(ctx)), ctxPlan(ctx)]);
+  const columns = currencyCodes(currencyViews(loaded.config.markets, { shopCurrency: shopContext.currencyCode }));
+  const stored = new Map<string, MilestoneStep>(milestoneSteps(loaded.config).map((step) => [step.id, step]));
+  // The plan's limit is checked here too (the UI's "Přidat stupeň" is not the gate): Free 2 steps, Pro 6.
+  const parsed = readMilestonesForm(form, { columns, stored, plan });
   if (parsed.errors.length > 0) return { ok: false, reason: "invalid", errors: parsed.errors };
   return saveConfigSection(ctx, {
     ...readSaveOptions(form),
     path: "modules.rewards",
-    pick: (config) => config.modules.rewards,
-    apply: (config) => ({ ...config, modules: { ...config.modules, rewards: parsed.rewards } }),
+    pick: ladderPart,
+    apply: (config) => withMilestones({ ...config, modules: { ...config.modules, rewards: { ...config.modules.rewards, countOtherDiscounts: parsed.countOther } } }, parsed.steps),
   });
 }
 
@@ -171,19 +165,28 @@ export async function loadRewardsOverview(
   return { ...view, giftNames: firstChoices.map((id) => (id ? (labels[id]?.title ?? null) : null)) };
 }
 
-/** The Přehled card: free shipping and the gift thresholds the PLAN runs, in the shop currency (§17c). */
+/** The Přehled card: the steps of the ladder the PLAN runs, in the shop currency (§17c). */
 export function rewardsOverviewOf(config: WonDiscountsConfig, plan: "free" | "pro", currency: string): RewardsOverviewView {
-  const rewards = gateConfigForPlan(config, plan).config.modules.rewards;
-  // N2: a reward without an amount in the currency of an enabled market is not offered there — the tile has to say so.
+  const gated = gateConfigForPlan(config, plan).config;
+  const rewards = gated.modules.rewards;
+  const discountRules = gated.modules.codes.rules.filter((rule) => rule.enabled && isMilestoneRule(rule));
+  // N2: a step without an amount in the currency of an enabled market is not offered there — the tile has to say so.
   const currencies = enabledCurrencies(config.markets, currency);
   const missing = {
     shipping: rewards.freeShipping ? currenciesWithoutAmount([rewards.freeShipping.threshold], currencies) : [],
     gifts: rewards.gifts.map((g) => currenciesWithoutAmount([g.threshold], currencies)),
+    // A discount step needs the cart value and — a fixed amount — the discount itself in the market's currency.
+    discounts: discountRules.map((rule) => currenciesWithoutAmount([rule.minimum?.subtotal ?? {}, ...(rule.value.kind === "fixed" ? [rule.value.amount] : [])], currencies)),
   };
+  const discounts = discountRules.map((rule) => ({
+    amount: rule.minimum?.subtotal?.[currency] ?? null,
+    ...(rule.value.kind === "percentage" ? { percent: rule.value.percent } : rule.value.kind === "fixed" ? { off: rule.value.amount[currency] ?? null } : {}),
+  }));
   return {
     shipping: rewards.freeShipping?.threshold[currency] ?? null,
     gifts: rewards.gifts.map((g) => g.threshold[currency] ?? null),
     currency,
-    ...(missing.shipping.length > 0 || missing.gifts.some((g) => g.length > 0) ? { missing } : {}),
+    ...(discounts.length > 0 ? { discounts } : {}),
+    ...(missing.shipping.length > 0 || missing.gifts.some((g) => g.length > 0) || missing.discounts.some((d) => d.length > 0) ? { missing } : {}),
   };
 }

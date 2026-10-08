@@ -74,7 +74,7 @@ test("sub-navigation items: the URLs stay, labels carry no plan suffix, Pro is a
     items.map((i) => [i.to, i.label, i.pro]),
     [
       ["/app/discounts", "Slevy a kódy", false],
-      ["/app/rewards", "Odměny", false],
+      ["/app/rewards", "Milníky", false],
       ["/app/tiers", "Množstevní slevy", false],
       ["/app/outlet", "Výprodej", true],
       ["/app/campaigns", "Kampaně", true],

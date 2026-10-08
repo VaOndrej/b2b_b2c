@@ -96,10 +96,9 @@ test("body 1 a 8: the home tile and the module page say the same state", async (
     // Množstevní slevy: set up, written → "Aktivní" on both.
     assert.equal(stateOf(tile(home, "tiers")), "active", `tiers tile ${plan}`);
     assert.equal(stateOf(section(tiers, "global")), "active", `tiers page ${plan}`);
-    // Odměny: free shipping and the gift each carry the label (bod 8).
+    // Milníky: the ladder carries the label, the same as its tile (bod 8).
     assert.equal(stateOf(tile(home, "rewards")), "active", `rewards tile ${plan}`);
-    assert.equal(stateOf(section(rewards, "shipping")), "active", `shipping ${plan}`);
-    assert.equal(stateOf(section(rewards, "gift")), "active", `gift ${plan}`);
+    assert.equal(stateOf(section(rewards, "steps")), "active", `steps ${plan}`);
     // Ochrana marže (the label was missing on both).
     assert.equal(stateOf(tile(home, "margin")), "active", `margin tile ${plan}`);
     assert.equal(stateOf(section(margin, "settings")), "active", `margin page ${plan}`);
@@ -122,7 +121,7 @@ test("body 1 a 8: the home tile and the module page say the same state", async (
   assert.match(tile(off, "margin"), />Neaktivní</);
   assert.equal(stateOf(section(await render("tiers?state=empty"), "global")), "inactive");
   assert.equal(stateOf(section(await render("margin?state=off"), "settings")), "inactive");
-  assert.equal(stateOf(section(await render("rewards?state=empty"), "shipping")), "inactive");
+  assert.equal(stateOf(section(await render("rewards?state=empty"), "steps")), "inactive");
   // A failed write: "Vyžaduje pozornost" on both.
   const failed = await render("overview?state=modules-failed");
   assert.equal(stateOf(tile(failed, "tiers")), "attention");
@@ -148,13 +147,14 @@ test("bod 5: a theme placement says where it stands — green in the theme, red 
   assert.match(unknown, /Zkontrolovat znovu/);
   // The same pattern for every placement: Won in the theme, the cart block, the rewards progress, the top bar,
   // the campaign banner, the sale badge.
+  // Milníky: four places in one section — the top strip, the product page, the cart drawer, the cart page.
   const rewards = await render("rewards");
-  assert.match(section(rewards, "cart"), /data-won-placement="in_theme"/);
-  assert.equal(count(section(rewards, "places"), /data-won-placement="/g), 3);
+  assert.equal(count(section(rewards, "places"), /data-won-placement="/g), 4);
+  assert.equal(count(section(rewards, "places"), /data-won-placement="in_theme"/g), 3);
   assert.match(section(rewards, "places"), /data-won-placement="missing"[\s\S]*Přidat na web/);
-  const draft = section(await render("rewards?state=embed-draft"), "cart");
-  assert.match(draft, /data-won-placement="missing"/);
-  assert.match(draft, /data-won-section-action/);
+  const draft = section(await render("rewards?state=embed-draft"), "places");
+  assert.match(draft, /data-won-ms-place="drawer"[\s\S]*?data-won-placement="missing"/);
+  assert.match(draft, /Zapnout na webu/);
   assert.equal(count(section(await render("campaigns?plan=pro"), "places"), /data-won-placement="/g), 3);
   assert.match(section(await render("outlet?plan=pro"), "badge"), /data-won-placement="(in_theme|missing|unknown)"/);
 });
@@ -203,7 +203,7 @@ test("home tiles: each says what is under it, and below that what is active now"
     assert.match(tile(html, key), /data-won-tile-about/, `${key}: what the part is for`);
   }
   const rewards = tile(html, "rewards");
-  assert.match(rewards, /data-won-tile-about[^>]*><span[^>]*>[^<]*doprava zdarma[^<]*dárek/i, "Odměny: what it covers");
+  assert.match(rewards, /data-won-tile-about[^>]*><span[^>]*>[^<]*dárek[^<]*doprava zdarma[^<]*sleva/i, "Milníky: what it covers");
   assert.match(rewards, /data-won-tile-active[^>]*>[^<]*Doprava zdarma od 1\s000\sKč/, "…and what is set");
   assert.ok(rewards.indexOf("data-won-tile-about") < rewards.indexOf("data-won-tile-active"), "the explanation first, the state under it");
   assert.match(tile(html, "tiers"), /data-won-tile-about[^>]*><span[^>]*>[^<]*podle počtu kusů/);
@@ -211,7 +211,7 @@ test("home tiles: each says what is under it, and below that what is active now"
   // Nothing set up: the explanation stays, the state line says so.
   const off = await render("overview?state=modules-off");
   assert.match(tile(off, "rewards"), /data-won-tile-about/);
-  assert.match(tile(off, "rewards"), /data-won-tile-active[^>]*>[^<]*Žádná doprava zdarma ani dárek/);
+  assert.match(tile(off, "rewards"), /data-won-tile-active[^>]*>[^<]*Žádný stupeň/);
 });
 
 test("Výprodej: three tiles instead of one long page — the sales (with their state), a new sale, how it works; one panel at a time", async () => {
@@ -244,7 +244,7 @@ test("Výprodej: three tiles instead of one long page — the sales (with their 
 test("the module pages are tiles and one panel at a time: Množstevní slevy, Odměny, Kampaně, Ochrana marže", async () => {
   const pages: [string, string[], string][] = [
     ["tiers?plan=pro", ["global", "table", "exceptions"], "global"],
-    ["rewards", ["shipping", "gift", "web"], "shipping"],
+    ["rewards", ["steps", "web"], "steps"],
     ["campaigns?plan=pro", ["list", "form", "places"], "list"],
     ["campaigns?plan=pro&edit=weekend", ["list", "form", "places"], "form"],
     ["margin?plan=pro", ["settings", "costs", "collections", "impact"], "settings"],

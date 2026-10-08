@@ -20,6 +20,7 @@ import { useEffect, useRef } from "react";
 import { Form, useNavigate } from "react-router";
 
 import { ONBOARDING_GOALS, type OnboardingGoal, type WonDiscountsConfig } from "@won/core/discounts/config";
+import { isMilestoneRule } from "@won/core/discounts/milestones";
 
 import { useT } from "../../i18n/context";
 import type { MessageKey } from "../../i18n";
@@ -58,7 +59,7 @@ export interface OnboardingScreenProps {
 
 /** Free shipping or a gift is stored (whatever the plan runs of it). */
 export function rewardsStored(config: WonDiscountsConfig): boolean {
-  return config.modules.rewards.freeShipping !== undefined || config.modules.rewards.gifts.length > 0;
+  return config.modules.rewards.freeShipping !== undefined || config.modules.rewards.gifts.length > 0 || config.modules.codes.rules.some(isMilestoneRule);
 }
 
 export function buildOnboardingProps(
@@ -74,7 +75,8 @@ export function buildOnboardingProps(
     storeUrl?: string | null;
   },
 ): OnboardingScreenProps {
-  const rules = config.modules.codes.rules.length;
+  // A discount step of Milníky counts as Milníky, not as a discount of its own.
+  const rules = config.modules.codes.rules.filter((rule) => !isMilestoneRule(rule)).length;
   const rewards = !rewardsStored(config) ? "none" : opts.rewardsLive ? "live" : "set";
   return {
     // N1: a stored reward is a first discount too.
@@ -137,7 +139,7 @@ export function firstRecipe(goals: readonly OnboardingGoal[]): RecipeKey {
 }
 
 /** N1: Odměny with the free-shipping switch on and its amounts prefilled (RewardsScreen reads `start`). */
-export const REWARDS_FIRST_HREF = "/app/rewards?start=shipping#shipping";
+export const REWARDS_FIRST_HREF = "/app/rewards?start=shipping#steps";
 
 const RECHECK_MIN_MS = 3000;
 

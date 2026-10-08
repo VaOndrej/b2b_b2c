@@ -17,7 +17,7 @@ import { buildRuleEditorProps, RuleEditorScreen, type RuleEditorScreenProps } fr
 import { SettingsScreen, type SettingsScreenProps } from "../components/screens/SettingsScreen";
 import { AppearanceScreen, type AppearanceScreenProps } from "../components/screens/AppearanceScreen";
 import { TiersScreen, type TiersScreenProps } from "../components/screens/TiersScreen";
-import { RewardsScreen, type RewardsScreenProps } from "../components/screens/RewardsScreen";
+import { MilestonesScreen, type MilestonesScreenProps } from "../components/screens/MilestonesScreen";
 import { OutletScreen, type OutletScreenProps } from "../components/screens/OutletScreen";
 import { AnalyticsScreen, type AnalyticsScreenProps } from "../components/screens/AnalyticsScreen";
 import { CampaignsScreen, type CampaignsScreenProps } from "../components/screens/CampaignsScreen";
@@ -119,8 +119,10 @@ import {
 //                                 ?result=saved | invalid | unreadable | too-large (does not fit at checkout)
 //   /dev/preview/appearance      Vzhled: the four looks on the theme; ?state=empty (an example set) | custom |
 //                                 issue, ?theme=dawn
-//   /dev/preview/rewards         Odměny: Free by default, ?plan=pro; ?state=empty | embed-draft | embed-unknown |
-//                                 embed-no-scope; ?result=saved | invalid | too-many
+//   /dev/preview/rewards         Milníky: Free by default (the third stored step is past the limit), ?plan=pro;
+//                                 ?state=discounts (two discount steps too) | empty | embed-draft | embed-unknown |
+//                                 embed-no-scope; ?result=saved | invalid | too-many | limit-free; ?start=shipping
+//                                 (from the setup guide: a first step prefilled); ?rates=none (no manual rate)
 //   /dev/preview/settings        Nastavení: combination switches + markets + tools + the plan sections;
 //                                 ?state=changed, ?plan=pro, ?planState=dev | unknown | clean | production
 //   /dev/preview/overview        …also ?state=tiers (the Množstevní slevy card, the table not on the page yet),
@@ -465,7 +467,7 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
         suggest: devSuggest(q),
       };
     case "rewards":
-      // ?start=shipping: opened from the setup guide (free shipping switched on, amounts prefilled — N1).
+      // ?start=shipping: opened from the setup guide (a first step — free shipping — with its amounts prefilled, N1).
       return { ...devRewardsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, shared: q.get("markets") === "shared" }), result: devRewardsResult(q.get("result")), start: q.get("start") === "shipping" ? ("shipping" as const) : null, suggest: devSuggest(q) };
     case "campaigns":
       return {
@@ -557,7 +559,7 @@ export default function DevPreview() {
       content = <TiersScreen {...(data as TiersScreenProps)} result={submitted ?? (data as TiersScreenProps).result} />;
       break;
     case "rewards":
-      content = <RewardsScreen {...(data as RewardsScreenProps)} result={submitted ?? (data as RewardsScreenProps).result} />;
+      content = <MilestonesScreen {...(data as MilestonesScreenProps)} result={submitted ?? (data as MilestonesScreenProps).result} />;
       break;
     case "campaigns":
       content = <CampaignsScreen {...(data as CampaignsScreenProps)} result={(data as CampaignsScreenProps).result} />;
