@@ -344,7 +344,10 @@ form as §18: each rule names its symptom.
   app: glyph, name, the §19a label, one sentence computed from the real
   settings (§18e), the count of things to resolve. The whole tile is one link;
   nothing inside it is a control. Detail rows live on the module pages. Above
-  the grid sits only what is not a module and has something to say (§18b).
+  the grid sits only what is not a module, has something to say (§18b) and is
+  short (what needs attention, the store status); a list as long as the shop
+  makes it (discounts made outside the app) sits under the grid, so the
+  signpost stays on the first screen.
   Two columns on a phone, three on a desktop; adding a module adds a tile, not
   a screenful. *Replaces the stacked overview cards of A3. Symptom:* a home
   page that grows with every module, or a card whose only link is "Upravit".
@@ -370,6 +373,32 @@ form as §18: each rule names its symptom.
   thing; a tile that only names a module; the same label or sentence on a
   tile and again in the header right under it.
   *Example:* `shell/views.tsx` (`useView`, `ViewPanel`), `ViewTile` (Won Discounts).
+
+- **§19f — One kind of navigation per meaning, and every one of them shows the
+  state.** Inside a page there are four ways to get somewhere; each has one
+  meaning and they are never stacked three deep:
+
+  | Element | Means | Use it when |
+  |---|---|---|
+  | Strip of links under the heading (§18a) | another page of the same group | related pages share one sidebar item |
+  | Row of low tiles (§19e) | a view of this page; the others are hidden | the page has two to four parts and one is worked on at a time |
+  | Column "On this page" (a row on a phone) | a place on this page; everything stays visible | the page is longer than about 1.5 screens and has at least four sections seen at once |
+  | Row of numbers in a section's header | a repeated part inside one long section | one section is most of the page (its steps, its levels) |
+
+  All four carry the §19a state from **one shared dot** (the pill's own colours
+  and words, the words for screen readers): green runs, red needs attention,
+  grey does not run. A locked Pro part has no dot — its marker says it — and
+  a section that has no state has none (§18b). The dot is computed where the
+  label is (§19a): a strip's dot and the home tile of the same module are one
+  result of one function, and a dot beside a form follows the live draft
+  (§18e). The links are real anchors (they work before the page hydrates), a
+  jump writes no URL hash (the hash belongs to deep links from other pages)
+  and never asks about unsaved changes, and it respects reduced motion. A jump
+  to a collapsed section opens it first. *Extends §11d / §13. Symptom:* a strip,
+  tiles and a column on one page; a navigation that has to be clicked to learn
+  whether the thing behind it runs; two dots of the same module that disagree.
+  *Example:* `StatusDot`, `SubNav`, `SectionNav`, `JumpRow`, `storeStatuses`
+  (Won Discounts).
 
 ## Architecture decisions (cross-cutting) `[WON]` unless tagged
 

@@ -158,9 +158,12 @@ test("DiscountsSubNav: a dot per known state, in the pill's colours, with the st
   const html = await renderSubNav("tiers", nav);
   const link = (key: string) => html.slice(html.lastIndexOf("<a ", html.indexOf(`data-won-subnav-item="${key}"`)), html.indexOf("</a>", html.indexOf(`data-won-subnav-item="${key}"`)));
   // Green runs, red needs attention, grey does not run: the same colours as the pill's dot (WonSection PILL_COLOR).
-  assert.match(link("discounts"), /data-won-dot="active"[\s\S]*background:#1a8f4b[\s\S]*>Aktivní: <\/span><\/span>Slevy a kódy/);
-  assert.match(link("tiers"), /data-won-dot="attention"[\s\S]*background:#b42318[\s\S]*>Vyžaduje pozornost: <\/span><\/span>Množstevní slevy/);
-  assert.match(link("rewards"), /data-won-dot="inactive"[\s\S]*background:#c3cad2[\s\S]*>Neaktivní: <\/span><\/span>Milníky/);
+  assert.match(link("discounts"), /data-won-dot="active"[\s\S]*background:#1a8f4b[\s\S]*>Aktivní: <\/span><\/span><\/span>Slevy a kódy/);
+  assert.match(link("tiers"), /data-won-dot="attention"[\s\S]*background:#b42318[\s\S]*>Vyžaduje pozornost: <\/span><\/span><\/span>Množstevní slevy/);
+  assert.match(link("rewards"), /data-won-dot="inactive"[\s\S]*background:#c3cad2[\s\S]*>Neaktivní: <\/span><\/span><\/span>Milníky/);
+  // The word for screen readers is positioned inside its own wrapper: in a strip that scrolls sideways it is
+  // clipped with its item, never left sticking out of the page (found at 390 px in English, 8 Oct 2026).
+  assert.match(link("tiers"), /<span data-won-reader-only="true" style="position:relative"><span style="position:absolute;/);
   // The dot itself is hidden from screen readers; the word is in the link's text.
   assert.match(link("tiers"), /<span aria-hidden="true" style="width:7px/);
   // Locked and not known: no dot, the Pro badge stays.
@@ -169,7 +172,7 @@ test("DiscountsSubNav: a dot per known state, in the pill's colours, with the st
     assert.match(link(key), />Pro<\/span>/, key);
   }
   assert.equal(html.match(/data-won-dot=/g)?.length, 3);
-  assert.match(await renderSubNav("tiers", nav, "en"), /data-won-dot="attention"[\s\S]*?>Needs attention: <\/span><\/span>Quantity/);
+  assert.match(await renderSubNav("tiers", nav, "en"), /data-won-dot="attention"[\s\S]*?>Needs attention: <\/span><\/span><\/span>Quantity/);
   assert.doesNotMatch(await renderSubNav("tiers"), /data-won-dot/, "no provider → no dots");
 });
 
@@ -185,8 +188,8 @@ test("SectionNav: a dot only at a section that has a state, the same dot as the 
   // P2: nothing without content — no grey dot for "no state".
   assert.doesNotMatch(link("a"), /data-won-dot/);
   assert.match(link("a"), />První$/);
-  assert.match(link("b"), /data-won-dot="attention"[\s\S]*background:#b42318[\s\S]*>Vyžaduje pozornost: <\/span><\/span><\/span>Druhá$/);
-  assert.match(link("c"), /data-won-dot="active"[\s\S]*background:#1a8f4b[\s\S]*>Aktivní: <\/span><\/span><\/span>Třetí$/);
+  assert.match(link("b"), /data-won-dot="attention"[\s\S]*background:#b42318[\s\S]*>Vyžaduje pozornost: <\/span><\/span><\/span><\/span>Druhá$/);
+  assert.match(link("c"), /data-won-dot="active"[\s\S]*background:#1a8f4b[\s\S]*>Aktivní: <\/span><\/span><\/span><\/span>Třetí$/);
   // The links stay plain anchors (they work before hydration); the first one is the current one.
   assert.match(html, /<a class="won-jump__link" href="#a" aria-current="location">/);
   assert.equal(html.match(/data-won-dot=/g)?.length, 2);
@@ -200,7 +203,7 @@ test("JumpRow: plain anchors with the part's name for screen readers; red and do
   // eslint-disable-next-line react/no-children-prop -- LocaleProvider types `children` as a required prop
   const html = renderToStaticMarkup(createElement(LocaleProvider, { locale: "cs", children: createElement(JumpRow, { label: "Přejít na stupeň", items }) }));
   assert.match(html, /<nav class="won-jumps" aria-label="Přejít na stupeň"/);
-  assert.match(html, /<a class="won-jumps__link" href="#step-1" title="1\. stupeň"><span aria-hidden="true">1<\/span><span[^>]*>1\. stupeň<\/span><\/a>/);
+  assert.match(html, /<a class="won-jumps__link" href="#step-1" title="1\. stupeň"><span aria-hidden="true">1<\/span><span data-won-reader-only[^>]*><span[^>]*>1\. stupeň<\/span><\/span><\/a>/);
   assert.match(html, /<a class="won-jumps__link" href="#step-2" title="2\. stupeň" data-won-jump-state="attention"><span data-won-dot="attention"/);
   assert.equal(html.match(/data-won-dot=/g)?.length, 1);
   // It wraps instead of scrolling sideways.

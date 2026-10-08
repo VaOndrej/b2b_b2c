@@ -285,7 +285,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /<a class="won-jump__link" href="#unknown-market">Zákazník ze země mimo vaše trhy<\/a>/,
       /<a class="won-jump__link" href="#plan">Tarif<\/a>/,
       // Navigace a stav, bod 4: the one section with a state of its own carries the dot (a market misses an amount) …
-      /<a class="won-jump__link" href="#markets"><span class="won-jump__dot"><span data-won-dot="attention"[\s\S]{0,700}?>Vyžaduje pozornost: <\/span><\/span><\/span>Trhy a měny<\/a>/,
+      /<a class="won-jump__link" href="#markets"><span class="won-jump__dot"><span data-won-dot="attention"[\s\S]{0,700}?>Vyžaduje pozornost: <\/span><\/span><\/span><\/span>Trhy a měny<\/a>/,
       /Máte tarif Free\./,
       /Vyzkoušet Pro na 14 dní zdarma/,
       /Připravit na odinstalaci/,
@@ -735,7 +735,7 @@ test("navigace a stav, bod 3: the strip under 'Slevy' carries a dot per module, 
     }
   }
   const free = (await render("rewards")).html;
-  assert.match(link(free, "discounts"), /data-won-dot="active"[\s\S]*>Aktivní: <\/span>/, "the state in words for screen readers");
+  assert.match(link(free, "discounts"), /data-won-dot="active"[\s\S]*>Aktivní: <\/span><\/span>/, "the state in words for screen readers");
   assert.doesNotMatch(link(free, "outlet"), /data-won-dot/);
   // The strip is the same on the five pages; pages outside "Slevy" have neither the strip nor its dots.
   const stripOf = (html: string) => html.slice(html.indexOf("data-won-subnav"), html.indexOf("</nav>", html.indexOf("data-won-subnav")));
@@ -754,7 +754,7 @@ test("navigace a stav, bod 5: the rule editor has the list of its sections; a re
   const html = (await render("rule-editor")).html;
   assert.match(html, /<nav class="won-jump__nav" aria-label="Na této stránce"/);
   assert.deepEqual(dotted(html), ["discount:attention", "conditions", "codes", "schedule", "pro"]);
-  assert.match(nav(html), />Vyžaduje pozornost: <\/span><\/span><\/span>Sleva<\/a>/);
+  assert.match(nav(html), />Vyžaduje pozornost: <\/span><\/span><\/span><\/span>Sleva<\/a>/);
   for (const label of ["Podmínky", "Jak se uplatní", "Kdy platí", "Pro koho platí a kombinace"]) assert.match(nav(html), new RegExp(`<a class="won-jump__link" href="#\\w+">${label}</a>`), label);
   // Every link has its section on the page (the first section got its anchor; the old ones are where they were).
   for (const anchor of ["discount", "conditions", "codes", "schedule", "pro"]) assert.match(html, new RegExp(`<section id="${anchor}"`), anchor);
@@ -768,7 +768,7 @@ test("navigace a stav, bod 5: the rule editor has the list of its sections; a re
   // English: the same list.
   const en = (await render("rule-editor?locale=en")).html;
   assert.match(en, /<nav class="won-jump__nav" aria-label="On this page"/);
-  assert.match(nav(en), />Needs attention: <\/span><\/span><\/span>Discount<\/a>[\s\S]*>How it applies<\/a>/);
+  assert.match(nav(en), />Needs attention: <\/span><\/span><\/span><\/span>Discount<\/a>[\s\S]*>How it applies<\/a>/);
   // One form, one Save: the list sits inside the form and wraps every section.
   assert.equal((html.match(/<form /g) ?? []).length, 1);
 });
@@ -783,7 +783,7 @@ test("navigace a stav, bod 6: Milníky — a row of step numbers in the header o
   // Three steps; the second has no amount for Slovensko (the row under it says so) — its number is red, with the dot.
   assert.deepEqual(marks(html), ["step-1", "step-2:attention", "step-3"]);
   assert.match(row(html) ?? "", /aria-label="Přejít na stupeň"/);
-  assert.match(row(html) ?? "", /href="#step-2"[^>]*><span data-won-dot="attention"[\s\S]{0,600}?>Vyžaduje pozornost: <\/span><\/span><span aria-hidden="true">2<\/span><span[^>]*>2\. stupeň<\/span><\/a>/);
+  assert.match(row(html) ?? "", /href="#step-2"[^>]*><span data-won-dot="attention"[\s\S]{0,600}?>Vyžaduje pozornost: <\/span><\/span><\/span><span aria-hidden="true">2<\/span><span data-won-reader-only[^>]*><span[^>]*>2\. stupeň<\/span><\/span><\/a>/);
   assert.doesNotMatch((row(html) ?? "").split('href="#step-2"')[0] ?? "", /data-won-dot/, "the first step has nothing to say");
   // Every number has its card; the row sits in the section's header, above the table.
   for (const id of ["step-1", "step-2", "step-3"]) assert.match(html, new RegExp(`<div id="${id}" data-won-ms-step=`), id);
@@ -795,4 +795,26 @@ test("navigace a stav, bod 6: Milníky — a row of step numbers in the header o
   assert.equal(row((await render("rewards?state=empty")).html), null);
   // English.
   assert.match(row((await render("rewards?locale=en")).html) ?? "", /aria-label="Go to step"[\s\S]*title="Step 2" data-won-jump-state="attention"/);
+});
+
+test("navigace a stav, bod 7: Přehled — the module tiles come before the discounts made in Shopify; 'Vyžaduje pozornost' stays first", async () => {
+  for (const state of ["live", "conflict", "moved", "sync-failed", "native-error"]) {
+    const html = (await render(`overview?state=${state}`)).html;
+    const at = (needle: string) => {
+      const index = html.indexOf(needle);
+      assert.ok(index >= 0, `${state}: ${needle}`);
+      return index;
+    };
+    const order = [at(">Vyžaduje pozornost<"), at('<section id="status"'), at("data-won-tiles="), at('<section id="native"')];
+    assert.deepEqual([...order].sort((a, b) => a - b), order, `${state}: attention → store status → tiles → Shopify discounts`);
+    // The list is still on the page, once, with its deep link.
+    assert.equal((html.match(/<section id="native"/g) ?? []).length, 1, state);
+  }
+  // Nothing to do about discounts outside Won: the section is not rendered at all (P2), the tiles are.
+  const clean = (await render("overview?state=clean")).html;
+  assert.doesNotMatch(clean, /<section id="native"/);
+  assert.match(clean, /data-won-tile="codes"/);
+  // The setup guide of an empty shop is still the first thing, above the tiles.
+  const empty = (await render("overview?state=empty")).html;
+  assert.ok(empty.indexOf("Nastavení za 3 minuty") < empty.indexOf("data-won-tiles="));
 });

@@ -233,9 +233,18 @@ const STATE_TONE: Readonly<Record<DotState, PillTone>> = { active: "live", atten
 
 const READER_ONLY: CSSProperties = { position: "absolute", width: 1, height: 1, margin: -1, padding: 0, overflow: "hidden", clipPath: "inset(50%)", whiteSpace: "nowrap", border: 0 };
 
-/** Text for screen readers only (a dot or a bare number says too little to them). */
+/**
+ * Text for screen readers only (a dot or a bare number says too little to them). The hidden text is positioned
+ * absolutely, so it carries its own positioned wrapper: without one its containing block is some ancestor far
+ * above, and inside a strip that scrolls sideways the text of an item scrolled out of view would then stick out
+ * of the strip and make the whole page scroll sideways.
+ */
 export function ReaderOnly({ children }: { children: ReactNode }) {
-  return <span style={READER_ONLY}>{children}</span>;
+  return (
+    <span data-won-reader-only style={{ position: "relative" }}>
+      <span style={READER_ONLY}>{children}</span>
+    </span>
+  );
 }
 
 /**

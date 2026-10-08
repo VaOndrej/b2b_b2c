@@ -36,7 +36,16 @@ Evidence: `docs/won-discounts/evidence/navigace-stav/` (`pred-*` a `po-*`, 390 a
 - **Bod 6 — hotovo:** Milníky mají v hlavičce „Stupně a odměny“ řádek s čísly stupňů (`shell/JumpRow.tsx`, od dvou stupňů),
   stupeň bez částky v některém trhu je červeně se stejnou tečkou; karty stupňů mají `id="step-N"`. Plynulost scrollu je na
   jednom místě (`shell/scroll.ts`), přímé odkazy editoru tím nově respektují `prefers-reduced-motion`.
-- **Bod 7 — čeká:** Přehled (dlaždice modulů nad „Slevy vytvořené přímo v Shopify“), doktrína, e2e, „zkus to rozbít“.
+- **Bod 7 — hotovo:** na Přehledu jsou dlaždice modulů nad „Slevy vytvořené přímo v Shopify“ (1440 px: 1 029 → 546 px;
+  390 px: 1 356 → 746 px, stav `live`). „Vyžaduje pozornost“ a „Stav v obchodě“ zůstávají nad dlaždicemi. Odkaz `/app#native` vede dál na seznam.
+  Doktrína: §19d (co je nad a pod rozcestníkem), §19e (nízké dlaždice), nový §19f (kdy pruh, dlaždice, sloupec, řádek čísel; jedna tečka).
+- **Trvalý test v prohlížeči — hotovo:** `apps/won-discounts/playwright.preview.config.ts` + `tests/e2e-preview/admin.navigation.spec.ts`
+  (11 testů proti `/dev/preview/*`, bez Shopify přihlášení, server nespouští). Spuštění:
+  `cd apps/won-discounts && WON_PREVIEW_BASE_URL=http://localhost:<port> npm run test:e2e:preview`.
+- **Chyba nalezená při „zkus to rozbít“ a opravená:** Nastavení v angličtině přetékalo na 390 px o 109 px do šířky. Příčina: text pro
+  čtečky u tečky (bod 4) je absolutně pozicovaný a jeho kontejnerem byl lepivý řádek, takže položka odrolovaná mimo řádek roztáhla
+  stránku. Oprava: `ReaderOnly` má vlastní pozicovaný obal (`shell/WonSection.tsx`); hlídá ji e2e test šířek a test značky v `nav.test.ts`.
+- **Zbývá:** odevzdání (souhrn v `docs/won-discounts/odevzdani-navigace-stav.md`).
 
 ### Opravy po auditu srozumitelnosti (7. 10. 2026) — větev `won-discounts-feedback-2026-10-06`
 

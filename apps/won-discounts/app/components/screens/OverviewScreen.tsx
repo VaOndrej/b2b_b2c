@@ -12,10 +12,12 @@
 // the theme, the cost prices, returned pieces of a sale) live on the pages. The
 // page does not grow when a module is added.
 //
-// Above the grid sits only what is not a module and has something to say (P2):
-// the setup guide, "Vyžaduje pozornost" (every row links to the field that fixes
-// it, P3), the store status (collapsed to one line while everything is fine) and
-// the discounts outside Won (only while there is something to do about them).
+// Above the grid sits only what is not a module, has something to say (P2) and is
+// short: the setup guide, "Vyžaduje pozornost" (every row links to the field that
+// fixes it, P3) and the store status (collapsed to one line while everything is
+// fine, open with its fixes when it is not). The discounts outside Won (only while
+// there is something to do about them) are a list as long as the shop makes it, so
+// they sit UNDER the grid: the signpost stays on the first screen (8 Oct 2026).
 // With only { schemaVersion, ruleCount, readOnly } the screen still renders: a
 // tile whose state is not known says what the part is for and shows no label
 // (§12). No router hook runs at this level, so the component also renders
@@ -468,12 +470,6 @@ export function OverviewScreen({
           </div>
         </WonSection>
 
-        {showNative ? (
-          <WonSection title={t("overview.native.title")} glyph="move" summary={nativeSummary(status.native, tr)} anchor="native">
-            <NativeDiscountsPanel native={status.native} mode="each" result={nativeResult} readOnly={readOnly} />
-          </WonSection>
-        ) : null}
-
         <ModuleTiles label={t("overview.tiles.label")}>
           <ModuleTile id="codes" href="/app/discounts" title={t("nav.discounts")} glyph="tag" about={t("tile.about.codes")} aboutShort={t("tile.short.codes")} active={bodies.codes} status={states.codes} />
           <ModuleTile id="tiers" href="/app/tiers" title={t("module.tiers")} glyph="layers" about={t("tile.about.tiers")} aboutShort={t("tile.short.tiers")} active={bodies.tiers} status={states.tiers} issueText={waits("tiers")} />
@@ -486,6 +482,13 @@ export function OverviewScreen({
           <ModuleTile id="tryCart" href="/app/try-cart" title={t("nav.tryCart")} glyph="cart" about={t("tile.about.tryCart")} aboutShort={t("tile.short.tryCart")} active={free ? t("tile.tryCart.locked") : undefined} pro={proMark} locked={free} />
           <ModuleTile id="settings" href="/app/settings" title={t("nav.settings")} glyph="sliders" about={t("tile.about.settings")} aboutShort={t("tile.short.settings")} active={plan ? settingsLine : undefined} />
         </ModuleTiles>
+
+        {/* Under the signpost: a list as long as the shop's own discounts, with its own actions. `#native` still leads here. */}
+        {showNative ? (
+          <WonSection title={t("overview.native.title")} glyph="move" summary={nativeSummary(status.native, tr)} anchor="native">
+            <NativeDiscountsPanel native={status.native} mode="each" result={nativeResult} readOnly={readOnly} />
+          </WonSection>
+        ) : null}
       </s-stack>
     </s-page>
   );

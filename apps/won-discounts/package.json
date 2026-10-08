@@ -25,6 +25,7 @@
     "test:postgres": "node ./scripts/test-postgres.mjs",
     "test:unit:node": "tsx --test 'tests/**/*.test.ts'",
     "test:e2e": "node ./scripts/require-e2e-contract.mjs",
+    "test:e2e:preview": "playwright test --config=playwright.preview.config.ts",
     "test:e2e:local:all": "node ./scripts/make-e2e-overlay.mjs --check && node ./scripts/require-e2e-contract.mjs --local-matrix"
   },
   "dependencies": {
