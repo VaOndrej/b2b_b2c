@@ -23,7 +23,19 @@ import { ruleHasCodes } from "@won/core/discounts/code-batch";
 import { unsupportedInFunction } from "@won/core/discounts/plan";
 
 import type { MessageKey, PluralBase, Translator } from "../../i18n";
-import { missingCurrencies, missingValueAnchor, ruleDays, type EditorAnchor } from "./describe";
+import {
+  collectWarnings,
+  EDITOR_SECTION_OF,
+  EDITOR_SECTIONS,
+  editorSectionOf,
+  missingAmountCurrencies,
+  missingCurrencies,
+  missingMinimumCurrencies,
+  missingValueAnchor,
+  ruleDays,
+  type EditorAnchor,
+  type EditorSection,
+} from "./describe";
 import type { RuleSyncMap, SyncView } from "./types";
 
 export type RuleStatusKind =
@@ -148,6 +160,35 @@ export function statusAnchor(status: RuleStatus, rule: DiscountRule, currencies:
     default:
       return null;
   }
+}
+
+/**
+ * The editor's sections that hold something to fix in the (live) rule — the dots of the list "Na této stránce".
+ * Not a second validation: it asks the same functions the status sentence and the markers at the fields are
+ * drawn from — the field the status links to (statusAnchor), an amount or a minimum missing in a market's
+ * currency, and what the list and Přehled warn about at this discount (collectWarnings), also while the
+ * discount is still switched off. `pendingCodes`: codes will be generated on save, so none is missing.
+ */
+export function sectionsToFix(
+  rule: DiscountRule,
+  status: RuleStatus,
+  currencies: readonly string[],
+  opts: { pendingCodes?: boolean; enabledMarkets?: readonly string[] } = {},
+): EditorSection[] {
+  const fix = new Set<EditorSection>();
+  if (needsAttention(status) || status.kind === "ended") {
+    const anchor = statusAnchor(status, rule, currencies);
+    if (anchor) fix.add(EDITOR_SECTION_OF[anchor]);
+  }
+  if (missingAmountCurrencies(rule, currencies).length > 0) fix.add("discount");
+  if (missingMinimumCurrencies(rule, currencies).length > 0) fix.add("conditions");
+  for (const warning of collectWarnings([{ ...rule, enabled: true }], currencies, { enabledMarkets: opts.enabledMarkets })) {
+    // A missing currency is said per field above (the warning names one field only).
+    if (warning.kind === "missingCurrency" || (warning.kind === "noCode" && opts.pendingCodes)) continue;
+    const section = editorSectionOf(warning.field);
+    if (section) fix.add(section);
+  }
+  return EDITOR_SECTIONS.filter((section) => fix.has(section));
 }
 
 /**

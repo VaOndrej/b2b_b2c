@@ -310,6 +310,24 @@ export function RowNote({ children, tone }: { children: ReactNode; tone?: "atten
   );
 }
 
+/**
+ * Open every collapsed section around an element (its own section too), so a jump to it lands on something
+ * visible: the deep links of the rule editor and the list "Na této stránce" both go through here. True when
+ * one was opened — the page is then taller than it was, after the next render.
+ */
+export function openSectionsAround(el: HTMLElement): boolean {
+  let opened = false;
+  for (let node: HTMLElement | null = el; node; node = node.parentElement) {
+    if (node.tagName !== "SECTION") continue;
+    // WonSection's header button (collapsible): the body is hidden, never unmounted.
+    const header = node.querySelector<HTMLButtonElement>(':scope > button[aria-expanded="false"]');
+    if (!header) continue;
+    header.click();
+    opened = true;
+  }
+  return opened;
+}
+
 /** Opens (and scrolls to) a collapsible section whose anchor is the URL hash (§13c deep links). */
 function useHashOpen(anchor: string | undefined, setOpen: (open: boolean) => void): void {
   useEffect(() => {

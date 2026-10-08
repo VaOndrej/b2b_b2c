@@ -28,7 +28,12 @@ Evidence: `docs/won-discounts/evidence/navigace-stav/` (`pred-*` a `po-*`, 390 a
   mimo Won. Layout se nově znovu načte i při přechodu na jinou stránku (`model/modules.ts` `layoutReloads`), to stojí jen
   dotazy do databáze. Náhled bere tečky z fixtur (`?nav=off | failed`), stejnou funkcí.
 - **Bod 4 — hotovo:** `SectionNavItem.state` (stejná `StatusDot`), v Nastavení tečka jen u „Trhy a měny“, když někde chybí částka.
-- **Body 5–7 — čeká:** sloupec v editoru slevy, řádek stupňů v Milnících, Přehled.
+- **Bod 5 — hotovo:** editor slevy má sloupec „Na této stránce“ (`RuleEditorScreen.tsx`), červená tečka z živého formuláře:
+  `model/rule-status.ts` `sectionsToFix` (stejné funkce jako stavová věta a značky u polí) + pole z odmítnutého uložení
+  (`model/rule-form.ts` `fieldSection`). Sekce „Sleva“ má kotvu `#discount`; staré kotvy a alias `#more` beze změny.
+  Rozbalení sbalené sekce je jedna cesta (`shell/WonSection.tsx` `openSectionsAround`) pro přímé odkazy i sloupec.
+  Šířka: 1024–1440 px formulář 403 px + panel „Co uvidí zákazník“ 303 px vedle sebe, bez úpravy rozložení.
+- **Body 6–7 — čeká:** řádek stupňů v Milnících, Přehled.
 
 ### Opravy po auditu srozumitelnosti (7. 10. 2026) — větev `won-discounts-feedback-2026-10-06`
 

@@ -741,3 +741,33 @@ test("navigace a stav, bod 3: the strip under 'Slevy' carries a dot per module, 
   for (const path of ["discounts", "tiers", "rewards", "outlet", "campaigns"]) assert.equal(((await render(path)).html.match(/data-won-dot=/g) ?? []).length, 3, path);
   for (const path of ["margin", "appearance", "analytics"]) assert.doesNotMatch((await render(path)).html, /data-won-subnav|data-won-dot=/, path);
 });
+
+test("navigace a stav, bod 5: the rule editor has the list of its sections; a red dot where the draft has something to fix, none elsewhere", async () => {
+  const nav = (html: string) => {
+    const start = html.indexOf("data-won-section-nav");
+    assert.ok(start >= 0, "the list of sections");
+    return html.slice(start, html.indexOf("</nav>", start));
+  };
+  const dotted = (html: string) => [...nav(html).matchAll(/href="#(\w+)"[^>]*>(<span class="won-jump__dot"><span data-won-dot="(\w+)")?/g)].map((m) => `${m[1]}${m[3] ? `:${m[3]}` : ""}`);
+  // "Černý pátek": the amount is missing in EUR — the first section holds the marker, so it holds the dot.
+  const html = (await render("rule-editor")).html;
+  assert.match(html, /<nav class="won-jump__nav" aria-label="Na této stránce"/);
+  assert.deepEqual(dotted(html), ["discount:attention", "conditions", "codes", "schedule", "pro"]);
+  assert.match(nav(html), />Vyžaduje pozornost: <\/span><\/span><\/span>Sleva<\/a>/);
+  for (const label of ["Podmínky", "Jak se uplatní", "Kdy platí", "Pro koho platí a kombinace"]) assert.match(nav(html), new RegExp(`<a class="won-jump__link" href="#\\w+">${label}</a>`), label);
+  // Every link has its section on the page (the first section got its anchor; the old ones are where they were).
+  for (const anchor of ["discount", "conditions", "codes", "schedule", "pro"]) assert.match(html, new RegExp(`<section id="${anchor}"`), anchor);
+  for (const anchor of ["value", "target", "markets", "combines"]) assert.match(html, new RegExp(`<div id="${anchor}"`), `deep link #${anchor}`);
+  // The dot follows the marker's section: a minimum missing in EUR (Podmínky), a Pro setting the plan does not run
+  // or checkout cannot evaluate (the Pro section); a discount with nothing to fix has no dot at all.
+  assert.deepEqual(dotted((await render("rule-editor?rule=dev-fixture-2&plan=pro")).html), ["discount", "conditions:attention", "codes", "schedule", "pro"]);
+  assert.deepEqual(dotted((await render("rule-editor?rule=dev-fixture-6")).html), ["discount", "conditions", "codes", "schedule", "pro:attention"]);
+  assert.ok(dotted((await render("rule-editor?rule=dev-f2-market")).html).includes("pro:attention"));
+  assert.deepEqual(dotted((await render("rule-editor?rule=new&recipe=freeShipping")).html), ["discount", "conditions", "codes", "schedule", "pro"]);
+  // English: the same list.
+  const en = (await render("rule-editor?locale=en")).html;
+  assert.match(en, /<nav class="won-jump__nav" aria-label="On this page"/);
+  assert.match(nav(en), />Needs attention: <\/span><\/span><\/span>Discount<\/a>[\s\S]*>How it applies<\/a>/);
+  // One form, one Save: the list sits inside the form and wraps every section.
+  assert.equal((html.match(/<form /g) ?? []).length, 1);
+});

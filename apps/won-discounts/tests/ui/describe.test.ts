@@ -19,6 +19,9 @@ import {
   describeRuleLine,
   describeSchedule,
   describeValue,
+  EDITOR_SECTION_OF,
+  EDITOR_SECTIONS,
+  editorSectionOf,
   missingCurrencies,
   ruleDays,
 } from "../../app/components/model/describe.ts";
@@ -372,4 +375,17 @@ test("P5: the preview says 'does not run' for every status but Běží / Zapisuj
   // A code rule without a code shows no code line (the status says why it does not run).
   assert.equal(previewModel(rule({ method: "code", codes: [] }), VIEWS, { kind: "no_code" }, cs).code, null);
   assert.equal(previewModel(rule({ method: "code", codes: ["VIP10", "LETO"] }), VIEWS, LIVE, cs).code, "Zákazník zadá kódy VIP10, LETO.");
+});
+
+// Navigace a stav (8 Oct 2026), bod 5: the editor's list of sections and the deep links share one table.
+test("every editor anchor sits in one of the five sections; an old alias still resolves, an unknown name does not", () => {
+  assert.deepEqual([...EDITOR_SECTIONS], ["discount", "conditions", "codes", "schedule", "pro"]);
+  for (const section of EDITOR_SECTIONS) assert.equal(EDITOR_SECTION_OF[section], section, "a section's own anchor");
+  assert.equal(editorSectionOf("value"), "discount");
+  assert.equal(editorSectionOf("target"), "discount");
+  assert.equal(editorSectionOf("markets"), "pro");
+  assert.equal(editorSectionOf("combines"), "pro");
+  assert.equal(editorSectionOf("more"), "conditions", "the retired #more lands on the conditions");
+  assert.equal(editorSectionOf("nope"), null);
+  assert.equal(editorSectionOf("toString"), null, "not a name inherited from Object");
 });

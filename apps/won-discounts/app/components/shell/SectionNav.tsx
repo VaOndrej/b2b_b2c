@@ -5,7 +5,8 @@
 //     scrolls; narrow screen (390 px): one row above them that stays at the top and
 //     scrolls sideways, never wraps;
 //   - the links are real `#anchor` links (WonSection anchors, or any element id), so
-//     they work before hydration; with JS the jump is smooth and lands under the row;
+//     they work before hydration; with JS the jump is smooth and lands under the row,
+//     and a collapsed section opens first (a jump to a closed header would be a dead end);
 //   - no URL hash is written (SubNav: the hash belongs to deep links from other pages);
 //   - a section that has a state may show it as a dot before its name (StatusDot: the
 //     pill's colours and words) — a section without a state has none (P2).
@@ -14,7 +15,7 @@
 
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
-import { StatusDot, type DotState } from "./WonSection";
+import { openSectionsAround, StatusDot, type DotState } from "./WonSection";
 import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE } from "./tokens";
 
 export interface SectionNavItem {
@@ -66,6 +67,8 @@ export function SectionNav({ label, items, children }: SectionNavProps) {
   const listRef = useRef<HTMLUListElement>(null);
   // While a click's own scroll runs, the clicked item stays marked (the timer id; 0 = free).
   const lock = useRef(0);
+  // A jump that waits for a section it just opened to be laid out (the frame id; 0 = none).
+  const jump = useRef(0);
   const anchors = items.map((item) => item.anchor).join("|");
 
   // How far under the top of the view a section starts: under the row on a narrow screen.
@@ -103,6 +106,8 @@ export function SectionNav({ label, items, children }: SectionNavProps) {
       if (frame) window.cancelAnimationFrame(frame);
       window.clearTimeout(lock.current);
       lock.current = 0;
+      window.cancelAnimationFrame(jump.current);
+      jump.current = 0;
     };
   }, [anchors]);
 
@@ -129,7 +134,15 @@ export function SectionNav({ label, items, children }: SectionNavProps) {
       lock.current = 0;
     }, 900);
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset(), behavior: still ? "auto" : "smooth" });
+    const scroll = () => {
+      jump.current = 0;
+      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset(), behavior: still ? "auto" : "smooth" });
+    };
+    window.cancelAnimationFrame(jump.current);
+    // A section that was collapsed makes the page taller only after React has rendered its body: scrolling now
+    // would stop at the old end of the page. Everything else scrolls at once.
+    if (openSectionsAround(el)) jump.current = window.requestAnimationFrame(scroll);
+    else scroll();
   };
 
   return (

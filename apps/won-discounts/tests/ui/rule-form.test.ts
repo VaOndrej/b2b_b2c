@@ -5,6 +5,7 @@ import type { DiscountRule } from "@won/core/discounts/config";
 
 import {
   FIELD,
+  fieldSection,
   isAutoName,
   minorToInput,
   parseMoneyInput,
@@ -556,4 +557,22 @@ test("bod 6: on Pro the pattern is read (prefix, middle, suffix, length, charact
   // At most 5 batches a rule.
   const five: DiscountRule = { ...made.rule, codeBatches: Array.from({ length: 5 }, (_, i) => ({ ...first, id: `b${i}` })) };
   assert.deepEqual(readRuleForm(form([...code, [FIELD.batchCount, "10"]]), pro(five)).errors.map((e) => `${e.field}:${e.key}`), ["batchCount:editor.error.batchTooMany"]);
+});
+
+// Navigace a stav (8 Oct 2026), bod 5: a refused save marks the section of every field it names.
+test("fieldSection: every field of the form sits in one of the editor's five sections", () => {
+  for (const field of [FIELD.name, FIELD.valueKind, FIELD.percent, FIELD.amount("EUR"), "amount", FIELD.target, FIELD.itemMin("gid://shopify/Product/1")]) assert.equal(fieldSection(field), "discount", field);
+  for (const field of [FIELD.minimum("CZK"), FIELD.minQty, FIELD.minScope]) assert.equal(fieldSection(field), "conditions", field);
+  for (const field of [FIELD.method, FIELD.codes, FIELD.usageLimit, FIELD.batchCount, FIELD.batchPrefix, FIELD.batchLength]) assert.equal(fieldSection(field), "codes", field);
+  for (const field of [FIELD.startDate, FIELD.endDate]) assert.equal(fieldSection(field), "schedule", field);
+  for (const field of [FIELD.markets, FIELD.combinesWith, FIELD.dropMarkets]) assert.equal(fieldSection(field), "pro", field);
+  // The version token belongs to the form as a whole: the refusal is said at the top, no section is marked.
+  assert.equal(fieldSection(FIELD.ruleVersion), null);
+  // Every error the parser can report lands in a section.
+  const ctx: RuleFormContext = { id: "new", currencies: ["CZK", "EUR"], timezone: "Europe/Prague", pro: false, existing: null, marketHandles: [], otherRules: [], locale: "cs" };
+  const form = new FormData();
+  for (const [k, v] of [[FIELD.valueKind, "fixed"], [FIELD.target, "products"], [FIELD.method, "code"], [FIELD.startDate, "x"], [FIELD.minQty, "-1"], [FIELD.usageLimit, "-2"]] as const) form.set(k, v);
+  const { errors } = readRuleForm(form, ctx);
+  assert.ok(errors.length >= 5, JSON.stringify(errors));
+  assert.deepEqual([...new Set(errors.map((e) => fieldSection(e.field)))].sort(), ["codes", "conditions", "discount", "schedule"]);
 });

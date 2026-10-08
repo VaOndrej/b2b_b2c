@@ -198,8 +198,36 @@ export function describeProSettings(
  * `combines` inside it. `more` is the retired "Další možnosti": old links land
  * on `conditions`.
  */
-export type EditorAnchor = "value" | "target" | "conditions" | "codes" | "schedule" | "pro" | "markets" | "segments" | "combines";
+export type EditorAnchor = "discount" | "value" | "target" | "conditions" | "codes" | "schedule" | "pro" | "markets" | "segments" | "combines";
 export const EDITOR_ANCHOR_ALIASES: Readonly<Record<string, EditorAnchor>> = { more: "conditions" };
+
+/** The editor's five sections, in the page's order, by the anchor of each (the list "Na této stránce" links to them). */
+export const EDITOR_SECTIONS = ["discount", "conditions", "codes", "schedule", "pro"] as const;
+export type EditorSection = (typeof EDITOR_SECTIONS)[number];
+
+/** The section every anchor sits in. */
+export const EDITOR_SECTION_OF: Readonly<Record<EditorAnchor, EditorSection>> = {
+  discount: "discount",
+  value: "discount",
+  target: "discount",
+  conditions: "conditions",
+  codes: "codes",
+  schedule: "schedule",
+  pro: "pro",
+  markets: "pro",
+  segments: "pro",
+  combines: "pro",
+};
+
+function isEditorAnchor(name: string): name is EditorAnchor {
+  return Object.hasOwn(EDITOR_SECTION_OF, name);
+}
+
+/** The section an anchor (or an old alias of one, `#more`) sits in; null for a name the editor does not have. */
+export function editorSectionOf(name: string): EditorSection | null {
+  const anchor = EDITOR_ANCHOR_ALIASES[name] ?? name;
+  return isEditorAnchor(anchor) ? EDITOR_SECTION_OF[anchor] : null;
+}
 
 /** Where a rule not offered in some currency is fixed: the amounts, or the minimum. */
 export function missingValueAnchor(rule: DiscountRule, currencies: readonly string[]): "value" | "conditions" | null {

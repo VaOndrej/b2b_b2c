@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import type { DiscountRule } from "@won/core/discounts/config";
 
-import { needsResync, ruleEditHref, ruleStatus, ruleStatusSummary, statusAnchor, statusLabel, statusText, type RuleStatus } from "../../app/components/model/rule-status.ts";
+import { needsResync, ruleEditHref, ruleStatus, ruleStatusSummary, sectionsToFix, statusAnchor, statusLabel, statusText, type RuleStatus } from "../../app/components/model/rule-status.ts";
 import type { SyncView } from "../../app/components/model/types.ts";
 import { translator } from "../../app/i18n/index.ts";
 
@@ -162,4 +162,33 @@ test("P3: every 'does not run' status names the editor field that fixes it; the 
   assert.equal(ruleEditHref(rule(), { kind: "scheduled", date: "2026-11-27" }, C), "/app/discounts/r1#schedule");
   assert.equal(ruleEditHref(rule({ value: { kind: "fixed", amount: { CZK: 100 } } }), { kind: "scheduled", date: "2026-11-27" }, C), "/app/discounts/r1#value");
   assert.equal(ruleEditHref(rule({ enabled: false, value: { kind: "fixed", amount: { CZK: 100 } } }), { kind: "off" }, C), "/app/discounts/r1");
+});
+
+// Navigace a stav (8 Oct 2026), bod 5: the dots of the editor's list "Na této stránce".
+test("sectionsToFix: the sections that hold a red marker, from the functions the status and the markers read", () => {
+  const C2 = ["CZK", "EUR"];
+  const at = (r: DiscountRule, opts: Parameters<typeof sectionsToFix>[3] = {}) => sectionsToFix(r, ruleStatus(r, { ...ctx("2026-09-28"), currencies: C2, enabledMarkets: ["cz", "sk"], pendingCodes: opts.pendingCodes }), C2, { enabledMarkets: ["cz", "sk"], ...opts });
+  // Nothing to fix: no dot anywhere (a scheduled discount is a fact, not a problem).
+  assert.deepEqual(at(rule()), []);
+  assert.deepEqual(at(rule({ schedule: blackFriday })), []);
+  // An amount missing in one currency, in every currency; the dot is there for a switched-off discount too.
+  const fixed = (amount: Record<string, number>) => rule({ value: { kind: "fixed", amount } });
+  assert.deepEqual(at(fixed({ CZK: 30000 })), ["discount"]);
+  assert.deepEqual(at(fixed({})), ["discount"]);
+  assert.deepEqual(at({ ...fixed({ CZK: 30000 }), enabled: false }), ["discount"]);
+  assert.deepEqual(at(fixed({ CZK: 30000, EUR: 1200 })), []);
+  // A minimum missing in a currency is fixed in Podmínky; with the amount missing too, both sections say so.
+  assert.deepEqual(at(rule({ minimum: { subtotal: { CZK: 100000 } } })), ["conditions"]);
+  assert.deepEqual(at({ ...fixed({ CZK: 30000 }), minimum: { subtotal: { CZK: 100000 } } }), ["discount", "conditions"]);
+  // A code discount without a code — unless codes are about to be generated on save.
+  assert.deepEqual(at(rule({ method: "code" })), ["codes"]);
+  assert.deepEqual(at(rule({ method: "code" }), { pendingCodes: true }), []);
+  assert.deepEqual(at(rule({ method: "code", codes: ["VIP10"] })), []);
+  // Products picked as the target and none selected.
+  assert.deepEqual(at(rule({ target: { kind: "products", productIds: [], variantIds: [] } })), ["discount"]);
+  // A discount that has ended is fixed in its dates; markets that are all off, in the Pro section.
+  assert.deepEqual(at(rule({ schedule: { startsAt: "2026-01-01T00:00:00+01:00", endsAt: "2026-02-01T00:00:00+01:00" } })), ["schedule"]);
+  assert.deepEqual(at(rule({ targeting: { markets: ["de"] } })), ["pro"]);
+  // Always in the page's order.
+  assert.deepEqual(at({ ...rule({ method: "code", targeting: { markets: ["de"] } }), value: { kind: "fixed", amount: {} } }), ["discount", "codes", "pro"]);
 });

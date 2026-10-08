@@ -11,6 +11,7 @@ import type { RuleFormDefaults } from "../model/rule-form";
 import type { CurrencyView } from "../model/types";
 import type { AmountSuggestView } from "../model/markets";
 import { boolAttr } from "../shell/attrs";
+import { openSectionsAround } from "../shell/WonSection";
 import { WON_ATTENTION, WON_FAINT, WON_FONT, WON_MUTED } from "../shell/tokens";
 
 /** What every section needs from the editor: the live draft, the defaults, the currencies, errors. */
@@ -99,12 +100,7 @@ export function jumpToAnchor(raw: string): boolean {
   if (!/^[a-z]+$/.test(id)) return false;
   const el = document.getElementById(id);
   if (!el) return false;
-  for (let node: HTMLElement | null = el; node; node = node.parentElement) {
-    if (node.tagName !== "SECTION") continue;
-    // WonSection's header button (collapsible): the body is hidden, never unmounted.
-    const header = node.querySelector<HTMLButtonElement>(':scope > button[aria-expanded="false"]');
-    header?.click();
-  }
+  openSectionsAround(el);
   window.requestAnimationFrame(() => {
     el.scrollIntoView({ block: "start", behavior: "smooth" });
     const visible = (candidate: Element) => (candidate as HTMLElement).offsetParent !== null && !(candidate as { disabled?: boolean }).disabled;

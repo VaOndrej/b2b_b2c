@@ -137,6 +137,7 @@ export function DiscountSection({
       glyph="tag"
       summary={describeRuleLine(draft, tr, codes, ed.timezone, names)}
       status={status}
+      anchor="discount"
       proof={statusText(status, tr) ? <StatusLine ed={ed} status={status} resync={resync} /> : undefined}
       aside={<CustomerPreview draft={draft} currencyViews={ed.currencyViews} tr={tr} status={status} />}
     >

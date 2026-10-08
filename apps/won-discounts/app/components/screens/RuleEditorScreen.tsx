@@ -13,6 +13,11 @@
 // P5: the name follows the settings until the merchant types their own; the
 // page heading follows the draft name.
 //
+// Next to the sections (above them on a narrow screen) the list "Na této stránce"
+// (shell/SectionNav), as in Nastavení: a red dot at a section that holds something
+// to fix, from the live draft (model/rule-status sectionsToFix — the functions the
+// status sentence and the markers read) and from the fields a refused save names.
+//
 // The form is parsed by model/rule-form.ts — the same function the server action
 // runs — so the summary and the preview can never disagree with what Save stores.
 // The sections live in components/rule-editor/*.
@@ -27,11 +32,12 @@ import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
 
 import { useT } from "../../i18n/context";
 import { pickCollections, pickProducts } from "../model/app-bridge";
-import { ruleName } from "../model/describe";
+import { EDITOR_SECTIONS, ruleName, type EditorSection } from "../model/describe";
 import { marketView } from "../model/markets";
 import { type AmountSuggestView, currencyCodes, currencyViews, marketViews, type MarketNames } from "../model/markets";
 import {
   FIELD,
+  fieldSection,
   readRuleForm,
   recipeRule,
   ruleFormDefaults,
@@ -40,7 +46,8 @@ import {
   type RecipeKey,
   type RuleFormContext,
 } from "../model/rule-form";
-import { ruleStatus } from "../model/rule-status";
+import { ruleStatus, sectionsToFix } from "../model/rule-status";
+import type { MessageKey } from "../../i18n";
 import { ConditionsSection } from "../rule-editor/ConditionsSection";
 import { ScheduleSection } from "../rule-editor/ScheduleSection";
 import type { CodeRuleLimit, CurrencyView, FieldError, GateNoteView, GeneratedBatchView, MarginRuleImpactView, MarketView, RuleSyncMap, SyncView, UiResult } from "../model/types";
@@ -50,6 +57,7 @@ import { ProSection } from "../rule-editor/ProSection";
 import { jumpToAnchor, type EditorView } from "../rule-editor/parts";
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
+import { SectionNav } from "../shell/SectionNav";
 
 export interface RuleEditorScreenProps {
   /** The manual rates the amount fields suggest with (návrh 2). Absent = no suggestions. */
@@ -170,6 +178,15 @@ function countsAsCodeRule(rule: DiscountRule | null, ended: boolean): boolean {
 }
 
 const DELETE_DIALOG = "won-delete-dialog";
+
+/** The sections' names in the list "Na této stránce": the titles their headers carry. */
+const SECTION_TITLE: Readonly<Record<EditorSection, MessageKey>> = {
+  discount: "editor.section.discount",
+  conditions: "editor.section.conditions",
+  codes: "editor.section.apply",
+  schedule: "editor.schedule.title",
+  pro: "editor.pro.title",
+};
 
 export function RuleEditorScreen(props: RuleEditorScreenProps) {
   const { mode, rule, recipe, currencies, timezone, today, sync, ruleSync, pro, readOnly, markets, otherRules, codeRules, result } = props;
@@ -365,6 +382,12 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
     data.set("replaceUnreadable", "1");
     submit(data, { method: "post" });
   };
+  // The list of sections: a red dot where the live draft has something to fix, or a refused save named a field.
+  const toFix = new Set<EditorSection | null>([
+    ...sectionsToFix(draft, status, codes, { pendingCodes: !!pendingBatch, enabledMarkets: markets.map((m) => m.handle) }),
+    ...errors.map((e) => fieldSection(e.field)),
+  ]);
+  const sections = EDITOR_SECTIONS.map((section) => ({ anchor: section, label: t(SECTION_TITLE[section]), ...(toFix.has(section) ? { state: "attention" as const } : {}) }));
   // P5: the heading follows the draft name (a new rule without one yet: "Nová sleva").
   const heading = mode === "new" && !draft.name.trim() ? t("editor.titleNew") : ruleName(draft, tr);
 
@@ -382,6 +405,7 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
       <Form method="post" ref={formRef} data-save-bar>
         <input type="hidden" name="intent" value="save" />
         {ruleVersion ? <input type="hidden" name={FIELD.ruleVersion} value={ruleVersion} /> : null}
+        <SectionNav label={t("common.onThisPage")} items={sections}>
         <s-stack key={formKey} direction="block" gap="base">
           {readOnly ? (
             <s-banner tone="warning" heading={t("common.readOnly.heading")}>
@@ -427,6 +451,7 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
             </s-button>
           </div>
         </s-stack>
+        </SectionNav>
       </Form>
 
       {mode === "edit" ? (

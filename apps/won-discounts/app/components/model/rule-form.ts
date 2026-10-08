@@ -30,7 +30,7 @@ import { shopDayStart } from "@won/core/discounts/function-payload";
 import { fromMinorUnits, toMinorUnits } from "@won/core/discounts/money";
 
 import { translator, type Locale } from "../../i18n";
-import { autoRuleName, ruleDays, writtenDays } from "./describe";
+import { autoRuleName, ruleDays, writtenDays, type EditorSection } from "./describe";
 import { COLLECTION_GID, PRODUCT_GID, VARIANT_GID, splitCodes } from "./ids";
 import type { FieldError } from "./types";
 
@@ -94,6 +94,24 @@ export const FIELD = {
   /** A stored value in a currency whose market is off: kept unless listed here (§14a). */
   dropCurrency: "dropCurrency",
 } as const;
+
+const CONDITION_FIELDS: readonly string[] = [FIELD.minQty, FIELD.minScope];
+const APPLY_FIELDS: readonly string[] = [FIELD.method, FIELD.codes, FIELD.usageLimit, FIELD.oncePerCustomer, FIELD.dropBatch, FIELD.dropBatchCode];
+const SCHEDULE_FIELDS: readonly string[] = [FIELD.startDate, FIELD.endDate];
+const PRO_FIELDS: readonly string[] = [FIELD.markets, FIELD.combinesWith, FIELD.dropSegments, FIELD.dropMarkets, FIELD.dropCombines];
+
+/**
+ * The editor section a form field sits in (a refused save marks the section of each field it complains about).
+ * Null: a field of the form as a whole (the version token). Everything else not listed is in the first section.
+ */
+export function fieldSection(field: string): EditorSection | null {
+  if (field === FIELD.ruleVersion) return null;
+  if (field.startsWith(FIELD.minimum("")) || CONDITION_FIELDS.includes(field)) return "conditions";
+  if (field.startsWith("batch") || APPLY_FIELDS.includes(field)) return "codes";
+  if (SCHEDULE_FIELDS.includes(field)) return "schedule";
+  if (PRO_FIELDS.includes(field)) return "pro";
+  return "discount";
+}
 
 /**
  * What a merchant typed ("100", "100,50", "1 000.5") in `currency` → minor units
