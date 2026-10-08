@@ -23,13 +23,14 @@ import { ACCENT_PRESETS, type AccentPreset } from "@won/core/discounts/config";
 import type { DiscountRule, TierSet, WonDiscountsConfig } from "@won/core/discounts/config";
 import { explainGate, gateConfigForPlan, type ProCapability } from "@won/core/discounts/plan-gate";
 
-import { presetOf, readAppearanceForm } from "../../components/model/appearance";
+import { cardBlockAddUrl } from "../../components/model/embed";
+import { presetOf, readAppearanceForm } from "../../components/model/looks";
 import { currenciesWithoutAmount, currencyCodes, currencyViews, enabledCurrencies } from "../../components/model/markets";
 import type { FormDataLike } from "../../components/model/rule-form";
 import { readTiersForm, tierPayloadUse, tierSetToConfig, tierSetView, TIERS_FIELD, TIERS_INTENT } from "../../components/model/tiers";
 import { tiersGlobalStatus, tiersSetsStatus } from "../../components/model/module-status";
 import type { AppearancePresetView, FieldError, GateNoteView, SyncView, TierSetView, TiersOverviewView, TiersScreenData, UiResult } from "../../components/model/types";
-import { previewLookOf, withAppearancePreset } from "./appearance.server";
+import { lookView, previewLookOf, withAppearancePreset } from "./looks.server";
 import { loadConfig, type LoadedConfig } from "../config.server";
 import { MAX_COLLECTION_PRODUCTS } from "../sync/products";
 import { tierProductCounts } from "../sync/storefront";
@@ -162,6 +163,8 @@ export async function loadTiersScreen(ctx: ShopCtx, opts: { scopes: string; fres
     plan,
     shopCurrency: shopContext.currencyCode ?? "",
     configVersion: loaded.version ?? null,
+    look: lookView(stored, "tiers"),
+    cards: { on: stored.storefront.cardPricesEnabled === true, blockUrl: cardBlockAddUrl(ctx.shop, ctx.apiKey) },
     currencies: currencyViews(stored.markets, { shopCurrency: shopContext.currencyCode, marketNames }),
     suggest: await readAmountSuggest(graphql, ctx.shop, opts.scopes, shopContext.currencyCode),
     ...tiersScreenFacts(stored, { plan, locale: ctx.locale, titles, syncable }),

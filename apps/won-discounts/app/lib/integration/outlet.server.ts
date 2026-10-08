@@ -484,7 +484,7 @@ export async function writeOutletStorefront(deps: OutletDeps, productIds: readon
   const settings = await outletSettings(deps);
   for (const productId of new Set(productIds)) {
     const runs = await deps.db.outletRun.findMany({ where: { shop: deps.shop, productId, status: "active" } });
-    const value = outletStorefrontValue(settings.display, runs.map((r) => ({ variantId: r.variantId, left: outletLeft(r), showBadge: r.showBadge })));
+    const value = outletStorefrontValue(settings.display, runs.map((r) => ({ variantId: r.variantId, left: outletLeft(r), showBadge: r.showBadge, endsAt: r.endsAt })));
     try {
       if (value) {
         const data: { metafieldsSet: { userErrors: UserErrorLike[] } } = await transport.call("metafieldsSet", {

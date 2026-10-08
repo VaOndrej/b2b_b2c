@@ -25,7 +25,7 @@ export function TiersBlockSection({
   about,
 }: {
   block: TiersBlockView;
-  /** Absent: the page does not know it (Vzhled). */
+  /** Absent: the page does not know it. */
   storefront?: StorefrontSyncView;
   product: PreviewProductView | null;
   /** Under a view tile that already says where the table stands (§19e): what the section is for, shown instead of that sentence. */

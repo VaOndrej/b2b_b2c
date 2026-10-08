@@ -746,9 +746,8 @@ test("F12 covers the look when the page submits it: a look changed elsewhere mea
   assert.equal(first.ok, true, JSON.stringify(first));
   await syncIdle(shop);
   const opened = (await loadConfig(db.prisma, shop)).version!;
-  // Vzhled (another tab) changes the look.
-  const { saveAppearance } = await import("../../app/lib/integration/appearance.server.ts");
-  const other = await saveAppearance(ctx, "tiles", { configVersion: opened });
+  // Another tab changes the look (the page's own switcher).
+  const other = await tiersAction(ctx, globalForm([[F.configVersion, opened], [F.preset, "tiles"]]));
   assert.equal(other.ok, true, JSON.stringify(other));
   await syncIdle(shop);
   const stale = await tiersAction(ctx, globalForm([[F.configVersion, opened], [F.preset, "chips"]]));
@@ -757,7 +756,7 @@ test("F12 covers the look when the page submits it: a look changed elsewhere mea
 });
 
 test("the preview gets what the config adds: the merchant's storefront texts on any plan, the custom look only on Pro (BILL-1)", async () => {
-  const { previewLookOf } = await import("../../app/lib/integration/appearance.server.ts");
+  const { previewLookOf } = await import("../../app/lib/integration/looks.server.ts");
   await store((c) => ({
     ...c,
     storefront: { ...c.storefront, custom: { vars: { accent: "#0a7d4f" }, css: ".won-tiers__heading{color:red}" } },

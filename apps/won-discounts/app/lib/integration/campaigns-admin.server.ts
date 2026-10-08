@@ -37,6 +37,7 @@ import { loadConfig } from "../config.server";
 import { formatShopTime } from "../native/copy";
 import { loadShopSyncFacts } from "../sync/sync-state.server";
 import { shopLocalDateTime } from "../sync/sync.server";
+import { lookView } from "./looks.server";
 import { graphqlOf, nowOf, type ShopCtx } from "./context.server";
 import { readSaveOptions, saveConfigSection } from "./settings.server";
 import { campaignsStatus } from "../../components/model/module-status";
@@ -238,6 +239,7 @@ export async function loadCampaignsScreen(ctx: ShopCtx, opts: { edit?: string | 
     // The same function, on the same view, as the home tile (model/module-status.ts).
     status: campaignsStatus(campaignsOverviewOf(config.campaigns, { now, locale: ctx.locale, plan, finishing }), plan, sync),
     configVersion: loaded.version ?? null,
+    look: lookView(loaded.config, "campaign"),
     today: now.slice(0, 10),
     nowTime: now.slice(11, 16),
     timezone,

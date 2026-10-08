@@ -60,6 +60,7 @@ Set them in the admin (Look → Custom look) or in your CSS on the root:
 - `.won-cart__warn`
 - `.won-ms`
 - `.won-ms--bar`
+- `.won-ms--compact`
 - `.won-ms__list`
 - `.won-ms__text`
 - `.won-ms__track`
@@ -67,6 +68,7 @@ Set them in the admin (Look → Custom look) or in your CSS on the root:
 - `.won-outlet__badge`
 - `.won-outlet__left`
 - `.won-outlet__row`
+- `.won-outlet__time`
 - `.won-outlet__variant`
 - `.won-progress`
 - `.won-progress--center`

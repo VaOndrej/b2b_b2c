@@ -1,3 +1,5 @@
+// The screens preview storefront looks with the extension's own CSS (`?raw` imports).
+import "../ui/support/raw-import.ts";
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 

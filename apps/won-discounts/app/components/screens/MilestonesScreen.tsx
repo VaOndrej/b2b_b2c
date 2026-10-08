@@ -28,6 +28,7 @@ import { amountKeyCurrency, currencyExponent } from "@won/core/discounts/money";
 
 import type { MessageKey } from "../../i18n";
 import { useT } from "../../i18n/context";
+import { LookSection } from "../looks/LookSection";
 import { embedPlacement, placementOf } from "../model/embed";
 import { suggestedAmount } from "../model/markets";
 import { amountInput, amountsText, emptyStepView, liveAmounts, MILESTONES_INTENT, milestoneRowsMax, MS_FIELD, overLimitColumns, rewardText, stepMissingColumns, stepSummary } from "../model/milestones";
@@ -731,6 +732,14 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
           </div>
         </s-stack>
       </Form>
+      {/* The ladder's look: its own form, so outside the page's (the same view as "Na webu"). */}
+      {props.look ? (
+        <div style={{ marginTop: 16 }}>
+          <ViewPanel id="web" view={view}>
+            <LookSection look={props.look} plan={plan} configVersion={configVersion} embed={props.embed} />
+          </ViewPanel>
+        </div>
+      ) : null}
     </s-page>
   );
 }

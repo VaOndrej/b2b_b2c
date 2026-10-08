@@ -28,6 +28,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Form, useSubmit } from "react-router";
 
 import { useT } from "../../i18n/context";
+import { CardPricesSection } from "../looks/CardPricesSection";
+import { LookSection } from "../looks/LookSection";
 import { pickCollections, pickProducts } from "../model/app-bridge";
 import { amountLabels, currencyCodes } from "../model/markets";
 import { freeGlobalSetId, newTierSetId, readTiersForm, tierPayloadUse, tierSetToConfig, TIERS_FIELD, TIERS_INTENT, tierSummary, blockText } from "../model/tiers";
@@ -40,11 +42,11 @@ import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
 import { useView, ViewPanel } from "../shell/views";
 import { PlanBadge } from "../shell/PlanBadge";
 import { DiscountsSubNav } from "../shell/SubNav";
-import { WonSection } from "../shell/WonSection";
+import { RowNote, WonSection } from "../shell/WonSection";
 import { ProTierSets, TIERS_CAPACITY_ANCHOR } from "../tiers/ProTierSets";
 import { TierSetEditor } from "../tiers/TierSetEditor";
 import { TiersBlockSection } from "../tiers/TiersBlockSection";
-import { TiersPreview } from "../tiers/TiersPreview";
+import { TiersPreview, TiersPreviewStyles } from "../tiers/TiersPreview";
 
 const F = TIERS_FIELD;
 
@@ -295,9 +297,11 @@ export function TiersScreen(props: TiersScreenProps) {
                   marginOn={marginOn}
                   embed={props.embed ?? null}
                 />
-                {/* Pro: colours, corners and the shop's own CSS live on Vzhled; the preview above already shows them. */}
+                {/* Pro: colours, corners and the shop's own CSS are in "Tabulka na webu" below; the preview above already shows them. */}
                 <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-                  <s-link href="/app/appearance#custom">{t("tiers.preview.customLink")}</s-link>
+                  <s-link href="#look-tiers" onClick={() => setView("table")}>
+                    {t("tiers.preview.customLink")}
+                  </s-link>
                   {pro ? null : <PlanBadge tier="pro" locked href="/app/plan" />}
                 </div>
               </div>
@@ -343,6 +347,27 @@ export function TiersScreen(props: TiersScreenProps) {
           </div>
         </s-stack>
       </Form>
+      {/* The table's look beyond the switcher in its preview: its own forms, so outside the page's (the same view as "Tabulka na webu"). */}
+      <div style={{ marginTop: 16 }}>
+        <ViewPanel id="table" view={view}>
+          {props.look ? (
+            <LookSection
+              look={props.look}
+              plan={plan}
+              configVersion={configVersion}
+              embed={props.embed}
+              preview={(customCss) => (
+                <>
+                  <TiersPreviewStyles customCss={customCss || null} />
+                  <TiersPreview set={hasTiers ? globalDraft : null} preset={preview.preset} tokens={preview.tokens} product={preview.product} currency={shopCurrency} bare withStyles={false} extras={{ ...(preview.look ?? { texts: {} }), customCss: customCss || null }} />
+                  <RowNote>{t("looks.tiers.where")}</RowNote>
+                </>
+              )}
+            />
+          ) : null}
+          {props.cards ? <CardPricesSection cardPrices={props.cards.on} cardBlockUrl={props.cards.blockUrl} configVersion={configVersion} /> : null}
+        </ViewPanel>
+      </div>
     </s-page>
   );
 }

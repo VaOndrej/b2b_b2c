@@ -19,7 +19,6 @@ import { buildOverviewProps, OverviewScreen, type OverviewScreenProps } from "..
 import { PlanScreen, type PlanScreenProps } from "../components/screens/PlanScreen";
 import { buildRuleEditorProps, RuleEditorScreen, type RuleEditorScreenProps } from "../components/screens/RuleEditorScreen";
 import { SettingsScreen, type SettingsScreenProps } from "../components/screens/SettingsScreen";
-import { AppearanceScreen, type AppearanceScreenProps } from "../components/screens/AppearanceScreen";
 import { TranslationsScreen, type TranslationsScreenProps } from "../components/screens/TranslationsScreen";
 import { TiersScreen, type TiersScreenProps } from "../components/screens/TiersScreen";
 import { MilestonesScreen, type MilestonesScreenProps } from "../components/screens/MilestonesScreen";
@@ -72,7 +71,6 @@ import {
   devTryCartPlanMargin,
   DEV_TRY_CART_MARGIN_LINES,
   DEV_TIERS_FIXTURE,
-  devAppearanceScreen,
   devTranslationsScreen,
   devPlanScreen,
   devSettingsScreen,
@@ -126,8 +124,9 @@ import {
 //   /dev/preview/translations    Překlady: the default language and Slovak with texts changed, Free by default,
 //                                 ?plan=pro; ?state=empty | no-scope (the shop's languages cannot be read) |
 //                                 downgraded (a third stored language) | import (a planned CSV import, Pro)
-//   /dev/preview/appearance      Vzhled: the four looks on the theme; ?state=empty (an example set) | custom |
-//                                 issue, ?theme=dawn
+//                                Every element's look is on its module's page: tiers ?state=custom | issue (the
+//                                 table's Pro look, card prices); rewards / outlet / campaigns ?look=<a ready-made
+//                                 look> | custom | issue
 //   /dev/preview/rewards         Milníky: Free by default (the third stored step is past the limit), ?plan=pro;
 //                                 ?state=discounts (two discount steps too) | empty | embed-draft | embed-unknown |
 //                                 embed-no-scope; ?result=saved | invalid | too-many | limit-free; ?start=shipping
@@ -179,7 +178,6 @@ export const HARNESS_SCREENS = [
   "rewards",
   "outlet",
   "campaigns",
-  "appearance",
   "translations",
 ] as const;
 export type HarnessScreen = (typeof HARNESS_SCREENS)[number];
@@ -507,10 +505,10 @@ const screenProps = ({ request }: LoaderFunctionArgs) => {
       };
     case "rewards":
       // ?start=shipping: opened from the setup guide (a first step — free shipping — with its amounts prefilled, N1).
-      return { ...devRewardsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, shared: q.get("markets") === "shared" }), result: devRewardsResult(q.get("result")), start: q.get("start") === "shipping" ? ("shipping" as const) : null, suggest: devSuggest(q) };
+      return { ...devRewardsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, shared: q.get("markets") === "shared", look: q.get("look") }), result: devRewardsResult(q.get("result")), start: q.get("start") === "shipping" ? ("shipping" as const) : null, suggest: devSuggest(q) };
     case "campaigns":
       return {
-        ...devCampaignsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, edit: q.get("edit") }),
+        ...devCampaignsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, edit: q.get("edit"), look: q.get("look") }),
         result: devCampaignsResult(q.get("result")),
         suggest: devSuggest(q),
       };
@@ -518,11 +516,9 @@ const screenProps = ({ request }: LoaderFunctionArgs) => {
       // Přehledy (MVP 7): Free by default (?plan=pro), ?state=empty (no order yet), ?state=unavailable (no access to orders).
       return devAnalyticsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale });
     case "outlet":
-      return { ...devOutletScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, orders: q.get("orders") === "on" }), result: devOutletResult(q.get("result")) };
+      return { ...devOutletScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, orders: q.get("orders") === "on", look: q.get("look") }), result: devOutletResult(q.get("result")) };
     case "translations":
       return devTranslationsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale });
-    case "appearance":
-      return devAppearanceScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, theme: q.get("theme") });
     case "margin":
       return {
         ...devMarginScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, focusRuleId: q.get("rule") }),
@@ -613,9 +609,6 @@ export default function DevPreview() {
       break;
     case "translations":
       content = <TranslationsScreen {...(data as TranslationsScreenProps)} result={submitted} />;
-      break;
-    case "appearance":
-      content = <AppearanceScreen {...(data as AppearanceScreenProps)} result={submitted} />;
       break;
     case "margin":
       content = <MarginScreen {...(data as MarginScreenProps)} result={submitted ?? (data as MarginScreenProps).result} />;

@@ -22,6 +22,7 @@ import type { GateNoteView, RewardsOverviewView, RewardsScreenData, SyncView, Ui
 import { loadConfig } from "../config.server";
 import { loadAdminSignals } from "../ui-actions.server";
 import { graphqlOf, type ShopCtx } from "./context.server";
+import { lookView } from "./looks.server";
 import { readSaveOptions, saveConfigSection } from "./settings.server";
 import { ctxPlan, loadSyncView } from "./sync-status.server";
 import { readAmountSuggest, readMarketNames, readShopContext, readThemeLook } from "./themes.server";
@@ -106,6 +107,7 @@ export async function loadRewardsScreen(ctx: ShopCtx, opts: { scopes: string; fr
   return {
     plan,
     configVersion: loaded.version ?? null,
+    look: lookView(stored, "milestones"),
     currencies: currencyViews(stored.markets, { shopCurrency: shopContext.currencyCode, marketNames }),
     ...rewardsScreenFacts(stored, { plan, locale: ctx.locale, titles }),
     status: rewardsSectionStatus(stored, plan, shopContext.currencyCode || stored.markets.find((m) => m.enabled)?.currency || "", sync),

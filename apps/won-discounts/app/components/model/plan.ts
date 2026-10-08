@@ -46,7 +46,7 @@ export const PRO_FEATURES: readonly { label: MessageKey; href: string }[] = [
   { label: "plan.pro.feature.campaigns", href: "/app/campaigns" },
   { label: "plan.pro.feature.margin", href: "/app/margin" },
   { label: "plan.pro.feature.analytics", href: "/app/analytics" },
-  { label: "plan.pro.feature.appearance", href: "/app/appearance" },
+  { label: "plan.pro.feature.appearance", href: "/app/tiers#look-tiers" },
   { label: "plan.pro.feature.tryCart", href: "/app/try-cart" },
 ];
 

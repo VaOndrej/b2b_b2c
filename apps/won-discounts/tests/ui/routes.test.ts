@@ -100,7 +100,7 @@ for (const [file, params] of [
   ["app.try-cart.tsx", {}],
   ["app.margin.tsx", {}],
   ["app.tiers.tsx", {}],
-  ["app.appearance.tsx", {}],
+  ["app.looks.tsx", {}],
   ["app.translations.tsx", {}],
   ["app.settings.tsx", {}],
 ] as const) {

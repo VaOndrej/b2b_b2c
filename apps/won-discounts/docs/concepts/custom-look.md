@@ -9,7 +9,7 @@ app_version: MVP7
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-10-04
+updated: 2026-10-08
 keywords: [custom look, custom css, colours, corner radius, css variables, ai, design, vlastní vzhled, vlastní css, barvy]
 summary: On Pro you can set colours, the corner radius and your own CSS for the Won blocks; the app confines every rule to the blocks, so the rest of the theme never changes.
 ---
@@ -18,26 +18,27 @@ summary: On Pro you can set colours, the corner radius and your own CSS for the 
 
 ## What you can change
 
-On **Look → Custom look** (Pro):
+Each part on your store has its own custom look (Pro), next to its ready-made looks: the quantity table on
+**Quantity discounts**, the ladder on **Milestones**, the sale badge on **Clearance**, the banner on **Campaigns**.
 
 - **Accent colour**, **line colour**, **background tint** — as `#rgb` or `#rrggbb`. Empty means the theme's own.
 - **Corner radius** in pixels, 0–32.
-- **Custom CSS** — your own rules for the quantity discount table, the cart panel, the sale badge and the line on
-  product cards.
+- **Custom CSS** — your own rules for that one part.
 
-One of the four ready-made looks still decides the layout; the custom look is applied on top of it.
+The ready-made look still decides the layout; the custom look is applied on top of it.
 
 ## Why it cannot break your theme
 
-Every rule you write is placed **under the Won blocks** before it reaches your store: `.won-tiers__row { … }`
-only ever matches a row of the Won table, and `:root`, `html` or `body` mean the block itself. CSS that could
+Every rule you write is placed **under its own part** before it reaches your store: `.won-tiers__row { … }`
+only ever matches a row of the Won table, and `:root`, `html` or `body` mean the part itself. A rule written for
+the ladder cannot change the table, and the other way round. CSS that could
 reach outside or load something is refused when you save, with the reason: `url(...)`, `@import`, `@font-face`,
 `@keyframes`, a backslash, `<`, unbalanced braces. `@media`, `@supports` and `@container` are allowed. At most
 4,000 characters. There is no custom HTML or JavaScript.
 
 ## Having an AI write it
 
-**Copy the brief for an AI** copies a ready prompt with the classes and variables of the blocks. Add what the look
+**Copy the brief for an AI** copies a ready prompt with the classes and variables of that one part. Add what the look
 should be, give it to your AI, and paste the CSS it returns into **Custom CSS**. The full contract (classes, data
 markers, events) is in [storefront-contract](../reference/storefront-contract.generated.md).
 

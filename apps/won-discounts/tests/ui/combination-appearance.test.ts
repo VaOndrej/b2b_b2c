@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { APPEARANCE_PRESETS, DEFAULT_CONFIG } from "@won/core/discounts/config";
 
-import { APPEARANCE_FIELD, customLookSet, isAppearancePreset, liveCustomLookCss, presetLabel, readAppearanceForm } from "../../app/components/model/appearance.ts";
+import { LOOK_FIELD, customLookSet, isAppearancePreset, liveCustomLookCss, presetLabel, readAppearanceForm } from "../../app/components/model/looks.ts";
 import {
   COMBINATION_FIELD,
   COMBINATION_KEYS,
@@ -65,13 +65,13 @@ test("combination: a sentence per switch and position, and a state line of what 
 
 test("appearance: exactly the core presets (K7), each with a label; the form takes only one of them", () => {
   assert.deepEqual([...APPEARANCE_PRESETS], ["default", "highlight", "chips", "tiles"]);
-  assert.equal(APPEARANCE_FIELD.preset, "preset");
+  assert.equal(LOOK_FIELD.preset, "preset");
   for (const preset of APPEARANCE_PRESETS) {
     assert.ok(isAppearancePreset(preset));
-    assert.doesNotMatch(presetLabel(preset, cs), /appearance\./);
+    assert.doesNotMatch(presetLabel("tiers", preset, cs), /appearance\./);
   }
-  assert.equal(presetLabel("default", cs), "Tabulka");
-  assert.equal(presetLabel("tiles", en), "Tiles");
+  assert.equal(presetLabel("tiers", "default", cs), "Tabulka");
+  assert.equal(presetLabel("tiers", "tiles", en), "Tiles");
   assert.deepEqual(readAppearanceForm(form([["preset", "chips"]])), { ok: true, preset: "chips" });
   assert.deepEqual(readAppearanceForm(form([["preset", "neon"]])), { ok: false, errors: [{ field: "preset", key: "appearance.error.preset" }] });
   assert.equal(isAppearancePreset("neon"), false);
@@ -92,16 +92,18 @@ test("plan 2026-10-06: a new shop starts with the highlighted look", () => {
   assert.equal(DEFAULT_CONFIG.storefront.appearancePreset, "highlight");
 });
 
-test("plan 2026-10-06: Vzhled follows its form — the custom look as the storefront would get it, only values a save would take", () => {
+test("plan 2026-10-06: a look's section follows its form — the custom look as the storefront would get it, under the element's own root, only values a save would take", () => {
   const values = (map: Record<string, string>) => (field: string) => map[field] ?? "";
   assert.equal(customLookSet(values({})), false);
-  assert.equal(customLookSet(values({ [APPEARANCE_FIELD.radius]: "4" })), true);
-  assert.equal(customLookSet(values({ [APPEARANCE_FIELD.css]: "  " })), false);
-  assert.equal(liveCustomLookCss(values({})), "");
+  assert.equal(customLookSet(values({ [LOOK_FIELD.radius]: "4" })), true);
+  assert.equal(customLookSet(values({ [LOOK_FIELD.css]: "  " })), false);
+  assert.equal(liveCustomLookCss("tiers", values({})), "");
   assert.equal(
-    liveCustomLookCss(values({ [APPEARANCE_FIELD.accent]: "#0A7D4F", [APPEARANCE_FIELD.radius]: "4", [APPEARANCE_FIELD.css]: ".won-tiers__heading{color:red}" })),
-    ":is(.won-tiers,.won-cart,.won-cart-slot,.won-outlet,.won-progress,.won-campaign,.won-topbar){--won-tiers-accent:#0a7d4f;--won-tiers-radius:4px}:is(.won-tiers,.won-cart,.won-cart-slot,.won-outlet,.won-progress,.won-campaign,.won-topbar) .won-tiers__heading{color:red}",
+    liveCustomLookCss("tiers", values({ [LOOK_FIELD.accent]: "#0A7D4F", [LOOK_FIELD.radius]: "4", [LOOK_FIELD.css]: ".won-tiers__heading{color:red}" })),
+    ".won-tiers{--won-tiers-accent:#0a7d4f;--won-tiers-radius:4px}.won-tiers .won-tiers__heading{color:red}",
   );
+  // The same fields in the ladder's section stay inside the ladder.
+  assert.equal(liveCustomLookCss("milestones", values({ [LOOK_FIELD.accent]: "#0A7D4F", [LOOK_FIELD.css]: ".won-tiers{display:none}" })), ".won-ms{--won-tiers-accent:#0a7d4f}.won-ms .won-tiers{display:none}");
   // What the server would refuse never reaches the preview: a colour that is not a hex, a radius out of range, CSS that cannot be scoped.
-  assert.equal(liveCustomLookCss(values({ [APPEARANCE_FIELD.accent]: "red", [APPEARANCE_FIELD.radius]: "99", [APPEARANCE_FIELD.css]: ".a{background:url(x)}" })), "");
+  assert.equal(liveCustomLookCss("tiers", values({ [LOOK_FIELD.accent]: "red", [LOOK_FIELD.radius]: "99", [LOOK_FIELD.css]: ".a{background:url(x)}" })), "");
 });

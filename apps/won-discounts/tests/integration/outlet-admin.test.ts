@@ -1,3 +1,5 @@
+// The screens preview storefront looks with the extension's own CSS (`?raw` imports).
+import "../ui/support/raw-import.ts";
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 import { createElement, type ReactElement, type ReactNode } from "react";
@@ -8,7 +10,6 @@ import { loadConfig } from "../../app/lib/config.server.ts";
 import type { ShopCtx } from "../../app/lib/integration/context.server.ts";
 import { loadOutletOverview, loadOutletScreen, outletAction } from "../../app/lib/integration/outlet-admin.server.ts";
 import { OUTLET_FIELD as F, OUTLET_INTENT } from "../../app/components/model/outlet.ts";
-import { OutletScreen } from "../../app/components/screens/OutletScreen.tsx";
 import { devOutletScreen } from "../../app/lib/dev-harness.server.ts";
 import { LocaleProvider } from "../../app/i18n/context.tsx";
 
@@ -17,6 +18,9 @@ import { WON_AMBER } from "../../app/components/shell/tokens.ts";
 import { FakeShopify } from "../lib/sync/fake-shopify.ts";
 import { createTestDatabase, type TestDatabase } from "../lib/test-db.ts";
 import { APP_KEY, formOf, quiet, realSync, renderPage, text } from "./helpers.ts";
+
+// Loaded here, not imported above: a static import is linked before the `?raw` hook above is registered.
+const { OutletScreen } = await import("../../app/components/screens/OutletScreen.tsx");
 
 // MVP 5 contract O10: the Výprodej admin module — the forms parsed on the server (SEC-1), Pro checked there
 // (BILL-1, A6), field errors on the form's own fields, the module settings saved like every admin change.

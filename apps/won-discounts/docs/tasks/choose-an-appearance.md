@@ -1,5 +1,5 @@
 ---
-title: Choose an appearance for the quantity-tiers block
+title: Choose the look of each part on your store
 slug: choose-an-appearance
 layer: task
 feature: tiers
@@ -9,31 +9,37 @@ app_version: MVP3
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-10-01
-keywords: [choose appearance, block style, table, highlight, chips, tiles, preset, vzhled bloku]
-summary: Pick one of four ready-made looks for the quantity-tiers block; colors and fonts follow the theme automatically.
+updated: 2026-10-08
+keywords: [choose appearance, look, block style, table, highlight, chips, tiles, checklist, countdown, strip, card, highlight colour, preset, vzhled]
+summary: The quantity table, the Milestones ladder, the sale badge and the campaign banner each have their own look, set on the page they belong to.
 ---
 
-# Choose an appearance for the quantity-tiers block
+# Choose the look of each part on your store
 
-1. Open **Appearance**.
-2. Pick a preset. The preview uses your active theme's own colors and fonts,
-   so what you see is what shows on the storefront.
-3. Save.
+Each part has its own look, set on the page it belongs to. A look is never shared between them.
 
-## The presets
+| Part on your store | Where you set it | Ready-made looks |
+|---|---|---|
+| Quantity table | **Quantity discounts**, in the preview | Table, Highlighted tier, Chips, Tiles |
+| Milestones ladder | **Milestones → Milestones in the store** | Track with marks, Checklist, One sentence |
+| Sale badge | **Clearance → How a sale works** | Badge, Badge with a countdown, Strip |
+| Campaign banner | **Campaigns → The campaign on the store** | Banner with a countdown, Strip, Card |
 
-| Preset | What it looks like |
-|---|---|
-| `default` | A clear table of the tiers |
-| `highlight` | A table with the tier that applies clearly highlighted |
-| `chips` | Compact chips in a row; takes little space |
-| `tiles` | Tiles side by side; easy to read on a phone |
+1. Open the page and find the look. Every look is shown as a live preview.
+2. Pick a look and a **highlight colour**. "From the store" keeps your store's own colour.
+3. Save. The table's look is saved with its tiers; the other looks have their own **Save the look** button.
 
-Colors and the font always come from the active theme; only the layout
-changes between presets. A custom, fully own-designed look is a Pro feature
-planned for a later version.
+Colours and the font come from your store; a look changes the layout. A colour other than your store's shows
+only while Won is switched on in your store's design.
 
-Exact preset list (generated from code):
-[../reference/limits.generated.md](../reference/limits.generated.md#block-appearances).
-Background: [../concepts/quantity-tiers.md](../concepts/quantity-tiers.md).
+## Milestones
+
+**Checklist** ticks the steps the cart has reached and leaves the others without a tick. You can add a short
+flash at the moment a step is reached; a customer whose device reduces motion sees none.
+
+## Countdown
+
+**Badge with a countdown** and **Strip** show the time left to the end of a sale that has an end date.
+
+Own colours and CSS for each part are on Pro: [custom-look](../concepts/custom-look.md).
+The table's looks (generated from code): [../reference/limits.generated.md](../reference/limits.generated.md#block-appearances).

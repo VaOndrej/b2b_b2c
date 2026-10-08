@@ -105,7 +105,7 @@ test("the look switcher is a labelled radio group: with a field name it is submi
 
 test("the preview renders what the config adds: the Pro custom look confined to the preview, and the merchant's storefront texts", async () => {
   const { customLookCss } = await import("@won/core/discounts/custom-look");
-  const customCss = customLookCss({ vars: { accent: "#0a7d4f", radius: 4 }, css: ".won-tiers__heading { text-transform: uppercase; }" });
+  const customCss = customLookCss({ vars: { accent: "#0a7d4f", radius: 4 }, css: ".won-tiers__heading { text-transform: uppercase; }" }, ".won-tiers");
   const html = await preview({
     set: SET,
     preset: "default",
@@ -154,41 +154,31 @@ test("'Celý košík' on Free: the note says what the plan does instead only whe
 });
 
 test("the look cards: each radio is named by its look only and described by its detail (review fix 12)", async () => {
-  const { AppearanceScreen } = await import("../../app/components/screens/AppearanceScreen.tsx");
+  const { LookSection } = await import("../../app/components/looks/LookSection.tsx");
   const { LocaleProvider } = await import("../../app/i18n/context.tsx");
   const { createStaticHandler, createStaticRouter, StaticRouterProvider } = await import("react-router");
   const { renderToString } = await import("react-dom/server");
   const element = createElement(
     LocaleProvider,
     { locale: "cs" } as ComponentProps<typeof LocaleProvider>,
-    createElement(AppearanceScreen, {
+    createElement(LookSection, {
       plan: "free",
       configVersion: null,
-      preset: "chips",
-      tokens: null,
-      sample: null,
-      product: null,
-      block: { state: "no_scope" },
-      embed: { state: "on", activateUrl: null },
-      cardPrices: false,
-      custom: { accent: "", line: "", tint: "", radius: "", css: "" },
-      customIssue: null,
-      cardBlockUrl: null,
-      aiPrompt: "",
+      look: { element: "milestones", presets: ["track", "checklist", "sentence"], preset: "checklist", accent: "theme", blink: false, custom: { accent: "", line: "", tint: "", radius: "", css: "" }, customIssue: null, aiPrompt: "" },
     }),
   );
   const handler = createStaticHandler([{ path: "/", Component: () => element }]);
   const context = await handler.query(new Request("http://localhost/"));
   if (context instanceof Response) throw new Error("render");
   const html = renderToString(createElement(StaticRouterProvider, { router: createStaticRouter(handler.dataRoutes, context), context }));
-  const radios = [...html.matchAll(/<input type="radio"[^>]*>/g)].map((m) => m[0]);
-  assert.equal(radios.length, 4);
+  const radios = [...html.matchAll(/<input type="radio" name="preset"[^>]*>/g)].map((m) => m[0]);
+  assert.equal(radios.length, 3);
   for (const radio of radios) {
     const labelledby = /aria-labelledby="([^"]+)"/.exec(radio)?.[1];
     const describedby = /aria-describedby="([^"]+)"/.exec(radio)?.[1];
     assert.ok(labelledby && describedby, radio);
     const name = new RegExp(`id="${labelledby}"[^>]*>([^<]+)<`).exec(html)?.[1];
-    assert.ok(name && ["Tabulka", "Zvýrazněná úroveň", "Štítky", "Dlaždice"].includes(name), `the name is the look's: ${name}`);
+    assert.ok(name && ["Ukazatel se značkami", "Odškrtávací seznam", "Jedna věta"].includes(name), `the name is the look's: ${name}`);
   }
   assert.match(html, /aria-hidden="true"[^>]*><div/, "the preview is decoration for the radio");
 });

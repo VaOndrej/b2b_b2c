@@ -30,8 +30,6 @@ and it decides how discounts combine instead of leaving that to chance.
   set. See [margin-protection](margin-protection).
 - **Quantity discounts**: "from 3 items −10 %" tiers with a table and a live price on
   the product page. See [quantity-tiers](quantity-tiers).
-- **Appearance**: four ready-made looks for the product page table. See
-  [choose-an-appearance](../tasks/choose-an-appearance.md).
 - **Combining discounts**: per-category switches in Settings. See
   [combining-discounts](combining-discounts).
 - **Try a cart**: build a cart and see which discounts apply and why, exactly as
@@ -44,9 +42,16 @@ and it decides how discounts combine instead of leaving that to chance.
 - **Moving Shopify discounts into Won**, with Undo. See
   [discounts-outside-won](discounts-outside-won).
 
+## Looks and texts on your store
+
+- **Looks**: every part on your store has its own ready-made looks, set on its page. See
+  [choose-an-appearance](../tasks/choose-an-appearance.md).
+- **Translations**: the texts customers see, in every language of the store. See
+  [change-storefront-texts](../tasks/change-storefront-texts.md).
+
 ## Where things are in the menu
 
-The menu has five items: **Discounts**, **Margin protection**, **Appearance**,
+The menu has five items: **Discounts**, **Margin protection**, **Translations**,
 **Reports** and **Settings**. **Discounts** has tabs on the page: Discounts & codes,
 Quantity discounts, Milestones, Clearance (Pro) and Campaigns (Pro). The plan
 and **Try a cart** are in **Settings**.

@@ -26,6 +26,7 @@ import { formatMoney, formatPercent } from "@won/core/discounts/describe";
 import { amountKeyCurrency, currencyExponent } from "@won/core/discounts/money";
 
 import { useT } from "../../i18n/context";
+import { LookSection } from "../looks/LookSection";
 import {
   CAMPAIGN_FIELD as F,
   CAMPAIGN_INTENT,
@@ -642,7 +643,7 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
             />
           </WonSection>
         ) : null}
-
+        {props.look ? <LookSection look={props.look} plan={plan} configVersion={props.configVersion} /> : null}
         </ViewPanel>
       </s-stack>
 

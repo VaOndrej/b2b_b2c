@@ -31,7 +31,7 @@ import { productRuleIndex, variantKey } from "@won/core/discounts/targeting";
 
 import type {
   AdminSignals,
-  AppearanceScreenData,
+  LookView,
   TranslationsScreenData,
   CartPlanView,
   CostCoverageView,
@@ -62,8 +62,8 @@ import type {
   CampaignsOverviewView,
   CampaignsScreenData,
 } from "../components/model/types";
-import { presetOf } from "../components/model/appearance";
 import { CAMPAIGN_BLOCK_HANDLE, cartBlockAddUrl, outletBlockAddUrl, placementLinks, REWARDS_PROGRESS_BLOCK_HANDLE, tiersBlockAddUrl } from "../components/model/embed";
+import { presetOf } from "../components/model/looks";
 import { MS_FIELD } from "../components/model/milestones";
 import { marketRows } from "../components/model/markets-overview";
 import { rewardsOverviewOf, rewardsScreenFacts, rewardsSectionStatus } from "./integration/rewards.server";
@@ -72,7 +72,7 @@ import { currencyViews } from "../components/model/markets";
 import { TIERS_FIELD } from "../components/model/tiers";
 import { exportCsv, planImport, type ImportPlan } from "../components/model/translations";
 import { translator } from "../i18n";
-import { aiPrompt, previewLookOf, sampleSet } from "./integration/appearance.server";
+import { lookView, previewLookOf } from "./integration/looks.server";
 import { tiersOverviewOf, tiersScreenFacts, tiersSectionStatus } from "./integration/tiers.server";
 import { translationsScreenData } from "./integration/translations.server";
 import { lossText, undoCostTexts, warningText } from "./native/copy";
@@ -1059,6 +1059,9 @@ export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | nul
     plan: opts.plan,
     shopCurrency: "CZK",
     configVersion: "dev-config-version",
+    // ?state=custom: a stored Pro custom look and card prices on; ?state=issue: stored CSS that cannot be used.
+    look: lookView(opts.state === "custom" ? DEV_CUSTOM_LOOK_FIXTURE : opts.state === "issue" ? DEV_BAD_LOOK_FIXTURE : config, "tiers"),
+    cards: { on: opts.state === "custom", blockUrl: "https://won-dev.myshopify.com/admin/themes/current/editor?template=collection&addAppBlockId=dev/card_tiers&target=mainSection" },
     currencies: currencyViews(config.markets, { marketNames: DEV_MARKET_NAMES }),
     ...tiersScreenFacts(config, { plan: opts.plan, locale: opts.locale, titles: DEV_TIER_TITLES, syncable: true }),
     block: devBlock(opts.state),
@@ -1113,29 +1116,17 @@ const DEV_CUSTOM_LOOK_FIXTURE: WonDiscountsConfig = readStoredConfig({
   locales: { ...DEV_TIERS_FIXTURE.locales, cs: { "tiers.heading": "Kup víc, plať míň" } },
 });
 
-/** Vzhled as loadAppearanceScreen hands it over; `empty` = no set yet (the looks show an example). */
-export function devAppearanceScreen(opts: { plan: "free" | "pro"; state: string | null; theme?: string | null }): AppearanceScreenData {
-  const config = opts.state === "empty" ? DEV_EMPTY_FIXTURE : DEV_TIERS_FIXTURE;
-  return {
-    plan: opts.plan,
-    configVersion: "dev-config-version",
-    preset: presetOf(config.storefront.appearancePreset),
-    tokens: devTokens(opts.theme, devBlock(opts.state)),
-    sample: sampleSet(gateConfigForPlan(config, opts.plan).config),
-    product: DEV_PREVIEW_PRODUCT,
-    block: devBlock(opts.state),
-    embed: opts.state === "empty" ? DEV_EMBED_OFF : DEV_EMBED_ON,
-    // MVP 7: ?state=custom = a custom look, card prices on and a changed text; ?state=issue = stored CSS that cannot be used.
-    cardPrices: opts.state === "custom",
-    custom:
-      opts.state === "custom" || opts.state === "issue"
-        ? { accent: "#0a7d4f", line: "", tint: "#f2fbf6", radius: "4", css: opts.state === "issue" ? ".a{background:url(x)}" : ".won-tiers__heading { text-transform: uppercase; }" }
-        : { accent: "", line: "", tint: "", radius: "", css: "" },
-    customIssue: opts.state === "issue" ? "forbidden" : null,
-    cardBlockUrl: "https://won-dev.myshopify.com/admin/themes/current/editor?template=collection&addAppBlockId=dev/card_tiers&target=mainSection",
-    aiPrompt: aiPrompt(),
-    previewLook: previewLookOf(opts.state === "custom" ? DEV_CUSTOM_LOOK_FIXTURE : config, opts.plan),
-  };
+/** DEV_TIERS_FIXTURE with a stored custom CSS that cannot be confined (a hand-made config). */
+const DEV_BAD_LOOK_FIXTURE: WonDiscountsConfig = readStoredConfig({ ...DEV_TIERS_FIXTURE, storefront: { ...DEV_TIERS_FIXTURE.storefront, custom: { vars: {}, css: ".a{background:url(x)}" } } });
+
+/**
+ * One element's look for a module page's fixture: `?look=<a ready-made look>` (green, and on Milníky with the
+ * flash) or `?look=custom` (own colours and CSS; shown on Pro) or `?look=issue` (stored CSS that cannot be used).
+ */
+export function devLook(config: WonDiscountsConfig, element: "milestones" | "outlet" | "campaign", look: string | null | undefined): LookView {
+  const custom = { vars: { accent: "#0a7d4f", tint: "#f2fbf6", radius: 4 }, css: look === "issue" ? ".a{background:url(x)}" : `.won-${element === "milestones" ? "ms__text" : element === "outlet" ? "outlet__badge" : "campaign__title"} { text-transform: uppercase; }` };
+  const stored = !look ? undefined : look === "custom" || look === "issue" ? { custom } : { preset: look, accent: "green", ...(element === "milestones" ? { blink: true } : {}) };
+  return lookView(stored ? readStoredConfig({ ...config, storefront: { ...config.storefront, looks: { [element]: stored } } }) : config, element);
 }
 
 /**
@@ -1293,11 +1284,12 @@ export const DEV_MILESTONES_FIXTURE: WonDiscountsConfig = readStoredConfig({
  *   embed-draft | embed-unknown | embed-no-scope   the other states of the app embed check (each has its own
  *               sentence and action on the page).
  */
-export function devRewardsScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; shared?: boolean }): RewardsScreenData {
+export function devRewardsScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; shared?: boolean; look?: string | null }): RewardsScreenData {
   const config = devSharedMarket(opts.state === "empty" ? DEV_EMPTY_FIXTURE : opts.state === "discounts" ? DEV_MILESTONES_FIXTURE : DEV_REWARDS_FIXTURE, opts.shared === true);
   return {
     plan: opts.plan,
     configVersion: "dev-config-version",
+    look: devLook(config, "milestones", opts.look),
     currencies: currencyViews(config.markets, { marketNames: DEV_MARKET_NAMES }),
     ...rewardsScreenFacts(config, { plan: opts.plan, locale: opts.locale, titles: DEV_GIFT_TITLES }),
     status: rewardsSectionStatus(config, opts.plan, "CZK", DEV_SYNC_OK),
@@ -1489,7 +1481,7 @@ const devMoney = (locale: "cs" | "en") => (minor: number, currency: string) =>
   new Intl.NumberFormat(locale === "en" ? "en-US" : "cs-CZ", { style: "currency", currency }).format(minor / 100);
 
 /** Výprodej screen: ?plan=pro, ?state=empty (no sale yet), ?orders=on (the app reads orders; default off, F-O1). */
-export function devOutletScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; orders?: boolean }): OutletScreenData {
+export function devOutletScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; orders?: boolean; look?: string | null }): OutletScreenData {
   const runs = opts.state === "empty" ? [] : DEV_OUTLET_RUNS;
   const view = (r: DevRun) =>
     outletRunView(
@@ -1501,6 +1493,7 @@ export function devOutletScreen(opts: { plan: "free" | "pro"; state: string | nu
     plan: opts.plan,
     status: outletStatus(outletOverviewOf(runs, DEV_OUTLET_TITLES, opts.orders ?? false), opts.plan),
     configVersion: "dev-config-version",
+    look: devLook(DEV_EMPTY_FIXTURE, "outlet", opts.look),
     shopCurrency: "CZK",
     today: "2026-09-28",
     display: "strike_badge",
@@ -1620,7 +1613,7 @@ const DEV_CAMPAIGN_SUGGEST: Campaign = {
   killed: false,
 };
 
-export function devCampaignsScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; edit: string | null }): CampaignsScreenData {
+export function devCampaignsScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; edit: string | null; look?: string | null }): CampaignsScreenData {
   // ?state=suggest: "Black Friday" has its amounts only in the shop currency (the whole-store tiers are amounts per
   // item too), so the other market's fields are empty and get a suggested amount.
   const suggest = opts.state === "suggest";
@@ -1633,6 +1626,7 @@ export function devCampaignsScreen(opts: { plan: "free" | "pro"; state: string |
     plan: opts.plan,
     status: campaignsStatus(campaignsOverviewOf(campaigns, { now: DEV_CAMPAIGN_NOW, locale: opts.locale, plan: opts.plan, finishing: viewOpts.finishing }), opts.plan, DEV_SYNC_OK),
     configVersion: "dev-config-version",
+    look: devLook(DEV_EMPTY_FIXTURE, "campaign", opts.look),
     today: DEV_CAMPAIGN_NOW.slice(0, 10),
     nowTime: DEV_CAMPAIGN_NOW.slice(11, 16),
     timezone: DEV_TIMEZONE,

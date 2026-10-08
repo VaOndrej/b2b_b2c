@@ -640,6 +640,10 @@ export interface TiersScreenData {
   shopCurrency: string;
   /** F12 expected-version token for the save. */
   configVersion: string | null;
+  /** The table's custom look (Pro) for its section; additive in fixtures. */
+  look?: LookView;
+  /** BETA: prices by quantity on product cards, and the deep link that adds the card block to the theme. */
+  cards?: { on: boolean; blockUrl: string | null };
   /** Currencies of the enabled markets (amount inputs per currency). */
   currencies: CurrencyView[];
   /** Config order; the global set first when there is one. Pro sets are listed on Free too (gateNotes say they do not apply). */
@@ -684,28 +688,22 @@ export interface TiersOverviewView {
   missing?: { global: string[]; sets: string[][] };
 }
 
-export interface AppearanceScreenData {
-  plan: "free" | "pro";
-  configVersion: string | null;
-  preset: AppearancePresetView;
-  tokens: ThemeTokensView | null;
-  /** The set the preview shows (the global one, else the first); null = none yet (the preview uses an example). */
-  sample: TierSetView | null;
-  product: PreviewProductView | null;
-  block: TiersBlockView;
-  embed: EmbedView;
-  /** MVP 7 BETA: prices by quantity on product cards (storefront.cardPricesEnabled). */
-  cardPrices: boolean;
-  /** MVP 7 (Pro): the stored custom look as the form shows it ("" = not set). */
+/** One storefront element's stored look, as its section shows it (looks.server.ts lookView). */
+export interface LookView {
+  element: "tiers" | "milestones" | "outlet" | "campaign";
+  /** The ready-made looks to pick from; [] for the table (its look is picked in its preview). */
+  presets: string[];
+  preset: string;
+  /** The ready-made highlight colour ("theme" = the theme's). */
+  accent: string;
+  /** Milníky: the flash of a step just reached. */
+  blink: boolean;
+  /** The Pro custom look as the form shows it ("" = not set). */
   custom: { accent: string; line: string; tint: string; radius: string; css: string };
   /** The stored custom CSS cannot be used (a hand-made config): why, for the notice. */
   customIssue: string | null;
-  /** The deep link that adds the card block to the theme's product card (themes whose card takes app blocks). */
-  cardBlockUrl: string | null;
-  /** MVP 7 (Pro): the brief for an AI — the storefront contract a custom look is written against. */
+  /** The brief for an AI: this element's classes and variables. */
   aiPrompt: string;
-  /** The stored custom look and texts as the storefront gets them, for the previews. Additive (plan 2026-10-06). */
-  previewLook?: PreviewLookView;
 }
 
 /** Překlady: the storefront texts, one table per language (model/translations.ts). */
@@ -774,6 +772,8 @@ export interface RewardsScreenData {
   status?: ModuleStatus;
   plan: "free" | "pro";
   configVersion: string | null;
+  /** The ladder's look on the storefront. */
+  look?: LookView;
   currencies: CurrencyView[];
   /** The stored ladder, in ladder order (core milestones.ts). */
   steps: MilestoneStepView[];
@@ -881,6 +881,8 @@ export interface OutletScreenData {
   status?: ModuleStatus;
   plan: "free" | "pro";
   configVersion: string | null;
+  /** The sale badge's look on the storefront. */
+  look?: LookView;
   shopCurrency: string;
   /** Today in the shop's zone (`YYYY-MM-DD`): the end date input's minimum is the day after. */
   today: string;
@@ -1013,6 +1015,8 @@ export interface CampaignsScreenData {
   status?: ModuleStatus;
   plan: "free" | "pro";
   configVersion: string | null;
+  /** The campaign banner's look on the storefront. */
+  look?: LookView;
   /** Shop-local today (`YYYY-MM-DD`) and now (`HH:MM`): the form's minimums and defaults. */
   today: string;
   nowTime: string;

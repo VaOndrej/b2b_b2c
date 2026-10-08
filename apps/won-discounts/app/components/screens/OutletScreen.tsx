@@ -21,6 +21,7 @@ import { Form, useSubmit } from "react-router";
 import { formatMoney } from "@won/core/discounts/describe";
 
 import { useT } from "../../i18n/context";
+import { LookSection } from "../looks/LookSection";
 import { pickProducts } from "../model/app-bridge";
 import { OUTLET_FIELD, OUTLET_INTENT, outletPreviewPrice, readOutletLive, type OutletLiveDraft } from "../model/outlet";
 import { formatDateTime } from "../model/signals";
@@ -591,6 +592,8 @@ export function OutletScreen(props: OutletScreenProps) {
             }
           />
         ) : null}
+        {/* The badge's look on the storefront (its own form). */}
+        {settingsShown && props.look ? <LookSection look={props.look} plan={plan} configVersion={configVersion} /> : null}
 
         {settingsShown ? (
           <WonSection title={t("outlet.settings.title")} glyph="sliders" summary={t(`outlet.display.${display}` as "outlet.display.strike")} hint={t("outlet.settings.summary")}>

@@ -23,6 +23,7 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import { loadConfig } from "../config.server";
 import { formatShopTime } from "../native/copy";
 import { GQL } from "../sync/graphql";
+import { lookView } from "./looks.server";
 import { graphqlOf, nowOf, type ShopCtx } from "./context.server";
 import { GIFT_TITLES_DOCUMENT } from "./rewards.server";
 import { endOutletRun, keepOutletEnded, reopenOutletRun, setOutletBadge, startOutletRun, writeOutletStorefront, type OutletDeps } from "./outlet.server";
@@ -214,6 +215,7 @@ export async function loadOutletScreen(ctx: ShopCtx): Promise<OutletScreenData> 
     plan,
     ...(overview ? { status: outletStatus(overview, plan) } : {}),
     configVersion: loaded.version ?? null,
+    look: lookView(loaded.config, "outlet"),
     shopCurrency: shop.currencyCode ?? "",
     today: shopToday(shop.timezone, nowOf(ctx)),
     display: loaded.config.modules.outlet.display,

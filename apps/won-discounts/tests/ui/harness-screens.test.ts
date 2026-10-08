@@ -119,36 +119,32 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   },
   // Vzhled (MVP 7): the custom look (locked amber on Free), card prices BETA, the AI brief.
   // Překlady: a table per language with human names, the default text and the merchant's own; Free's limit and the Pro CSV in amber.
-  { path: "appearance", expect: [/Vlastní vzhled/, /V Pro sladíte tabulku s webem: vlastní barvy, zaoblení rohů a vlastní CSS/, /href="\/app\/plan"/, /Ceny podle množství na kartách produktů · BETA/, /Zkopírovat zadání pro AI/] },
+  { path: "tiers", expect: [/Vlastní vzhled tabulky/, /V Pro sladíte tabulku s webem: vlastní barvy, zaoblení rohů a vlastní CSS/, /href="\/app\/plan"/, /Ceny podle množství na kartách produktů · BETA/, /Zkopírovat zadání pro AI/, /data-won-ai-prompt="tiers"/] },
+  { path: "tiers?plan=pro&state=custom", expect: [/Vlastní barvy nebo CSS jsou nastavené/, /Zapnuto: karty ukazují první úroveň/, /Přidat prvek do karty produktu/, /--won-tiers-accent/, /data-won-custom-look=""/, /Platí jen uvnitř tabulky/] },
+  { path: "tiers?plan=pro&state=issue", expect: [/Uložené vlastní CSS nejde použít/] },
+  // Every other element's look is on its module's page: ready-made looks previewed with the extension's own markup,
+  // the colour, and the Pro part (amber and locked on Free, with what Pro gives and the way to it).
   {
-    path: "translations",
+    path: "rewards?look=checklist",
     expect: [
-      /<s-page heading="Překlady"/,
-      /čeština · výchozí jazyk obchodu/,
-      /slovenština/,
-      /Upravených textů: 3/,
-      /Upravených textů: 1/,
-      // Grouped by where the text shows; a row = its place, the extension's text, the merchant's own.
-      /data-won-text-group="tiers"[\s\S]*data-won-text-group="milestones"[\s\S]*data-won-text-group="cart"[\s\S]*data-won-text-group="outlet"[\s\S]*data-won-text-group="campaigns"[\s\S]*data-won-text-group="cards"/,
-      /Nadpis tabulky<\/div><div data-won-text-default="true"[^>]*>Množstevní sleva<\/div>/,
-      /name="tx\.cs\.tiers\.heading"[^>]*value="Kup víc, plať míň"/,
-      /name="tx\.sk\.tiers\.heading"[^>]*value="Kúp viac, zaplať menej"/,
-      // A Milníky discount step's own name is a row, named by the step.
-      /Vlastní název odměny: Sleva 5[\s\u00a0]% od 2[\s\u00a0]000[\s\u00a0]Kč/,
-      /name="tx\.cs\.cart\.ms_name\.ms-five"[^>]*value="Věrnostní sleva \{value\}"/,
-      // Free at its two languages: the next one is Pro's, said in amber with the way to it; so is the CSV.
-      /Ve Free přeložíte texty do výchozího jazyka a jednoho dalšího/,
-      /V Pro si texty stáhnete do tabulky/,
-      /href="\/app\/plan"/,
+      /Vzhled žebříčku na webu/,
+      /Vzhled na webu: Odškrtávací seznam/,
+      /<input type="radio" name="preset"[^>]*value="checklist"[^>]*checked=""|<input type="radio" name="preset"[^>]*checked=""[^>]*value="checklist"/,
+      /Ukazatel se značkami/,
+      /Jedna věta/,
+      /data-won-look-preview="milestones"/,
+      /class="won-ms won-ms--compact"/,
+      /Krátce bliknout, když zákazník dosáhne stupně/,
+      /V Pro sladíte žebříček s webem/,
+      /data-won-ai-prompt="milestones"/,
+      /Platí jen uvnitř žebříčku/,
+      /data-won-look-form="milestones"/,
     ],
   },
-  { path: "translations?plan=pro", expect: [/data-won-add-language/, /<s-option[^>]*value="de"[^>]*>němčina/, /Stáhnout CSV/, /Nahrát CSV/] },
-  { path: "translations?state=empty", expect: [/čeština · výchozí jazyk obchodu/, /Výchozí texty/, /data-won-add-language/] },
-  { path: "translations?state=no-scope", expect: [/Aplikace nemá svolení číst jazyky zapnuté v Shopify/, /Povolit čtení jazyků/] },
-  { path: "translations?state=downgraded", expect: [/němčina/, /Ve Free se v tomto jazyce na webu ukazují výchozí texty/] },
-  { path: "translations?plan=pro&state=import", expect: [/data-won-import-preview/, /Změní se: 1/, /Odmítnuto: 2/, /Množstevní tabulka: Nadpis tabulky · slovenština/, /V textu chybí \{amount\}/, /neznámý text „tiers\.unknown“/, /Uložit změny z importu/] },
-  { path: "appearance?plan=pro&state=custom", expect: [/Vlastní barvy nebo CSS jsou nastavené/, /Zapnuto: karty ukazují první úroveň/, /Přidat prvek do karty produktu/, /--won-tiers-accent/] },
-  { path: "appearance?plan=pro&state=issue", expect: [/Uložené vlastní CSS nejde použít/] },
+  { path: "rewards?plan=pro&look=custom", expect: [/data-won-look-css=""/, /Uložit vzhled/], absent: [/V Pro sladíte žebříček s webem/] },
+  { path: "rewards?plan=pro&look=issue", expect: [/Uložené vlastní CSS nejde použít/] },
+  { path: "outlet?plan=pro&look=strip", expect: [/Vzhled štítku výprodeje/, /Vzhled na webu: Pruh/, /Štítek s odpočtem/, /data-won-look-preview="outlet"/, /class="won-outlet__badge"/, /data-won-ai-prompt="outlet"/] },
+  { path: "campaigns?plan=pro&look=card", expect: [/Vzhled banneru kampaně/, /Vzhled na webu: Karta/, /Banner s odpočtem/, /data-won-look-preview="campaign"/, /class="won-campaign__title"/, /data-won-ai-prompt="campaign"/] },
   // Tarif (MVP 7): the plan in force, the Pro offer with its price and trial, cancel with what runs on, uninstall prep.
   {
     path: "plan",
@@ -353,12 +349,12 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /711,00 Kč\/ks/,
       /3\u00a0ks za 2\.133,00 Kč \(711,00 Kč\/ks\)/,
       /Ještě 2\u00a0ks a zaplatíte 671,50 Kč\/ks\./,
-      // The look switcher is a visible, saved field of this form (the same `preset` Vzhled writes).
+      // The look switcher is a visible, saved field of this form.
       /Vzhled na webu/,
       /<input type="radio" name="preset"[^>]* value="highlight"/,
       /<input type="radio" name="preset"[^>]* checked=""[^>]* value="highlight"|<input type="radio" name="preset" value="highlight"[^>]* checked=""/,
       /Vlastní barvy a CSS/,
-      /href="\/app\/appearance#custom"/,
+      /href="#look-tiers"/,
       /Náhled nepočítá s ochranou marže/,
       /Tabulka je na stránce produktu \(vzhled Horizon\)/,
       /Zobrazit na mém webu/,
@@ -435,25 +431,6 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
     path: "tiers?locale=en",
     expect: [/Quantity discounts/, /Quantity discount for the whole store/, /From 3 items −10%, from 5 items −15%, from 10 items −20%/, /Quantity discount/, /711,00 Kč each/, /Add table to the product page|View on my site/],
   },
-  {
-    path: "appearance",
-    expect: [
-      /Vzhled na webu: Zvýrazněná úroveň/,
-      /name="preset"/,
-      /value="tiles"/,
-      /won-tiers--default/,
-      /won-tiers--highlight/,
-      /won-tiers--chips/,
-      /won-tiers--tiles/,
-      /Kompaktní štítky v řádku/,
-      /Uloženo/,
-      /V Pro sladíte tabulku s webem/,
-      /<s-color-field/,
-    ],
-  },
-  { path: "appearance?state=empty", expect: [/Ukázka: zatím nemáte žádnou úroveň/, /Přidat na web/, /Zapnutí Won na webu/, /Košík na webu ukáže slevy a žebříček Milníků až po zapnutí Won na webu/, /Zapnout na webu/] },
-  // The stored custom look and the changed text are in the four previews (Pro).
-  { path: "appearance?plan=pro&state=custom", expect: [/data-won-custom-look=""/, /<p class="won-tiers__heading">Kup víc, plať míň<\/p>/] },
   {
     path: "settings",
     expect: [
@@ -565,7 +542,7 @@ test("Nastavení: 'Vyzkoušet v košíku' only for saved switches; the sub-navig
   const settings = (await render("settings")).html;
   assert.match(settings, /Vyzkoušet v košíku/);
   assert.doesNotMatch(settings, /Nejdřív změny uložte/, "nothing changed yet: the button, not the note");
-  for (const path of ["settings", "plan", "overview", "rule-editor", "margin", "appearance", "analytics", "try-cart"]) {
+  for (const path of ["settings", "plan", "overview", "rule-editor", "margin", "translations", "analytics", "try-cart"]) {
     assert.doesNotMatch((await render(path)).html, /data-won-subnav/, `${path}: no sub-navigation`);
   }
 });
@@ -593,8 +570,8 @@ test("plan 2026-10-06, dávka 5: nothing without content or action — no room-f
   // Feedback 3, bod 5: a placement that cannot be checked says so with the grey label and "Zkontrolovat znovu".
   assert.match((await render("tiers?state=no-scope")).html, /data-won-placement="unknown"[\s\S]*Zkontrolovat znovu/);
   assert.doesNotMatch((await render("tiers?plan=pro&state=custom&plan=free")).html, /Kolekce Doplňky/);
-  const appearance = (await render("appearance")).html;
-  assert.doesNotMatch(appearance, /Tady vidíte|Zapnutí Won na webu|name="tx\./);
+  // The storefront texts are Překlady's: no module page carries a text field.
+  for (const path of ["tiers", "rewards", "outlet?plan=pro", "campaigns?plan=pro"]) assert.doesNotMatch((await render(path)).html, /name="tx\./, path);
   // Překlady never shows a text's key as its name.
   assert.doesNotMatch((await render("translations")).html.replace(/name="tx\.[^"]*"/g, ""), />(tiers|cart|cards|outlet|campaign)\.[a-z_]+</);
   assert.doesNotMatch((await render("tiers?state=custom")).html, /data-won-custom-look/, "Free never previews the Pro custom look (BILL-1)");
@@ -610,13 +587,20 @@ test("the tier note is only for a product rule (an order rule does not compete w
 });
 
 test("MVP 3 screens: one save for the whole form, last on the page", async () => {
-  for (const path of ["tiers", "tiers?plan=pro", "appearance", "settings"]) {
+  for (const path of ["tiers", "tiers?plan=pro", "settings"]) {
+    // The page's own form (the first one; a look's section below it is a form of its own with its own save).
     const { html } = await render(path);
-    const submit = html.lastIndexOf('type="submit"');
+    const form = html.slice(html.indexOf("<form"), html.indexOf("</form>"));
+    const submit = form.lastIndexOf('type="submit"');
     assert.ok(submit > 0, `${path}: a submit button`);
-    assert.equal(html.indexOf('type="submit"'), submit, `${path}: exactly one submit button`);
-    assert.match(html, /data-save-bar/, `${path}: the App Bridge save bar`);
+    assert.equal(form.indexOf('type="submit"'), submit, `${path}: exactly one submit button`);
+    assert.match(form, /data-save-bar/, `${path}: the App Bridge save bar`);
   }
+  // Each further form on Množstevní slevy saves one thing and says which.
+  const forms = [...(await render("tiers?plan=pro")).html.matchAll(/<form[^>]*>[\s\S]*?<\/form>/g)].map((m) => m[0]);
+  assert.deepEqual(forms.slice(1).map((f) => (f.match(/type="submit"/g) ?? []).length), [1, 1]);
+  assert.match(forms[1]!, /data-won-look-form="tiers"[\s\S]*Uložit vzhled/);
+  assert.match(forms[2]!, /data-won-cards-form=""/);
 });
 
 test("the preview is the storefront's markup (K8) with the storefront CSS confined to it — never a style for the admin", async () => {
@@ -709,10 +693,9 @@ test("navigace a stav, body 1 a 2: a view tile says only what changes; the secti
   assert.doesNotMatch(viewTile(tiers, "global"), /data-won-tile-about|Úrovně slevy podle počtu kusů/);
   assert.match(section(tiers, "global"), /Množstevní sleva pro celý obchod[\s\S]*Platí pro všechny produkty\./);
   assert.doesNotMatch(section(tiers, "global").slice(0, 2500), /data-won-state=|Od 3 ks −10\s%, od 5 ks −15\s%/);
-  // The table: where it stands is the tile's sentence; the section says what it is for (Vzhled, with no tile, keeps the sentence).
+  // The table: where it stands is the tile's sentence; the section says what it is for .
   assert.equal(count(tiers, "Tabulka je na stránce produktu (vzhled Horizon)."), 1);
   assert.match(section(tiers, "block"), /Tabulka úrovní na stránce produktu: jestli je na webu a jak ji přidat\./);
-  assert.match(section((await render("appearance")).html, "block"), /Tabulka je na stránce produktu/);
   // A locked Pro tile keeps the amber look and its marker, also without the description.
   assert.match(viewTile(tiers, "exceptions"), /data-won-tile-locked[\s\S]*Pro · odemknout[\s\S]*Uložena 1 výjimka, ve Free neplatí/);
   assert.equal(count(tiers, "Uložena 1 výjimka, ve Free neplatí"), 1);
@@ -772,7 +755,7 @@ test("navigace a stav, bod 3: the strip under 'Slevy' carries a dot per module, 
   // The strip is the same on the five pages; pages outside "Slevy" have neither the strip nor its dots.
   const stripOf = (html: string) => html.slice(html.indexOf("data-won-subnav"), html.indexOf("</nav>", html.indexOf("data-won-subnav")));
   for (const path of ["discounts", "tiers", "rewards", "outlet", "campaigns"]) assert.equal((stripOf((await render(path)).html).match(/data-won-dot=/g) ?? []).length, 3, path);
-  for (const path of ["margin", "appearance", "analytics"]) assert.doesNotMatch((await render(path)).html, /data-won-subnav|data-won-dot=/, path);
+  for (const path of ["margin", "translations", "analytics"]) assert.doesNotMatch((await render(path)).html, /data-won-subnav|data-won-dot=/, path);
 });
 
 test("navigace a stav, bod 5: the rule editor has the list of its sections; a red dot where the draft has something to fix, none elsewhere", async () => {
