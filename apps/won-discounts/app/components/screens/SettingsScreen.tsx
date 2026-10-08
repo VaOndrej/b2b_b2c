@@ -139,7 +139,8 @@ export function SettingsScreen({ currencies, combination: stored, configVersion,
   const sections = [
     { anchor: "combination", label: t("settings.combination.title") },
     { anchor: "unknown-market", label: t("settings.unknownMarket.title") },
-    { anchor: "markets", label: t("settings.markets.title") },
+    // The one section here with a state of its own: a market that misses an amount somewhere (its header says where).
+    { anchor: "markets", label: t("settings.markets.title"), ...(missingIn.length > 0 ? { state: "attention" as const } : {}) },
     { anchor: "tools", label: t("settings.tools.title") },
     ...(planScreen ? [{ anchor: "plan", label: t("nav.plan") }] : []),
   ];

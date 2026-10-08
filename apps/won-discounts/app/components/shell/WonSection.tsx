@@ -225,8 +225,11 @@ function Pill({ tone, label, marker }: { tone: PillTone; label: string; marker?:
   );
 }
 
+/** A state a dot can say ("locked" is said by the Pro marker). */
+export type DotState = Exclude<ModuleState, "locked">;
+
 /** The tone of a module's state: the pill and the dot read the same table, so they cannot drift (§11b). */
-const STATE_TONE: Readonly<Record<Exclude<ModuleState, "locked">, PillTone>> = { active: "live", attention: "attention", inactive: "neutral" };
+const STATE_TONE: Readonly<Record<DotState, PillTone>> = { active: "live", attention: "attention", inactive: "neutral" };
 
 /** Text for screen readers only (a dot alone says nothing to them). */
 const READER_ONLY: CSSProperties = { position: "absolute", width: 1, height: 1, margin: -1, padding: 0, overflow: "hidden", clipPath: "inset(50%)", whiteSpace: "nowrap", border: 0 };
@@ -236,7 +239,7 @@ const READER_ONLY: CSSProperties = { position: "absolute", width: 1, height: 1, 
  * the row of step numbers): the pill's own dot colours and the pill's own words, the words for screen readers.
  * "locked" has no dot — the Pro marker says it.
  */
-export function StatusDot({ state }: { state: Exclude<ModuleState, "locked"> }) {
+export function StatusDot({ state }: { state: DotState }) {
   const tr = useT();
   return (
     <span data-won-dot={state} style={{ display: "inline-flex", flex: "0 0 auto" }}>

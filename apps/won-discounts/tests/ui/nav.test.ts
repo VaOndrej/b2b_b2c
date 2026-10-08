@@ -18,6 +18,7 @@ import {
 } from "../../app/components/model/modules.ts";
 import type { DiscountNavData } from "../../app/components/model/modules.ts";
 import { DiscountNav, DiscountsSubNav } from "../../app/components/shell/SubNav.tsx";
+import { SectionNav } from "../../app/components/shell/SectionNav.tsx";
 
 // The menu after 6 Oct 2026 (docs/won-discounts/plan-zmen-2026-10-06.md, P1): the
 // Shopify sidebar has five items after the home link; the discount pages share
@@ -169,6 +170,25 @@ test("DiscountsSubNav: a dot per known state, in the pill's colours, with the st
   assert.equal(html.match(/data-won-dot=/g)?.length, 3);
   assert.match(await renderSubNav("tiers", nav, "en"), /data-won-dot="attention"[\s\S]*?>Needs attention: <\/span><\/span>Quantity/);
   assert.doesNotMatch(await renderSubNav("tiers"), /data-won-dot/, "no provider → no dots");
+});
+
+test("SectionNav: a dot only at a section that has a state, the same dot as the strip's, with the state in words", () => {
+  const items = [
+    { anchor: "a", label: "První" },
+    { anchor: "b", label: "Druhá", state: "attention" as const },
+    { anchor: "c", label: "Třetí", state: "active" as const },
+  ];
+  // eslint-disable-next-line react/no-children-prop -- LocaleProvider types `children` as a required prop
+  const html = renderToStaticMarkup(createElement(LocaleProvider, { locale: "cs", children: createElement(SectionNav, { label: "Na této stránce", items, children: null }) }));
+  const link = (anchor: string) => html.slice(html.indexOf(`href="#${anchor}"`), html.indexOf("</a>", html.indexOf(`href="#${anchor}"`)));
+  // P2: nothing without content — no grey dot for "no state".
+  assert.doesNotMatch(link("a"), /data-won-dot/);
+  assert.match(link("a"), />První$/);
+  assert.match(link("b"), /data-won-dot="attention"[\s\S]*background:#b42318[\s\S]*>Vyžaduje pozornost: <\/span><\/span><\/span>Druhá$/);
+  assert.match(link("c"), /data-won-dot="active"[\s\S]*background:#1a8f4b[\s\S]*>Aktivní: <\/span><\/span><\/span>Třetí$/);
+  // The links stay plain anchors (they work before hydration); the first one is the current one.
+  assert.match(html, /<a class="won-jump__link" href="#a" aria-current="location">/);
+  assert.equal(html.match(/data-won-dot=/g)?.length, 2);
 });
 
 test("@won/app-kit WonNavMenu: homeLabel is optional, default unchanged", async () => {

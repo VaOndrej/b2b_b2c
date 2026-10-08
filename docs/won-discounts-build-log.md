@@ -27,7 +27,8 @@ Evidence: `docs/won-discounts/evidence/navigace-stav/` (`pred-*` a `po-*`, 390 a
   (časové pásmo a měna obchodu, stav automatické slevy), oba v cache 60 s. Nespouští zápis do Shopify, nečte téma ani slevy
   mimo Won. Layout se nově znovu načte i při přechodu na jinou stránku (`model/modules.ts` `layoutReloads`), to stojí jen
   dotazy do databáze. Náhled bere tečky z fixtur (`?nav=off | failed`), stejnou funkcí.
-- **Body 4–7 — čeká:** tečka ve sloupci, sloupec v editoru slevy, řádek stupňů v Milnících, Přehled.
+- **Bod 4 — hotovo:** `SectionNavItem.state` (stejná `StatusDot`), v Nastavení tečka jen u „Trhy a měny“, když někde chybí částka.
+- **Body 5–7 — čeká:** sloupec v editoru slevy, řádek stupňů v Milnících, Přehled.
 
 ### Opravy po auditu srozumitelnosti (7. 10. 2026) — větev `won-discounts-feedback-2026-10-06`
 

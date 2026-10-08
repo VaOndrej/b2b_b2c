@@ -6,18 +6,23 @@
 //     scrolls sideways, never wraps;
 //   - the links are real `#anchor` links (WonSection anchors, or any element id), so
 //     they work before hydration; with JS the jump is smooth and lands under the row;
-//   - no URL hash is written (SubNav: the hash belongs to deep links from other pages).
+//   - no URL hash is written (SubNav: the hash belongs to deep links from other pages);
+//   - a section that has a state may show it as a dot before its name (StatusDot: the
+//     pill's colours and words) — a section without a state has none (P2).
 // SectionNav is presentational and knows nothing about discounts: the screen passes
 // the anchors and the titles its sections already have.
 
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
+import { StatusDot, type DotState } from "./WonSection";
 import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE } from "./tokens";
 
 export interface SectionNavItem {
   /** The DOM id of the section (WonSection `anchor`). */
   anchor: string;
   label: string;
+  /** The section's state, when it has one (the section's own facts: the screen passes what its header says). */
+  state?: DotState;
 }
 
 /** From this width the navigation is a column; below it a row above the sections. */
@@ -31,7 +36,8 @@ const SECTION_NAV_CSS = `
 .won-jump__nav{position:sticky;top:0;z-index:2;font-family:${WON_FONT};margin:0 -4px;padding:8px 4px;background:rgba(241,241,241,.92);backdrop-filter:blur(6px)}
 .won-jump__title{display:none;margin:0 0 8px 14px;font-size:12px;font-weight:600;color:${WON_MUTED}}
 .won-jump__list{display:flex;flex-wrap:nowrap;gap:4px;margin:0;padding:0;list-style:none;overflow-x:auto;scrollbar-width:none}
-.won-jump__link{display:block;padding:6px 10px;border-radius:8px;font-size:13px;line-height:1.3;color:${WON_MUTED};text-decoration:none;white-space:nowrap}
+.won-jump__link{display:flex;align-items:flex-start;gap:6px;padding:6px 10px;border-radius:8px;font-size:13px;line-height:1.3;color:${WON_MUTED};text-decoration:none;white-space:nowrap}
+.won-jump__dot{display:inline-flex;align-items:center;height:1.3em;flex:0 0 auto}
 .won-jump__link:hover{color:${WON_INK};background:rgba(17,20,24,.05)}
 .won-jump__link:focus-visible{outline:2px solid ${WON_SELECT};outline-offset:1px}
 .won-jump__link[aria-current]{color:${WON_INK};font-weight:650;background:${WON_SURFACE};box-shadow:inset 0 0 0 1px ${WON_LINE}}
@@ -48,6 +54,7 @@ const SECTION_NAV_CSS = `
 export interface SectionNavProps {
   /** What the list is (the caption of the column, read by screen readers). */
   label: string;
+  /** The sections, in the page's order. Their states may change while the page is open (a live form). */
   items: readonly SectionNavItem[];
   /** The sections themselves. */
   children: ReactNode;
@@ -136,6 +143,11 @@ export function SectionNav({ label, items, children }: SectionNavProps) {
           {items.map((item) => (
             <li key={item.anchor} style={{ flex: "0 0 auto" }}>
               <a className="won-jump__link" href={`#${item.anchor}`} aria-current={item.anchor === active ? "location" : undefined} onClick={(event) => go(event, item.anchor)}>
+                {item.state ? (
+                  <span className="won-jump__dot">
+                    <StatusDot state={item.state} />
+                  </span>
+                ) : null}
                 {item.label}
               </a>
             </li>

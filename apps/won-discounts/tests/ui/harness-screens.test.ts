@@ -284,12 +284,16 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /<a class="won-jump__link" href="#combination" aria-current="location">Kombinování slev<\/a>/,
       /<a class="won-jump__link" href="#unknown-market">Zákazník ze země mimo vaše trhy<\/a>/,
       /<a class="won-jump__link" href="#plan">Tarif<\/a>/,
+      // Navigace a stav, bod 4: the one section with a state of its own carries the dot (a market misses an amount) …
+      /<a class="won-jump__link" href="#markets"><span class="won-jump__dot"><span data-won-dot="attention"[\s\S]{0,700}?>Vyžaduje pozornost: <\/span><\/span><\/span>Trhy a měny<\/a>/,
       /Máte tarif Free\./,
       /Vyzkoušet Pro na 14 dní zdarma/,
       /Připravit na odinstalaci/,
       /Kombinace u jednotlivých slev nastavíte v editoru slevy v tarifu Pro\./,
       /<s-link href="\/app\/discounts">Otevřít slevy<\/s-link>/,
     ],
+    // … and the sections that have no state have no dot (P2).
+    absent: [/href="#(combination|unknown-market|tools|plan)"[^>]*><span class="won-jump__dot"/],
   },
   { path: "settings?plan=pro", expect: [/Máte Pro na zkoušku do 18\. 10\. 2026 14:00/, /Zrušit Pro/] },
   // The sub-navigation of "Slevy" on its five pages (default order in the harness: no layout loader).
