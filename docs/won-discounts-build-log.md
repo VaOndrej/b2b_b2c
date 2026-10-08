@@ -7,6 +7,62 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
+### Úkoly 8 a 9 (8. 10. 2026) — zadání `won-discounts/prompt-ukol8-9.md`
+
+Větev `won-discounts-preklady` ve vlastním pracovním adresáři `../b2b_b2c-preklady`, po každé zelené části
+`git push origin HEAD:main`. Práce inline. Měření a rozhodnutí o úložišti:
+[`won-discounts/navrh-preklady-a-vzhled.md`](won-discounts/navrh-preklady-a-vzhled.md).
+
+- **Krok 0 — v `main` (`22ec2ef`, `30bfc8c`):** `main` měl po „navigaci a stavu“ červený `lint` (3 nepoužité proměnné
+  v `OverviewScreen.tsx` a `ProTierSets.tsx`), opraveno jako první commit. Výchozí brána po opravě: `test:packages`
+  927 + 53, `test:unit` 1 804 + cargo 102 + vitest 699, guard 301, lint 0 chyb.
+- **Úkol 8, část A (Překlady) — v kódu, brána zelená; web naživo neověřen.**
+  - **Uložení:** `locales` je mapa `kód jazyka → { klíč: text }` pro libovolný jazyk Shopify (malými písmeny, `pt-br`),
+    `storefront.languages` je pořadí tabulek (výchozí jazyk první). Dnešní `cs` / `sk` / `en` se čtou beze změny a
+    „načíst a uložit“ dá stejný řetězec (`packages/core/tests/discounts/storefront-texts.test.ts`,
+    `tests/integration/translations.test.ts`). Nový obchod má `locales: {}` (dřív tři prázdné jazyky).
+  - **Na web:** jedno metapole aplikace na jazyk, `won_discounts` / `tx_<jazyk>` (`app/lib/sync/storefront.ts`
+    `writeStorefrontTexts`, krok `storefront_texts.write`); nezměněný jazyk se nezapisuje, jazyk bez textů nebo nad
+    limit tarifu se maže. Nastavení pro web (`storefront_config`) texty nenese.
+  - **Rozšíření:** každý prvek čte `app.metafields.won_discounts['tx_' + jazyk stránky]` a teprve potom vlastní soubor
+    jazyka: tabulka, řádek na kartě, data košíku (23 textů), žebříček Milníků (i první vykreslení v Liquidu),
+    štítek výprodeje, odpočet kampaně. Poznámky v `extensions/won-discounts-storefront/README.md`.
+  - **Vlastní název odměny u stupně se slevou:** text `cart.ms_name.<id pravidla>`, na stránce Překlady řádek ve
+    skupině Milníky pojmenovaný stupněm („Vlastní název odměny: Sleva 5 % od 2 000 Kč“), jde přeložit do každého
+    jazyka a smí použít `{value}`. Skript: `won-discounts.js` (`tx.n`).
+  - **Limit jazyků:** Free výchozí + 1, Pro neomezeně (v nastavení nejvýš 50). Brána tarifu (`plan-gate.ts`) pošle na
+    web jen první dva; server nový třetí jazyk na Free odmítne (`translations.error.limit`), jazyk uložený z Pro jde
+    dál upravit i odebrat a stránka u něj říká, že web ukazuje výchozí texty.
+  - **Jazyky obchodu:** `shopLocales`, volitelné oprávnění `read_locales` (`shopify.app.toml` `optional_scopes`).
+    Bez něj stránka pracuje s uloženými jazyky, žádný dotaz neposílá a nabízí tlačítko „Povolit čtení jazyků“.
+  - **Kontrola částí ve složených závorkách:** jádro `storefrontTextIssue`; text, kterému část chybí nebo přebývá, se
+    neuloží a pole říká kterou. `campaign.units` musí mít čtyři jednotky.
+  - **CSV (Pro, kontrola na serveru):** export (klíč, místo, výchozí text, sloupec na jazyk; oddělovač čárka, čte i
+    středník z českého Excelu). Import nejdřív vrátí plán (změny, odmítnuté řádky s důvodem), uloží až potvrzení.
+  - **Aplikace:** `app/routes/app.translations.tsx`, `TranslationsScreen.tsx`, `model/translations.ts`,
+    `integration/translations.server.ts`; menu Slevy · Ochrana marže · Překlady · Přehledy · Nastavení; dlaždice
+    „Překlady“ s řádkem stavu („Jazyky: čeština a slovenština · upravených textů: 4“).
+  - **Rozhodl jsem sám:** (1) stránka v jazyce bez vlastních textů ukáže výchozí text rozšíření, už ne obchodníkovu
+    angličtinu (dřív `en` pro každý jazyk mimo cs / sk / en); (2) odebrání tabulky jazyka smaže po uložení jeho texty,
+    stránka to u tlačítka říká; (3) vlastní název odměny se zadává jen v Překladech, ne i na stránce Milníky (jedno
+    místo); (4) „Zbývá X ks“, text pro prázdný blok v úpravě vzhledu a ukázkový název kampaně upravit nejdou;
+    (5) `read_locales` je volitelné oprávnění, ne povinné: instalace se nemusí znovu potvrzovat; (6) tři stejné kopie
+    `snapshotOf` v obrazovkách jsou jedna (`shell/form-snapshot.ts`).
+  - **Čísla:** jeden jazyk běžně 1,7 kB, nejhůř 57,7 kB (test hlídá, že se vejde do vlastního metapole 128 kB).
+    Skripty stránky produktu 11 678 → 11 694 B z 12 288 B, stránka košíku 6 513 → 6 529 B z 10 240 B.
+    Počet dotazů do Shopify při otevření Překladů: 1 (`shopLocales`, v cache 60 s), bez oprávnění 0.
+  - **Brána 8. 10.:** `test:packages` 934 + 53, `test:unit` 1 830 + cargo 102 + vitest 699, `typecheck`, `lint` (0 chyb,
+    6 starších varování), `build`, `guard:test:core` 301, `validate:shopify`, vše exit 0. Zdrojáky funkce v pokladně beze změny.
+  - **Důkazy:** aplikace 390 a 1440 px, 8 stavů, bez vodorovného posuvu: `Apps/.playwright-mcp/preklady/`
+    (staticky vykreslené; `translations`, `?plan=pro`, `?state=empty | no-scope | downgraded | import`).
+  - **Naživo neověřeno:** (1) čtení `tx_<jazyk>` v Liquidu na webu (dokumentace Shopify to popisuje, v obchodě
+    nezkoušeno); (2) udělení `read_locales` v Shopify adminu; (3) klikání na stránce (přidání jazyka, stažení a
+    nahrání CSV). Mezistav: stránka Vzhled ještě existuje (bez textů), z menu už nevede; zanikne v části B.
+- **Úkol 8, část B (vzhled u modulů) — nezačato.**
+- **Úkol 9 — nezačato.**
+- **Čistý `main` v hlavním adresáři:** přepnutí větve a commit sedmi cizích necommitnutých souborů (Railway, Won
+  Companion, roadmapa, paralelizace) mi zamítla ochrana oprávnění i po Ondřejově souhlasu; zůstává na Ondřejovi.
+
 ### Navigace a stav uvnitř stránek (8. 10. 2026) — zadání `won-discounts/prompt-navigace-stav.md`
 
 Větev `won-discounts-milniky` → `origin/main`, commit po každém bodu. `git pull --rebase` v tomto stromu neprojde
@@ -1005,6 +1061,9 @@ typecheck ✓.
 řádek, klíče kampaně povinné, Cloudflare 429 na storefrontu → tempo ≥ 1,5 s).
 
 ## Parkované otázky a dluh
+
+- **Vlastní CSS je na stránce webu dvakrát (8. 10. 2026):** jednou v JSON nastavení pro web, jednou ve značce stylů;
+  skripty ho z JSON nečtou. Odstraní to přesun CSS do vlastního úložiště (`won-discounts/navrh-preklady-a-vzhled.md`).
 
 Z MVP 2 (žádné neblokuje):
 - **Free přepínače kombinování po kategoriích v adminu chybí** (rozhodnutí: „Free: merchant přepíná výchozí

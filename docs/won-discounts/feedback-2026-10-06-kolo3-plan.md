@@ -308,7 +308,8 @@ Zapisuje se po bodech během práce.
 | 7 | v kódu, testy zelené, klikání naživo neověřeno | `tiers/ProTierSets.tsx`, `TierSetEditor.tsx` (`inherit`), `TiersScreen.tsx` (`addSet`); testy `tests/ui/kolo3-c.test.ts`; rozhodnutí v build logu. |
 | částky podle trhu (dotažení, úkol 6) | v kódu, brána zelená, naživo až po nasazení | Klíč `měna@trh` jen kde se trhy jedné měny liší; funkce 255 677 B z 256 000 B. Viz `navrh-castky-podle-trhu.md` a build log. |
 | 9, 10 | v kódu, brána zelená 8. 10.; živá zkouška Free: Horizon 8/8, Dawn 6/8 (pokladna na Dawnu 2× HTTP 429 obchodu); Pro: Horizon 4/4, Dawn prošel při opakování | Milníky: jeden žebříček nad uloženými odměnami, sleva na objednávku jako pravidlo `ms-` (funkce pokladny beze změny), Free 2 / Pro 6 v každém trhu zvlášť (na serveru), tabulka stupeň × trh, žebříček na webu ve třech velikostech. `packages/core/src/discounts/milestones.ts`, `MilestonesScreen.tsx`, `snippets/won-milestones.liquid`. Rozhodnutí a čísla v build logu, úkol 7. |
-| 11, 12, 13, 14 | nezačato | dávka E |
+| 11, 12, 14 | v kódu, brána zelená 8. 10.; web naživo neověřen | Stránka Překlady: tabulka na jazyk obchodu (`shopLocales`, volitelné `read_locales`), Free 2 jazyky i na serveru, každý jazyk vlastní úložiště `tx_<jazyk>`, kontrola částí ve složených závorkách, vlastní název odměny u stupně se slevou, export a import CSV (Pro). `model/translations.ts`, `integration/translations.server.ts`, `packages/core/src/discounts/storefront-texts.ts`. Měření: `navrh-preklady-a-vzhled.md`. |
+| 13 | nezačato | dávka E, část B: vzhled u modulů; stránka Vzhled zatím existuje bez textů |
 | 16 | nezačato | dávka F |
 
 **Zjištěno při čtení kódu (liší se od návrhu):**
