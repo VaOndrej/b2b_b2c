@@ -77,10 +77,9 @@ function gateNotesOf(config: WonDiscountsConfig, plan: "free" | "pro", locale: S
 export function rewardsScreenFacts(
   stored: WonDiscountsConfig,
   opts: { plan: "free" | "pro"; locale: ShopCtx["locale"]; titles: ReadonlyMap<string, string> },
-): Pick<RewardsScreenData, "steps" | "overLimit" | "limit" | "limitPro" | "countOther" | "productWithOrder" | "marginOn" | "gateNotes"> {
+): Pick<RewardsScreenData, "steps" | "limit" | "limitPro" | "countOther" | "productWithOrder" | "marginOn" | "gateNotes"> {
   return {
     steps: milestoneSteps(stored).map((step) => milestoneStepView(step, opts.titles)),
-    overLimit: milestonesOverLimit(stored, opts.plan).map((step) => step.id),
     limit: MILESTONE_LIMITS[opts.plan],
     limitPro: MILESTONE_LIMITS.pro,
     countOther: stored.modules.rewards.countOtherDiscounts,
@@ -157,7 +156,7 @@ export async function loadRewardsOverview(
   const currency = opts.shopCurrency || loaded.config.markets.find((m) => m.enabled)?.currency || "";
   const view = rewardsOverviewOf(loaded.config, plan, currency);
   // P4: each threshold's gift by name (its first choice; the card says how many more there are to choose from).
-  const gifts = gateConfigForPlan(loaded.config, plan).config.modules.rewards.gifts;
+  const { gifts } = overviewSteps(loaded.config, plan, currency);
   const firstChoices = gifts.map((g) => g.choices[0] ?? null);
   const ids = firstChoices.filter((id): id is string => !!id);
   if (ids.length === 0) return view;
@@ -165,26 +164,48 @@ export async function loadRewardsOverview(
   return { ...view, giftNames: firstChoices.map((id) => (id ? (labels[id]?.title ?? null) : null)) };
 }
 
+/**
+ * The gift tiers the Přehled card lists for this plan and currency: the ones the plan runs, without a tier the
+ * plan leaves out of THIS market only (it has its amount there — the limit, not a missing amount, keeps it away).
+ */
+function overviewSteps(config: WonDiscountsConfig, plan: "free" | "pro", currency: string) {
+  const gated = gateConfigForPlan(config, plan).config;
+  // Steps the plan leaves out of some market: there the amount is not "missing", so it is nothing to resolve.
+  const limited = new Map(milestonesOverLimit(config, plan).map((o) => [o.step.id, o.keys]));
+  const here = (id: string) => !(limited.get(id) ?? []).includes(currency);
+  const stored = new Map(milestoneSteps(config).map((step) => [step.id, step]));
+  const currencies = enabledCurrencies(config.markets, currency);
+  /** The enabled markets a step has no amount for — as STORED, minus the markets the plan's limit explains. */
+  const missing = (id: string, extra: Readonly<Record<string, number>>[] = []) => {
+    const step = stored.get(id);
+    return currenciesWithoutAmount([step?.threshold ?? {}, ...extra], currencies).filter((code) => !(limited.get(id) ?? []).includes(code));
+  };
+  return {
+    gated,
+    shipping: gated.modules.rewards.freeShipping && here("shipping") ? gated.modules.rewards.freeShipping : undefined,
+    gifts: gated.modules.rewards.gifts.filter((g) => here(g.id)),
+    discounts: gated.modules.codes.rules.filter((rule) => rule.enabled && isMilestoneRule(rule) && here(rule.id)),
+    missing,
+  };
+}
+
 /** The Přehled card: the steps of the ladder the PLAN runs, in the shop currency (§17c). */
 export function rewardsOverviewOf(config: WonDiscountsConfig, plan: "free" | "pro", currency: string): RewardsOverviewView {
-  const gated = gateConfigForPlan(config, plan).config;
-  const rewards = gated.modules.rewards;
-  const discountRules = gated.modules.codes.rules.filter((rule) => rule.enabled && isMilestoneRule(rule));
+  const view = overviewSteps(config, plan, currency);
   // N2: a step without an amount in the currency of an enabled market is not offered there — the tile has to say so.
-  const currencies = enabledCurrencies(config.markets, currency);
   const missing = {
-    shipping: rewards.freeShipping ? currenciesWithoutAmount([rewards.freeShipping.threshold], currencies) : [],
-    gifts: rewards.gifts.map((g) => currenciesWithoutAmount([g.threshold], currencies)),
+    shipping: view.shipping ? view.missing("shipping") : [],
+    gifts: view.gifts.map((g) => view.missing(g.id)),
     // A discount step needs the cart value and — a fixed amount — the discount itself in the market's currency.
-    discounts: discountRules.map((rule) => currenciesWithoutAmount([rule.minimum?.subtotal ?? {}, ...(rule.value.kind === "fixed" ? [rule.value.amount] : [])], currencies)),
+    discounts: view.discounts.map((rule) => view.missing(rule.id, rule.value.kind === "fixed" ? [rule.value.amount] : [])),
   };
-  const discounts = discountRules.map((rule) => ({
+  const discounts = view.discounts.map((rule) => ({
     amount: rule.minimum?.subtotal?.[currency] ?? null,
     ...(rule.value.kind === "percentage" ? { percent: rule.value.percent } : rule.value.kind === "fixed" ? { off: rule.value.amount[currency] ?? null } : {}),
   }));
   return {
-    shipping: rewards.freeShipping?.threshold[currency] ?? null,
-    gifts: rewards.gifts.map((g) => g.threshold[currency] ?? null),
+    shipping: view.shipping?.threshold[currency] ?? null,
+    gifts: view.gifts.map((g) => g.threshold[currency] ?? null),
     currency,
     ...(discounts.length > 0 ? { discounts } : {}),
     ...(missing.shipping.length > 0 || missing.gifts.some((g) => g.length > 0) || missing.discounts.some((d) => d.length > 0) ? { missing } : {}),

@@ -218,7 +218,7 @@ const LADDER = {
   },
 };
 
-test("Free runs the first two steps of the ladder, whatever their type; the stored config keeps every step", () => {
+test("Free runs the two lowest steps of the ladder, whatever their type; the stored config keeps every step", () => {
   assert.deepEqual(MILESTONE_LIMITS, { free: 2, pro: 6 });
   const { config } = sanitizeConfig(LADDER);
   assert.deepEqual(milestoneSteps(config).map((s) => `${s.kind}:${s.id}`), ["gift:gift-1", "discount:ms-five", "shipping:shipping", "discount:ms-ten", "gift:gift-2"]);
@@ -237,7 +237,8 @@ test("Free runs the first two steps of the ladder, whatever their type; the stor
       ["gift_choices", "reduced", 1, [V(2)]],
     ],
   );
-  assert.equal(explainGate(stripped, "cs")[0]!.text, "Ve Free platí první 2 stupně Milníků, další 3 stupně se nenabízejí. V Pro jich platí 6.");
+  assert.equal(explainGate(stripped, "cs")[0]!.text, "Ve Free platí v každém trhu 2 stupně Milníků s nejnižší částkou. 3 stupně se proto někde nenabízejí. V Pro jich platí 6.");
+  assert.deepEqual(milestonesOverLimit(config, "free").map((o) => [o.step.id, o.keys, o.everywhere]), [["shipping", ["CZK"], true], ["ms-ten", ["CZK"], true], ["gift-2", ["CZK"], true]]);
   // What a Free shop's checkout runs: 3 000 Kč gets the 5 % step and the gift, not 10 %, not free shipping.
   const payload = buildShopFunctionConfig(free, { now: FIXTURE_NOW, shopTimezone: FIXTURE_TZ, shopCurrency: "CZK" }).payload;
   const plan = planCart(cartOf([line("a", 3000_00)]), payload);
@@ -263,12 +264,65 @@ test("the storefront gets the discount steps the plan runs, in Liquid units, nex
     { id: "ms-fix", t: { CZK: 5000_00, EUR: 200_00 }, off: { CZK: 500_00, EUR: 20_00 } },
   ]);
   assert.deepEqual(sf("pro").ship, { CZK: 1500_00 });
-  assert.deepEqual(sf("free").disc, [{ id: "ms-five", t: { CZK: 1000_00 }, pct: 5 }]);
+  // Free, per market: in CZK the two lowest are the gift (500 Kč) and 5 % (1 000 Kč); in EUR the only step is the fixed one.
+  assert.deepEqual(sf("free").disc, [
+    { id: "ms-five", t: { CZK: 1000_00 }, pct: 5 },
+    { id: "ms-fix", t: { EUR: 200_00 }, off: { CZK: 500_00, EUR: 20_00 } },
+  ]);
   assert.equal(sf("free").ship, null);
   // Discount steps alone are enough for the storefront to have something to show; ordinary discounts are not steps.
   const only = sanitizeConfig({ modules: { codes: { rules: [MS_5, orderPct("r_plain", 3)] } } }).config;
   assert.deepEqual(buildStorefrontConfig(only, { configVersion: "v1" }).rewards, { ship: null, gifts: [], other: false, disc: [{ id: "ms-five", t: { CZK: 1000_00 }, pct: 5 }] });
   assert.equal(buildStorefrontConfig(sanitizeConfig({ modules: { codes: { rules: [orderPct("r_plain", 3)] } } }).config, { configVersion: "v1" }).rewards, undefined);
+});
+
+test("the limit holds per market: each market runs ITS two lowest steps — the same ones, or different ones (2 × 2)", () => {
+  const markets = [
+    { handle: "cz", currency: "CZK", enabled: true, countries: ["CZ"] },
+    { handle: "sk", currency: "EUR", enabled: true, countries: ["SK"] },
+  ];
+  // The order differs between the markets: in Czechia the gift is the cheapest, in Slovakia free shipping is; the
+  // 5 % step is second in both, and 10 % is the fourth everywhere.
+  const { config } = sanitizeConfig({
+    markets,
+    modules: {
+      codes: { rules: [step("ms-five", { CZK: 1000_00, EUR: 40_00 }, { kind: "percentage", percent: 5 }), step("ms-ten", { CZK: 3000_00, EUR: 120_00 }, { kind: "percentage", percent: 10 })] },
+      rewards: { freeShipping: { threshold: { CZK: 1500_00, EUR: 30_00 } }, gifts: [{ id: "gift-1", threshold: { CZK: 500_00, EUR: 60_00 }, choices: [V(1)] }] },
+    },
+  });
+  assert.deepEqual(milestonesOverLimit(config, "free").map((o) => [o.step.id, o.keys, o.everywhere]), [
+    ["gift-1", ["EUR"], false],
+    ["shipping", ["CZK"], false],
+    ["ms-ten", ["CZK", "EUR"], true],
+  ]);
+  const { config: free } = gateConfigForPlan(config, "free");
+  assert.deepEqual(free.modules.rewards.gifts, [{ id: "gift-1", threshold: { CZK: 500_00 }, choices: [V(1)] }], "the gift: Czechia only");
+  assert.deepEqual(free.modules.rewards.freeShipping, { threshold: { EUR: 30_00 } }, "free shipping: Slovakia only");
+  assert.deepEqual(free.modules.codes.rules.map((r) => [r.id, r.enabled, r.minimum?.subtotal]), [["ms-five", true, { CZK: 1000_00, EUR: 40_00 }], ["ms-ten", false, { CZK: 3000_00, EUR: 120_00 }]]);
+  const payload = buildShopFunctionConfig(free, { now: FIXTURE_NOW, shopTimezone: FIXTURE_TZ, shopCurrency: "CZK" }).payload;
+  const at = (currency: string, countryCode: string, unitPrice: number) => planCart(cartOf([line("a", unitPrice)], { currency, countryCode }), payload);
+  const cz = at("CZK", "CZ", 5000_00);
+  assert.deepEqual([orderOf(cz), cz.shipping, cz.progress.gifts?.map((g) => g.tierId)], [[["ms-five", 250_00]], null, ["gift-1"]], "Czechia: the gift and 5 %");
+  const sk = at("EUR", "SK", 200_00);
+  assert.deepEqual([orderOf(sk), sk.shipping?.ruleId, sk.progress.gifts ?? []], [[["ms-five", 10_00]], "reward:shipping", []], "Slovakia: free shipping and 5 %");
+  // 2 × 2 different steps: every step has an amount in one market only — all four run, two in each market.
+  const split = sanitizeConfig({
+    markets,
+    modules: {
+      codes: { rules: [step("ms-cz", { CZK: 1000_00 }, { kind: "percentage", percent: 5 }), step("ms-sk", { EUR: 40_00 }, { kind: "percentage", percent: 7 })] },
+      rewards: { freeShipping: { threshold: { EUR: 30_00 } }, gifts: [{ id: "gift-1", threshold: { CZK: 500_00 }, choices: [V(1)] }] },
+    },
+  }).config;
+  assert.deepEqual(milestonesOverLimit(split, "free"), []);
+  assert.deepEqual(gateConfigForPlan(split, "free").stripped, []);
+  // Two markets of one currency with their own amounts are two markets: the stored short form is kept where it can be.
+  const shared = sanitizeConfig({
+    markets: TWO_EUR,
+    modules: { rewards: { freeShipping: { threshold: { CZK: 3000_00, EUR: 90_00 } }, gifts: [{ id: "g1", threshold: { CZK: 500_00, EUR: 20_00 }, choices: [V(1)] }, { id: "g2", threshold: { CZK: 1000_00, "EUR@sk": 40_00, "EUR@de": 95_00 }, choices: [V(2)] }] } },
+  }).config;
+  const gated = gateConfigForPlan(shared, "free").config.modules.rewards;
+  assert.deepEqual(gated.freeShipping, { threshold: { "EUR@de": 90_00 } }, "free shipping is third in Czechia and Slovakia, second in Germany");
+  assert.deepEqual(gated.gifts.map((g) => g.threshold), [{ CZK: 500_00, EUR: 20_00 }, { CZK: 1000_00, "EUR@sk": 40_00 }]);
 });
 
 // --- Amounts per market --------------------------------------------------------------------------------

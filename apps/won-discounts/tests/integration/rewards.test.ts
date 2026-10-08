@@ -122,7 +122,7 @@ test("save: all three kinds of step (major units typed → minor units), countOt
       ["discount", "ms-fix00001", { CZK: 5000_00, EUR: 200_00 }, "fixed", null, { CZK: 500_00, EUR: 20_00 }],
     ],
   );
-  assert.deepEqual([screen.limit, screen.limitPro, screen.overLimit, screen.countOther], [6, 6, [], true]);
+  assert.deepEqual([screen.limit, screen.limitPro, screen.countOther], [6, 6, true]);
   const payload = JSON.parse(fake.sync.shopMetafieldValue("function_config")!) as { modules: { rewards: unknown; codes: { rules: { id: string }[] } } };
   const n = Number(gift.variantIds[0]!.split("/").pop());
   assert.deepEqual(payload.modules.rewards, { s: { CZK: 1000_00, EUR: 40_50 }, g: [["gift-gift0001", { CZK: 1500_00 }, [n]]], o: 1 });
@@ -243,65 +243,67 @@ test("refused (nothing stored): an amount of 0, a gift without an amount or with
   assert.deepEqual(await rewardsAction(ctx, formOf([[F.intent, "remove"]])), { ok: false, reason: "bad_request" });
 });
 
-test("limits on the SERVER: Free saves 2 steps and refuses a third, Pro saves 6 and refuses a seventh", async () => {
-  const stepFields = (n: number): [string, string][] =>
-    Array.from({ length: n }, (_, i) => `new-step${i}`).flatMap((uid, i) => [
+test("limits on the SERVER, per market: Free saves 2 steps a market and refuses a third, Pro 6 and refuses a seventh", async () => {
+  const stepFields = (n: number, key = "CZK", tag = "step"): [string, string][] =>
+    Array.from({ length: n }, (_, i) => `new-${tag}${i}`).flatMap((uid, i) => [
       [F.step, uid],
       [F.kind(uid), "discount"],
       [F.percent(uid), String(i + 1)],
-      [F.amount(uid, "CZK"), String((i + 1) * 1000)],
+      [F.amount(uid, key), String((i + 1) * 1000)],
     ] as [string, string][]);
-  const save = async (plan: "free" | "pro", n: number) => {
+  const post = async (plan: "free" | "pro", fields: [string, string][], fake = new FakeStore()) => {
     const version = (await loadConfig(db.prisma, shop)).version;
-    return rewardsAction(ctxFor(new FakeStore(), plan), formOf([[F.intent, "save"], ...(version ? ([["configVersion", version]] as [string, string][]) : []), ...stepFields(n)]));
+    return rewardsAction(ctxFor(fake, plan), formOf([[F.intent, "save"], ...(version ? ([["configVersion", version]] as [string, string][]) : []), ...fields]));
   };
   const errors = (r: unknown) => ((r as { errors?: { key: string; params?: unknown }[] }).errors ?? []).map((e) => [e.key, e.params]);
   await store(withMarkets);
-  assert.deepEqual(errors(await save("free", 3)), [["milestones.error.limitFree", { max: 2, pro: 6 }]]);
+  assert.deepEqual(errors(await post("free", stepFields(3))), [["milestones.error.limitFree", { max: 2, pro: 6 }]]);
   assert.deepEqual((await loadConfig(db.prisma, shop)).config.modules.codes.rules, [], "nothing was saved");
-  assert.equal((await save("free", 2)).ok, true);
-  assert.deepEqual(errors(await save("pro", 7)), [["milestones.error.limit", { max: 6, pro: 6 }]]);
-  const six = await save("pro", 6);
+  // Two markets on Free: two steps in EACH — the same two, or two for Czechia and two others for Slovakia (2 × 2).
+  const fake = new FakeStore();
+  const four = await post("free", [...stepFields(2, "CZK", "cz"), ...stepFields(2, "EUR", "sk")], fake);
+  assert.equal(four.ok, true, JSON.stringify(four));
+  await syncIdle(shop);
+  const shipped = JSON.parse(fake.sync.shopMetafieldValue("function_config")!) as { modules: { codes: { rules: { id: string; enabled: boolean }[] } } };
+  assert.deepEqual(shipped.modules.codes.rules.filter((r) => r.enabled).map((r) => r.id), ["ms-cz0", "ms-cz1", "ms-sk0", "ms-sk1"], "all four run: two in each market");
+  assert.deepEqual((await loadRewardsScreen(ctxFor(new FakeStore(), "free"), { scopes: SCOPES })).gateNotes, [], "nothing is past a limit");
+  // …but not a third one in a market.
+  assert.deepEqual(errors(await post("free", [...stepFields(2, "CZK", "cz"), ...stepFields(3, "EUR", "sk")])), [["milestones.error.limitFree", { max: 2, pro: 6 }]]);
+  assert.deepEqual(errors(await post("pro", stepFields(7))), [["milestones.error.limit", { max: 6, pro: 6 }]]);
+  const six = await post("pro", stepFields(6));
   assert.equal(six.ok, true, JSON.stringify(six));
   assert.equal((await loadConfig(db.prisma, shop)).config.modules.codes.rules.length, 6);
-  // After a downgrade the six stay stored; the page shows which are not in force, and the checkout gets two.
-  const fake = new FakeStore();
-  const free = ctxFor(fake, "free");
+  // After a downgrade the six stay stored and editable; the gate note says so, and the checkout gets two.
+  const down = new FakeStore();
+  const free = ctxFor(down, "free");
   const screen = await loadRewardsScreen(free, { scopes: SCOPES });
-  assert.deepEqual([screen.steps.length, screen.limit, screen.overLimit], [6, 2, ["ms-step2", "ms-step3", "ms-step4", "ms-step5"]]);
-  assert.match(screen.gateNotes[0]!.text, /Ve Free platí první 2 stupně Milníků, další 4 stupně se nenabízejí/);
-  // Keeping the stored steps (two edited, four kept as stored) is not "more steps": it saves, and nothing is lost.
-  const kept: [string, string][] = screen.steps.flatMap((step, i) =>
-    i < 2
-      ? ([[F.step, step.id], [F.kind(step.id), "discount"], [F.percent(step.id), String(step.percent)], [F.amount(step.id, "CZK"), String(step.threshold.CZK! / 100 + 50)]] as [string, string][])
-      : ([[F.step, step.id], [F.kept, step.id]] as [string, string][]),
-  );
-  const result = await rewardsAction(free, formOf([[F.intent, "save"], ["configVersion", screen.configVersion!], ...kept]));
+  assert.deepEqual([screen.steps.length, screen.limit], [6, 2]);
+  assert.match(screen.gateNotes[0]!.text, /Ve Free platí v každém trhu 2 stupně Milníků s nejnižší částkou\. 4 stupně se proto někde nenabízejí/);
+  // Saving the stored steps again (two of them edited) is not "more steps": it saves, and nothing is lost.
+  const same: [string, string][] = screen.steps.flatMap((step, i) => [[F.step, step.id], [F.kind(step.id), "discount"], [F.percent(step.id), String(step.percent)], [F.amount(step.id, "CZK"), String(step.threshold.CZK! / 100 + (i < 2 ? 50 : 0))]] as [string, string][]);
+  const result = await post("free", same, down);
   assert.equal(result.ok, true, JSON.stringify(result));
   await syncIdle(shop);
   const rules = (await loadConfig(db.prisma, shop)).config.modules.codes.rules;
   assert.deepEqual(rules.map((r) => [r.id, r.minimum?.subtotal?.CZK]), [["ms-step0", 1050_00], ["ms-step1", 2050_00], ["ms-step2", 3000_00], ["ms-step3", 4000_00], ["ms-step4", 5000_00], ["ms-step5", 6000_00]]);
   // (a rule the plan does not run ships switched off, like every rule the gate turns off)
-  const shipped = JSON.parse(fake.sync.shopMetafieldValue("function_config")!) as { modules: { codes: { rules: { id: string; enabled: boolean }[] } } };
-  assert.deepEqual(shipped.modules.codes.rules.filter((r) => r.enabled).map((r) => r.id), ["ms-step0", "ms-step1"], "a Free shop's checkout runs two steps");
+  const gated = JSON.parse(down.sync.shopMetafieldValue("function_config")!) as { modules: { codes: { rules: { id: string; enabled: boolean }[] } } };
+  assert.deepEqual(gated.modules.codes.rules.filter((r) => r.enabled).map((r) => r.id), ["ms-step0", "ms-step1"], "a Free shop's checkout runs two steps");
   // …but a Free shop cannot ADD one on top of them.
-  const now = (await loadConfig(db.prisma, shop)).version!;
-  const more = await rewardsAction(free, formOf([[F.intent, "save"], ["configVersion", now], ...kept, [F.step, "new-x"], [F.kind("new-x"), "shipping"], [F.amount("new-x", "CZK"), "100"]]));
-  assert.deepEqual(errors(more), [["milestones.error.limitFree", { max: 2, pro: 6 }]]);
+  assert.deepEqual(errors(await post("free", [...same, [F.step, "new-x"], [F.kind("new-x"), "shipping"], [F.amount("new-x", "CZK"), "100"]])), [["milestones.error.limitFree", { max: 2, pro: 6 }]]);
 });
 
-test("Free with a stored ladder: a step past the limit is kept as stored by id, the gate note says so; amounts in a disabled market stay (§14a)", async () => {
+test("Free with a stored ladder: a step past the limit stays stored and editable, the gate note says so; amounts in a disabled market stay (§14a)", async () => {
   const fake = new FakeStore();
   const ctx = ctxFor(fake, "free");
   const ladder: GiftTier[] = [
     { id: "g1", threshold: { CZK: 500_00, HUF: 9000_00 }, choices: ["gid://shopify/ProductVariant/11"] },
     { id: "g2", threshold: { CZK: 900_00 }, choices: ["gid://shopify/ProductVariant/21", "gid://shopify/ProductVariant/22"] },
-    { id: "g3", threshold: { CZK: 1900_00 }, choices: ["gid://shopify/ProductVariant/31"] },
+    { id: "g3", threshold: { CZK: 1900_00, EUR: 70_00 }, choices: ["gid://shopify/ProductVariant/31"] },
   ];
   await store((c) => ({ ...withMarkets(c), modules: { ...c.modules, rewards: { ...c.modules.rewards, gifts: ladder } } }));
   const screen = await loadRewardsScreen(ctx, { scopes: SCOPES });
   assert.deepEqual(screen.steps.map((g) => g.id), ["g1", "g2", "g3"]);
-  assert.deepEqual(screen.overLimit, ["g3"]);
   assert.ok(screen.gateNotes.length >= 1, JSON.stringify(screen.gateNotes));
   assert.equal(screen.cartBlockAddUrl?.includes("template=cart"), true);
   const result = await rewardsAction(
@@ -319,7 +321,10 @@ test("Free with a stored ladder: a step past the limit is kept as stored by id, 
       [F.choice("g2"), "gid://shopify/ProductVariant/21"],
       [F.choice("g2"), "gid://shopify/ProductVariant/22"],
       [F.step, "g3"],
-      [F.kept, "g3"],
+      [F.kind("g3"), "gift"],
+      [F.amount("g3", "CZK"), "1900"],
+      [F.amount("g3", "EUR"), "70"],
+      [F.choice("g3"), "gid://shopify/ProductVariant/31"],
     ]),
   );
   assert.equal(result.ok, true, JSON.stringify(result));
@@ -327,7 +332,10 @@ test("Free with a stored ladder: a step past the limit is kept as stored by id, 
   const gifts = (await loadConfig(db.prisma, shop)).config.modules.rewards.gifts;
   assert.deepEqual(gifts[0], { id: "g1", threshold: { HUF: 9000_00, CZK: 600_00 }, choices: ["gid://shopify/ProductVariant/11"] }, "HUF (no enabled market) kept");
   assert.deepEqual(gifts[1], ladder[1], "a stored choice of two stays stored on Free (the gate offers the first)");
-  assert.deepEqual(gifts[2], ladder[2], "the kept step exactly as stored");
+  assert.deepEqual(gifts[2], ladder[2], "the third step exactly as stored");
+  // What a Free shop's checkout gets: g3 is the third step in Czechia (left out there) and the only one in Slovakia (it runs there).
+  const payload = JSON.parse(fake.sync.shopMetafieldValue("function_config")!) as { modules: { rewards: { g: [string, Record<string, number>, number[]][] } } };
+  assert.deepEqual(payload.modules.rewards.g.map((g) => [g[0], g[1]]), [["g1", { HUF: 9000_00, CZK: 600_00 }], ["g2", { CZK: 900_00 }], ["g3", { EUR: 70_00 }]]);
 });
 
 test("Přehled card: the steps the PLAN runs in the shop currency (Free: the first two of the ladder)", () => {
@@ -351,8 +359,9 @@ test("Přehled card: the steps the PLAN runs in the shop currency (Free: the fir
     discounts: [{ amount: 2000_00, percent: 5 }],
     missing: { shipping: [], gifts: [[], ["CZK"]], discounts: [[]] },
   });
-  // Free: the ladder is g1 (500), shipping (1 000), the 5 % step (2 000), g2 (no CZK amount: last) — the first two run.
-  assert.deepEqual(rewardsOverviewOf(config, "free", "CZK"), { shipping: 1000_00, gifts: [500_00], currency: "CZK" });
+  // Free, per market: in CZK the two lowest are g1 (500) and shipping (1 000) — the 5 % step is left out there, which
+  // is the plan's limit, not a missing amount. g2 has no CZK amount at all (it runs in EUR): that IS something to say.
+  assert.deepEqual(rewardsOverviewOf(config, "free", "CZK"), { shipping: 1000_00, gifts: [500_00, null], currency: "CZK", missing: { shipping: [], gifts: [[], ["CZK"]], discounts: [] } });
   assert.deepEqual(rewardsOverviewOf(config, "pro", "EUR").missing, { shipping: ["EUR"], gifts: [["EUR"], []], discounts: [["EUR"]] });
 });
 
@@ -394,13 +403,15 @@ test("screen: the stored rewards as a ladder; Free shows the step past its limit
   const freeHtml = await renderPage(createElement(MilestonesScreen, devRewardsScreen({ plan: "free", state: null, locale: "cs" })));
   const free = text(freeHtml);
   assert.match(freeHtml, /<s-page heading="Milníky"/);
-  // Three stored rewards = three steps, in ladder order; the third is past the Free limit.
+  // Three stored rewards = three steps, in ladder order. Per market on Free: in Czechia the third (the choice of
+  // gifts) is past the limit; in Slovakia it is the second step (the socks have no amount there), so it runs.
   assert.deepEqual([...freeHtml.matchAll(/data-won-ms-step="([^"]+)"/g)].map((m) => m[1]), ["shipping", "gift-socks", "gift-choice"]);
-  assert.equal((freeHtml.match(/data-won-ms-step="gift-choice" data-won-ms-locked=""/g) ?? []).length, 1);
-  assert.match(freeHtml, /<input type="hidden" name="ms\.kept" value="gift-choice"\/>/);
-  assert.match(free, /Tento stupeň je uložený, ale ve Free neplatí\. Free má 2 stupně, Pro 6\./);
-  assert.match(free, /Ve Free platí první 2 stupně Milníků, další stupeň se nenabízí/, "the gate note");
-  assert.match(free, /Free má 2 stupně\. V Pro jich nastavíte až 6 a u dárku výběr ze 3\./);
+  assert.deepEqual([...freeHtml.matchAll(/data-won-ms-row="([^"]+)"[\s\S]*?(?=data-won-ms-row=|data-won-ms-suggest|$)/g)].map((m) => [m[1], /data-won-ms-over="([^"]*)"/.exec(m[0])?.[1] ?? null]), [["shipping", null], ["gift-socks", null], ["gift-choice", "CZK"]]);
+  assert.doesNotMatch(freeHtml, /name="ms\.kept"/, "every stored step stays editable");
+  assert.match(freeHtml, /<s-number-field name="ms\.gift-choice\.amount\.CZK"[^>]* value="3000"/);
+  assert.match(free, /Česko: ve Free tu tento stupeň neplatí\. V každém trhu platí 2 stupně s nejnižší částkou, v Pro 6\. Zůstane uložený\./);
+  assert.match(free, /Ve Free platí v každém trhu 2 stupně Milníků s nejnižší částkou\. Jeden stupeň se proto někde nenabízí/, "the gate note");
+  assert.match(free, /Stupňů: 3 z 4/, "two markets on Free: room for two steps in each");
   assert.match(freeHtml, /href="\/app\/plan"/, "the Pro note leads to the plan");
   // The amounts table: a row per step, a column per market, the market by name with its currency.
   assert.match(freeHtml, /data-won-ms-table="2"/);
@@ -421,12 +432,12 @@ test("screen: the stored rewards as a ladder; Free shows the step past its limit
   assert.doesNotMatch(text(await renderPage(createElement(MilestonesScreen, noStatus))), /Aktivní/, "never a green pill from this page's own form");
   const proHtml = await renderPage(createElement(MilestonesScreen, devRewardsScreen({ plan: "pro", state: null, locale: "cs" })));
   const pro = text(proHtml);
-  assert.doesNotMatch(proHtml, /data-won-ms-locked/);
+  assert.doesNotMatch(proHtml, /data-won-ms-over/);
   assert.match(pro, /3\. stupeň/);
   assert.match(pro, /Dárek \(na výběr až 3\)/);
   assert.match(pro, /Dárek: Kšiltovka Won, Plátěná taška Won nebo Hrnek Won od 3 000 Kč \/ 120 €/);
   assert.match(pro, /Přidat stupeň/);
-  assert.match(pro, /Stupňů: 3 z 6/);
+  assert.match(pro, /Stupňů: 3 z 12/);
   // Discount steps: a percent and an amount per market, with the sentence on how they differ from a gift.
   const discHtml = await renderPage(createElement(MilestonesScreen, devRewardsScreen({ plan: "pro", state: "discounts", locale: "cs" })));
   const disc = text(discHtml);
@@ -450,8 +461,8 @@ test("screen: the stored rewards as a ladder; Free shows the step past its limit
   assert.match(await embed("embed-no-scope"), /Won nemá přístup ke vzhledu obchodu.*Otevřít úpravu vzhledu obchodu/);
   // The limit is said, and the server's refusal is rendered.
   const render = async (plan: "free" | "pro", result: string) => text(await renderPage(createElement(MilestonesScreen, { ...devRewardsScreen({ plan, state: null, locale: "cs" }), result: devRewardsResult(result) })));
-  assert.match(await render("pro", "too-many"), /Stupňů může být nejvýš 6\./);
-  assert.match(await render("free", "limit-free"), /Free má 2 stupně\. Odeberte stupeň, nebo přejděte na Pro, kde jich je 6\./);
+  assert.match(await render("pro", "too-many"), /V jednom trhu může platit nejvýš 6 stupňů\./);
+  assert.match(await render("free", "limit-free"), /Free má v každém trhu 2 stupně\. Odeberte stupeň, nechte u něj pole trhu prázdné, nebo přejděte na Pro, kde jich je 6\./);
   assert.match(await render("free", "invalid"), /Vyberte dárek\./);
 });
 

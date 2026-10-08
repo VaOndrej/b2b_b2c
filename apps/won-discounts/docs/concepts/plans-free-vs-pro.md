@@ -31,7 +31,7 @@ Try a cart and moving Shopify discounts work in full on Free. Free is not a demo
   ([margin-per-collection](margin-per-collection)).
 - **Quantity discount sets per product or collection** and counting across the
   whole cart ([quantity-tiers](quantity-tiers)).
-- **Up to 6 steps in Milestones (Free: 2) and a choice of up to 3 gifts** at a step
+- **Up to 6 steps in each market in Milestones (Free: 2) and a choice of up to 3 gifts** at a step
   ([cart-rewards](cart-rewards)).
 
 Clearance (Pro) sells a number of pieces of a variant at a discount, see [clearance](clearance). Campaigns (Pro) change your discounts for a time window, see [campaigns](campaigns); a campaign running when the store moves to Free finishes.

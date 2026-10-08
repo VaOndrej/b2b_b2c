@@ -166,7 +166,7 @@ test("N6 + N7 + N10 + N19 + N21: Milníky says where the ladder shows, what to d
   // The four places, each with its label.
   assert.deepEqual([...html.matchAll(/data-won-ms-place="(\w+)"/g)].map((m) => m[1]), ["topBar", "product", "drawer", "cart"]);
   const next = html.slice(html.indexOf("data-won-rewards-next"));
-  assert.match(next.slice(0, 2600), /Zákazník uvidí 2 stupně\.[\s\S]*Slovensko: některý stupeň tam nemá částku a nenabízí se\.[\s\S]*Doplnit částky[\s\S]*Košík žebříček ukazuje\.[\s\S]*Na stránce produktu žebříček zatím není\.[\s\S]*Přidat na stránku produktu/);
+  assert.match(next.slice(0, 2600), /Zákazník uvidí 3 stupně\.[\s\S]*Slovensko: některý stupeň tam nemá částku a nenabízí se\.[\s\S]*Doplnit částky[\s\S]*Košík žebříček ukazuje\.[\s\S]*Na stránce produktu žebříček zatím není\.[\s\S]*Přidat na stránku produktu/);
   // N21: the plan note sits in the steps panel, under the tiles — not over the whole page.
   assert.ok(html.indexOf("Tohle je v tarifu Pro, zákazník to nedostane") > html.indexOf('data-won-view-panel="steps"'));
   // N19: the save button is hidden while "Odměny na webu" is open (nothing to save there) — it is shown for the form panels.

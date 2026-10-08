@@ -129,13 +129,18 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
     **sleva na objednávku = automatické pravidlo na objednávku s minimální útratou a id `ms-…`** v `modules.codes.rules`. Uložené
     odměny se proto čtou jako stupně beze změny a převod jde vrátit (odebráním pravidel `ms-`). Stupeň se slevou je za `ms-` jen
     s tvarem, který Milníky zapisují; jiné pravidlo s tou předponou zůstává běžnou slevou (nikdy neviditelné na obou stránkách).
-  - **Limity:** Free 2 stupně, Pro 6 (`MILESTONE_LIMITS`). Na serveru dvakrát: formulář (`readMilestonesForm`, nepustí víc stupňů,
-    než tarif má, pokud už nebyly uložené) a brána tarifu (`plan-gate.ts`, schopnost `milestone_steps` nahradila `gift_ladder`):
-    Free běží první dva stupně žebříčku bez ohledu na typ, další se nepošlou (dárek a doprava) nebo jdou vypnuté (sleva). Dárek smí
-    být nejvýš u 5 stupňů (20 dárkových produktů na stránku webu, starší limit). **Změna proti dřívějšku:** Free dřív = doprava + 1
-    dárek; teď 2 libovolné stupně (třeba 2 dárky).
-  - **Řazení (rozhodl jsem sám):** žebříček se řadí podle částky prvního zapnutého trhu (první sloupec tabulky), ne podle měny
-    obchodu z Shopify. Brána tarifu měnu obchodu nezná a musí vybrat stejné dva stupně jako stránka. V dev obchodě je to totéž.
+  - **Limity platí v každém trhu zvlášť (Ondřej 8. 10. odpoledne):** Free 2 stupně, Pro 6 (`MILESTONE_LIMITS`). V každém trhu
+    platí stupně s nejnižší částkou toho trhu, takže Free se dvěma trhy může mít 2 × 2: stejné dva stupně v obou, nebo dva pro
+    Česko a dva jiné pro Slovensko (stupeň platí jen tam, kde má částku). Na serveru dvakrát: formulář (`readMilestonesForm`,
+    nepustí víc stupňů v trhu, než tarif má, pokud tam už nebyly uložené) a brána tarifu (`plan-gate.ts`, `milestonesOverLimit`,
+    schopnost `milestone_steps` nahradila `gift_ladder`): stupeň nad limit trhu ztratí v odesílaném nastavení částku toho trhu;
+    stupeň bez jediného trhu se nepošle (dárek, doprava) nebo jde vypnutý (sleva). Uložené nastavení se nemění. Stránka nemá
+    zamčené stupně: každý jde upravit a řádek říká, ve kterém trhu ve Free neplatí. Stránka pojme nejvýš 12 stupňů
+    (limit tarifu × počet trhů). Dárek smí být nejvýš u 5 stupňů (20 dárkových produktů na stránku webu, starší limit).
+    **Ondřej potvrdil:** Free má 2 libovolné stupně (dřív doprava + 1 dárek).
+  - **Známá mezera:** se zapnutým „Zákazník ze země mimo vaše trhy“ může košík ze země mimo trhy vidět víc stupňů než limit,
+    když mají dva trhy jedné měny různé stupně (dostane částky z obou). Nikdy nedostane víc, než obchodník nastavil.
+  - **Řazení na stránce:** podle částky prvního sloupce tabulky; je to jen pořadí řádků, o tom, co platí, rozhoduje každý trh sám.
   - **Pokladna, ověřeno testem (`packages/core/tests/discounts/milestones.test.ts`, 13 testů; 12 nových fixtures funkce, celkem
     152; cargo 102, parita 699):** 5 % od 1 000 Kč a 10 % od 2 000 Kč → platí jen vyšší; hranice slevy se měří stejně jako
     u dárku (zboží před slevami, bez dárku, výprodej se počítá); liší se tím, že sleva se bere ze zboží po slevách na produkty a ne
@@ -160,7 +165,7 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
     vykreslené, dev náhled neběžel). Web: `node apps/won-discounts/scripts/milestones-web-preview.mjs <složka>` projde košíkem
     6 hodnot ve 4 umístěních nad skutečnými styly a skripty, 54 kontrol na 390 i 1440 px, bez načtení stránky;
     snímky `Apps/.playwright-mcp/milniky/web/`. Náhodný test 1 500 košíků porovnává stupně na webu s `planCart`.
-  - **Brána 8. 10.:** `test:packages` 926 + 53, `test:unit` 1 788 + cargo 102 + vitest 699, `typecheck`, `lint` (0 chyb,
+  - **Brána 8. 10. (po úpravě limitu po trzích):** `test:packages` 927 + 53, `test:unit` 1 789 + cargo 102 + vitest 699, `typecheck`, `lint` (0 chyb,
     6 starších varování), `build`, `guard:test:core` 301, `validate:shopify` (0 nálezů), vše exit 0.
   - **Naživo neověřeno:** (1) Horizon a Dawn: zkouška je připravená (`tests/e2e/storefront.rewards.spec.ts`, nový test průchodu
     stupni; šablony zkoušky mají nově blok Milníků na stránce produktu a zapnutý pruh nahoře, profil `rewards-pro` má stupeň

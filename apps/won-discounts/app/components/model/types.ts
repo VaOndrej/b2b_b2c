@@ -766,9 +766,7 @@ export interface RewardsScreenData {
   currencies: CurrencyView[];
   /** The stored ladder, in ladder order (core milestones.ts). */
   steps: MilestoneStepView[];
-  /** Ids of the stored steps past the plan's limit: shown and removable, not in force (§14a). */
-  overLimit: string[];
-  /** Steps the plan runs (Free 2, Pro 6) and the Pro figure for the upsell sentence. */
+  /** Steps the plan runs IN EACH MARKET (Free 2, Pro 6) and the Pro figure for the upsell sentence. */
   limit: number;
   limitPro: number;
   /** countOtherDiscounts: the cart value counts after the other discounts (the cart warns; checkout never takes the gift). */

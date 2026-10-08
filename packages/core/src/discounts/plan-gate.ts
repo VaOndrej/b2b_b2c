@@ -18,7 +18,7 @@
 //   Engine         Free: category switches Pro: + per-rule combinations (combinesWith)
 //   Kampaně        Free: —                 Pro: ✓
 //   Množstevní     Free: 1 global set      Pro: sets per product / collection, counting across the cart
-//   Milníky        Free: 2 steps, 1 gift a step     Pro: 6 steps, choice of up to 3 gifts
+//   Milníky        Free: 2 steps a market, 1 gift   Pro: 6 steps a market, choice of up to 3 gifts
 //   Ochrana marže  Free: global minimum    Pro: per collection
 //   Výprodej       Free: —                 Pro: the whole module
 //
@@ -50,8 +50,9 @@
 //     set stays but INERT (`breaks: []`; its counting mode is left as it is —
 //     with no break it gives nothing, and the gated payload is never larger
 //     than the stored one's there), see below;
-//   - Milníky (milestones.ts): the first 2 steps of the ladder stay (free shipping, gift tiers and "ms-" order
-//     discounts are one ladder, lowest amount first); a gift that stays offers its first gift only;
+//   - Milníky (milestones.ts): per market the 2 steps with the lowest cart values stay (free shipping, gift tiers
+//     and "ms-" order discounts are one ladder); a step past them is not offered in that market; a gift that
+//     stays offers its first gift only;
 //   - custom look of the storefront blocks (MVP 7): removed (a ready-made look applies);
 //   - margin per collection: folded into the global floor, the STRICTEST value
 //     wins (a larger discount than the Pro setup allowed is never possible).
@@ -88,7 +89,7 @@ import { isProCodeBatch } from "./code-batch.ts";
 import type { ReadonlyDeep, WonDiscountsConfig } from "./config.ts";
 import { CONFIG_LIMITS } from "./config/limits.ts";
 import { csPlural, formatPercent, type UiLocale } from "./describe.ts";
-import { isMilestoneRule, MILESTONE_LIMITS, milestonesOverLimit } from "./milestones.ts";
+import { isMilestoneRule, MILESTONE_LIMITS, milestonesOverLimit, withoutMarkets } from "./milestones.ts";
 
 export type ShopPlan = "free" | "pro";
 
@@ -274,16 +275,29 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
   // Vzhled screen shows it locked). The stored config keeps it.
   delete out.storefront.custom;
 
-  // Milníky: the first MILESTONE_LIMITS.free steps of the ladder stay (milestones.ts: free shipping, the gift
-  // tiers and the order discounts with an "ms-" id are ONE ladder); a step past them is not offered — never more
-  // than the merchant set up. A gift that stays offers its first gift only.
+  // Milníky: PER MARKET the MILESTONE_LIMITS.free steps with the lowest cart values stay (milestones.ts: free
+  // shipping, the gift tiers and the order discounts with an "ms-" id are ONE ladder). A step past them loses its
+  // amount for that market — it is not offered there, never more than the merchant set up; a step left without
+  // any market goes (a discount rule is switched off: without a minimum it would apply to every cart).
   const over = milestonesOverLimit(out, "free");
   if (over.length > 0) {
-    const gone = new Set(over.map((step) => step.id));
-    if (over.some((step) => step.kind === "shipping")) delete out.modules.rewards.freeShipping;
-    out.modules.rewards.gifts = out.modules.rewards.gifts.filter((g) => !gone.has(g.id));
-    for (const rule of out.modules.codes.rules) if (isMilestoneRule(rule) && gone.has(rule.id)) rule.enabled = false;
-    stripped.push({ capability: "milestone_steps", reason: "reduced", count: over.length, removedIds: over.map((step) => step.id) });
+    const rewards = out.modules.rewards;
+    for (const { step, keys, everywhere } of over) {
+      const threshold = everywhere ? {} : withoutMarkets(step.threshold, keys, out.markets);
+      const none = Object.keys(threshold).length === 0;
+      if (step.kind === "shipping") {
+        if (none) delete rewards.freeShipping;
+        else rewards.freeShipping = { threshold };
+      } else if (step.kind === "gift") {
+        if (none) rewards.gifts = rewards.gifts.filter((g) => g.id !== step.id);
+        else rewards.gifts = rewards.gifts.map((g) => (g.id === step.id ? { ...g, threshold } : g));
+      } else {
+        const rule = out.modules.codes.rules.find((r) => r.id === step.id && isMilestoneRule(r));
+        if (rule && none) rule.enabled = false;
+        else if (rule) rule.minimum = { ...rule.minimum, subtotal: threshold };
+      }
+    }
+    stripped.push({ capability: "milestone_steps", reason: "reduced", count: over.length, removedIds: over.map((o) => o.step.id) });
   }
   for (const gift of out.modules.rewards.gifts) {
     if (gift.choices.length <= 1) continue;
@@ -413,8 +427,8 @@ function sentence(s: StrippedCapability, locale: UiLocale): string {
         : "On Free, quantity tiers count items per product, not across the whole cart (a Pro feature).";
     case "milestone_steps":
       return cs
-        ? `Ve Free platí první ${MILESTONE_LIMITS.free} stupně Milníků, ${csOthers(n, ["stupeň", "stupně", "stupňů"])} se ${csVerb(n, "nenabízí", "nenabízejí")}. V Pro jich platí ${MILESTONE_LIMITS.pro}.`
-        : `On Free the first ${MILESTONE_LIMITS.free} steps of Milestones apply; the other ${n === 1 ? "one is" : `${n} are`} not offered. Pro runs ${MILESTONE_LIMITS.pro}.`;
+        ? `Ve Free platí v každém trhu ${MILESTONE_LIMITS.free} stupně Milníků s nejnižší částkou. ${n === 1 ? "Jeden stupeň se proto někde nenabízí" : `${csCount(n, ["stupeň", "stupně", "stupňů"])} se proto někde ${csVerb(n, "nenabízí", "nenabízejí")}`}. V Pro jich platí ${MILESTONE_LIMITS.pro}.`
+        : `On Free each market runs the ${MILESTONE_LIMITS.free} Milestones steps with the lowest amount. ${n === 1 ? "One step is" : `${n} steps are`} therefore not offered somewhere. Pro runs ${MILESTONE_LIMITS.pro}.`;
     case "gift_choices":
       return cs
         ? `Ve Free se nabízí jen první dárek z výběru, ${csOthers(n, ["dárek", "dárky", "dárků"])} ne (výběr dárků je funkce Pro).`

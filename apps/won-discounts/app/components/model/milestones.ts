@@ -6,8 +6,8 @@
 //
 // A row of the form has a stable key (`uid`): the stored step's id, or "new-…" for a row added on the page. The
 // reward's kind is a field of the row, so switching it keeps what was typed; the id the step is stored under
-// follows from the kind (stepId). Limits (Free 2, Pro 6) are checked here and again by the gate (plan-gate.ts):
-// a step past the plan's limit stays stored and visible, it is only not in force (§14a).
+// follows from the kind (stepId). Limits (Free 2 steps in each market, Pro 6) are checked here and again by the
+// gate (plan-gate.ts): a step past a market's limit stays stored and visible, it is only not in force there (§14a).
 
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
 import { formatMoney, formatPercent } from "@won/core/discounts/describe";
@@ -25,8 +25,6 @@ export const MS_FIELD = {
   intent: "intent",
   /** Row keys in the page's order (one value per row). */
   step: "ms.step",
-  /** Rows kept exactly as stored (a step past the plan's limit: shown, removable, not edited). */
-  kept: "ms.kept",
   kind: (uid: string) => `ms.${uid}.kind`,
   /** The cart value the step starts at, per amount column. */
   amount: (uid: string, key: string) => `ms.${uid}.amount.${key}`,
@@ -41,6 +39,44 @@ export const MS_FIELD = {
   /** countOtherDiscounts: one switch for the whole ladder. */
   other: "ms.other",
 } as const;
+
+/** Rows the page holds at most (each market runs its own few of them; the checkout's payload has room for these). */
+export const MILESTONE_ROWS_MAX = 12;
+
+/** The rows a shop may hold on its plan: the plan's steps for every market column. */
+export function milestoneRowsMax(plan: "free" | "pro", columns: number): number {
+  return Math.min(MILESTONE_ROWS_MAX, MILESTONE_LIMITS[plan] * Math.max(1, columns));
+}
+
+/** The amount columns a step is offered in: a cart value there and — a fixed discount — the discount's amount too. */
+function offeredOf(step: MilestoneStep): Record<string, number> {
+  const off = step.kind === "discount" && step.value.kind === "fixed" ? step.value.amount : null;
+  return Object.fromEntries(Object.entries(step.threshold).filter(([key, value]) => typeof value === "number" && value > 0 && (!off || typeof off[key] === "number")));
+}
+
+function stepsPerColumn(offered: readonly Record<string, number>[]): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const map of offered) for (const key of Object.keys(map)) out.set(key, (out.get(key) ?? 0) + 1);
+  return out;
+}
+
+const KIND_RANK: Record<MilestoneKind, number> = { shipping: 0, gift: 1, discount: 2 };
+
+/**
+ * Per row: the amount columns where the step is past the plan's limit (the same ranking as core
+ * milestonesOverLimit: the lowest cart values of each market stay) — from what the form holds now.
+ */
+export function overLimitColumns(rows: readonly Pick<MilestoneStepView, "id" | "kind" | "value" | "off" | "threshold">[], columns: readonly string[], limit: number): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const key of columns) {
+    const ranked = rows
+      .map((row, index) => ({ row, index, at: row.threshold[key], fixed: row.kind === "discount" && row.value === "fixed" }))
+      .filter((x) => typeof x.at === "number" && (!x.fixed || typeof x.row.off[key] === "number"))
+      .sort((a, b) => a.at! - b.at! || KIND_RANK[a.row.kind] - KIND_RANK[b.row.kind] || a.index - b.index);
+    for (const x of ranked.slice(limit)) out.set(x.row.id, [...(out.get(x.row.id) ?? []), key]);
+  }
+  return out;
+}
 
 const UID = /^[A-Za-z0-9_-]{1,64}$/;
 const VARIANT = /^gid:\/\/shopify\/ProductVariant\/\d{1,20}$/;
@@ -108,7 +144,6 @@ export function readMilestonesForm(form: FormDataLike, ctx: MilestonesFormContex
   const errors: FieldError[] = [];
   const F = MS_FIELD;
   const steps: MilestoneStep[] = [];
-  const kept = new Set(form.getAll(F.kept).map(str));
   const seen = new Set<string>();
   const taken = new Set<string>();
   // Ids of the rows that keep theirs come first, so a row that changed its kind never takes a stored step's id.
@@ -117,10 +152,6 @@ export function readMilestonesForm(form: FormDataLike, ctx: MilestonesFormContex
   const first = ctx.columns[0] ?? "";
   for (const uid of uids) {
     const before = ctx.stored.get(uid);
-    if (kept.has(uid)) {
-      if (before) steps.push(before);
-      continue;
-    }
     const kindRaw = str(form.get(F.kind(uid)));
     const kind: MilestoneKind = kindRaw === "shipping" || kindRaw === "discount" ? kindRaw : "gift";
     // The stored step of this row while its kind is the same: its id, and its amounts for switched-off markets.
@@ -165,12 +196,15 @@ export function readMilestonesForm(form: FormDataLike, ctx: MilestonesFormContex
       steps.push({ kind, id, threshold, value: { kind: "percentage", percent: valid ? Math.round(percent * 100) / 100 : 0 } });
     }
   }
-  // Limits: never MORE steps than the plan runs, unless they were all stored already (a downgrade keeps what is
-  // stored; the gate decides what is in force).
+  // Limits hold per market (core milestones.ts): never MORE steps in a market than the plan runs there, unless that
+  // market had as many stored already (a downgrade keeps what is stored; the gate decides what is in force).
   const limit = MILESTONE_LIMITS[ctx.plan];
-  if (steps.length > limit && steps.length > ctx.stored.size) {
+  const storedCount = stepsPerColumn([...ctx.stored.values()].map(offeredOf));
+  const count = stepsPerColumn(steps.map(offeredOf));
+  if ([...count].some(([key, n]) => n > limit && n > (storedCount.get(key) ?? 0))) {
     errors.push({ field: F.step, key: ctx.plan === "free" ? "milestones.error.limitFree" : "milestones.error.limit", params: { max: limit, pro: MILESTONE_LIMITS.pro } });
   }
+  if (steps.length > MILESTONE_ROWS_MAX && steps.length > ctx.stored.size) errors.push({ field: F.step, key: "milestones.error.rows", params: { max: MILESTONE_ROWS_MAX } });
   if (steps.filter((s) => s.kind === "gift").length > CONFIG_LIMITS.giftTiers) {
     errors.push({ field: F.step, key: "milestones.error.tooManyGifts", params: { max: CONFIG_LIMITS.giftTiers } });
   }

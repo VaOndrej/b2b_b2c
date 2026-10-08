@@ -377,17 +377,17 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   // A stored Pro custom look and a changed storefront text reach the preview (Pro only: BILL-1).
   { path: "tiers?plan=pro&state=custom", expect: [/data-won-custom-look=""/, /--won-tiers-accent:#0a7d4f/, /<p class="won-tiers__heading">Kup víc, plať míň<\/p>/] },
   // Odměny: the state lines say the real values; every state of the app embed check has its sentence and action.
-  { path: "rewards", expect: [/<s-page heading="Milníky"/, /Doprava zdarma od 1\u00a0000\u00a0Kč \/ 40\u00a0€/, /Dárek: Ponožky Won — M od 1\u00a0500\u00a0Kč/, /Hodnota košíku se počítá před slevami/, /Kde je to vidět na webu/, /Free má 2 stupně\. V Pro jich nastavíte až 6/] },
+  { path: "rewards", expect: [/<s-page heading="Milníky"/, /Doprava zdarma od 1\u00a0000\u00a0Kč \/ 40\u00a0€/, /Dárek: Ponožky Won — M od 1\u00a0500\u00a0Kč/, /Hodnota košíku se počítá před slevami/, /Kde je to vidět na webu/, /Česko: ve Free tu tento stupeň neplatí/, /Stupňů: 3 z 4/] },
   { path: "rewards?plan=pro", expect: [/3\. stupeň/, /Kšiltovka Won, Plátěná taška Won nebo Hrnek Won od 3\u00a0000\u00a0Kč \/ 120\u00a0€/, /Přidat stupeň/, /Změnit záložní dárek/] },
-  { path: "rewards?plan=pro&state=discounts", expect: [/Sleva 5\u00a0% od 2\u00a0000\u00a0Kč \/ 80\u00a0€/, /Sleva 500\u00a0Kč \/ 20\u00a0€ od 5\u00a0000\u00a0Kč \/ 200\u00a0€/, /Stupňů: 5 z 6/, /Na rozdíl od dárku se sleva počítá ze zboží po slevách na produkty/] },
+  { path: "rewards?plan=pro&state=discounts", expect: [/Sleva 5\u00a0% od 2\u00a0000\u00a0Kč \/ 80\u00a0€/, /Sleva 500\u00a0Kč \/ 20\u00a0€ od 5\u00a0000\u00a0Kč \/ 200\u00a0€/, /Stupňů: 5 z 12/, /Na rozdíl od dárku se sleva počítá ze zboží po slevách na produkty/] },
   { path: "rewards?plan=pro&state=discounts&markets=shared", expect: [/data-won-ms-table="3"/, /name="ms\.ms-fixed\.amount\.EUR@de" label="5\. stupeň, Německo \(EUR\)"/, /name="ms\.ms-fixed\.off\.EUR@sk" label="Sleva: Slovensko \(EUR\)"/] },
   { path: "rewards?state=empty", expect: [/Žádný stupeň/, /Přidat první stupeň/, /Košík žebříček neukazuje\. Won není na webu zapnutý/, /Zapnout na webu/] },
   { path: "rewards?state=embed-draft", expect: [/Won je zapnutý jen v nepublikovaném vzhledu obchodu/, /Zapněte Won i ve vzhledu, který zákazníci vidí/] },
   { path: "rewards?state=embed-unknown", expect: [/Nepodařilo se zjistit, jestli je Won na webu zapnutý/, /Otevřít úpravu vzhledu obchodu/] },
   { path: "rewards?state=embed-no-scope", expect: [/Won nemá přístup ke vzhledu obchodu/, /Otevřít úpravu vzhledu obchodu/] },
   { path: "rewards?result=invalid", expect: [/Vyberte dárek\./] },
-  { path: "rewards?plan=pro&result=too-many", expect: [/Stupňů může být nejvýš 6\./] },
-  { path: "rewards?result=limit-free", expect: [/Free má 2 stupně\. Odeberte stupeň, nebo přejděte na Pro, kde jich je 6\./] },
+  { path: "rewards?plan=pro&result=too-many", expect: [/V jednom trhu může platit nejvýš 6 stupňů\./] },
+  { path: "rewards?result=limit-free", expect: [/Free má v každém trhu 2 stupně\. Odeberte stupeň, nechte u něj pole trhu prázdné, nebo přejděte na Pro, kde jich je 6\./] },
   // Review fix 3: plan-aware — on Pro a rule may stack with the ones its editor combines.
   { path: "settings?plan=pro", expect: [/V Pro se sečtou jen ty, které v editoru slevy spojíte\. Množstevní sleva se s jinou slevou na stejný produkt nesčítá nikdy/] },
   { path: "tiers?state=dawn", expect: [/--won-tiers-accent:#c0392b/, /--inputs-radius:0px/] },

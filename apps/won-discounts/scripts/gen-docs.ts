@@ -127,7 +127,7 @@ const CAPABILITY_META: { readonly [K in ProCapability]: { label: string; area: A
   tier_set_scope: { label: "Quantity discount sets for chosen products or collections", area: "tiers" },
   tier_sets_extra: { label: "More than one quantity discount set", area: "tiers" },
   tier_count_across_cart: { label: "Quantity discounts counted across the whole cart", area: "tiers" },
-  milestone_steps: { label: "More than 2 steps in Milestones (up to 6)", area: "rewards" },
+  milestone_steps: { label: "Up to 6 Milestones steps per market (Free: 2)", area: "rewards" },
   gift_choices: { label: "A choice of gifts at one step", area: "rewards" },
   margin_per_collection: { label: "Margin protection settings per collection", area: "margin" },
   item_minimum_quantity: { label: "A minimum quantity per product or collection", area: "discounts" },

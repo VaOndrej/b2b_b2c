@@ -1265,7 +1265,7 @@ export const DEV_MILESTONES_FIXTURE: WonDiscountsConfig = readStoredConfig({
 /**
  * Milníky as loadRewardsScreen hands it over (the same pure rewardsScreenFacts):
  *   default     the rewards stored BEFORE Milníky (free shipping, two gift tiers) read as three steps; on Free the
- *               third is past the limit (kept, shown, not in force);
+ *               third is past the limit of each market it has an amount for (shown, editable, not in force there);
  *   plan=pro    every step editable, the choice of 3 gifts;
  *   discounts   the same ladder with two discount steps (a percent and an amount): five steps;
  *   empty       a new shop: nothing set, the app embed off;

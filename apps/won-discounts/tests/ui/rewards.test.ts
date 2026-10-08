@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import type { MilestoneStep } from "@won/core/discounts/milestones";
 
-import { amountsText, liveAmounts, milestoneStepView, MS_FIELD as F, readMilestonesForm, rewardText, stepId, stepMissingColumns, stepSummary } from "../../app/components/model/milestones.ts";
+import { amountsText, liveAmounts, milestoneRowsMax, milestoneStepView, MS_FIELD as F, overLimitColumns, readMilestonesForm, rewardText, stepId, stepMissingColumns, stepSummary } from "../../app/components/model/milestones.ts";
 import { giftsFromPicked, giftTitle } from "../../app/components/rewards/gift-picker.ts";
 import { translator } from "../../app/i18n/index.ts";
 
@@ -82,7 +82,9 @@ test("the form's parser: a kind per row, amounts per column, stored amounts of a
   add(F.kind("shipping"), "shipping");
   add(F.amount("shipping", "CZK"), "1000");
   add(F.step, "ms-a");
-  add(F.kept, "ms-a");
+  add(F.kind("ms-a"), "discount");
+  add(F.percent("ms-a"), "10");
+  add(F.amount("ms-a", "CZK"), "3000");
   add(F.step, "bad id!");
   add(F.other, "1");
   const stored = new Map<string, MilestoneStep>([
@@ -98,6 +100,19 @@ test("the form's parser: a kind per row, amounts per column, stored amounts of a
     { kind: "shipping", id: "shipping", threshold: { HUF: 9000_00, CZK: 1000_00 } },
     { kind: "discount", id: "ms-a", threshold: { CZK: 3000_00 }, value: { kind: "percentage", percent: 10 } },
   ]);
+});
+
+test("the limit is per market: where a row is past it follows what the form holds, ranked like the server's gate", () => {
+  const rows = [
+    view({ kind: "gift", id: "g", threshold: { CZK: 500_00, EUR: 60_00 }, choices: [V(1)] }),
+    view({ kind: "shipping", id: "shipping", threshold: { CZK: 1500_00, EUR: 30_00 } }),
+    view({ kind: "discount", id: "ms-a", threshold: { CZK: 1000_00, EUR: 40_00 }, value: { kind: "percentage", percent: 5 } }),
+    view({ kind: "discount", id: "ms-b", threshold: { CZK: 100_00, EUR: 10_00 }, value: { kind: "fixed", amount: { CZK: 10_00 } } }),
+  ];
+  // CZK: ms-b 100, g 500, ms-a 1 000, shipping 1 500. EUR: shipping 30, ms-a 40, g 60 (ms-b has no discount amount in EUR: not offered, takes no place).
+  assert.deepEqual([...overLimitColumns(rows, CODES, 2)], [["ms-a", ["CZK"]], ["shipping", ["CZK"]], ["g", ["EUR"]]]);
+  assert.deepEqual([...overLimitColumns(rows, CODES, 6)], []);
+  assert.deepEqual([milestoneRowsMax("free", 1), milestoneRowsMax("free", 2), milestoneRowsMax("pro", 1), milestoneRowsMax("pro", 5)], [2, 4, 6, 12]);
 });
 
 test("B6: the variant picker's answer is the selection — variant ids only, each once, named 'Product — Variant', never more than the limit", () => {

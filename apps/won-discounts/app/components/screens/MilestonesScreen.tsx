@@ -10,8 +10,9 @@
 //   Na webu  the four places the ladder shows (the top strip, the product page, the cart drawer, the cart page),
 //            each with its label and its one button.
 // One save for the whole form; the server parses the same fields (model/milestones.ts readMilestonesForm, SEC-1).
-// Limits: Free 2 steps, Pro 6 — here and on the server; a stored step past the limit stays visible and can be
-// removed, it is only not in force (§14a, §16).
+// Limits hold PER MARKET: Free runs the 2 steps with the lowest amount in each market, Pro 6 — here and on the
+// server. A step past a market's limit stays stored, visible and editable; the row says in which market it is
+// not in force (§14a, §16).
 //
 // The page follows its form: values are re-read on native input / change (React 18 never fires `onChange` on an
 // `s-*` element), a field's attributes are never changed while it is typed in, and "částka chybí" is said only
@@ -29,7 +30,7 @@ import type { MessageKey } from "../../i18n";
 import { useT } from "../../i18n/context";
 import { embedPlacement, placementOf } from "../model/embed";
 import { suggestedAmount } from "../model/markets";
-import { amountInput, amountsText, emptyStepView, liveAmounts, MILESTONES_INTENT, MS_FIELD, rewardText, stepMissingColumns, stepSummary } from "../model/milestones";
+import { amountInput, amountsText, emptyStepView, liveAmounts, MILESTONES_INTENT, milestoneRowsMax, MS_FIELD, overLimitColumns, rewardText, stepMissingColumns, stepSummary } from "../model/milestones";
 import { freeShippingDefaults } from "../model/rule-form";
 import type { EmbedState, GiftVariantView, MilestoneStepView, RewardsScreenData, UiResult } from "../model/types";
 import { pickGiftVariants } from "../rewards/gift-picker";
@@ -61,8 +62,6 @@ interface Row {
   initial: MilestoneStepView;
   choices: GiftVariantView[];
   fallback: GiftVariantView | null;
-  /** A stored step past the plan's limit: kept as stored, shown, removable. */
-  locked: boolean;
   /** Stored already (a fact about the shop: its missing amounts are said at once). */
   stored: boolean;
 }
@@ -138,7 +137,7 @@ function GiftList({ items, onRemove, removeLabel, unknown }: { items: readonly G
 export function MilestonesScreen(props: MilestonesScreenProps) {
   const tr = useT();
   const { t } = tr;
-  const { plan, configVersion, currencies, steps, overLimit, limit, limitPro, countOther, gateNotes, embed, cartBlockAddUrl, result, suggest, start = null } = props;
+  const { plan, configVersion, currencies, steps, limit, limitPro, countOther, gateNotes, embed, cartBlockAddUrl, result, suggest, start = null } = props;
   const pro = plan === "pro";
   const codes = useMemo(() => currencies.map((c) => c.code), [currencies]);
   const err = (field: string) => errorText(result, field, t);
@@ -147,13 +146,13 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
 
   // The rows: the stored ladder, in ladder order. The setup guide's first step: free shipping with the recipe's amounts.
   const storedRows = useMemo<Row[]>(() => {
-    const rows: Row[] = steps.map((step) => ({ uid: step.id, initial: step, choices: step.choices, fallback: step.fallback, locked: overLimit.includes(step.id), stored: true }));
+    const rows: Row[] = steps.map((step) => ({ uid: step.id, initial: step, choices: step.choices, fallback: step.fallback, stored: true }));
     if (rows.length === 0 && start === "shipping") {
       const first = emptyStepView("shipping", freeShippingDefaults(codes));
-      rows.push({ uid: first.id, initial: first, choices: [], fallback: null, locked: false, stored: false });
+      rows.push({ uid: first.id, initial: first, choices: [], fallback: null, stored: false });
     }
     return rows;
-  }, [steps, overLimit, start, codes]);
+  }, [steps, start, codes]);
   const [rows, setRows] = useState<Row[]>(storedRows);
   const [pickError, setPickError] = useState(false);
   const submit = useSubmit();
@@ -239,39 +238,41 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
     submit(data, { method: "post" });
   };
 
-  // Every row as the form holds it NOW (a locked row: as stored).
+  // Every row as the form holds it NOW.
   const kindOf = (row: Row): MilestoneKind => {
-    const raw = row.locked ? null : typed(F.kind(row.uid));
+    const raw = typed(F.kind(row.uid));
     return raw === "shipping" || raw === "gift" || raw === "discount" ? raw : row.initial.kind;
   };
   const liveRows = rows.map((row) => {
     const kind = kindOf(row);
-    const valueRaw = row.locked ? null : typed(F.valueKind(row.uid));
+    const valueRaw = typed(F.valueKind(row.uid));
     const value = valueRaw === "fixed" || valueRaw === "percentage" ? valueRaw : row.initial.value;
-    const percentRaw = row.locked ? null : typed(F.percent(row.uid));
+    const percentRaw = typed(F.percent(row.uid));
     const percentNow = percentRaw === null ? row.initial.percent : majorOf(percentRaw);
     const live: MilestoneStepView = {
       id: row.uid,
       kind,
-      threshold: row.locked ? row.initial.threshold : liveAmounts((c) => typed(F.amount(row.uid, c)), row.initial.threshold, codes),
+      threshold: liveAmounts((c) => typed(F.amount(row.uid, c)), row.initial.threshold, codes),
       choices: row.choices,
       fallback: row.fallback,
       value,
       percent: percentNow !== null && Number.isFinite(percentNow) && percentNow >= 1 && percentNow <= 100 ? percentNow : null,
-      off: row.locked ? row.initial.off : liveAmounts((c) => typed(F.off(row.uid, c)), row.initial.off, codes),
+      off: liveAmounts((c) => typed(F.off(row.uid, c)), row.initial.off, codes),
     };
     return { row, live };
   });
-  const open = liveRows.filter((x) => !x.row.locked);
+  const open = liveRows;
+  // Where a step is past the plan's limit — per market, from the form as it is now (the server's gate ranks the same way).
+  const over = overLimitColumns(liveRows.map((x) => x.live), codes, limit);
   const hasShipping = (except: string) => liveRows.some((x) => x.row.uid !== except && x.live.kind === "shipping");
   const countOtherNow = snapshot ? snapshot.get(F.other) === "1" : countOther;
 
-  // The preview and the tiles read the same live rows; a locked row is not in force, so the customer does not see it.
+  // The preview and the tiles read the same live rows; a step past a market's limit is not in force there, so that market's customer does not see it.
   const previewSteps: PreviewStep[] = open.map(({ row, live }) => ({
     key: row.uid,
     threshold: live.threshold,
     reward: (column) => rewardText(live, codes, tr, column),
-    offered: (column) => !(live.kind === "discount" && live.value === "fixed") || typeof live.off[column] === "number",
+    offered: (column) => !(over.get(row.uid) ?? []).includes(column) && (!(live.kind === "discount" && live.value === "fixed") || typeof live.off[column] === "number"),
   }));
   const ladderLine = open.length === 0 ? t("milestones.summary.none") : open.map(({ live }) => stepSummary(live, codes, tr)).join(" · ");
   const missingMarkets = [...new Set(open.flatMap(({ live }) => stepMissingColumns(live, codes)))];
@@ -289,12 +290,13 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
   const stepsTile = missingMarkets.length > 0 ? `${t("milestones.summary.missing", { markets: tr.list(missingMarkets.map(marketName)) })} · ${ladderShort}` : ladderShort;
 
   // Limits: the plan's number of steps; a gift for at most CONFIG_LIMITS.giftTiers of them.
-  const full = rows.length >= limit;
+  const maxRows = milestoneRowsMax(plan, codes.length);
+  const full = rows.length >= maxRows;
   const addStep = () =>
     change((list) => {
-      if (list.length >= limit) return list;
+      if (list.length >= maxRows) return list;
       const next = emptyStepView("gift");
-      return [...list, { uid: next.id, initial: next, choices: [], fallback: null, locked: false, stored: false }];
+      return [...list, { uid: next.id, initial: next, choices: [], fallback: null, stored: false }];
     });
 
   // "Navrhnout ostatní trhy": every empty cell of the table whose step has an amount in the shop currency gets the
@@ -454,33 +456,29 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
                         ))}
                       </div>
                       {liveRows.map(({ row, live }, index) => {
-                        const missing = row.locked ? [] : stepMissingColumns({ ...live, off: live.off }, codes).filter((c) => typeof live.threshold[c] !== "number");
+                        const missing = stepMissingColumns({ ...live, off: live.off }, codes).filter((c) => typeof live.threshold[c] !== "number");
                         return (
-                          <div key={row.uid} className="won-ms-row" data-won-ms-row={row.uid} {...(row.locked ? { "data-won-ms-locked": "" } : {})}>
+                          <div key={row.uid} className="won-ms-row" data-won-ms-row={row.uid}>
                             {index > 0 ? <div className="won-ms-rule" aria-hidden="true" /> : null}
                             <div className="won-ms-label">
-                              <span aria-hidden="true" style={{ ...BADGE, background: row.locked ? "#c3cad2" : WON_INK }}>
+                              <span aria-hidden="true" style={BADGE}>
                                 {index + 1}
                               </span>
-                              <span style={{ minWidth: 0, fontSize: 13.5, fontWeight: 600, color: row.locked ? WON_MUTED : WON_INK, overflowWrap: "anywhere" }}>{rewardText(live, codes, tr)}</span>
+                              <span style={{ minWidth: 0, fontSize: 13.5, fontWeight: 600, color: WON_INK, overflowWrap: "anywhere" }}>{rewardText(live, codes, tr)}</span>
                             </div>
                             {codes.map((code) => (
                               <div key={code} className="won-ms-cell">
                                 <div className="won-ms-cell__name">{columnLabel(code)}</div>
-                                {row.locked ? (
-                                  <div style={{ fontSize: 13.5, color: WON_MUTED, padding: "6px 2px" }}>{typeof live.threshold[code] === "number" ? formatMoney(live.threshold[code]!, code, tr.locale) : "—"}</div>
-                                ) : (
-                                  <s-number-field
-                                    name={F.amount(row.uid, code)}
-                                    label={t("milestones.table.cell", { n: index + 1, market: columnLabel(code) })}
-                                    labelAccessibilityVisibility="exclusive"
-                                    value={amountInput(row.initial.threshold, code)}
-                                    min={0}
-                                    suffix={amountKeyCurrency(code)}
-                                    inputMode="decimal"
-                                    error={err(F.amount(row.uid, code))}
-                                  />
-                                )}
+                                <s-number-field
+                                  name={F.amount(row.uid, code)}
+                                  label={t("milestones.table.cell", { n: index + 1, market: columnLabel(code) })}
+                                  labelAccessibilityVisibility="exclusive"
+                                  value={amountInput(row.initial.threshold, code)}
+                                  min={0}
+                                  suffix={amountKeyCurrency(code)}
+                                  inputMode="decimal"
+                                  error={err(F.amount(row.uid, code))}
+                                />
                                 {suggested.fields.includes(F.amount(row.uid, code)) ? (
                                   <div data-won-ms-suggested="" style={{ marginTop: 4, fontFamily: WON_FONT, fontSize: 12, fontWeight: 600, color: WON_SELECT }}>
                                     {t("milestones.suggest.filled")}
@@ -488,11 +486,15 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
                                 ) : null}
                               </div>
                             ))}
-                            {row.locked ? (
-                              <div className="won-ms-note">
-                                <RowNote>{t("milestones.step.locked", { max: limit, pro: limitPro })}</RowNote>
+                            {/* Past the plan's limit in a market: stored and editable, only not in force there (amber is the plan's colour, never red). */}
+                            {(over.get(row.uid) ?? []).length > 0 ? (
+                              <div className="won-ms-note" data-won-ms-over={(over.get(row.uid) ?? []).join(" ")}>
+                                <RowNote>
+                                  {t(codes.length > 1 ? "milestones.step.overMarket" : "milestones.step.over", { markets: tr.list((over.get(row.uid) ?? []).map(marketName)), max: limit, pro: limitPro })}
+                                </RowNote>
                               </div>
-                            ) : tried(row) && missing.length > 0 ? (
+                            ) : null}
+                            {tried(row) && missing.length > 0 ? (
                               <div className="won-ms-note">
                                 {missing.map((code) => (
                                   <RowNote key={code} tone="attention">
@@ -540,7 +542,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
                   const head = (
                     <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "6px 12px", padding: "8px 12px", background: WON_WASH, borderBottom: `1px solid ${WON_LINE}` }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flexWrap: "wrap" }}>
-                        <span aria-hidden="true" style={{ ...BADGE, background: row.locked ? "#c3cad2" : WON_INK }}>
+                        <span aria-hidden="true" style={BADGE}>
                           {index + 1}
                         </span>
                         <span style={{ fontSize: 14, fontWeight: 700, color: WON_INK }}>{t("milestones.step.title", { n: index + 1 })}</span>
@@ -551,22 +553,6 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
                       </s-button>
                     </div>
                   );
-                  if (row.locked) {
-                    return (
-                      // A stored step the plan does not run: kept as stored, shown, removable (§14a, §16).
-                      <div key={row.uid} data-won-ms-step={row.uid} data-won-ms-locked="" style={{ border: `1px solid ${WON_LINE}`, borderRadius: 12, background: WON_SURFACE, overflow: "hidden", fontFamily: WON_FONT }}>
-                        <input type="hidden" name={F.step} value={row.uid} />
-                        <input type="hidden" name={F.kept} value={row.uid} />
-                        {head}
-                        <div style={{ padding: 12 }}>
-                          <s-stack direction="block" gap="small-200">
-                            <s-text>{stepSummary(live, codes, tr)}</s-text>
-                            <RowNote>{t("milestones.step.locked", { max: limit, pro: limitPro })}</RowNote>
-                          </s-stack>
-                        </div>
-                      </div>
-                    );
-                  }
                   const kind = live.kind;
                   const choiceError = err(F.choice(row.uid));
                   const offField = (code: string) => F.off(row.uid, code);
@@ -667,13 +653,13 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
                 {pickError ? <RowNote tone="attention">{t("rewards.picker.unavailable")}</RowNote> : null}
                 <FieldMessage text={err(F.step)} />
                 {full && !pro ? (
-                  <ProSell benefit={t("milestones.limit.pro", { max: limit, pro: limitPro })} />
+                  <ProSell benefit={t(codes.length > 1 ? "milestones.limit.proMarkets" : "milestones.limit.pro", { max: limit, pro: limitPro })} />
                 ) : (
                   <s-stack direction="inline" gap="base" alignItems="center">
                     <s-button variant="secondary" disabled={boolAttr(full)} onClick={addStep}>
                       {t(rows.length === 0 ? "milestones.step.addFirst" : "milestones.step.add")}
                     </s-button>
-                    <s-text color="subdued">{full ? t("milestones.limit.full", { max: limit }) : t("milestones.limit.left", { n: rows.length, max: limit })}</s-text>
+                    <s-text color="subdued">{full ? t("milestones.limit.full", { max: maxRows }) : t("milestones.limit.left", { n: rows.length, max: maxRows })}</s-text>
                   </s-stack>
                 )}
               </s-stack>

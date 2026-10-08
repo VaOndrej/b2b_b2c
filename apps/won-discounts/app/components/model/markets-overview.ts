@@ -5,7 +5,7 @@
 import type { DiscountRule, WonDiscountsConfig } from "@won/core/discounts/config";
 import { formatMoney } from "@won/core/discounts/describe";
 import { amountColumns, expandConfigAmounts } from "@won/core/discounts/market-amounts";
-import { isMilestoneRule } from "@won/core/discounts/milestones";
+import { isMilestoneRule, milestonesOverLimit } from "@won/core/discounts/milestones";
 import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
 
 import type { Locale } from "../../i18n";
@@ -52,22 +52,26 @@ export function marketRows(stored: WonDiscountsConfig, opts: { plan: "free" | "p
   const keys = new Map(amountColumns(config.markets).map((column) => [column.handle, column.key]));
   const gated = gateConfigForPlan(config, opts.plan).config;
   const { freeShipping, gifts } = gated.modules.rewards;
+  // Milníky: a step the plan's limit leaves out of a market HAS its amount there — nothing is missing in that cell.
+  const limited = new Map(milestonesOverLimit(config, opts.plan).map((o) => [o.step.id, o.keys]));
+  const byLimit = (id: string, key: string) => (limited.get(id) ?? []).includes(key);
   const sets = gated.modules.tiers.sets.filter((s) => s.breaks.length > 0);
   const amountBreaks = sets.flatMap((s) => s.breaks.flatMap((b) => (b.amountOff ? [b.amountOff] : [])));
   const rows = config.markets.map((market): MarketRowView => {
     // A switched-off market has no column: what is stored for its currency is what it would get.
     const c = keys.get(market.handle) ?? market.currency;
     const money = (minor: number) => formatMoney(minor, c, opts.locale);
-    const shipping: MarketCell = !freeShipping
+    const giftsHere = gifts.filter((g) => !byLimit(g.id, c));
+    const shipping: MarketCell = !freeShipping || byLimit("shipping", c)
       ? { kind: "none" }
       : typeof freeShipping.threshold[c] === "number"
         ? { kind: "amount", text: money(freeShipping.threshold[c]!) }
         : { kind: "missing", href: "/app/rewards#amounts" };
     const gift: MarketCell =
-      gifts.length === 0
+      giftsHere.length === 0
         ? { kind: "none" }
-        : gifts.every((g) => typeof g.threshold[c] === "number")
-          ? { kind: "amount", text: gifts.map((g) => money(g.threshold[c]!)).join(" / ") }
+        : giftsHere.every((g) => typeof g.threshold[c] === "number")
+          ? { kind: "amount", text: giftsHere.map((g) => money(g.threshold[c]!)).join(" / ") }
           : { kind: "missing", href: "/app/rewards#amounts" };
     const tiers: MarketCell =
       sets.length === 0
@@ -77,7 +81,7 @@ export function marketRows(stored: WonDiscountsConfig, opts: { plan: "free" | "p
           : amountBreaks.every((amount) => typeof amount[c] === "number")
             ? { kind: "ok" }
             : { kind: "missing", href: "/app/tiers#global" };
-    const cells = { shipping, gift, discounts: discountsCell(config.modules.codes.rules, c), tiers };
+    const cells = { shipping, gift, discounts: discountsCell(config.modules.codes.rules.filter((r) => !byLimit(r.id, c)), c), tiers };
     return {
       handle: market.handle,
       name: marketView(market.handle, opts.names).name,

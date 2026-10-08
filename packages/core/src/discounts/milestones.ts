@@ -14,11 +14,12 @@
 // gift and shipping thresholds use: the non-gift lines before every discount (plan.ts gate "minimum košíku" =
 // plan-rewards.ts rewardBase).
 //
-// Limits (rozhodnuto 6. 10. 2026): Free runs the first 2 steps of the ladder, Pro 6. plan-gate.ts drops the rest
-// from what a Free shop ships; the stored config keeps them (§14a).
+// Limits (rozhodnuto 6. 10. 2026; per market since 8. 10.): in each market Free runs the 2 steps with the lowest
+// cart values of that market, Pro 6. plan-gate.ts leaves a step out of the markets where it is past the limit; the
+// stored config keeps everything (§14a).
 
 import type { DiscountRule, GiftTier, MarketSetting, ReadonlyDeep, WonDiscountsConfig } from "./config/types.ts";
-import { amountColumns, toAmountColumns } from "./market-amounts.ts";
+import { amountColumns, collapseMarketAmounts, toAmountColumns } from "./market-amounts.ts";
 import type { MoneyByCurrency } from "./money.ts";
 
 /** The id prefix of the order rules that are steps of the ladder. */
@@ -120,9 +121,53 @@ export function milestoneSteps(config: ConfigLike): MilestoneStep[] {
   return sortMilestones(steps, config.markets as Markets);
 }
 
-/** The ids of the steps past a plan's limit, in ladder order (what a Free shop does not run). */
-export function milestonesOverLimit(config: ConfigLike, plan: "free" | "pro"): MilestoneStep[] {
-  return milestoneSteps(config).slice(MILESTONE_LIMITS[plan]);
+/** A step and the markets (amount columns) where it is past the plan's limit. */
+export interface MilestoneOverLimit {
+  step: MilestoneStep;
+  /** Amount columns ("CZK", "EUR@sk") where the step is offered but past the limit. */
+  keys: string[];
+  /** Past the limit in every market it is offered in: the plan does not run it at all. */
+  everywhere: boolean;
+}
+
+/** The amount columns a step is offered in: a cart value there and — a fixed discount — the discount's amount too. */
+function offeredColumns(step: MilestoneStep, markets: Markets): Record<string, number> {
+  const columns = toAmountColumns(step.threshold, markets);
+  const off = step.kind === "discount" && step.value.kind === "fixed" ? toAmountColumns(step.value.amount, markets) : null;
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(columns)) if (typeof value === "number" && value > 0 && (!off || typeof off[key] === "number")) out[key] = value;
+  return out;
+}
+
+/**
+ * The limit holds PER MARKET (Ondřej 8 Oct 2026): in each market the plan runs the steps with the lowest cart
+ * values of THAT market — Free 2, Pro 6. A shop with two markets may so run two steps in each, the same ones or
+ * different ones. Returns the steps that are past the limit somewhere, with the markets (ladder order).
+ */
+export function milestonesOverLimit(config: ConfigLike, plan: "free" | "pro"): MilestoneOverLimit[] {
+  const markets = config.markets as Markets;
+  const steps = milestoneSteps(config).map((step, index) => ({ step, index, offered: offeredColumns(step, markets) }));
+  const over = new Map<number, string[]>();
+  for (const key of new Set(steps.flatMap((s) => Object.keys(s.offered)))) {
+    const ranked = steps
+      .filter((s) => typeof s.offered[key] === "number")
+      .sort((a, b) => a.offered[key]! - b.offered[key]! || KIND_ORDER[a.step.kind] - KIND_ORDER[b.step.kind] || a.index - b.index);
+    for (const s of ranked.slice(MILESTONE_LIMITS[plan])) over.set(s.index, [...(over.get(s.index) ?? []), key]);
+  }
+  return steps.filter((s) => over.has(s.index)).map((s) => ({ step: s.step, keys: over.get(s.index)!, everywhere: over.get(s.index)!.length === Object.keys(s.offered).length }));
+}
+
+const canonical = (m: MoneyByCurrency) => JSON.stringify(Object.entries(m).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+
+/**
+ * A step's cart values without the markets in `keys` (the step is not offered there), in the form the map came
+ * in: a stored map stays as short as it can be, a map of the admin's columns stays in columns.
+ */
+export function withoutMarkets(threshold: MoneyByCurrency, keys: readonly string[], markets: Markets): Record<string, number> {
+  const columns = toAmountColumns(threshold, markets);
+  const stored = canonical(collapseMarketAmounts(threshold, markets)) === canonical(threshold);
+  for (const key of keys) delete columns[key];
+  return stored ? collapseMarketAmounts(columns, markets) : columns;
 }
 
 /**

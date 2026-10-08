@@ -212,9 +212,9 @@ test("explainGate: Czech plurals for 1, 2 and 5 (tier sets, gift thresholds, gif
   assert.equal(cs("tier_sets_extra", 1), "Ve Free platí jen jedna sada množstevních slev pro celý obchod, další sada se neuplatní.");
   assert.equal(cs("tier_sets_extra", 2), "Ve Free platí jen jedna sada množstevních slev pro celý obchod, další 2 sady se neuplatní.");
   assert.equal(cs("tier_sets_extra", 5), "Ve Free platí jen jedna sada množstevních slev pro celý obchod, dalších 5 sad se neuplatní.");
-  assert.equal(cs("milestone_steps", 1), "Ve Free platí první 2 stupně Milníků, další stupeň se nenabízí. V Pro jich platí 6.");
-  assert.equal(cs("milestone_steps", 2), "Ve Free platí první 2 stupně Milníků, další 2 stupně se nenabízejí. V Pro jich platí 6.");
-  assert.equal(cs("milestone_steps", 5), "Ve Free platí první 2 stupně Milníků, dalších 5 stupňů se nenabízí. V Pro jich platí 6.");
+  assert.equal(cs("milestone_steps", 1), "Ve Free platí v každém trhu 2 stupně Milníků s nejnižší částkou. Jeden stupeň se proto někde nenabízí. V Pro jich platí 6.");
+  assert.equal(cs("milestone_steps", 2), "Ve Free platí v každém trhu 2 stupně Milníků s nejnižší částkou. 2 stupně se proto někde nenabízejí. V Pro jich platí 6.");
+  assert.equal(cs("milestone_steps", 5), "Ve Free platí v každém trhu 2 stupně Milníků s nejnižší částkou. 5 stupňů se proto někde nenabízí. V Pro jich platí 6.");
   assert.equal(cs("gift_choices", 1), "Ve Free se nabízí jen první dárek z výběru, další dárek ne (výběr dárků je funkce Pro).");
   assert.equal(cs("gift_choices", 2), "Ve Free se nabízí jen první dárek z výběru, další 2 dárky ne (výběr dárků je funkce Pro).");
   assert.equal(cs("gift_choices", 5), "Ve Free se nabízí jen první dárek z výběru, dalších 5 dárků ne (výběr dárků je funkce Pro).");
@@ -232,6 +232,6 @@ test("explainGate: Czech plurals for 1, 2 and 5 (tier sets, gift thresholds, gif
   );
   const en = (capability: StrippedCapability["capability"], count: number) =>
     explainGate([{ capability, reason: "removed", count }], "en")[0].text;
-  assert.equal(en("milestone_steps", 2), "On Free the first 2 steps of Milestones apply; the other 2 are not offered. Pro runs 6.");
+  assert.equal(en("milestone_steps", 2), "On Free each market runs the 2 Milestones steps with the lowest amount. 2 steps are therefore not offered somewhere. Pro runs 6.");
   assert.equal(en("gift_choices", 1), "On Free only the first gift of the choice is offered, not the other one (a gift choice is a Pro feature).");
 });

@@ -127,14 +127,17 @@ clicks a button); opening a page never changes it.
 
 | | Free | Pro |
 |---|---|---|
-| Steps | 2 | 6 |
+| Steps that apply in each market | 2 | 6 |
 | Kinds of reward | Gift, free shipping, order discount | Same |
 | Gifts per step | 1 | A choice of up to 3 |
 | Fallback gift | Yes | Yes |
 
-A gift can be on at most 5 steps. After a downgrade every step stays saved and
-visible; only the first 2 of the ladder (the lowest cart values) apply, and the
-page marks the others — remove them, or keep them for Pro. See
+The limit holds **in each market on its own**: a market runs the steps with the
+lowest cart values of that market. With two markets on Free you can so have two
+steps in each — the same two, or two for one market and two others for the
+other (a step applies only in the markets it has an amount for). A gift can be
+on at most 5 steps. A step past a market's limit stays saved, visible and
+editable; the page says in which market it does not apply. See
 [plans-free-vs-pro](plans-free-vs-pro).
 
 ## Check it before customers do
