@@ -33,10 +33,16 @@ test("Liquid: a row per sale variant (by its numeric id), named unless the produ
   }
 });
 
-test("no script: the block names no javascript, there is no outlet asset (SF-2 budget untouched)", () => {
+test("no script of its own: the block names no javascript and there is no outlet asset; only a look with a countdown loads the banner's countdown script, for a sale with an end", () => {
   assert.doesNotMatch(liquid, /"javascript"/);
-  assert.doesNotMatch(liquid, /<script/);
   assert.equal(existsSync(path.join(EXT, "assets/won-discounts-outlet.js")), false);
+  // One script tag, behind the look's flag (`appearance.oc`) and a sale's end date (`ov.e`).
+  assert.equal((liquid.match(/<script src=/g) ?? []).length, 1);
+  assert.match(liquid, /\{%- if won_timed -%\}\s*<script src="\{\{ 'won-discounts-blocks\.js' \| asset_url \}\}" defer><\/script>\s*\{%- endif -%\}/);
+  assert.match(liquid, /if app\.metafields\.won_discounts\.storefront_config\.value\.appearance\.oc == 1 and ov\.e != blank\s+assign won_timed = true/);
+  // The countdown is the banner's markup (assets/won-discounts-blocks.js reads it), one per timed variant, hidden until it runs.
+  assert.match(liquid, /\{%- if won_timed and ov\.e\[key\] != nil -%\}\s*<span class="won-outlet__time" data-won-discounts-campaign[^>]* hidden>/);
+  assert.match(liquid, /<script type="application\/json">\[\{"n":"","s":0,"e":\{\{ ov\.e\[key\] \| plus: 0 \}\}\}\]<\/script>/);
 });
 
 test("Locales: badge and 'left' texts in en, cs, sk", () => {

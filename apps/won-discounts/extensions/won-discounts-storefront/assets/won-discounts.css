@@ -77,6 +77,21 @@
   gap: 0.35em;
   list-style: none;
 }
+/* The product page and the cart drawer show the track; a look (the config's stylesheet) can show the list instead. */
+.won-ms--compact .won-ms__list {
+  display: none;
+}
+/* The step the cart has just reached flashes once — only with the look that asks for it (core MILESTONE_BLINK_CSS). */
+@keyframes won-ms-new {
+  0% {
+    opacity: 0.2;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
 .won-ms__list li {
   position: relative;
   display: flex;
@@ -220,6 +235,7 @@
 }
 .won-campaign__time {
   font-variant-numeric: tabular-nums;
+  color: var(--won-tiers-accent, inherit);
 }
 .won-topbar {
   display: flex;
@@ -261,6 +277,9 @@
   width: min(12em, 40vw);
 }
 @media (prefers-reduced-motion: reduce) {
+  .won-ms [data-new] {
+    animation: none !important;
+  }
   .won-ms__track span {
     transition: none;
   }

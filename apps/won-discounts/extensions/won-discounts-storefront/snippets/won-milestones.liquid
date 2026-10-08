@@ -4,6 +4,8 @@
     bar      one sentence and a thin track (the embed's top bar)
     compact  a track with a mark per step and the sentence about the next one (product page, cart drawer)
     full     every step with its reward, the reached ones ticked (cart page)
+  Both carry the track and the list of steps; which of them shows is the size's default (won-discounts.css) and
+  the look the merchant picked on the Milníky page (the config's stylesheet; core looks.ts).
   Rendered here from the cart for the first paint; assets/won-discounts.js `ladder` draws the same markup after
   every cart change (the "Milestones" block and the top bar through won-discounts-blocks.js).
   The base is the cart's goods before discounts without gift lines (the same as won-discounts.js `base`).
@@ -122,7 +124,7 @@
         {%- endfor -%}
       {%- endunless -%}
     </div>
-    {%- if size == 'full' -%}
+    {%- unless size == 'bar' -%}
       <ol class="won-ms__list">
         {%- for won_row in won_steps -%}
           {%- liquid
@@ -134,6 +136,6 @@
           <li data-won-ms-step="{{ won_f[1] }}"{% if won_base >= won_at %} data-done{% endif %}><span>{{ won_f[3] | escape }}</span><span>{{ won_at_line }}</span></li>
         {%- endfor -%}
       </ol>
-    {%- endif -%}
+    {%- endunless -%}
   </div>
 {%- endif -%}

@@ -609,3 +609,66 @@ test("tap targets: every panel button and the code input are at least 44 × 44 p
     }
   }
 });
+
+// --- Vzhled žebříčku (feedback 2026-10-06, bod 13): what the ready-made looks need from the markup -----------
+
+import { LOOK_PRESET_CSS, MILESTONE_BLINK_CSS } from "@won/core/discounts/looks";
+
+/** won-discounts.js booted on a stub page: its pure plan() and ladder(). */
+function bootLadder() {
+  const doc = { readyState: "complete", documentElement: { lang: "cs" }, getElementById: () => ({ textContent: "{}" }), querySelector: () => ({ setAttribute() {} }), addEventListener() {} };
+  const run = vm.createContext({ window: {} as Record<string, unknown>, document: doc, Intl, JSON, Math });
+  vm.runInContext(SOURCES[0]!, run);
+  return (run.window as { WonDiscounts: { plan: (cart: unknown, rw: unknown, facts: unknown, mk?: string) => { hit: number; steps: { done: boolean }[] }; ladder: (view: unknown, size: string, data: unknown, cur: string) => string } }).WonDiscounts;
+}
+const LADDER_RW = { ship: { CZK: 100000 }, gifts: [], other: false, disc: [{ id: "ms-a", t: { CZK: 200000 }, pct: 5 }, { id: "ms-b", t: { CZK: 300000 }, pct: 10 }] };
+const LADDER_TX = { tx: { ms_left: "Ještě {amount} a získáte: {reward}", ms_done: "Hotovo", ms_from: "od {amount}", ms_ship: "Doprava zdarma", ms_disc: "Sleva {value}", n: { "ms-b": "Věrnostní sleva {value}" } } };
+const ladderCart = (kc: number) => ({ currency: "CZK", items: [{ original_line_price: kc * 100, final_line_price: kc * 100, properties: {} }], attributes: {}, cart_level_discount_applications: [] });
+
+test("the ladder marks the step a cart change has just reached — never on the first look, never twice, never when the cart shrinks", () => {
+  const wd = bootLadder();
+  const hit = (kc: number) => wd.plan(ladderCart(kc), LADDER_RW, {}, "CZK@cz").hit;
+  assert.equal(hit(1500), -1, "the first look at a cart flashes nothing, whatever it has reached");
+  assert.equal(hit(1600), -1, "no new step");
+  assert.equal(hit(2500), 1, "the second step was just reached");
+  assert.equal(hit(2600), -1, "…and is not new the next time");
+  assert.equal(hit(500), -1, "a smaller cart reaches nothing");
+  assert.equal(hit(3500), 2, "three at once: the highest one is the new one");
+});
+
+test("the ladder's markup carries what every look needs: the track and the list of steps in compact and full, `data-new` on the step just reached, a step's own name", () => {
+  const wd = bootLadder();
+  wd.plan(ladderCart(500), LADDER_RW, {}, "CZK@cz");
+  const view = wd.plan(ladderCart(1200), LADDER_RW, {}, "CZK@cz");
+  assert.equal(view.hit, 0);
+  for (const size of ["compact", "full"]) {
+    const html = wd.ladder(view, size, LADDER_TX, "CZK");
+    assert.match(html, new RegExp(`^<div class="won-ms won-ms--${size}" data-won-ms="${size}">`));
+    assert.equal((html.match(/<i style=/g) ?? []).length, 3, `${size}: a mark per step`);
+    assert.equal((html.match(/<li data-won-ms-step=/g) ?? []).length, 3, `${size}: a row per step`);
+    assert.match(html, /<i style="left:33%" data-done data-new><\/i><i style="left:67%"><\/i>/);
+    assert.match(html, /<li data-won-ms-step="s" data-done data-new><span>Doprava zdarma<\/span>/);
+    assert.match(html, /<li data-won-ms-step="d"><span>Věrnostní sleva 10\u00a0%<\/span>/, "the merchant's own name of the step");
+    assert.match(html, /<li data-won-ms-step="d"><span>Sleva 5\u00a0%<\/span>/, "a step without one says the discount");
+  }
+  const bar = wd.ladder(view, "bar", LADDER_TX, "CZK");
+  assert.doesNotMatch(bar, /<i |<ol|data-new/, "the strip is a sentence and a thin track");
+  // Nothing new: no mark.
+  assert.doesNotMatch(wd.ladder(wd.plan(ladderCart(1300), LADDER_RW, {}, "CZK@cz"), "compact", LADDER_TX, "CZK"), /data-new/);
+});
+
+test("Liquid renders the same ladder for the first paint; the stylesheet keeps today's look until a look's CSS says otherwise, and never flashes for a customer who reduces motion", () => {
+  const snippet = readFileSync(path.join(ASSETS, "../snippets/won-milestones.liquid"), "utf8");
+  assert.match(snippet, /\{%- unless size == 'bar' -%\}\s*<ol class="won-ms__list">/);
+  assert.doesNotMatch(snippet, /data-new/, "a page load reaches nothing new");
+  assert.match(snippet, /assign won_name_key = 'cart\.ms_name\.' \| append: won_d\.id/);
+  const css = readFileSync(path.join(ASSETS, "won-discounts.css"), "utf8").replace(/\s+/g, " ");
+  // Today's look: the product page and the drawer show the track, the cart page the list too.
+  assert.match(css, /\.won-ms--compact \.won-ms__list \{ display: none; \}/);
+  assert.doesNotMatch(css, /animation:(?! none)/, "no animation without a look that asks for it");
+  assert.match(css, /@keyframes won-ms-new \{/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ \.won-ms \[data-new\] \{ animation: none !important; \}/);
+  // The looks' own rules win over the base wherever the stylesheets land (the element's class twice), and use only the ladder's marks.
+  assert.match(LOOK_PRESET_CSS.milestones.checklist!, /^\.won-ms\.won-ms--compact \.won-ms__list\{display:grid\}/);
+  assert.equal(MILESTONE_BLINK_CSS, ".won-ms.won-ms [data-new]{animation:won-ms-new .7s ease-out}");
+});

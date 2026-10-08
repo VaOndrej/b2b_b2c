@@ -101,3 +101,17 @@ Won Discounts quantity tiers block (MVP 3, contracts K6 + K8). Liquid renders th
 - A language without a metafield (none changed, or past the Free plan's two languages) shows the locale files.
 - `cart.ms_name.<rule id>` is a Milníky discount step's own name: the ladder shows it instead of
   `cart.ms_disc` (`{value}` is filled in the same way). The embed hands the names to the script as `tx.n`.
+
+## Looks (feedback 2026-10-06, bod 13)
+
+- Every element has its own look: `.won-tiers` (the table), `.won-ms` (the ladder), `.won-outlet` (the sale badge),
+  `.won-campaign` (the banner). The storefront config's `appearance.css` is ONE stylesheet the embed prints: the
+  table's colour and custom look, then each other element's ready-made look, colour and custom look — every rule
+  under its element's root (core `looks.ts`, `custom-look.ts`). `appearance.preset` is the table's class only.
+- A ready-made look is CSS over the same markup, never a script: the ladder carries its track AND its list of
+  steps in `compact` and `full` (`won-discounts.css` hides the list in `compact`; the "checklist" look shows it
+  and hides the track, "sentence" hides both).
+- `data-new` marks the step a cart change has just reached (`plan().hit`; never on a page load). The flash
+  (`@keyframes won-ms-new`) plays only when the look asks for it and never with `prefers-reduced-motion`.
+- The sale badge's time left: `appearance.oc` = a look with a countdown, the product metafield's `e` = the sales
+  with an end date. Only then the block prints the banner's countdown markup and loads `won-discounts-blocks.js`.

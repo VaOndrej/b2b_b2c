@@ -24,6 +24,7 @@
     plain(cart).reduce((s, item) => s + (item.final_line_price || 0), 0) -
     (cart.cart_level_discount_applications || []).reduce((s, a) => s + (a.total_allocated_amount || 0), 0);
 
+  let reached = -1;
   const plan = (cart, rw, facts, mk) => {
     const cur = cart.currency;
     // A threshold of the cart's own market ("EUR@sk", `mk`) first, then its currency's.
@@ -77,6 +78,10 @@
       if (a && (d.pct || off)) s.push({ k: "d", id: d.id, at: a, left: Math.max(0, a - b), done: b >= a, pct: d.pct, off });
     }
     s.sort((x, y) => x.at - y.at);
+    /* The step just reached: `data-new`. */
+    const n = s.filter((x) => x.done).length;
+    out.hit = n > reached && reached >= 0 ? n - 1 : -1;
+    reached = n;
     return out;
   };
 
@@ -105,9 +110,10 @@
     const now = next ? pct(next.at - next.left) : 100;
     let out = `<div class="won-ms won-ms--${size}" data-won-ms="${size}"><p class="won-ms__text">${esc(next ? fill(tx.ms_left, { amount: money(next.left, cur), reward: name(next) }) : tx.ms_done)}</p>`;
     out += `<div class="won-ms__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${now}"><span style="width:${now}%"></span>`;
-    if (size !== "bar") out += steps.map((x) => `<i style="left:${pct(x.at)}%"${x.done ? " data-done" : ""}></i>`).join("");
+    const mark = (x, i) => (x.done ? " data-done" : "") + (i === view.hit ? " data-new" : "");
+    if (size !== "bar") out += steps.map((x, i) => `<i style="left:${pct(x.at)}%"${mark(x, i)}></i>`).join("");
     out += "</div>";
-    if (size === "full") out += `<ol class="won-ms__list">${steps.map((x) => `<li data-won-ms-step="${x.k}"${x.done ? " data-done" : ""}><span>${esc(name(x))}</span><span>${esc(fill(tx.ms_from, { amount: money(x.at, cur) }))}</span></li>`).join("")}</ol>`;
+    if (size !== "bar") out += `<ol class="won-ms__list">${steps.map((x, i) => `<li data-won-ms-step="${x.k}"${mark(x, i)}><span>${esc(name(x))}</span><span>${esc(fill(tx.ms_from, { amount: money(x.at, cur) }))}</span></li>`).join("")}</ol>`;
     return `${out}</div>`;
   };
 

@@ -178,20 +178,23 @@ test("cards.js: text goes in as text (never markup), junk data and a missing dat
   assert.equal(lines(junk.c).length, 0);
 });
 
-test("the AI brief's class list is exactly the classes of the extension's stylesheets; its variables are the ones the custom look sets", async () => {
+test("the AI briefs' class lists are exactly the classes of the extension's stylesheets, each element's starting with its own root; the variables are the ones a custom look sets", async () => {
   const { readdir } = await import("node:fs/promises");
-  const { STOREFRONT_CLASSES, aiPrompt } = await import("../../app/lib/integration/appearance.server.ts");
-  const { CUSTOM_LOOK_VARS } = await import("@won/core/discounts/custom-look");
+  const { LOOK_CLASSES, FRAME_CLASSES, aiPrompt } = await import("../../app/lib/integration/looks.server.ts");
+  const { CUSTOM_LOOK_VARS, LOOK_ELEMENTS, LOOK_ROOT } = await import("@won/core/discounts/custom-look");
   const found = new Set<string>();
   for (const file of (await readdir(path.join(extensionRoot, "assets"))).filter((f) => f.endsWith(".css"))) {
     for (const m of (await read(`assets/${file}`)).matchAll(/\.(won-[a-z]+(?:(?:__|--)[a-z-]+|-[a-z]+)?)/g)) found.add(`.${m[1]}`);
   }
-  assert.deepEqual([...STOREFRONT_CLASSES].sort(), [...found].sort());
-  const css = await read("assets/won-discounts-tiers.css");
-  for (const variable of Object.values(CUSTOM_LOOK_VARS)) {
-    assert.ok(css.includes(`var(${variable}`), `${variable} is read by the tiers stylesheet`);
-    assert.ok(aiPrompt().includes(variable));
+  assert.deepEqual([...LOOK_ELEMENTS.flatMap((element) => [...LOOK_CLASSES[element]]), ...FRAME_CLASSES].sort(), [...found].sort());
+  for (const element of LOOK_ELEMENTS) {
+    for (const cls of LOOK_CLASSES[element]) assert.ok(cls === LOOK_ROOT[element] || cls.startsWith(`${LOOK_ROOT[element]}__`) || cls.startsWith(`${LOOK_ROOT[element]}--`), `${cls} is the ${element}'s`);
+    for (const variable of Object.values(CUSTOM_LOOK_VARS)) assert.ok(aiPrompt(element).includes(variable));
   }
+  const css = await read("assets/won-discounts-tiers.css");
+  for (const variable of Object.values(CUSTOM_LOOK_VARS)) assert.ok(css.includes(`var(${variable}`), `${variable} is read by the tiers stylesheet`);
+  // The highlight colour is read by every element that has one to show.
+  assert.ok((await read("assets/won-discounts.css")).includes("var(--won-tiers-accent") && (await read("assets/won-discounts-outlet.css")).includes("var(--won-tiers-accent"));
 });
 
 // Found by the live E2E (2026-10-04): Shopify wraps the output of an app snippet in HTML comments

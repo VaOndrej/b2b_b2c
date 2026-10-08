@@ -16,14 +16,21 @@
   display: inline-block;
   padding: 2px 10px;
   border: 1px solid currentColor;
+  color: var(--won-tiers-accent, inherit);
   border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
   line-height: 1.5;
   letter-spacing: 0.02em;
 }
-.won-outlet__left {
+.won-outlet__left,
+.won-outlet__time {
   font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+/* The time left to the sale's end: shown by the looks with a countdown (the config's stylesheet; core looks.ts). */
+.won-outlet__time {
+  display: none;
 }
 .won-outlet__variant {
   font-weight: 600;
