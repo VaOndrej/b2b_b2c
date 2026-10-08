@@ -1,4 +1,4 @@
-# Won Discounts — úkol 7: Milníky (zadání pro novou session, 7. 10. 2026)
+# Won Discounts — úkol 7: Milníky (zadání pro novou session, stav k 8. 10. 2026)
 
 ## Kdo jsi a co je cíl
 
@@ -9,7 +9,8 @@ Pracuješ **výhradně inline, bez subagentů**. Je to jeden úkol na jednu sess
 ## Kde to je
 
 - Repo: `~/Development/WonCommerce/Apps/b2b_b2c` (monorepo). Aplikace `apps/won-discounts`, sdílené jádro `packages/core/src/discounts`.
-- `main` je pushnutý; poslední commit s kódem je `cdc9f64`, po něm už jen tohle zadání. Udělej si z `main` novou větev, například `won-discounts-milniky`.
+- `main` je pushnutý; poslední commit s kódem je `798cfe8` (volba nejnižší / nejvyšší částky v Nastavení). Začni `git fetch origin` a udělej si z `origin/main` novou větev `won-discounts-milniky` přímo v tomto adresáři (běží nad ním `shopify app dev`, takže se ti změny rozšíření samy nahrávají do dev obchodu).
+- **Souběžně běží druhá session**, která zmenšuje slevovou funkci v pokladně. Pracuje ve vlastním adresáři `~/Development/WonCommerce/Apps/b2b_b2c-funkce` (větev `won-discounts-funkce-velikost`) a mění jen `apps/won-discounts/extensions/won-discounts-engine` (`src/`, sestavení, `README.md`) a své dokumenty. Ty z té složky měníš jen `tests/scenarios.js` a `tests/fixtures/`. Do jejího adresáře nechoď. Společný je `docs/won-discounts-build-log.md`: před každým pushem udělej `git fetch origin && git rebase origin/main`, případný konflikt v build logu vyřeš ponecháním obou zápisů a pusť bránu znovu.
 - Stav běhu: `docs/won-discounts-build-log.md`, oddíl „Aktuální stav“. **Začni tím, že ho přečteš**, a po každé kompakci kontextu znovu.
 - Dev náhled bez přihlášení: `http://localhost:<port>/dev/preview/<obrazovka>`. Port zjistíš:
 
@@ -43,7 +44,7 @@ done
 
 ## Tvrdé omezení: funkce v pokladně se nesmí zvětšit
 
-Slevová funkce (`extensions/won-discounts-engine`, Rust) má po úkolu 6 **255 677 B z 256 000 B (zbývá 323 B)** a rezervu instrukcí asi **0,05 bodu**. Do funkce proto **nesahej**.
+Slevová funkce (`extensions/won-discounts-engine`, Rust) má **255 677 B z 256 000 B (zbývá 323 B)** a rezervu instrukcí asi **0,05 bodu**. Místo v ní právě uvolňuje druhá session (`docs/won-discounts/analyza-velikost-funkce.md`), ale s tím nepočítej: do zdrojáků funkce (`src/`) ani do jejího sestavení **nesahej**.
 
 - Dárek a doprava zdarma: pokladna je umí, mění se jen formulář a případně tvar nastavení.
 - **Sleva z objednávky jako stupeň:** postav ji z toho, co pokladna umí dnes, tedy z automatické slevy na objednávku s minimální útratou v `modules.codes.rules`. Navrhovaná cesta: pravidla, která patří Milníkům, poznáš podle předpony id (například `ms-`), stránka Milníky je vlastní a stránka „Slevy a kódy“ je neukazuje jako běžné slevy (nebo je ukáže jen jako odkaz na Milníky). Když najdeš lepší cestu bez zásahu do funkce, použij ji a zapiš proč.
@@ -57,7 +58,7 @@ Od úkolu 6 má každý trh vlastní částku, i když sdílí měnu s jiným tr
 - Aplikace pracuje s jedním sloupcem na trh: `currencyViews()` a `enabledCurrencies()` v `app/components/model/markets.ts` vrací klíče sloupců (`CZK`, a kde dva zapnuté trhy sdílejí měnu, `EUR@sk` a `EUR@de`). `loadConfig` částky do sloupců rozbalí, uložení je sbalí (`packages/core/src/discounts/market-amounts.ts`). Pole pojmenuj podle trhu: „Slovensko (EUR)“.
 - V textech nikdy neukazuj klíč. `{currency}` v překladech se zobrazí jako měna samo; pro přípony polí použij `amountKeyCurrency()`; pro souhrnné věty předej jádru názvy trhů (`amountLabels()`).
 - Dev náhled se dvěma trhy v eurech: `?markets=shared` (dnes u `tiers`, `rewards`, `settings`). Milníky v něm musí fungovat.
-- Přepínač v Nastavení „Zákazník ze země mimo vaše trhy“ (`engine.unknownMarketLowest`, od 8. 10. s volbou nejnižší / nejvyšší pro každý druh částky v `engine.unknownMarketHighest`, druhy v `UNKNOWN_MARKET_KINDS`) se Milníků týká také; pokud prahy Milníků nejsou žádný z pěti druhů, přidej šestý druh a jeho volbu do Nastavení: prahy stupňů jdou stejnou cestou jako ostatní částky, nic navíc nestav, jen to ověř testem.
+- Nastavení → „Zákazník ze země mimo vaše trhy“ (`engine.unknownMarketLowest`) určuje, co dostane košík ze země mimo trhy, a pro každý druh částky zvlášť, jestli nejnižší, nebo nejvyšší (`engine.unknownMarketHighest`, druhy v `UNKNOWN_MARKET_KINDS`: sleva, minimální útrata, množstevní sleva, doprava zdarma, dárek). Částky stupňů jdou stejnou cestou (`market-amounts.ts`, `mapConfigAmounts`). Ověř testem, že každý typ stupně spadne do správného druhu; stupeň se slevou z objednávky postavený z pravidla má částku slevy v druhu „sleva“ a hranici v druhu „minimální útrata“. Když to obchodníkovi u Milníků nedává smysl, přidej vlastní druh a jeho volbu do Nastavení.
 
 ## Co má být hotové
 
@@ -94,7 +95,7 @@ Od úkolu 6 má každý trh vlastní částku, i když sdílí měnu s jiným tr
 - **Štítek „Pro“** je na dlaždici Pro části vidět na každém tarifu.
 - **Rozšíření za běhu `shopify app dev`:** každá změna v `extensions/` se hned nahraje do dev obchodu. Po změnách ověř, že se soubory na webu načítají: `node apps/won-discounts/scripts/check-storefront-assets.mjs the-inventory-not-tracked-snowboard` (exit 0). Když hlásí chybějící soubory, napiš Ondřejovi, ať dev server restartuje.
 - **Zápisy do dev obchodu:** Ondřej 7. 10. povolil zkoušky na Horizonu a Dawnu přes runbook (`scripts/e2e/runbook/`). Vždy nejdřív dry-run, podívej se, co přepíše, pak naostro; po doběhnutí musí být obchod vrácený ze zálohy (`cleanup`, `verify-clean` exit 0). Jiné zápisy do Shopify bez svolení nedělej. `shopify app deploy` nepouštěj.
-- **Slučování:** po zelené bráně posuň `main` bez slučovacího commitu a pushni (`git push origin HEAD:main`, pak `git fetch . HEAD:main`). Žádný `--force`.
+- **Slučování:** po zelené bráně `git fetch origin && git rebase origin/main` (druhá session mezitím mohla pushnout), bránu po rebase pusť znovu, pak posuň `main` bez slučovacího commitu: `git push origin HEAD:main`. Žádný `--force`; když push odmítne, zopakuj fetch a rebase.
 - **Second Brain:** `node /Users/ondrej/Development/second-brain/src/cli.mjs list`. Práce patří k úkolu `won-discounts-kolo3`. Po dokončení tam zapiš poznámku (`note-add won-discounts-kolo3 "…" --no-llm`; nepiš do ní data ve tvaru „7. 10.“, nástroj je čte jako připomínku).
 
 ### Brána (před každým commitem do `main`)
@@ -111,7 +112,7 @@ npm run guard:test:core
 npm run validate:shopify
 ```
 
-Výchozí stav 7. 10. (kód `cdc9f64`): `test:unit` 1 766 + cargo 101 + vitest 643, `test:packages` 912 + 53, guard 301, lint 0 chyb a 6 starších varování, `validate:shopify` 0 nálezů.
+Výchozí stav (kód `798cfe8`): `test:unit` 1 769 + cargo 101 + vitest 651, `test:packages` 913 + 53, guard 301, lint 0 chyb a 6 starších varování, `validate:shopify` 0 nálezů. Kořenový `npm run lint` (bez `-w`) kontroluje jinou aplikaci a padá na jejích starších chybách; do brány nepatří.
 
 ### Důkazy (bez nich úkol není hotový)
 
@@ -128,7 +129,7 @@ Po každé části zapiš stav do build logu a do tabulky „Stav implementace�
 1. Stránka Milníky ukládá a načítá všechny tři typy odměn, limity platí v rozhraní i na serveru a uložené odměny z doby před přestavbou se načtou jako stupně beze ztráty (test na skutečných tvarech nastavení).
 2. Tabulka stupeň × trh funguje se dvěma trhy stejné měny a na 390 px se neposouvá do strany.
 3. Žebříček je na webu ve třech velikostech na čtyřech místech, na Horizonu i Dawnu, a sleduje košík bez načtení stránky.
-4. Funkce v pokladně má stejnou velikost jako před úkolem a parita s referenčním výpočtem drží.
+4. Tvoje commity nemění zdrojáky ani sestavení funkce v pokladně (`git diff origin/main --stat -- apps/won-discounts/extensions/won-discounts-engine/src` je prázdný) a parita s referenčním výpočtem drží.
 5. Brána je zelená, `main` je pushnutý, build log a plán jsou aktuální.
 
 ## Mimo rozsah
