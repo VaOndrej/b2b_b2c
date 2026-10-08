@@ -9,6 +9,31 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ### Úkoly 8 a 9 (8. 10. 2026) — zadání `won-discounts/prompt-ukol8-9.md`
 
+> **CHECKPOINT (po kompakci kontextu začni tady).** Nejdřív přečti celé zadání
+> [`won-discounts/prompt-ukol8-9.md`](won-discounts/prompt-ukol8-9.md), potom tento oddíl.
+> - **Kde pracuju:** adresář `~/Development/WonCommerce/Apps/b2b_b2c-preklady`, větev `won-discounts-preklady`.
+>   Do hlavního adresáře `b2b_b2c` nesahám (přepnutí větve a commit tam mi zamítla ochrana oprávnění; má v něm sedm
+>   cizích necommitnutých souborů a běží nad ním `shopify app dev` se starým kódem `dd48a75`).
+> - **Úkol 8: hotový, v `main` (`125f05e`).** Naživo neověřeno (web na Horizonu a Dawnu, `read_locales`, klikání).
+> - **Úkol 9: v kódu, necommitnuto, cílené testy zelené, celá brána ještě neběžela.** Soubory:
+>   `app/lib/integration/combination-check.ts` (čisté scénáře a nálezy), `combination-check.server.ts` (čtení jen
+>   z databáze, pohled pro stránku, otevření scénáře), `try-cart-plan.ts` (`planTryCartDetail`),
+>   `components/try-cart/CombinationsSection.tsx`, `TryCartScreen.tsx`, `OverviewScreen.tsx` (počet na dlaždici),
+>   `pages.server.ts` (`tryCartPage`, `overviewPage`), `routes/app.try-cart.tsx` (`?scenario=`), texty `combos.*`,
+>   vývojový náhled `?combos=on | sample`, testy `tests/ui/combination-check.test.ts` (10),
+>   `tests/integration/combination-check.test.ts` (5), položky v `tests/ui/harness-screens.test.ts`,
+>   nápověda `apps/won-discounts/docs/tasks/try-a-cart.md`. Snímky: `Apps/.playwright-mcp/scenare/`.
+> - **V témže rozdělaném stavu:** vrácených šest testů náhledu stránky Překlady, které jsem omylem smazal v commitu
+>   `bfd0071` (část B úkolu 8).
+> - **Další kroky:** (1) celá brána z kořene (sedm příkazů ze zadání, každý zvlášť); (2) doplnit sem čísla a
+>   rozhodnutí úkolu 9 a řádek 16 v tabulce „Stav implementace“ plánu; (3) commit po částech, `git fetch` + rebase,
+>   `git push origin HEAD:main`; (4) poznámka do Second Brain (`note-add won-discounts-kolo3 "…" --no-llm`);
+>   (5) závěrečná zpráva k úkolu 9 podle zadání.
+> - **Rozhodnutí úkolu 9 (zapsat do stavu):** scénáře se počítají při otevření stránky z uložených dat (vždy stav
+>   po posledním uložení, bez tabulky navíc a bez dotazu do Shopify); stejné košíky se slučují do jednoho scénáře;
+>   obchod bez uložených produktů dostane ukázkový produkt a stránka to říká; cena v jiné měně je odhad podle
+>   obchodníkových částek; „nejprodávanější produkt“ se nevybírá (přehledy produkty neukládají).
+
 Větev `won-discounts-preklady` ve vlastním pracovním adresáři `../b2b_b2c-preklady`, po každé zelené části
 `git push origin HEAD:main`. Práce inline. Měření a rozhodnutí o úložišti:
 [`won-discounts/navrh-preklady-a-vzhled.md`](won-discounts/navrh-preklady-a-vzhled.md).
