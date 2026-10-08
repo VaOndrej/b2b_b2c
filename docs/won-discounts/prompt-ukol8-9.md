@@ -11,6 +11,8 @@ Majitel aplikace (Ondřej) není u počítače. Co je rozhodnuté, je níž; kde
 
 Pracuješ **výhradně inline, bez subagentů**. Pořadí je 8 → 9. Úkol 9 nezačínej, dokud úkol 8 není v `main` se zelenou bránou.
 
+**Svou práci průběžně pushuješ do `main`.** Ondřej to výslovně chce a potvrzení k tomu nepotřebuješ: každou dokončenou a ověřenou část (zelená brána) pošli do `main` hned, nečekej s tím na konec úkolu. Postup je v oddíle „Commity a push do `main`“.
+
 ## Jak se od tebe čeká, že budeš pracovat
 
 Tohle je hlavní požadavek na tuhle session, ber ho stejně vážně jako zadání samotné.
@@ -49,7 +51,7 @@ cd ../b2b_b2c-preklady && npm install
 ```
 
   Nejdřív se podívej na `git status` v hlavním adresáři. Když už je čistý a nikdo tam nepracuje, můžeš pracovat rovnou v něm na nové větvi z `origin/main`; běží nad ním `shopify app dev`, takže se ti změny rozšíření samy nahrávají do dev obchodu.
-- `cs.ts` a `en.ts` mění obě session. Před každým pushem `git fetch origin && git rebase origin/main`; konflikt v nich řeš ponecháním obou sad klíčů, v build logu ponecháním obou zápisů, a bránu pusť znovu.
+- `cs.ts` a `en.ts` mění obě session. Při rebase před pushem řeš konflikt v nich ponecháním obou sad klíčů, v build logu ponecháním obou zápisů, a bránu pusť znovu.
 - Stav běhu: `docs/won-discounts-build-log.md`, oddíl „Aktuální stav“. **Začni tím, že ho přečteš**, a po každé kompakci kontextu znovu.
 - Dev náhled bez přihlášení běží jen nad hlavním adresářem: `http://localhost:<port>/dev/preview/<obrazovka>`. Z vlastního adresáře dělej screenshoty ze staticky vykreslených stránek (viz „Důkazy“). Dev servery sám nespouštěj ani nerestartuj.
 - Seznam obrazovek a stavů náhledu je v komentáři na začátku `apps/won-discounts/app/routes/dev.preview.$.tsx`.
@@ -154,10 +156,27 @@ Přesný název oprávnění ke čtení jazyků obchodu ověř v dokumentaci Sho
 - **Texty česky i anglicky:** každý nový klíč do `app/i18n/cs.ts` i `en.ts`. Obchodníkovi se vyká. Krátké konkrétní věty. Žádný žargon: „téma“, „editor tématu“, „blok“, „synchronizace“, „práh“, „recept“, „cílení“, „strop slevy“.
 - **V textech nikdy neukazuj klíč** částky ani textu. Trh se jmenuje jménem („Slovensko (EUR)“), text místem, kde ho zákazník vidí.
 - **Dokumentace:** po změně textů stavů, voleb nebo limitů `npm run docs:gen -w won-discounts`. Ručně psané stránky v `apps/won-discounts/docs/` uprav tam, kde popisují Vzhled nebo Vyzkoušet košík. Jeden oddíl dokumentace nesmí přesáhnout 1 500 znaků (hlídá test).
-- **Slučování:** po zelené bráně `git fetch origin && git rebase origin/main`, bránu po rebase pusť znovu, pak `git push origin HEAD:main`. Žádný `--force`; když push odmítne, zopakuj fetch a rebase.
 - **Second Brain:** `node /Users/ondrej/Development/second-brain/src/cli.mjs list`. Práce patří k úkolu `won-discounts-kolo3`. Po každém dokončeném úkolu tam zapiš poznámku (`note-add won-discounts-kolo3 "…" --no-llm`; nepiš do ní data ve tvaru „7. 10.“, nástroj je čte jako připomínku).
 
-### Brána (před každým commitem do `main`)
+### Commity a push do `main`
+
+Pracuješ na své větvi, ale cílem každé části je `main`. Žádná práce nemá zůstat jen u tebe.
+
+1. **Commituj po částech,** které dávají smysl samy o sobě (jádro, server, stránka, web). Do zprávy commitu napiš česky, co se změnilo, jako dosavadní historie (`git log --oneline -15`).
+2. **Do `main` jde jen zelený stav.** Před pushem celá brána. Rozdělanou část, která bránou neprojde, nech jen ve své větvi.
+3. **Push po každé hotové části, nejméně jednou za úkol 8 po kroku „měření a rozhodnutí“, po stránce Překlady, po přesunu vzhledu, a za úkol 9 po výpočtu scénářů a po stránce.** Postup:
+
+```
+git fetch origin && git rebase origin/main
+# brána znovu, pokud rebase něco přinesl
+git push origin HEAD:main
+```
+
+4. `main` se posouvá bez slučovacího commitu. Žádný `--force` ani `--force-with-lease`; když push odmítne, zopakuj fetch, rebase a bránu.
+5. Po pushi ověř `git log origin/main --oneline -1` a zapiš do build logu, co je v `main` a co zůstává rozdělané.
+6. Pull requesty nezakládej, nic mimo `main` a svou větev nepushuj.
+
+### Brána (před každým pushem do `main`)
 
 Z kořene repa, každý příkaz zvlášť, všechno musí skončit s kódem 0:
 
@@ -199,7 +218,7 @@ Po každé části zapiš stav do build logu a do tabulky „Stav implementace�
 
 **Obojí**
 9. Tvoje commity nemění zdrojáky ani sestavení funkce v pokladně a parita s referenčním výpočtem drží.
-10. Brána je zelená, `main` je pushnutý, build log a plán jsou aktuální.
+10. Brána je zelená, všechna tvoje práce je pushnutá v `main` (`git log origin/main..HEAD` je prázdný), build log a plán jsou aktuální.
 
 ## Mimo rozsah
 
