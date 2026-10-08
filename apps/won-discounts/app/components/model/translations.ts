@@ -27,7 +27,7 @@ export const TRANSLATIONS_FIELD = {
   csv: "csv",
 } as const;
 
-export const TRANSLATIONS_INTENT = { save: "save", exportCsv: "export", importPreview: "import-preview", importApply: "import-apply" } as const;
+export const TRANSLATIONS_INTENT = { save: "save", exportCsv: "export", importPreview: "import-preview", importApply: "import-apply", scopes: "scopes" } as const;
 
 /** Where a text shows on the storefront: the tables' sections, in the page's order. */
 export const TEXT_GROUPS = ["tiers", "milestones", "cart", "outlet", "campaigns", "cards"] as const;

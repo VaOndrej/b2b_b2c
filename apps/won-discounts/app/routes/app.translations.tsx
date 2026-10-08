@@ -5,7 +5,8 @@ import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { shopCtx } from "../lib/integration/context.server";
 import { adminLocale } from "../lib/integration/locale.server";
-import { loadTranslationsScreen, translationsAction, type TranslationsResult } from "../lib/integration/translations.server";
+import { TRANSLATIONS_FIELD, TRANSLATIONS_INTENT } from "../components/model/translations";
+import { loadTranslationsScreen, recordGrantedScopes, translationsAction, type TranslationsResult } from "../lib/integration/translations.server";
 import type { UiResult } from "../components/model/types";
 import { TranslationsScreen } from "../components/screens/TranslationsScreen";
 
@@ -21,17 +22,20 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs): Promise<TranslationsResult> => {
-  const { admin, session } = await authenticate.admin(request);
+  const { admin, session, scopes } = await authenticate.admin(request);
+  const form = await request.formData();
+  // A permission was just granted on the page: the session learns it now, not when Shopify's webhook arrives.
+  if (form.get(TRANSLATIONS_FIELD.intent) === TRANSLATIONS_INTENT.scopes) return recordGrantedScopes(db, session.id, () => scopes.query());
   const locale = await adminLocale(request, session, db);
   // eslint-disable-next-line no-undef
   const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "", scopes: session.scope });
-  return translationsAction(ctx, await request.formData());
+  return translationsAction(ctx, form);
 };
 
 /** The page's own form only saves; the CSV answers go to the screen's fetcher. */
 function saveResult(submitted: TranslationsResult | undefined): UiResult | null {
   if (!submitted) return null;
-  return submitted.ok && (submitted.message === "export" || submitted.message === "import-preview") ? null : submitted;
+  return submitted.ok && (submitted.message === "export" || submitted.message === "import-preview" || submitted.message === "scopes") ? null : submitted;
 }
 
 export default function Translations() {

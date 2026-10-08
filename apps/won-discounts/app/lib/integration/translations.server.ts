@@ -36,6 +36,7 @@ import type { FieldError, TranslationsScreenData, UiResult } from "../../compone
 import { loadConfig } from "../config.server";
 import { graphqlOf, type ShopCtx } from "./context.server";
 import { readSaveOptions, saveConfigSection, type SaveOptions } from "./settings.server";
+import { errorText } from "../sync/transport";
 import { ctxPlan } from "./sync-status.server";
 import { readShopLanguages, type ShopLanguage } from "./themes.server";
 
@@ -180,7 +181,25 @@ function save(ctx: ShopCtx, form: TranslationsForm, opts: SaveOptions): Promise<
 /** An import larger than every language at its limit is not one of ours. */
 const CSV_MAX_LENGTH = 2_000_000;
 
-export type TranslationsResult = UiResult | { ok: true; message: "export"; csv: string } | { ok: true; message: "import-preview"; plan: ImportPlan; csv: string };
+export type TranslationsResult = UiResult | { ok: true; message: "export"; csv: string } | { ok: true; message: "import-preview"; plan: ImportPlan; csv: string } | { ok: true; message: "scopes" };
+
+/**
+ * The merchant has just granted an optional permission on the page (intent `scopes`). Shopify tells the app with
+ * a webhook (app/scopes_update), which arrives after the page has already loaded again — so the page asks here,
+ * the app asks Shopify what is granted now and writes it to the session the next load reads (the row the webhook
+ * updates too). The page's loaders run again after the answer and find the permission.
+ */
+export async function recordGrantedScopes(db: ShopCtx["db"], sessionId: string, query: () => Promise<{ granted: readonly string[] }>): Promise<TranslationsResult> {
+  let granted: readonly string[];
+  try {
+    ({ granted } = await query());
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    return { ok: false, reason: "shopify_unavailable", detail: errorText(error) };
+  }
+  await db.session.update({ where: { id: sessionId }, data: { scope: granted.join(",") } });
+  return { ok: true, message: "scopes" };
+}
 
 /**
  * The Překlady action. `save`: the tables as the form carries them. `export` / `import-preview` / `import-apply`

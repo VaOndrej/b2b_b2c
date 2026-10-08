@@ -1796,6 +1796,7 @@ export const en: Record<keyof typeof cs, string> = {
   "translations.scope.grant": "Allow reading languages",
   "translations.scope.declined": "You did not allow it, so languages cannot be added.",
   "translations.scope.unavailable": "This can be allowed only in the Shopify admin.",
+  "translations.scope.notRead": "The permission could not be checked with Shopify. Reload the page.",
   "translations.error.missing": "The text lacks {parts}. Without it the store cannot fill it in.",
   "translations.error.extra": "The text contains {parts}, which is not filled in at this place. Remove it.",
   "translations.error.tooLong": "A text can have at most {max} characters.",

@@ -1800,6 +1800,7 @@ export const cs = {
   "translations.scope.grant": "Povolit čtení jazyků",
   "translations.scope.declined": "Svolení jste nedali, jazyky proto přidat nejde.",
   "translations.scope.unavailable": "Svolení jde dát jen v Shopify adminu.",
+  "translations.scope.notRead": "Svolení se nepodařilo ověřit v Shopify. Načtěte stránku znovu.",
   "translations.error.missing": "V textu chybí {parts}. Bez toho se na webu nedoplní.",
   "translations.error.extra": "Text obsahuje {parts}, což se na tomto místě nedoplňuje. Smažte to.",
   "translations.error.tooLong": "Text může mít nejvýš {max} znaků.",

@@ -9,7 +9,7 @@
 // (app/lib/integration/translations.server.ts).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Form, useFetcher, useRevalidator, useSubmit } from "react-router";
+import { Form, useFetcher, useSubmit } from "react-router";
 
 import { useT } from "../../i18n/context";
 import { requestScopes, type ScopeRequestResult } from "../model/app-bridge";
@@ -101,13 +101,15 @@ export function TranslationsScreen(props: TranslationsScreenProps) {
   const offered = (shopLanguages ?? []).filter((code) => !languages.includes(code));
   const atLimit = props.limit !== null && languages.length >= props.limit;
 
-  // The shop's languages need a permission the merchant gives once (an optional scope).
-  const revalidator = useRevalidator();
+  // The shop's languages need a permission the merchant gives once (an optional scope). Once given, the app is
+  // told to look (Shopify's own notice to it comes later); the page loads again after its answer, with the list.
+  const actions = useFormActions();
+  const granted = useFetcher<UiResult | { ok: true; message: "scopes" }>();
   const [scope, setScope] = useState<ScopeRequestResult | null>(null);
   const grantScope = () => {
     void requestScopes(["read_locales"]).then((answer) => {
       setScope(answer);
-      if (answer === "granted") revalidator.revalidate();
+      if (answer === "granted") granted.submit({ [TRANSLATIONS_FIELD.intent]: TRANSLATIONS_INTENT.scopes }, { method: "post", action: actions.translations });
     });
   };
 
@@ -122,7 +124,6 @@ export function TranslationsScreen(props: TranslationsScreenProps) {
 
   // CSV (Pro): the export answers with the file's text, the import with its plan; nothing is saved until confirmed.
   const csv = useFetcher<CsvResult>();
-  const actions = useFormActions();
   const [dismissed, setDismissed] = useState(false);
   const [readFailed, setReadFailed] = useState(false);
   const answer = csv.data ?? null;
@@ -287,13 +288,14 @@ export function TranslationsScreen(props: TranslationsScreenProps) {
                   <WonRow
                     tone="attention"
                     action={
-                      <s-button variant="primary" onClick={grantScope}>
+                      <s-button variant="primary" onClick={grantScope} disabled={boolAttr(granted.state !== "idle")}>
                         {t("translations.scope.grant")}
                       </s-button>
                     }
                   >
                     <RowNote tone="attention">{t("translations.scope.missing")}</RowNote>
                     {scope === "declined" || scope === "unavailable" ? <RowNote tone="attention">{t(`translations.scope.${scope}`)}</RowNote> : null}
+                    {granted.data && !granted.data.ok ? <RowNote tone="attention">{t("translations.scope.notRead")}</RowNote> : null}
                   </WonRow>
                 ) : atLimit ? (
                   <ProSell benefit={t("translations.add.benefit")} />

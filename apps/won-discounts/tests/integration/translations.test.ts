@@ -9,7 +9,7 @@ import type { PrismaClient } from "../../app/generated/prisma/client.ts";
 import type { AdminClient } from "../../app/lib/admin-client.server.ts";
 import { loadConfig, saveConfig } from "../../app/lib/config.server.ts";
 import type { ShopCtx } from "../../app/lib/integration/context.server.ts";
-import { loadTranslationsScreen, translationsAction } from "../../app/lib/integration/translations.server.ts";
+import { loadTranslationsScreen, recordGrantedScopes, translationsAction } from "../../app/lib/integration/translations.server.ts";
 import { createSync } from "../../app/lib/sync/sync.server.ts";
 import { productionSyncDeps } from "../../app/lib/sync/wiring.server.ts";
 import { clearSignalCache } from "../../app/lib/ui-actions.server.ts";
@@ -135,6 +135,27 @@ test("without the permission to read the shop's languages the page works with wh
   assert.ok(edit.ok, JSON.stringify(edit));
   const add = await translationsAction(ctx, save((await loadTranslationsScreen(ctx)).configVersion, [["lang", "cs"], ["lang", "en"], ["lang", "de"]]));
   assert.deepEqual(add, { ok: false, reason: "invalid", errors: [{ field: "lang", key: "translations.error.notInShop" }] });
+});
+
+test("the permission just granted on the page: the session learns it from Shopify at once, so the reload that follows lists the shop's languages (the scopes webhook comes later)", async () => {
+  const store = storeWith("cs", "sk");
+  const sessionId = `offline_${shop}`;
+  await db.prisma.session.create({ data: { id: sessionId, shop, state: "", accessToken: "t", scope: "read_themes,read_markets" } });
+  const scopeOf = async () => (await db.prisma.session.findUnique({ where: { id: sessionId } }))?.scope ?? "";
+  const load = async () => loadTranslationsScreen(ctxFor(store, "free", await scopeOf()));
+  assert.equal((await load()).shopLanguages, null, "before the grant");
+  // The merchant confirmed Shopify's dialog; the page asks the app to look, and the app asks Shopify.
+  const answer = await recordGrantedScopes(db.prisma, sessionId, async () => ({ granted: ["read_themes", "read_markets", "read_locales"] }));
+  assert.deepEqual(answer, { ok: true, message: "scopes" });
+  assert.equal(await scopeOf(), "read_themes,read_markets,read_locales");
+  assert.deepEqual((await load()).shopLanguages, ["cs", "sk"], "the page's own reload, no manual one");
+  // Shopify does not answer: nothing is written, and the page is told.
+  await db.prisma.session.update({ where: { id: sessionId }, data: { scope: "read_themes" } });
+  const failed = await recordGrantedScopes(db.prisma, sessionId, async () => {
+    throw new Error("503");
+  });
+  assert.equal(failed.ok, false);
+  assert.equal(await scopeOf(), "read_themes");
 });
 
 test("a shop with nothing stored: one table, the shop's default language (the admin's own when the shop's cannot be read)", async () => {

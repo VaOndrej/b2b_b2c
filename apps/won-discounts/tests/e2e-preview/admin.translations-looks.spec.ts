@@ -102,6 +102,28 @@ test("Překlady: the CSV downloads, an upload is planned first — one row chang
   await expect(page.locator("[data-won-csv-file]")).toBeDisabled();
 });
 
+test("Překlady without the permission: once the merchant grants it, the page tells the app to look — it does not wait for a manual reload", async ({ page, baseURL }) => {
+  // The grant dialog is Shopify's (App Bridge, only inside the admin's frame): the page runs in a frame here and
+  // the dialog answers "granted".
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.setContent(`<iframe src="${baseURL}/dev/preview/translations?state=no-scope" style="width:100%;height:880px;border:0"></iframe>`);
+  const frame = page.frames()[1]!;
+  await frame.waitForLoadState("networkidle");
+  await frame.waitForFunction(() => customElements.get("s-page") !== undefined);
+  const grant = frame.locator("s-button", { hasText: "Povolit čtení jazyků" });
+  await expect(grant).toBeVisible();
+  await expect(frame.locator("[data-won-add-language]")).toHaveCount(0);
+  const asked: string[][] = [];
+  await page.exposeFunction("wonAsked", (scopes: string[]) => asked.push(scopes));
+  await frame.evaluate(() => {
+    const w = window as unknown as { shopify: unknown; wonAsked: (scopes: string[]) => Promise<void> };
+    w.shopify = { scopes: { request: async (scopes: string[]) => (await w.wonAsked(scopes), { result: "granted-all" }) } };
+  });
+  const [request] = await Promise.all([page.waitForRequest((r) => r.method() === "POST"), grant.click()]);
+  expect(asked).toEqual([["read_locales"]]);
+  expect(new URLSearchParams(request.postData() ?? "").get("intent")).toBe("scopes");
+});
+
 for (const [path, tile, element, preset] of [
   ["rewards", "web", "milestones", "checklist"],
   ["rewards?plan=pro", "web", "milestones", "sentence"],
