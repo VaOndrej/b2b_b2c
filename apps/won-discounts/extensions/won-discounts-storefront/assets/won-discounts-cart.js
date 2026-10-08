@@ -160,7 +160,7 @@
     const key = markup + view.base;
     if (shown !== key) {
       shown = key;
-      d.dispatchEvent(new CustomEvent("won-discounts:cart:update", { detail: { base: view.base, shipping: view.ship, gifts: view.tiers, steps: view.steps } }));
+      d.dispatchEvent(new CustomEvent("won-discounts:cart:update", { detail: { base: view.base, shipping: view.ship, gifts: view.tiers, steps: view.steps, hit: view.hit } }));
     }
   };
 

@@ -25,6 +25,8 @@
     (cart.cart_level_discount_applications || []).reduce((s, a) => s + (a.total_allocated_amount || 0), 0);
 
   let reached = -1;
+  let hit = -1;
+  let hitAt = 0;
   const plan = (cart, rw, facts, mk) => {
     const cur = cart.currency;
     // A threshold of the cart's own market ("EUR@sk", `mk`) first, then its currency's.
@@ -78,9 +80,13 @@
       if (a && (d.pct || off)) s.push({ k: "d", id: d.id, at: a, left: Math.max(0, a - b), done: b >= a, pct: d.pct, off });
     }
     s.sort((x, y) => x.at - y.at);
-    /* The step just reached: `data-new`. */
+    /* The step just reached: `data-new`, kept while its flash runs (a theme reports one change twice, the panel reads the cart again). */
     const n = s.filter((x) => x.done).length;
-    out.hit = n > reached && reached >= 0 ? n - 1 : -1;
+    if (n > reached && reached >= 0) {
+      hit = n - 1;
+      hitAt = Date.now();
+    } else if (n < reached || Date.now() - hitAt > 1500) hit = -1;
+    out.hit = hit;
     reached = n;
     return out;
   };

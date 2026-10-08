@@ -82,7 +82,7 @@ function page(t: TestContext, opts: { cart: Cart; rewards?: unknown; onUpdate?: 
       this.children.unshift(el);
     },
   };
-  const state = { cart: opts.cart, updates: [] as { at: number; payload: Record<string, unknown> }[], proxy: [] as unknown[] };
+  const state = { cart: opts.cart, updates: [] as { at: number; payload: Record<string, unknown> }[], proxy: [] as unknown[], events: [] as { type: string; detail?: Record<string, unknown> }[] };
   let cached: string | undefined;
   const document = {
     readyState: "complete",
@@ -105,7 +105,9 @@ function page(t: TestContext, opts: { cart: Cart; rewards?: unknown; onUpdate?: 
     addEventListener(name: string, fn: (e: unknown) => void) {
       listeners.set(name, [...(listeners.get(name) ?? []), fn]);
     },
-    dispatchEvent() {},
+    dispatchEvent(event: { type: string; detail?: Record<string, unknown> }) {
+      state.events.push(event);
+    },
   };
   const window: Record<string, unknown> = {
     document,
@@ -135,7 +137,13 @@ function page(t: TestContext, opts: { cart: Cart; rewards?: unknown; onUpdate?: 
     Set,
     console,
     CustomEvent: class {
-      constructor(public type: string) {}
+      detail?: unknown;
+      constructor(
+        public type: string,
+        init?: { detail?: unknown },
+      ) {
+        this.detail = init?.detail;
+      }
     },
     MutationObserver: class {
       observe() {}
@@ -617,7 +625,7 @@ import { LOOK_PRESET_CSS, MILESTONE_BLINK_CSS } from "@won/core/discounts/looks"
 /** won-discounts.js booted on a stub page: its pure plan() and ladder(). */
 function bootLadder() {
   const doc = { readyState: "complete", documentElement: { lang: "cs" }, getElementById: () => ({ textContent: "{}" }), querySelector: () => ({ setAttribute() {} }), addEventListener() {} };
-  const run = vm.createContext({ window: {} as Record<string, unknown>, document: doc, Intl, JSON, Math });
+  const run = vm.createContext({ window: {} as Record<string, unknown>, document: doc, Intl, JSON, Math, Date });
   vm.runInContext(SOURCES[0]!, run);
   return (run.window as { WonDiscounts: { plan: (cart: unknown, rw: unknown, facts: unknown, mk?: string) => { hit: number; steps: { done: boolean }[] }; ladder: (view: unknown, size: string, data: unknown, cur: string) => string } }).WonDiscounts;
 }
@@ -625,18 +633,43 @@ const LADDER_RW = { ship: { CZK: 100000 }, gifts: [], other: false, disc: [{ id:
 const LADDER_TX = { tx: { ms_left: "Ještě {amount} a získáte: {reward}", ms_done: "Hotovo", ms_from: "od {amount}", ms_ship: "Doprava zdarma", ms_disc: "Sleva {value}", n: { "ms-b": "Věrnostní sleva {value}" } } };
 const ladderCart = (kc: number) => ({ currency: "CZK", items: [{ original_line_price: kc * 100, final_line_price: kc * 100, properties: {} }], attributes: {}, cart_level_discount_applications: [] });
 
-test("the ladder marks the step a cart change has just reached — never on the first look, never twice, never when the cart shrinks", () => {
+test("the ladder marks the step a cart change has just reached — never on the first look, never when the cart shrinks; the mark holds while its flash runs, then goes", (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: 1_000_000 });
   const wd = bootLadder();
   const hit = (kc: number) => wd.plan(ladderCart(kc), LADDER_RW, {}, "CZK@cz").hit;
   assert.equal(hit(1500), -1, "the first look at a cart flashes nothing, whatever it has reached");
   assert.equal(hit(1600), -1, "no new step");
   assert.equal(hit(2500), 1, "the second step was just reached");
-  assert.equal(hit(2600), -1, "…and is not new the next time");
+  // A theme fires two cart events for one change, and the panel reads the cart again after its own write: the
+  // same step is still the new one, so the markup stays as it is and the flash is not cut.
+  t.mock.timers.tick(300);
+  assert.equal(hit(2500), 1, "read again a moment later: the same mark");
+  assert.equal(hit(2600), 1, "…also when the cart grew without reaching another step");
+  t.mock.timers.tick(1_500);
+  assert.equal(hit(2600), -1, "after the flash it is not new any more");
   assert.equal(hit(500), -1, "a smaller cart reaches nothing");
   assert.equal(hit(3500), 2, "three at once: the highest one is the new one");
+  t.mock.timers.tick(300);
+  assert.equal(hit(1500), -1, "the cart shrank during the flash: nothing is new");
 });
 
-test("the ladder's markup carries what every look needs: the track and the list of steps in compact and full, `data-new` on the step just reached, a step's own name", () => {
+test("the step just reached goes out with the cart event, so the Milestones block and the top bar mark it like the panel — once for a change a theme reports twice", async (t) => {
+  // Free shipping from 1 000 Kč: the cart goes from 900 to 1 100 Kč.
+  const p = page(t, { cart: cartOf([item("a", 1, 90000)]), rewards: { ship: { CZK: 100000 }, gifts: [], other: false } });
+  await p.settle(1000);
+  const sent = () => p.state.events.filter((e) => e.type === "won-discounts:cart:update").map((e) => e.detail?.hit);
+  assert.deepEqual(sent(), [-1], "the first look: nothing is new");
+  p.state.cart = cartOf([item("a", 1, 110000)]);
+  // One customer action, two cart events (Dawn's pubsub and the standard event).
+  p.emit("cart:update");
+  p.emit("shopify:cart:lines-update");
+  await p.settle(1000);
+  assert.deepEqual(sent(), [-1, 0], "one event with the step, and no second one that would take the mark away");
+  assert.match(p.panel(), /<li data-won-ms-step="s" data-done data-new>/);
+});
+
+test("the ladder's markup carries what every look needs: the track and the list of steps in compact and full, `data-new` on the step just reached, a step's own name", (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: 1_000_000 });
   const wd = bootLadder();
   wd.plan(ladderCart(500), LADDER_RW, {}, "CZK@cz");
   const view = wd.plan(ladderCart(1200), LADDER_RW, {}, "CZK@cz");
@@ -653,7 +686,8 @@ test("the ladder's markup carries what every look needs: the track and the list 
   }
   const bar = wd.ladder(view, "bar", LADDER_TX, "CZK");
   assert.doesNotMatch(bar, /<i |<ol|data-new/, "the strip is a sentence and a thin track");
-  // Nothing new: no mark.
+  // Nothing new once the flash is over: no mark.
+  t.mock.timers.tick(1_600);
   assert.doesNotMatch(wd.ladder(wd.plan(ladderCart(1300), LADDER_RW, {}, "CZK@cz"), "compact", LADDER_TX, "CZK"), /data-new/);
 });
 
