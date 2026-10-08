@@ -670,18 +670,40 @@ test("the preview is the storefront's markup (K8) with the storefront CSS confin
   assert.match(block, /<ol class="won-tiers__list" role="list">/);
 });
 
-test("the harness action (forms posted in a preview) is guarded like the loader", async () => {
+/** Post a form to the harness as a page does; the action's answer, or the status it threw. */
+async function post(path: string, fields: Record<string, string>): Promise<{ status: number; data: unknown }> {
   const mod = await import("../../app/routes/dev.preview.$.tsx");
-  assert.deepEqual(mod.action(), { ok: false, reason: "preview_only" });
+  const handler = createStaticHandler([{ id: "preview", path: "/dev/preview/*", loader: mod.loader, action: mod.action, Component: mod.default }]);
+  const body = new FormData();
+  for (const [name, value] of Object.entries(fields)) body.set(name, value);
+  const context = await handler.query(new Request(`http://localhost/dev/preview/${path}`, { method: "POST", body }));
+  if (context instanceof Response) return { status: context.status, data: null };
+  return { status: context.statusCode, data: context.actionData?.preview ?? null };
+}
+
+test("the harness action (forms posted in a preview) is guarded like the loader", async () => {
+  assert.deepEqual(await post("tiers", { intent: "save" }), { status: 200, data: { ok: false, reason: "preview_only" } });
   process.env.NODE_ENV = "production";
   try {
-    assert.throws(
-      () => mod.action(),
-      (err: unknown) => err instanceof Response && err.status === 404,
-    );
+    assert.equal((await post("tiers", { intent: "save" })).status, 404);
   } finally {
     process.env.NODE_ENV = "test";
   }
+});
+
+test("the harness answers the CSV of Překlady for real (Pro), saves nothing, and refuses it on Free like the server", async () => {
+  const exported = (await post("translations?plan=pro", { intent: "export" })).data as { ok: boolean; message: string; csv: string };
+  assert.equal(exported.message, "export");
+  assert.match(exported.csv, /Kúp viac, zaplať menej/);
+  const changed = exported.csv.replace("Kúp viac, zaplať menej", "Kúp viac a ušetri").replace("Ušetříte celkem {amount}", "Ušetříte celkem");
+  const planned = (await post("translations?plan=pro", { intent: "import-preview", csv: changed })).data as { message: string; plan: { changes: unknown[]; refused: unknown[] } };
+  assert.equal(planned.message, "import-preview");
+  assert.equal(planned.plan.changes.length, 1);
+  assert.equal(planned.plan.refused.length, 1, "the text that lost {amount}");
+  assert.deepEqual((await post("translations?plan=pro", { intent: "import-apply", csv: changed })).data, { ok: false, reason: "preview_only" });
+  const free = (await post("translations", { intent: "export" })).data as { ok: boolean; errors: { key: string }[] };
+  assert.equal(free.ok, false);
+  assert.equal(free.errors[0]?.key, "translations.error.pro");
 });
 
 test("Ochrana marže: one save for the whole form, last on the page — after the read-only Přehled zásahů", async () => {

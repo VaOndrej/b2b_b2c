@@ -146,17 +146,24 @@ export function combinationView(results: readonly ScenarioResult[], opts: { plan
  * One scenario as the manual cart takes it (`?scenario=<id>` on Vyzkoušet košík): its lines with the stored
  * prices, the code discounts to tick, its market and time. null = no such scenario, or it uses a sample product.
  */
-export async function scenarioCart(ctx: ShopCtx, facts: CombinationFacts, id: string): Promise<Pick<TryCartScreenProps, "lines" | "ruleIds" | "currency" | "date" | "time" | "opened"> | null> {
+export async function scenarioCart(ctx: ShopCtx, facts: CombinationFacts, id: string): Promise<ScenarioCart | null> {
   const run = await runCombinationCheck(ctx, facts);
-  const found = run?.results.find((result) => result.scenario.id === id)?.scenario;
-  if (!run || !found || found.lines.some((line) => line.product.role === "sample")) return null;
-  const priced = scenarioLines(found, run.facts);
+  return run ? scenarioCartOf(run.results, run.facts, id) : null;
+}
+
+export type ScenarioCart = Pick<TryCartScreenProps, "lines" | "ruleIds" | "currency" | "date" | "time" | "opened">;
+
+/** The same from scenarios already planned (pure; the dev harness uses it on fixtures). */
+export function scenarioCartOf(results: readonly ScenarioResult[], facts: Pick<ScenarioFacts, "shopCurrency" | "locale">, id: string): ScenarioCart | null {
+  const found = results.find((result) => result.scenario.id === id)?.scenario;
+  if (!found || found.lines.some((line) => line.product.role === "sample")) return null;
+  const priced = scenarioLines(found, facts);
   return {
     lines: found.lines.map(({ product, quantity }, i) => ({ variantId: product.variantId, productId: product.productId, title: product.title, quantity, unitPrice: { [found.market.currency]: priced[i]!.unitPrice } })),
     ruleIds: found.ruleIds,
     currency: found.market.handle ? `${found.market.currency}:${found.market.handle}` : found.market.currency,
     date: found.date,
     time: found.time.slice(0, 5),
-    opened: scenarioTitle(found, ctx.locale),
+    opened: scenarioTitle(found, facts.locale),
   };
 }

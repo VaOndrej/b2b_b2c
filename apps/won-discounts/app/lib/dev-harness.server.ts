@@ -71,13 +71,13 @@ import { rewardsOverviewOf, rewardsScreenFacts, rewardsSectionStatus } from "./i
 import { campaignsStatus, marginStatus, outletStatus } from "../components/model/module-status";
 import { currencyViews } from "../components/model/markets";
 import { TIERS_FIELD } from "../components/model/tiers";
-import { exportCsv, planImport, type ImportPlan } from "../components/model/translations";
+import { exportCsv, planImport, TRANSLATIONS_FIELD, TRANSLATIONS_INTENT, type ImportPlan } from "../components/model/translations";
 import { translator } from "../i18n";
 import { lookView, previewLookOf } from "./integration/looks.server";
 import { tiersOverviewOf, tiersScreenFacts, tiersSectionStatus } from "./integration/tiers.server";
-import { translationsScreenData } from "./integration/translations.server";
+import { translationsScreenData, type TranslationsResult } from "./integration/translations.server";
 import { runScenarios, type ScenarioProduct } from "./integration/combination-check";
-import { combinationView } from "./integration/combination-check.server";
+import { combinationView, scenarioCartOf, type ScenarioCart } from "./integration/combination-check.server";
 import { lossText, undoCostTexts, warningText } from "./native/copy";
 import { isDevHarnessEnvironment } from "./dev-harness-env";
 import { wordIssues } from "./integration/issue-copy";
@@ -1157,6 +1157,20 @@ export function devTranslationsScreen(opts: { plan: "free" | "pro"; state: strin
   return { ...data, importPreview: { plan: planImport(csv, data.rows, data.languages, data.values), csv } };
 }
 
+/**
+ * The CSV intents of Překlady over the same fixture, as translationsAction answers them: the export and the plan
+ * of an import are real, Pro only. null = any other intent (nothing is saved in the harness).
+ */
+export function devTranslationsCsv(form: FormData, opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en" }): TranslationsResult | null {
+  const intent = form.get(TRANSLATIONS_FIELD.intent);
+  if (intent !== TRANSLATIONS_INTENT.exportCsv && intent !== TRANSLATIONS_INTENT.importPreview) return null;
+  if (opts.plan !== "pro") return { ok: false, reason: "invalid", errors: [{ field: TRANSLATIONS_FIELD.csv, key: "translations.error.pro" }] };
+  const data = devTranslationsScreen({ ...opts, state: opts.state === "import" ? null : opts.state });
+  if (intent === TRANSLATIONS_INTENT.exportCsv) return { ok: true, message: "export", csv: exportCsv(data.rows, data.languages, data.values, translator(opts.locale)) };
+  const csv = String(form.get(TRANSLATIONS_FIELD.csv) ?? "");
+  return { ok: true, message: "import-preview", plan: planImport(csv, data.rows, data.languages, data.values), csv };
+}
+
 /** Nastavení: the switches as stored (`changed` = two switched off, as a shop may have them). */
 export function devSettingsScreen(opts: { plan: "free" | "pro"; state: string | null; shared?: boolean; fallback?: boolean; highest?: boolean }): SettingsScreenData {
   const c = DEFAULT_CONFIG.engine.combination;
@@ -1844,7 +1858,18 @@ const DEV_COMBO_PRODUCTS: ScenarioProduct[] = [
  * `sample` = a shop with no stored product. Free gets the counts only, as from the server.
  */
 export function devCombinations(opts: { plan: "free" | "pro"; locale: "cs" | "en"; sample?: boolean }): CombinationCheckView | null {
+  const { results } = devCombinationRun(opts);
+  return combinationView(results, { plan: opts.plan, locale: opts.locale, marketNames: DEV_MARKET_NAMES, sample: opts.sample === true });
+}
+
+function devCombinationRun(opts: { plan: "free" | "pro"; locale: "cs" | "en"; sample?: boolean }) {
   const gated = gateConfigForPlan(DEV_COMBOS_FIXTURE, opts.plan, { now: "2026-09-28T14:00:00" }).config;
   const facts = { products: opts.sample ? [] : DEV_COMBO_PRODUCTS, shopCurrency: "CZK", shopTimezone: DEV_TIMEZONE, date: "2026-09-28", time: "14:00:00", locale: opts.locale };
-  return combinationView(runScenarios(gated, facts), { plan: opts.plan, locale: opts.locale, marketNames: DEV_MARKET_NAMES, sample: opts.sample === true });
+  return { results: runScenarios(gated, facts), facts };
+}
+
+/** `?scenario=<id>` on Vyzkoušet košík (Pro), as scenarioCart prepares the manual cart. */
+export function devScenarioCart(opts: { locale: "cs" | "en"; sample?: boolean; id: string }): ScenarioCart | null {
+  const { results, facts } = devCombinationRun({ ...opts, plan: "pro" });
+  return scenarioCartOf(results, facts, opts.id);
 }

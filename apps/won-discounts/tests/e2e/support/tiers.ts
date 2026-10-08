@@ -79,8 +79,8 @@ export interface StorefrontConfigRead {
   cv: string;
   tiers: { global: string | null; sets: Record<string, { count: string; breaks: ({ min: number; pct: number } | { min: number; off: Record<string, number> })[] }> };
   margin: { on: false } | { on: true; max: number; k: string; cur: string; col?: Record<string, number> };
-  appearance: { preset: string };
-  texts: Record<string, Record<string, string>>;
+  /** `css`: every element's look as one stylesheet. The changed texts are not here: one metafield a language (`tx_<locale>`). */
+  appearance: { preset: string; css?: string };
 }
 
 export interface TierVariant {

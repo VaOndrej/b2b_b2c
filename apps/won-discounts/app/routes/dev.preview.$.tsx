@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { LoaderFunctionArgs } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useActionData, useLoaderData, useLocation } from "react-router";
 
 import { resolveLocale, type Locale } from "../i18n";
@@ -10,6 +10,7 @@ import { ruleStatus } from "../components/model/rule-status";
 import { storeStatuses } from "../components/model/module-status";
 import { discountPageStates, type DiscountNavData } from "../components/model/modules";
 import { NOT_WIRED_SIGNALS } from "../components/model/signals";
+import { FormActionsContext } from "../components/shell/form-actions";
 import { DiscountNav } from "../components/shell/SubNav";
 import type { NativeDiscountView } from "../components/model/types";
 import { WonSection } from "../components/shell/WonSection";
@@ -72,6 +73,8 @@ import {
   DEV_TRY_CART_MARGIN_LINES,
   DEV_TIERS_FIXTURE,
   devTranslationsScreen,
+  devTranslationsCsv,
+  devScenarioCart,
   devCombinations,
   devPlanScreen,
   devSettingsScreen,
@@ -245,7 +248,12 @@ function withCombinations<T>(screen: T, url: URL): T {
   const plan = url.searchParams.get("plan") === "pro" ? ("pro" as const) : ("free" as const);
   const combos = devCombinations({ plan, locale: resolveLocale(url.searchParams.get("locale")), sample: mode === "sample" });
   if (!combos) return screen;
-  return which === "overview" ? { ...screen, combos: { ok: combos.ok, warnings: combos.warnings } } : { ...screen, combos };
+  if (which === "overview") return { ...screen, combos: { ok: combos.ok, warnings: combos.warnings } };
+  // ?scenario=<id> (Pro): the manual cart prepared from that combination, as the page's loader does it.
+  const scenario = url.searchParams.get("scenario");
+  const opened = plan === "pro" && scenario ? devScenarioCart({ locale: resolveLocale(url.searchParams.get("locale")), sample: mode === "sample", id: scenario }) : null;
+  // (no result yet: the cart is prepared, not calculated)
+  return { ...screen, combos, ...(opened ? { ...opened, plan: null } : {}) };
 }
 
 const screenProps = ({ request }: LoaderFunctionArgs) => {
@@ -546,10 +554,17 @@ const screenProps = ({ request }: LoaderFunctionArgs) => {
   }
 };
 
-// Forms in the harness post here: nothing is saved, and the screen says so.
-export const action = () => {
+// Forms in the harness post here: nothing is saved, and the screen says so. The CSV of Překlady is answered for
+// real over the fixture (an export, the plan of an import): neither saves anything.
+export const action = async ({ request }: ActionFunctionArgs) => {
   if (!isDevHarnessEnabled()) {
     throw notFound();
+  }
+  const url = new URL(request.url);
+  if (harnessScreen(url.pathname) === "translations") {
+    const q = url.searchParams;
+    const csv = devTranslationsCsv(await request.formData(), { plan: q.get("plan") === "pro" ? "pro" : "free", state: q.get("state"), locale: resolveLocale(q.get("locale")) });
+    if (csv) return csv;
   }
   return { ok: false as const, reason: "preview_only" as const };
 };
@@ -575,8 +590,11 @@ function MoveDialogPreview({ discounts }: { discounts: NativeDiscountView[] }) {
 export default function DevPreview() {
   const { screen: data, discountNav } = useLoaderData<typeof loader>();
   // A harness form submit answers `preview_only`; the screen shows it like any result.
-  const submitted = useActionData<typeof action>() ?? null;
+  const answered = useActionData<typeof action>() ?? null;
+  const submitted = answered && !answered.ok ? answered : null;
   const location = useLocation();
+  // The sections that save on their own post to the harness too (nothing is saved).
+  const here = `${location.pathname}${location.search}`;
   const screen = harnessScreen(location.pathname) ?? "overview";
   const locale = resolveLocale(new URLSearchParams(location.search).get("locale"));
 
@@ -639,7 +657,9 @@ export default function DevPreview() {
           admin pages, so a screenshot of this route looks like the real app. */}
       <script src="https://cdn.shopify.com/shopifycloud/polaris.js" />
       <LocaleProvider locale={locale}>
-        <DiscountNav.Provider value={discountNav}>{content}</DiscountNav.Provider>
+        <FormActionsContext.Provider value={{ looks: here, translations: here }}>
+          <DiscountNav.Provider value={discountNav}>{content}</DiscountNav.Provider>
+        </FormActionsContext.Provider>
       </LocaleProvider>
     </>
   );

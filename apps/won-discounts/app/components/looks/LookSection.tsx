@@ -12,10 +12,11 @@ import { accentCss, LOOK_ROOT } from "@won/core/discounts/custom-look";
 import { LOOK_PRESET_CSS, MILESTONE_BLINK_CSS, type LooksElement } from "@won/core/discounts/looks";
 
 import { useT } from "../../i18n/context";
-import { customLookSet, liveCustomLookCss, LOOK_FIELD, LOOK_INTENT, LOOKS_ACTION, presetDetails, presetLabel } from "../model/looks";
+import { customLookSet, liveCustomLookCss, LOOK_FIELD, LOOK_INTENT, presetDetails, presetLabel } from "../model/looks";
 import type { EmbedView, LookView, UiResult } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
 import { boolAttr } from "../shell/attrs";
+import { useFormActions } from "../shell/form-actions";
 import { snapshotOf } from "../shell/form-snapshot";
 import { Notice } from "../shell/Notice";
 import { ProFrame } from "../shell/ProFrame";
@@ -43,6 +44,7 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
   const { t } = tr;
   const { element } = look;
   const fetcher = useFetcher<UiResult>();
+  const actions = useFormActions();
   const result = fetcher.data ?? given;
   const formRef = useRef<HTMLFormElement>(null);
   const [preset, setPreset] = useState(look.preset);
@@ -145,7 +147,7 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
       collapsible
       defaultOpen={element !== "tiers" || storedSet || errors.length > 0}
     >
-      <fetcher.Form method="post" action={LOOKS_ACTION} ref={formRef} data-won-look-form={element}>
+      <fetcher.Form method="post" action={actions.looks} ref={formRef} data-won-look-form={element}>
         <input type="hidden" name={LOOK_FIELD.intent} value={LOOK_INTENT.save} />
         <input type="hidden" name={LOOK_FIELD.element} value={element} />
         {configVersion ? <input type="hidden" name={LOOK_FIELD.configVersion} value={configVersion} /> : null}

@@ -67,7 +67,7 @@ test.describe(`Won Discounts ceny na kartách (BETA) + vlastní vzhled (MVP 7)${
     }
     await expect(style).toHaveCount(1);
     const css = (await style.textContent()) ?? "";
-    expect(css, "every rule sits under the Won block roots").toMatch(/^:is\(\.won-tiers,\.won-cart,\.won-cart-slot,\.won-outlet\)\{--won-tiers-accent:#0a7d4f\}/u);
+    expect(css, "the table's look sits under the table's own root").toMatch(/^\.won-tiers\{--won-tiers-accent:#0a7d4f\}/u);
     expect(css).not.toMatch(/<|url\(|@import/u);
     const accent = await page.locator("[data-won-discounts-tiers]").evaluate((el) => getComputedStyle(el).getPropertyValue("--won-tiers-accent").trim());
     expect(accent, "the table's accent variable is the custom look's").toBe("#0a7d4f");

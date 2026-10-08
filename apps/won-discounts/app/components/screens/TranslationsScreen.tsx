@@ -24,7 +24,6 @@ import {
   textField,
   textGroup,
   textLabel,
-  TRANSLATIONS_ACTION,
   TRANSLATIONS_FIELD,
   TRANSLATIONS_INTENT,
   type ImportPlan,
@@ -33,6 +32,7 @@ import {
 import type { TranslationsScreenData, UiResult } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
 import { boolAttr } from "../shell/attrs";
+import { useFormActions } from "../shell/form-actions";
 import { snapshotOf } from "../shell/form-snapshot";
 import { Notice } from "../shell/Notice";
 import { ProFrame } from "../shell/ProFrame";
@@ -122,6 +122,7 @@ export function TranslationsScreen(props: TranslationsScreenProps) {
 
   // CSV (Pro): the export answers with the file's text, the import with its plan; nothing is saved until confirmed.
   const csv = useFetcher<CsvResult>();
+  const actions = useFormActions();
   const [dismissed, setDismissed] = useState(false);
   const [readFailed, setReadFailed] = useState(false);
   const answer = csv.data ?? null;
@@ -139,7 +140,7 @@ export function TranslationsScreen(props: TranslationsScreenProps) {
   const csvSaved: UiResult | null = answer && answer.ok && answer.message !== "export" && answer.message !== "import-preview" ? answer : null;
   const post = (intent: string, extra: Record<string, string> = {}) => {
     setDismissed(false);
-    csv.submit({ [TRANSLATIONS_FIELD.intent]: intent, ...(configVersion ? { [TRANSLATIONS_FIELD.configVersion]: configVersion } : {}), ...extra }, { method: "post", action: TRANSLATIONS_ACTION });
+    csv.submit({ [TRANSLATIONS_FIELD.intent]: intent, ...(configVersion ? { [TRANSLATIONS_FIELD.configVersion]: configVersion } : {}), ...extra }, { method: "post", action: actions.translations });
   };
   const onFile = (file: File | undefined) => {
     if (!file) return;

@@ -5,7 +5,8 @@
 import { useFetcher } from "react-router";
 
 import { useT } from "../../i18n/context";
-import { LOOK_FIELD, LOOK_INTENT, LOOKS_ACTION } from "../model/looks";
+import { LOOK_FIELD, LOOK_INTENT } from "../model/looks";
+import { useFormActions } from "../shell/form-actions";
 import type { UiResult } from "../model/types";
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
@@ -14,6 +15,7 @@ import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 export function CardPricesSection({ cardPrices, cardBlockUrl, configVersion }: { cardPrices: boolean; cardBlockUrl: string | null; configVersion: string | null }) {
   const { t } = useT();
   const fetcher = useFetcher<UiResult>();
+  const actions = useFormActions();
   return (
     <WonSection
       title={`${t("appearance.cards.title")} · ${t("appearance.beta")}`}
@@ -24,7 +26,7 @@ export function CardPricesSection({ cardPrices, cardBlockUrl, configVersion }: {
       collapsible
       defaultOpen={cardPrices}
     >
-      <fetcher.Form method="post" action={LOOKS_ACTION} data-won-cards-form="">
+      <fetcher.Form method="post" action={actions.looks} data-won-cards-form="">
         <input type="hidden" name={LOOK_FIELD.intent} value={LOOK_INTENT.cards} />
         {configVersion ? <input type="hidden" name={LOOK_FIELD.configVersion} value={configVersion} /> : null}
         <s-stack direction="block" gap="small-300">

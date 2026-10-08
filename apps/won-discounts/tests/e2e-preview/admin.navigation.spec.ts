@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { open, sideways, typeInto } from "./support";
+
 // Navigace a stav uvnitř stránek (8 Oct 2026; doctrine §19e / §19f), in a real browser against the dev harness.
 // What only a browser can show: the dots follow the live form, a jump opens a collapsed section and writes no
 // URL hash, the row of step numbers follows added and removed steps, and no page overflows sideways.
@@ -7,28 +9,6 @@ import { expect, test, type Page } from "@playwright/test";
 
 const WIDTHS = [390, 768, 899, 900, 1024, 1440];
 
-async function open(page: Page, path: string, width = 1440): Promise<void> {
-  await page.setViewportSize({ width, height: 900 });
-  await page.goto(`/dev/preview/${path}`, { waitUntil: "networkidle" });
-  // The screen re-reads its form on native events once it is hydrated: Polaris fields are defined by then.
-  await page.waitForFunction(() => customElements.get("s-page") !== undefined);
-}
-
-/** Type into a Polaris field the way the merchant does: the form listens for the native events. */
-async function typeInto(page: Page, name: string, value: string): Promise<void> {
-  await page.evaluate(
-    ([field, text]) => {
-      const el = document.querySelector<HTMLElement & { value: string }>(`[name="${field}"]`);
-      if (!el) throw new Error(`no field ${field}`);
-      el.value = text;
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-      el.dispatchEvent(new Event("change", { bubbles: true }));
-    },
-    [name, value],
-  );
-}
-
-const sideways = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 const dotted = (page: Page, nav: string) =>
   page.evaluate((selector) => [...document.querySelectorAll(`${selector} a`)].filter((a) => a.querySelector("[data-won-dot]")).map((a) => a.getAttribute("href") ?? ""), nav);
 
@@ -58,7 +38,10 @@ test("view tiles: low, the sentence never cut, the state once; a click opens the
   await expect(page.locator('[data-won-view-tile="global"] [data-won-state="active"]')).toHaveCount(1);
   await expect(page.locator("section#global [data-won-state]")).toHaveCount(0);
   await page.locator('[data-won-view-tile="table"]').click();
-  await expect(page.locator('[data-won-view-panel="table"]')).toBeVisible();
+  // The view has two panels: the page's own form, and under it the look that saves on its own.
+  const panels = page.locator('[data-won-view-panel="table"]');
+  expect(await panels.count()).toBeGreaterThan(0);
+  for (const panel of await panels.all()) await expect(panel).toBeVisible();
   await expect(page.locator('[data-won-view-panel="global"]')).toBeHidden();
   // Hidden, never unmounted: the levels still belong to the one form.
   expect(await page.locator('[data-won-view-panel="global"] s-number-field').count()).toBeGreaterThan(0);
