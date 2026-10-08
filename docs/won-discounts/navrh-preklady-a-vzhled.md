@@ -72,16 +72,17 @@ podle toho, kolik má pravidel a jak dlouhý je kořen.
 | běžné (pravidla kolem 85 znaků) | 8 400 B | 4 464 B |
 | nejhustší možné (571 pravidel po 7 znacích) | 57 100 B | 10 278 B |
 
-Čtyři sady pod kořeny prvků: běžně kolem **18 kB**, v nejhustším případě kolem **41 kB** (4 × 10,3 kB; kořeny
+Čtyři sady pod kořeny prvků: běžně kolem **18 kB**, v nejhustším případě kolem **41 kB** (test v jádru: 40 až 50 kB) (4 × 10,3 kB; kořeny
 `.won-tiers`, `.won-ms`, `.won-outlet`, `.won-campaign` mají 10 až 13 znaků). S 5 kB zbytku je to nejvýš 46 kB
 ze 124 000 B. **Vejdou se, vlastní úložiště nedostanou.** Kontrola velikosti před uložením zůstává na serveru.
 
 Dnešní jedna sada pod společným kořenem může mít až 57 kB; po rozdělení má i nejhustší sada pětinu.
 
-**Jak to bude:**
-- Uložené nastavení: `storefront.looks` s nejvýš čtyřmi prvky (`tiers`, `milestones`, `outlet`, `campaign`), každý
-  hotový vzhled, barvu zvýraznění a (Pro) vlastní barvy a CSS. Dnešní `appearancePreset`, `accent` a `custom` se při
-  čtení převedou na vzhled tabulky; načíst a uložit beze změny dá stejný výsledek.
+**Jak to je (upřesněno při implementaci):**
+- Uložené nastavení: tabulka si nechává dnešní `appearancePreset`, `accent` a `custom` (nic se nepřepisuje),
+  `storefront.looks` nese ostatní tři prvky (`milestones`, `outlet`, `campaign`): hotový vzhled, barvu zvýraznění
+  a (Pro) vlastní barvy a CSS. Nastavení bez `looks` je staré: jeho barvy se jednou zkopírují k žebříčku, který je
+  četl; načíst a uložit podruhé už dá stejný výsledek.
 - Na web: jedna šablona stylů jako dnes (`appearance.css`), složená ze čtyř částí.
 - **Co se při převodu může změnit:** dnešní CSS platí pod všemi prvky Won. Pravidlo, které míří mimo tabulku
   (košík, štítek výprodeje, kampaň), po převodu k tabulce přestane platit. Podle zadání se CSS reálně používá jen
@@ -97,4 +98,4 @@ Dnešní jedna sada pod společným kořenem může mít až 57 kB; po rozdělen
 
 Výpočet běží nad jádrem (`buildStorefrontConfig`, `scopeCss`) a nad soubory jazyků rozšíření. Hlídají ho testy
 `packages/core/tests/discounts/storefront-texts.test.ts` (velikost jazyka v nejhorším případě) a
-`custom-look.test.ts` (velikost čtyř sad v nejhustším případě), které přibudou s implementací.
+`looks.test.ts` (velikost čtyř sad v nejhustším případě).

@@ -58,7 +58,48 @@ Větev `won-discounts-preklady` ve vlastním pracovním adresáři `../b2b_b2c-p
   - **Naživo neověřeno:** (1) čtení `tx_<jazyk>` v Liquidu na webu (dokumentace Shopify to popisuje, v obchodě
     nezkoušeno); (2) udělení `read_locales` v Shopify adminu; (3) klikání na stránce (přidání jazyka, stažení a
     nahrání CSV). Mezistav: stránka Vzhled ještě existuje (bez textů), z menu už nevede; zanikne v části B.
-- **Úkol 8, část B (vzhled u modulů) — nezačato.**
+- **Úkol 8, část B (vzhled u modulů) — v kódu, brána zelená; web naživo neověřen.**
+  - **Uložení:** tabulka si nechává dnešní pole (`storefront.appearancePreset`, `accent`, `custom`), žebříček Milníků,
+    štítek výprodeje a banner kampaně mají `storefront.looks.<prvek>` = hotový vzhled, barva zvýraznění, (Milníky)
+    bliknutí, (Pro) vlastní barvy a CSS. Nastavení uložené před rozdělením se nepřepisuje: `looks` v něm chybí, a
+    proto se barvy tabulky jednou zkopírují k žebříčku (jediný další prvek, který barvu zvýraznění četl). Potom je
+    `looks` v nastavení vždy a nic se už nekopíruje (`packages/core/src/discounts/looks.ts` `sanitizeLooks`).
+  - **Na web:** jedna šablona stylů jako dřív (`appearance.css`). Hotový vzhled je pár pravidel CSS nad stávajícími
+    značkami (`LOOK_PRESET_CSS`), barva jedna proměnná na kořeni prvku, vlastní CSS pod kořenem jen svého prvku
+    (`.won-tiers`, `.won-ms`, `.won-outlet`, `.won-campaign`). Dřív byl jeden společný kořen všech prvků.
+  - **Převod, ověřeno testem na skutečném tvaru (`looks.test.ts` v jádru i v aplikaci):** deklarace i pravidla tabulky
+    jsou stejné jako před převodem, jen pod `.won-tiers`; barva zvýraznění dojde k žebříčku jako dřív. **Co se změní:**
+    pravidlo vlastního CSS, které mířilo mimo tabulku (košík, štítek výprodeje, kampaň), přestane platit.
+  - **Hotové vzhledy:** Milníky — Ukazatel se značkami (dnešní), Odškrtávací seznam (fajfky u splněných, barva
+    zvýraznění), Jedna věta; volitelné krátké bliknutí při dosažení stupně, vypnuté pro „omezit pohyb“. Výprodej —
+    Štítek (dnešní), Štítek s odpočtem, Pruh. Kampaň — Banner s odpočtem (dnešní), Pruh, Karta.
+  - **Rozšíření:** žebříček nese seznam stupňů i ve velikosti `compact` (schovaný stylem, ukáže ho vzhled) a nově
+    dosažený stupeň značí `data-new`; štítek výprodeje má místo pro čas do konce (značky a skript odpočtu kampaně,
+    načtou se jen se vzhledem s odpočtem a u výprodeje s datem konce); údaj produktu `outlet` nese konec (`e`).
+  - **Aplikace:** jedna sekce `components/looks/LookSection.tsx` na stránkách Množstevní slevy („Tabulka na webu“),
+    Milníky („Milníky na webu“), Výprodej („Jak výprodej funguje“) a Kampaně („Kampaň na webu“), s živým náhledem nad
+    skutečnými styly rozšíření. Ukládá se jednou společnou akcí `/app/looks` (`integration/looks.server.ts`): hotový
+    vzhled a barva na každém tarifu, vlastní vzhled jen na Pro (na Free se uložený nemění a na web nejde).
+    „Ceny na kartách · BETA“ jsou u Množstevních slev. „Zadání pro AI“ je pro každý prvek zvlášť (jeho třídy,
+    `LOOK_CLASSES`, test proti souborům rozšíření).
+  - **Stránka Vzhled je smazaná**, `/app/appearance` přesměruje na `/app/translations`; v aplikaci nezůstal odkaz na
+    starou adresu ani text „ve Vzhledu“ (hlídá `tests/ui/looks.test.ts`).
+  - **Rozhodl jsem sám:** (1) tabulka nemá vlastní `looks.tiers`, aby se uložená data nemusela přepisovat;
+    (2) hotové vzhledy jdou na web jako CSS v nastavení, ne jako třídy v Liquidu ani jako skript; (3) vzhled a barva
+    tabulky se dál vybírají v jejím náhledu a ukládají s úrovněmi, sekce vzhledu má u tabulky jen část Pro;
+    (4) každá sekce vzhledu má vlastní tlačítko „Uložit vzhled“ (vlastní formulář pod formulářem stránky);
+    (5) vzhled „Karta“ se nepoužije v pruhu nahoře; (6) odpočet u výprodeje ukáže jen výprodej s datem konce.
+  - **Čísla:** skripty stránky produktu 11 694 → 11 796 B z 12 288 B, stránka košíku 6 529 → 6 631 B z 10 240 B,
+    `won-discounts-blocks.js` 1 511 B beze změny; `won-discounts.js` 9 220 B nezabalený (limit 10 000). Čtyři vlastní
+    vzhledy v nejhustším případě 40 až 50 kB ze 124 000 B nastavení pro web (test).
+  - **Brána 8. 10. (úkol 8 celý):** `test:packages` 941 + 53, `test:unit` 1 831 + cargo 102 + vitest 699, `typecheck`,
+    `lint` (0 chyb, 4 starší varování), `build`, `guard:test:core` 301, `validate:shopify`, vše exit 0. Zdrojáky
+    funkce v pokladně beze změny. Mezi Překlady a touto bránou klesl počet unit testů z 1 830 na 1 828 (se stránkou
+    Vzhled odešly testy jejího načítání) a s testy žebříčku vzrostl na 1 831.
+  - **Důkazy:** aplikace 390 a 1440 px, 6 stavů, bez vodorovného posuvu: `Apps/.playwright-mcp/preklady/vzhled/`.
+    Žebříček bez obchodu: `milestones-web-preview.mjs` 56 kontrol, vše prošlo.
+  - **Naživo neověřeno:** nové vzhledy na Horizonu a Dawnu (runbook), odpočet u výprodeje na webu, bliknutí v prohlížeči,
+    klikání v sekcích vzhledu. Hlavní adresář s `shopify app dev` stojí na `dd48a75`, takže dev obchod má staré rozšíření.
 - **Úkol 9 — nezačato.**
 - **Čistý `main` v hlavním adresáři:** přepnutí větve a commit sedmi cizích necommitnutých souborů (Railway, Won
   Companion, roadmapa, paralelizace) mi zamítla ochrana oprávnění i po Ondřejově souhlasu; zůstává na Ondřejovi.
