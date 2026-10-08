@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-08T21:19:15.563Z",
+  "theme": "Horizon",
+  "seen": {
+    "cs": {
+      "heading": "E2E množstevní sleva",
+      "quantities": [
+        "E2E od 3 ks",
+        "E2E od 5 ks"
+      ]
+    },
+    "sk": {
+      "heading": "E2E množstevná zľava",
+      "quantities": [
+        "Od 3 ks",
+        "Od 5 ks"
+      ]
+    },
+    "en": {
+      "heading": "Quantity discount",
+      "quantities": [
+        "From 3 items",
+        "From 5 items"
+      ]
+    }
+  }
+}

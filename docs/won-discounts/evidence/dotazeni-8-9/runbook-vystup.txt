@@ -1,103 +1,77 @@
 Won Discounts — dotažení úkolů 8 a 9, část A: živé běhy runbooku looks.sh na dev obchodě (8. 10. 2026)
-Každý běh: seed nanečisto → naostro → tests/e2e/storefront.looks.spec.ts (Horizon, Dawn) → cleanup → verify-clean.
+Každý běh: seed nanečisto → naostro → tests/e2e/storefront.looks.spec.ts (Horizon, Dawn) → cleanup exit 0 → verify-clean exit 0.
+Tarif Free. Řádky se znakem - jsou testy, které k danému seedu nepatří (přeskočené).
 
-== looks.sh rewards --texts --looks milestones=checklist+blink (oba; Dawn zastavil HTTP 429)
-  ✓  1 tests/e2e/storefront.looks.spec.ts:94:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Horizon › texts, Milníky: the ladder says the merchant's Czech text in t
-  ✓  3 tests/e2e/storefront.looks.spec.ts:176:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Horizon › look, Milníky: the ladder draws as the look picked, in the hi
+== looks.sh rewards --texts --looks milestones=checklist+blink (Horizon prošel; Dawn u vzhledu zastavil limit obchodu HTTP 429)
+  ✓  1 tests/e2e/storefront.looks.spec.ts:94:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Horizon › texts, Milníky: the ladder says the merchant's Czech text in the server'
+  ✓  3 tests/e2e/storefront.looks.spec.ts:176:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Horizon › look, Milníky: the ladder draws as the look picked, in the highlight co
   2 skipped
   2 passed (1.9m)
-  ✓  1 tests/e2e/storefront.looks.spec.ts:94:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › texts, Milníky: the ladder says the merchant's Czech text in the 
-  ✘  3 tests/e2e/storefront.looks.spec.ts:176:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › look, Milníky: the ladder draws as the look picked, in the highl
-  ✘  4 tests/e2e/storefront.looks.spec.ts:176:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › look, Milníky: the ladder draws as the look picked, in the highl
+  ✓  1 tests/e2e/storefront.looks.spec.ts:94:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › texts, Milníky: the ladder says the merchant's Czech text in the server's H
+  ✘  3 tests/e2e/storefront.looks.spec.ts:176:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › look, Milníky: the ladder draws as the look picked, in the highlight colou
+  ✘  4 tests/e2e/storefront.looks.spec.ts:176:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › look, Milníky: the ladder draws as the look picked, in the highlight colou
   1 failed
   2 skipped
   1 passed (6.8m)
    ✓ Horizon
    ✗ Dawn
 
-== looks.sh rewards --texts --looks milestones=checklist+blink --only dawn (opakování po pauze)
-  ✘  1 tests/e2e/storefront.looks.spec.ts:94:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › texts, Milníky: the ladder says the merchant's Czech text in the 
-  ✓  2 tests/e2e/storefront.looks.spec.ts:94:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › texts, Milníky: the ladder says the merchant's Czech text in the 
-  ✓  4 tests/e2e/storefront.looks.spec.ts:176:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › look, Milníky: the ladder draws as the look picked, in the highl
+== looks.sh rewards --texts --looks milestones=checklist+blink --only dawn (opakování po pauze; texty prošly na druhý pokus, první shodilo přechodné selhání Shopify CLI)
+  ✘  1 tests/e2e/storefront.looks.spec.ts:94:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › texts, Milníky: the ladder says the merchant's Czech text in the server's H
+  ✓  2 tests/e2e/storefront.looks.spec.ts:94:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › texts, Milníky: the ladder says the merchant's Czech text in the server's H
+  ✓  4 tests/e2e/storefront.looks.spec.ts:176:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › look, Milníky: the ladder draws as the look picked, in the highlight colou
   1 flaky
   2 skipped
   1 passed (2.1m)
    ✓ Dawn
 
 == looks.sh rewards --looks milestones=sentence
-  ✓  3 tests/e2e/storefront.looks.spec.ts:176:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Horizon › look, Milníky: the ladder draws as the look picked, in the hi
+  ✓  3 tests/e2e/storefront.looks.spec.ts:176:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Horizon › look, Milníky: the ladder draws as the look picked, in the highlight co
   3 skipped
   1 passed (57.9s)
-  ✓  3 tests/e2e/storefront.looks.spec.ts:176:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › look, Milníky: the ladder draws as the look picked, in the highl
+  ✓  3 tests/e2e/storefront.looks.spec.ts:176:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › look, Milníky: the ladder draws as the look picked, in the highlight colou
   3 skipped
   1 passed (1.6m)
    ✓ Horizon
    ✓ Dawn
 
 == looks.sh tiers --old-look
-  ✓  5 tests/e2e/storefront.looks.spec.ts:290:3 › Won Discounts texts and looks on the storefront (úkol 8) [tiers] — Horizon › conversion: a look stored before the split draws the table and t
+  ✓  5 tests/e2e/storefront.looks.spec.ts:290:3 › Won Discounts texts and looks on the storefront (úkol 8) [tiers] — Horizon › conversion: a look stored before the split draws the table and the ladder 
   4 skipped
   1 passed (14.8s)
-  ✓  5 tests/e2e/storefront.looks.spec.ts:290:3 › Won Discounts texts and looks on the storefront (úkol 8) [tiers] — Dawn › conversion: a look stored before the split draws the table and the 
+  ✓  5 tests/e2e/storefront.looks.spec.ts:290:3 › Won Discounts texts and looks on the storefront (úkol 8) [tiers] — Dawn › conversion: a look stored before the split draws the table and the ladder exa
   4 skipped
   1 passed (1.0m)
    ✓ Horizon
    ✓ Dawn
 
 == looks.sh rewards --old-look
-  ✓  5 tests/e2e/storefront.looks.spec.ts:290:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Horizon › conversion: a look stored before the split draws the table and
+  ✓  5 tests/e2e/storefront.looks.spec.ts:290:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Horizon › conversion: a look stored before the split draws the table and the ladde
   4 skipped
   1 passed (22.0s)
-  ✓  5 tests/e2e/storefront.looks.spec.ts:290:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › conversion: a look stored before the split draws the table and th
+  ✓  5 tests/e2e/storefront.looks.spec.ts:290:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › conversion: a look stored before the split draws the table and the ladder e
   4 skipped
   1 passed (1.1m)
    ✓ Horizon
    ✓ Dawn
 
-== looks.sh cards --texts
-  ✓  3 tests/e2e/storefront.looks.spec.ts:168:3 › Won Discounts texts and looks on the storefront (úkol 8) [cards] — Horizon › texts, the line on a product card: Czech shows the merchant's, t
+== looks.sh cards --texts (po opravě řádku na kartě)
+  ✓  3 tests/e2e/storefront.looks.spec.ts:168:3 › Won Discounts texts and looks on the storefront (úkol 8) [cards] — Horizon › texts, the line on a product card: Czech shows the merchant's, the other l
   4 skipped
   1 passed (15.4s)
-  ✓  3 tests/e2e/storefront.looks.spec.ts:168:3 › Won Discounts texts and looks on the storefront (úkol 8) [cards] — Dawn › texts, the line on a product card: Czech shows the merchant's, the 
+  ✓  3 tests/e2e/storefront.looks.spec.ts:168:3 › Won Discounts texts and looks on the storefront (úkol 8) [cards] — Dawn › texts, the line on a product card: Czech shows the merchant's, the other lang
   4 skipped
   1 passed (36.8s)
    ✓ Horizon
    ✓ Dawn
 
-== cleanup a verify-clean (poslední běhy)
-rewards-milestones-checklist-blink seed-dry exit=0
-rewards-milestones-checklist-blink seed-live exit=0
-rewards-milestones-checklist-blink e2e exit=0
-rewards-milestones-checklist-blink cleanup exit=0
-rewards-milestones-checklist-blink verify-clean exit=0
-rewards-milestones-checklist-blink DONE
-rewards-milestones-sentence seed-dry exit=0
-rewards-milestones-sentence seed-live exit=0
-rewards-milestones-sentence e2e exit=0
-rewards-milestones-sentence cleanup exit=0
-rewards-milestones-sentence verify-clean exit=0
-rewards-milestones-sentence DONE
-tiers seed-dry exit=0
-tiers seed-live exit=0
-tiers e2e exit=1
-tiers cleanup exit=0
-tiers verify-clean exit=0
-tiers DONE
-tiers-old-look seed-dry exit=0
-tiers-old-look seed-live exit=0
-tiers-old-look e2e exit=0
-tiers-old-look cleanup exit=0
-tiers-old-look verify-clean exit=0
-tiers-old-look DONE
-rewards-old-look seed-dry exit=0
-rewards-old-look seed-live exit=0
-rewards-old-look e2e exit=0
-rewards-old-look cleanup exit=0
-rewards-old-look verify-clean exit=0
-rewards-old-look DONE
-cards seed-dry exit=0
-cards seed-live exit=0
-cards e2e exit=0
-cards cleanup exit=0
-cards verify-clean exit=0
-cards DONE
+== looks.sh tiers --texts
+  ✓  2 tests/e2e/storefront.looks.spec.ts:142:3 › Won Discounts texts and looks on the storefront (úkol 8) [tiers] — Horizon › texts, the quantity table: Czech shows the merchant's, Slovak its one text
+  4 skipped
+  1 passed (21.6s)
+  ✓  2 tests/e2e/storefront.looks.spec.ts:142:3 › Won Discounts texts and looks on the storefront (úkol 8) [tiers] — Dawn › texts, the quantity table: Czech shows the merchant's, Slovak its one text, E
+  4 skipped
+  1 passed (14.2s)
+   ✓ Horizon
+   ✓ Dawn
+

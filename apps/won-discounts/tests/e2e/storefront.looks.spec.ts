@@ -48,9 +48,9 @@ function own(lang: Lang, key: string): string {
   expect(text, `${LOCALE_FILE[lang]} has ${key}`).toBeTruthy();
   return text!;
 }
-/** A text with `{…}` parts as a pattern: every part is "something". */
-const shaped = (text: string) => new RegExp(`^${text.split(/\{[a-z]+\}/u).map((part) => part.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")).join(".+")}$`, "u");
 const flat = (text: string | null | undefined) => (text ?? "").replace(/\s+/gu, " ").trim();
+/** A text with `{…}` parts as a pattern: every part is "something" (white space as `flat` leaves it: the extension's texts hold no-break spaces). */
+const shaped = (text: string) => new RegExp(`^${flat(text).split(/\{[a-z]+\}/u).map((part) => part.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")).join(".+")}$`, "u");
 const prefix = (lang: Lang) => (lang === "cs" ? "" : `/${lang}`);
 
 const PRODUCT_BLOCK = '[data-won-discounts-progress][data-size="compact"]';
