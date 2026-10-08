@@ -18,7 +18,7 @@
 //   Engine         Free: category switches Pro: + per-rule combinations (combinesWith)
 //   Kampaně        Free: —                 Pro: ✓
 //   Množstevní     Free: 1 global set      Pro: sets per product / collection, counting across the cart
-//   Odměny         Free: 1 gift threshold, 1 gift   Pro: threshold ladder, choice of up to 3 gifts
+//   Milníky        Free: 2 steps, 1 gift a step     Pro: 6 steps, choice of up to 3 gifts
 //   Ochrana marže  Free: global minimum    Pro: per collection
 //   Výprodej       Free: —                 Pro: the whole module
 //
@@ -50,7 +50,8 @@
 //     set stays but INERT (`breaks: []`; its counting mode is left as it is —
 //     with no break it gives nothing, and the gated payload is never larger
 //     than the stored one's there), see below;
-//   - gift ladder: the first threshold stays, with its first gift only;
+//   - Milníky (milestones.ts): the first 2 steps of the ladder stay (free shipping, gift tiers and "ms-" order
+//     discounts are one ladder, lowest amount first); a gift that stays offers its first gift only;
 //   - custom look of the storefront blocks (MVP 7): removed (a ready-made look applies);
 //   - margin per collection: folded into the global floor, the STRICTEST value
 //     wins (a larger discount than the Pro setup allowed is never possible).
@@ -87,6 +88,7 @@ import { isProCodeBatch } from "./code-batch.ts";
 import type { ReadonlyDeep, WonDiscountsConfig } from "./config.ts";
 import { CONFIG_LIMITS } from "./config/limits.ts";
 import { csPlural, formatPercent, type UiLocale } from "./describe.ts";
+import { isMilestoneRule, MILESTONE_LIMITS, milestonesOverLimit } from "./milestones.ts";
 
 export type ShopPlan = "free" | "pro";
 
@@ -102,7 +104,7 @@ export const PRO_CAPABILITIES = [
   "tier_set_scope",
   "tier_sets_extra",
   "tier_count_across_cart",
-  "gift_ladder",
+  "milestone_steps",
   "gift_choices",
   "margin_per_collection",
 ] as const;
@@ -124,9 +126,9 @@ export interface StrippedCapability {
   entityId?: string;
   /** The rule's or campaign's name, for the sentence ("" = unnamed). */
   name?: string;
-  /** How many items the Free limit left out (tier sets, gift thresholds, gift choices, margin overrides). */
+  /** How many items the Free limit left out (tier sets, milestone steps, gift choices, margin overrides). */
   count?: number;
-  /** Their ids: tier sets, gift tiers, gift choice variants, margin override collections. */
+  /** Their ids: tier sets, milestone steps ("shipping", a gift tier's id, an "ms-" rule's id), gift choice variants, margin override collections. */
   removedIds?: string[];
   /** margin_per_collection: the global values the fold changed (a key only when it changed). */
   values?: {
@@ -272,20 +274,22 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
   // Vzhled screen shows it locked). The stored config keeps it.
   delete out.storefront.custom;
 
-  // Rewards: one gift threshold, one gift.
-  const gifts = out.modules.rewards.gifts;
-  if (gifts.length > 0) {
-    const first = gifts[0];
-    if (gifts.length > 1) {
-      const removedIds = gifts.slice(1).map((g) => g.id);
-      stripped.push({ capability: "gift_ladder", reason: "reduced", entityId: first.id, count: removedIds.length, removedIds });
-    }
-    if (first.choices.length > 1) {
-      const removedIds = first.choices.slice(1);
-      stripped.push({ capability: "gift_choices", reason: "reduced", entityId: first.id, count: removedIds.length, removedIds });
-      first.choices = first.choices.slice(0, 1);
-    }
-    out.modules.rewards.gifts = [first];
+  // Milníky: the first MILESTONE_LIMITS.free steps of the ladder stay (milestones.ts: free shipping, the gift
+  // tiers and the order discounts with an "ms-" id are ONE ladder); a step past them is not offered — never more
+  // than the merchant set up. A gift that stays offers its first gift only.
+  const over = milestonesOverLimit(out, "free");
+  if (over.length > 0) {
+    const gone = new Set(over.map((step) => step.id));
+    if (over.some((step) => step.kind === "shipping")) delete out.modules.rewards.freeShipping;
+    out.modules.rewards.gifts = out.modules.rewards.gifts.filter((g) => !gone.has(g.id));
+    for (const rule of out.modules.codes.rules) if (isMilestoneRule(rule) && gone.has(rule.id)) rule.enabled = false;
+    stripped.push({ capability: "milestone_steps", reason: "reduced", count: over.length, removedIds: over.map((step) => step.id) });
+  }
+  for (const gift of out.modules.rewards.gifts) {
+    if (gift.choices.length <= 1) continue;
+    const removedIds = gift.choices.slice(1);
+    stripped.push({ capability: "gift_choices", reason: "reduced", entityId: gift.id, count: removedIds.length, removedIds });
+    gift.choices = gift.choices.slice(0, 1);
   }
 
   // Margin: per-collection settings fold into the global floor, strictest wins.
@@ -407,10 +411,10 @@ function sentence(s: StrippedCapability, locale: UiLocale): string {
       return cs
         ? "Množstevní slevy ve Free počítají kusy po produktech, ne napříč celým košíkem (to je funkce Pro)."
         : "On Free, quantity tiers count items per product, not across the whole cart (a Pro feature).";
-    case "gift_ladder":
+    case "milestone_steps":
       return cs
-        ? `Ve Free platí jen první dárkový práh, ${csOthers(n, ["práh", "prahy", "prahů"])} se ${csVerb(n, "nenabízí", "nenabízejí")} (žebřík prahů je funkce Pro).`
-        : `On Free only the first gift threshold applies; the other ${n === 1 ? "one is" : `${n} are`} not offered (a threshold ladder is a Pro feature).`;
+        ? `Ve Free platí první ${MILESTONE_LIMITS.free} stupně Milníků, ${csOthers(n, ["stupeň", "stupně", "stupňů"])} se ${csVerb(n, "nenabízí", "nenabízejí")}. V Pro jich platí ${MILESTONE_LIMITS.pro}.`
+        : `On Free the first ${MILESTONE_LIMITS.free} steps of Milestones apply; the other ${n === 1 ? "one is" : `${n} are`} not offered. Pro runs ${MILESTONE_LIMITS.pro}.`;
     case "gift_choices":
       return cs
         ? `Ve Free se nabízí jen první dárek z výběru, ${csOthers(n, ["dárek", "dárky", "dárků"])} ne (výběr dárků je funkce Pro).`

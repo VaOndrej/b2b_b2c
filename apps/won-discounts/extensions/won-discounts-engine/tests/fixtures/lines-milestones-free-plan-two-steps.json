@@ -1,5 +1,5 @@
 {
-  "scenario": "A Free shop (Milníky: the first two steps of the ladder, one gift a step): of three gift tiers with a choice of two on the first, tiers 1 and 2 ship with their first gift (BILL-1). All three are reached; the second choice of tier 1 and the gift of tier 3 are paid.",
+  "scenario": "A Free shop runs the first two steps of the ladder whatever their type: a gift from 500 Kč and 5 % from 1 000 Kč ship, 10 % from 2 000 Kč does not. A cart of 2 000 Kč gets the gift and 5 %.",
   "payload": {
     "export": "cart-lines-discounts-generate-run",
     "target": "cart.lines.discounts.generate.run",
@@ -40,7 +40,44 @@
             "marketCountries": {},
             "modules": {
               "codes": {
-                "rules": []
+                "rules": [
+                  {
+                    "id": "ms-five",
+                    "enabled": true,
+                    "name": "",
+                    "method": "automatic",
+                    "value": {
+                      "kind": "percentage",
+                      "percent": 5
+                    },
+                    "target": {
+                      "kind": "order"
+                    },
+                    "minimum": {
+                      "subtotal": {
+                        "CZK": 100000
+                      }
+                    }
+                  },
+                  {
+                    "id": "ms-ten",
+                    "enabled": false,
+                    "name": "",
+                    "method": "automatic",
+                    "value": {
+                      "kind": "percentage",
+                      "percent": 10
+                    },
+                    "target": {
+                      "kind": "order"
+                    },
+                    "minimum": {
+                      "subtotal": {
+                        "CZK": 200000
+                      }
+                    }
+                  }
+                ]
               },
               "tiers": {
                 "sets": []
@@ -54,15 +91,6 @@
                     },
                     [
                       2001
-                    ]
-                  ],
-                  [
-                    "gift-2",
-                    {
-                      "CZK": 80000
-                    },
-                    [
-                      2003
                     ]
                   ]
                 ]
@@ -100,7 +128,7 @@
             "quantity": 1,
             "cost": {
               "amountPerQuantity": {
-                "amount": "1000.0"
+                "amount": "2000.0"
               }
             },
             "gift": null,
@@ -132,77 +160,11 @@
             },
             "merchandise": {
               "__typename": "ProductVariant",
-              "id": "gid://shopify/ProductVariant/2004",
-              "wonVariant": null,
-              "wonOutlet": null,
-              "product": {
-                "id": "gid://shopify/Product/2",
-                "wonProduct": null
-              }
-            }
-          },
-          {
-            "id": "gid://shopify/CartLine/3",
-            "quantity": 1,
-            "cost": {
-              "amountPerQuantity": {
-                "amount": "30.0"
-              }
-            },
-            "gift": {
-              "value": "gift-2"
-            },
-            "merchandise": {
-              "__typename": "ProductVariant",
-              "id": "gid://shopify/ProductVariant/2003",
-              "wonVariant": null,
-              "wonOutlet": null,
-              "product": {
-                "id": "gid://shopify/Product/3",
-                "wonProduct": null
-              }
-            }
-          },
-          {
-            "id": "gid://shopify/CartLine/4",
-            "quantity": 1,
-            "cost": {
-              "amountPerQuantity": {
-                "amount": "40.0"
-              }
-            },
-            "gift": {
-              "value": "gift-1"
-            },
-            "merchandise": {
-              "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/2001",
               "wonVariant": null,
               "wonOutlet": null,
               "product": {
-                "id": "gid://shopify/Product/4",
-                "wonProduct": null
-              }
-            }
-          },
-          {
-            "id": "gid://shopify/CartLine/5",
-            "quantity": 1,
-            "cost": {
-              "amountPerQuantity": {
-                "amount": "50.0"
-              }
-            },
-            "gift": {
-              "value": "gift-3"
-            },
-            "merchandise": {
-              "__typename": "ProductVariant",
-              "id": "gid://shopify/ProductVariant/2005",
-              "wonVariant": null,
-              "wonOutlet": null,
-              "product": {
-                "id": "gid://shopify/Product/5",
+                "id": "gid://shopify/Product/2",
                 "wonProduct": null
               }
             }
@@ -220,12 +182,7 @@
                 "targets": [
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/3"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/4"
+                      "id": "gid://shopify/CartLine/2"
                     }
                   }
                 ],
@@ -237,6 +194,30 @@
               }
             ],
             "selectionStrategy": "ALL"
+          }
+        },
+        {
+          "orderDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "5 % z objednávky",
+                "targets": [
+                  {
+                    "orderSubtotal": {
+                      "excludedCartLineIds": [
+                        "gid://shopify/CartLine/2"
+                      ]
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 5
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "FIRST"
           }
         }
       ]

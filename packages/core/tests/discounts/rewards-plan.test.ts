@@ -283,8 +283,9 @@ test("emission: English messages", () => {
 
 // --- Free gate ---------------------------------------------------------------------------------
 
-test("Free: only the first tier and its first gift (the fallback stays); Pro keeps the ladder and the choice", () => {
-  const config = configOf([], { modules: { rewards: { gifts: [{ ...GIFT_1, choices: [V(GIFT_VARIANT), V(9006)] }, GIFT_2] } } });
+test("Free: the first two steps of the ladder and each gift's first choice (the fallback stays); Pro keeps the ladder and the choice", () => {
+  // Milníky (6 Oct 2026): Free runs two steps. Free shipping from 1 000 Kč and gift-1 from 1 500 Kč are the first two; gift-2 is the third.
+  const config = configOf([], { modules: { rewards: { freeShipping: { threshold: { CZK: 1000_00 } }, gifts: [{ ...GIFT_1, choices: [V(GIFT_VARIANT), V(9006)] }, GIFT_2] } } });
   const build = (plan: "free" | "pro") =>
     buildShopFunctionConfig(gateConfigForPlan(config, plan).config, { now: FIXTURE_NOW, shopTimezone: FIXTURE_TZ, shopCurrency: "CZK" }).payload;
   const free = build("free");
@@ -292,7 +293,8 @@ test("Free: only the first tier and its first gift (the fallback stays); Pro kee
   const cart = cartOf([pl(1, 5000_00), giftLine(2, "gift-1", 9006), giftLine(3, "gift-2", 9003, 400_00)]);
   const freePlan = planCart(cart, free);
   assert.equal(lineOf(freePlan, lineId(2)).product, null, "Free: the second choice is not a gift");
-  assert.equal(lineOf(freePlan, lineId(3)).product, null, "Free: no second tier");
+  assert.equal(lineOf(freePlan, lineId(3)).product, null, "Free: no third step");
+  assert.equal(freePlan.shipping?.ruleId, "reward:shipping", "Free: free shipping is one of its two steps");
   const proPlan = planCart(cart, pro);
   assert.equal(lineOf(proPlan, lineId(2)).product?.amount, 300_00);
   assert.equal(lineOf(proPlan, lineId(3)).product?.amount, 400_00);

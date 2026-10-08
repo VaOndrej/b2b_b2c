@@ -1,5 +1,5 @@
 {
-  "scenario": "A Free shop (Milníky: the first two steps of the ladder, one gift a step): of three gift tiers with a choice of two on the first, tiers 1 and 2 ship with their first gift (BILL-1). All three are reached; the second choice of tier 1 and the gift of tier 3 are paid.",
+  "scenario": "The same config, 1 000 Kč of goods: both steps are reached. The gift is free and the 5 % comes from the goods (the gift line is left out of the order discount).",
   "payload": {
     "export": "cart-lines-discounts-generate-run",
     "target": "cart.lines.discounts.generate.run",
@@ -40,7 +40,26 @@
             "marketCountries": {},
             "modules": {
               "codes": {
-                "rules": []
+                "rules": [
+                  {
+                    "id": "ms-five",
+                    "enabled": true,
+                    "name": "",
+                    "method": "automatic",
+                    "value": {
+                      "kind": "percentage",
+                      "percent": 5
+                    },
+                    "target": {
+                      "kind": "order"
+                    },
+                    "minimum": {
+                      "subtotal": {
+                        "CZK": 100000
+                      }
+                    }
+                  }
+                ]
               },
               "tiers": {
                 "sets": []
@@ -50,19 +69,10 @@
                   [
                     "gift-1",
                     {
-                      "CZK": 50000
+                      "CZK": 100000
                     },
                     [
                       2001
-                    ]
-                  ],
-                  [
-                    "gift-2",
-                    {
-                      "CZK": 80000
-                    },
-                    [
-                      2003
                     ]
                   ]
                 ]
@@ -124,51 +134,7 @@
             "quantity": 1,
             "cost": {
               "amountPerQuantity": {
-                "amount": "20.0"
-              }
-            },
-            "gift": {
-              "value": "gift-1"
-            },
-            "merchandise": {
-              "__typename": "ProductVariant",
-              "id": "gid://shopify/ProductVariant/2004",
-              "wonVariant": null,
-              "wonOutlet": null,
-              "product": {
-                "id": "gid://shopify/Product/2",
-                "wonProduct": null
-              }
-            }
-          },
-          {
-            "id": "gid://shopify/CartLine/3",
-            "quantity": 1,
-            "cost": {
-              "amountPerQuantity": {
-                "amount": "30.0"
-              }
-            },
-            "gift": {
-              "value": "gift-2"
-            },
-            "merchandise": {
-              "__typename": "ProductVariant",
-              "id": "gid://shopify/ProductVariant/2003",
-              "wonVariant": null,
-              "wonOutlet": null,
-              "product": {
-                "id": "gid://shopify/Product/3",
-                "wonProduct": null
-              }
-            }
-          },
-          {
-            "id": "gid://shopify/CartLine/4",
-            "quantity": 1,
-            "cost": {
-              "amountPerQuantity": {
-                "amount": "40.0"
+                "amount": "300.0"
               }
             },
             "gift": {
@@ -180,29 +146,7 @@
               "wonVariant": null,
               "wonOutlet": null,
               "product": {
-                "id": "gid://shopify/Product/4",
-                "wonProduct": null
-              }
-            }
-          },
-          {
-            "id": "gid://shopify/CartLine/5",
-            "quantity": 1,
-            "cost": {
-              "amountPerQuantity": {
-                "amount": "50.0"
-              }
-            },
-            "gift": {
-              "value": "gift-3"
-            },
-            "merchandise": {
-              "__typename": "ProductVariant",
-              "id": "gid://shopify/ProductVariant/2005",
-              "wonVariant": null,
-              "wonOutlet": null,
-              "product": {
-                "id": "gid://shopify/Product/5",
+                "id": "gid://shopify/Product/2",
                 "wonProduct": null
               }
             }
@@ -220,12 +164,7 @@
                 "targets": [
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/3"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/4"
+                      "id": "gid://shopify/CartLine/2"
                     }
                   }
                 ],
@@ -237,6 +176,30 @@
               }
             ],
             "selectionStrategy": "ALL"
+          }
+        },
+        {
+          "orderDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "5 % z objednávky",
+                "targets": [
+                  {
+                    "orderSubtotal": {
+                      "excludedCartLineIds": [
+                        "gid://shopify/CartLine/2"
+                      ]
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 5
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "FIRST"
           }
         }
       ]

@@ -1,5 +1,5 @@
 {
-  "scenario": "A Free shop (Milníky: the first two steps of the ladder, one gift a step): of three gift tiers with a choice of two on the first, tiers 1 and 2 ship with their first gift (BILL-1). All three are reached; the second choice of tier 1 and the gift of tier 3 are paid.",
+  "scenario": "10 % from 2 000 Kč; 1 000 Kč of goods and 1 000 Kč on sale. The sale line counts toward the step (it is what the customer pays) but gets no order discount: 10 % of the other line.",
   "payload": {
     "export": "cart-lines-discounts-generate-run",
     "target": "cart.lines.discounts.generate.run",
@@ -40,32 +40,32 @@
             "marketCountries": {},
             "modules": {
               "codes": {
-                "rules": []
+                "rules": [
+                  {
+                    "id": "ms-ten",
+                    "enabled": true,
+                    "name": "",
+                    "method": "automatic",
+                    "value": {
+                      "kind": "percentage",
+                      "percent": 10
+                    },
+                    "target": {
+                      "kind": "order"
+                    },
+                    "minimum": {
+                      "subtotal": {
+                        "CZK": 200000
+                      }
+                    }
+                  }
+                ]
               },
               "tiers": {
                 "sets": []
               },
               "rewards": {
-                "g": [
-                  [
-                    "gift-1",
-                    {
-                      "CZK": 50000
-                    },
-                    [
-                      2001
-                    ]
-                  ],
-                  [
-                    "gift-2",
-                    {
-                      "CZK": 80000
-                    },
-                    [
-                      2003
-                    ]
-                  ]
-                ]
+                "g": []
               },
               "margin": {
                 "enabled": false
@@ -124,86 +124,24 @@
             "quantity": 1,
             "cost": {
               "amountPerQuantity": {
-                "amount": "20.0"
+                "amount": "1000.0"
               }
             },
-            "gift": {
-              "value": "gift-1"
-            },
+            "gift": null,
             "merchandise": {
               "__typename": "ProductVariant",
-              "id": "gid://shopify/ProductVariant/2004",
+              "id": "gid://shopify/ProductVariant/1002",
               "wonVariant": null,
-              "wonOutlet": null,
+              "wonOutlet": {
+                "jsonValue": true
+              },
               "product": {
                 "id": "gid://shopify/Product/2",
-                "wonProduct": null
-              }
-            }
-          },
-          {
-            "id": "gid://shopify/CartLine/3",
-            "quantity": 1,
-            "cost": {
-              "amountPerQuantity": {
-                "amount": "30.0"
-              }
-            },
-            "gift": {
-              "value": "gift-2"
-            },
-            "merchandise": {
-              "__typename": "ProductVariant",
-              "id": "gid://shopify/ProductVariant/2003",
-              "wonVariant": null,
-              "wonOutlet": null,
-              "product": {
-                "id": "gid://shopify/Product/3",
-                "wonProduct": null
-              }
-            }
-          },
-          {
-            "id": "gid://shopify/CartLine/4",
-            "quantity": 1,
-            "cost": {
-              "amountPerQuantity": {
-                "amount": "40.0"
-              }
-            },
-            "gift": {
-              "value": "gift-1"
-            },
-            "merchandise": {
-              "__typename": "ProductVariant",
-              "id": "gid://shopify/ProductVariant/2001",
-              "wonVariant": null,
-              "wonOutlet": null,
-              "product": {
-                "id": "gid://shopify/Product/4",
-                "wonProduct": null
-              }
-            }
-          },
-          {
-            "id": "gid://shopify/CartLine/5",
-            "quantity": 1,
-            "cost": {
-              "amountPerQuantity": {
-                "amount": "50.0"
-              }
-            },
-            "gift": {
-              "value": "gift-3"
-            },
-            "merchandise": {
-              "__typename": "ProductVariant",
-              "id": "gid://shopify/ProductVariant/2005",
-              "wonVariant": null,
-              "wonOutlet": null,
-              "product": {
-                "id": "gid://shopify/Product/5",
-                "wonProduct": null
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": []
+                  }
+                }
               }
             }
           }
@@ -213,30 +151,27 @@
     "output": {
       "operations": [
         {
-          "productDiscountsAdd": {
+          "orderDiscountsAdd": {
             "candidates": [
               {
-                "message": "Dárek zdarma",
+                "message": "10 % z objednávky",
                 "targets": [
                   {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/3"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/4"
+                    "orderSubtotal": {
+                      "excludedCartLineIds": [
+                        "gid://shopify/CartLine/2"
+                      ]
                     }
                   }
                 ],
                 "value": {
                   "percentage": {
-                    "value": 100
+                    "value": 10
                   }
                 }
               }
             ],
-            "selectionStrategy": "ALL"
+            "selectionStrategy": "FIRST"
           }
         }
       ]

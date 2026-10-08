@@ -36,6 +36,7 @@ import {
 import { buildMarginPayload, costMinorUnits, marginFloorUnit, resolveMargin } from "./margin.ts";
 import { fnv1a32Hex } from "./code-hash.ts";
 import { currencyExponent, moneyFor } from "./money.ts";
+import { isMilestoneRule } from "./milestones.ts";
 import { variantNumber } from "./rewards.ts";
 import { campaignTierSets } from "./campaign-tiers.ts";
 import { shopLocalToUtc } from "./campaigns.ts";
@@ -153,7 +154,15 @@ export interface StorefrontRewards {
   gifts: { id: string; t: Record<string, number>; c: StorefrontGiftVariant[]; f?: StorefrontGiftVariant }[];
   /** countOtherDiscounts: the cart compares the threshold with the total after discounts and warns. */
   other: boolean;
+  /**
+   * Milníky: the order-discount steps in force (milestones.ts, enabled "ms-" rules): `t` the cart value per
+   * currency (Liquid units), and the discount — `pct` percent, or `off` an amount per currency (Liquid units; a
+   * currency without one = the step is not offered there). Absent when there is none.
+   */
+  disc?: StorefrontDiscountStep[];
 }
+
+export type StorefrontDiscountStep = { id: string; t: Record<string, number>; pct: number } | { id: string; t: Record<string, number>; off: Record<string, number> };
 
 /**
  * Variant metafield `$app:won_discounts`/`pdp` (contract K4 v2): `f` = the
@@ -301,7 +310,7 @@ export function buildStorefrontConfig(given: ReadonlyDeep<WonDiscountsConfig>, o
     margin: storefrontMargin(gated.modules.margin, opts.shopCurrency),
     appearance: { preset: (APPEARANCE_PRESETS as readonly string[]).includes(preset) ? preset : "default", ...(customCss ? { css: customCss } : {}) },
     texts: storefrontTexts(gated.locales),
-    ...rewardsPart(gated.modules.rewards, opts.variantHandles ?? {}),
+    ...rewardsPart(gated.modules.rewards, opts.variantHandles ?? {}, gated.modules.codes.rules),
     ...(gated.engine.combination.outletWithAnything ? { ow: 1 as const } : {}),
     ...(gated.storefront.cardPricesEnabled ? { cards: 1 as const } : {}),
     ...campaignsPart(gated.campaigns, opts.shopTimezone),
@@ -341,7 +350,11 @@ function liquidThreshold(money: ReadonlyDeep<Record<string, number>> | undefined
   return any ? out : null;
 }
 
-function rewardsPart(rewards: ReadonlyDeep<RewardsModule>, handles: Readonly<Record<string, string>>): { rewards?: StorefrontRewards } {
+function rewardsPart(
+  rewards: ReadonlyDeep<RewardsModule>,
+  handles: Readonly<Record<string, string>>,
+  rules: ReadonlyDeep<WonDiscountsConfig>["modules"]["codes"]["rules"] = [],
+): { rewards?: StorefrontRewards } {
   const variant = (id: string): StorefrontGiftVariant | null => {
     const v = variantNumber(id);
     const h = Object.prototype.hasOwnProperty.call(handles, id) ? handles[id] : undefined;
@@ -357,8 +370,21 @@ function rewardsPart(rewards: ReadonlyDeep<RewardsModule>, handles: Readonly<Rec
     gifts.push(f ? { id: tier.id, t, c, f } : { id: tier.id, t, c });
   }
   const ship = liquidThreshold(rewards.freeShipping?.threshold);
-  if (!ship && gifts.length === 0) return {};
-  return { rewards: { ship, gifts, other: rewards.countOtherDiscounts } };
+  // Milníky: the order-discount steps the plan runs (the gate switches the ones past its limit off).
+  const disc: StorefrontDiscountStep[] = [];
+  for (const rule of rules) {
+    if (!rule.enabled || !isMilestoneRule(rule)) continue;
+    const t = liquidThreshold(rule.minimum?.subtotal);
+    if (!t) continue;
+    if (rule.value.kind === "percentage") {
+      if (rule.value.percent > 0) disc.push({ id: rule.id, t, pct: rule.value.percent });
+    } else if (rule.value.kind === "fixed") {
+      const off = liquidThreshold(rule.value.amount);
+      if (off) disc.push({ id: rule.id, t, off });
+    }
+  }
+  if (!ship && gifts.length === 0 && disc.length === 0) return {};
+  return { rewards: { ship, gifts, other: rewards.countOtherDiscounts, ...(disc.length > 0 ? { disc } : {}) } };
 }
 
 // --- K4 v2: the variant `pdp` metafield ------------------------------------------------------------

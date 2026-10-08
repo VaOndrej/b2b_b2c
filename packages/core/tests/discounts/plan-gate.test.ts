@@ -46,6 +46,7 @@ function proConfig(): WonDiscountsConfig {
         gifts: [
           { id: "g1", threshold: { CZK: 1000_00 }, choices: ["gid://shopify/ProductVariant/1", "gid://shopify/ProductVariant/2", "gid://shopify/ProductVariant/3"] },
           { id: "g2", threshold: { CZK: 2000_00 }, choices: ["gid://shopify/ProductVariant/4"] },
+          { id: "g3", threshold: { CZK: 3000_00 }, choices: ["gid://shopify/ProductVariant/5"] },
         ],
         countOtherDiscounts: false,
       },
@@ -112,8 +113,11 @@ test("Free: every Pro capability is out of the gated config; the stored config i
     { id: "scoped", scope: { collectionIds: ["gid://shopify/Collection/1"] }, countAcross: "line", breaks: [] },
     { id: "global", scope: "global", countAcross: "product", breaks: [{ minQty: 3, percent: 10 }] },
   ]);
-  // One gift threshold, one gift.
-  assert.deepEqual(free.modules.rewards.gifts, [{ id: "g1", threshold: { CZK: 1000_00 }, choices: ["gid://shopify/ProductVariant/1"] }]);
+  // Milníky: the first two steps of the ladder, one gift each.
+  assert.deepEqual(free.modules.rewards.gifts, [
+    { id: "g1", threshold: { CZK: 1000_00 }, choices: ["gid://shopify/ProductVariant/1"] },
+    { id: "g2", threshold: { CZK: 2000_00 }, choices: ["gid://shopify/ProductVariant/4"] },
+  ]);
   // Per-collection margin folds into the global floor, the strictest value wins (never a larger discount).
   // (`enabled` is the stored switch — the gate folds values, it never turns protection on or off.)
   assert.deepEqual(free.modules.margin, { enabled: false, global: { maxDiscountPercent: 20, minMarginPercent: 25 }, perCollection: [] });
@@ -130,7 +134,7 @@ test("Free: every Pro capability is out of the gated config; the stored config i
       ["tier_set_scope", "removed", null, 1, ["scoped"]],
       ["tier_sets_extra", "removed", null, 1, ["global-2"]],
       ["tier_count_across_cart", "reduced", "global", null, null],
-      ["gift_ladder", "reduced", "g1", 1, ["g2"]],
+      ["milestone_steps", "reduced", null, 1, ["g3"]],
       ["gift_choices", "reduced", "g1", 2, ["gid://shopify/ProductVariant/2", "gid://shopify/ProductVariant/3"]],
       ["margin_per_collection", "folded", null, 2, ["gid://shopify/Collection/9", "gid://shopify/Collection/8"]],
     ],
@@ -208,9 +212,9 @@ test("explainGate: Czech plurals for 1, 2 and 5 (tier sets, gift thresholds, gif
   assert.equal(cs("tier_sets_extra", 1), "Ve Free platí jen jedna sada množstevních slev pro celý obchod, další sada se neuplatní.");
   assert.equal(cs("tier_sets_extra", 2), "Ve Free platí jen jedna sada množstevních slev pro celý obchod, další 2 sady se neuplatní.");
   assert.equal(cs("tier_sets_extra", 5), "Ve Free platí jen jedna sada množstevních slev pro celý obchod, dalších 5 sad se neuplatní.");
-  assert.equal(cs("gift_ladder", 1), "Ve Free platí jen první dárkový práh, další práh se nenabízí (žebřík prahů je funkce Pro).");
-  assert.equal(cs("gift_ladder", 2), "Ve Free platí jen první dárkový práh, další 2 prahy se nenabízejí (žebřík prahů je funkce Pro).");
-  assert.equal(cs("gift_ladder", 5), "Ve Free platí jen první dárkový práh, dalších 5 prahů se nenabízí (žebřík prahů je funkce Pro).");
+  assert.equal(cs("milestone_steps", 1), "Ve Free platí první 2 stupně Milníků, další stupeň se nenabízí. V Pro jich platí 6.");
+  assert.equal(cs("milestone_steps", 2), "Ve Free platí první 2 stupně Milníků, další 2 stupně se nenabízejí. V Pro jich platí 6.");
+  assert.equal(cs("milestone_steps", 5), "Ve Free platí první 2 stupně Milníků, dalších 5 stupňů se nenabízí. V Pro jich platí 6.");
   assert.equal(cs("gift_choices", 1), "Ve Free se nabízí jen první dárek z výběru, další dárek ne (výběr dárků je funkce Pro).");
   assert.equal(cs("gift_choices", 2), "Ve Free se nabízí jen první dárek z výběru, další 2 dárky ne (výběr dárků je funkce Pro).");
   assert.equal(cs("gift_choices", 5), "Ve Free se nabízí jen první dárek z výběru, dalších 5 dárků ne (výběr dárků je funkce Pro).");
@@ -228,6 +232,6 @@ test("explainGate: Czech plurals for 1, 2 and 5 (tier sets, gift thresholds, gif
   );
   const en = (capability: StrippedCapability["capability"], count: number) =>
     explainGate([{ capability, reason: "removed", count }], "en")[0].text;
-  assert.equal(en("gift_ladder", 2), "On Free only the first gift threshold applies; the other 2 are not offered (a threshold ladder is a Pro feature).");
+  assert.equal(en("milestone_steps", 2), "On Free the first 2 steps of Milestones apply; the other 2 are not offered. Pro runs 6.");
   assert.equal(en("gift_choices", 1), "On Free only the first gift of the choice is offered, not the other one (a gift choice is a Pro feature).");
 });

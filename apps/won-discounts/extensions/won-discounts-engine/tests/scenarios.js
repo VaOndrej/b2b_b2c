@@ -84,6 +84,20 @@ const tierSet = (/** @type {string} */ id, /** @type {string} */ countAcross, /*
 });
 const MINUS = "\u2212";
 const NBSP = "\u00a0";
+
+/** Milníky: a discount step = an automatic order rule with the "ms-" id prefix and a minimum subtotal of the whole cart (core milestones.ts milestoneRule). */
+const msStep = (/** @type {string} */ id, /** @type {Record<string, number>} */ from, /** @type {Record<string, unknown>} */ value) => ({
+  id,
+  enabled: true,
+  name: "",
+  method: "automatic",
+  value,
+  target: { kind: "order" },
+  minimum: { subtotal: from, scope: "cart" },
+});
+const MS_5 = msStep("ms-five", { CZK: 1000_00 }, { kind: "percentage", percent: 5 });
+const MS_10 = msStep("ms-ten", { CZK: 2000_00 }, { kind: "percentage", percent: 10 });
+const MS_MARKETS = msStep("ms-trhy", { CZK: 1000_00, "EUR@sk": 40_00, "EUR@de": 50_00 }, { kind: "fixed", amount: { CZK: 100_00, "EUR@sk": 4_00, "EUR@de": 5_00 } });
 /** describeTierBreak (cs) of a percent break: "Od 3 ks −10 %". */
 const fromPct = (/** @type {number} */ n, /** @type {number} */ p) => `Od ${n} ks ${MINUS}${p}${NBSP}%`;
 /** describeTierBreak (cs) of an amount break: "Od 2 ks −50 Kč za kus" (`money` as formatMoney writes it). */
@@ -1048,7 +1062,7 @@ function allScenarios() {
   {
     name: "lines-rewards-gift-free-plan",
     description:
-      "A Free shop: of a two-tier ladder with a choice of two, only the first tier and its first gift ship (BILL-1). Both tiers are reached; the second choice of tier 1 and the gift of tier 2 are paid.",
+      "A Free shop (Milníky: the first two steps of the ladder, one gift a step): of three gift tiers with a choice of two on the first, tiers 1 and 2 ship with their first gift (BILL-1). All three are reached; the second choice of tier 1 and the gift of tier 3 are paid.",
     target: "lines",
     plan: "free",
     rules: [],
@@ -1056,6 +1070,7 @@ function allScenarios() {
       gifts: [
         { id: "gift-1", threshold: { CZK: 500_00 }, choices: [variantId(2001), variantId(2004)] },
         { id: "gift-2", threshold: { CZK: 800_00 }, choices: [variantId(2003)] },
+        { id: "gift-3", threshold: { CZK: 900_00 }, choices: [variantId(2005)] },
       ],
     },
     role: AUTO,
@@ -1064,8 +1079,10 @@ function allScenarios() {
       { n: 2, price: "20.0", gift: "gift-1", variant: 2004, won: null },
       { n: 3, price: "30.0", gift: "gift-2", variant: 2003, won: null },
       { n: 4, price: "40.0", gift: "gift-1", variant: 2001, won: null },
+      { n: 5, price: "50.0", gift: "gift-3", variant: 2005, won: null },
     ],
-    expected: out(products(pc("Dárek zdarma", [4], percent(100)))),
+    // Two lines with the same message and value are one candidate with two targets (emit.ts groups them).
+    expected: out(products(pc("Dárek zdarma", [3, 4], percent(100)))),
   },
   {
     name: "lines-rewards-gift-code-node",
@@ -1128,6 +1145,147 @@ function allScenarios() {
     rewards: { freeShipping: { threshold: { CZK: 500_00 } }, gifts: [] },
     role: AUTO,
     lines: [{ n: 1, price: "800.0", won: won("p10") }],
+    expected: NONE,
+  },
+  // --- Milníky (feedback 6 Oct 2026, bod 9): a discount off the whole order as a step of the ladder. It is an
+  //     automatic order rule with a minimum subtotal and the id prefix "ms-" (core milestones.ts); the function
+  //     reads nothing new. Unnamed, so the checkout says what it is ("5 % z objednávky"). ---
+  {
+    name: "lines-milestones-discount-lower-step",
+    description: "Two discount steps, 5 % from 1 000 Kč and 10 % from 2 000 Kč. A cart of 1 999,99 Kč is one haléř under the second step: 5 %.",
+    target: "lines",
+    rules: [MS_5, MS_10],
+    role: AUTO,
+    lines: [{ n: 1, price: "1999.99", won: won() }],
+    expected: out(order(`5${NBSP}% z objednávky`, [], percent(5))),
+  },
+  {
+    name: "lines-milestones-discount-higher-step-wins",
+    description: "The same two steps, a cart of 2 000 Kč: both are reached and only the higher one applies — 10 %, never 15 %.",
+    target: "lines",
+    rules: [MS_5, MS_10],
+    role: AUTO,
+    lines: [{ n: 1, price: "2000.0", won: won() }],
+    expected: out(order(`10${NBSP}% z objednávky`, [], percent(10))),
+  },
+  {
+    name: "lines-milestones-discount-base-like-gift-below",
+    description:
+      "A discount step and a gift step at the same 1 000 Kč measure the cart the same way: 999,99 Kč of goods and a 300 Kč gift line are below both (the gift line's price does not count) — nothing.",
+    target: "lines",
+    rules: [MS_5],
+    rewards: { gifts: [{ id: "gift-1", threshold: { CZK: 1000_00 }, choices: [variantId(2001)] }] },
+    role: AUTO,
+    lines: [
+      { n: 1, price: "999.99", won: won() },
+      { n: 2, price: "300.0", gift: "gift-1", variant: 2001, won: null },
+    ],
+    expected: NONE,
+  },
+  {
+    name: "lines-milestones-discount-base-like-gift-reached",
+    description: "The same config, 1 000 Kč of goods: both steps are reached. The gift is free and the 5 % comes from the goods (the gift line is left out of the order discount).",
+    target: "lines",
+    rules: [MS_5],
+    rewards: { gifts: [{ id: "gift-1", threshold: { CZK: 1000_00 }, choices: [variantId(2001)] }] },
+    role: AUTO,
+    lines: [
+      { n: 1, price: "1000.0", won: won() },
+      { n: 2, price: "300.0", gift: "gift-1", variant: 2001, won: null },
+    ],
+    expected: out(products(pc("Dárek zdarma", [2], percent(100))), order(`5${NBSP}% z objednávky`, [2], percent(5))),
+  },
+  {
+    name: "lines-milestones-discount-outlet-counts-not-discounted",
+    description:
+      "10 % from 2 000 Kč; 1 000 Kč of goods and 1 000 Kč on sale. The sale line counts toward the step (it is what the customer pays) but gets no order discount: 10 % of the other line.",
+    target: "lines",
+    rules: [MS_10],
+    role: AUTO,
+    lines: [
+      { n: 1, price: "1000.0", won: won() },
+      { n: 2, price: "1000.0", won: won(), variantOutlet: true },
+    ],
+    expected: out(order(`10${NBSP}% z objednávky`, [2], percent(10))),
+  },
+  {
+    name: "lines-milestones-discount-vs-better-code-auto-node",
+    description: "A reached 10 % step and an entered 15 % order code: the better order discount wins, never a sum. The automatic node emits nothing (the code's node owns the discount).",
+    target: "lines",
+    rules: [MS_10, withCodes(["VIP15"], orderPct("vip", 15, { name: "VIP" }))],
+    role: AUTO,
+    entered: ["VIP15"],
+    lines: [{ n: 1, price: "2000.0", won: won() }],
+    expected: NONE,
+  },
+  {
+    name: "lines-milestones-discount-vs-better-code-code-node",
+    description: "The same cart on the code's node: 15 %.",
+    target: "lines",
+    rules: [MS_10, withCodes(["VIP15"], orderPct("vip", 15, { name: "VIP" }))],
+    role: codeNode("vip"),
+    triggering: "VIP15",
+    entered: ["VIP15"],
+    lines: [{ n: 1, price: "2000.0", won: won() }],
+    expected: out(order("VIP", [], percent(15))),
+  },
+  {
+    name: "lines-milestones-discount-vs-weaker-code",
+    description: "A reached 10 % step and an entered 3 % order code: the step is better, the automatic node emits it (the code gives nothing).",
+    target: "lines",
+    rules: [MS_10, withCodes(["VIP3"], orderPct("vip", 3, { name: "VIP" }))],
+    role: AUTO,
+    entered: ["VIP3"],
+    lines: [{ n: 1, price: "2000.0", won: won() }],
+    expected: out(order(`10${NBSP}% z objednávky`, [], percent(10))),
+  },
+  {
+    name: "lines-milestones-discount-margin-lowered",
+    description: "Margin protection lowers a discount step like any order discount: 10 % of a 2 000 Kč line without a cost price, 5 % ceiling — 99,99 Kč (1 haléř kept for rounding), a fixed amount.",
+    target: "lines",
+    rules: [MS_10],
+    margin: marginOn({ maxDiscountPercent: 5 }),
+    role: AUTO,
+    lines: [{ n: 1, price: "2000.0" }],
+    expected: out(order(`10${NBSP}% z objednávky`, [], amountOff("99.99"))),
+  },
+  {
+    name: "lines-milestones-free-plan-two-steps",
+    description:
+      "A Free shop runs the first two steps of the ladder whatever their type: a gift from 500 Kč and 5 % from 1 000 Kč ship, 10 % from 2 000 Kč does not. A cart of 2 000 Kč gets the gift and 5 %.",
+    target: "lines",
+    plan: "free",
+    rules: [MS_5, MS_10],
+    rewards: { gifts: [{ id: "gift-1", threshold: { CZK: 500_00 }, choices: [variantId(2001)] }] },
+    role: AUTO,
+    lines: [
+      { n: 1, price: "2000.0", won: won() },
+      { n: 2, price: "20.0", gift: "gift-1", variant: 2001, won: null },
+    ],
+    expected: out(products(pc("Dárek zdarma", [2], percent(100))), order(`5${NBSP}% z objednávky`, [2], percent(5))),
+  },
+  {
+    name: "lines-milestones-discount-market-amount-own",
+    description: "A fixed discount step with an amount per market: 4 € from 40 € in Slovakia, 5 € from 50 € in Germany. A Slovak cart of 45 € gets 4 €.",
+    target: "lines",
+    rules: [MS_MARKETS],
+    configExtra: { markets: MARKET_AMOUNT_MARKETS },
+    role: AUTO,
+    currency: "EUR",
+    country: "SK",
+    lines: [{ n: 1, price: "45.0", won: won() }],
+    expected: out(order(`4${NBSP}€ z objednávky`, [], amountOff("4.00"))),
+  },
+  {
+    name: "lines-milestones-discount-market-amount-other",
+    description: "The same step, a German cart of 45 €: Germany's step starts at 50 € — nothing (never Slovakia's amount).",
+    target: "lines",
+    rules: [MS_MARKETS],
+    configExtra: { markets: MARKET_AMOUNT_MARKETS },
+    role: AUTO,
+    currency: "EUR",
+    country: "DE",
+    lines: [{ n: 1, price: "45.0", won: won() }],
     expected: NONE,
   },
 
