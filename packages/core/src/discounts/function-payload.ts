@@ -456,6 +456,14 @@ function shipCodes(rules: ConfigInput["modules"]["codes"]["rules"], shopTimezone
   return longest < 0 ? { rules: shipped } : { rules: shipped, maxCodeLength: longest };
 }
 
+/** The engine settings as shipped: `unknownMarketHighest` is already in the amounts (market-amounts.ts) and the
+ * function never reads it, so it does not take the payload's bytes. */
+function shipEngine(engine: ReadonlyDeep<EngineSettings>): EngineSettings {
+  const out = copy<EngineSettings>(engine);
+  delete out.unknownMarketHighest;
+  return out;
+}
+
 /** A campaign patch as the engine reads it: a re-targeting patch keeps only `{kind}`
  * (the lines carry campaign-scoped refs instead, see targeting.ts). */
 function shipPatch(patch: ReadonlyDeep<Record<string, unknown>>): Record<string, unknown> {
@@ -525,7 +533,7 @@ function build(given: ConfigInput, picked: CampaignInput | null, shopTimezone: s
     schemaVersion: config.schemaVersion,
     campaignId: selected ? selected.id : null,
     campaignVarsVersion: campaignVarsVersion(selected),
-    engine: copy<EngineSettings>(config.engine),
+    engine: shipEngine(config.engine),
     marketCountries,
     ...(ownMarkets.size > 0 ? { am: true as const } : {}),
     modules,

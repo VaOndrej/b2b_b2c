@@ -105,6 +105,11 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
     (žádná čtečka ji nevezme jako částku, takže nespadne na klíč měny). Uložené nastavení tyto hodnoty nikdy neobsahuje.
     `market-amounts.ts` `withUnknownMarketFallback`, 4 nové fixtures (celkem 138, parita 643), testy v `market-amounts.test.ts`
     (12), `tests/ui/market-amounts.test.ts` (8), `tests/integration/settings.test.ts`. Dev náhled: `settings?markets=shared&fallback=1`.
+  - **Nejnižší, nebo nejvyšší podle druhu částky (Ondřej 8. 10.):** pod přepínačem je pět voleb (sleva pevnou částkou,
+    minimální útrata, množstevní sleva za kus, doprava zdarma, dárek), každá „nejnižší z trhů“ (výchozí) nebo „nejvyšší z trhů“.
+    Uloženo jako `engine.unknownMarketHighest` (seznam druhů s nejvyšší; jen když není prázdný). Do pokladny se neposílá,
+    volba je už v částkách (`function-payload.ts` `shipEngine`), funkce se neměnila. 2 nové fixtures (celkem 140, parita 651).
+    Dev náhled: `settings?markets=shared&fallback=1&highest=1`.
   - **Zbývající mezery:** trh bez seznamu zemí pokladna nepozná; editor slevy a kampaně se dvěma trhy v eurech nemají vlastní
     stav v dev náhledu ani screenshot (používají stejné sloupce jako Odměny a Úrovně).
   - **Rezerva funkce je po změně 323 B a asi 0,05 bodu.** Další funkce v pokladně musí nejdřív uvolnit místo.

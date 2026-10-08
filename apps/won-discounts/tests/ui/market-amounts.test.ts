@@ -167,15 +167,28 @@ test("mezery úkolu 6: a suggestion uses the market's own rate, and a summary na
 test("Nastavení: the switch for a customer from a country in no market explains both positions and whom it concerns", async () => {
   const shared = await render("settings?markets=shared");
   const page = text(shared);
-  ok(/<s-switch name="unknownMarketLowest" value="on" label="Dát mu nejnižší částku z trhů se stejnou měnou"(?![^>]*checked)/.test(shared), "off by default");
+  ok(/<s-switch name="unknownMarketLowest" value="on" label="Dát mu částku z trhů se stejnou měnou"(?![^>]*checked)/.test(shared), "off by default");
   ok(page.includes("Zákazník ze země mimo vaše trhy") && page.includes("Slevy a odměny s částkou nedostane"), "the section and its state");
   ok(page.includes("doprava zdarma je na Slovensku od 60 € a v Německu od 80 €. Zákazník z Francie platí v eurech"), "the example");
-  ok(page.includes("Zapnuto: platí pro něj nejnižší z částek, v příkladu 60 €.") && page.includes("Vypnuto: nic z toho nedostane."), "both positions in words");
+  ok(page.includes("Zapnuto: platí pro něj nejnižší, nebo nejvyšší z částek. Kterou, zvolíte níže pro každý druh částky zvlášť.") && page.includes("Vypnuto: nic z toho nedostane."), "both positions in words");
   ok(page.includes("Trh, u kterého necháte pole částky prázdné, nedostane nic ani při zapnutém přepínači."), "an empty market stays empty");
   ok(page.includes("U vás se to týká trhů se stejnou měnou: Slovensko (EUR) a Německo (EUR)."), "whom it concerns");
   ok(text(await render("settings")).includes("Teď se vás to netýká: žádné dva vaše trhy nemají stejnou měnu."), "one market per currency");
   const on = await render("settings?markets=shared&fallback=1");
   ok(/<s-switch name="unknownMarketLowest"[^>]*checked/.test(on) && text(on).includes("Dostane nejnižší částku z trhů se stejnou měnou"), "on");
+  // The lowest or the highest, for each of the five kinds of amount; the lowest unless chosen otherwise.
+  for (const kind of ["discount", "minimum", "tier", "shipping", "gift"]) ok(new RegExp(`<s-select name="unknownMarketPick\\.${kind}"[^>]*value="lowest"`).test(on), `${kind}: the lowest by default`);
+  ok(text(on).includes("Kterou částku dostane") && text(on).includes("Nejnižší znamená dopravu zdarma dřív, v příkladu od 60 €. Nejvyšší později, od 80 €."), "each choice says what it means for the customer");
+  const mixed = await render("settings?markets=shared&fallback=1&highest=1");
+  ok(/<s-select name="unknownMarketPick\.shipping"[^>]*value="highest"/.test(mixed) && /<s-select name="unknownMarketPick\.minimum"[^>]*value="highest"/.test(mixed), "the stored choice");
+  ok(/<s-select name="unknownMarketPick\.discount"[^>]*value="lowest"/.test(mixed) && text(mixed).includes("Dostane částku z trhů se stejnou měnou, někde nejnižší a někde nejvyšší"), "the rest stays the lowest and the summary says both");
+  const { readUnknownMarketHighestForm } = await import("../../app/components/model/combination.ts");
+  const picks = new FormData();
+  assert.equal(readUnknownMarketHighestForm(picks), undefined, "a form without the choices leaves the stored ones");
+  picks.set("unknownMarketPick.discount", "lowest");
+  picks.set("unknownMarketPick.shipping", "highest");
+  picks.set("unknownMarketPick.gift", "anything");
+  assert.deepEqual(readUnknownMarketHighestForm(picks), ["shipping"]);
   // Stored only when on; what ships then: the lowest amount for the currency, the stored config untouched.
   const { readUnknownMarketForm } = await import("../../app/components/model/combination.ts");
   const form = new FormData();

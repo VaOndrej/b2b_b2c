@@ -7,6 +7,7 @@
 // before this has currency keys only: it expands to "every market has its currency's amount" and collapses back
 // to itself, byte for byte.
 
+import type { UnknownMarketKind } from "./config/enums.ts";
 import type { MarketSetting } from "./config/types.ts";
 import { marketAmountKey, splitAmountKey, type MoneyByCurrency } from "./money.ts";
 
@@ -207,24 +208,25 @@ export function toAmountColumns(money: MoneyByCurrency | undefined | null, marke
 
 type ConfigLike = { markets: Markets; modules: { codes: { rules: readonly unknown[] }; tiers: { sets: readonly unknown[] }; rewards: unknown }; campaigns?: readonly unknown[] };
 
-/** Every amount map of a config through `money` (a tier set's breaks together through `breaks`); the config itself is not changed. */
+/** Every amount map of a config through `money` (told what kind of amount it is; a tier set's breaks together through `breaks`); the config itself is not changed. */
 function mapConfigAmounts<T extends ConfigLike>(
   config: T,
-  money: (m: MoneyByCurrency) => Record<string, number>,
+  money: (m: MoneyByCurrency, kind: UnknownMarketKind) => Record<string, number>,
   breaks: (list: { amountOff?: MoneyByCurrency }[]) => { amountOff?: MoneyByCurrency }[],
 ): T {
-  const moneyIn = (holder: unknown, key: string): Rec | null => {
+  const moneyIn = (holder: unknown, key: string, kind: UnknownMarketKind): Rec | null => {
     if (!isRecord(holder) || !isRecord(holder[key]) || Object.keys(holder[key] as Rec).length === 0) return null;
-    return { ...holder, [key]: money(holder[key] as MoneyByCurrency) };
+    return { ...holder, [key]: money(holder[key] as MoneyByCurrency, kind) };
   };
-  const ruleLike = <R>(raw: R): R => {
+  // `threshold` is free shipping's unless the caller says it is a gift's (a campaign patch has none of its own today).
+  const ruleLike = <R>(raw: R, thresholdKind: UnknownMarketKind = "shipping"): R => {
     if (!isRecord(raw)) return raw;
     let out: Rec = raw;
-    const value = moneyIn(raw.value, "amount");
+    const value = moneyIn(raw.value, "amount", "discount");
     if (value) out = { ...out, value };
-    const minimum = moneyIn(raw.minimum, "subtotal");
+    const minimum = moneyIn(raw.minimum, "subtotal", "minimum");
     if (minimum) out = { ...out, minimum };
-    const threshold = moneyIn(out, "threshold");
+    const threshold = moneyIn(out, "threshold", thresholdKind);
     if (threshold) out = threshold;
     if (Array.isArray(raw.breaks)) out = { ...out, breaks: breaks(raw.breaks as { amountOff?: MoneyByCurrency }[]) };
     return out as R;
@@ -234,15 +236,15 @@ function mapConfigAmounts<T extends ConfigLike>(
     ? {
         ...rewards,
         ...(isRecord(rewards.freeShipping) ? { freeShipping: ruleLike(rewards.freeShipping) } : {}),
-        ...(Array.isArray(rewards.gifts) ? { gifts: rewards.gifts.map(ruleLike) } : {}),
+        ...(Array.isArray(rewards.gifts) ? { gifts: rewards.gifts.map((g) => ruleLike(g, "gift")) } : {}),
       }
     : rewards;
   return {
     ...config,
     modules: {
       ...config.modules,
-      codes: { ...config.modules.codes, rules: config.modules.codes.rules.map(ruleLike) },
-      tiers: { ...config.modules.tiers, sets: config.modules.tiers.sets.map(ruleLike) },
+      codes: { ...config.modules.codes, rules: config.modules.codes.rules.map((r) => ruleLike(r)) },
+      tiers: { ...config.modules.tiers, sets: config.modules.tiers.sets.map((s) => ruleLike(s)) },
       rewards: nextRewards,
     },
     ...(Array.isArray(config.campaigns)
@@ -271,18 +273,19 @@ export function collapseConfigAmounts<T extends ConfigLike>(config: T): T {
   );
 }
 
-// --- A cart from a country in no market (engine.unknownMarketLowest) -----------------------------------
+// --- A cart from a country in no market (engine.unknownMarketLowest / unknownMarketHighest) ---------------
 // Where the markets of a currency have different amounts there is no amount "for the currency", so such a cart gets
-// nothing. With the setting on, the SHIPPED maps (never the stored ones) also carry the currency's key with the
-// LOWEST of its markets' amounts — the engines read a market's own key first and the currency's after it, so it is
-// what a cart in no market reads. A market the merchant left without an amount must still get nothing, not that
-// lowest amount: its key ships as NOT_OFFERED, a number no reader accepts as an amount (every reader takes ≥ 0 or
-// > 0 only), which stops the fall to the currency's key. No engine code is involved (the Wasm has 323 B left).
+// nothing. With the setting on, the SHIPPED maps (never the stored ones) also carry the currency's key with ONE of
+// its markets' amounts — the LOWEST, or for the kinds of amount the merchant listed in `unknownMarketHighest` the
+// HIGHEST. The engines read a market's own key first and the currency's after it, so it is what a cart in no market
+// reads. A market the merchant left without an amount must still get nothing, not that amount: its key ships as
+// NOT_OFFERED, a number no reader accepts as an amount (every reader takes ≥ 0 or > 0 only), which stops the fall
+// to the currency's key. No engine code is involved (the Wasm has 323 B left).
 
 /** The value shipped under a market's key when that market has no amount while its currency has a fallback. */
 export const NOT_OFFERED = -1;
 
-function withLowest(money: MoneyByCurrency, markets: Markets): Record<string, number> {
+function withFallback(money: MoneyByCurrency, markets: Markets, highest: boolean): Record<string, number> {
   const out: Record<string, number> = { ...money };
   const enabled = enabledMarkets(markets);
   for (const currency of new Set(enabled.map((m) => m.currency))) {
@@ -291,18 +294,19 @@ function withLowest(money: MoneyByCurrency, markets: Markets): Record<string, nu
     const values = group.map((m) => own(money, marketAmountKey(currency, m.handle)));
     const set = values.filter((v): v is number => v !== undefined);
     if (set.length === 0) continue;
-    out[currency] = Math.min(...set);
+    out[currency] = highest ? Math.max(...set) : Math.min(...set);
     group.forEach((m, i) => values[i] === undefined && (out[marketAmountKey(currency, m.handle)] = NOT_OFFERED));
   }
   return out;
 }
 
 /** The (collapsed) config as it ships when `engine.unknownMarketLowest` is on; unchanged otherwise. */
-export function withUnknownMarketFallback<T extends ConfigLike & { engine?: { unknownMarketLowest?: true } }>(config: T): T {
+export function withUnknownMarketFallback<T extends ConfigLike & { engine?: { unknownMarketLowest?: true; unknownMarketHighest?: readonly UnknownMarketKind[] } }>(config: T): T {
   if (config.engine?.unknownMarketLowest !== true || !usesMarketAmounts([config.modules, config.campaigns])) return config;
+  const highest = new Set(config.engine.unknownMarketHighest ?? []);
   return mapConfigAmounts(
     config,
-    (m) => withLowest(m, config.markets),
-    (list) => list.map((b) => (b.amountOff ? { ...b, amountOff: withLowest(b.amountOff, config.markets) } : b)),
+    (m, kind) => withFallback(m, config.markets, highest.has(kind)),
+    (list) => list.map((b) => (b.amountOff ? { ...b, amountOff: withFallback(b.amountOff, config.markets, highest.has("tier")) } : b)),
   );
 }

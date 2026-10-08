@@ -57,7 +57,7 @@ Od úkolu 6 má každý trh vlastní částku, i když sdílí měnu s jiným tr
 - Aplikace pracuje s jedním sloupcem na trh: `currencyViews()` a `enabledCurrencies()` v `app/components/model/markets.ts` vrací klíče sloupců (`CZK`, a kde dva zapnuté trhy sdílejí měnu, `EUR@sk` a `EUR@de`). `loadConfig` částky do sloupců rozbalí, uložení je sbalí (`packages/core/src/discounts/market-amounts.ts`). Pole pojmenuj podle trhu: „Slovensko (EUR)“.
 - V textech nikdy neukazuj klíč. `{currency}` v překladech se zobrazí jako měna samo; pro přípony polí použij `amountKeyCurrency()`; pro souhrnné věty předej jádru názvy trhů (`amountLabels()`).
 - Dev náhled se dvěma trhy v eurech: `?markets=shared` (dnes u `tiers`, `rewards`, `settings`). Milníky v něm musí fungovat.
-- Přepínač v Nastavení „Zákazník ze země mimo vaše trhy“ (`engine.unknownMarketLowest`) se Milníků týká také: prahy stupňů jdou stejnou cestou jako ostatní částky, nic navíc nestav, jen to ověř testem.
+- Přepínač v Nastavení „Zákazník ze země mimo vaše trhy“ (`engine.unknownMarketLowest`, od 8. 10. s volbou nejnižší / nejvyšší pro každý druh částky v `engine.unknownMarketHighest`, druhy v `UNKNOWN_MARKET_KINDS`) se Milníků týká také; pokud prahy Milníků nejsou žádný z pěti druhů, přidej šestý druh a jeho volbu do Nastavení: prahy stupňů jdou stejnou cestou jako ostatní částky, nic navíc nestav, jen to ověř testem.
 
 ## Co má být hotové
 

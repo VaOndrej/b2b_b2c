@@ -29,6 +29,8 @@ import {
   combinationSentence,
   combinationSummary,
   readCombinationForm,
+  UNKNOWN_MARKET_KINDS,
+  UNKNOWN_MARKET_PICKS,
 } from "../model/combination";
 import { PLAN_ACTION, type PlanActionResult, type PlanScreenData } from "../model/plan";
 import type { CombinationView, SettingsScreenData, UiResult } from "../model/types";
@@ -84,7 +86,7 @@ function MarketCellView({ cell, label, off }: { cell: MarketCell; label: string;
   );
 }
 
-export function SettingsScreen({ currencies, combination: stored, configVersion, plan, result, planScreen, planAction = PLAN_ACTION, markets = [], unknownMarketLowest = false }: SettingsScreenProps) {
+export function SettingsScreen({ currencies, combination: stored, configVersion, plan, result, planScreen, planAction = PLAN_ACTION, markets = [], unknownMarketLowest = false, unknownMarketHighest = [] }: SettingsScreenProps) {
   const tr = useT();
   const { t } = tr;
   // Two enabled markets of one currency, by name: only there can their amounts differ (the switch below).
@@ -187,7 +189,15 @@ export function SettingsScreen({ currencies, combination: stored, configVersion,
             <WonSection
               title={t("settings.unknownMarket.title")}
               glyph="store"
-              summary={t(unknownMarketLowest ? "settings.unknownMarket.summary.on" : "settings.unknownMarket.summary.off")}
+              summary={t(
+                !unknownMarketLowest
+                  ? "settings.unknownMarket.summary.off"
+                  : unknownMarketHighest.length === 0
+                    ? "settings.unknownMarket.summary.on"
+                    : unknownMarketHighest.length === UNKNOWN_MARKET_KINDS.length
+                      ? "settings.unknownMarket.summary.highest"
+                      : "settings.unknownMarket.summary.mixed",
+              )}
               anchor="unknown-market"
             >
               <s-stack direction="block" gap="base">
@@ -197,6 +207,28 @@ export function SettingsScreen({ currencies, combination: stored, configVersion,
                   <RowNote>{t("settings.unknownMarket.on")}</RowNote>
                   <RowNote>{t("settings.unknownMarket.off")}</RowNote>
                   <RowNote>{t("settings.unknownMarket.empty")}</RowNote>
+                </WonRow>
+                {/* 8 Oct 2026: the lowest or the highest, chosen for every kind of amount on its own (engine.unknownMarketHighest). */}
+                <WonRow>
+                  <s-stack direction="block" gap="base">
+                    <s-text type="strong">{t("settings.unknownMarket.pick.title")}</s-text>
+                    <RowNote>{t("settings.unknownMarket.pick.note")}</RowNote>
+                    {UNKNOWN_MARKET_KINDS.map((kind) => {
+                      const pick = unknownMarketHighest.includes(kind) ? "highest" : "lowest";
+                      return (
+                        <s-stack key={kind} direction="block" gap="small-300">
+                          <s-select name={`${COMBINATION_FIELD.unknownMarketPick}${kind}`} label={t(`settings.unknownMarket.kind.${kind}` as "settings.unknownMarket.kind.discount")} value={pick}>
+                            {UNKNOWN_MARKET_PICKS.map((p) => (
+                              <s-option key={p} value={p} selected={boolAttr(p === pick)}>
+                                {t(`settings.unknownMarket.pick.${p}` as "settings.unknownMarket.pick.lowest")}
+                              </s-option>
+                            ))}
+                          </s-select>
+                          <RowNote>{t(`settings.unknownMarket.kind.${kind}.note` as "settings.unknownMarket.kind.discount.note")}</RowNote>
+                        </s-stack>
+                      );
+                    })}
+                  </s-stack>
                 </WonRow>
                 <RowNote>
                   {sameCurrency.length > 0

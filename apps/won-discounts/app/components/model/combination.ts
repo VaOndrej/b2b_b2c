@@ -5,6 +5,8 @@
 // line (§17b). Product-with-product is fixed ("the better one wins", A1) and is
 // said, not switched. Pure; tests/ui/combination-appearance.test.ts.
 
+import { UNKNOWN_MARKET_KINDS, type UnknownMarketKind } from "@won/core/discounts/config";
+
 import type { MessageKey, Translator } from "../../i18n";
 import type { FormDataLike } from "./rule-form";
 import type { CombinationView } from "./types";
@@ -24,7 +26,13 @@ export const COMBINATION_FIELD = {
   orderWithShipping: "orderWithShipping",
   /** Nastavení → "Zákazník ze země mimo vaše trhy" (engine.unknownMarketLowest): the lowest amount of the currency's markets. */
   unknownMarketLowest: "unknownMarketLowest",
+  /** + a kind of amount (UNKNOWN_MARKET_KINDS): "lowest" or "highest" of the markets' amounts for that kind (engine.unknownMarketHighest). */
+  unknownMarketPick: "unknownMarketPick.",
 } as const;
+
+/** The two choices of one kind of amount, the default first. */
+export const UNKNOWN_MARKET_PICKS = ["lowest", "highest"] as const;
+export { UNKNOWN_MARKET_KINDS, type UnknownMarketKind };
 
 export const COMBINATION_INTENT = { save: "save" } as const;
 
@@ -48,6 +56,13 @@ export function readCombinationForm(form: FormDataLike): CombinationView {
 /** The "customer from a country in no market" switch as posted (not checked = not in the form = off). */
 export function readUnknownMarketForm(form: FormDataLike): boolean {
   return checked(form.get(COMBINATION_FIELD.unknownMarketLowest));
+}
+
+/** The kinds of amount posted as "highest"; undefined when the form posts no choice at all (the stored ones stay). */
+export function readUnknownMarketHighestForm(form: FormDataLike): UnknownMarketKind[] | undefined {
+  const posted = UNKNOWN_MARKET_KINDS.map((kind) => [kind, form.get(`${COMBINATION_FIELD.unknownMarketPick}${kind}`)] as const);
+  if (posted.every(([, raw]) => raw === null)) return undefined;
+  return posted.filter(([, raw]) => raw === "highest").map(([kind]) => kind);
 }
 
 export function combinationLabel(key: CombinationKey, tr: Translator): string {

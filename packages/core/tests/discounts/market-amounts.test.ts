@@ -9,7 +9,7 @@ import { test } from "node:test";
 import { sanitizeConfig } from "../../src/discounts/config.ts";
 import { formatMoney } from "../../src/discounts/describe.ts";
 import { buildShopFunctionConfig } from "../../src/discounts/function-payload.ts";
-import { collapseMarketAmounts, collapseTierAmounts, expandMarketAmounts, hasMarketAmount, marketAmountsView, usesMarketAmounts } from "../../src/discounts/market-amounts.ts";
+import { collapseConfigAmounts, collapseMarketAmounts, collapseTierAmounts, expandMarketAmounts, hasMarketAmount, marketAmountsView, usesMarketAmounts, withUnknownMarketFallback } from "../../src/discounts/market-amounts.ts";
 import { amountKeyCurrency, currencyExponent, moneyFor, sanitizeMoneyByCurrency, splitAmountKey } from "../../src/discounts/money.ts";
 import { planCart } from "../../src/discounts/plan.ts";
 import { buildStorefrontConfig } from "../../src/discounts/storefront-config.ts";
@@ -222,6 +222,42 @@ test("a cart from a country in no market: nothing by default, the lowest of the 
     assert.equal(plan(payload, "DE", 10).totals.orderDiscount, 2000);
     assert.equal(plan(payload, "DE", 6).progress.freeShipping?.threshold, 8000);
   }
+});
+
+test("the fallback is chosen per kind of amount: the highest where the merchant asked for it, the lowest elsewhere", () => {
+  const rules = [orderFixed("r", { CZK: 40000, "EUR@sk": 1600, "EUR@de": 2000 }, { minimum: { subtotal: { CZK: 100000, "EUR@sk": 5000, "EUR@de": 8000 } } })];
+  const tiers = { sets: [{ id: "g", scope: "global", countAcross: "product", breaks: [{ minQty: 3, amountOff: { CZK: 3000, "EUR@sk": 120, "EUR@de": 150 } }] }] };
+  const rewards = {
+    freeShipping: { threshold: { CZK: 150000, "EUR@sk": 6000, "EUR@de": 8000 } },
+    gifts: [{ id: "gift", threshold: { CZK: 200000, "EUR@sk": 7000, "EUR@de": 9000 }, choices: ["gid://shopify/ProductVariant/1"] }],
+  };
+  const build = (engine: Record<string, unknown>) => payloadFor(sanitizeConfig({ markets: MARKETS, engine, modules: { codes: { rules }, tiers, rewards } }).config);
+  // The discount stays the lowest (16 €), its minimum spend and free shipping take the highest (80 €); tiers and gifts stay the lowest.
+  const config = sanitizeConfig({ markets: MARKETS, engine: { unknownMarketLowest: true, unknownMarketHighest: ["shipping", "nonsense", "minimum", "shipping"] }, modules: { codes: { rules }, tiers, rewards } }).config;
+  assert.deepEqual(config.engine.unknownMarketHighest, ["minimum", "shipping"], "known kinds only, once, in the fixed order");
+  const { payload } = payloadFor(config);
+  assert.equal("unknownMarketHighest" in payload.engine, false, "the choice is in the amounts, not in the payload");
+  const rule = payload.modules.codes.rules[0] as unknown as { value: { amount: Record<string, number> }; minimum: { subtotal: Record<string, number> } };
+  assert.equal(rule.value.amount.EUR, 1600);
+  assert.equal(rule.minimum.subtotal.EUR, 8000);
+  const plan = (p: typeof payload, countryCode: string, quantity: number) => planCart(cartOf([L(10_00, quantity)], { currency: "EUR", countryCode }), p);
+  assert.equal(plan(payload, "FR", 6).totals.orderDiscount, 0, "60 € is under the highest minimum spend");
+  assert.equal(plan(payload, "FR", 8).totals.orderDiscount, 1600, "from 80 € the lowest discount");
+  assert.equal(plan(payload, "FR", 6).progress.freeShipping?.threshold, 8000);
+  assert.equal(lineOf(plan(payload, "FR", 3), "L1").product?.amount, 360, "tiers: the lowest");
+  assert.equal(plan(payload, "SK", 6).totals.orderDiscount, 1600, "a market reads its own amounts whatever the choice");
+  // Every kind on its own, and nothing at all while the switch itself is off.
+  const all = build({ unknownMarketLowest: true, unknownMarketHighest: ["discount", "minimum", "tier", "shipping", "gift"] }).payload;
+  assert.equal((all.modules.codes.rules[0] as unknown as typeof rule).value.amount.EUR, 2000);
+  assert.equal(plan(all, "FR", 8).totals.orderDiscount, 2000);
+  assert.equal(lineOf(plan(all, "FR", 3), "L1").product?.amount, 450, "3 × 1,50 €");
+  // A gift's amount is its own kind (the payload ships gifts in another shape, so read what the builder is given).
+  const gift = (highest: string[]) =>
+    (withUnknownMarketFallback(collapseConfigAmounts(sanitizeConfig({ markets: MARKETS, engine: { unknownMarketLowest: true, unknownMarketHighest: highest }, modules: { rewards } }).config)).modules.rewards.gifts[0]!.threshold as Record<string, number>).EUR;
+  assert.equal(gift(["shipping"]), 7000);
+  assert.equal(gift(["gift"]), 9000);
+  const off = build({ unknownMarketHighest: ["discount"] }).payload;
+  assert.equal(plan(off, "FR", 10).totals.orderDiscount, 0, "the kinds alone switch nothing on");
 });
 
 test("with the setting on, a market the merchant left without an amount still gets nothing — not the fallback", () => {

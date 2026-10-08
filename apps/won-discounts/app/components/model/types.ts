@@ -727,6 +727,8 @@ export interface SettingsScreenData {
   combination: CombinationView;
   /** engine.unknownMarketLowest: a customer from a country in no market gets the lowest amount of the markets of their currency (off = nothing). */
   unknownMarketLowest?: boolean;
+  /** engine.unknownMarketHighest: the kinds of amount where that customer gets the highest amount instead of the lowest. */
+  unknownMarketHighest?: import("@won/core/discounts/config").UnknownMarketKind[];
   /** The shop's Shopify markets and what each part of the app offers in them (model/markets-overview.ts). Absent = not built (older callers). */
   markets?: import("./markets-overview").MarketRowView[];
 }

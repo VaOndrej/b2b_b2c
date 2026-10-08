@@ -57,7 +57,7 @@ test("load: the stored switches (defaults on a new shop), the plan, the version 
   const store = new FakeStore();
   const data = await loadSettingsScreen(ctxFor(store), { scopes: "write_discounts" });
   // A new shop has no market stored yet (the Přehled's check brings them in, T1): the table is empty.
-  assert.deepEqual(data, { plan: "free", configVersion: null, currencies: [{ code: "CZK", markets: [] }], combination: DEFAULTS, unknownMarketLowest: false, markets: [] });
+  assert.deepEqual(data, { plan: "free", configVersion: null, currencies: [{ code: "CZK", markets: [] }], combination: DEFAULTS, unknownMarketLowest: false, unknownMarketHighest: [], markets: [] });
 });
 
 test("save: 'a customer from a country in no market gets the lowest amount' is stored only when on, and a save that does not post it leaves it", async () => {
@@ -76,6 +76,28 @@ test("save: 'a customer from a country in no market gets the lowest amount' is s
   assert.equal((await saveCombination(ctx, DEFAULTS, { configVersion: data.configVersion, unknownMarketLowest: false })).ok, true);
   await syncIdle(shop);
   assert.equal((await loadSettingsScreen(ctx, { scopes: "write_discounts" })).unknownMarketLowest, false);
+});
+
+test("save: the kinds of amount that take the highest are stored as posted, kept by a save that does not post them, and cleared by an empty choice", async () => {
+  const store = new FakeStore();
+  const ctx = ctxFor(store);
+  assert.equal((await saveCombination(ctx, DEFAULTS, { configVersion: null, unknownMarketLowest: true, unknownMarketHighest: ["shipping", "minimum"] })).ok, true);
+  await syncIdle(shop);
+  let data = await loadSettingsScreen(ctx, { scopes: "write_discounts" });
+  assert.deepEqual(data.unknownMarketHighest, ["minimum", "shipping"]);
+  assert.equal((await saveCombination(ctx, DEFAULTS, { configVersion: data.configVersion })).ok, true);
+  await syncIdle(shop);
+  data = await loadSettingsScreen(ctx, { scopes: "write_discounts" });
+  assert.deepEqual([data.unknownMarketLowest, data.unknownMarketHighest], [true, ["minimum", "shipping"]]);
+  // The page's own form: every choice back on "lowest".
+  const form = new FormData();
+  form.set("intent", "save");
+  if (data.configVersion) form.set("configVersion", data.configVersion);
+  form.set("unknownMarketLowest", "on");
+  for (const kind of ["discount", "minimum", "tier", "shipping", "gift"]) form.set(`unknownMarketPick.${kind}`, kind === "gift" ? "highest" : "lowest");
+  assert.equal((await settingsAction(ctx, form)).ok, true);
+  await syncIdle(shop);
+  assert.deepEqual((await loadSettingsScreen(ctx, { scopes: "write_discounts" })).unknownMarketHighest, ["gift"]);
 });
 
 test("save: the switches go into the config and into the shop config checkout runs", async () => {

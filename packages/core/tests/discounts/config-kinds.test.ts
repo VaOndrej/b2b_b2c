@@ -91,6 +91,7 @@ test("the split keeps the public surface of @won/core/discounts/config", () => {
     "REOPEN_ON_RETURN_MODES",
     "SCHEMA_VERSION",
     "TIER_COUNT_ACROSS_MODES",
+    "UNKNOWN_MARKET_KINDS",
     "createDefaultConfig",
     "isIsoDateTime",
     "isNewerSchema",

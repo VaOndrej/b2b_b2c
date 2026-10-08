@@ -46,6 +46,10 @@ Vypnuto (výchozí): kde se trhy jeho měny liší, nedostane nic. Zapnuto: dost
 Funkce pokladny se kvůli tomu nemění: do odesílaného nastavení se doplní klíč měny s nejnižší částkou a trh, kterému
 obchodník nechal pole prázdné, dostane pod svým klíčem `-1`, aby na klíč měny nespadl a dál nedostal nic.
 
+**Nejnižší, nebo nejvyšší (doplněno 8. 10. 2026, rozhodl Ondřej):** při zapnutém přepínači si obchodník pro každý druh částky
+zvlášť volí, jestli zákazník mimo trhy dostane nejnižší (výchozí), nebo nejvyšší z částek trhů: sleva pevnou částkou, minimální
+útrata, množstevní sleva za kus, doprava zdarma, dárek. Ukládá se `engine.unknownMarketHighest` (druhy s nejvyšší).
+
 ## 4. Limity — změřeno 7. 10. 2026
 
 Slevová funkce má dva limity blízko hrany (README funkce): velikost Wasm 256 000 B (bylo volných 1 037 B) a instrukce

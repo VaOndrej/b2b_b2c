@@ -454,7 +454,7 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       const plan = q.get("plan") === "pro" ? "pro" : "free";
       const planState = q.get("planState");
       return {
-        ...devSettingsScreen({ plan, state, shared: q.get("markets") === "shared", fallback: q.get("fallback") === "1" }),
+        ...devSettingsScreen({ plan, state, shared: q.get("markets") === "shared", fallback: q.get("fallback") === "1", highest: q.get("highest") === "1" }),
         planScreen: { ...devPlanScreen({ plan, state: planState, result: null }), production: planState === "production" },
       };
     }

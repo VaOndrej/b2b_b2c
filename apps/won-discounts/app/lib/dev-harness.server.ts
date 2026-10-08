@@ -1143,7 +1143,7 @@ export function devAppearanceScreen(opts: { plan: "free" | "pro"; state: string 
 }
 
 /** Nastavení: the switches as stored (`changed` = two switched off, as a shop may have them). */
-export function devSettingsScreen(opts: { plan: "free" | "pro"; state: string | null; shared?: boolean; fallback?: boolean }): SettingsScreenData {
+export function devSettingsScreen(opts: { plan: "free" | "pro"; state: string | null; shared?: boolean; fallback?: boolean; highest?: boolean }): SettingsScreenData {
   const c = DEFAULT_CONFIG.engine.combination;
   const combination = {
     outletWithAnything: c.outletWithAnything,
@@ -1158,6 +1158,8 @@ export function devSettingsScreen(opts: { plan: "free" | "pro"; state: string | 
     combination: opts.state === "changed" ? { ...combination, productWithOrder: false, productWithShipping: false } : combination,
     // ?fallback=1: "a customer from a country in no market gets the lowest amount" is on.
     unknownMarketLowest: opts.fallback === true,
+    // ?highest=1: minimum spend and free shipping take the highest amount, the rest the lowest.
+    unknownMarketHighest: opts.highest === true ? ["minimum", "shipping"] : [],
     // The same shop as the home page's ?state=modules: the discounts, rewards and tiers of the three fixtures.
     markets: marketRows(
       devSharedMarket({ ...DEV_OVERVIEW_FIXTURE, modules: { ...DEV_OVERVIEW_FIXTURE.modules, rewards: DEV_REWARDS_FIXTURE.modules.rewards, tiers: DEV_TIERS_FIXTURE.modules.tiers } }, opts.shared === true),

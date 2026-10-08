@@ -13,6 +13,7 @@ import type {
   OnboardingGoal,
   OutletDisplay,
   ProductWithProductMode,
+  UnknownMarketKind,
   ReopenOnReturnMode,
   TierCountAcross,
 } from "./enums.ts";
@@ -43,6 +44,11 @@ export interface EngineSettings {
    * Stored only when true.
    */
   unknownMarketLowest?: true;
+  /**
+   * With `unknownMarketLowest` on: the kinds of amount where that cart gets the HIGHEST of the amounts instead
+   * (the merchant's choice per kind; a kind not listed = the lowest). Stored only when not empty.
+   */
+  unknownMarketHighest?: UnknownMarketKind[];
 }
 
 export interface DiscountRuleValuePercentage {

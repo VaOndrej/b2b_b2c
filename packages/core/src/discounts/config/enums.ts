@@ -20,6 +20,11 @@ export type CombinationCategory = (typeof COMBINATION_CATEGORIES)[number];
 export const PRODUCT_WITH_PRODUCT_MODES = ["best"] as const;
 export type ProductWithProductMode = (typeof PRODUCT_WITH_PRODUCT_MODES)[number];
 
+/** The kinds of amount a cart from a country in no market reads through the fallback (engine.unknownMarketLowest),
+ * each with its own choice of the lowest or the highest of the currency's markets (engine.unknownMarketHighest). */
+export const UNKNOWN_MARKET_KINDS = ["discount", "minimum", "tier", "shipping", "gift"] as const;
+export type UnknownMarketKind = (typeof UNKNOWN_MARKET_KINDS)[number];
+
 export const DISCOUNT_METHODS = ["automatic", "code"] as const;
 export type DiscountMethod = (typeof DISCOUNT_METHODS)[number];
 

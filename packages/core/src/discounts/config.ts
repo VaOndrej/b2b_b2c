@@ -27,6 +27,7 @@ export {
   REOPEN_ON_RETURN_MODES,
   SCHEMA_VERSION,
   TIER_COUNT_ACROSS_MODES,
+  UNKNOWN_MARKET_KINDS,
 } from "./config/enums.ts";
 export type {
   AccentPreset,
@@ -43,6 +44,7 @@ export type {
   ProductWithProductMode,
   ReopenOnReturnMode,
   TierCountAcross,
+  UnknownMarketKind,
 } from "./config/enums.ts";
 export type {
   Campaign,
