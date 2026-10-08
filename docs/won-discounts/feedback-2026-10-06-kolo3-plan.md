@@ -307,7 +307,7 @@ Zapisuje se po bodech během práce.
 | návrh částky v kampaních (dotažení, úkol 3) | v kódu, test zelený, screenshoty chybí | `CampaignsScreen.tsx` + `AmountSuggestions`; `/dev/preview/campaigns?plan=pro&state=suggest&edit=bf`. |
 | 7 | v kódu, testy zelené, klikání naživo neověřeno | `tiers/ProTierSets.tsx`, `TierSetEditor.tsx` (`inherit`), `TiersScreen.tsx` (`addSet`); testy `tests/ui/kolo3-c.test.ts`; rozhodnutí v build logu. |
 | částky podle trhu (dotažení, úkol 6) | v kódu, brána zelená, naživo až po nasazení | Klíč `měna@trh` jen kde se trhy jedné měny liší; funkce 255 677 B z 256 000 B. Viz `navrh-castky-podle-trhu.md` a build log. |
-| 9, 10 | v kódu, brána zelená 8. 10.; web na Horizonu a Dawnu naživo neověřen | Milníky: jeden žebříček nad uloženými odměnami, sleva na objednávku jako pravidlo `ms-` (funkce pokladny beze změny), Free 2 / Pro 6 na serveru, tabulka stupeň × trh, žebříček na webu ve třech velikostech. `packages/core/src/discounts/milestones.ts`, `MilestonesScreen.tsx`, `snippets/won-milestones.liquid`. Rozhodnutí a čísla v build logu, úkol 7. |
+| 9, 10 | v kódu, brána zelená 8. 10.; živá zkouška Free: Horizon 8/8, Dawn 6/8 (2× HTTP 429 obchodu); Pro profil čeká | Milníky: jeden žebříček nad uloženými odměnami, sleva na objednávku jako pravidlo `ms-` (funkce pokladny beze změny), Free 2 / Pro 6 v každém trhu zvlášť (na serveru), tabulka stupeň × trh, žebříček na webu ve třech velikostech. `packages/core/src/discounts/milestones.ts`, `MilestonesScreen.tsx`, `snippets/won-milestones.liquid`. Rozhodnutí a čísla v build logu, úkol 7. |
 | 11, 12, 13, 14 | nezačato | dávka E |
 | 16 | nezačato | dávka F |
 

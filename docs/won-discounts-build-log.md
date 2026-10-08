@@ -121,8 +121,8 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
     optimalizátoru jako v CLI). Testy funkce: cargo 102, parita 651. Předchozí věta o rezervě 323 B už neplatí.
   - **Pozor:** změnil jsem `extensions/` za běhu `shopify app dev`; podle runbooku to rozbije soubory rozšíření na webu do dalšího
     restartu. Ověření: `node apps/won-discounts/scripts/check-storefront-assets.mjs the-inventory-not-tracked-snowboard`.
-- **Úkol 7 (Milníky, dávka D, body 9 a 10) — v kódu, brána zelená, sloučeno do `main` 8. 10. 2026; web na Horizonu a Dawnu naživo NEOVĚŘEN
-  (`shopify app dev` neběžel).** Větev `won-discounts-milniky`.
+- **Úkol 7 (Milníky, dávka D, body 9 a 10) — v kódu, brána zelená, sloučeno do `main` 8. 10. 2026; web na Horizonu a Dawnu naživo ověřen na Free
+  (profil `rewards`), profil Pro se stupněm se slevou ještě ne.** Větev `won-discounts-milniky`.
   - **Tvar dat (rozhodl jsem sám):** nic nového se neukládá a funkce pokladny se nezměnila (`git diff origin/main --stat --
     apps/won-discounts/extensions/won-discounts-engine/src` je prázdný). Žebříček je pohled na to, co nastavení už má
     (`packages/core/src/discounts/milestones.ts`): doprava zdarma = `modules.rewards.freeShipping`, dárek = `modules.rewards.gifts[]`,
@@ -167,15 +167,19 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
     snímky `Apps/.playwright-mcp/milniky/web/`. Náhodný test 1 500 košíků porovnává stupně na webu s `planCart`.
   - **Brána 8. 10. (po úpravě limitu po trzích):** `test:packages` 927 + 53, `test:unit` 1 789 + cargo 102 + vitest 699, `typecheck`, `lint` (0 chyb,
     6 starších varování), `build`, `guard:test:core` 301, `validate:shopify` (0 nálezů), vše exit 0.
-  - **Naživo neověřeno:** (1) Horizon a Dawn: zkouška je připravená (`tests/e2e/storefront.rewards.spec.ts`, nový test průchodu
-    stupni; šablony zkoušky mají nově blok Milníků na stránce produktu a zapnutý pruh nahoře, profil `rewards-pro` má stupeň
-    10 % od 300 Kč), ale neběžela. Pozor: pruh nahoře je nově zapnutý ve všech profilech zkoušky a může pohnout měřením posunu
-    stránky v testu SF-1. (2) Klikání v běžící aplikaci (výběr dárku, „Navrhnout ostatní trhy“, uložení). (3) První vykreslení
-    žebříčku v Liquidu (řazení stupňů a texty); skript ho po načtení překreslí. (4) `check-storefront-assets.mjs`.
-  - **Co spustit:** `npm run dev -w won-discounts`, potom
-    `node apps/won-discounts/scripts/check-storefront-assets.mjs the-inventory-not-tracked-snowboard` a
-    `apps/won-discounts/scripts/e2e/runbook/profile.sh rewards milniky free` (napřed dry-run podle runbooku), pro Pro `rewards-pro`.
-- **Další krok:** naživo ověřit úkol 7 (viz „Co spustit“), potom úkol 8 (Překlady, vzhled žebříčku), 9.
+  - **Živá zkouška 8. 10. odpoledne (profil `rewards`, Free; `profile.sh rewards milniky free`, evidence
+    `won-discounts/evidence/milniky/`):** **Horizon 8/8**, včetně nového průchodu stupni a testu SF-1 (pruh nahoře měření posunu
+    stránky neshodil). **Dawn 6 z 8:** průchod stupni prošel na druhý pokus, pokladna (Bogus) dvakrát spadla — obojí na HTTP 429
+    obchodu („Verifying your connection“), ne na aplikaci. Ověřeno na obou šablonách: pruh nahoře (`bar`), blok na stránce
+    produktu (`compact`, 0/2 → 1/2 → 2/2 bez načtení stránky), stránka košíku (`full`, oba stupně odškrtnuté), snímky 390 a
+    1440 px. Boční košík: na Horizonu ověřen (`compact` 2/2), kopie Dawnu boční košík nemá (košík je stránka). Úklid a
+    `verify-clean` exit 0, obchod je vrácený ze zálohy. `check-storefront-assets.mjs`: 7 ze 7 souborů se načítá.
+  - **Naživo neověřeno:** (1) profil `rewards-pro` (stupeň se slevou na webu a v pokladně, žebříček o 4 stupních): potřebuje
+    `shopify app dev` spuštěný s `NODE_ENV=development WON_DEV_PLAN=pro`. (2) Pokladna na Dawnu v profilu `rewards` (429,
+    zopakovat). (3) Boční košík na Dawnu. (4) Klikání v běžící aplikaci (výběr dárku, „Navrhnout ostatní trhy“, uložení).
+  - **Co spustit pro Pro:** restart `npm run dev -w won-discounts` s `NODE_ENV=development WON_DEV_PLAN=pro`, potom
+    `apps/won-discounts/scripts/e2e/runbook/profile.sh rewards-pro milniky-pro pro`.
+- **Další krok:** živá zkouška `rewards-pro` (viz „Co spustit pro Pro“), potom úkol 8 (Překlady, vzhled žebříčku), 9.
 
 Zadání: [`won-discounts/audit-dlazdice-trhy-2026-10-06.md`](won-discounts/audit-dlazdice-trhy-2026-10-06.md) (stav po nálezech je na jeho
 konci). Práce inline, commitnuto lokálně, nepushnuto, nenasazeno.

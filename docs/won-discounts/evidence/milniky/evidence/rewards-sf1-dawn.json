@@ -1,0 +1,62 @@
+{
+  "at": "2026-10-08T08:55:30.514Z",
+  "theme": "Dawn",
+  "cart": {
+    "currency": "CZK",
+    "items": [
+      [
+        48468678902001,
+        4,
+        1000
+      ]
+    ]
+  },
+  "plan": {
+    "progress": {
+      "freeShipping": {
+        "threshold": 4000,
+        "remaining": 0,
+        "reached": true
+      },
+      "gifts": [
+        {
+          "tierId": "e2e-gift",
+          "threshold": 5000,
+          "remaining": 1000,
+          "reached": false
+        }
+      ]
+    }
+  },
+  "panel": {
+    "size": "full",
+    "now": 80,
+    "text": "Ještě 10 Kč a získáte: Dárek: Won E2E — Spare",
+    "marks": 2,
+    "marksDone": 1,
+    "rows": [
+      {
+        "kind": "s",
+        "done": true,
+        "text": "Doprava zdarmaod 40 Kč"
+      },
+      {
+        "kind": "g",
+        "done": false,
+        "text": "Dárek: Won E2E — Spareod 50 Kč"
+      }
+    ]
+  },
+  "writes": [],
+  "proxy": {
+    "status": 200,
+    "ok": true
+  },
+  "giftFacts": {
+    "48468679164145": {
+      "t": "Won E2E — Spare",
+      "a": true
+    }
+  },
+  "cls": 0.06458058114176098
+}

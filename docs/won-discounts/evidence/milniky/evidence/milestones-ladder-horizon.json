@@ -1,0 +1,142 @@
+{
+  "at": "2026-10-08T08:52:38.929Z",
+  "theme": "Horizon",
+  "walk": [
+    3,
+    4,
+    5
+  ],
+  "seen": [
+    {
+      "quantity": 3,
+      "ladder": [
+        {
+          "kind": "s",
+          "at": 4000,
+          "done": false
+        },
+        {
+          "kind": "g",
+          "at": 5000,
+          "done": false
+        }
+      ],
+      "top": {
+        "size": "bar",
+        "now": 60,
+        "text": "Ještě 10 Kč a získáte: Doprava zdarma",
+        "marks": 0,
+        "marksDone": 0,
+        "rows": []
+      },
+      "product": {
+        "size": "compact",
+        "now": 60,
+        "text": "Ještě 10 Kč a získáte: Doprava zdarma",
+        "marks": 2,
+        "marksDone": 0,
+        "rows": []
+      },
+      "drawer": null
+    },
+    {
+      "quantity": 4,
+      "ladder": [
+        {
+          "kind": "s",
+          "at": 4000,
+          "done": true
+        },
+        {
+          "kind": "g",
+          "at": 5000,
+          "done": false
+        }
+      ],
+      "top": {
+        "size": "bar",
+        "now": 80,
+        "text": "Ještě 10 Kč a získáte: Dárek: Won E2E — Spare",
+        "marks": 0,
+        "marksDone": 0,
+        "rows": []
+      },
+      "product": {
+        "size": "compact",
+        "now": 80,
+        "text": "Ještě 10 Kč a získáte: Dárek: Won E2E — Spare",
+        "marks": 2,
+        "marksDone": 1,
+        "rows": []
+      },
+      "drawer": null
+    },
+    {
+      "quantity": 5,
+      "ladder": [
+        {
+          "kind": "s",
+          "at": 4000,
+          "done": true
+        },
+        {
+          "kind": "g",
+          "at": 5000,
+          "done": true
+        }
+      ],
+      "top": {
+        "size": "bar",
+        "now": 100,
+        "text": "Máte všechny odměny.",
+        "marks": 0,
+        "marksDone": 0,
+        "rows": []
+      },
+      "product": {
+        "size": "compact",
+        "now": 100,
+        "text": "Máte všechny odměny.",
+        "marks": 2,
+        "marksDone": 2,
+        "rows": []
+      },
+      "drawer": {
+        "size": "compact",
+        "now": 100,
+        "text": "Máte všechny odměny.",
+        "marks": 2,
+        "marksDone": 2,
+        "rows": []
+      }
+    }
+  ],
+  "cartPage": {
+    "size": "full",
+    "now": 100,
+    "text": "Máte všechny odměny.",
+    "marks": 2,
+    "marksDone": 2,
+    "rows": [
+      {
+        "kind": "s",
+        "done": true,
+        "text": "Doprava zdarmaod 40 Kč"
+      },
+      {
+        "kind": "g",
+        "done": true,
+        "text": "Dárek: Won E2E — Spareod 50 Kč"
+      }
+    ]
+  },
+  "plan": {
+    "totals": {
+      "subtotal": 24900,
+      "productDiscount": 19900,
+      "orderDiscount": 0,
+      "total": 5000
+    },
+    "order": null
+  }
+}
