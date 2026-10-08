@@ -823,11 +823,11 @@
                 <th scope="row">Won Companion</th>
                 <td class="owns">
                   <strong>doporučení</strong> „přidej ještě <em>jinou</em> věc“ —
-                  cross-sell, bundle, bigger-pack swap (šířka)
+                  cross-sell A → B/C, doporučení hotových balení, bigger-pack swap (šířka)
                 </td>
                 <td class="avoids">
-                  cenu (na slevu a práh jen <strong>odkazuje</strong>, vlastní je
-                  Won Discounts)
+                  cenu a slevy (spravuje merchant nativně či jinou aplikací;
+                  <strong>bez závislosti na Won Discounts</strong>)
                 </td>
               </tr>
               <tr>
@@ -857,8 +857,8 @@
           <em>doporučení</em>, Toasts vlastní <em>notifikaci</em>, Badges vlastní
           <em>štítek</em>. Když appka potřebuje cizí primitiv,
           <strong>odkáže</strong> ho, nevlastní: Toasts slevu jen oznámí z hotové
-          alokace, Companion doporučí produkt, který zákazníka posune k prahu
-          nebo k levnější množstevní slevě.
+          alokace, Companion doporučuje produkty a existující větší balení;
+          ceny a slevy ponechává merchantovi bez povinné integrace.
         </p>
         <div class="pbnd-decisions">
           <div class="pbnd-card">
@@ -892,10 +892,10 @@
               vnořit je do Companionu = zašpinit jeho duši „žádná cenová magie“.
             </p>
             <p>
-              Companion na množstevní slevu místo toho
-              <strong>odkazuje</strong>: „přidej ještě 1 ks a jsi v levnější
-              úrovni“ = Companion <em>doporučení</em> namířené na <em>cenu</em>,
-              kterou vlastní Won Discounts. Kooperují, neslévají se.
+              <strong>Upřesnění 2026-10-01:</strong> Companion je samostatný,
+              bez závislosti na Won Discounts. Nabízí existující produkty a větší varianty;
+              cenu, případné slevy i označení zvýhodnění nastavuje merchant.
+              Automatické navádění na slevové prahy není povinná součást integrace.
             </p>
           </div>
           <div class="pbnd-card">
@@ -962,7 +962,7 @@
           <div class="bq-slot">
             <p class="lab">Build fronta · další (gated)</p>
             <h3>1× AOV appka</h3>
-            <p>Companion — až po prvním fan-outu (Vlna 2 v severce). Rewards už je modul Won Discounts. Nezakládat listing dřív.</p>
+            <p>Won Companion — další po dokončení Won Discounts (rozhodnutí 2026-10-01). Samostatná doporučovací appka; plánované uvedení BETA, vlastní testovací matice Dawn/Horizon. První distribuce přes vlastní klienty; zatím návrh, bez hotové implementace.</p>
           </div>
           <div class="bq-slot">
             <p class="lab">Zbytek</p>
@@ -1088,26 +1088,16 @@
                 <code>Spec · Scaffold · Alpha · Beta · Shipped</code>.
               </p>
               <p class="guide-idea">
-                <strong>Sdílený cart-core (@won/core/cart):</strong> Stepper je
-                appka, která <strong>staví optimistickou páteř</strong> celé
-                suite. Konzumuje <code>cartState</code> (reaktivní store,
-                jediný zdroj pravdy = snapshot <code>/cart.js</code>) a
-                <code>cartAdapter</code> (wrap <code>fetch</code>+XHR na
-                <code>/cart/(add|change|update|clear).js</code> + theme pub/sub
-                → reconcile → <code>NormalizedCartEvent</code>), ale
-                <strong>vlastní a dodává</strong> dva stěžejní díly:
-                <code>optimistic.mutate(op)</code> (okamžitý next-state do
-                <code>cartState</code> → reálný <code>/cart/*.js</code> →
-                reconcile z <code>/cart.js</code> → rollback při chybě/timeoutu;
-                idempotence proti dvojkliku; re-sync mezi taby; ignoruje
-                <code>_gift_progress</code>) a <strong>zpevnění adapteru</strong>
-                pro Dawn i Horizon (quick-add, Section Rendering API, multi-tab).
-                <code>cartState</code>, <code>deriveEvents</code> a milestone
-                state machine <strong>zdědil Toasts pilot</strong> — tady se
-                zúročí; Companion a Rewards (dnes modul Won Discounts) na hotovém core <em>jen stojí</em> a
-                referencují „viz Won Stepper". Design tokeny sdílíme přes
-                <code>&lt;won-host&gt;</code>, cross-app bus přes document event
-                <code>won:cart:update</code>, ať appky nedělají dvojité fetche.
+                <strong>Sdílený cart-core (@won/core/cart), změna pořadí 2026-10-01:</strong>
+                Páteř nejprve postaví <strong>Won Companion</strong>, po dokončení Won Discounts.
+                Stepper ji následně převezme a zpevní pro vlastní ovládání množství.
+                Plánované rozhraní: <code>cartState</code>, <code>cartAdapter</code>,
+                <code>deriveEvents</code>, <code>optimistic.mutate(op)</code> a
+                <code>won:cart:update</code>. Autorita = skutečný snapshot <code>/cart.js</code>,
+                včetně obnovy po chybách a nejasném timeoutu. Serializace, deduplikace,
+                multi-tab a Dawn/Horizon adaptéry jsou požadavky, nikoli hotové sdílené jádro.
+                Existující zkušenosti a cart diff z Toasts využít bez předstírání, že celá
+                transportní vrstva již existuje.
               </p>
               <p class="guide-idea">
                 <strong>Brainstorm &amp; rozhodnutí (vyladěno 2026-08):</strong>
@@ -1330,7 +1320,7 @@
                 <li>
                   <strong>MVP žebřík (reach-first, každý shippable, TDD):</strong>
                   <code>MVP0</code> skeleton (klon <code>_template</code>, embed,
-                  <code>StepperConfig</code> + config proxy, cart-core scaffold,
+                  <code>StepperConfig</code> + config proxy, napojení na cart-core Companiona,
                   no-op host s <code>data-won-stepper-status="ready"</code>) ·
                   <code>MVP1</code> <strong>PDP</strong> optimistický +/− (okamžité
                   UI přes <code>optimistic.mutate</code>, agregovaný sync na
@@ -1820,12 +1810,12 @@
                 <span class="app-code">WON·COMP</span>
               </span>
               <span class="mvp-badge mvp-spec">Spec</span>
-              <span class="price">$2–3/mo</span>
+              <span class="price">$10 / $30/mo · 14 dní zdarma</span>
             </div>
             <h3>Won Companion</h3>
             <p class="description">
-              Post-add dialog s doporučeními odvozenými z celého košíku a
-              nákupem na jeden klik. Nejčistší AOV MVP — bez Function.
+              Samostatná doporučení z celého košíku, doplňky a větší balení.
+              Ceny a slevy spravuje merchant. Plánované uvedení jako BETA.
             </p>
             <div class="tags">
               <span class="tag source">T · Therabeast</span>
@@ -1836,300 +1826,262 @@
             </div>
             <footer class="card-footer">
               <div class="potential">
-                <span
-                  class="meter"
-                  style="--score: 4"
-                  role="img"
-                  aria-label="Potenciál 4 z 5"
-                ></span>
+                <span class="meter" style="--score: 4" role="img" aria-label="Potenciál 4 z 5"></span>
                 <span class="potential-label">Potenciál</span>
               </div>
-              <span class="state now">Stavět hned</span>
+              <span class="state now">Po Won Discounts</span>
             </footer>
             <details class="app-guide">
-              <summary>Návod k implementaci (Won-Toasts hloubka)</summary>
+              <summary>Produktová rozhodnutí a ověření před stavbou</summary>
               <p class="guide-idea">
-                <strong>0 · Nápad:</strong> vychází z custom klientského řešení
-                (Therabeast <code>assets/cart-add-notification.js</code> +
-                <code>tb-complementary-engine.js</code>) — po přidání do košíku
-                vyskočí <strong>post-add upsell dialog</strong> „přidáno do
-                košíka&ldquo; s doporučeními odvozenými z <em>celého</em> košíku
-                (ne jen z právě přidané položky) a přidáním na
-                <strong>jeden klik</strong>. Won Companion navíc
-                <strong>pohlcuje PackUp</strong>: kde existuje větší / výhodnější
-                balení téhož produktu, nabídne <strong>bigger-pack swap</strong>
-                (varianta → větší varianta, nahrazení řádku), takže z jednoho
-                dialogu řešíme cross-sell i pack-upgrade. Headline dialogu je
-                <strong>revenue bundlu</strong> („dokup a ušetři / získej&hellip;&ldquo;),
-                doporučení jsou <strong>reálná</strong> — pravidla a signály, ne
-                fabrikované „AI&ldquo;.
+                <strong>Aktuální rozhodnutí · 2026-10-01:</strong>
+                <a href="won-companion/rozhodnuti.md">rozhodnutí z brainstormingu</a>
+                nahrazují starší MVP žebřík i závislost na Won Discounts.
+                <strong>Stav je návrh, ne implementovaná nebo otestovaná appka.</strong>
+                Další aplikace po dokončení Won Discounts; celý schválený rozsah jako jeden
+                produkt, nikoli postupně prodávaná MVP. Technická práce a ověřování zůstávají
+                seřazené podle závislostí. První distribuce přes vlastní klienty.
               </p>
               <p class="guide-idea">
-                <strong>Rozhodnutí / pozicování:</strong> upsell kategorie je
-                dnes <strong>metered</strong> a znečištěná — ReConvert
-                double-metruje objednávky <em>i</em> revenue, Honeycomb bere
-                <code>$55&ndash;170</code> za funnel impressions, a AfterSell
-                (Rokt) i Rebuy (Monetize) <strong>injektují cizí reklamy</strong>
-                přímo do tvého funnelu. Won je <strong>flat, unlimited</strong>
-                (In Cart Upsell dokazuje, že to jde), <strong>bez jakékoli
-                cizí ad-injection</strong> (nikdy), modulární a s
-                <strong>reálnými doporučeními</strong> (ruční páry, by-collection,
-                kurátorované FBT, bigger-pack swap — žádné fake AI). Poziční
-                věta: <em>„stejná funkčnost, jednodušší používání&ldquo;</em> +
-                férová flat cena. Warm-start: recenze čerpáme z reálných eshopů,
-                kde už custom verze běží (Therabeast). Žádná
-                <strong>Discount Function</strong> — jen cart operace, takže
-                instalace je lehká a bez plan-gate na cenotvorbu.
+                <strong>Produktový audit A–O · 2026-10-01:</strong>
+                <a href="won-companion/product-blueprint-v1.md">Won Companion Product Blueprint v1</a>
+                rozpracovává 18 rizik, admin workflow, priority a interní E2E etapy
+                <strong>MVP 0–12 s akceptací a chybovými scénáři</strong>.
+                Společné uvedení celého schváleného produktu zůstává. Omezený editor,
+                zjednodušení obchodních automatizací a merchantem nastavitelná četnost
+                jsou následně schválené 2026-10-01. Schváleno také A/B při downgrade:
+                pevné potvrzené vztahy zůstávají, skutečně Pro závislá pravidla se pozastaví.
+                Tarifní tabulka a produktové defaulty jsou schválené; Děkujeme a Stav objednávky pouze Pro.
+                Klíčové doplnění: rozlišit uložené, publikované a dostupné na konkrétní
+                ploše; vysvětlit nezobrazení nabídky; chránit společnou publikaci a obnovu.
+                Audit není implementace ani provozní ověření.
               </p>
               <p class="guide-idea">
-                <strong>Sdílený cart-core (<code>@won/core/cart</code>):</strong>
-                Companion je <em>konzument</em> páteře, nestaví ji — <strong>viz
-                Won Stepper</strong>, který <code>cartAdapter</code> a
-                <code>optimistic.mutate</code> zpevňuje (Dawn/Horizon, quick-add,
-                Section Rendering, multi-tab). Companion odebírá
-                <code>cartState.subscribe()</code> a
-                <code>deriveEvents(before, after)</code>, reaguje na
-                <strong>add eventy</strong> (spouštěč dialogu) a přidává /
-                swapuje <em>výhradně</em> přes <code>optimistic.mutate(op)</code>
-                (okamžitý next-state → reálný <code>/cart/*.js</code> →
-                reconcile z <code>/cart.js</code> → rollback při chybě). Dialog
-                žije v <strong>sdíleném <code>&lt;won-host&gt;</code></strong>
-                (Shadow DOM + design tokeny celé suite), na cross-app sběrnici
-                <code>won:cart:update</code>, ať nedělá dvojité fetche. Řádky
-                <code>_gift_progress</code> ignoruje (řeší cart-core).
+                <strong>Produkt:</strong> doporučit užitečný doplněk podle celého košíku,
+                nabídnout existující větší balení a usnadnit přidání či výměnu.
+                <strong>Raději žádné doporučení než špatné.</strong> Zachovat respektování
+                odmítnutí, původní košík tématu, ruční vztahy, návrhy z katalogu a nativní
+                signály Shopify. Automatizace musí mít vysvětlitelný důvod a náhled.
+                Analýza konkurence včetně pozitivních zkušeností a limitů důkazů:
+                <a href="won-companion/konkurence.md">konkurenční průzkum</a>.
               </p>
               <p class="guide-idea">
-                <strong>Duše &amp; rozhodnutí forků (vyladěno 2026-08):</strong>
-                Companion je <em>vkusný prodejní asistent jednoho okamžiku</em> —
-                proměňuje „přidáno do košíku" v „a tohle to dokončí" a zvedá AOV
-                <strong>skrze upřímnou pomoc, ne tlak</strong> (důvěra = růstový
-                motor; nikdy nedoporučí šunt jen pro číslo, respektuje „ne").
-                Z té duše plynou forky: <strong>(1) Engine</strong> — Free =
-                ruční páry + by-collection + bigger-pack swap; <strong>Pro =
-                reálné co-occurrence FBT z objednávek</strong> (pravdivý signál,
-                ne fake-AI) + collection/segment cílení. <strong>(2) Slevy</strong>
-                — v1 zůstává <strong>Function-free</strong> (lehká instalace, čistá
-                pomoc bez úplatku); slevový upsell = <strong>budoucí Pro</strong>
-                a jde <strong>přes Won Discounts</strong> (rozhodnuto 2026-09-28:
-                všechny slevy obchodu jdou přes Won Discounts; Companion vlastní
-                funkci na slevy nemá). <strong>(3) Placementy</strong> — v1
-                <strong>post-add modal + cart</strong> (srdce = post-add okamžik),
-                PDP inline fast-follow, <strong>post-purchase park</strong> (jiný
-                okamžik, jiná extension). <strong>(4) PackUp</strong> = modul
-                bigger-pack swap (potvrzeno). <strong>(5) Cross-app synergie</strong>
-                (upsell-to-unlock reward / další množstevní úroveň) — napsáno jako Pro,
-                <strong>build park</strong> až bude Won Discounts živý (odměny + množstevní slevy).
-                <strong>(6) Free/Pro čára</strong> — Free = modal + manuál +
-                1-click + bigger-pack + design + governance (plnohodnotný asistent,
-                ne mrzák); Pro <strong>gatuje SCOPE, ne kvalitu</strong> = real FBT
-                + slevy + segment/collection + measurement. <strong>(7) Mobil</strong>
-                = <strong>bottom-sheet</strong> místo full modalu (nikdy invazivní).
-                <strong>(8) Measurement dřív</strong> — upřímnost = retence, takže
-                attributed-lift + <strong>A/B holdout</strong> není koncová featura,
-                ale jádro hodnoty (asistent, který si věří, nelže o své hodnotě);
-                základní atribuce jde dřív v žebříku. <strong>(9) „Nikdy
-                nenabízet" guardrail</strong> (exclude-from-recommendation:
-                dárkové karty / subscription / výprodej) = brand-safety =
-                <strong>Free jádro</strong> (asistent netlačí šunt), vedle už
-                existujícího out-of-stock guardu. <strong>(10) Presety
-                agresivity</strong> — <em>subtle</em> (default) / <em>standard</em>,
-                <strong>žádný „pushy" stupeň</strong>; asistent umí být tichý i
-                sebevědomý, nikdy otravný.
+                <strong>Ceník:</strong> <strong>14 dní zdarma</strong>, poté
+                <strong>Basic $10/měsíc nebo Pro $30/měsíc</strong>, bez meteringu objednávek
+                či tržeb. Žádný trvalý Free. <strong>Basic přebírá funkce původního Free,
+                Pro přebírá původní Pro</strong> (potvrzeno 2026-10-01), se zapracováním
+                novějších změn rozsahu a bez návratu integrace s Won Discounts.
+                Finální tarifní tabulka je v blueprintu O.3. <strong>Trial zpřístupní Pro</strong>;
+                před placeným pokračováním musí být jasně zvolený tarif a cena.
+                Trial neslibuje průkazný přírůstek za 14 dní.
               </p>
               <p class="guide-idea">
-                <strong>Hloubkový brainstorm (širší úhly, 2026-08):</strong>
-                <em>Kvalita recs = skrytý core risk</em> (Companionův ekvivalent
-                Stepperova theme-attachmentu). Doktrína <strong>„žádné doporučení
-                &gt; špatné doporučení"</strong>: nemá-li engine jistý rec,
-                <strong>modal se prostě neukáže</strong> (radši ticho než šunt —
-                soul). <em>Cold-start</em> (0 objednávek, nenastavená pravidla):
-                real FBT nemá z čeho → fallback ruční páry + by-collection/type/tag,
-                jinak nic; a <strong>authoring UX = adopce</strong> — starter rules
-                <strong>auto-navržené z katalogu</strong> + bulk + „quick start" +
-                <strong>preview co pravidlo doporučí</strong> (když je psaní pravidel
-                dřina, merchant odejde). <em>Ranking když fíří víc pravidel:</em>
-                priorita (manuál &gt; FBT &gt; collection) + skóre (síla
-                co-occurrence) + cap 2–3 + <strong>diverzita</strong> (ne 3 skoro
-                stejné). <em>Mechanika okamžiku:</em> <strong>burst</strong> (3
-                rychlé addy) → <strong>jeden modal</strong> s net stavem (zrcadlí
-                Toasts grouping přes cart-core), <strong>recursion guard</strong>
-                (přidání doporučeného produktu znovu nespustí modal) a
-                <strong>frequency cap</strong> per session (únava), vedle
-                „odmítnuté neukázat znovu". <em>Konverze:</em> po 1-click add
-                <strong>modal zůstane otevřený</strong> s ✓ „přidáno" (umožní přidat
-                víc); varianta doporučeného produktu = <strong>default varianta</strong>
-                (mini-picker později). <em>Cross-app koordinace</em> (trojice běží
-                spolu): <strong>drawer kolize</strong> — když téma po addu auto-otevře
-                boční košík, <strong>modal potlačí auto-open draweru</strong> (ladí se
-                Stepperovým drawer-suppress togglem); <strong>toast-suppress</strong>
-                — když běží modal, potlačit redundantní „přidáno" toast (Toasts dál
-                řeší remove/undo); <strong>hranice s Won Discounts</strong> — Companion
-                <em>doporučuje produkty</em>, Won Discounts <em>vlastní prahy/progress bar</em>
-                (Companion je neduplikuje; upsell-to-unlock jen v Pro). <em>Measurement
-                = retence:</em> <strong>holdout</strong> (modal 90 % / skrytý 10 % →
-                srovnání AOV = inkrementální pravda) vedle „attributed-add value"
-                (horní odhad), obojí <strong>poctivě označené</strong>; +
-                <strong>smyčka zpět do pravidel</strong> — per-rule atribuce → prune
-                losers + navrhni vítězné páry jako nová pravidla (Pro). <em>Correctness
-                / perf / i18n (Toasts parita):</em> vyprodáno mezi loadem a klikem →
-                optimistic rollback + hláška; neseedovat z / nedoporučovat gift /
-                subscription / bundle řádky; <strong>i18n cs/sk/en + RTL</strong>;
-                <strong>perf budget</strong> (lazy-load obrázků, neblokovat LCP);
-                <strong>fetch-on-add se skeletonem</strong> (prefetch jako pozdější
-                optimalizace). <em>De-risk spike (build fáze, ne teď):</em> prototyp
-                <code>resolveRecommendations</code> scoring + <strong>generátor
-                starter-rules z reálného katalogu</strong> (Therabeast → by-collection/
-                type/tag páry → ruční posouzení „dávají smysl?") — recs-quality je
-                ten pravý risk, ne DOM.
+                <strong>Ukončení a změny tarifu · potvrzeno 2026-10-01:</strong> bez platného
+                oprávnění zastavit nové nabídky, zachovat konfiguraci i již přidané produkty
+                a běžný nákup. Při Pro → Basic zůstává základ; Pro funkce znepřístupnit,
+                závislá pravidla pozastavit celá a vysvětlit důvod. Nikdy odstranit podmínku
+                cílení a tím rozšířit nabídku na všechny. Krátký výpadek billing ověření
+                odlišit od známého ukončení: pouze dříve ověřenému zákazníkovi časově omezené
+                pokračování nejvýše 24 hodin od posledního ověření, nikdy za známou expiraci. Výchozí Free fallback a příznak
+                „pro = placený“ ve sdíleném resolveru nelze pro Companion převzít beze změny.
               </p>
               <p class="guide-idea">
-                <strong>Admin UX (sdílený Won admin systém — mechanika, ne štítky):</strong>
-                nav <em>Overview → Recommendations → Design → Placements → Targeting →
-                Insights → Plan</em> (Overview home, Plan last; <strong>jména vlastní,
-                tvar sdílený</strong>). Každá storefront-ovlivňující stránka = <strong>studio
-                shell</strong>: segmented picker → jeden panel → sticky live preview;
-                skryté panely dál submitují → <strong>jeden contextual save-bar</strong>
-                (nikdy inline Save); preview bindí <strong>native input/change</strong>, ne
-                onInput (s-* nefírují). <em>Per-screen:</em> Overview onboarding→dashboard
-                (StatCards impressions/CTR/attributed + <strong>cross-app awareness banner</strong>
-                „nejlépe s Won Stepper+Toasts" s install statusem); Recommendations studio
-                (rule-typy jako segmenty, doktrína „žádné doporučení &gt; špatné", cold-start
-                starter-rules z katalogu, post-add modal preview, bottom-sheet); Placements
-                (<strong>clickable position grid</strong>, ne dropdown; subtle/standard presety;
-                Toasts koordinace — potlačit toast+auto-open drawer); Targeting (never-runs Free
-                / runs Pro); Insights (Pro, barevné charty <strong>holdout + attributed poctivě</strong>,
-                honest empty state, loop-back prune/suggest); Plan (Free positivně / Pro amber,
-                last). <em>Sdílené patterny:</em> amber <code>ProFrame</code> (Pro gatuje scope,
-                ne kvalitu), human-label mapy (žádné enum/ms/px, žádné emoji), settings search
-                s deep-linky, Custom CSS escape hatch (stabilní <code>[data-won-*]</code>/<code>--won-*</code>
-                hooky), config history (snapshoty + restore). Vizuální spec:
-                <a href="https://claude.ai/code/artifact/0a447e59-6373-4162-8d32-fad3e2a84c92">Won Admin System artifact</a>.
+                <strong>Hranice ceny:</strong> Companion <strong>nevyžaduje Won Discounts</strong>,
+                nezakládá slevy ani nechrání marži. Merchant nastavuje produktové ceny,
+                slevy a označení zvýhodnění nativně nebo jinou aplikací. Companion nabízí
+                skutečný produkt/variantu a zobrazuje cenu odpovídající kontextu nákupu.
+                Štítek „sleva“ cenu nemění. Merchantem vybrané doplňky nezakládají nové
+                slevové pravidlo ani bundle; bez ověření neslibovat společnou zvýhodněnou cenu.
+                Automatické navádění na prahy Won Discounts není povinnou integrací.
+                <strong>Upřesnění 2026-10-01:</strong> úkolem Companiona je výběr a zobrazení
+                relevantních produktů a jejich přidání či výměna v košíku. Přebírá dostupná
+                produktová data a cenu; po změně obnoví skutečný košík z Shopify.
+                Nečte ani nenapodobuje pravidla cizích slevových aplikací a nepředpovídá
+                množstevní slevy. Jejich nastavení a uplatnění řeší merchant se svým
+                slevovým řešením. Neznalost budoucí slevy neblokuje relevantní doporučení.
+              </p>
+              <p class="guide-idea">
+                <strong>Schválené plochy:</strong> post-add dialog (mobilní bottom-sheet),
+                košík a drawer, PDP doporučení a merchantem určené doplňky A → B/C,
+                prázdný košík (Basic i Pro); <strong>Děkujeme a Stav objednávky pouze Pro</strong>;
+                one-click post-purchase pouze Pro jako beta, podle platformní dostupnosti.
+                Náhrady vyprodaného a znovunákup zůstávají v návrhu. U každé plochy
+                ověřit podporu Shopify; test tématu nedokládá test checkout extension.
+              </p>
+              <p class="guide-idea">
+                <strong>BETA a kompatibilita:</strong> vlastní testovací matice
+                <strong>Dawn + Horizon</strong>, nikoli slib podpory všech témat.
+                Formulaci „otestováno námi“ publikovat až po doložení testů Companiona na
+                konkrétních verzích. Dnes takové ověření deklarováno není. App blok na
+                stránce košíku je omezený fallback, není náhradou za nefunkční drawer.
+                Beta označení nenahrazuje bezpečnost změn košíku.
+              </p>
+              <p class="guide-idea">
+                <strong>Architektura:</strong> plánované <code>apps/won-companion/</code>
+                z <code>apps/_template</code>, čistý engine v <code>@won/core</code>,
+                theme app embed + app bloky. Prohlížeč vybírá z předpočítaných doporučení
+                v metapolích; server aktualizuje podklady na pozadí; personalizace přes
+                app proxy. Způsob získání dat pro aktuální košík, limity a čerstvost dat
+                zůstávají k ověření. Veřejně nevystavovat nákupní ceny ani historii zákazníka.
+                Odolnost proti výpadku serveru je cíl, ne prokázaná vlastnost.
+                <strong>Uloženo ≠ publikováno:</strong> stav v adminu rozlišuje uložení a
+                publikování konfigurace. Otevřené stránky ověřují platnost pravidel před
+                další nabídkou podle maximálního stáří; po jeho překročení a neúspěšné obnově
+                nové nabídky potlačit, původní košík zachovat. Schválený cíl stáří ověření je
+                nejvýše 60 sekund; mechanismus musí doložit prototyp, okamžité vypnutí není slíbené.
+              </p>
+              <p class="guide-idea">
+                <strong>Sdílený cart-core:</strong> <code>@won/core/cart</code> navrhne
+                a postaví <strong>Companion jako první krok</strong>, až po dokončení
+                Won Discounts. Stepper a embed Discounts jej mohou později převzít.
+                Zdrojem pravdy je skutečný Shopify košík; optimistic UI jej nesmí nahradit.
+                Navrhnout serializaci změn, deduplikaci, multi-tab synchronizaci a obnovu
+                po částečném selhání swapu. Timeout není důkaz, že server operaci neprovedl.
+                Koordinace <code>won:cart:update</code>, toastů a draweru nesmí vytvořit
+                dvojité změny ani zablokovat původní nákupní tok.
+              </p>
+              <p class="guide-idea">
+                <strong>Engine a interakce:</strong> ruční vztahy před datově odvozenými,
+                deduplikace a diverzita kandidátů; nenabízet řádky již v košíku, vyprodané
+                či merchantem vyloučené produkty. U většího balení pracovat s konkrétní
+                variantou a odpovídajícími atributy (například příchuť).
+                <strong>Merchant nastaví zdroj, cíl a počty balení</strong> po produktu i
+                hromadně; appka může ze známých velikostí navrhnout vztah k potvrzení.
+                Nakupující vidí konkrétní výměnu a cenu, žádný tichý univerzální přepočet.
+                Pokud není varianta
+                jednoznačná, umožnit volbu. Gift/subscription/bundle řádky nerozebírat
+                nekontrolovaným swapem. Burst addů sloučit, recursion guard a frequency cap,
+                po odmítnutí nabídku neopakovat. Přidání může ponechat dialog s potvrzením;
+                focus, Escape a ovládání na mobilu patří do akceptace.
+              </p>
+              <p class="guide-idea">
+                <strong>Doplňky a správa vztahů · potvrzeno 2026-10-01:</strong> merchant
+                vybere B a C k produktu A; aplikace je zobrazí na PDP A nebo po jeho přidání
+                do košíku. Analytika může navrhnout D podle společných nákupů, merchant
+                rozhodne o přidání. Ruční vztahy jsou Basic, datové návrhy Pro.
+                Nejde o zákaznický skladač ani tvorbu bundle produktu.
+                Import je jednorázové převzetí; potom vztahy spravuje Companion.
+                Opakovaný import nejprve ukáže změny a konflikty. Ruční opravy a zamítnutí
+                přežijí další přepočty; aktualizace cen a dostupnosti pokračují z obchodu.
+              </p>
+              <p class="guide-idea">
+                <strong>Koordinace ploch · potvrzeno 2026-10-01:</strong> jedna akce nakupujícího
+                automaticky otevře nejvýš jednu plochu. Výslovná merchantova nabídka má
+                přednost před automatickou; odmítnutá nabídka se nevrací vzápětí jinde.
+                Nabídky nesmějí souběžně měnit stejný řádek. Koordinaci modal/drawer/toast
+                zajišťuje aplikace, merchant nemusí ladit konflikty vypínačů.
+                <strong>Četnost nastavuje merchant:</strong> počet karet, limit automatických
+                otevření a interval opakování v podporovaném rozsahu plochy. Tři karty
+                a jeden automatický dialog za návštěvu jsou výchozí hodnoty, ne pevný limit.
+                Nastavení neobchází zákaz řetězení dialogů a okamžitého vracení odmítnutí.
+              </p>
+              <p class="guide-idea">
+                <strong>Měření:</strong> kontrola minulých objednávek ukazuje pouze pozorované
+                společné nákupy („ze 42 objednávek s A obsahovalo 11 také B“, ilustrace).
+                Nejde o přehrání košíků nebo odhad nákupů bez doporučení. Oddělit
+                <strong>připsané nákupy</strong> a <strong>experimentální odhad přínosu</strong>.
+                Hlavní výsledek zahrnuje nenakupující: tržba na způsobilého návštěvníka,
+                vedle konverze a AOV. Holdout celé aplikace vypíná všechny její doporučovací
+                plochy. Stabilní rozdělení, souhlas, přiřazení objednávek, vratky a nejistotu
+                doložit implementačním kontraktem. Schválený default opt-in Pro experimentu:
+                50/50 na 28 dní + 7 dní pro dokončení pozorovacích oken; před startem ověřit potřebný vzorek.
+                „Zatím nemáme dost dat“ je plnohodnotný výsledek.
+              </p>
+              <p class="guide-idea">
+                <strong>Admin UX:</strong> onboarding podle výsledku („Nabídnout doplněk“,
+                „Nabídnout větší balení“, „Nahradit vyprodané“), konkrétní náhled z katalogu,
+                hromadné potvrzení vztahů. Každá funkce je opt-in a má vypínač v detailu.
+                Studio shell a contextual save-bar dle Won admin systému; náhled propojit
+                s reálnou konfigurací, historie + restore, cs/sk/en a RTL. Měřit celkový
+                čas nastavení, nikoli jen minutu na každý produkt. Explicitní znovunákup obchází
+                pouze potlačení nedávného nákupu; ostatní ochrany platí. Historie výchozích
+                60 dostupných dní, možnost zkrátit na 7/30 dní.
+                <strong>Editor schválen:</strong> řízené varianty karet a nastavení barev,
+                rozestupů, obrázků a textů; pokročilejší kompozice a vlastní CSS Pro.
+                Automatické převzetí vzhledu i běžné řazení doporučených produktů patří
+                do Basic. Žádný obecný page builder. Dřívější Free/Pro hranice zůstávají.
+              </p>
+              <p class="guide-idea">
+                <strong>Zjednodušení automatizací schváleno · 2026-10-01:</strong>
+                merchantem potvrzené vztahy a obchodní
+                priorita až mezi relevantními kandidáty; skladové údaje jako podklad pro
+                rozhodnutí; hrubá marže pouze volitelný signál. Automatická trvanlivost
+                a doplňování do váhové hranice dopravy jsou <strong>odložené za v1</strong>.
+                Web Pixel má být pomocný signál, společné přidání není důkaz doplňkovosti.
+                Implementace ani spolehlivost dat tím nejsou ověřené.
+              </p>
+              <p class="guide-idea">
+                <strong>Hodnota Pro a schválené A/B při downgrade · 2026-10-01:</strong> Pro má přinášet
+                průběžné datové návrhy ke schválení, cílení, personalizaci a vyhodnocování.
+                Jednorázové nastavení a CSS samy neprokazují důvod k trvalému předplatnému.
+                Potvrzené pevné A → B bez Pro podmínek zůstává na Basic,
+                zastavit nové Pro návrhy/analýzy. Původ vztahu sám není Pro závislost.
+                Pravidla se skutečným Pro cílením stále pozastavit celá, bez rozšíření publika.
+                Platí i pro vztahy potvrzené během Pro trialu. A/B i tarifní přiřazení jsou schválené;
+                skutečnou ekonomiku Pro ověří závěrečný pilot.
+              </p>
+              <p class="guide-idea">
+                <strong>Post-purchase:</strong> beta, platformní přístup a platební omezení
+                ověřit před vydáním. Companion nevytváří slevu; částku a změnu objednávky
+                musí potvrdit Shopify. Převzetí existujících slev do této plochy je
+                <strong>neověřené</strong>. Děkujeme/Stav objednávky a post-purchase jsou
+                odlišné nákupní toky; nepředstírat stejné doplacení či změnu objednávky.
+              </p>
+              <p class="guide-idea">
+                <strong>Uzavřené defaulty · 2026-10-01:</strong> jeden společný draft,
+                samostatné Uložit návrh a Publikovat, přehled změn včetně autorů a jasné
+                stavy v UX. Posledních 20 publikací nejvýše 90 dní, aktuální vždy;
+                obnova jako nový validovaný draft. Datové návrhy přibližně denně nad
+                dostupnými 60 dny, nejméně 5 společných objednávek jako startovní
+                heuristika, vždy ukázat vzorek a respektovat zamítnutí. Diagnostika 30 dní,
+                admin audit 90 dní; downgrade zachová konfiguraci, uninstall respektuje
+                mazání a případná obnova je jen draft. Jde o požadavky, ne hotové funkce.
+              </p>
+              <p class="guide-idea">
+                <strong>Plánovaná kontrola instalace:</strong> při instalaci a prvním otevření
+                nastavení ověřit dostupná oprávnění, konfiguraci a připojení; neznámé stavy
+                pravdivě označit. Průvodce H.6 oddělí kontrolu nastavení, náhled a merchantem
+                spuštěný test objednávkou. Zobrazení bloku samo nedokládá úspěšnou nákupní akci.
+                Žádná automatická placená objednávka ani přepnutí platebního režimu klienta.
+                Výsledek má datum a konkrétní ověřený průchod; dostupnost detekce doložit prototypem.
               </p>
               <ol>
                 <li>
-                  <strong>Architektura:</strong> App
-                  <code>apps/won-companion/</code> (React Router + Polaris, klon
-                  <code>_template</code>) + rec engine
-                  <code>packages/core/src/companion/</code> (framework-free čisté
-                  funkce) + storefront plocha = Theme App Extension
-                  <strong>app embed</strong> <code>won-companion-storefront</code>,
-                  který vykreslí dialog <code>[data-won-companion-dialog]</code>
-                  do <strong>sdíleného <code>&lt;won-host&gt;</code></strong>
-                  (Shadow DOM → téma neprosákne CSS). <strong>Žádná
-                  Discount Function</strong>, žádné metafieldy na ceny — jen
-                  cart operace přes cart-core.
+                  <strong>Před závislou implementací:</strong> doložit technické prototypy,
+                  datovou cestu a měřicí kontrakt. Trial s Pro a zákaz rozšíření cílení při
+                  downgrade i zachování pevných potvrzených vztahů jsou rozhodnuté.
+                  Editor, odklad automatizací a nastavitelnost četnosti už jsou schválené.
+                  Nezávislost na Discounts platí již nyní.
+                  Veřejný průzkum není důkaz ochoty vlastních klientů platit.
+                  Produktový závěr auditu: rozsah pro v1 je dostatečný; další funkce
+                  nyní nepřidávat. Implementační kontrakty a provozní ověření zbývají.
                 </li>
                 <li>
-                  <strong>Core moduly (unit testy červené první,
-                  <code>tsx --test</code>):</strong>
-                  <code>resolveRecommendations({cart, rules, justAddedId, limit})</code>
-                  — sjednotí seedy z <em>celého</em> košíku, aplikuje pravidla
-                  (ruční páry / by-collection / kurátorované FBT), provede
-                  <strong>dedupe</strong> a <strong>tvrdě vyloučí položky už
-                  v košíku</strong> i právě přidanou, ořízne na limit, zachová
-                  prioritu pravidel; <code>resolvePackSwap(line, variants)</code>
-                  → najde větší/výhodnější variantu (PackUp) a vyrobí swap op
-                  (remove starý řádek + add nový);
-                  <code>guardAvailability(recs, inventory)</code> → odfiltruje
-                  vyprodané. Přidání i swap se provádí přes
-                  <code>optimistic.mutate</code> z <code>@won/core/cart</code>
-                  (Companion ho jen konzumuje).
+                  <strong>Navržené pořadí po auditu:</strong> první skutečný doplněk včetně
+                  cart-core, trial/billing a měřicího kontraktu → bezpečná publikace →
+                  katalogová správa a koordinace ploch → větší balení a další kontexty →
+                  datové návrhy, personalizace a experimenty → úplný vzhled a plochy po
+                  nákupu → samoobslužný provoz a technická/UX brána → <strong>úplně nakonec pilot
+                  5–8 klientských obchodů</strong> → společné uvedení. Pilot se nyní nespouští. Přístup a cenovou cestu
+                  post-purchase ověřovat už na začátku. Detailní závislosti v blueprintu;
+                  interní etapy nejsou oddělené veřejné releasy. Vše zůstává plánované.
                 </li>
                 <li>
-                  <strong>Data (Prisma + app-proxy):</strong>
-                  <code>CompanionConfig { shop, enabled, rules(JSON),
-                  placements[], plan }</code> — <code>rules</code> drží ruční
-                  páry, collection mapy, kurátorované FBT a pack-swap tabulky;
-                  <code>placements</code> = kde dialog žije (post-add / cart page
-                  / drawer / PDP inline). App-proxy
-                  <code>/apps/won-companion/config</code> vrací resolved JSON
-                  (marker <code>won-companion-config-ok</code>, vzor
-                  won-quantity config route); ceny/obrázky/inventář doplní Admin
-                  API, takže storefront nepotřebuje Section Rendering hacky.
+                  <strong>Akceptace:</strong> relevantní doplňky z celého košíku; správná
+                  varianta/cena; žádná ztracená položka při selhání swapu; žádné duplicitní
+                  přidání po timeoutu; dostupnost znovu ověřit při nákupu; bezpečný no-op,
+                  když integrace není jistá; žádné cizí reklamy. Merchantem nastavená sleva
+                  není slib Companionu. Všechny vypínače a kombinace základních toků ověřit.
                 </li>
                 <li>
-                  <strong>Admin UX (Polaris, více stránek):</strong>
-                  <em>Přehled</em> (vypínač, kontrola app embedu, živý náhled
-                  dialogu tímtéž <code>&lt;won-host&gt;</code> jako storefront);
-                  <em>Pravidla</em> (product picker → ruční páry, by-collection
-                  mapování, kurátorované FBT sety, <strong>bigger-pack swap</strong>
-                  tabulka varianta→větší varianta, limit doporučení, texty
-                  dialogu + revenue headline); <em>Placementy</em> (post-add /
-                  cart / drawer / PDP inline toggly + design studio přes sdílené
-                  tokeny); <em>Cílení &amp; guardraily</em> (product / collection
-                  / cart-value / segment; nikdy nedoporučit vyprodané);
-                  <em>Analytika</em ($Pro: impressions / CTR / attributed add +
-                  A/B).
-                </li>
-                <li>
-                  <strong>MVP žebřík (každý shippable, TDD):</strong>
-                  <code>MVP0</code> skeleton (klon, <code>CompanionConfig</code>,
-                  config proxy, app embed no-op s
-                  <code>data-won-companion-status="ready"</code>) ·
-                  <code>MVP1</code> post-add modal + ruční rec páry + 1-click add
-                  přes <code>optimistic.mutate</code> (<strong>bottom-sheet na
-                  mobilu</strong>, a11y focus-trap/Escape, <strong>respektuje „ne"</strong>
-                  — odmítnutou nabídku neukáže znovu; <strong>burst</strong> rychlých addů →
-                  jeden modal, <strong>recursion guard</strong> + frequency cap) ·
-                  <code>MVP2</code> whole-cart rec logika (seedy z celého košíku,
-                  dedupe co už v košíku je, <strong>ranking</strong> priorita+skóre+
-                  cap+diverzita, <strong>cold-start starter-rules</strong> z katalogu,
-                  doktrína „žádné doporučení &gt; špatné") + <strong>PackUp
-                  bigger-pack swap</strong> (varianta → větší varianta, nahrazení
-                  řádku) ·
-                  <code>MVP3</code> placementy (cart page, drawer, PDP inline) +
-                  design studio na sdílených tokenech ·
-                  <code>MVP4</code> targeting/pravidla
-                  (product / collection / cart-value / segment) + guardraily
-                  (nedoporučovat vyprodané + <strong>„nikdy nenabízet"
-                  exclude-list</strong>: dárkové karty / subscription / výprodej)
-                  + <strong>presety agresivity</strong> (subtle default / standard) ·
-                  <code>MVP5</code> analytika s <strong>poctivou atribucí</strong>
-                  (impressions / CTR / attributed add value, <strong>A/B holdout
-                  = retention mechanism</strong>, ne vanity) + reálné Shopify
-                  Billing (flat) · <code>MVP6</code> (budoucí Pro) <strong>real
-                  co-occurrence FBT z objednávek</strong> (GDPR: žádné PII ve
-                  storefront payloadu, vyloučit stornované/vrácené) +
-                  <strong>slevové upsely</strong> jako pravidla ve
-                  <strong>Won Discounts</strong> (Companion vlastní slevovou
-                  funkci nemá, rozhodnuto 2026-09-28) +
-                  <strong>cross-app upsell-to-unlock</strong> (park až bude
-                  Won Discounts živý).
-                </li>
-                <li>
-                  <strong>Akceptační kritéria (výběr):</strong> (1) přidání
-                  produktu → post-add modal s doporučeními z <em>celého</em>
-                  košíku; (2) 1-click add → košík se aktualizuje
-                  <strong>optimisticky</strong> a při chybě/timeoutu se
-                  <strong>rollbackne</strong>; (3) doporučení
-                  <strong>NIKDY neukáže položku, která už je v košíku</strong>
-                  (ani právě přidanou); (4) <strong>bigger-pack swap nahradí
-                  řádek</strong> (starý pryč, větší varianta v košíku, quantity
-                  sedí); (5) guardrail — vyprodaná položka se nikdy nedoporučí;
-                  (6) <strong>žádné volání externí ad sítě</strong> (Rokt /
-                  Monetize apod.) v celém funnelu — nikdy.
-                </li>
-                <li>
-                  <strong>Testy / E2E (Dawn i Horizon,
-                  <code>@won/testing</code>):</strong> sdílený harness přes
-                  <code>@won/testing/playwright</code>, sdílený katalog
-                  <code>@won/testing/e2e-products</code> (pravidlo na
-                  <code>simpleA</code> → doporučí <code>simpleB</code>,
-                  <code>twoVariants</code> ověří pack-swap na větší variantu);
-                  testy cílí na vlastní markery
-                  (<code>data-won-companion-status="ready"</code>,
-                  <code>[data-won-companion-dialog]</code>), ne na DOM tématu:
-                  add <code>simpleA</code> → dialog ukáže <code>simpleB</code> →
-                  1-click add → <code>/cart.js</code> má obě položky; položka
-                  v košíku se v doporučeních neobjeví; swap → řádek nahrazen;
-                  síťový asserthook potvrdí <strong>0 requestů</strong> na cizí
-                  ad hosty.
-                </li>
-                <li>
-                  <strong>Gate:</strong> <code>npm run test:unit -w
-                  won-companion &amp;&amp; npm run typecheck -w won-companion
-                  &amp;&amp; npm run build -w won-companion &amp;&amp; npm run
-                  validate:shopify</code>.
+                  <strong>Plánovaná testovací brána:</strong> core unit testy, lint/typecheck/build,
+                  validace extensions a živé E2E Dawn/Horizon na
+                  <code>b2b-b2c-store-development.myshopify.com</code>. Responzivita 390/768/1280,
+                  <code>assertResponsiveSane</code> a u carouselů <code>assertCarousel</code>,
+                  a11y, výkon, souběh Toasts/Discounts, trial/Basic/Pro, měny a chyby sítě.
+                  E2E kontroluje skutečný <code>/cart.js</code> i vlastní markery
+                  <code>data-won-companion-status</code>/<code>data-won-companion-dialog</code>.
+                  Výsledky Companiona zatím neexistují; testy jiných aplikací je nenahrazují.
                 </li>
               </ol>
             </details>

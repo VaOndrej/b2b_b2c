@@ -7,6 +7,10 @@ starts and `/healthz` answers `ok`; the image holds no `.env`, no SQLite file an
 (`Dockerfile.dockerignore`). `npm run test:postgres -w won-discounts` runs the app's own code on Postgres (5/5).
 Hosting files: `Dockerfile`, `fly.toml`, `docker-compose.yml`.
 
+> **Railway** is the intended host (decision 2026-10-04): `railway.json` next to this file, steps in
+> `docs/railway-hosting.md`. The Fly steps below stay as an unused alternative over the same `Dockerfile`;
+> "One instance", "Database", "Release gate" and "Later: orders" apply to both hosts.
+
 ## What runs where
 
 | Piece | Where | How it gets there |
