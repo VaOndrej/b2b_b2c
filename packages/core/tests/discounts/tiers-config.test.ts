@@ -218,7 +218,8 @@ test("K7: the appearance preset is one of APPEARANCE_PRESETS; an unknown one bec
 });
 
 test("the highlight colour is one of ACCENT_PRESETS on every plan; 'theme' is stored as absent; it ships as one CSS variable before the custom look", async () => {
-  const { accentCss, ACCENT_COLORS } = await import("../../src/discounts/custom-look.ts");
+  const { accentCss: accentUnder, ACCENT_COLORS, LOOK_ROOT } = await import("../../src/discounts/custom-look.ts");
+  const accentCss = (accent: string | undefined) => accentUnder(accent, LOOK_ROOT.tiers);
   const { gateConfigForPlan } = await import("../../src/discounts/plan-gate.ts");
   const { buildStorefrontConfig } = await import("../../src/discounts/storefront-config.ts");
   const green = sanitizeConfig({ storefront: { appearancePreset: "chips", accent: "green" } });
@@ -237,8 +238,9 @@ test("the highlight colour is one of ACCENT_PRESETS on every plan; 'theme' is st
   const both = sanitizeConfig({ storefront: { accent: "blue", custom: { vars: { accent: "#ff0000" }, css: "" } } }).config;
   const opts = { configVersion: "v", shopCurrency: "CZK" };
   const free = buildStorefrontConfig(gateConfigForPlan(both, "free").config, opts);
-  assert.equal(free.appearance.css, accentCss("blue"));
+  // (a config from before the split: the colour is copied to the ladder once, so the storefront looks as it did)
+  assert.equal(free.appearance.css, accentCss("blue") + accentUnder("blue", LOOK_ROOT.milestones));
   const pro = buildStorefrontConfig(gateConfigForPlan(both, "pro").config, opts);
-  assert.ok(pro.appearance.css!.startsWith(accentCss("blue")) && pro.appearance.css!.endsWith("{--won-tiers-accent:#ff0000}"));
+  assert.ok(pro.appearance.css!.startsWith(`${accentCss("blue")}.won-tiers{--won-tiers-accent:#ff0000}`) && pro.appearance.css!.endsWith(".won-ms{--won-tiers-accent:#ff0000}"));
   assert.equal(buildStorefrontConfig(gateConfigForPlan(sanitizeConfig({}).config, "free").config, opts).appearance.css, undefined, "no colour: nothing is added");
 });

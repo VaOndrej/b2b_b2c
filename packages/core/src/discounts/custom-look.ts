@@ -1,23 +1,28 @@
-// The Pro custom look of the storefront blocks (MVP 7, contract M7, decision P5; SEC-3): a few colors and the
+// The Pro custom look of a storefront element (MVP 7, contract M7, decision P5; SEC-3): a few colors and the
 // corner radius as CSS variables + the merchant's own CSS. Stored as the merchant typed it (so the admin shows it
-// back unchanged); what reaches a page is ALWAYS `customLookCss(...)`: the variables as one rule on the block
-// roots and the CSS scoped under them (scope-css.ts) — or nothing, when the stored CSS is not acceptable.
+// back unchanged); what reaches a page is ALWAYS `customLookCss(look, root)`: the variables as one rule on the
+// element's root and the CSS scoped under it (scope-css.ts) — or nothing, when the stored CSS is not acceptable.
+// Every element has its own look and its own root (LOOK_ROOT; looks.ts): one element's CSS never styles another.
 //
 //   sanitizeCustomLook(raw, issues)  the stored form: only known variables with valid values; the CSS as text
 //                                    (a string, at most CUSTOM_CSS_MAX_LENGTH; anything else is dropped). The CSS
 //                                    is NOT rewritten here — customLookIssue says whether it is acceptable;
-//   customLookIssue(look)            why the CSS cannot be used (the admin refuses to save it), or null;
-//   customLookCss(look)              the stylesheet text for the storefront config; "" = nothing to add.
+//   customLookIssue(look, root)      why the CSS cannot be used (the admin refuses to save it), or null;
+//   customLookCss(look, root)        the stylesheet text for the storefront config; "" = nothing to add.
 // Free never ships a custom look (plan-gate.ts removes it).
 
 import { pushIssue } from "./config/sanitize-helpers.ts";
 import type { ConfigIssue } from "./config/types.ts";
 import { CUSTOM_CSS_MAX_LENGTH, scopeCss, type ScopeCssReason } from "./scope-css.ts";
 
-/** The block roots a custom look applies to (theme app extension: tiers table, cart panel and its slot, sale badge). */
-export const WON_BLOCK_ROOT = ":is(.won-tiers,.won-cart,.won-cart-slot,.won-outlet,.won-progress,.won-campaign,.won-topbar)";
+/** The storefront elements with a look of their own. */
+export const LOOK_ELEMENTS = ["tiers", "milestones", "outlet", "campaign"] as const;
+export type LookElement = (typeof LOOK_ELEMENTS)[number];
 
-/** Variable name in the config → the CSS custom property the blocks read (won-discounts-tiers.css). */
+/** The root each element's look is confined to (the theme app extension's markup). */
+export const LOOK_ROOT: Readonly<Record<LookElement, string>> = { tiers: ".won-tiers", milestones: ".won-ms", outlet: ".won-outlet", campaign: ".won-campaign" };
+
+/** Variable name in the config → the CSS custom property the elements read (the extension's stylesheets). */
 export const CUSTOM_LOOK_VARS = {
   accent: "--won-tiers-accent",
   line: "--won-tiers-line",
@@ -46,10 +51,10 @@ export const ACCENT_COLORS: Readonly<Record<string, string>> = {
   violet: "#6d28d9",
 };
 
-/** The stylesheet text of a ready-made highlight colour: one variable on the block roots; "" = the theme's colour. */
-export function accentCss(accent: string | undefined | null): string {
+/** The stylesheet text of a ready-made highlight colour: one variable on the element's root; "" = the theme's colour. */
+export function accentCss(accent: string | undefined | null, root: string): string {
   const color = typeof accent === "string" ? ACCENT_COLORS[accent] : undefined;
-  return color ? `${WON_BLOCK_ROOT}{${CUSTOM_LOOK_VARS.accent}:${color}}` : "";
+  return color ? `${root}{${CUSTOM_LOOK_VARS.accent}:${color}}` : "";
 }
 
 export const CUSTOM_LOOK_RADIUS_MAX = 32;
@@ -92,18 +97,18 @@ export function sanitizeCustomLook(raw: unknown, issues: ConfigIssue[], path = "
 }
 
 /** Why the look's CSS cannot reach a page (scope-css.ts), or null. */
-export function customLookIssue(look: Pick<CustomLook, "css"> | undefined | null): { reason: ScopeCssReason; detail?: string } | null {
+export function customLookIssue(look: Pick<CustomLook, "css"> | undefined | null, root: string): { reason: ScopeCssReason; detail?: string } | null {
   if (!look || look.css.trim() === "") return null;
-  const scoped = scopeCss(look.css, WON_BLOCK_ROOT);
+  const scoped = scopeCss(look.css, root);
   return scoped.ok ? null : { reason: scoped.reason, ...(scoped.detail ? { detail: scoped.detail } : {}) };
 }
 
 /**
- * The stylesheet a page gets: the variables on the block roots, then the scoped CSS. A CSS that is not acceptable
+ * The stylesheet a page gets: the variables on the element's root, then the scoped CSS. A CSS that is not acceptable
  * contributes nothing (the variables still apply). Never contains `<`, `url(`, `@import` (scope-css.ts refuses them;
  * the variables are validated colors and a number).
  */
-export function customLookCss(look: CustomLook | undefined | null): string {
+export function customLookCss(look: CustomLook | undefined | null, root: string): string {
   if (!look) return "";
   const declarations: string[] = [];
   for (const key of ["accent", "line", "tint"] as const) {
@@ -113,7 +118,7 @@ export function customLookCss(look: CustomLook | undefined | null): string {
   if (typeof look.vars.radius === "number" && Number.isFinite(look.vars.radius)) {
     declarations.push(`${CUSTOM_LOOK_VARS.radius}:${Math.min(CUSTOM_LOOK_RADIUS_MAX, Math.max(0, Math.round(look.vars.radius)))}px`);
   }
-  const vars = declarations.length > 0 ? `${WON_BLOCK_ROOT}{${declarations.join(";")}}` : "";
-  const scoped = look.css.trim() === "" ? null : scopeCss(look.css, WON_BLOCK_ROOT);
+  const vars = declarations.length > 0 ? `${root}{${declarations.join(";")}}` : "";
+  const scoped = look.css.trim() === "" ? null : scopeCss(look.css, root);
   return vars + (scoped?.ok ? scoped.css : "");
 }

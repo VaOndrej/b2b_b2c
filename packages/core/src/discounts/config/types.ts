@@ -2,6 +2,7 @@
 // how an arbitrary stored value becomes one of these.
 
 import type { CustomLook } from "../custom-look.ts";
+import type { ElementLooks } from "../looks.ts";
 import type { CurrencyCode, MoneyByCurrency } from "../money.ts";
 import type {
   AccentPreset,
@@ -246,13 +247,15 @@ export interface Campaign {
 export interface StorefrontSettings {
   /** K7: one of APPEARANCE_PRESETS (the sanitizer turns anything else into "default"). */
   appearancePreset: AppearancePreset;
-  /** The blocks' highlight colour, on every plan (ACCENT_PRESETS). Absent = "theme": the theme's text colour. */
+  /** The TABLE's highlight colour, on every plan (ACCENT_PRESETS). Absent = "theme": the theme's text colour. */
   accent?: AccentPreset;
   cardPricesEnabled: boolean; // BETA: quantity prices on cards/search
   /** The languages the merchant translates the storefront texts into, the shop's default first (storefront-texts.ts). Absent = none listed. */
   languages?: string[];
-  /** MVP 7 (Pro): the custom look — validated variables + the merchant's CSS as typed (custom-look.ts). Absent = none. */
+  /** MVP 7 (Pro): the TABLE's custom look — validated variables + the merchant's CSS as typed (custom-look.ts). Absent = none. */
   custom?: CustomLook;
+  /** The looks of the Milníky ladder, the sale badge and the campaign banner (looks.ts); {} = the ready-made ones. */
+  looks: ElementLooks;
 }
 
 /** Storefront texts the merchant changed: locale (lower-case, "cs", "pt-br") → text key → text (storefront-texts.ts). */

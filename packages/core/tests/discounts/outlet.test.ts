@@ -154,4 +154,13 @@ test("O9: storefront value — display + what is left per variant (numeric id); 
     ]),
     { d: "strike_badge_left", v: { "48468679000305": 3, "7": 0 } },
   );
+  // A sale with an end date carries it (epoch seconds) for the looks with a countdown; one without does not.
+  assert.deepEqual(
+    outletStorefrontValue("strike_badge", [
+      { variantId: V(1), left: 2, endsAt: new Date("2026-11-30T22:59:59.500Z") },
+      { variantId: V(2), left: 2, endsAt: null },
+      { variantId: V(3), left: 2, endsAt: new Date("2026-12-01T00:00:00Z"), showBadge: false },
+    ]),
+    { d: "strike_badge", v: { "1": 2, "2": 2 }, e: { "1": 1796079599 } },
+  );
 });

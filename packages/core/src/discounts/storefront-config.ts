@@ -38,7 +38,7 @@ import { isMilestoneRule } from "./milestones.ts";
 import { variantNumber } from "./rewards.ts";
 import { campaignTierSets } from "./campaign-tiers.ts";
 import { shopLocalToUtc } from "./campaigns.ts";
-import { accentCss, customLookCss } from "./custom-look.ts";
+import { looksCss, outletCountdown } from "./looks.ts";
 import { globalTierSet, reachableTierSets } from "./tiers.ts";
 
 /** App-data metafield (AppInstallation) the storefront reads. */
@@ -104,10 +104,12 @@ export interface StorefrontConfigV1 {
   tc?: string;
   margin: StorefrontMargin;
   /**
-   * `css` (MVP 7, Pro): the custom look's stylesheet — its variables on the block roots and the merchant's CSS
-   * scoped under them (custom-look.ts customLookCss); the embed prints it into a <style>. Absent = none.
+   * `preset`: the table's ready-made look. `css`: every element's look as one stylesheet (looks.ts looksCss — the
+   * ready-made looks of the ladder, the sale badge and the campaign banner, the highlight colours, and on Pro the
+   * custom looks, each scoped under its element); the embed prints it into a <style>. Absent = none.
+   * `oc`: 1 when the sale badge shows the time left (the block then loads the countdown script).
    */
-  appearance: { preset: AppearancePreset; css?: string };
+  appearance: { preset: AppearancePreset; css?: string; oc?: 1 };
   /** MVP 4 (contract R7): the cart rewards; absent when nothing is offered (the embed shows no panel). */
   rewards?: StorefrontRewards;
   /**
@@ -283,14 +285,13 @@ export function buildStorefrontConfig(given: ReadonlyDeep<WonDiscountsConfig>, o
   const run = campaign ? campaignTierSets(gated.modules.tiers, campaign) : null;
   const shown = campaign && run && run.applied.length > 0 ? { tiers: storefrontTiers(run.sets), bt: base, tc: campaign.id } : { tiers: base };
   const preset = gated.storefront.appearancePreset;
-  // The ready-made colour first: the Pro custom look's own accent (a later rule of the same weight) goes over it.
-  const customCss = accentCss(gated.storefront.accent) + customLookCss(gated.storefront.custom);
+  const customCss = looksCss(gated.storefront);
   return {
     v: STOREFRONT_CONFIG_VERSION,
     cv: opts.configVersion,
     ...shown,
     margin: storefrontMargin(gated.modules.margin, opts.shopCurrency),
-    appearance: { preset: (APPEARANCE_PRESETS as readonly string[]).includes(preset) ? preset : "default", ...(customCss ? { css: customCss } : {}) },
+    appearance: { preset: (APPEARANCE_PRESETS as readonly string[]).includes(preset) ? preset : "default", ...(customCss ? { css: customCss } : {}), ...(outletCountdown(gated.storefront.looks) ? { oc: 1 as const } : {}) },
     ...rewardsPart(gated.modules.rewards, opts.variantHandles ?? {}, gated.modules.codes.rules),
     ...(gated.engine.combination.outletWithAnything ? { ow: 1 as const } : {}),
     ...(gated.storefront.cardPricesEnabled ? { cards: 1 as const } : {}),

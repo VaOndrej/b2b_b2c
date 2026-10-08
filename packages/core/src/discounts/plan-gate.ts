@@ -276,6 +276,7 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
   // MVP 7: the custom look of the storefront blocks is Pro (never checkout data: not reported in `stripped`, the
   // Vzhled screen shows it locked). The stored config keeps it.
   delete out.storefront.custom;
+  for (const look of Object.values(out.storefront.looks)) delete look.custom;
 
   // Storefront texts: the default language and one more (storefront-texts.ts). Like the look, not checkout data:
   // not reported in `stripped`, the Překlady page says which languages the storefront does not get.

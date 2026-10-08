@@ -2,6 +2,7 @@
 
 import { normalizeLocale } from "../../toasts/locales.ts";
 import { sanitizeCustomLook } from "../custom-look.ts";
+import { sanitizeLooks } from "../looks.ts";
 import { DEFAULT_CONFIG } from "./defaults.ts";
 import { ACCENT_PRESETS, type AccentPreset, APPEARANCE_PRESETS, type AppearancePreset, ONBOARDING_GOALS, type OnboardingGoal } from "./enums.ts";
 import { CONFIG_LIMITS } from "./limits.ts";
@@ -43,6 +44,7 @@ export function sanitizeStorefront(v: unknown, issues: ConfigIssue[]): Storefron
     ...(accent ? { accent } : {}),
     ...(languages.length > 0 ? { languages } : {}),
     ...(custom ? { custom } : {}),
+    looks: sanitizeLooks(rec.looks, { accent, custom }, issues),
   };
 }
 

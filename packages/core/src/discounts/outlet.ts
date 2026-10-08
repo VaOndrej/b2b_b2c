@@ -168,16 +168,23 @@ export interface OutletStorefrontValue {
   d: OutletDisplay;
   /** Variant numeric id → pieces left (never below 0). */
   v: Record<string, number>;
+  /** Variant numeric id → when its sale ends, epoch seconds: only sales with an end date (the looks with a countdown). */
+  e?: Record<string, number>;
 }
 
 /**
  * A sale whose badge the merchant hid (`showBadge: false`) is left out: the block lists only the variants in `v`,
  * so that variant gets no badge and no "zbývá X ks" while its sale runs as any other. No shown variant = null.
  */
-export function outletStorefrontValue(display: OutletDisplay, runs: readonly { variantId: string; left: number; showBadge?: boolean }[]): OutletStorefrontValue | null {
+export function outletStorefrontValue(display: OutletDisplay, runs: readonly { variantId: string; left: number; showBadge?: boolean; endsAt?: Date | null }[]): OutletStorefrontValue | null {
   const shown = runs.filter((run) => run.showBadge !== false);
   if (shown.length === 0) return null;
   const v: Record<string, number> = {};
-  for (const run of shown) v[String(run.variantId).split("/").pop()!] = Math.max(0, Math.floor(run.left) || 0);
-  return { d: display, v };
+  const e: Record<string, number> = {};
+  for (const run of shown) {
+    const id = String(run.variantId).split("/").pop()!;
+    v[id] = Math.max(0, Math.floor(run.left) || 0);
+    if (run.endsAt && Number.isFinite(run.endsAt.getTime())) e[id] = Math.floor(run.endsAt.getTime() / 1000);
+  }
+  return Object.keys(e).length > 0 ? { d: display, v, e } : { d: display, v };
 }

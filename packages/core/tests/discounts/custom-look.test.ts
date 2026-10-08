@@ -1,11 +1,16 @@
-// MVP 7 contract M7: the Pro custom look — validated variables + CSS that only ever reaches a page scoped under the
-// Won block roots (SEC-3).
+// MVP 7 contract M7: the Pro custom look — validated variables + CSS that only ever reaches a page scoped under its
+// element's root (SEC-3; since the split of 8 Oct 2026 every element has its own look and root, looks.test.ts).
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { ConfigIssue } from "../../src/discounts/config.ts";
-import { customLookCss, customLookIssue, sanitizeCustomLook, WON_BLOCK_ROOT } from "../../src/discounts/custom-look.ts";
+import { customLookCss as cssUnder, customLookIssue as issueUnder, LOOK_ROOT, sanitizeCustomLook } from "../../src/discounts/custom-look.ts";
+
+// The table's root: what the table's custom look is confined to.
+const WON_BLOCK_ROOT = LOOK_ROOT.tiers;
+const customLookCss = (look: Parameters<typeof cssUnder>[0]) => cssUnder(look, WON_BLOCK_ROOT);
+const customLookIssue = (look: Parameters<typeof issueUnder>[0]) => issueUnder(look, WON_BLOCK_ROOT);
 
 const sanitize = (raw: unknown) => {
   const issues: ConfigIssue[] = [];
@@ -25,7 +30,7 @@ test("stored form: valid colors (lower-cased) and a radius clamped to 0–32 px;
   assert.deepEqual(sanitize({ css: "x".repeat(4001) }), { look: undefined, codes: ["custom_css_too_long"] });
 });
 
-test("the page's stylesheet: the variables as one rule on the block roots, then the CSS scoped under them", () => {
+test("the page's stylesheet: the variables as one rule on the element's root, then the CSS scoped under it", () => {
   const css = customLookCss({ vars: { accent: "#0a7d4f", radius: 4 }, css: ".won-tiers__row{font-weight:700} :root{margin:0}" });
   assert.equal(
     css,
@@ -59,10 +64,12 @@ test("config → gate → storefront config: Pro ships the scoped stylesheet, Fr
   assert.deepEqual(issues, []);
   assert.deepEqual(config.storefront.custom, { vars: { accent: "#0a7d4f" }, css: ".won-tiers__row{color:red}" });
   const pro = buildStorefrontConfig(gateConfigForPlan(config, "pro").config, { configVersion: "v" });
-  assert.equal(pro.appearance.css, `${WON_BLOCK_ROOT}{--won-tiers-accent:#0a7d4f}${WON_BLOCK_ROOT} .won-tiers__row{color:red}`);
+  // The table's look on the table, and (a config from before the split) its colour on the ladder, as it always showed.
+  assert.equal(pro.appearance.css, ".won-tiers{--won-tiers-accent:#0a7d4f}.won-tiers .won-tiers__row{color:red}.won-ms{--won-tiers-accent:#0a7d4f}");
   assert.equal(pro.cards, 1);
   const free = gateConfigForPlan(config, "free");
   assert.equal("custom" in free.config.storefront, false);
+  assert.deepEqual(free.config.storefront.looks, { milestones: {} }, "the custom colour copied to the ladder is Pro too");
   assert.deepEqual(buildStorefrontConfig(free.config, { configVersion: "v" }).appearance, { preset: "chips" });
   assert.deepEqual(config.storefront.custom?.vars, { accent: "#0a7d4f" }, "the stored config is untouched by the gate");
   const plain = buildStorefrontConfig(sanitizeConfig({}).config, { configVersion: "v" });
