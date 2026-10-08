@@ -28,9 +28,9 @@ import {
   TOTAL,
 } from "./support/checkout.ts";
 import { saveEvidence, saveScreenshot } from "./support/evidence.ts";
-import { E2E_PROFILE, expect, gotoStorefront, STORE_ORIGIN, test, THEME_LABEL, unlockRealStorefront } from "./support/fixtures.ts";
+import { E2E_PROFILE, expect, STORE_ORIGIN, test, THEME_LABEL } from "./support/fixtures.ts";
 import { marginPlanInput } from "./support/margin.ts";
-import { executeAsApp } from "./support/won-plan.ts";
+import { go, openThemePreview } from "./support/theme-preview.ts";
 import { numericId, readTierInputs, type TierInputs } from "./support/tiers.ts";
 
 // SPEC-DRIVEN (MVP 4, Task 8). Live proof of cart rewards on BOTH shared themes
@@ -151,37 +151,6 @@ async function waitForCart(page: Page, done: (cart: Cart) => boolean, timeoutMs 
   while (!done(cart) && Date.now() < until) cart = await storefrontJson<Cart>(page, "GET", "/cart.js");
   return cart;
 }
-
-/**
- * The rewards spec runs on the REAL store domain, previewing the theme `shopify theme dev` syncs (the matrix's
- * remote theme "Horizon" / "Dawn", unpublished: its workspace with the overlays). Why: the cart panel writes through
- * Shopify.actions.updateCart, which posts to the storefront's own /api/<version>/graphql.json — the theme-dev proxy
- * (127.0.0.1) does not serve that path (net::ERR_FAILED, probed 2026-10-01), a live storefront always does.
- */
-async function openThemePreview(page: Page): Promise<void> {
-  const data = await executeAsApp<{ themes: { nodes: { id: string; name: string; role: string }[] } }>("query WonE2eThemes { themes(first: 50) { nodes { id name role } } }", {});
-  const theme = data.themes.nodes.find((t) => t.name === THEME_LABEL);
-  expect(theme, `the matrix's remote theme "${THEME_LABEL}" exists`).toBeDefined();
-  expect(theme!.role, "previewed, never published").not.toBe("MAIN");
-  // The store domain shows Shopify's preview bar and cookie banner over the bottom of the page: hide the bar (screenshots
-  // only), decline the banner once (it then stays away for the session). Neither touches the cart.
-  await page.addInitScript(() => {
-    document.addEventListener("DOMContentLoaded", () => {
-      const style = document.createElement("style");
-      style.textContent = "#preview-bar-iframe, #PBarNextFrameWrapper { display: none !important; }";
-      document.head.append(style);
-    });
-  });
-  await unlockRealStorefront(page);
-  await gotoStorefront(page, `${STORE_ORIGIN}/?preview_theme_id=${theme!.id.split("/").pop()}`);
-  const decline = page.locator("#shopify-pc__banner__btn-decline");
-  if (await decline.isVisible({ timeout: 5_000 }).catch(() => false)) await decline.click();
-  const shown = await page.evaluate(() => (window as unknown as { Shopify?: { theme?: { name?: string } } }).Shopify?.theme?.name ?? null);
-  expect(shown, "the store renders the previewed theme").toBe(THEME_LABEL);
-}
-
-/** A storefront page of the previewed theme (absolute: the page is on the store domain, not the theme-dev base URL). */
-const go = (page: Page, path: string) => gotoStorefront(page, `${STORE_ORIGIN}${path}`);
 
 /** The cart's currency and the cart product's price in it — reads only (the store domain rate-limits writes). */
 async function priceProbe(page: Page): Promise<{ currency: string; price: number }> {

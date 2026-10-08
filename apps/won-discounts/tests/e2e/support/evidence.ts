@@ -14,7 +14,11 @@ const EVIDENCE_DIR = String(process.env.WON_DISCOUNTS_E2E_EVIDENCE_DIR ?? "").tr
 const suffix = () => (THEME_LABEL ? `-${THEME_LABEL.toLowerCase()}` : "");
 
 export async function saveScreenshot(page: Page, testInfo: TestInfo, name: string, options: { fullPage?: boolean } = {}): Promise<void> {
-  const body = await page.screenshot({ fullPage: options.fullPage ?? true });
+  await saveImage(testInfo, name, await page.screenshot({ fullPage: options.fullPage ?? true }));
+}
+
+/** A PNG taken by the test itself (one element, a before / after pair). */
+export async function saveImage(testInfo: TestInfo, name: string, body: Buffer): Promise<void> {
   await testInfo.attach(name, { body, contentType: "image/png" });
   if (!SCREENSHOT_DIR) return;
   mkdirSync(SCREENSHOT_DIR, { recursive: true });

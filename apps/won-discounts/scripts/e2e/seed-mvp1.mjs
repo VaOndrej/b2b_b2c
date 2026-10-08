@@ -65,6 +65,11 @@
 //       mutation printed, none sent). Writes nothing anywhere.
 //   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs [--profile shapes] --live
 //   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --profile tiers --preset chips [--live]   (visual QA of a block preset)
+//   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --profile rewards --texts --looks milestones=checklist+blink [--live]
+//   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --profile tiers --old-look [--live]
+//       adds the merchant's own storefront texts and / or ready-made looks to the profile's seed, or (--old-look)
+//       the look in the shape stored before the split
+//       (scripts/e2e/looks-fixture.mjs; tests/e2e/storefront.looks.spec.ts; runbook/looks.sh)
 //       backs up the stored config (only when no backup exists yet, so a re-seed
 //       never backs up its own seed), saves the seed config and syncs it.
 //   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --cleanup [--live]
@@ -110,6 +115,7 @@ import { OUTLET_HANDLES, OUTLET_RULE_IDS, outletRules } from "./outlet-fixture.m
 import { CAMPAIGN_HANDLES, CAMPAIGN_RULE_ID, campaignRules } from "./campaign-fixture.mjs";
 import { CAMPAIGN_TIERS_HANDLES, CAMPAIGN_TIERS_SET_ID, campaignTiersModule } from "./campaign-tiers-fixture.mjs";
 import { CARDS_HANDLES, CARDS_SET_ID, cardsStorefront, cardsTiersModule } from "./cards-fixture.mjs";
+import { LOOK_TEXTS, looksStorefront, oldLookStorefront, parseLooks } from "./looks-fixture.mjs";
 import { TIERS_COLLECTION_HANDLE, TIERS_COLLECTION_SET_ID, TIERS_GLOBAL_SET_ID, tiersMarginModule, tiersModule } from "./tiers-fixture.mjs";
 
 register();
@@ -180,7 +186,7 @@ const printJson = flag("--json");
 const OUT_DIR = path.resolve(option("--out") ?? process.env.WON_E2E_OUT ?? path.join(os.tmpdir(), "won-discounts-e2e"));
 const BACKUP_FILE = path.join(OUT_DIR, "seed-mvp1-backup.json");
 for (const arg of argv) {
-  if (arg.startsWith("--") && !["--live", "--cleanup", "--state", "--json", "--out", "--profile", "--preset"].includes(arg)) {
+  if (arg.startsWith("--") && !["--live", "--cleanup", "--state", "--json", "--out", "--profile", "--preset", "--texts", "--looks", "--old-look"].includes(arg)) {
     throw new Error(`unknown argument ${arg}`);
   }
 }
@@ -282,6 +288,13 @@ const { APPEARANCE_PRESETS, createDefaultConfig } = await import("@won/core/disc
 // config's storefront.appearancePreset. Only with a tiers profile; absent = the default preset.
 const PRESET = option("--preset");
 if (PRESET !== undefined && !APPEARANCE_PRESETS.includes(PRESET)) throw new Error(`unknown --preset ${PRESET} (${APPEARANCE_PRESETS.join(", ")})`);
+
+// --texts / --looks <element>=<look>[+blink],… (úkol 8): the merchant's texts per language and ready-made looks on top of the profile.
+const TEXTS = flag("--texts");
+const LOOKS = parseLooks(option("--looks"));
+// --old-look: the storefront settings in the shape of before the split (the conversion's live check).
+const OLD_LOOK = flag("--old-look");
+if (OLD_LOOK && Object.keys(LOOKS).length > 0) throw new Error("--old-look is the shape of before the looks: not with --looks");
 
 const client = createCliAdminClient({ appDir: APP_DIR, cwd: REPO_ROOT, store: STORE });
 
@@ -445,6 +458,9 @@ function seedConfig(previous, productIds, collectionIds, variantIds) {
     if (!PROFILES[PROFILE].tiers) throw new Error(`--preset needs a tiers profile (--profile ${PROFILE} has no tier set)`);
     config.storefront.appearancePreset = PRESET;
   }
+  config.storefront = looksStorefront(config.storefront, { looks: LOOKS, texts: TEXTS, hasTiers: tierSetsOf(config).length > 0 });
+  if (TEXTS) config.locales = structuredClone(LOOK_TEXTS);
+  if (OLD_LOOK) config.storefront = oldLookStorefront(config.storefront);
   return config;
 }
 
@@ -671,6 +687,9 @@ async function main() {
     console.log(`  ${marginText(config)}`);
     for (const line of tiersText(config)) console.log(`  ${line}`);
     console.log(`  rewards: ${rewardsText(config)}`);
+    if (TEXTS) console.log(`  texts: ${Object.entries(config.locales).map(([locale, texts]) => `${locale} ${Object.keys(texts).length}`).join(", ")}`);
+    if (OLD_LOOK) console.log(`  look as stored before the split: accent ${config.storefront.accent}, a custom look (Pro), no looks`);
+    if (Object.keys(LOOKS).length > 0) console.log(`  looks: ${Object.entries(config.storefront.looks).map(([element, look]) => `${element} ${look.preset}${look.blink ? " + flash" : ""} (${look.accent})`).join(", ")}`);
 
     if (!live) {
       process.exitCode = dryRunPlan(config, PROFILE === "mvp1" ? "seed" : `seed-${PROFILE}`);

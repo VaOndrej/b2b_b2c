@@ -88,6 +88,20 @@ Dnešní jedna sada pod společným kořenem může mít až 57 kB; po rozdělen
   (košík, štítek výprodeje, kampaň), po převodu k tabulce přestane platit. Podle zadání se CSS reálně používá jen
   u tabulky; převod má test na skutečném tvaru nastavení a na webu se ověří před a po.
 
+## Ověřeno naživo (dotažení, 8. 10. 2026 večer)
+
+Dev obchod, runbook `scripts/e2e/runbook/looks.sh`, témata Horizon a Dawn, jazyky obchodu cs (výchozí), sk, en.
+Zkouška: `tests/e2e/storefront.looks.spec.ts`, důkazy v `evidence/dotazeni-8-9/`.
+
+- **Čtení textů proměnným klíčem funguje.** `app.metafields.won_discounts['tx_' + jazyk stránky]` vrací texty jazyka
+  stránky v bloku i ve vloženém rozšíření, na obou tématech. Jiné čtení není potřeba.
+- **Stránka v češtině** ukazuje obchodníkův text už v HTML ze serveru (věta žebříčku v pruhu nahoře i v bloku na
+  stránce produktu, dřív než poběží skript) a stejný po vykreslení skriptem; data košíku nesou všech 9 kontrolovaných
+  textů v češtině obchodníka.
+- **Stránka ve slovenštině** ukazuje svůj jediný uložený text (název odměny „doprava“) a jinak výchozí slovenské
+  texty rozšíření. **Stránka v angličtině** (žádný uložený text) ukazuje jen výchozí anglické.
+- Počet dotazů navíc: žádný. Metapole jazyka čte Liquid při vykreslení stránky.
+
 ## Dluh zjištěný při měření (neřeší se v úkolu 8)
 
 - Vlastní CSS je na stránce dvakrát: jednou v JSON nastavení, jednou ve značce stylů. Skripty ho z JSON nečtou.

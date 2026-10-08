@@ -9,6 +9,7 @@ Logs and progress go to `$WON_RUN_DIR` (default `${TMPDIR:-/tmp}/won-discounts-r
 | `gate.sh <outDir>` | The gate, each command alone: test:packages, guard:test:core, test:unit, typecheck, lint, build, validate:shopify → `<outDir>/summary.txt` |
 | `profile.sh <profile> <tag> free\|pro` | seed dry-run → live → (margin*/tiers*: cost pass dry-run → live) → the matrix (Horizon + Dawn, no bail) → cleanup → (costs clear) → verify-clean. Evidence to `$EVID` (default `docs/won-discounts/evidence/<tag>`) |
 | `phase-b.sh <tag>` | Phase B (Pro): outlet (the sales started by `outlet.mjs` and ended + verified after the run), rewards-pro, tiers-pro, margin-pro, shapes Pro, with the fixture collections created and deleted around tiers-pro / margin-pro |
+| `looks.sh <profile> <tag> [--texts] [--looks <element>=<look>[+blink],…] [--old-look] [--only horizon\|dawn]` | The merchant's storefront texts, ready-made looks or a look stored before the split on top of the profile's seed (`scripts/e2e/looks-fixture.mjs`): seed dry-run → live → `tests/e2e/storefront.looks.spec.ts` alone → cleanup → verify-clean. Evidence to `$EVID`. The store answers HTTP 429 after a few runs in a row: wait some minutes, then repeat the theme that failed with `--only` |
 | `debug-run.sh <profile> <grep> [--only horizon\|dawn]` | One profile, only the tests matching `<grep>` (`e2e.grep.config.mjs`), evidence in `$WON_RUN_DIR/dbg` (not the repo) |
 
 Výprodej 5b (OFF until the app may read orders, F-O1): `WON_E2E_ORDERS=1 profile.sh outlet <tag> pro` adds the
