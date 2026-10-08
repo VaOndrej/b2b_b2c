@@ -26,7 +26,6 @@ import { CONFIG_LIMITS } from "@won/core/discounts/config";
 import { useT } from "../../i18n/context";
 import { exceptionTitle, tierCapacityShown, TIERS_FIELD, tierSummary, type TierCountMode, type TierPayloadUse } from "../model/tiers";
 import { amountLabels, type AmountSuggestView } from "../model/markets";
-import type { ModuleStatus } from "../model/module-status";
 import type { CurrencyView, TierSetView } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
 import { ProFrame } from "../shell/ProFrame";
@@ -115,7 +114,6 @@ export function ProTierSets({
   storedIds,
   capacity,
   capacityError,
-  status,
   inherit,
   suggest,
 }: {
@@ -144,8 +142,6 @@ export function ProTierSets({
   capacity?: TierPayloadUse;
   /** The save's "the tiers do not fit at checkout" refusal, shown at the room-for-tiers line. */
   capacityError?: string;
-  /** The stored exceptions' state (model/module-status.ts); "locked" on Free is said by the Pro marker. */
-  status?: ModuleStatus;
   /** How the whole store counts and what kind of discount it gives: an exception takes both over unless it says otherwise. */
   inherit?: { count: TierCountMode; kind: "percent" | "amount" };
   /** The manual rates the amount fields suggest with (návrh 2). */
@@ -155,8 +151,6 @@ export function ProTierSets({
   const { t } = tr;
   const codes = currencies.map((c) => c.code);
   const full = sets.length + 1 >= CONFIG_LIMITS.tierSets;
-  // §17c: on Free no Pro set is in force, whatever is stored — the header says how many are stored and that they do not apply.
-  const summary = sets.length === 0 ? t("tiers.pro.none") : pro ? tr.tp("count.tierSet", sets.length) : tr.tp("tiers.pro.storedFree", sets.length);
   const capacityLine = capacity && (tierCapacityShown(capacity) || capacityError !== undefined);
   // Only the exception being edited is open; one a refused save complains about opens by itself.
   const withError = (list: readonly string[]) => sets.find((s) => list.some((f) => f.startsWith(`set.${s.id}.`)))?.id ?? null;

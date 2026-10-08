@@ -32,7 +32,7 @@ import { describeMarginSettings, formatMoney, formatPercent } from "@won/core/di
 
 import { NativeDiscountsPanel, nativeSummary } from "../NativeDiscounts";
 import type { RuleWarning } from "../model/describe";
-import { currencyCodes, currencyMarketNames, currencyViews } from "../model/markets";
+import { currencyMarketNames, currencyViews } from "../model/markets";
 import { embedPlacement } from "../model/embed";
 import { storeStatuses, writtenOf } from "../model/module-status";
 import { shopToday } from "../model/rule-form";
@@ -291,7 +291,6 @@ export function OverviewScreen({
 }: OverviewScreenProps) {
   const tr = useT();
   const { t } = tr;
-  const codes = currencyCodes(currencies);
   const status = signals ?? NOT_WIRED_SIGNALS;
   // The same function the strip under "Slevy" reads (model/module-status.ts): a tile, its page and its dot cannot disagree.
   const { warnings, rules: statuses, modules: states } = storeStatuses({ rules, currencies, today, timezone, signals: status, ruleSync, gateOff, enabledMarkets, plan });

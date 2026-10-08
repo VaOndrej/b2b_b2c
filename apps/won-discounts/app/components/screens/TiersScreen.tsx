@@ -339,7 +339,6 @@ export function TiersScreen(props: TiersScreenProps) {
             storedIds={storedIds}
             capacity={capacity}
             capacityError={capacityError}
-            status={props.status?.sets}
           />
           </ViewPanel>
           {/* One save for the whole form, last on the page (plus the App Bridge save bar). */}
