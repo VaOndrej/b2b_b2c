@@ -122,6 +122,11 @@ export interface SyncDeps {
   /** Injectable for tests (default: setTimeout). */
   sleep?: (ms: number) => Promise<void>;
   retry?: Partial<RetryOptions>;
+  /**
+   * After a run that wrote the shop config: what follows from the stored config without Shopify's say
+   * (production: the combination check is planned and stored). Never fails the sync.
+   */
+  afterSync?: (shop: string, facts: { plan: ShopPlan; currency: string | null; timezone: string; now: Date }) => Promise<unknown>;
 }
 
 export interface SyncStep {

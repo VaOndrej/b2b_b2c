@@ -8,6 +8,7 @@ import { productRuleIndex } from "@won/core/discounts/targeting";
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import type { AdminClient } from "../admin-client.server";
+import { refreshCombinationCheck } from "../integration/combination-check.server";
 import { planOf } from "../plan.server";
 import { createSync, type Sync } from "./sync.server";
 import type { SyncDeps, SyncLogger } from "./types";
@@ -23,6 +24,8 @@ export function productionSyncDeps(client: AdminClient, db: PrismaClient, logger
     client,
     db,
     plan: planOf,
+    // Kontrola kombinací: planned from the database after every sync and stored; the pages only read it.
+    afterSync: (shop, facts) => refreshCombinationCheck(db, shop, { plan: facts.plan, shopCurrency: facts.currency, timezone: facts.timezone, now: facts.now, client, logger }),
     buildShopFunctionConfig: (config, options) => buildShopFunctionConfig(config, options),
     buildNodeVars: (role, config, now) => buildNodeVars(role, config, now),
     productRuleIndex: (config, products) => productRuleIndex(config, products),

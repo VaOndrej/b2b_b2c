@@ -6,13 +6,15 @@
 //                                   combinations that come out as the same cart are one scenario):
 //                                   the quantity discount alone; with a code; with an order discount; with free
 //                                   shipping; with a gift step; a gift step with a code; with the discount steps
-//                                   of Milníky (and those with a code); a product with its own tiers; a sale
-//                                   variant with the rest; a campaign at its start; then the ladder in every
-//                                   other market whose amounts are its own;
+//                                   of Milníky (and those with a code); a product a product / collection
+//                                   discount aims at; a product with its own tiers; a sale variant with the rest;
+//                                   a campaign at its start; then every other market where an amount is the
+//                                   market's own — the ladder there, and an order or a code discount at its
+//                                   minimum spend there;
 //   runScenario(config, s, facts)   ONE computation: try-cart-plan.ts planTryCartDetail — the same planCart on the
 //                                   same payload as checkout and the manual cart. No second set of rules lives
 //                                   here: the findings only READ the plan;
-//   findingsOf(plan, preview)       what the plan says went otherwise than set up.
+//   findingsOf(plan, preview)       what the plan says went otherwise than set up, each with the discount behind it.
 // The products are the shop's own, from what the app has stored (the cost mirror's prices and purchase costs, the
 // refs the sync wrote): the one with the lowest margin, one with its own tiers, a variant on sale. A shop with no
 // stored product gets a sample one, and the result says so. Prices in a market with another currency are
@@ -22,9 +24,12 @@
 import type { DiscountRule, WonDiscountsConfig } from "@won/core/discounts/config";
 import type { CheckoutPreview } from "@won/core/discounts/function-output";
 import { amountColumns, toAmountColumns } from "@won/core/discounts/market-amounts";
-import { isMilestoneRule } from "@won/core/discounts/milestones";
+import { isMilestoneRule, isMilestoneRuleId, MILESTONE_SHIPPING_ID } from "@won/core/discounts/milestones";
 import { currencyExponent } from "@won/core/discounts/money";
 import type { CartPlan } from "@won/core/discounts/plan";
+import { GIFT_CANDIDATE_PREFIX, SHIPPING_REWARD_ID } from "@won/core/discounts/plan-rewards";
+import { TIER_CANDIDATE_PREFIX } from "@won/core/discounts/plan-tiers";
+import { parseRuleRef } from "@won/core/discounts/targeting";
 import { globalTierSet } from "@won/core/discounts/tiers";
 
 import { firstRuleCode } from "../../components/model/try-cart-form";
@@ -33,7 +38,7 @@ import { planTryCartDetail, type PricedLine, type ProductRefs, type TryCartPlanD
 /** Most scenarios a check runs (the page lists them all; each is one planCart). */
 export const SCENARIO_LIMIT = 12;
 
-export type ScenarioPart = "tiers" | "code" | "order" | "shipping" | "gift" | "steps" | "exception" | "outlet" | "campaign" | "market";
+export type ScenarioPart = "tiers" | "code" | "order" | "shipping" | "gift" | "steps" | "product" | "exception" | "outlet" | "campaign" | "market";
 
 export type FindingKind =
   /** Margin protection lowered a discount or took it away. */
@@ -51,7 +56,21 @@ export type FindingKind =
 
 export const FINDING_KINDS: readonly FindingKind[] = ["margin", "max", "not_combinable", "code_loses_gift", "step_superseded", "checkout_cut"];
 
-/** Where the setting behind a finding is. */
+/**
+ * The discount a finding is about, as the plan names it: an ordinary rule, a step of Milníky (an order rule of the
+ * ladder, or a gift tier), a quantity tier set. Absent = the plan names none (the page then links the module).
+ */
+export interface FindingCause {
+  type: "rule" | "step" | "tiers";
+  id: string;
+}
+
+export interface Finding {
+  kind: FindingKind;
+  cause?: FindingCause;
+}
+
+/** Where the setting behind a finding is when the plan names no discount. */
 export const FINDING_HREF: Readonly<Record<FindingKind, string>> = {
   margin: "/app/margin",
   max: "/app/margin",
@@ -72,8 +91,8 @@ export interface ScenarioProduct {
   unitCostCurrency?: string;
   /** The refs checkout reads for the product (the sync's index); absent = the product has none. */
   refs?: ProductRefs;
-  /** Why it was picked. `sample` = not a product of the shop (it has none stored). */
-  role: "lowMargin" | "exception" | "outlet" | "any" | "sample";
+  /** Why it was picked (`targeted`: a product / collection discount aims at it). `sample` = not a product of the shop (it has none stored). */
+  role: "lowMargin" | "targeted" | "exception" | "outlet" | "any" | "sample";
 }
 
 export interface ScenarioFacts {
@@ -106,7 +125,7 @@ export interface Scenario {
 
 export interface ScenarioResult {
   scenario: Scenario;
-  findings: FindingKind[];
+  findings: Finding[];
   detail: TryCartPlanDetail;
 }
 
@@ -152,6 +171,7 @@ export function buildScenarios(config: WonDiscountsConfig, facts: ScenarioFacts)
   const rewards = config.modules.rewards;
 
   const main = facts.products.find((p) => p.role === "lowMargin") ?? facts.products.find((p) => p.role === "any") ?? facts.products[0] ?? sampleProduct(facts.shopCurrency);
+  const targeted = facts.products.find((p) => p.role === "targeted");
   const exception = facts.products.find((p) => p.role === "exception");
   const outlet = facts.products.find((p) => p.role === "outlet");
 
@@ -181,6 +201,14 @@ export function buildScenarios(config: WonDiscountsConfig, facts: ScenarioFacts)
   const stepsAt = stepAmounts.length > 0 ? Math.max(...stepAmounts) : null;
   if (stepsAt !== null) add("steps", [...base, "steps"], cartOf(stepsAt));
   if (stepsAt !== null && withCode) add("steps-code", ["steps", "code"], cartOf(stepsAt), withCode);
+  // A product an automatic product / collection discount aims at (the refs the sync wrote say which): enough of it
+  // for the discount's own minimum and the first tier — the tier and the discount then meet on one line.
+  const aimed = targeted ? new Set([...(targeted.refs?.ruleIds ?? []), ...Object.values(targeted.refs?.variantRuleIds ?? {}).flat()].map((ref) => parseRuleRef(ref).ruleId)) : new Set<string>();
+  const productRule = own.find((rule) => rule.method === "automatic" && (rule.target.kind === "products" || rule.target.kind === "collections") && aimed.has(rule.id));
+  if (targeted && productRule) {
+    const needed = Math.max(tierQty, productRule.minimum?.quantity ?? 1);
+    add("product", ["product", ...base], [{ product: targeted, quantity: quantityFor(amountIn(productRule.minimum?.subtotal, home.key) ?? 0, targeted.unitPrice, needed) }]);
+  }
   // A product with its own tiers: only while the plan runs such a set (on Free it is inert).
   const ownTiers = config.modules.tiers.sets.filter((set) => set.scope !== "global" && set.breaks.length > 0);
   if (exception && ownTiers.length > 0) add("exception", ["exception"], [{ product: exception, quantity: Math.max(5, ...ownTiers.flatMap((set) => set.breaks.map((b) => b.minQty))) }]);
@@ -197,21 +225,28 @@ export function buildScenarios(config: WonDiscountsConfig, facts: ScenarioFacts)
     const [day, clock = "00:00"] = campaign.window.start.split("T");
     add(`campaign-${campaign.id}`, ["campaign", ...base], cartOf(stepsAt ?? giftAt ?? shippingAt), { date: day!, time: `${clock.slice(0, 5)}:00`, campaign: campaign.name });
   }
-  // Every other market whose ladder has its own amounts: the same ladder there, priced with the rate those amounts imply.
+  // Every other market where an amount is the market's own: the ladder there, and an order or a code discount at
+  // its minimum spend there. Prices are converted with the rate the merchant's own amounts imply.
   const ladder = [rewards.freeShipping?.threshold, ...rewards.gifts.map((g) => g.threshold), ...steps.map((r) => r.minimum?.subtotal)];
+  const minimums = [orderRule?.minimum?.subtotal, codeRule?.minimum?.subtotal];
   for (const column of columns) {
     if (column.key === home.key) continue;
-    const there = ladder.map((money) => ({ here: amountIn(money, home.key), there: amountIn(money, column.key) })).filter((x): x is { here: number | null; there: number } => x.there !== null);
-    if (there.length === 0) continue;
-    const pair = there.find((x) => x.here !== null);
+    const pairs = (amounts: readonly (Record<string, number> | undefined | null)[]) =>
+      amounts.map((money) => ({ here: amountIn(money, home.key), there: amountIn(money, column.key) })).filter((x): x is { here: number | null; there: number } => x.there !== null);
+    const there = pairs(ladder);
+    const pair = [...there, ...pairs(minimums)].find((x) => x.here !== null);
     const rate = column.currency === home.currency ? 1 : pair ? (pair.there / pair.here!) * 10 ** (currencyExponent(home.currency) - currencyExponent(column.currency)) : null;
     if (rate === null || !Number.isFinite(rate) || rate <= 0) continue;
-    const top = Math.max(...there.map((x) => x.there));
     const price = Math.max(1, Math.round(main.unitPrice * rate * 10 ** (currencyExponent(column.currency) - currencyExponent(home.currency))));
-    add(`market-${column.key}`, ["market", ...(steps.length > 0 ? (["steps"] as const) : rewards.gifts.length > 0 ? (["gift"] as const) : (["shipping"] as const))], [{ product: main, quantity: quantityFor(top, price, tierQty) }], {
-      market: marketOf(column),
-      ...(column.currency === home.currency ? {} : { rate }),
-    });
+    const market = { market: marketOf(column), ...(column.currency === home.currency ? {} : { rate }) };
+    const cartThere = (amount: number) => [{ product: main, quantity: quantityFor(amount, price, tierQty) }];
+    if (there.length > 0) {
+      add(`market-${column.key}`, ["market", ...(steps.length > 0 ? (["steps"] as const) : rewards.gifts.length > 0 ? (["gift"] as const) : (["shipping"] as const))], cartThere(Math.max(...there.map((x) => x.there))), market);
+    }
+    const orderThere = amountIn(orderRule?.minimum?.subtotal, column.key);
+    if (orderThere !== null) add(`market-${column.key}-order`, ["market", "order"], cartThere(orderThere), market);
+    const codeThere = amountIn(codeRule?.minimum?.subtotal, column.key);
+    if (codeThere !== null && withCode) add(`market-${column.key}-code`, ["market", "code"], cartThere(codeThere), { ...market, ...withCode });
   }
   return out;
 }
@@ -232,26 +267,41 @@ export function scenarioLines(scenario: Scenario, facts: Pick<ScenarioFacts, "sh
   }));
 }
 
-/** What the plan says went otherwise than set up — read off the plan, never computed again. */
-export function findingsOf(plan: CartPlan, preview: CheckoutPreview): FindingKind[] {
-  const found = new Set<FindingKind>();
-  const caps = plan.lines.map((line) => line.marginCapped).filter((cap) => cap !== undefined);
-  if (caps.some((cap) => cap.basis === "max_percent")) found.add("max");
-  if (
-    caps.some((cap) => cap.basis === "cost") ||
-    plan.order?.marginCapped !== undefined ||
-    (plan.order?.marginExcludedLineIds.length ?? 0) > 0 ||
-    plan.rules.some((rule) => rule.state === "margin_floor") ||
-    plan.tiers.some((tier) => tier.state === "margin_floor")
-  ) {
-    found.add("margin");
+/** The discount a plan component, a rule outcome or a warning names. */
+function causeOf(ruleId: string | undefined): FindingCause | undefined {
+  if (!ruleId) return undefined;
+  if (ruleId.startsWith(TIER_CANDIDATE_PREFIX)) return { type: "tiers", id: ruleId.slice(TIER_CANDIDATE_PREFIX.length) };
+  if (ruleId.startsWith(GIFT_CANDIDATE_PREFIX)) return { type: "step", id: ruleId.slice(GIFT_CANDIDATE_PREFIX.length) };
+  if (ruleId === SHIPPING_REWARD_ID) return { type: "step", id: MILESTONE_SHIPPING_ID };
+  return { type: isMilestoneRuleId(ruleId) ? "step" : "rule", id: ruleId };
+}
+
+/**
+ * What the plan says went otherwise than set up — read off the plan, never computed again — each with the
+ * discount the plan itself names for it (the one margin protection lowered, the one that does not combine, …).
+ */
+export function findingsOf(plan: CartPlan, preview: CheckoutPreview): Finding[] {
+  const found = new Map<FindingKind, FindingCause | undefined>();
+  const say = (kind: FindingKind, ruleId?: string) => {
+    if (!found.has(kind) || found.get(kind) === undefined) found.set(kind, causeOf(ruleId));
+  };
+  for (const line of plan.lines) {
+    if (!line.marginCapped) continue;
+    say(line.marginCapped.basis === "max_percent" ? "max" : "margin", line.product?.components[0]?.ruleId);
   }
-  if (plan.rules.some((rule) => rule.state === "not_combinable") || plan.tiers.some((tier) => tier.state === "not_combinable") || plan.warnings.some((w) => w.code === "reward_not_combinable")) found.add("not_combinable");
-  if (plan.warnings.some((w) => w.code === "code_loses_gift")) found.add("code_loses_gift");
+  if (plan.order?.marginCapped !== undefined || (plan.order?.marginExcludedLineIds.length ?? 0) > 0) say("margin", plan.order?.components[0]?.ruleId);
+  for (const rule of plan.rules) if (rule.state === "margin_floor") say("margin", rule.ruleId);
+  for (const tier of plan.tiers) if (tier.state === "margin_floor") say("margin", tier.ruleId);
+  for (const rule of plan.rules) if (rule.state === "not_combinable") say("not_combinable", rule.ruleId);
+  for (const tier of plan.tiers) if (tier.state === "not_combinable") say("not_combinable", tier.ruleId);
+  for (const warning of plan.warnings) {
+    if (warning.code === "reward_not_combinable") say("not_combinable", warning.ruleId);
+    if (warning.code === "code_loses_gift") say("code_loses_gift", warning.ruleId);
+  }
   // A discount step of Milníky that had something to give and lost: to the higher step, or to a code.
-  if (plan.rules.some((rule) => rule.ruleId.startsWith("ms-") && rule.state === "outranked")) found.add("step_superseded");
-  if (preview.degraded || preview.shortfall > 0 || preview.droppedCandidates.length > 0) found.add("checkout_cut");
-  return FINDING_KINDS.filter((kind) => found.has(kind));
+  for (const rule of plan.rules) if (isMilestoneRuleId(rule.ruleId) && rule.state === "outranked") say("step_superseded", rule.ruleId);
+  if (preview.degraded || preview.shortfall > 0 || preview.droppedCandidates.length > 0) say("checkout_cut");
+  return FINDING_KINDS.filter((kind) => found.has(kind)).map((kind) => ({ kind, ...(found.get(kind) ? { cause: found.get(kind)! } : {}) }));
 }
 
 /** Plan one scenario: the same planTryCartDetail the manual cart runs. */

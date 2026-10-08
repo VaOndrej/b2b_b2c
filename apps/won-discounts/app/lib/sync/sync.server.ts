@@ -397,6 +397,9 @@ async function runSync(deps: SyncDeps, shop: string, config: ConfigView, options
   // MVP 3 (pdp), whenever the shop config was written: the margin it ships changed → every variant's pdp floor;
   // else the products whose marginRefs changed (all written in the BEFORE lane, so they are in place now).
   if (outcome && !rethrow) recomputePdp(deps, shop, outcome.marginKey !== null ? { margin: outcome.marginKey } : (after?.pdpProducts ?? []));
+  // The shop config is in place: what follows from it without Shopify's say (Kontrola kombinací is planned and stored).
+  const afterSync = deps.afterSync;
+  if (outcome && !rethrow && afterSync) await bookkeeping(deps, shop, async () => void (await afterSync(shop, { ...outcome.shop, now: deps.now() })));
   if (background && after) {
     // Superseded already when a newer request came in while this run was going.
     const lane: BackgroundLane = { cancelled: generations.get(shop) !== generation, kind: "additions" };
@@ -564,6 +567,8 @@ interface StepsOutcome {
   after: AfterLane | null;
   /** The margin part of the shop config changed and protection is on: its key (MVP 3, every pdp recomputed); else null. */
   marginKey: string | null;
+  /** What the run read and gated with (handed to `afterSync`). */
+  shop: { plan: ShopPlan; currency: string | null; timezone: string };
 }
 
 /** What is left for the AFTER lane once the shop config is written. */
@@ -600,7 +605,7 @@ async function syncSteps({ deps, transport, shop, config: stored, configVersionI
   const shopTimezone = shopState.timeZone;
   const nowLocal = shopLocalDateTime(now, shopTimezone);
   record({ step: "shop.read", ok: true, detail: `${shopState.id}, shop time ${nowLocal} (${shopTimezone}), currency ${shopState.currency ?? "unknown"}` });
-  await bookkeeping(deps, shop, () => recordShopTimezone(deps.db, shop, shopTimezone));
+  await bookkeeping(deps, shop, () => recordShopTimezone(deps.db, shop, shopTimezone, shopState.currency ?? null));
 
   // BILL-1: what this shop's plan may run.
   const plan = await deps.plan(shop);
@@ -769,7 +774,7 @@ async function syncSteps({ deps, transport, shop, config: stored, configVersionI
   const nextMargin = liveMarginOf(payload.json);
   const marginChanged = nextMargin.enabled && (shopState.functionConfig === null || canonicalJson(liveMarginOf(shopState.functionConfig)) !== canonicalJson(nextMargin));
   // 5. The AFTER lane (runSync runs it inline or queues it) — only behind a config that is in place.
-  return { after, marginKey: marginChanged ? pdpMarginKey(payloadConfig.modules.margin) : null };
+  return { after, marginKey: marginChanged ? pdpMarginKey(payloadConfig.modules.margin) : null, shop: { plan, currency: shopCurrency ?? null, timezone: shopTimezone } };
 }
 
 /**

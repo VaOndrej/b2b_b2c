@@ -16,6 +16,8 @@ import type { PrismaClient } from "../../generated/prisma/client";
 
 export interface ShopSyncFacts {
   timezone: string | null;
+  /** Shopify shop.currencyCode as the last sync read it (null = not recorded, or Shopify did not say). */
+  currency: string | null;
   /** The plan the live shop config was built for (null = not recorded). */
   appliedPlan: ShopPlan | null;
   productsSyncedAt: Date | null;
@@ -30,6 +32,7 @@ export interface ShopSyncFacts {
 
 const EMPTY: ShopSyncFacts = {
   timezone: null,
+  currency: null,
   appliedPlan: null,
   productsSyncedAt: null,
   targetingStaleAt: null,
@@ -54,6 +57,7 @@ export async function loadShopSyncFacts(db: PrismaClient, shop: string): Promise
   if (!row) return { ...EMPTY };
   return {
     timezone: row.timezone,
+    currency: row.currency,
     appliedPlan: row.appliedPlan === "free" || row.appliedPlan === "pro" ? row.appliedPlan : null,
     productsSyncedAt: row.productsSyncedAt,
     targetingStaleAt: row.targetingStaleAt,
@@ -70,8 +74,9 @@ async function upsert(db: PrismaClient, shop: string, data: Row): Promise<void> 
   await db.shopSyncState.upsert({ where: { shop }, create: { shop, ...data }, update: data });
 }
 
-export function recordShopTimezone(db: PrismaClient, shop: string, timezone: string): Promise<void> {
-  return upsert(db, shop, { timezone });
+/** What the sync read about the shop: its time zone and currency (the combination check plans with them later, without Shopify). */
+export function recordShopTimezone(db: PrismaClient, shop: string, timezone: string, currency: string | null): Promise<void> {
+  return upsert(db, shop, { timezone, currency });
 }
 
 /** The shop function config now live in Shopify was built for `plan` (written or verified unchanged). */

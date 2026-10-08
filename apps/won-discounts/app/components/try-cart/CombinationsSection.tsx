@@ -38,7 +38,7 @@ export function CombinationsSection({ check, pro }: { check: CombinationCheckVie
                 </div>
                 {s.findings.map((f) => (
                   <div key={f.kind} data-won-combo-finding={f.kind} style={{ fontSize: 13, lineHeight: 1.45, color: WON_INK }}>
-                    {f.text} <s-link href={f.href}>{t("combos.fix")}</s-link>
+                    {f.text} <s-link href={f.href}>{f.label}</s-link>
                   </div>
                 ))}
                 {s.open ? (

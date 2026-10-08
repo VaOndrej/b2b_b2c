@@ -169,7 +169,27 @@ model ShopSyncState {
   /// MVP 6 (K3, A6): JSON array of the campaign ids running when the shop went
   /// Pro → Free; they finish (the gate keeps them until their end). Null = none.
   campaignsFinishing String?
+  /// Shopify shop.currencyCode as the last sync read it: the combination check
+  /// (CombinationCheck) prices its scenarios in it without asking Shopify.
+  currency           String?
   updatedAt          DateTime  @updatedAt
+}
+
+/// Kontrola kombinací (úkol 9, app/lib/integration/combination-store.server.ts): the shop's last check — computed
+/// after every sync of its config and once a day, READ by Přehled and Vyzkoušet košík (they never compute it).
+/// `payload` = JSON of the planned scenarios without any wording (findings, the discount behind each, the cart a
+/// scenario opens in the manual cart). `products` = JSON of the few products the scenarios use when the cost
+/// mirror has none (margin protection off): read from Shopify with a sync or the daily run, at most once a day.
+/// One row per shop, erased with the shop.
+model CombinationCheck {
+  shop           String    @id
+  computedAt     DateTime
+  /// "free" | "pro": the plan the scenarios were gated for.
+  plan           String
+  products       String    @default("[]")
+  productsReadAt DateTime?
+  payload        String
+  updatedAt      DateTime  @updatedAt
 }
 
 /// Products that carry the sync's $app:won_discounts/product metafield (sync

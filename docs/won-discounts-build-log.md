@@ -7,19 +7,106 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
-### Úkoly 8 a 9 (8. 10. 2026) — zadání `won-discounts/prompt-ukol8-9.md`
+### Dotažení úkolů 8 a 9 (od 8. 10. 2026 večer) — zadání `won-discounts/prompt-dotazeni-ukol8-9.md`
 
 > **CHECKPOINT (po kompakci kontextu začni tady).** Nejdřív přečti celé zadání
-> [`won-discounts/prompt-ukol8-9.md`](won-discounts/prompt-ukol8-9.md), potom tento oddíl.
-> - **Kde se pracuje:** hlavní adresář `~/Development/WonCommerce/Apps/b2b_b2c` na větvi `main` (čistý, shodný
->   s `origin/main`). Pracovní adresáře `b2b_b2c-preklady` a `b2b_b2c-funkce` i sloučené větve `won-discounts-*` jsou
->   8. 10. večer zrušené; vše z nich je v `main`.
-> - **Úkol 8: hotový, v `main` (`125f05e`).** Naživo neověřeno (web na Horizonu a Dawnu, `read_locales`, klikání).
-> - **Úkol 9: hotový, v `main`** (viz `git log origin/main --oneline -8`). Naživo neověřeno.
-> - **Dotažení je zadané v [`won-discounts/prompt-dotazeni-ukol8-9.md`](won-discounts/prompt-dotazeni-ukol8-9.md)** (17 nálezů: živé
->   ověření, kontrola kombinací podle zadání, úklid kódu). Úkoly 8 a 9 nejsou podle zadání uzavřené, dokud neprojde jeho část A.
-> - **Co zbývá:** živé ověření obou úkolů po aktualizaci hlavního adresáře a restartu
->   `shopify app dev`; rozhodnutí Ondřeje k převodu starého vlastního CSS a k čistému `main` v hlavním adresáři.
+> [`won-discounts/prompt-dotazeni-ukol8-9.md`](won-discounts/prompt-dotazeni-ukol8-9.md) (17 nálezů, části A → B → C) a původní
+> [`won-discounts/prompt-ukol8-9.md`](won-discounts/prompt-ukol8-9.md) (pravidla, brána, důkazy), potom tento oddíl.
+> - **Kde se pracuje:** hlavní adresář `~/Development/WonCommerce/Apps/b2b_b2c`, větev `main`, inline bez subagentů.
+>   `shopify app dev` běží nad ním **bez `WON_DEV_PLAN`** (Free); náhled `http://localhost:60061/dev/preview/<stránka>`
+>   (port se po restartu mění: `lsof -iTCP -sTCP:LISTEN -P | grep node`, proces `react-router dev`).
+> - **Výchozí brána (8. 10., `7630525`):** `test:packages` 941 + 53, `test:unit` 1 857 + cargo 102 + vitest 699, guard 301.
+> - **Část A, hotovo a v `main`:** body 5 a 6 (`ccf2755`), oprava bliknutí (bod 2), bod 4 (`read_locales`), živá
+>   zkouška bodů 1 až 3 (`64a8951`). `test:e2e:preview` 11 → 24 testů.
+> - **Část A, naživo ověřeno na Free (Horizon + Dawn):** texty podle jazyka (žebříček, data košíku, tabulka),
+>   vzhledy Milníků „Odškrtávací seznam“ a „Jedna věta“ včetně bliknutí, převod starého vzhledu (tabulka i žebříček,
+>   stejné pixely). Důkazy: `docs/won-discounts/evidence/dotazeni-8-9/`.
+> - **Část A, čeká na Ondřeje (Pro a Shopify admin):** vzhledy Výprodeje a Kampaně, texty štítku výprodeje a odpočtu,
+>   `rewards-pro`, převod vlastního CSS na Pro: `shopify app dev` musí běžet s `NODE_ENV=development WON_DEV_PLAN=pro`;
+>   kliknutí na „Povolit čtení jazyků“ jde jen v Shopify adminu. Zkoušky pro Výprodej a Kampaň ve
+>   `storefront.looks.spec.ts` ještě nejsou napsané (potřebují výprodej s datem konce a blok kampaně v šabloně).
+> - **Část B:** body 7 až 13 v kódu s testy (viz níž), návrh a čísla v `won-discounts/navrh-kontrola-kombinaci.md`.
+> - **Část C:** nezačatá (body 14 až 17; z bodu 17 je hotová sdílená funkce pro `ms-` a dvojí výpočet scénáře).
+> - **Logy živých běhů:** `$WON_RUN_DIR/dotazeni-8-9/` (scratchpad session, mimo repo).
+
+- **Body 5 a 6 — hotovo, v `main` (`ccf2755`).**
+  - `test:e2e:preview` měl 11 testů a jeden padal: úkol 8 přidal na Množstevní slevy druhý panel pohledu „Tabulka na
+    webu“ (sekce vzhledu pod formulářem stránky), test čekal jeden. Test opraven, aplikace beze změny.
+  - Nový soubor `tests/e2e-preview/admin.translations-looks.spec.ts` (12 testů): přidání a odebrání jazyka, limit Free,
+    hláška u textu bez `{amount}` při psaní, stažení CSV a nahrání s jedním odmítnutým řádkem (nic se neuloží před
+    potvrzením), uložení vzhledu u Milníků, Výprodeje a Kampaně (každý hotový vzhled) a vlastního CSS tabulky, „Časté
+    kombinace“ na Pro i Free, otevření scénáře v ručním košíku, žádný vodorovný posuv na 390 px.
+  - Aby šlo klikat bez Shopify: dev náhled odbavuje CSV Překladů doopravdy nad fixturou (export, plán importu; nic
+    neukládá) a `?scenario=<id>` stejnou funkcí jako stránka (`scenarioCartOf`). Sekce, které ukládají samy (vzhled,
+    ceny na kartách, CSV), berou adresu z `shell/form-actions.ts`; náhled jim dá svou, v aplikaci beze změny.
+  - Opravené zastaralé zkoušky naživo: `storefront.cards.spec.ts` čekal společný kořen vlastního vzhledu
+    (`:is(.won-tiers,.won-cart,…)`), po úkolu 8 je to `.won-tiers`; typ `StorefrontConfigRead` už nemá `texts`.
+  - **Brána 8. 10.:** `test:packages` 941 + 53, `test:unit` 1 858 + cargo 102 + vitest 699, `typecheck`, `lint` (0 chyb,
+    4 starší varování), `build`, `guard:test:core` 301, `validate:shopify`, vše exit 0.
+  - **Naživo neověřeno:** klikání v aplikaci uvnitř Shopify adminu (zkoušky běží proti dev náhledu s fixturami).
+
+- **Část A, body 1 až 4 — hotovo, co šlo na Free; zbytek čeká na Pro.**
+  - **Bod 1 (texty podle jazyka), naživo Horizon + Dawn:** čtení `app.metafields.won_discounts['tx_' + jazyk]`
+    proměnným klíčem funguje. Česká stránka ukazuje obchodníkův text už v HTML ze serveru (pruh nahoře i blok na
+    stránce produktu) i po vykreslení skriptem, v datech košíku (9 kontrolovaných textů) a v množstevní tabulce;
+    slovenská svůj jediný uložený text a jinak výchozí slovenské, anglická jen výchozí anglické. Zapsáno
+    v `won-discounts/navrh-preklady-a-vzhled.md`.
+  - **Bod 2 (vzhledy), naživo Horizon + Dawn, 390 a 1440 px:** Milníky „Odškrtávací seznam“ (seznam místo ukazatele,
+    splněný stupeň barvou zvýraznění, pruh nahoře beze změny) a „Jedna věta“. Bliknutí: jednou, s animací
+    `won-ms-new`, při „omezit pohyb“ bez animace.
+  - **Chyba nalezená naživo a opravená (bliknutí):** značka nově dosaženého stupně (`data-new`) se neposílala
+    s událostí košíku, takže ji blok Milníků ani pruh nahoře nikdy nedostaly, a druhé čtení košíku (téma hlásí jednu
+    změnu dvakrát) ji hned smazalo. Značka teď drží 1,5 s a jde s událostí (`won-discounts.js`,
+    `won-discounts-cart.js`); dva testy v `storefront-cart.contract.test.ts`, které předtím padaly.
+    Skripty stránky produktu 11 796 → 11 908 B z 12 288 B, stránka košíku 6 631 → 6 743 B z 10 240 B.
+  - **Chyba nalezená naživo a opravená (řádek na kartě):** když řádek na kartě produktu neměl co říct (zapnutá
+    Ochrana marže a produkt s nákupní cenou), ukázal se na kartě text „<!-- BEGIN app snippet: won-card-tier“.
+    Liquid při `split` zahazuje prázdný konec, takže z komentáře Shopify nezbylo „nic“, ale sám komentář. Oprava
+    v `card_tiers.liquid` a `won_discounts_embed.liquid`; test v `storefront-cards.contract.test.ts` počítá
+    `split` jako Liquid (dřívější test ho počítal jako JavaScript, proto chybu neviděl).
+  - **Bod 3 (převod starého vzhledu), naživo Horizon + Dawn na Free:** obchod s uloženým `accent` a `custom` bez
+    `looks`; tabulka i žebříček mají po převodu stejné pixely jako se stylem, který ze stejného nastavení vyráběl
+    kód před rozdělením (`dd48a75`), na 390 i 1440 px. „Před“ je starý styl vložený do dnešní stránky, ne staré
+    rozšíření (to už v dev obchodě není). Vlastní CSS (Pro) v tomto běhu na web nešlo, ověří se s Pro.
+  - **Bod 4 (`read_locales`), opraveno v kódu:** po udělení svolení stránka jen znovu načetla data, jenže session
+    se o svolení dozví až z webhooku, který přijde později; seznam jazyků se proto ukázal až po ručním načtení.
+    Stránka teď po udělení pošle aplikaci „ověř oprávnění“, aplikace se zeptá Shopify (`scopes.query`) a zapíše je
+    do session (`recordGrantedScopes`). Integrační test a test v prohlížeči (dialog Shopify nahrazený v rámu).
+    **Naživo neověřeno:** kliknutí v Shopify adminu.
+  - **Runbook:** `scripts/e2e/runbook/looks.sh <profil> <tag> [--texts] [--looks …] [--old-look] [--only …]`.
+    Obchod po třech bězích za sebou vrací HTTP 429; mezi běhy je potřeba pár minut pauzy. Každý běh skončil
+    `cleanup` exit 0 a `verify-clean` exit 0.
+  - **Pro Ondřeje (Pro profily), po spuštění `NODE_ENV=development WON_DEV_PLAN=pro npm run dev -w won-discounts`:**
+    `bash apps/won-discounts/scripts/e2e/runbook/looks.sh rewards-pro dotazeni-8-9 --texts --looks milestones=checklist+blink`
+    a `bash apps/won-discounts/scripts/e2e/runbook/looks.sh tiers-pro dotazeni-8-9 --old-look`
+    (ta druhá potřebuje kolekci: `node apps/won-discounts/scripts/e2e/margin-collection.mjs --fixture tiers --live`).
+- **Část B (kontrola kombinací podle zadání) — v kódu, testy zelené.** Čísla a varianty:
+  [`won-discounts/navrh-kontrola-kombinaci.md`](won-discounts/navrh-kontrola-kombinaci.md).
+  - **Bod 7:** výsledek se počítá po každé synchronizaci nastavení (`SyncDeps.afterSync`) a jednou denně
+    (`combinations.daily`), ukládá se do `CombinationCheck`; Přehled a Vyzkoušet košík čtou jeden řádek. Při otevření
+    stránky 6 → 1 dotaz do databáze, 3,3 → 0,2 ms. Migrace `20261008200000_combination_check` (SQLite) a
+    `0003_combination_check` (Postgres); nový sloupec `ShopSyncState.currency`.
+  - **Bod 8:** bez zrcadla nákupních cen načte synchronizace jedním dotazem (`WonCombinationProducts`) první
+    aktivní produkt a produkty, které scénáře potřebují; drží je den. Při otevření stránky 0 dotazů.
+    **K potvrzení Ondřejem** (varianta B v návrhu).
+  - **Bod 9:** scénář „sleva na produkt“ s produktem, na který míří automatická sleva na produkt nebo kolekci
+    (odkazy z `ProductTargetIndex`).
+  - **Bod 10:** v každém dalším trhu s vlastní částkou běží i sleva z objednávky a kód na své minimální útratě tam
+    (`market-<trh>-order`, `market-<trh>-code`), ne jen žebříček.
+  - **Bod 11:** nejprodávanější produkt z uložených dat získat nejde (přehledy ukládají částky slev, ne produkty);
+    stránka nápovědy to říká, test to hlídá.
+  - **Bod 12:** nález nese slevu, kterou plán sám jmenuje; odkaz vede do editoru té slevy, na kartu stupně
+    (`/app/rewards#step-N`) nebo na sekci množstevních slev a říká to („Otevřít slevu LETO10“).
+  - **Bod 13:** test staví košík ze 400 různých řádků snížených ochranou marže, který náhled pokladny opravdu
+    zkrátí. Scénáře aplikace (1 až 2 řádky) tenhle nález prakticky nevyvolají; je to napsané v nápovědě.
+  - **Z bodu 17:** `isMilestoneRuleId` v jádru místo `"ms-"`; otevření scénáře už nic nepočítá (čte uložený řádek).
+  - **Naživo neověřeno:** celá část B v běžící aplikaci (uložení → dlaždice, denní úloha, dotaz na produkty
+    v obchodě bez Ochrany marže). Postgres migrace ověřená: `npm run test:postgres -w won-discounts` 5 z 5, bez
+    rozdílu mezi migracemi a schématem.
+
+### Úkoly 8 a 9 (8. 10. 2026) — zadání `won-discounts/prompt-ukol8-9.md`
+
+Stav k předání do dotažení (výš): oba úkoly jsou v `main` se zelenou bránou, naživo neověřené.
 
 - **Krok 0 — v `main` (`22ec2ef`, `30bfc8c`):** `main` měl po „navigaci a stavu“ červený `lint` (3 nepoužité proměnné
   v `OverviewScreen.tsx` a `ProTierSets.tsx`), opraveno jako první commit. Výchozí brána po opravě: `test:packages`

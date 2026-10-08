@@ -21,24 +21,38 @@ Try a cart runs the same engine as checkout. Nothing is ordered.
 ## Common combinations
 
 At the top the app lists the carts it built itself from the discounts that run: the quantity discount alone, with
-a code, with an order discount, with free shipping, with a gift or a discount step of Milestones, a sale variant
-with the rest, a campaign on its first day, and the ladder in every market with its own amounts. Each is marked
-**Fine** or **Warning**. The home page shows how many have a warning.
+a code, with an order discount, with free shipping, with a gift or a discount step of Milestones, a product that
+a product or collection discount aims at, a sale variant with the rest, a campaign on its first day. In every
+other market where an amount is the market's own it runs the ladder there, and an order or a code discount at
+its minimum spend there. Each is marked **Fine** or **Warning**. The home page shows how many have a warning.
 
-A warning says what will go otherwise than you set up, with a link to the setting behind it:
+A warning says what will go otherwise than you set up, with a link that opens the discount or the Milestones
+step behind it:
 
 - margin protection lowered a discount or took it away;
 - the discounts together passed the highest discount you allow;
 - a discount does not apply because it does not combine with another;
 - a code takes the cart under a gift's amount;
 - a discount step of Milestones lost to a higher step, another order discount or a code;
-- checkout shortens the discounts (too many for one cart).
-
-The carts use your own products: the one with the lowest margin, one with its own tiers, one on sale. They are a
-calculation from the prices and purchase costs the app has stored, not a real order. Prices in another currency
-are an estimate from your own amounts.
+- checkout shortens the discounts (too many for one cart: this takes hundreds of different lines, so the
+  app's own small carts rarely show it).
 
 Every plan sees the number of warnings. Which combinations and why, and **Open in the cart**, are on Pro.
+
+## When it is calculated and with which products
+
+The combinations are calculated after you save any discount or setting, and once a day. Opening a page only
+shows the stored result, so a change made directly in Shopify (a price, a purchase cost) shows the next day or
+after your next save.
+
+The carts use your own products: the one with the lowest margin, one a discount aims at, one with its own
+tiers, one on sale. With margin protection on, prices and purchase costs come from what the app already stores.
+With it off the app reads a few of your products from Shopify when you save (at most once a day) and knows no
+purchase costs. A shop with no product yet gets a sample one, and the page says so.
+
+The best-selling product is not used: the app stores what discounts took off each order, not which products
+were in it. Prices in another currency are an estimate from your own amounts. It is a calculation, not a real
+order.
 
 ## Your own cart (Pro)
 

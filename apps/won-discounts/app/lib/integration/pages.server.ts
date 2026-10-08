@@ -35,7 +35,7 @@ import { campaignsOverviewOf, finishingOf } from "./campaigns-admin.server";
 import { buildOverviewProps } from "../../components/screens/OverviewScreen";
 import { buildRuleEditorProps } from "../../components/screens/RuleEditorScreen";
 import { buildTryCartProps } from "../../components/screens/TryCartScreen";
-import { combinationCheck, scenarioCart } from "./combination-check.server";
+import { combinationCheck, scenarioCartOf } from "./combination-check.server";
 import {
   codeRuleLimit,
   deleteRule,
@@ -217,9 +217,9 @@ function withConflictRules(native: NativeView, config: WonDiscountsConfig): Nati
 
 export async function overviewPage(ctx: ShopCtx, opts: PageOptions) {
   const { config, options } = await overviewData(ctx, opts);
-  // Kontrola kombinací: the two counts for the tile, from the database alone (no further Shopify read).
-  const combos = await combinationCheck(ctx, { config, plan: options.plan, shopCurrency: options.shopCurrency, timezone: options.timezone });
-  return { ...buildOverviewProps(config, options), ...(combos ? { combos: { ok: combos.ok, warnings: combos.warnings } } : {}) };
+  // Kontrola kombinací: the two counts for the tile, read from the stored check (nothing is computed here).
+  const combos = await combinationCheck(ctx, { config, plan: options.plan });
+  return { ...buildOverviewProps(config, options), ...(combos ? { combos: { ok: combos.view.ok, warnings: combos.view.warnings } } : {}) };
 }
 
 /** Přehled actions: "Přesunout" / "Přesunout vše" / "Vrátit zpět" / "Synchronizovat znovu" / "Obnovit cílení". */
@@ -357,13 +357,12 @@ export async function tryCartPage(ctx: ShopCtx, opts: PageOptions & { date?: str
     date: opts.date ?? null,
     time: opts.time ?? null,
   });
-  // Kontrola kombinací: planned from what the database holds — the page's Shopify reads above are all there are.
-  const facts = { config, plan, shopCurrency: reads.shopContext.currencyCode, timezone: reads.shopContext.timezone, marketNames: reads.marketNames };
-  const combos = await combinationCheck(ctx, facts);
+  // Kontrola kombinací: the stored check, read once — the page's Shopify reads above are all there are.
+  const combos = await combinationCheck(ctx, { config, plan, marketNames: reads.marketNames });
   if (!combos) return props;
   // ?scenario=<id> (Pro): the manual cart prepared from that combination — its products, codes, market and time.
-  const opened = plan === "pro" && opts.scenario ? await scenarioCart(ctx, facts, opts.scenario) : null;
-  return { ...props, combos, ...(opened ?? {}) };
+  const opened = plan === "pro" && opts.scenario ? scenarioCartOf(combos.stored, opts.scenario, ctx.locale) : null;
+  return { ...props, combos: combos.view, ...(opened ?? {}) };
 }
 
 /**

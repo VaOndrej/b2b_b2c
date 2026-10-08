@@ -38,6 +38,11 @@ export type MilestoneStep =
   | { kind: "gift"; id: string; threshold: MoneyByCurrency; choices: string[]; fallbackVariantId?: string }
   | { kind: "discount"; id: string; threshold: MoneyByCurrency; value: MilestoneDiscountValue };
 
+/** True for the id of a ladder step's order rule — where only the id is at hand (a plan's outcome); a rule itself: isMilestoneRule. */
+export function isMilestoneRuleId(id: string): boolean {
+  return id.startsWith(MILESTONE_RULE_PREFIX);
+}
+
 type RuleLike = ReadonlyDeep<Pick<DiscountRule, "id" | "method" | "value" | "target">>;
 
 /**
@@ -46,7 +51,7 @@ type RuleLike = ReadonlyDeep<Pick<DiscountRule, "id" | "method" | "value" | "tar
  * discount — it stays on "Slevy a kódy", never hidden from both pages.
  */
 export function isMilestoneRule(rule: RuleLike): boolean {
-  return rule.id.startsWith(MILESTONE_RULE_PREFIX) && rule.method === "automatic" && rule.target.kind === "order" && (rule.value.kind === "percentage" || rule.value.kind === "fixed");
+  return isMilestoneRuleId(rule.id) && rule.method === "automatic" && rule.target.kind === "order" && (rule.value.kind === "percentage" || rule.value.kind === "fixed");
 }
 
 /** The order rule of a discount step: automatic, enabled, the whole cart must reach the threshold. */

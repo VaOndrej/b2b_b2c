@@ -696,8 +696,8 @@ export interface CombinationScenarioView {
   /** The market's name when the scenario is not the shop's own market. */
   market: string | null;
   status: "ok" | "warning";
-  /** What went otherwise than set up, each with the setting behind it. */
-  findings: { kind: string; text: string; href: string }[];
+  /** What went otherwise than set up, each with the discount or the step behind it: where it is set and what the link says. */
+  findings: { kind: string; text: string; href: string; label: string }[];
   /** Priced with a rate implied by the merchant's amounts (another currency): an estimate. */
   estimate: boolean;
   currency: string;

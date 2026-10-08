@@ -18,6 +18,9 @@
 //                                 and (MVP 7) order facts 400 days after their order.
 //   billing.reconcile  daily      MVP 7 M1: shops on Pro are checked against Shopify's active subscriptions; a
 //                                 changed plan resyncs the shop (a lost app_subscriptions/update webhook).
+//   combinations.daily  daily     Kontrola kombinací: every shop's stored check is planned again from the database
+//                                 (a campaign's first day, a sale that ended, a plan that changed move it). A shop
+//                                 without the cost mirror gets its few products read from Shopify here, once.
 // The cost mirror reconcile (hourly, at most 5 shops a run) and the stale-claim sweep keep their own timers from
 // MVP 1–2 (jobs/cost-reconcile.server.ts, jobs/stale-claims.server.ts) — they already run with nobody looking.
 // Disabled under NODE_ENV=test unless forced; tests call runDueTasks / the *Once functions with an injected clock.
@@ -30,6 +33,8 @@ import type { AdminClient } from "../admin-client.server";
 import { pruneOrderFacts } from "../analytics/analytics.server";
 import { reconcilePlan } from "../billing.server";
 import { pruneExpiredConfigHistory } from "../config.server";
+import { planOf } from "../plan.server";
+import { refreshCombinationCheck } from "../integration/combination-check.server";
 import { endOutletRun, writeOutletStorefront, type OutletDeps } from "../integration/outlet.server";
 import { resyncShop } from "../sync/save-and-sync.server";
 import type { Sync } from "../sync/sync.server";
@@ -269,12 +274,45 @@ export async function runCampaignsDueOnce(deps: CampaignsDueDeps): Promise<{ syn
   return out;
 }
 
+export interface CombinationsDailyDeps {
+  db: PrismaClient;
+  clientFor: (shop: string) => Promise<AdminClient | null>;
+  plan?: (shop: string) => Promise<ShopPlan>;
+  now?: () => Date;
+  logger?: SyncLogger;
+}
+
+/**
+ * combinations.daily (see the header): every shop a sync recorded a currency and a time zone for. Planned from
+ * the database; Shopify is asked only for the products of a shop without the cost mirror, and only when the
+ * shop's session is there (without it the stored products are used).
+ */
+export async function runCombinationsDailyOnce(deps: CombinationsDailyDeps): Promise<{ computed: string[]; failed: string[] }> {
+  const now = (deps.now ?? (() => new Date()))();
+  const logger = deps.logger ?? quiet;
+  const out = { computed: [] as string[], failed: [] as string[] };
+  const shops = await deps.db.shopSyncState.findMany({ where: { currency: { not: null }, timezone: { not: null } }, select: { shop: true, currency: true, timezone: true }, orderBy: { shop: "asc" } });
+  for (const { shop, currency, timezone } of shops) {
+    try {
+      const client = await deps.clientFor(shop).catch(() => null);
+      const plan = await (deps.plan ?? planOf)(shop);
+      await refreshCombinationCheck(deps.db, shop, { plan, shopCurrency: currency, timezone, now, logger, ...(client ? { client } : {}) });
+      out.computed.push(shop);
+    } catch (error) {
+      logger.warn(`combinations.daily ${shop}: ${error instanceof Response ? `HTTP ${error.status}` : errorText(error)}`);
+      out.failed.push(shop);
+    }
+  }
+  return out;
+}
+
 export function appTasks(deps: OutletDueDeps): ScheduledTask[] {
   return [
     { name: "outlet.due", everyMs: 60_000, run: (now) => runOutletDueOnce({ ...deps, now: () => now }) },
     { name: "campaigns.due", everyMs: 60_000, run: (now) => runCampaignsDueOnce({ db: deps.db, clientFor: deps.clientFor, now: () => now, ...(deps.logger ? { logger: deps.logger } : {}) }) },
     { name: "history.prune", everyMs: 24 * 3_600_000, run: (now) => pruneHistoryOnce(deps.db, now) },
     { name: "billing.reconcile", everyMs: 24 * 3_600_000, run: (now) => runBillingReconcileOnce({ db: deps.db, clientFor: deps.clientFor, now: () => now, ...(deps.logger ? { logger: deps.logger } : {}) }) },
+    { name: "combinations.daily", everyMs: 24 * 3_600_000, run: (now) => runCombinationsDailyOnce({ db: deps.db, clientFor: deps.clientFor, now: () => now, ...(deps.plan ? { plan: deps.plan } : {}), ...(deps.logger ? { logger: deps.logger } : {}) }) },
   ];
 }
 

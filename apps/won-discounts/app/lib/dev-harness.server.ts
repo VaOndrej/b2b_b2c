@@ -77,7 +77,7 @@ import { lookView, previewLookOf } from "./integration/looks.server";
 import { tiersOverviewOf, tiersScreenFacts, tiersSectionStatus } from "./integration/tiers.server";
 import { translationsScreenData, type TranslationsResult } from "./integration/translations.server";
 import { runScenarios, type ScenarioProduct } from "./integration/combination-check";
-import { combinationView, scenarioCartOf, type ScenarioCart } from "./integration/combination-check.server";
+import { combinationView, scenarioCartOf, storedCheck, type StoredCheck } from "./integration/combination-check.server";
 import { lossText, undoCostTexts, warningText } from "./native/copy";
 import { isDevHarnessEnvironment } from "./dev-harness-env";
 import { wordIssues } from "./integration/issue-copy";
@@ -1858,18 +1858,17 @@ const DEV_COMBO_PRODUCTS: ScenarioProduct[] = [
  * `sample` = a shop with no stored product. Free gets the counts only, as from the server.
  */
 export function devCombinations(opts: { plan: "free" | "pro"; locale: "cs" | "en"; sample?: boolean }): CombinationCheckView | null {
-  const { results } = devCombinationRun(opts);
-  return combinationView(results, { plan: opts.plan, locale: opts.locale, marketNames: DEV_MARKET_NAMES, sample: opts.sample === true });
+  return combinationView(devStoredCheck(opts), { plan: opts.plan, locale: opts.locale, marketNames: DEV_MARKET_NAMES, config: DEV_COMBOS_FIXTURE });
 }
 
-function devCombinationRun(opts: { plan: "free" | "pro"; locale: "cs" | "en"; sample?: boolean }) {
+/** The check as the app stores it after a sync (storedCheck), on the fixture. */
+function devStoredCheck(opts: { plan: "free" | "pro"; locale: "cs" | "en"; sample?: boolean }): StoredCheck {
   const gated = gateConfigForPlan(DEV_COMBOS_FIXTURE, opts.plan, { now: "2026-09-28T14:00:00" }).config;
   const facts = { products: opts.sample ? [] : DEV_COMBO_PRODUCTS, shopCurrency: "CZK", shopTimezone: DEV_TIMEZONE, date: "2026-09-28", time: "14:00:00", locale: opts.locale };
-  return { results: runScenarios(gated, facts), facts };
+  return storedCheck(runScenarios(gated, facts), facts);
 }
 
 /** `?scenario=<id>` on Vyzkoušet košík (Pro), as scenarioCart prepares the manual cart. */
-export function devScenarioCart(opts: { locale: "cs" | "en"; sample?: boolean; id: string }): ScenarioCart | null {
-  const { results, facts } = devCombinationRun({ ...opts, plan: "pro" });
-  return scenarioCartOf(results, facts, opts.id);
+export function devScenarioCart(opts: { locale: "cs" | "en"; sample?: boolean; id: string }) {
+  return scenarioCartOf(devStoredCheck({ ...opts, plan: "pro" }), opts.id, opts.locale);
 }
