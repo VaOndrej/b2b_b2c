@@ -24,9 +24,7 @@ import { collapseConfigAmounts, NOT_OFFERED, withUnknownMarketFallback } from ".
 import { variantKey } from "./cart.ts";
 import {
   APPEARANCE_PRESETS,
-  LOCALE_CODES,
   type AppearancePreset,
-  type LocaleCode,
   type MarginModule,
   type ReadonlyDeep,
   type RewardsModule,
@@ -110,8 +108,6 @@ export interface StorefrontConfigV1 {
    * scoped under them (custom-look.ts customLookCss); the embed prints it into a <style>. Absent = none.
    */
   appearance: { preset: AppearancePreset; css?: string };
-  /** Texts the merchant changed, per locale; the extension's own locales are the fallback. */
-  texts: Partial<Record<LocaleCode, Record<string, string>>>;
   /** MVP 4 (contract R7): the cart rewards; absent when nothing is offered (the embed shows no panel). */
   rewards?: StorefrontRewards;
   /**
@@ -263,21 +259,6 @@ function storefrontMargin(margin: ReadonlyDeep<MarginModule>, shopCurrency: stri
   return out;
 }
 
-function storefrontTexts(locales: ReadonlyDeep<WonDiscountsConfig>["locales"]): StorefrontConfigV1["texts"] {
-  const texts: StorefrontConfigV1["texts"] = {};
-  for (const locale of LOCALE_CODES) {
-    const changed: Record<string, string> = {};
-    let any = false;
-    for (const [key, text] of Object.entries(locales[locale] ?? {})) {
-      if (typeof text !== "string" || text === "") continue;
-      setOwn(changed, key, text);
-      any = true;
-    }
-    if (any) texts[locale] = changed;
-  }
-  return texts;
-}
-
 function storefrontTiers(setsOf: ReadonlyDeep<WonDiscountsConfig>["modules"]["tiers"]["sets"]): StorefrontTiers {
   const reachable = reachableTierSets(setsOf);
   const sets: Record<string, StorefrontTierSet> = {};
@@ -289,7 +270,8 @@ function storefrontTiers(setsOf: ReadonlyDeep<WonDiscountsConfig>["modules"]["ti
  * The storefront config (K5) from the GATED config (plan-gate.ts, BILL-1): the
  * sets a product can reach (tiers.ts reachableTierSets) keyed by id, amounts in
  * Liquid money units per currency, the margin caps (never a cost), the
- * appearance preset (K7) and the texts the merchant changed (non-empty ones).
+ * appearance preset (K7). The texts the merchant changed are not here: each
+ * language is its own metafield (storefront-texts.ts).
  * MVP 6.1: `opts.campaignId` swaps in that campaign's sets (`bt`, `tc`).
  * Pure; never throws.
  */
@@ -309,7 +291,6 @@ export function buildStorefrontConfig(given: ReadonlyDeep<WonDiscountsConfig>, o
     ...shown,
     margin: storefrontMargin(gated.modules.margin, opts.shopCurrency),
     appearance: { preset: (APPEARANCE_PRESETS as readonly string[]).includes(preset) ? preset : "default", ...(customCss ? { css: customCss } : {}) },
-    texts: storefrontTexts(gated.locales),
     ...rewardsPart(gated.modules.rewards, opts.variantHandles ?? {}, gated.modules.codes.rules),
     ...(gated.engine.combination.outletWithAnything ? { ow: 1 as const } : {}),
     ...(gated.storefront.cardPricesEnabled ? { cards: 1 as const } : {}),

@@ -54,6 +54,7 @@
 //     and "ms-" order discounts are one ladder); a step past them is not offered in that market; a gift that
 //     stays offers its first gift only;
 //   - custom look of the storefront blocks (MVP 7): removed (a ready-made look applies);
+//   - storefront texts: the default language and one more stay, the other languages show the extension's own;
 //   - margin per collection: folded into the global floor, the STRICTEST value
 //     wins (a larger discount than the Pro setup allowed is never possible).
 //
@@ -90,6 +91,7 @@ import type { ReadonlyDeep, WonDiscountsConfig } from "./config.ts";
 import { CONFIG_LIMITS } from "./config/limits.ts";
 import { csPlural, formatPercent, type UiLocale } from "./describe.ts";
 import { isMilestoneRule, MILESTONE_LIMITS, milestonesOverLimit, withoutMarkets } from "./milestones.ts";
+import { languagesForPlan } from "./storefront-texts.ts";
 
 export type ShopPlan = "free" | "pro";
 
@@ -274,6 +276,12 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
   // MVP 7: the custom look of the storefront blocks is Pro (never checkout data: not reported in `stripped`, the
   // Vzhled screen shows it locked). The stored config keeps it.
   delete out.storefront.custom;
+
+  // Storefront texts: the default language and one more (storefront-texts.ts). Like the look, not checkout data:
+  // not reported in `stripped`, the Překlady page says which languages the storefront does not get.
+  const languages = languagesForPlan(out, "free");
+  if (out.storefront.languages) out.storefront.languages = out.storefront.languages.filter((locale) => languages.includes(locale));
+  out.locales = Object.fromEntries(Object.entries(out.locales).filter(([locale]) => languages.includes(locale)));
 
   // Milníky: PER MARKET the MILESTONE_LIMITS.free steps with the lowest cart values stay (milestones.ts: free
   // shipping, the gift tiers and the order discounts with an "ms-" id are ONE ladder). A step past them loses its

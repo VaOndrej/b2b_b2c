@@ -1,5 +1,6 @@
 // Storefront settings, locale texts and onboarding: never read by the function.
 
+import { normalizeLocale } from "../../toasts/locales.ts";
 import { sanitizeCustomLook } from "../custom-look.ts";
 import { DEFAULT_CONFIG } from "./defaults.ts";
 import { ACCENT_PRESETS, type AccentPreset, APPEARANCE_PRESETS, type AppearancePreset, ONBOARDING_GOALS, type OnboardingGoal } from "./enums.ts";
@@ -33,14 +34,32 @@ export function sanitizeStorefront(v: unknown, issues: ConfigIssue[]): Storefron
   if (rec.accent !== undefined && rec.accent !== null && rec.accent !== "theme" && accent === undefined) {
     pushIssue(issues, "storefront.accent", "unknown_accent", `Highlight colour ${preview(rec.accent, 60)} is not one of ${ACCENT_PRESETS.join(", ")}; the theme's colour was used.`, { value: preview(rec.accent, 60) });
   }
+  const languages = sanitizeLanguages(rec.languages, issues);
   return {
     // A stored config without a (valid) look keeps the look it always had, the table: only a NEW shop
     // starts with DEFAULT_CONFIG's look (2026-10-06), so no existing storefront changes on its own.
     appearancePreset: sanitizeAppearancePreset(rec.appearancePreset, rec.appearancePreset === undefined && v === undefined ? def.appearancePreset : "default", issues),
     cardPricesEnabled: sanitizeBool(rec.cardPricesEnabled, def.cardPricesEnabled),
     ...(accent ? { accent } : {}),
+    ...(languages.length > 0 ? { languages } : {}),
     ...(custom ? { custom } : {}),
   };
+}
+
+function unknownLanguage(issues: ConfigIssue[], path: string, value: unknown): void {
+  pushIssue(issues, path, "unknown_language", `Language ${preview(value, 30)} is not a locale code; it was dropped.`, { value: preview(value, 30) });
+}
+
+/** Locale codes as Shopify names them, lower-case, each once, in the merchant's order. */
+function sanitizeLanguages(v: unknown, issues: ConfigIssue[]): string[] {
+  if (!Array.isArray(v)) return [];
+  const out: string[] = [];
+  for (const raw of v) {
+    const locale = normalizeLocale(raw);
+    if (locale === "") unknownLanguage(issues, "storefront.languages", raw);
+    else if (!out.includes(locale) && out.length < CONFIG_LIMITS.languages) out.push(locale);
+  }
+  return out;
 }
 
 function sanitizeLocaleTexts(v: unknown, issues: ConfigIssue[], path: string): Record<string, string> {
@@ -79,12 +98,13 @@ function sanitizeLocaleTexts(v: unknown, issues: ConfigIssue[], path: string): R
 }
 
 export function sanitizeLocales(v: unknown, issues: ConfigIssue[]): LocaleDictionary {
-  const rec = isRecord(v) ? v : {};
-  return {
-    cs: sanitizeLocaleTexts(rec.cs, issues, "locales.cs"),
-    sk: sanitizeLocaleTexts(rec.sk, issues, "locales.sk"),
-    en: sanitizeLocaleTexts(rec.en, issues, "locales.en"),
-  };
+  const out: Record<string, Record<string, string>> = {};
+  for (const [raw, texts] of Object.entries(isRecord(v) ? v : {})) {
+    const locale = normalizeLocale(raw);
+    if (locale === "") unknownLanguage(issues, "locales", raw);
+    else if (locale in out || Object.keys(out).length < CONFIG_LIMITS.languages) out[locale] = { ...out[locale], ...sanitizeLocaleTexts(texts, issues, `locales.${locale}`) };
+  }
+  return out;
 }
 
 /** Known goals only (ONBOARDING_GOALS), each once, in the merchant's order. */

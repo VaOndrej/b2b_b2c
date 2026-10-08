@@ -72,6 +72,8 @@ export const CONFIG_LIMITS = Object.freeze({
   campaigns: 50,
   overridesPerCampaign: 200,
   localeStringLength: 500,
+  /** Languages with storefront texts (Shopify publishes at most 20 a shop; the rest is room). */
+  languages: 50,
   localeKeysPerLanguage: 200,
   /** Rule, tier set, gift tier and campaign ids: `[A-Za-z0-9_-]{1,64}` (see sanitizeEntityId). */
   idLength: 64,
@@ -109,7 +111,7 @@ export const CONFIG_LIMITS = Object.freeze({
   /**
    * Backstop on the WHOLE stored config (UTF-8 bytes of the sanitized JSON),
    * enforced by the app's saveConfig: 256 KiB. The per-field caps above bound
-   * each list, but multiplied out (50 campaigns × 200 overrides × lists, three
+   * each list, but multiplied out (50 campaigns × 200 overrides × lists, 50
    * languages × 200 texts) they still allow MBs; nothing a merchant builds by
    * hand comes near 256 KiB, and it keeps every ShopConfig/ConfigVersion row
    * small (audit P2-1, re-review of fix round 1).

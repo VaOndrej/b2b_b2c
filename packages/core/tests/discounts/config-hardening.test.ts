@@ -57,7 +57,7 @@ test("readStoredConfig/sanitizeConfig/createDefaultConfig hand out fresh mutable
   for (const copy of [a, b, c]) {
     assert.notStrictEqual(copy, DEFAULT_CONFIG);
     assert.notStrictEqual(copy.modules.codes.rules, DEFAULT_CONFIG.modules.codes.rules);
-    assert.notStrictEqual(copy.locales.cs, DEFAULT_CONFIG.locales.cs);
+    assert.notStrictEqual(copy.locales, DEFAULT_CONFIG.locales);
     assert.equal(Object.isFrozen(copy), false);
     assert.deepEqual(copy, DEFAULT_CONFIG);
   }
@@ -65,7 +65,7 @@ test("readStoredConfig/sanitizeConfig/createDefaultConfig hand out fresh mutable
   // Mutating one handed-out copy (shop A) never changes what the next caller (shop B) gets.
   a.modules.codes.rules.push(readStoredConfig({ modules: { codes: { rules: [rule("a")] } } }).modules.codes.rules[0]);
   a.engine.combination.outletWithAnything = true;
-  c.locales.cs.leaked = "shop A text";
+  c.locales.cs = { leaked: "shop A text" };
   assert.deepEqual(readStoredConfig({}), DEFAULT_CONFIG);
   assert.deepEqual(createDefaultConfig(), DEFAULT_CONFIG);
 });

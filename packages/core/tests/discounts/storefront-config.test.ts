@@ -57,7 +57,7 @@ const PRO = {
   locales: { cs: { "tiers.heading": "Množstevní sleva", "tiers.empty": "" }, sk: {}, en: { "tiers.heading": "Buy more" } },
 };
 
-test("K5: the storefront config of a Pro shop — reachable sets by id, amounts in Liquid money units, margin caps, preset, merchant texts", () => {
+test("K5: the storefront config of a Pro shop — reachable sets by id, amounts in Liquid money units, margin caps, preset; the merchant's texts are not in it", () => {
   const built: StorefrontConfigV1 = buildStorefrontConfig(configOf(PRO), { configVersion: "cv-42" });
   assert.equal(STOREFRONT_CONFIG_VERSION, 1);
   assert.deepEqual(built, {
@@ -74,7 +74,6 @@ test("K5: the storefront config of a Pro shop — reachable sets by id, amounts 
     // Collections by numeric id → their maximum discount % (an empty one = the global value).
     margin: { on: true, max: 40, col: { "5": 10, "6": 40, "7": 80 } },
     appearance: { preset: "chips" },
-    texts: { cs: { "tiers.heading": "Množstevní sleva" }, en: { "tiers.heading": "Buy more" } },
   });
 });
 
@@ -95,7 +94,7 @@ test("K5: margin off, no sets, unknown preset in a hand-made config; nothing abo
   const config = configOf({ modules: { margin: { ...MARGIN, enabled: false } } });
   (config.storefront as { appearancePreset: string }).appearancePreset = "neon";
   const built = buildStorefrontConfig(config, { configVersion: "v" });
-  assert.deepEqual(built, { v: 1, cv: "v", tiers: { global: null, sets: {} }, margin: { on: false }, appearance: { preset: "default" }, texts: {} });
+  assert.deepEqual(built, { v: 1, cv: "v", tiers: { global: null, sets: {} }, margin: { on: false }, appearance: { preset: "default" } });
   const json = JSON.stringify(buildStorefrontConfig(configOf(PRO), { configVersion: "v" }));
   for (const needle of ["gid://", "minMargin", "cost", "perCollection"]) assert.ok(!json.includes(needle), needle);
 });

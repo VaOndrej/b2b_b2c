@@ -89,9 +89,6 @@ export type OutletDisplay = (typeof OUTLET_DISPLAY_MODES)[number];
 export const REOPEN_ON_RETURN_MODES = ["auto", "ask", "never"] as const;
 export type ReopenOnReturnMode = (typeof REOPEN_ON_RETURN_MODES)[number];
 
-export const LOCALE_CODES = ["cs", "sk", "en"] as const;
-export type LocaleCode = (typeof LOCALE_CODES)[number];
-
 /**
  * Onboarding step 1 "Co chceš řešit?" (docs/won-discounts/rozhodnuti.md, Onboarding):
  * doprava/dárek → rewards, množstevní slevy → tiers, výprodej → outlet, marže →

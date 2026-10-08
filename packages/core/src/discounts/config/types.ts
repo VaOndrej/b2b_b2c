@@ -8,7 +8,6 @@ import type {
   AppearancePreset,
   CodeBatchAlphabet,
   DiscountMethod,
-  LocaleCode,
   MinimumScope,
   OnboardingGoal,
   OutletDisplay,
@@ -250,11 +249,14 @@ export interface StorefrontSettings {
   /** The blocks' highlight colour, on every plan (ACCENT_PRESETS). Absent = "theme": the theme's text colour. */
   accent?: AccentPreset;
   cardPricesEnabled: boolean; // BETA: quantity prices on cards/search
+  /** The languages the merchant translates the storefront texts into, the shop's default first (storefront-texts.ts). Absent = none listed. */
+  languages?: string[];
   /** MVP 7 (Pro): the custom look — validated variables + the merchant's CSS as typed (custom-look.ts). Absent = none. */
   custom?: CustomLook;
 }
 
-export type LocaleDictionary = Readonly<Record<LocaleCode, Record<string, string>>>;
+/** Storefront texts the merchant changed: locale (lower-case, "cs", "pt-br") → text key → text (storefront-texts.ts). */
+export type LocaleDictionary = Readonly<Record<string, Record<string, string>>>;
 
 export interface OnboardingState {
   goals: OnboardingGoal[];

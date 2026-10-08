@@ -31,7 +31,7 @@ export const DEFAULT_CONFIG: ReadonlyDeep<WonDiscountsConfig> = deepFreeze<WonDi
   campaigns: [],
   // A new shop starts with the highlighted look (plan 2026-10-06, dávka 5); a stored value is never changed by this.
   storefront: { appearancePreset: "highlight", cardPricesEnabled: false },
-  locales: { cs: {}, sk: {}, en: {} },
+  locales: {},
   onboarding: { goals: [], step: 1 },
 });
 
