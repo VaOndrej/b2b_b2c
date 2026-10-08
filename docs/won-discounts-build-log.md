@@ -16,7 +16,9 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 >   cizích necommitnutých souborů a běží nad ním `shopify app dev` se starým kódem `dd48a75`).
 > - **Úkol 8: hotový, v `main` (`125f05e`).** Naživo neověřeno (web na Horizonu a Dawnu, `read_locales`, klikání).
 > - **Úkol 9: hotový, v `main`** (viz `git log origin/main --oneline -8`). Naživo neověřeno.
-> - **Co zbývá (nic z toho neblokuje zadání):** živé ověření obou úkolů po aktualizaci hlavního adresáře a restartu
+> - **Dotažení je zadané v [`won-discounts/prompt-dotazeni-ukol8-9.md`](won-discounts/prompt-dotazeni-ukol8-9.md)** (17 nálezů: živé
+>   ověření, kontrola kombinací podle zadání, úklid kódu). Úkoly 8 a 9 nejsou podle zadání uzavřené, dokud neprojde jeho část A.
+> - **Co zbývá:** živé ověření obou úkolů po aktualizaci hlavního adresáře a restartu
 >   `shopify app dev`; rozhodnutí Ondřeje k převodu starého vlastního CSS a k čistému `main` v hlavním adresáři.
 
 - **Krok 0 — v `main` (`22ec2ef`, `30bfc8c`):** `main` měl po „navigaci a stavu“ červený `lint` (3 nepoužité proměnné
