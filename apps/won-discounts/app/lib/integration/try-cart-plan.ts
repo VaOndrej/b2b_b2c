@@ -294,7 +294,19 @@ function notConvertedText(
   return t(input.locale, cap.after > 0 ? "tryCart.margin.noRate.lowered" : "tryCart.margin.noRate.dropped", params);
 }
 
+/** A simulated cart planned: the screen's view, and what it was made from (the combination check reads the plan itself). */
+export interface TryCartPlanDetail {
+  view: CartPlanView;
+  plan: CartPlan;
+  preview: CheckoutPreview;
+}
+
 export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput): CartPlanView {
+  return planTryCartDetail(config, input).view;
+}
+
+/** planTryCart with the engine's own plan and the checkout preview next to the view — ONE computation for both. */
+export function planTryCartDetail(config: WonDiscountsConfig, input: TryCartPlanInput): TryCartPlanDetail {
   const now = `${input.date}T${input.time}`;
   const encoded = buildShopFunctionConfig(config, {
     now,
@@ -382,7 +394,7 @@ export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput)
   };
   const marginLines = plan.lines.filter((planLine) => planLine.excluded === null && costUnknown(planLine.lineId));
   const notConverted = new Set(marginLines.filter((l) => hasCost(l.lineId)).map((l) => l.lineId));
-  return {
+  const view: CartPlanView = {
     currency: input.currency,
     date: input.date,
     market: input.market ?? null,
@@ -426,4 +438,5 @@ export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput)
     },
     ...(warnings.length > 0 ? { warnings } : {}),
   };
+  return { view, plan, preview };
 }
