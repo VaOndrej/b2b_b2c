@@ -14,6 +14,7 @@
 //      Shopify's own Markets settings.
 //   3. Nástroje — Vyzkoušet košík (Pro).
 //   4. Tarif — the plan sections (PlanScreen.tsx); their actions post to /app/plan.
+// On the side (above on a narrow screen) the list of these sections, each one click away (SectionNav).
 // A presentational component: app/routes/app.settings.tsx renders it from
 // loadSettingsScreen (app/lib/integration/settings.server.ts) and loadPlanScreen.
 
@@ -37,6 +38,7 @@ import type { CombinationView, SettingsScreenData, UiResult } from "../model/typ
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
 import { PlanBadge } from "../shell/PlanBadge";
+import { SectionNav } from "../shell/SectionNav";
 import type { MarketCell } from "../model/markets-overview";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 import { WON_INK, WON_LINE, WON_MUTED } from "../shell/tokens";
@@ -134,8 +136,17 @@ export function SettingsScreen({ currencies, combination: stored, configVersion,
   // The cart reads the STORED switches: with unsaved ones it would show the old behaviour.
   const dirty = COMBINATION_KEYS.some((key) => draft[key] !== stored[key]);
 
+  const sections = [
+    { anchor: "combination", label: t("settings.combination.title") },
+    { anchor: "unknown-market", label: t("settings.unknownMarket.title") },
+    { anchor: "markets", label: t("settings.markets.title") },
+    { anchor: "tools", label: t("settings.tools.title") },
+    ...(planScreen ? [{ anchor: "plan", label: t("nav.plan") }] : []),
+  ];
+
   return (
     <s-page heading={t("nav.settings")}>
+      <SectionNav label={t("common.onThisPage")} items={sections}>
       <s-stack direction="block" gap="base">
         <Form method="post" ref={formRef} data-save-bar>
           <input type="hidden" name={COMBINATION_FIELD.intent} value={COMBINATION_INTENT.save} />
@@ -308,6 +319,7 @@ export function SettingsScreen({ currencies, combination: stored, configVersion,
 
         {planScreen ? <PlanSections {...planScreen} action={planAction} heading /> : null}
       </s-stack>
+      </SectionNav>
     </s-page>
   );
 }

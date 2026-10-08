@@ -122,6 +122,7 @@ export const en: Record<keyof typeof cs, string> = {
   "common.cancel": "Cancel",
   "common.edit": "Edit",
   "common.continue": "Continue",
+  "common.onThisPage": "On this page",
   "common.backToOverview": "Go to Overview",
   "common.upgradeCta": "See the Pro plan",
   "common.readOnly.heading": "Settings are read-only",

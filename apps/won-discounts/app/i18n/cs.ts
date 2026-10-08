@@ -126,6 +126,7 @@ export const cs = {
   "common.cancel": "Zrušit",
   "common.edit": "Upravit",
   "common.continue": "Pokračovat",
+  "common.onThisPage": "Na této stránce",
   "common.backToOverview": "Přejít na Přehled",
   "common.upgradeCta": "Zobrazit tarif Pro",
   "common.readOnly.heading": "Nastavení jen pro čtení",

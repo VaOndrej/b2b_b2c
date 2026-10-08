@@ -279,6 +279,11 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /Nástroje/,
       /Vyzkoušet košík/,
       /<h2 id="plan"[^>]*>Tarif<\/h2>/,
+      // The list of the page's sections next to them: one link per section, the first one marked.
+      /<nav class="won-jump__nav" aria-label="Na této stránce" data-won-section-nav="true"/,
+      /<a class="won-jump__link" href="#combination" aria-current="location">Kombinování slev<\/a>/,
+      /<a class="won-jump__link" href="#unknown-market">Zákazník ze země mimo vaše trhy<\/a>/,
+      /<a class="won-jump__link" href="#plan">Tarif<\/a>/,
       /Máte tarif Free\./,
       /Vyzkoušet Pro na 14 dní zdarma/,
       /Připravit na odinstalaci/,
