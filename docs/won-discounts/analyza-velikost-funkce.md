@@ -69,6 +69,17 @@ Kombinace:
 - Vlastní řazení v č. 4 a 5 byl rychlý prototyp (heapsort). Lepší malé řazení může cenu č. 5 srazit k nule.
 - Uložené košíky jsou ze staršího tvaru dotazu, proto u nich absolutní procenta nesedí s dnešními 99,95 %. Použité jsou jen rozdíly proti dnešnímu sestavení.
 
+## Co se z toho postavilo (8. 10. 2026)
+
+Ondřej vybral všechny tři páky. Výsledek po plném ověření: **232 092 B, volných 23 908 B**, a všech 3 464 měřených košíků
+(celá sada 3 320 a 144 variant s částkami podle trhu) počítá o **0,105 až 0,475 bodu méně** než dřív. Výstupy se shodují
+s referenčním výpočtem; testy funkce cargo 102, parita 651.
+
+- Řazení je jiné než v prototypu: vkládání na místo nalezené půlením. Uvolnilo 14,7 kB za 0,003 až 0,03 bodu.
+- Práh vkládání kódu je 175, ne 150. Na celé sadě vyšla 150 u 400 košíků dráž (až +0,31 bodu), i když nejtěžší košík
+  zůstal levnější. 175 je nejnižší práh, při kterém nezdražil žádný košík. Práh 150 by dal 226 393 B (o 5,7 kB víc místa).
+- Sestavení hlídá předpoklad o paměti samo: když by data začínala v nejnižším 1 kB, sestavení spadne.
+
 ## Neměřené nápady
 
 - Knihovní formátování textu (asi 10 kB): produkční kód ho používá na pár místech (`money.rs`, `describe.rs`). Jeho odstranění pomůže jen zčásti, protože stejné formátování potřebuje i hlášení pádů.

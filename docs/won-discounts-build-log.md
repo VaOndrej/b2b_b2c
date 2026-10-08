@@ -113,6 +113,12 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   - **Zbývající mezery:** trh bez seznamu zemí pokladna nepozná; editor slevy a kampaně se dvěma trhy v eurech nemají vlastní
     stav v dev náhledu ani screenshot (používají stejné sloupce jako Odměny a Úrovně).
   - **Rezerva funkce je po změně 323 B a asi 0,05 bodu.** Další funkce v pokladně musí nejdřív uvolnit místo.
+  - **Uvolnění místa ve funkci (8. 10. 2026; `docs/won-discounts/analyza-velikost-funkce.md`):** funkce má **232 092 B
+    (volných 23 908 B)** a na všech 3 464 měřených košících počítá o 0,105 až 0,475 bodu méně. Chování se nezměnilo.
+    Tři změny: sestavení přes `build.mjs` (vlastní průchod `wasm-opt --low-memory-unused` před průchodem CLI, s kontrolou
+    rozložení paměti), dvě knihovní řazení nahrazena vkládáním na místo nalezené půlením (`rank_ids`, seznam variant
+    ve výprodeji), práh vkládání kódu 175 (`.cargo/config.toml`). Nová vývojová závislost `binaryen` 123.0.0 (stejná verze
+    optimalizátoru jako v CLI). Testy funkce: cargo 102, parita 651. Předchozí věta o rezervě 323 B už neplatí.
   - **Pozor:** změnil jsem `extensions/` za běhu `shopify app dev`; podle runbooku to rozbije soubory rozšíření na webu do dalšího
     restartu. Ověření: `node apps/won-discounts/scripts/check-storefront-assets.mjs the-inventory-not-tracked-snowboard`.
 - **Další krok:** úkol 7 (Milníky) v nové session podle [`won-discounts/prompt-ukol7-milniky.md`](won-discounts/prompt-ukol7-milniky.md), potom 8, 9.

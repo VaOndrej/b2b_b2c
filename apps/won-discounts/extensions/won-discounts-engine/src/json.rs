@@ -537,8 +537,12 @@ impl WonProduct {
                     Some(slot @ None) => {
                         let mut sorted: Vec<String> = Vec::with_capacity(len);
                         sorted.push(key.1.clone());
-                        sorted.extend((1..len).filter_map(|i| list.get_at_index(i).as_string()));
-                        sorted.sort_unstable();
+                        // Sorted while read: each id goes to its place found by halving (core's sort of
+                        // `String`s is 4.2 kB of Wasm for a list this short; README, "Wasm size").
+                        for id in (1..len).filter_map(|i| list.get_at_index(i).as_string()) {
+                            let at = sorted.partition_point(|v| v.as_str() <= id.as_str());
+                            sorted.insert(at, id);
+                        }
                         let hit = sorted.binary_search_by(|v| v.as_str().cmp(variant_id)).is_ok();
                         *slot = Some(sorted);
                         hit

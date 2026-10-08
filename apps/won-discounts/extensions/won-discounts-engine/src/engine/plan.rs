@@ -814,9 +814,17 @@ fn by_rank(rules: &[Rule], a: &Component, b: &Component) -> std::cmp::Ordering {
 }
 
 /// Every rule's `order`: its position in priority desc, id asc order.
+/// Sorted by inserting each rule at its place found by halving (the order a stable
+/// sort gives: a rule goes after its equals): as few comparisons as core's stable
+/// sort, without its 8.8 kB of Wasm (README, "Wasm size").
 fn rank_ids(rules: &mut [Rule]) {
-    let mut ranked: Vec<usize> = (0..rules.len()).collect();
-    ranked.sort_by(|&a, &b| rules[b].priority.cmp(&rules[a].priority).then_with(|| js::cmp_str(rules[a].id, rules[b].id)));
+    let mut ranked: Vec<usize> = Vec::with_capacity(rules.len());
+    for i in 0..rules.len() {
+        let at = ranked.partition_point(|&r| {
+            rules[i].priority.cmp(&rules[r].priority).then_with(|| js::cmp_str(rules[r].id, rules[i].id)) != std::cmp::Ordering::Greater
+        });
+        ranked.insert(at, i);
+    }
     for (order, i) in ranked.into_iter().enumerate() {
         rules[i].order = order as u32;
     }
@@ -2215,6 +2223,25 @@ mod search_tests {
             combines: &[],
             state: None,
             order: 0,
+        }
+    }
+
+    #[test]
+    fn rank_ids_is_the_stable_sort_by_priority_then_id() {
+        // The insertion by halving vs core's stable `sort_by` with the same comparator: priorities that tie,
+        // ids that repeat (equal rules keep their config order), ids of every script, 0 to 200 rules.
+        let names = ["r_", "a", "Z", "é", "", "r_1", "ž"];
+        let ids: Vec<&'static str> = (0..200).map(|k| &*Box::leak(format!("{}{}", names[k % 7], k % 23).into_boxed_str())).collect();
+        let mut rng = Rng(0x2026_1008_5EED);
+        for case in 0..4_000 {
+            let n = [0, 1, 2, 3, 17, 64, 200][case % 7];
+            let mut rules: Vec<Rule> = (0..n).map(|_| rule(ids[rng.below(200) as usize], [0, 0, 5, -3, 1000][rng.below(5) as usize])).collect();
+            let mut expected: Vec<usize> = (0..n).collect();
+            expected.sort_by(|&a, &b| rules[b].priority.cmp(&rules[a].priority).then_with(|| js::cmp_str(rules[a].id, rules[b].id)));
+            rank_ids(&mut rules);
+            let mut got: Vec<usize> = (0..n).collect();
+            got.sort_by_key(|&i| rules[i].order);
+            assert_eq!(got, expected, "case {case}");
         }
     }
 

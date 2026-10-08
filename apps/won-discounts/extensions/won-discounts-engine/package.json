@@ -15,6 +15,7 @@
   "devDependencies": {
     "@shopify/shopify-function-test-helpers": "^1.0.0",
     "@won/core": "*",
+    "binaryen": "123.0.0",
     "graphql": "^16.11.0",
     "vitest": "^3.2.4"
   }

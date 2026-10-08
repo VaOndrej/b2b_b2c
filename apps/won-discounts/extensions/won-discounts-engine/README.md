@@ -315,6 +315,29 @@ column **+0.043 point** (1 516 to 4 744 a run). 7 fixtures (`lines-market-amount
 reference, the 150 variant inputs included. **The reserve is now about 0.05 point and 323 B: the next engine feature
 needs room first.**
 
+**Wasm size, the size pass (2026-10-08; docs/won-discounts/analyza-velikost-funkce.md): 232 092 B of 256 000 B —
+23 908 B left, and every measured input costs fewer instructions than before.** No behaviour changed; three things did:
+
+1. **The build is `node build.mjs`** (shopify.extension.toml): cargo, then one `wasm-opt -Oz --low-memory-unused` pass
+   of our own before the CLI's fixed `-Oz` and its trampoline. The flag lets binaryen fold small constant offsets into
+   loads and stores, on the assumption that the lowest 1 024 B of memory are never touched. rustc links wasm32 with the
+   stack first (`[0, 1 MiB)`, growing down; the data starts at 1 048 576), so that kilobyte is only reached by a stack
+   1 MiB deep; `build.mjs` reads the data segments of what cargo built and fails the build if one starts below 1 024.
+   Alone: −4.2 kB and **−1.0 point** of the instruction limit. `binaryen` is pinned to the CLI's own wasm-opt (123).
+2. **Two of core's sorts are gone.** The rules' rank (`plan.rs` `rank_ids`) and a product's sale-variant list
+   (`json.rs`) insert each element at the place found by halving (`partition_point` + `Vec::insert`): the same order
+   as the stable sort (a test compares them), as few comparisons, and the moves are one `memory.copy`. −14.7 kB,
+   +0.003 to +0.03 point. The third sort (pairs of integers: the order search and unsorted tier breaks) stays core's —
+   a small sort there cost 0.6 to 0.8 point.
+3. **LLVM inlines less** (`.cargo/config.toml`: `-inline-threshold=175`, default 225). −5.4 kB for part of the point
+   that (1) gave back.
+
+Measured on the 3 320 cap-550 inputs and their 144 market-amount variants, against the build before (255 677 B),
+every output equal to the TS reference: **−0.105 to −0.475 point** on every input (the costliest one −0.475). Other
+thresholds with (1) and (2): 225 → 237 500 B, −0.77 to −1.15 point; 165 → 229 762 B, −0.14 to +0.18; 150 → 226 393 B,
+−0.07 to +0.31 (the costliest input still lower, but 400 inputs dearer) — 175 is the lowest at which nothing got dearer.
+The dial is that one number: bytes and instructions trade against each other there.
+
 Wasm size (2026-10-06, per-item minimums + generated code batches): **254 963 B** of 256 000 B (+5 852 B: `apply_item_minimums` 1.7 kB, `collect_item_refs` + `rule_of_text` 1.9 kB, `batch::is_batch_code` + SipHash 1.3 kB, the rest in `build_plan`). **1 037 B are left**: the next feature needs room first (the reserve below: `-C llvm-args=-inline-threshold=150`, −10.2 kB for +0.9 points of the instruction limit). What kept it under the limit: the batch is ONE text with its numbers as single characters and its key as raw bytes (a tuple reader with a hex key cost 3 kB), the middle and suffix are covered by the check instead of being compared, no new config field (the batch texts ride in `codeHashes`), no table for the item groups, the gate untouched.
 
 Wasm size (MVP 6.1): 249 111 B of 256 000 B (+3 614 B: the choice of the tier part in the config reader).

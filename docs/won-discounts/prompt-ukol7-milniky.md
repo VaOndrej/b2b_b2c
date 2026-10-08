@@ -10,7 +10,7 @@ Pracuješ **výhradně inline, bez subagentů**. Je to jeden úkol na jednu sess
 
 - Repo: `~/Development/WonCommerce/Apps/b2b_b2c` (monorepo). Aplikace `apps/won-discounts`, sdílené jádro `packages/core/src/discounts`.
 - `main` je pushnutý; poslední commit s kódem je `798cfe8` (volba nejnižší / nejvyšší částky v Nastavení). Začni `git fetch origin` a udělej si z `origin/main` novou větev `won-discounts-milniky` přímo v tomto adresáři (běží nad ním `shopify app dev`, takže se ti změny rozšíření samy nahrávají do dev obchodu).
-- **Souběžně běží druhá session**, která zmenšuje slevovou funkci v pokladně. Pracuje ve vlastním adresáři `~/Development/WonCommerce/Apps/b2b_b2c-funkce` (větev `won-discounts-funkce-velikost`) a mění jen `apps/won-discounts/extensions/won-discounts-engine` (`src/`, sestavení, `README.md`) a své dokumenty. Ty z té složky měníš jen `tests/scenarios.js` a `tests/fixtures/`. Do jejího adresáře nechoď. Společný je `docs/won-discounts-build-log.md`: před každým pushem udělej `git fetch origin && git rebase origin/main`, případný konflikt v build logu vyřeš ponecháním obou zápisů a pusť bránu znovu.
+- **Souběžně běží druhá session**, která zmenšuje slevovou funkci v pokladně. Pracuje ve vlastním adresáři `~/Development/WonCommerce/Apps/b2b_b2c-funkce` (větev `won-discounts-funkce-velikost`) a mění jen `apps/won-discounts/extensions/won-discounts-engine` (`src/`, sestavení, `README.md`) a své dokumenty. Ty z té složky měníš jen `tests/scenarios.js` a `tests/fixtures/`. Do jejího adresáře nechoď. Její změna sestavení funkce je v `main` od 8. 10.: sestavení potřebuje balíček `binaryen`, takže **po každém `git rebase origin/main`, který změní `package-lock.json`, pusť v kořeni repa `npm install`** (jinak se funkce nesestaví v testech ani v běžícím `shopify app dev`). Společný je `docs/won-discounts-build-log.md`: před každým pushem udělej `git fetch origin && git rebase origin/main`, případný konflikt v build logu vyřeš ponecháním obou zápisů a pusť bránu znovu.
 - Stav běhu: `docs/won-discounts-build-log.md`, oddíl „Aktuální stav“. **Začni tím, že ho přečteš**, a po každé kompakci kontextu znovu.
 - Dev náhled bez přihlášení: `http://localhost:<port>/dev/preview/<obrazovka>`. Port zjistíš:
 
@@ -44,7 +44,7 @@ done
 
 ## Tvrdé omezení: funkce v pokladně se nesmí zvětšit
 
-Slevová funkce (`extensions/won-discounts-engine`, Rust) má **255 677 B z 256 000 B (zbývá 323 B)** a rezervu instrukcí asi **0,05 bodu**. Místo v ní právě uvolňuje druhá session (`docs/won-discounts/analyza-velikost-funkce.md`), ale s tím nepočítej: do zdrojáků funkce (`src/`) ani do jejího sestavení **nesahej**.
+Slevová funkce (`extensions/won-discounts-engine`, Rust) má od 8. 10. **232 092 B z 256 000 B (volných 23 908 B)** a rezervu instrukcí asi 0,15 až 0,5 bodu (`docs/won-discounts/analyza-velikost-funkce.md`). Ta rezerva je pro budoucí práci, ne pro Milníky: do zdrojáků funkce (`src/`) ani do jejího sestavení **nesahej**, druhá session na nich ještě může pracovat.
 
 - Dárek a doprava zdarma: pokladna je umí, mění se jen formulář a případně tvar nastavení.
 - **Sleva z objednávky jako stupeň:** postav ji z toho, co pokladna umí dnes, tedy z automatické slevy na objednávku s minimální útratou v `modules.codes.rules`. Navrhovaná cesta: pravidla, která patří Milníkům, poznáš podle předpony id (například `ms-`), stránka Milníky je vlastní a stránka „Slevy a kódy“ je neukazuje jako běžné slevy (nebo je ukáže jen jako odkaz na Milníky). Když najdeš lepší cestu bez zásahu do funkce, použij ji a zapiš proč.
@@ -112,7 +112,7 @@ npm run guard:test:core
 npm run validate:shopify
 ```
 
-Výchozí stav (kód `798cfe8`): `test:unit` 1 769 + cargo 101 + vitest 651, `test:packages` 913 + 53, guard 301, lint 0 chyb a 6 starších varování, `validate:shopify` 0 nálezů. Kořenový `npm run lint` (bez `-w`) kontroluje jinou aplikaci a padá na jejích starších chybách; do brány nepatří.
+Výchozí stav (po změně sestavení funkce): `test:unit` 1 769 + cargo 102 + vitest 651, `test:packages` 913 + 53, guard 301, lint 0 chyb a 6 starších varování, `validate:shopify` 0 nálezů. Kořenový `npm run lint` (bez `-w`) kontroluje jinou aplikaci a padá na jejích starších chybách; do brány nepatří.
 
 ### Důkazy (bez nich úkol není hotový)
 

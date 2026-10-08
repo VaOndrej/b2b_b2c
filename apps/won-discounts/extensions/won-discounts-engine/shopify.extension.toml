@@ -30,6 +30,7 @@ description = "t:description"
   # Rust (production hot path; the TS engine in @won/core stays the reference,
   # README.md). Needs cargo on PATH: `export PATH="$HOME/.cargo/bin:$PATH"`.
   [extensions.build]
-  command = "cargo build --target=wasm32-unknown-unknown --release"
+  # cargo build, then one wasm-opt pass of our own before the CLI's (build.mjs says why).
+  command = "node build.mjs"
   path = "target/wasm32-unknown-unknown/release/won-discounts-engine.wasm"
   watch = ["src/**/*.rs"]

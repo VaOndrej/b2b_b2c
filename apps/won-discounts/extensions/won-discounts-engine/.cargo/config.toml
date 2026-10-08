@@ -1,0 +1,5 @@
+# The Wasm build only (README.md, "Wasm size"): LLVM inlines less than its default (225), which is 10.8 kB of the
+# 256 000 B limit. Alone it costs about 1 point of the instruction limit; build.mjs's `--low-memory-unused` pass
+# gives that point back. Measured together, never one without the other.
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "llvm-args=-inline-threshold=175"]
