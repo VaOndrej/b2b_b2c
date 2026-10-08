@@ -15,28 +15,9 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 >   Do hlavního adresáře `b2b_b2c` nesahám (přepnutí větve a commit tam mi zamítla ochrana oprávnění; má v něm sedm
 >   cizích necommitnutých souborů a běží nad ním `shopify app dev` se starým kódem `dd48a75`).
 > - **Úkol 8: hotový, v `main` (`125f05e`).** Naživo neověřeno (web na Horizonu a Dawnu, `read_locales`, klikání).
-> - **Úkol 9: v kódu, necommitnuto, cílené testy zelené, celá brána ještě neběžela.** Soubory:
->   `app/lib/integration/combination-check.ts` (čisté scénáře a nálezy), `combination-check.server.ts` (čtení jen
->   z databáze, pohled pro stránku, otevření scénáře), `try-cart-plan.ts` (`planTryCartDetail`),
->   `components/try-cart/CombinationsSection.tsx`, `TryCartScreen.tsx`, `OverviewScreen.tsx` (počet na dlaždici),
->   `pages.server.ts` (`tryCartPage`, `overviewPage`), `routes/app.try-cart.tsx` (`?scenario=`), texty `combos.*`,
->   vývojový náhled `?combos=on | sample`, testy `tests/ui/combination-check.test.ts` (10),
->   `tests/integration/combination-check.test.ts` (5), položky v `tests/ui/harness-screens.test.ts`,
->   nápověda `apps/won-discounts/docs/tasks/try-a-cart.md`. Snímky: `Apps/.playwright-mcp/scenare/`.
-> - **V témže rozdělaném stavu:** vrácených šest testů náhledu stránky Překlady, které jsem omylem smazal v commitu
->   `bfd0071` (část B úkolu 8).
-> - **Další kroky:** (1) celá brána z kořene (sedm příkazů ze zadání, každý zvlášť); (2) doplnit sem čísla a
->   rozhodnutí úkolu 9 a řádek 16 v tabulce „Stav implementace“ plánu; (3) commit po částech, `git fetch` + rebase,
->   `git push origin HEAD:main`; (4) poznámka do Second Brain (`note-add won-discounts-kolo3 "…" --no-llm`);
->   (5) závěrečná zpráva k úkolu 9 podle zadání.
-> - **Rozhodnutí úkolu 9 (zapsat do stavu):** scénáře se počítají při otevření stránky z uložených dat (vždy stav
->   po posledním uložení, bez tabulky navíc a bez dotazu do Shopify); stejné košíky se slučují do jednoho scénáře;
->   obchod bez uložených produktů dostane ukázkový produkt a stránka to říká; cena v jiné měně je odhad podle
->   obchodníkových částek; „nejprodávanější produkt“ se nevybírá (přehledy produkty neukládají).
-
-Větev `won-discounts-preklady` ve vlastním pracovním adresáři `../b2b_b2c-preklady`, po každé zelené části
-`git push origin HEAD:main`. Práce inline. Měření a rozhodnutí o úložišti:
-[`won-discounts/navrh-preklady-a-vzhled.md`](won-discounts/navrh-preklady-a-vzhled.md).
+> - **Úkol 9: hotový, v `main`** (viz `git log origin/main --oneline -8`). Naživo neověřeno.
+> - **Co zbývá (nic z toho neblokuje zadání):** živé ověření obou úkolů po aktualizaci hlavního adresáře a restartu
+>   `shopify app dev`; rozhodnutí Ondřeje k převodu starého vlastního CSS a k čistému `main` v hlavním adresáři.
 
 - **Krok 0 — v `main` (`22ec2ef`, `30bfc8c`):** `main` měl po „navigaci a stavu“ červený `lint` (3 nepoužité proměnné
   v `OverviewScreen.tsx` a `ProTierSets.tsx`), opraveno jako první commit. Výchozí brána po opravě: `test:packages`
@@ -125,7 +106,46 @@ Větev `won-discounts-preklady` ve vlastním pracovním adresáři `../b2b_b2c-p
     Žebříček bez obchodu: `milestones-web-preview.mjs` 56 kontrol, vše prošlo.
   - **Naživo neověřeno:** nové vzhledy na Horizonu a Dawnu (runbook), odpočet u výprodeje na webu, bliknutí v prohlížeči,
     klikání v sekcích vzhledu. Hlavní adresář s `shopify app dev` stojí na `dd48a75`, takže dev obchod má staré rozšíření.
-- **Úkol 9 — nezačato.**
+- **Úkol 9 (kontrola kombinací, bod 16) — v kódu, brána zelená, v `main`; naživo neověřeno.**
+  - **Jeden výpočet:** scénář počítá `planTryCartDetail` (`app/lib/integration/try-cart-plan.ts`), tedy stejný
+    `planCart` nad stejným nastavením jako pokladna a ruční košík. Kontrola nemá vlastní pravidla: nálezy jen čte
+    z plánu a z náhledu pokladny (`combination-check.ts` `findingsOf`). Funkce v pokladně se nezměnila. Test
+    porovnává každý scénář s přímým voláním `planCart` (součty, stavy slev, zásahy marže).
+  - **Scénáře (nejvýš 12, jen z toho, co obchod opravdu má zapnuté):** množstevní sleva sama; s kódem; se slevou
+    z objednávky; s dopravou zdarma; s dárkem ze stupně; dárek s kódem; se stupni se slevou z Milníků (i s kódem);
+    produkt s výjimkou; zboží ve výprodeji s ostatním; kampaň v minutu startu; žebříček v každém dalším trhu, který
+    má vlastní částky. Kombinace, které vyjdou jako stejný košík, jsou jeden scénář se všemi částmi v názvu.
+  - **Produkty vybírá aplikace z databáze:** varianta s nejnižší marží (zrcadlo nákupních cen `VariantCost`),
+    produkt s výjimkou (`ProductTargetIndex`, `tierRef`), varianta v běžícím výprodeji (`OutletRun`), každý s odkazy,
+    které čte pokladna. Obchod bez uložených produktů dostane ukázkový produkt za 500 a stránka to říká.
+  - **Trhy:** scénář žebříčku běží i v každém dalším trhu s vlastními částkami; cena v jiné měně je odhad podle
+    poměru obchodníkových částek (stránka to říká). Limit Milníků po trzích vychází z brány tarifu stejně jako
+    v pokladně (test: Free dostane v Česku i na Slovensku druhý stupeň, Pro třetí).
+  - **Co hlásí (6 druhů, každý s odkazem na nastavení):** ochrana marže slevu snížila nebo zrušila; slevy překročily
+    nejvyšší dovolenou slevu; sleva se nesčítá s jinou; kód vezme nárok na dárek; stupeň se slevou přebil vyšší
+    stupeň, jiná sleva z objednávky nebo kód; pokladna slevy zkrátí.
+  - **Kde:** Vyzkoušet košík má nahoře „Časté kombinace“ (V pořádku / Upozornění, košík a slevy, nálezy, „Otevřít
+    v košíku“ předvyplní ruční košík přes `?scenario=`); dlaždice na úvodní stránce říká „N v pořádku, M upozornění“.
+  - **Free a Pro:** počty vidí každý tarif; které scénáře a proč posílá server jen na Pro (`combinationView`); Free má
+    jantarový zamčený blok s větou, co Pro dává. Předvyplnění košíku je jen na Pro.
+  - **Žádný dotaz do Shopify navíc:** kontrola čte jen databázi; test ji pouští s klientem, který na jakýkoli dotaz
+    spadne, a porovnává dotazy stránky se scénáři a bez nich (stejné).
+  - **Rozhodl jsem sám:** (1) nepočítá se „po uložení a jednou denně“ do tabulky, ale při otevření stránky z uložených
+    dat: výsledek je vždy po posledním uložení a k dnešnímu dni, bez migrace a bez zastarávání; (2) „nejprodávanější
+    produkt“ se nevybírá, přehledy produkty objednávek neukládají; (3) ceny produktů jsou ty ze zrcadla nákupních
+    cen (existuje jen se zapnutou Ochranou marže), jinak ukázkový produkt; (4) scénář s ukázkovým produktem nejde
+    otevřít v ručním košíku; (5) dárkový řádek se do scénáře nepřidává (aplikace nemá uloženou cenu dárku), nález
+    „kód vezme dárek“ na něm nezávisí.
+  - **Důkazy:** aplikace 390 a 1440 px, 6 stavů, bez vodorovného posuvu: `Apps/.playwright-mcp/scenare/`
+    (`try-cart?combos=on | sample`, `?plan=pro`, úvodní stránka). Testy: `tests/ui/combination-check.test.ts` (10),
+    `tests/integration/combination-check.test.ts` (5), 5 položek v `harness-screens.test.ts`.
+  - **Brána 8. 10. (úkol 9):** `test:packages` 941 + 53, `test:unit` 1 857 + cargo 102 + vitest 699, `typecheck`, `lint`
+    (0 chyb, 4 starší varování), `build`, `guard:test:core` 301, `validate:shopify`, vše exit 0. Zdrojáky funkce
+    v pokladně beze změny, skripty na webu beze změny (úkol 9 na rozšíření nesáhl).
+  - **Oprava vlastní chyby:** v commitu `bfd0071` (úkol 8, část B) jsem při přepisu `harness-screens.test.ts` omylem
+    smazal šest testů náhledu stránky Překlady. Jsou vrácené beze změny; pokles 1 830 → 1 828 v bráně úkolu 8 tedy
+    nebyl jen odchodem testů stránky Vzhled, jak jsem tehdy napsal.
+  - **Naživo neověřeno:** celé v běžící aplikaci (skutečná data obchodu, proklik „Otevřít v košíku“, dlaždice).
 - **Čistý `main` v hlavním adresáři:** přepnutí větve a commit sedmi cizích necommitnutých souborů (Railway, Won
   Companion, roadmapa, paralelizace) mi zamítla ochrana oprávnění i po Ondřejově souhlasu; zůstává na Ondřejovi.
 
