@@ -150,13 +150,13 @@ test("refused on their fields, nothing saved: an unknown element, look or colour
     return !r.ok && r.reason === "invalid" ? r.errors : r;
   };
   const ok: [string, string][] = [["preset", "badge"], ["accent", "theme"]];
-  assert.deepEqual(await errors("cart", ok), [{ field: "element", key: "appearance.error.preset" }]);
+  assert.deepEqual(await errors("cart", ok), [{ field: "element", key: "looks.error.preset" }]);
   assert.deepEqual(await errors("outlet", [["preset", "checklist"], ["accent", "theme"]]), [{ field: "preset", key: "looks.error.preset" }]);
   assert.deepEqual(await errors("outlet", [["preset", "badge"], ["accent", "pink"]]), [{ field: "accent", key: "looks.error.accent" }]);
-  assert.deepEqual(await errors("outlet", [...ok, ["look.accent", "red"]]), [{ field: "look.accent", key: "appearance.error.color" }]);
-  assert.deepEqual(await errors("outlet", [...ok, ["look.radius", "99"]]), [{ field: "look.radius", key: "appearance.error.radius", params: { max: 32 } }]);
-  assert.deepEqual(await errors("outlet", [...ok, ["look.css", ".a{background:url(https://x)}"]]), [{ field: "look.css", key: "appearance.error.css.forbidden", params: { detail: "url(" } }]);
-  assert.deepEqual(await errors("tiers", [["look.css", ".a{b:c"]]), [{ field: "look.css", key: "appearance.error.css.unbalanced", params: { detail: "" } }]);
+  assert.deepEqual(await errors("outlet", [...ok, ["look.accent", "red"]]), [{ field: "look.accent", key: "looks.error.color" }]);
+  assert.deepEqual(await errors("outlet", [...ok, ["look.radius", "99"]]), [{ field: "look.radius", key: "looks.error.radius", params: { max: 32 } }]);
+  assert.deepEqual(await errors("outlet", [...ok, ["look.css", ".a{background:url(https://x)}"]]), [{ field: "look.css", key: "looks.error.css.forbidden", params: { detail: "url(" } }]);
+  assert.deepEqual(await errors("tiers", [["look.css", ".a{b:c"]]), [{ field: "look.css", key: "looks.error.css.unbalanced", params: { detail: "" } }]);
   assert.deepEqual(await looksAction(ctx, formOf([["intent", "nope"]])), { ok: false, reason: "bad_request" });
   const s = await stored();
   assert.deepEqual({ looks: s.looks, custom: s.custom }, { looks: {}, custom: undefined });
@@ -168,7 +168,7 @@ test("a storefront config over Shopify's metafield limit is refused before the s
   const ctx = ctxFor(store, "pro");
   const r = await looksAction(ctx, await look("campaign", [["preset", "card"], ["accent", "theme"], ["look.css", ".won-campaign__title { font-weight: 700 }"]]), { maxStorefrontBytes: 100 });
   assert.ok(!r.ok && r.reason === "invalid", JSON.stringify(r));
-  assert.equal(r.errors![0]!.key, "appearance.error.tooLarge");
+  assert.equal(r.errors![0]!.key, "looks.error.tooLarge");
   assert.deepEqual((await stored()).looks, {});
 });
 

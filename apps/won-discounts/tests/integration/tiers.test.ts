@@ -729,7 +729,7 @@ test("the look switcher saves: `preset` in the tiers form writes storefront.appe
   assert.equal((await loadTiersScreen(ctx, { scopes: SCOPES })).preview.preset, "chips", "the page reads it back");
   // Not one of the four → refused at the field, nothing saved (SEC-1).
   const refused = await tiersAction(ctx, globalForm([[F.configVersion, loaded.version!], [F.preset, "neon"], [F.percent("global", "r0"), "12"]]));
-  assert.deepEqual(refused, { ok: false, reason: "invalid", errors: [{ field: "preset", key: "appearance.error.preset" }] });
+  assert.deepEqual(refused, { ok: false, reason: "invalid", errors: [{ field: "preset", key: "looks.error.preset" }] });
   loaded = await loadConfig(db.prisma, shop);
   assert.equal(loaded.config.storefront.appearancePreset, "chips");
   assert.deepEqual(loaded.config.modules.tiers.sets[0]?.breaks, [{ minQty: 3, percent: 10 }]);

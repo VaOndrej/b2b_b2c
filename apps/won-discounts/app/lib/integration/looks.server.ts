@@ -146,12 +146,12 @@ export async function looksAction(ctx: ShopCtx, form: FormDataLike, opts: { maxS
   const [plan, loaded] = await Promise.all([ctxPlan(ctx), loadConfig(ctx.db, ctx.shop)]);
   if (plan === "pro") {
     const issue = customLookIssue(look.custom, LOOK_ROOT[look.element]);
-    if (issue) return { ok: false, reason: "invalid", errors: [{ field: LOOK_FIELD.css, key: `appearance.error.css.${issue.reason}`, params: { detail: issue.detail ?? "" } }] };
+    if (issue) return { ok: false, reason: "invalid", errors: [{ field: LOOK_FIELD.css, key: `looks.error.css.${issue.reason}`, params: { detail: issue.detail ?? "" } }] };
   }
   const next = buildStorefrontConfig(gateConfigForPlan(applyLook(loaded.config, look, plan), plan).config, { configVersion: "" });
   const bytes = new TextEncoder().encode(JSON.stringify(next)).length;
   // The live config also carries a version token and gift handles: leave them room under Shopify's limit.
   const max = opts.maxStorefrontBytes ?? STOREFRONT_CONFIG_MAX_BYTES - STOREFRONT_CONFIG_HEADROOM_BYTES;
-  if (bytes > max) return { ok: false, reason: "invalid", errors: [{ field: LOOK_FIELD.css, key: "appearance.error.tooLarge", params: { bytes, max } }] };
+  if (bytes > max) return { ok: false, reason: "invalid", errors: [{ field: LOOK_FIELD.css, key: "looks.error.tooLarge", params: { bytes, max } }] };
   return saveConfigSection(ctx, { ...readSaveOptions(form), path: "storefront", pick: (config) => lookPart(config, look.element), apply: (config) => applyLook(config, look, plan) });
 }

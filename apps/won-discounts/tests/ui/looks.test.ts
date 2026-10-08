@@ -51,11 +51,11 @@ test("a look's form as the server reads it: only known looks and colours, the fl
     errors: [
       { field: LOOK_FIELD.preset, key: "looks.error.preset" },
       { field: LOOK_FIELD.accentPreset, key: "looks.error.accent" },
-      { field: LOOK_FIELD.line, key: "appearance.error.color" },
-      { field: LOOK_FIELD.radius, key: "appearance.error.radius", params: { max: 32 } },
+      { field: LOOK_FIELD.line, key: "looks.error.color" },
+      { field: LOOK_FIELD.radius, key: "looks.error.radius", params: { max: 32 } },
     ],
   });
-  assert.deepEqual(readLookForm(form([["element", "cart"]])), { ok: false, errors: [{ field: "element", key: "appearance.error.preset" }] });
+  assert.deepEqual(readLookForm(form([["element", "cart"]])), { ok: false, errors: [{ field: "element", key: "looks.error.preset" }] });
 });
 
 function sources(dir: string): string[] {

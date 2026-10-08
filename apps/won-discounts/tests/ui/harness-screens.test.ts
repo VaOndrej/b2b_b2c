@@ -174,7 +174,8 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "translations?plan=pro", expect: [/data-won-add-language/, /<s-option[^>]*value="de"[^>]*>němčina/, /Stáhnout CSV/, /Nahrát CSV/] },
   { path: "translations?state=empty", expect: [/čeština · výchozí jazyk obchodu/, /Výchozí texty/, /data-won-add-language/] },
   { path: "translations?state=no-scope", expect: [/Aplikace nemá svolení číst jazyky zapnuté v Shopify/, /Povolit čtení jazyků/] },
-  { path: "translations?state=downgraded", expect: [/němčina/, /Ve Free se v tomto jazyce na webu ukazují výchozí texty/] },
+  // A language the extension has no texts of its own for (it ships Czech, Slovak, English): the page says what a customer sees without the merchant's text.
+  { path: "translations?state=downgraded", expect: [/němčina/, /Ve Free se v tomto jazyce na webu ukazují výchozí texty/, /data-won-lang-fallback="de"><div[^>]*>[^<]*Bez vašeho textu se v tomto jazyce ukáže anglický/], absent: [/data-won-lang-fallback="(cs|sk)"/] },
   { path: "translations?plan=pro&state=import", expect: [/data-won-import-preview/, /Změní se: 1/, /Odmítnuto: 2/, /Množstevní tabulka: Nadpis tabulky · slovenština/, /V textu chybí \{amount\}/, /neznámý text „tiers\.unknown“/, /Uložit změny z importu/] },
   // Every other element's look is on its module's page: ready-made looks previewed with the extension's own markup,
   // the colour, and the Pro part (amber and locked on Free, with what Pro gives and the way to it).

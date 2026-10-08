@@ -56,19 +56,19 @@ export function presetOf(v: unknown): AppearancePresetView {
 
 /** A ready-made look's name ("Štítky", "Odškrtávací seznam"). */
 export function presetLabel(element: LookElement, preset: string, tr: Translator): string {
-  return tr.t((element === "tiers" ? `appearance.preset.${preset}` : `looks.${element}.${preset}`) as MessageKey);
+  return tr.t(`looks.${element}.${preset}` as MessageKey);
 }
 
 /** …and what it is, in one line. */
 export function presetDetails(element: LookElement, preset: string, tr: Translator): string {
-  return tr.t((element === "tiers" ? `appearance.preset.${preset}.details` : `looks.${element}.${preset}.details`) as MessageKey);
+  return tr.t(`looks.${element}.${preset}.details` as MessageKey);
 }
 
 /** The table's look out of its page's form (the preview's switcher). */
 export function readAppearanceForm(form: FormDataLike): { ok: true; preset: AppearancePresetView } | { ok: false; errors: FieldError[] } {
   const raw = form.get(LOOK_FIELD.preset);
   const preset = typeof raw === "string" ? raw.trim() : "";
-  return isAppearancePreset(preset) ? { ok: true, preset } : { ok: false, errors: [{ field: LOOK_FIELD.preset, key: "appearance.error.preset" }] };
+  return isAppearancePreset(preset) ? { ok: true, preset } : { ok: false, errors: [{ field: LOOK_FIELD.preset, key: "looks.error.preset" }] };
 }
 
 export interface CustomLookForm {
@@ -95,7 +95,7 @@ const COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 export function readLookForm(form: FormDataLike): { ok: true; look: LookForm } | { ok: false; errors: FieldError[] } {
   const text = (name: string) => String(form.get(name) ?? "").trim();
   const element = text(LOOK_FIELD.element);
-  if (!isLookElement(element)) return { ok: false, errors: [{ field: LOOK_FIELD.element, key: "appearance.error.preset" }] };
+  if (!isLookElement(element)) return { ok: false, errors: [{ field: LOOK_FIELD.element, key: "looks.error.preset" }] };
   const errors: FieldError[] = [];
   const look: LookForm = { element, custom: null };
   if (element !== "tiers") {
@@ -112,12 +112,12 @@ export function readLookForm(form: FormDataLike): { ok: true; look: LookForm } |
     const value = text(LOOK_FIELD[key]);
     if (value === "") continue;
     if (COLOR.test(value)) vars[key] = value.toLowerCase();
-    else errors.push({ field: LOOK_FIELD[key], key: "appearance.error.color" });
+    else errors.push({ field: LOOK_FIELD[key], key: "looks.error.color" });
   }
   const radius = text(LOOK_FIELD.radius);
   if (radius !== "") {
     if (/^\d{1,2}$/.test(radius) && Number(radius) <= RADIUS_MAX) vars.radius = Number(radius);
-    else errors.push({ field: LOOK_FIELD.radius, key: "appearance.error.radius", params: { max: RADIUS_MAX } });
+    else errors.push({ field: LOOK_FIELD.radius, key: "looks.error.radius", params: { max: RADIUS_MAX } });
   }
   // The CSS as typed (not trimmed inside): the merchant gets back exactly what they saved.
   const css = String(form.get(LOOK_FIELD.css) ?? "");

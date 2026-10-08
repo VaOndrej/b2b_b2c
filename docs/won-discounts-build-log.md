@@ -26,7 +26,22 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 >   kliknutí na „Povolit čtení jazyků“ jde jen v Shopify adminu. Zkoušky pro Výprodej a Kampaň ve
 >   `storefront.looks.spec.ts` ještě nejsou napsané (potřebují výprodej s datem konce a blok kampaně v šabloně).
 > - **Část B:** body 7 až 13 v kódu s testy (viz níž), návrh a čísla v `won-discounts/navrh-kontrola-kombinaci.md`.
-> - **Část C:** nezačatá (body 14 až 17; z bodu 17 je hotová sdílená funkce pro `ms-` a dvojí výpočet scénáře).
+> - **Část A na Free je celá ověřená naživo** (i texty tabulky a řádku na kartě; `evidence/dotazeni-8-9/runbook-vystup.txt`).
+> - **Část B je v `main`** (`492f6d0`), brána zelená: `test:packages` 941 + 53, `test:unit` 1 868 + cargo 102 + vitest 699, guard 301.
+> - **Část C, rozdělaná (necommitnuto):** z bodu 17 hotovo v pracovním stromu: klíče `appearance.*` → `looks.*`,
+>   test přejmenovaný na `combination-switches.test.ts`, věta o jazycích mimo cs / sk / en na stránce Překlady
+>   (`translations.lang.fallback`). **Plán bodů 14 a 15 (jádro první, test před kódem):**
+>   1. `storefront.looks.tiers = { preset, accent, custom }` místo `appearancePreset` / `accent` / `custom`; převod
+>      v `config/presentation.ts` (staré klíče se čtou, nezapisují); `LOOKS_ELEMENTS` / `LooksElement` zanikají ve
+>      prospěch `LOOK_ELEMENTS` / `LookElement`; nový obchod má `looks.tiers.preset = "highlight"`.
+>   2. Pátý prvek `cart` („Košík a pruh“, kořen `:is(.won-cart,.won-cart-slot,.won-topbar)`), sekce na stránce
+>      Milníky; převod starého společného CSS rozdělí pravidla podle tříd Won mezi prvky (bez třídy Won → všem).
+>   3. Aplikace: `looks.server.ts` (`lookView`, `applyLook` bez větví pro tabulku), `tiers.server.ts` a
+>      `model/tiers.ts` (vzhled a barva už se neukládají s úrovněmi), `LookSection.tsx` (jedno tlačítko, tabulka má
+>      hotové vzhledy jako ostatní), `TiersPreview.tsx`, `dev-harness.server.ts`, e2e fixtury (`cards-fixture.mjs`,
+>      `--preset` v seedu).
+>   4. Bod 16: zaškrtávátko odpočtu v bloku kampaně pryč, rozhoduje vzhled. Zdvojená třída (`.won-ms.won-ms`) až po
+>      živém ověření pořadí stylů.
 > - **Logy živých běhů:** `$WON_RUN_DIR/dotazeni-8-9/` (scratchpad session, mimo repo).
 
 - **Body 5 a 6 — hotovo, v `main` (`ccf2755`).**

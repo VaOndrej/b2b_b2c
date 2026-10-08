@@ -3,7 +3,7 @@
 // position saying what it does at checkout (§4c: never an engine key on screen),
 // read from the form the same way on the server (SEC-1) and for the live state
 // line (§17b). Product-with-product is fixed ("the better one wins", A1) and is
-// said, not switched. Pure; tests/ui/combination-appearance.test.ts.
+// said, not switched. Pure; tests/ui/combination-switches.test.ts.
 
 import { UNKNOWN_MARKET_KINDS, type UnknownMarketKind } from "@won/core/discounts/config";
 

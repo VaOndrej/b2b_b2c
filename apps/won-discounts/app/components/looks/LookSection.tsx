@@ -107,29 +107,29 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
 
   const customFields = (
     <s-stack direction="block" gap="base">
-      {look.customIssue ? <s-banner tone="warning" heading={t("appearance.custom.issue")} /> : null}
+      {look.customIssue ? <s-banner tone="warning" heading={t("looks.custom.issue")} /> : null}
       <s-grid gridTemplateColumns="repeat(auto-fit, minmax(160px, 1fr))" gap="base" alignItems="start">
         {(["accent", "line", "tint"] as const).map((key) => (
           // P6: a colour is picked, not typed — the field submits a hex the server takes (#rrggbb); empty = the theme's.
-          <s-color-field key={key} name={LOOK_FIELD[key]} label={t(`appearance.custom.${key}` as "appearance.custom.accent")} value={look.custom[key]} placeholder="#0a7d4f" error={errorOf(LOOK_FIELD[key])} disabled={boolAttr(!pro)} />
+          <s-color-field key={key} name={LOOK_FIELD[key]} label={t(`looks.custom.${key}` as "looks.custom.accent")} value={look.custom[key]} placeholder="#0a7d4f" error={errorOf(LOOK_FIELD[key])} disabled={boolAttr(!pro)} />
         ))}
-        <s-number-field name={LOOK_FIELD.radius} label={t("appearance.custom.radius")} value={look.custom.radius} min={0} max={32} step={1} inputMode="numeric" error={errorOf(LOOK_FIELD.radius)} disabled={boolAttr(!pro)} />
+        <s-number-field name={LOOK_FIELD.radius} label={t("looks.custom.radius")} value={look.custom.radius} min={0} max={32} step={1} inputMode="numeric" error={errorOf(LOOK_FIELD.radius)} disabled={boolAttr(!pro)} />
       </s-grid>
-      <RowNote>{t("appearance.custom.colorHint")}</RowNote>
-      <s-text-area name={LOOK_FIELD.css} label={t("appearance.custom.css")} value={look.custom.css} rows={6} error={errorOf(LOOK_FIELD.css)} disabled={boolAttr(!pro)} />
+      <RowNote>{t("looks.custom.colorHint")}</RowNote>
+      <s-text-area name={LOOK_FIELD.css} label={t("looks.custom.css")} value={look.custom.css} rows={6} error={errorOf(LOOK_FIELD.css)} disabled={boolAttr(!pro)} />
       <RowNote>{t(`looks.cssHint.${element}`)}</RowNote>
       <s-stack direction="block" gap="small-300">
-        <s-text>{t("appearance.ai.title")}</s-text>
-        <RowNote>{t("appearance.ai.hint")}</RowNote>
+        <s-text>{t("looks.ai.title")}</s-text>
+        <RowNote>{t("looks.ai.hint")}</RowNote>
         <pre data-won-ai-prompt={element} style={{ margin: 0, padding: 10, border: "1px solid #e3e3e3", borderRadius: 8, fontSize: 12, lineHeight: 1.45, whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 180, overflow: "auto" }}>
           {look.aiPrompt}
         </pre>
         <div>
           <s-button variant="secondary" onClick={copyPrompt} disabled={boolAttr(!pro)}>
-            {copied === "done" ? `${t("appearance.ai.copy")} ✓` : t("appearance.ai.copy")}
+            {copied === "done" ? `${t("looks.ai.copy")} ✓` : t("looks.ai.copy")}
           </s-button>
         </div>
-        {copied === "failed" ? <RowNote tone="attention">{t("appearance.ai.copyFailed")}</RowNote> : null}
+        {copied === "failed" ? <RowNote tone="attention">{t("looks.ai.copyFailed")}</RowNote> : null}
       </s-stack>
     </s-stack>
   );
@@ -138,7 +138,7 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
     <WonSection
       title={t(`looks.title.${element}`)}
       glyph="spark"
-      summary={element === "tiers" ? t(customSet ? "appearance.custom.summary.on" : "appearance.custom.summary.off") : t("looks.summary", { preset: presetLabel(element, preset, tr) })}
+      summary={element === "tiers" ? t(customSet ? "looks.custom.summary.on" : "looks.custom.summary.off") : t("looks.summary", { preset: presetLabel(element, preset, tr) })}
       // The table's section is its Pro part alone; the others hold the looks of every plan with a Pro part inside.
       pro={element === "tiers" ? true : undefined}
       locked={element === "tiers" ? !pro : undefined}
@@ -156,7 +156,7 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
           {element !== "tiers" ? (
             <>
               <LookPreviewStyles />
-              <div role="radiogroup" aria-label={t("appearance.choose")} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 260px), 1fr))", gap: 12 }}>
+              <div role="radiogroup" aria-label={t("looks.choose")} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 260px), 1fr))", gap: 12 }}>
                 {look.presets.map((p) => (
                   <label key={p} style={{ ...selectionRing(preset === p), position: "relative", display: "grid", alignContent: "start", gap: 8, padding: 12, borderRadius: 12, cursor: "pointer", fontFamily: WON_FONT, minWidth: 0 }}>
                     <input
@@ -173,7 +173,7 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
                       <span id={`${groupId}-${p}`} style={{ fontSize: 14, fontWeight: 700, color: WON_INK }}>
                         {presetLabel(element, p, tr)}
                       </span>
-                      {p === look.preset ? <span style={{ fontSize: 11, fontWeight: 700, color: WON_MUTED }}>{t("appearance.current")}</span> : null}
+                      {p === look.preset ? <span style={{ fontSize: 11, fontWeight: 700, color: WON_MUTED }}>{t("looks.current")}</span> : null}
                     </span>
                     <span id={`${groupId}-${p}-details`} style={{ fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED }}>
                       {presetDetails(element, p, tr)}
@@ -202,13 +202,13 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
               customFields
             ) : (
               <s-stack direction="block" gap="base">
-                <ProSell benefit={t("appearance.custom.benefit")} />
+                <ProSell benefit={t("looks.custom.benefit")} />
                 <ProFrame locked>{customFields}</ProFrame>
               </s-stack>
             )
           ) : (
             <div data-won-look-custom={element}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: WON_INK, marginBottom: 8 }}>{t("appearance.custom.title")}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: WON_INK, marginBottom: 8 }}>{t("looks.custom.title")}</div>
               {pro ? (
                 customFields
               ) : (

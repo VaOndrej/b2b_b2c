@@ -73,7 +73,7 @@ test("appearance: exactly the core presets (K7), each with a label; the form tak
   assert.equal(presetLabel("tiers", "default", cs), "Tabulka");
   assert.equal(presetLabel("tiers", "tiles", en), "Tiles");
   assert.deepEqual(readAppearanceForm(form([["preset", "chips"]])), { ok: true, preset: "chips" });
-  assert.deepEqual(readAppearanceForm(form([["preset", "neon"]])), { ok: false, errors: [{ field: "preset", key: "appearance.error.preset" }] });
+  assert.deepEqual(readAppearanceForm(form([["preset", "neon"]])), { ok: false, errors: [{ field: "preset", key: "looks.error.preset" }] });
   assert.equal(isAppearancePreset("neon"), false);
 });
 

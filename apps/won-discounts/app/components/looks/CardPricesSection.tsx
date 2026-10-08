@@ -18,10 +18,10 @@ export function CardPricesSection({ cardPrices, cardBlockUrl, configVersion }: {
   const actions = useFormActions();
   return (
     <WonSection
-      title={`${t("appearance.cards.title")} · ${t("appearance.beta")}`}
+      title={`${t("looks.cards.title")} · ${t("looks.beta")}`}
       glyph="tag"
       on={cardPrices}
-      summary={t(cardPrices ? "appearance.cards.summary.on" : "appearance.cards.summary.off")}
+      summary={t(cardPrices ? "looks.cards.summary.on" : "looks.cards.summary.off")}
       anchor="cards"
       collapsible
       defaultOpen={cardPrices}
@@ -31,19 +31,19 @@ export function CardPricesSection({ cardPrices, cardBlockUrl, configVersion }: {
         {configVersion ? <input type="hidden" name={LOOK_FIELD.configVersion} value={configVersion} /> : null}
         <s-stack direction="block" gap="small-300">
           {fetcher.data ? <Notice result={fetcher.data} /> : null}
-          <s-checkbox name={LOOK_FIELD.cardPrices} value="on" label={t("appearance.cards.toggle")} checked={boolAttr(cardPrices)} />
-          <RowNote>{t("appearance.cards.what")}</RowNote>
-          <RowNote>{t("appearance.cards.auto")}</RowNote>
+          <s-checkbox name={LOOK_FIELD.cardPrices} value="on" label={t("looks.cards.toggle")} checked={boolAttr(cardPrices)} />
+          <RowNote>{t("looks.cards.what")}</RowNote>
+          <RowNote>{t("looks.cards.auto")}</RowNote>
           <WonRow
             action={
               cardBlockUrl ? (
                 <s-button href={cardBlockUrl} target="_blank" variant="secondary">
-                  {t("appearance.cards.addBlock")}
+                  {t("looks.cards.addBlock")}
                 </s-button>
               ) : undefined
             }
           >
-            <RowNote>{t("appearance.cards.block")}</RowNote>
+            <RowNote>{t("looks.cards.block")}</RowNote>
           </WonRow>
           <div>
             <s-button type="submit" variant="primary" disabled={boolAttr(fetcher.state !== "idle")}>

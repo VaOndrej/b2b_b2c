@@ -60,6 +60,11 @@ export function defaultTextLang(locale: string): DefaultTextLang {
   return base === "cs" || base === "sk" ? base : "en";
 }
 
+/** Does the extension ship its own texts in this language (else the storefront falls back to its English ones)? */
+export function isDefaultTextLang(locale: string): boolean {
+  return (DEFAULT_TEXT_LANGS as readonly string[]).includes(locale.split("-")[0] ?? "");
+}
+
 /** The text the storefront shows in `locale` while the merchant's field is empty. */
 export function textDefault(row: TextRow, locale: string): string {
   return row.defaults[defaultTextLang(locale)];

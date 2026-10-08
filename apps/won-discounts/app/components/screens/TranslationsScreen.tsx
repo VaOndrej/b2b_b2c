@@ -16,6 +16,7 @@ import { requestScopes, type ScopeRequestResult } from "../model/app-bridge";
 import {
   changedCount,
   groupLabel,
+  isDefaultTextLang,
   languageName,
   languagesNotShipped,
   TEXT_GROUPS,
@@ -246,6 +247,11 @@ export function TranslationsScreen(props: TranslationsScreenProps) {
                         <RowNote tone="attention">{t("translations.lang.notShipped")}</RowNote>
                       </WonRow>
                     ) : null}
+                    {isDefaultTextLang(locale) ? null : (
+                      <div data-won-lang-fallback={locale}>
+                        <RowNote>{t("translations.lang.fallback")}</RowNote>
+                      </div>
+                    )}
                     {grouped.map(({ group, rows: groupRows }) => (
                       <div key={group} data-won-text-group={group}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: WON_INK, marginBottom: 4 }}>{groupLabel(group, tr)}</div>
