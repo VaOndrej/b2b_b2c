@@ -64,7 +64,6 @@ const CONFIG: StorefrontConfigV1 = {
   },
   margin: { on: true, max: 30, col: { "4567": 12 } },
   appearance: { preset: "highlight" },
-  texts: { cs: { "tiers.heading": "Kupte víc, zaplaťte míň" } },
 };
 
 // Czech texts as the block resolves them (extension locale, merchant override wins).

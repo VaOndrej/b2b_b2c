@@ -9,7 +9,7 @@ cart). Each note below is the comment that stood above the named line.
 
 - `blocks/won_discounts_embed.liquid` prints the cart data only when the storefront config offers rewards: the
   rewards, each gift variant's title and availability (`all_products[handle]`, at most 20 handles a page), the cart
-  currency's minor digits, the texts (`locales/*.json` → `cart.*`) and the app proxy path (with the locale prefix of
+  currency's minor digits, the texts (`cart.*`: the merchant's in the page's language, else `locales/*.json`) and the app proxy path (with the locale prefix of
   `routes.root_url`); then `won-discounts-cart.js` (deferred).
 - `won-discounts.js` holds the pure part (`plan`: thresholds before discounts — R1 — and after them for
   countOtherDiscounts; what an earned tier lacks; which gift lines must go) and the panel's HTML (`html`, every text
@@ -90,3 +90,14 @@ Won Discounts quantity tiers block (MVP 3, contracts K6 + K8). Liquid renders th
 - `const react = (before) => {` — A cart change the customer made: the gift follows the threshold (SF-1: never on load); a gift the customer removed by hand counts as declined (it never comes back). While a code is being applied, or its "you lose the gift" warning waits for the customer's choice, it changes nothing: a theme's own cart event after the discount change (seen live on Dawn) must not decide for the customer.
 - `const askHint = () => {` — R9: the quantity hint comes from the app proxy (the engine); nothing on failure.
 - `const panels = () => {` — The theme re-renders its drawer and cart page: the panel goes back in whenever it is missing.
+
+## The merchant's texts (feedback 2026-10-06, body 11–14)
+
+- A text the merchant changed on the Překlady page reaches the page from the app-data metafield of the page's
+  language: `app.metafields.won_discounts['tx_' + request.locale.iso_code (lower-case)]`, a JSON object
+  `{"tiers.heading": "…"}`. Every block and snippet reads `tx[key]` first and the extension's locale file
+  (`'key' | t`) when it is empty — the table, the card line, the cart panel's data, the ladder, the sale badge and
+  the campaign countdown alike. The storefront config carries no texts.
+- A language without a metafield (none changed, or past the Free plan's two languages) shows the locale files.
+- `cart.ms_name.<rule id>` is a Milníky discount step's own name: the ladder shows it instead of
+  `cart.ms_disc` (`{value}` is filled in the same way). The embed hands the names to the script as `tx.n`.

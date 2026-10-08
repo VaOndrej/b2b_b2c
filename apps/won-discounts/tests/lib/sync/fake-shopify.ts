@@ -208,6 +208,13 @@ export class FakeShopify implements AdminClient {
     return value === undefined ? undefined : JSON.parse(value);
   }
 
+  /** The merchant's storefront texts per language as the storefront reads them (`won_discounts/tx_<locale>`). */
+  storefrontTexts(): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const mf of this.appMetafields.values()) if (mf.namespace === "won_discounts" && mf.key.startsWith("tx_")) out[mf.key.slice(3)] = JSON.parse(mf.value);
+    return out;
+  }
+
   /** The parsed `$app:won_discounts/variant` value of a variant (undefined = none). */
   variantCostMetafield(variantId: string): unknown {
     const value = this.variants.get(variantId)?.metafields.get(mfKey("$app:won_discounts", "variant"))?.value;
@@ -583,6 +590,8 @@ export class FakeShopify implements AdminClient {
         const mf = this.appMetafields.get(mfKey("won_discounts", "storefront_config"));
         return { currentAppInstallation: { id: this.appInstallationId, metafield: mf ? { id: mf.id, value: mf.value } : null } };
       }
+      case "WonSyncStorefrontTexts":
+        return { currentAppInstallation: { id: this.appInstallationId, metafields: { nodes: [...this.appMetafields.values()].filter((mf) => mf.namespace === "won_discounts").map((mf) => ({ key: mf.key, value: mf.value })) } } };
       case "WonSyncCostShop":
         return { shop: { currencyCode: this.currencyCode } };
       case "WonSyncStorefrontConfigSet":

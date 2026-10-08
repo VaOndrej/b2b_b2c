@@ -14,7 +14,7 @@
   Liquid renders the selected variant; assets/won-discounts-tiers.js (+ its pure
   logic in won-discounts-tiers-core.js) keeps it live from the JSON at the end.
   Neither changes nor reads the cart (SF-1).
-  Text keys tiers.*: the extension locales; a merchant text (config texts) wins.
+  Text keys tiers.*: the extension locales; a merchant text in the page's language (metafield tx_<locale>) wins.
 {% endcomment %}
 {%- liquid
   assign cfg = app.metafields.won_discounts.storefront_config.value
@@ -47,7 +47,9 @@
   unless langs contains lang
     assign lang = 'en'
   endunless
-  assign tx = cfg.texts[lang]
+  # The merchant's texts in the page's language: that language's own metafield (tx_<locale>).
+  assign tx_key = 'tx_' | append: request.locale.iso_code | downcase
+  assign tx = app.metafields.won_discounts[tx_key].value
   assign t_heading = 'tiers.heading' | t
   assign t_heading = tx['tiers.heading'] | default: t_heading
   assign t_row_qty = 'tiers.row_qty' | t

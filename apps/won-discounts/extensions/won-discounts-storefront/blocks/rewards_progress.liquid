@@ -8,10 +8,12 @@
 {%- liquid
   assign won_rw = app.metafields.won_discounts.storefront_config.value.rewards
   assign won_cur = cart.currency.iso_code
+  assign won_tx_key = 'tx_' | append: request.locale.iso_code | downcase
+  assign won_tx = app.metafields.won_discounts[won_tx_key].value
 -%}
 {%- capture won_rows -%}
   {%- if won_rw != blank -%}
-    {%- render 'won-milestones', rw: won_rw, cur: won_cur, size: block.settings.size -%}
+    {%- render 'won-milestones', rw: won_rw, cur: won_cur, size: block.settings.size, tx: won_tx -%}
   {%- endif -%}
 {%- endcapture -%}
 {%- assign won_rows = won_rows | strip -%}

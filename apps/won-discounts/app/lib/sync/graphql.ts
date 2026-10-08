@@ -90,6 +90,20 @@ export const GQL = {
   }
 }`,
 
+  // Storefront texts (storefront.ts writeStorefrontTexts): every app-data metafield of the namespace — one a
+  // language (`tx_<locale>`) next to the config itself.
+  storefrontTexts: `query WonSyncStorefrontTexts {
+  currentAppInstallation {
+    id
+    metafields(namespace: "won_discounts", first: 100) {
+      nodes {
+        key
+        value
+      }
+    }
+  }
+}`,
+
   // The gift variants' product handles (MVP 4, contract R7): Liquid renders a gift through
   // `all_products[handle]`. A deleted variant answers null.
   giftVariants: `query WonSyncGiftVariants($ids: [ID!]!) {

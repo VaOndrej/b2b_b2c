@@ -18,6 +18,9 @@
     assign won_discounts_config = won_discounts_config_raw | json
   endif
   assign rw = won_discounts_config_raw.rewards
+  # The merchant's texts in the page's language: that language's own metafield (tx_<locale>).
+  assign won_tx_key = 'tx_' | append: request.locale.iso_code | downcase
+  assign won_tx = app.metafields.won_discounts[won_tx_key].value
   assign cur = cart.currency.iso_code
   assign exp = 2
   assign exp0 = 'BIF,CLP,DJF,GNF,ISK,JPY,KMF,KRW,PYG,RWF,UGX,VND,VUV,XAF,XOF,XPF' | split: ','
@@ -75,7 +78,7 @@
       {%- assign won_sep = '' -%}
       {%- for won_p in won_list limit: 50 -%}
         {%- if won_p.variants != nil -%}
-          {%- capture won_label -%}{%- render 'won-card-tier', p: won_p, cfg: won_discounts_config_raw, cur: cur, lang: won_lang -%}{%- endcapture -%}
+          {%- capture won_label -%}{%- render 'won-card-tier', p: won_p, cfg: won_discounts_config_raw, cur: cur, lang: won_lang, tx: won_tx -%}{%- endcapture -%}
           {%- comment -%} Shopify wraps an app snippet's output in HTML comments ("BEGIN / END app snippet"): keep the text between them. {%- endcomment -%}
           {%- assign won_label = won_label | split: '<!-- END' | first | split: '-->' | last | strip -%}
           {%- if won_label != blank -%}
@@ -124,15 +127,34 @@
   {%- endcapture -%}
   {%- capture won_cart_data -%}
     {"on":true,"rw":{{ rw | json }},"mk":{{ cur | append: '@' | append: localization.market.handle | json }},"exp":{{ exp }},"lang":{{ request.locale.iso_code | json }},"proxy":{{ proxy | json }},"g":{ {{- won_gift_facts -}} },"tx":{
-    "ms_left":{{ 'cart.ms_left' | t | json }},"ms_done":{{ 'cart.ms_done' | t | json }},"ms_from":{{ 'cart.ms_from' | t | json }},
-    "ms_ship":{{ 'cart.ms_ship' | t | json }},"ms_gift":{{ 'cart.ms_gift' | t | json }},"ms_gift_named":{{ 'cart.ms_gift_named' | t | json }},"ms_disc":{{ 'cart.ms_disc' | t | json }},
-    "gift_done":{{ 'cart.gift_done' | t | json }},
-    "gift_decline":{{ 'cart.gift_decline' | t | json }},"gift_declined":{{ 'cart.gift_declined' | t | json }},
-    "gift_pick":{{ 'cart.gift_pick' | t | json }},"gift_add":{{ 'cart.gift_add' | t | json }},"gift_soldout":{{ 'cart.gift_soldout' | t | json }},
-    "code_label":{{ 'cart.code_label' | t | json }},"code_apply":{{ 'cart.code_apply' | t | json }},"code_remove":{{ 'cart.code_remove' | t | json }},
-    "code_invalid":{{ 'cart.code_invalid' | t | json }},"code_loses_gift":{{ 'cart.code_loses_gift' | t | json }},
-    "keep_code":{{ 'cart.keep_code' | t | json }},"drop_code":{{ 'cart.drop_code' | t | json }},"saved":{{ 'cart.saved' | t | json }},
-    "hint":{{ 'cart.hint' | t | json }},"hint_capped":{{ 'cart.hint_capped' | t | json }}}}
+    {%- assign won_d = 'cart.ms_left' | t -%}"ms_left":{{ won_tx['cart.ms_left'] | default: won_d | json }},
+    {%- assign won_d = 'cart.ms_done' | t -%}"ms_done":{{ won_tx['cart.ms_done'] | default: won_d | json }},
+    {%- assign won_d = 'cart.ms_from' | t -%}"ms_from":{{ won_tx['cart.ms_from'] | default: won_d | json }},
+    {%- assign won_d = 'cart.ms_ship' | t -%}"ms_ship":{{ won_tx['cart.ms_ship'] | default: won_d | json }},
+    {%- assign won_d = 'cart.ms_gift' | t -%}"ms_gift":{{ won_tx['cart.ms_gift'] | default: won_d | json }},
+    {%- assign won_d = 'cart.ms_gift_named' | t -%}"ms_gift_named":{{ won_tx['cart.ms_gift_named'] | default: won_d | json }},
+    {%- assign won_d = 'cart.ms_disc' | t -%}"ms_disc":{{ won_tx['cart.ms_disc'] | default: won_d | json }},
+    {%- assign won_d = 'cart.gift_done' | t -%}"gift_done":{{ won_tx['cart.gift_done'] | default: won_d | json }},
+    {%- assign won_d = 'cart.gift_decline' | t -%}"gift_decline":{{ won_tx['cart.gift_decline'] | default: won_d | json }},
+    {%- assign won_d = 'cart.gift_declined' | t -%}"gift_declined":{{ won_tx['cart.gift_declined'] | default: won_d | json }},
+    {%- assign won_d = 'cart.gift_pick' | t -%}"gift_pick":{{ won_tx['cart.gift_pick'] | default: won_d | json }},
+    {%- assign won_d = 'cart.gift_add' | t -%}"gift_add":{{ won_tx['cart.gift_add'] | default: won_d | json }},
+    {%- assign won_d = 'cart.gift_soldout' | t -%}"gift_soldout":{{ won_tx['cart.gift_soldout'] | default: won_d | json }},
+    {%- assign won_d = 'cart.code_label' | t -%}"code_label":{{ won_tx['cart.code_label'] | default: won_d | json }},
+    {%- assign won_d = 'cart.code_apply' | t -%}"code_apply":{{ won_tx['cart.code_apply'] | default: won_d | json }},
+    {%- assign won_d = 'cart.code_remove' | t -%}"code_remove":{{ won_tx['cart.code_remove'] | default: won_d | json }},
+    {%- assign won_d = 'cart.code_invalid' | t -%}"code_invalid":{{ won_tx['cart.code_invalid'] | default: won_d | json }},
+    {%- assign won_d = 'cart.code_loses_gift' | t -%}"code_loses_gift":{{ won_tx['cart.code_loses_gift'] | default: won_d | json }},
+    {%- assign won_d = 'cart.keep_code' | t -%}"keep_code":{{ won_tx['cart.keep_code'] | default: won_d | json }},
+    {%- assign won_d = 'cart.drop_code' | t -%}"drop_code":{{ won_tx['cart.drop_code'] | default: won_d | json }},
+    {%- assign won_d = 'cart.saved' | t -%}"saved":{{ won_tx['cart.saved'] | default: won_d | json }},
+    {%- assign won_d = 'cart.hint' | t -%}"hint":{{ won_tx['cart.hint'] | default: won_d | json }},
+    {%- assign won_d = 'cart.hint_capped' | t -%}"hint_capped":{{ won_tx['cart.hint_capped'] | default: won_d | json }},
+    "n":{ {%- assign won_sep = '' -%}
+      {%- for won_step in rw.disc -%}
+        {%- assign won_name_key = 'cart.ms_name.' | append: won_step.id -%}
+        {%- if won_tx[won_name_key] != blank -%}{{ won_sep }}{{ won_step.id | json }}:{{ won_tx[won_name_key] | json }}{%- assign won_sep = ',' -%}{%- endif -%}
+      {%- endfor -%} }}}
   {%- endcapture -%}
   <script type="application/json" id="won-discounts-cart-data">{{ won_cart_data | replace: '</', '<\/' }}</script>
   <script src="{{ 'won-discounts-cart.js' | asset_url }}" defer></script>
@@ -147,7 +169,9 @@
   {%- liquid
     assign won_camps = won_discounts_config_raw.camps
     assign won_ends = 'campaign.ends' | t
+    assign won_ends = won_tx['campaign.ends'] | default: won_ends
     assign won_units = 'campaign.units' | t
+    assign won_units = won_tx['campaign.units'] | default: won_units
   -%}
   <div
     class="won-topbar"
@@ -164,7 +188,7 @@
     {%- endif -%}
     {%- if block.settings.top_bar_rewards and rw != blank -%}
       <div class="won-progress" data-won-discounts-progress data-size="bar">
-        {%- render 'won-milestones', rw: rw, cur: cur, size: 'bar' -%}
+        {%- render 'won-milestones', rw: rw, cur: cur, size: 'bar', tx: won_tx -%}
       </div>
     {%- endif -%}
   </div>

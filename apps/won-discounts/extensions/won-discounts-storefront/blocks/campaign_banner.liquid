@@ -6,8 +6,12 @@
 {% endcomment %}
 {%- liquid
   assign won_camps = app.metafields.won_discounts.storefront_config.value.camps
+  assign won_tx_key = 'tx_' | append: request.locale.iso_code | downcase
+  assign won_tx = app.metafields.won_discounts[won_tx_key].value
   assign won_ends = 'campaign.ends' | t
+  assign won_ends = won_tx['campaign.ends'] | default: won_ends
   assign won_units = 'campaign.units' | t
+  assign won_units = won_tx['campaign.units'] | default: won_units
   assign won_sample = 'campaign.sample' | t
 -%}
 {%- if won_camps != blank or request.design_mode -%}

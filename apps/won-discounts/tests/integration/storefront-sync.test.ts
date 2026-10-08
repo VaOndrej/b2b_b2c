@@ -393,3 +393,63 @@ test("R7: a deleted gift variant is a failed step and is left out of the storefr
   assert.deepEqual(sf.rewards.gifts[0]!.c.map((c) => c.v), [Number(gift.variantIds[0]!.split("/").pop())]);
   assert.ok(result.sync!.steps.some((s) => s.step === "storefront_config.write" && s.ok));
 });
+
+// --- Storefront texts: one app-data metafield a language (core storefront-texts.ts) ----------------------
+
+const texts = (locales: Record<string, Record<string, string>>, languages?: string[]) => ({ ...input(), storefront: { appearancePreset: "highlight", ...(languages ? { languages } : {}) }, locales });
+const textWrites = (store: FakeStore) => store.calls.filter((c) => c.op === "WonSyncMetafieldsSet" && JSON.stringify(c.variables).includes('"tx_'));
+
+test("texts: every language with a text gets its own metafield `tx_<locale>`; the storefront config carries none", async () => {
+  const store = new FakeStore();
+  const plan = { current: "pro" as Plan };
+  const result = await save(store, plan, texts({ cs: { "tiers.heading": "Kup víc", "cart.saved": "" }, sk: {}, "pt-BR": { "tiers.heading": "Compre mais" } }));
+  assert.equal(result.sync?.ok, true, JSON.stringify(result.sync?.errors));
+  assert.deepEqual(store.sync.storefrontTexts(), { cs: { "tiers.heading": "Kup víc" }, "pt-br": { "tiers.heading": "Compre mais" } });
+  assert.equal("texts" in (store.sync.storefrontConfig() as object), false);
+  const [write] = textWrites(store);
+  const sent = (write!.variables as { metafields: { ownerId: string; namespace: string; key: string; type: string }[] }).metafields;
+  assert.deepEqual(sent.map((mf) => [mf.ownerId, mf.namespace, mf.key, mf.type]), [
+    [store.sync.appInstallationId, "won_discounts", "tx_cs", "json"],
+    [store.sync.appInstallationId, "won_discounts", "tx_pt-br", "json"],
+  ]);
+  assert.deepEqual(result.sync!.steps.filter((s) => s.step === "storefront_texts.write").map((s) => s.ok), [true]);
+});
+
+test("texts: unchanged languages are not written again; an emptied or removed language loses its metafield", async () => {
+  const store = new FakeStore();
+  const plan = { current: "pro" as Plan };
+  await save(store, plan, texts({ cs: { "tiers.heading": "Kup víc" }, de: { "tiers.heading": "Mehr kaufen" } }));
+  const again = await resyncShop({ client: store, db: db.prisma, shop, createSync: syncFor(plan), logger: quiet });
+  assert.equal(textWrites(store).length, 1);
+  assert.ok(again.steps.some((s) => s.step === "storefront_texts.write" && s.ok && /unchanged/.test(s.detail)));
+  await save(store, plan, texts({ cs: { "tiers.heading": "Kup ještě víc" }, de: { "tiers.heading": "" } }));
+  assert.deepEqual(store.sync.storefrontTexts(), { cs: { "tiers.heading": "Kup ještě víc" } });
+  const last = textWrites(store).at(-1)!.variables as { metafields: { key: string }[] };
+  assert.deepEqual(last.metafields.map((mf) => mf.key), ["tx_cs"], "only the language that changed");
+});
+
+test("texts on Free: the default language and one more reach the storefront; Pro puts the rest back without a save", async () => {
+  const store = new FakeStore();
+  const plan = { current: "free" as Plan };
+  const all = { cs: { "tiers.heading": "A" }, sk: { "tiers.heading": "B" }, de: { "tiers.heading": "C" } };
+  await save(store, plan, texts(all, ["cs", "sk", "de"]));
+  assert.deepEqual(Object.keys(store.sync.storefrontTexts()).sort(), ["cs", "sk"]);
+  assert.deepEqual((await loadConfig(db.prisma, shop)).config.locales, all, "the stored config keeps every language");
+  plan.current = "pro";
+  await resyncShop({ client: store, db: db.prisma, shop, createSync: syncFor(plan), logger: quiet });
+  assert.deepEqual(Object.keys(store.sync.storefrontTexts()).sort(), ["cs", "de", "sk"]);
+  plan.current = "free";
+  await resyncShop({ client: store, db: db.prisma, shop, createSync: syncFor(plan), logger: quiet });
+  assert.deepEqual(Object.keys(store.sync.storefrontTexts()).sort(), ["cs", "sk"], "back on Free the third language is removed from the storefront");
+});
+
+test("texts: a refused write is a failed step the admin words; the discount sync and the storefront config are not stopped", async () => {
+  const store = new FakeStore();
+  const plan = { current: "pro" as Plan };
+  store.overrides.set("WonSyncStorefrontTexts", () => ({ data: { currentAppInstallation: null } }));
+  const result = await save(store, plan, texts({ cs: { "tiers.heading": "Kup víc" } }));
+  const step = result.sync!.steps.find((s) => s.step === "storefront_texts.write")!;
+  assert.equal(step.ok, false);
+  assert.deepEqual(store.sync.storefrontTexts(), {});
+  assert.notEqual(store.sync.storefrontConfig(), undefined);
+});

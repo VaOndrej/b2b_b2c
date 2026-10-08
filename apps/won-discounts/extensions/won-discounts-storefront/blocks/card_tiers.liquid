@@ -13,9 +13,11 @@
   unless langs contains lang
     assign lang = 'en'
   endunless
+  assign tx_key = 'tx_' | append: request.locale.iso_code | downcase
+  assign tx = app.metafields.won_discounts[tx_key].value
 -%}
 {%- if p -%}
-  {%- capture won_label -%}{%- render 'won-card-tier', p: p, cfg: cfg, cur: cart.currency.iso_code, lang: lang -%}{%- endcapture -%}
+  {%- capture won_label -%}{%- render 'won-card-tier', p: p, cfg: cfg, cur: cart.currency.iso_code, lang: lang, tx: tx -%}{%- endcapture -%}
   {%- comment -%} Shopify wraps an app snippet's output in HTML comments ("BEGIN / END app snippet"): keep the text between them. {%- endcomment -%}
   {%- assign won_label = won_label | split: '<!-- END' | first | split: '-->' | last | strip -%}
   {%- if won_label != blank -%}

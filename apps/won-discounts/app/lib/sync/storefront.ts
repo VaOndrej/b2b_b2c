@@ -27,12 +27,13 @@
 // sync wrote) — never a Shopify read.
 
 import type { StorefrontConfigV1 } from "@won/core/discounts/storefront-config";
+import { STOREFRONT_TEXTS_KEY_PREFIX, storefrontTexts, storefrontTextsKey } from "@won/core/discounts/storefront-texts";
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import { configVersionToken, loadConfig } from "../config.server";
 import { STOREFRONT_CONFIG_KEY, STOREFRONT_NAMESPACE } from "./graphql";
 import { TIER_SENTINEL } from "./products";
-import { errorText, userErrorText, type Transport, type UserErrorLike } from "./transport";
+import { errorText, setMetafields, userErrorText, type Transport, type UserErrorLike } from "./transport";
 import type { ConfigView, SyncDeps, SyncStep } from "./types";
 import { canonicalJson, hashText, sameJson } from "./util";
 
@@ -41,6 +42,10 @@ export const STOREFRONT_CONFIG_MAX_BYTES = 128 * 1000;
 
 export const STOREFRONT_WRITE_STEP = "storefront_config.write";
 export const STOREFRONT_VERIFY_STEP = "storefront_config.verify";
+/** The merchant's storefront texts: one app-data metafield a language (core storefront-texts.ts). */
+export const STOREFRONT_TEXTS_STEP = "storefront_texts.write";
+/** metafieldsSet takes 25 inputs a call. */
+const METAFIELDS_PER_CALL = 25;
 /** MVP 6.1: the base tier sets put back on the page ahead of a shop config that changes or drops the campaign. */
 export const STOREFRONT_CAMPAIGN_OFF_STEP = "storefront_config.campaign_off";
 
@@ -197,6 +202,70 @@ export async function writeStorefrontConfig(args: StorefrontWriteArgs): Promise<
     if (error instanceof Response) throw error;
     fail(STOREFRONT_VERIFY_STEP, `could not read the storefront config back: ${errorText(error)}`);
   }
+}
+
+export interface StorefrontTextsArgs {
+  transport: Transport;
+  /** The gated config (the languages the plan ships). */
+  config: ConfigView;
+  record: (step: SyncStep) => void;
+}
+
+type TextsRead = { currentAppInstallation: { id: string; metafields: { nodes: { key: string; value: string }[] } } | null };
+
+/**
+ * Write the merchant's storefront texts: `tx_<locale>` = {key: text} for every language of the gated config that
+ * has a text; a language's metafield that is no longer wanted (its texts emptied, the language removed, past the
+ * plan's limit) is deleted, so the page shows the extension's own text. Unchanged values are not written. One
+ * step; a failure never stops the sync (the page keeps the previous texts; the next sync retries). Never throws,
+ * except a re-auth Response.
+ */
+export async function writeStorefrontTexts(args: StorefrontTextsArgs): Promise<void> {
+  const { transport, record } = args;
+  const fail = (detail: string) => record({ step: STOREFRONT_TEXTS_STEP, ok: false, detail: `${detail} — the storefront keeps the previous texts; the next sync retries` });
+  const wanted = new Map(Object.entries(storefrontTexts(args.config)).map(([locale, texts]) => [storefrontTextsKey(locale), JSON.stringify(texts)]));
+  let installation: TextsRead["currentAppInstallation"];
+  try {
+    installation = ((await transport.call("storefrontTexts")) as TextsRead).currentAppInstallation;
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    fail(`could not read the storefront texts: ${errorText(error)}`);
+    return;
+  }
+  if (!installation?.id) {
+    fail("Shopify did not return the app installation, so the storefront texts could not be written");
+    return;
+  }
+  const ownerId = installation.id;
+  const live = new Map(installation.metafields.nodes.filter((node) => node.key.startsWith(STOREFRONT_TEXTS_KEY_PREFIX)).map((node) => [node.key, node.value]));
+  const set = [...wanted].filter(([key, json]) => !sameJson(live.get(key), json));
+  const remove = [...live.keys()].filter((key) => !wanted.has(key));
+  if (set.length === 0 && remove.length === 0) {
+    record({ step: STOREFRONT_TEXTS_STEP, ok: true, detail: `unchanged (${wanted.size} languages)` });
+    return;
+  }
+  for (let i = 0; i < set.length; i += METAFIELDS_PER_CALL) {
+    const refused = await setMetafields(transport, set.slice(i, i + METAFIELDS_PER_CALL).map(([key, value]) => ({ ownerId, namespace: STOREFRONT_NAMESPACE, key, type: "json", value })));
+    if (refused !== null) {
+      fail(`could not write the storefront texts: ${refused}`);
+      return;
+    }
+  }
+  if (remove.length > 0) {
+    let refused: string | null;
+    try {
+      const data: { metafieldsDelete: { userErrors: UserErrorLike[] } } = await transport.call("metafieldsDelete", { metafields: remove.map((key) => ({ ownerId, namespace: STOREFRONT_NAMESPACE, key })) });
+      refused = userErrorText(data.metafieldsDelete.userErrors);
+    } catch (error) {
+      if (error instanceof Response) throw error;
+      refused = errorText(error);
+    }
+    if (refused !== null) {
+      fail(`could not remove the storefront texts of ${remove.length} languages: ${refused}`);
+      return;
+    }
+  }
+  record({ step: STOREFRONT_TEXTS_STEP, ok: true, detail: `${set.length} languages written, ${remove.length} removed` });
 }
 
 export interface CampaignOffArgs {

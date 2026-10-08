@@ -74,7 +74,7 @@
     for (const d of rw.disc || []) {
       const a = at(d.t);
       const off = d.off ? at(d.off) : 0;
-      if (a && (d.pct || off)) s.push({ k: "d", at: a, left: Math.max(0, a - b), done: b >= a, pct: d.pct, off });
+      if (a && (d.pct || off)) s.push({ k: "d", id: d.id, at: a, left: Math.max(0, a - b), done: b >= a, pct: d.pct, off });
     }
     s.sort((x, y) => x.at - y.at);
     return out;
@@ -97,7 +97,7 @@
     const tx = data.tx || {};
     const name = (x) => {
       const gift = x.k === "g" && data.g?.[x.v]?.t;
-      return x.k === "s" ? tx.ms_ship : x.k === "d" ? fill(tx.ms_disc, { value: x.pct ? `${x.pct}\u00a0%` : money(x.off, cur) }) : gift ? fill(tx.ms_gift_named, { name: gift }) : tx.ms_gift;
+      return x.k === "s" ? tx.ms_ship : x.k === "d" ? fill(tx.n?.[x.id] || tx.ms_disc, { value: x.pct ? `${x.pct}\u00a0%` : money(x.off, cur) }) : gift ? fill(tx.ms_gift_named, { name: gift }) : tx.ms_gift;
     };
     const top = steps[steps.length - 1].at;
     const pct = (n) => Math.max(0, Math.min(100, Math.round((n * 100) / top)));

@@ -7,7 +7,8 @@
   Rendered here from the cart for the first paint; assets/won-discounts.js `ladder` draws the same markup after
   every cart change (the "Milestones" block and the top bar through won-discounts-blocks.js).
   The base is the cart's goods before discounts without gift lines (the same as won-discounts.js `base`).
-  Params: rw (the storefront config's rewards), cur (cart currency), size.
+  Params: rw (the storefront config's rewards), cur (cart currency), size, tx (the merchant's texts in the
+  page's language, metafield tx_<locale>; a discount step's own name is tx['cart.ms_name.<id>']).
 {%- endcomment -%}
 {%- liquid
   assign won_base = 0
@@ -20,12 +21,14 @@
   # A negative amount = this market is left without one (never the currency's fallback).
   assign won_mk = cur | append: '@' | append: localization.market.handle
   assign won_from = 'cart.ms_from' | t
+  assign won_from = tx['cart.ms_from'] | default: won_from
   assign won_rows = ''
   assign won_n = 100
 
   assign won_t = rw.ship[won_mk] | default: rw.ship[cur]
   if won_t != nil and won_t > 0
     assign won_label = 'cart.ms_ship' | t
+    assign won_label = tx['cart.ms_ship'] | default: won_label
     assign won_key = won_t | prepend: '000000000000000' | slice: -15, 15
     assign won_rows = won_rows | append: won_key | append: won_n | append: '¦¦s¦¦' | append: won_t | append: '¦¦' | append: won_label | append: '§§§'
   endif
@@ -35,6 +38,7 @@
     assign won_t = won_g.t[won_mk] | default: won_g.t[cur]
     if won_t != nil and won_t > 0
       assign won_label = 'cart.ms_gift' | t
+      assign won_label = tx['cart.ms_gift'] | default: won_label
       if won_g.c.size == 1
         assign won_o = won_g.c | first
         assign won_gp = all_products[won_o.h]
@@ -44,7 +48,8 @@
             unless won_gv.title == 'Default Title'
               assign won_title = won_title | append: ' — ' | append: won_gv.title
             endunless
-            assign won_label = 'cart.ms_gift_named' | t | replace: '{name}', won_title
+            assign won_label = 'cart.ms_gift_named' | t
+            assign won_label = tx['cart.ms_gift_named'] | default: won_label | replace: '{name}', won_title
           endif
         endfor
       endif
@@ -67,7 +72,9 @@
         endif
       endif
       if won_value != nil
-        assign won_label = 'cart.ms_disc' | t | replace: '{value}', won_value
+        assign won_label = 'cart.ms_disc' | t
+        assign won_name_key = 'cart.ms_name.' | append: won_d.id
+        assign won_label = tx[won_name_key] | default: tx['cart.ms_disc'] | default: won_label | replace: '{value}', won_value
         assign won_key = won_t | prepend: '000000000000000' | slice: -15, 15
         assign won_rows = won_rows | append: won_key | append: won_n | append: '¦¦d¦¦' | append: won_t | append: '¦¦' | append: won_label | append: '§§§'
       endif
@@ -89,11 +96,14 @@
   {%- liquid
     if won_next == nil
       assign won_text = 'cart.ms_done' | t
+      assign won_text = tx['cart.ms_done'] | default: won_text
+      assign won_text = tx['cart.ms_done'] | default: won_text
       assign won_pct = 100
     else
       assign won_f = won_next | split: '¦¦'
       assign won_left = won_f[2] | minus: won_base | money
-      assign won_text = 'cart.ms_left' | t | replace: '{amount}', won_left | replace: '{reward}', won_f[3]
+      assign won_text = 'cart.ms_left' | t
+      assign won_text = tx['cart.ms_left'] | default: won_text | replace: '{amount}', won_left | replace: '{reward}', won_f[3]
       assign won_pct = won_base | times: 100.0 | divided_by: won_top | round
     endif
   -%}

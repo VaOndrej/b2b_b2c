@@ -2,14 +2,15 @@
   Won Discounts — the ONE line a product card shows about the product's quantity discount (MVP 7 BETA, contract
   M8, decision P6): its first break ("Od 3 ks −10 %", "Od 3 ks −5 Kč za kus"), or nothing. Rendered by the card
   block (blocks/card_tiers.liquid) and by the embed for the cards of a collection or search page.
-  Params: p (product), cfg (the storefront config), cur (cart currency), lang (cs | sk | en).
+  Params: p (product), cfg (the storefront config), cur (cart currency), lang (cs | sk | en: the decimal mark),
+  tx (the merchant's texts in the page's language, metafield tx_<locale>).
   The decision is core cardTier (packages/core/src/discounts/card-tier.ts — the property test against planCart):
   a card never says more than checkout gives. Nothing unless: cards are on; the product has a set with a first
   break (K1: tierRef, else the global set; an unusable ref = none); no variant is on sale (unless cfg.ow); margin
   protection off, or no variant has a purchase cost AND the break is a percent within the product's percent
   ceiling; an amount break has an amount in this currency, at most the cheapest variant's price. A product with
   more than 50 variants shows nothing (its variants are not all checked).
-  Text keys cards.*: the extension locales; a merchant text (config texts) wins.
+  Text keys cards.*: the extension locales; a merchant text (tx) wins.
 {%- endcomment -%}
 {%- liquid
   assign won_ct = ''
@@ -47,7 +48,6 @@
         assign show = false
       endif
       if show
-        assign tx = cfg.texts[lang]
         if b.pct != nil
           # The percent ceiling of a product without a cost: as quantity_tiers.liquid (K5/K6).
           assign cap = 100

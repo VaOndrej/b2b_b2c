@@ -13,6 +13,10 @@
   assign ov = product.metafields['$app:won_discounts'].outlet.value
   assign d = ov.d
   assign show = false
+  assign tx_key = 'tx_' | append: request.locale.iso_code | downcase
+  assign tx = app.metafields.won_discounts[tx_key].value
+  assign t_badge = 'outlet.badge' | t
+  assign t_badge = tx['outlet.badge'] | default: t_badge
   if d == 'strike_badge' or d == 'strike_badge_left'
     assign show = true
   endif
@@ -27,7 +31,7 @@
       {%- if left != nil -%}
         {%- assign left = left | plus: 0 -%}
         <p class="won-outlet__row" data-won-discounts-outlet-variant="{{ v.id }}">
-          <span class="won-outlet__badge" data-won-discounts-outlet-badge>{{ 'outlet.badge' | t }}</span>
+          <span class="won-outlet__badge" data-won-discounts-outlet-badge>{{ t_badge | escape }}</span>
           {%- unless product.has_only_default_variant -%}
             <span class="won-outlet__variant">{{ v.title | escape }}</span>
           {%- endunless -%}
