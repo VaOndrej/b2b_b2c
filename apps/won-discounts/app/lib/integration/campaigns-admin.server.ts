@@ -210,7 +210,7 @@ async function shopNow(ctx: ShopCtx): Promise<{ now: string; timezone: string | 
   return { now, timezone, currencyCode: currencyCode ?? null };
 }
 
-async function finishingOf(ctx: ShopCtx): Promise<Set<string>> {
+export async function finishingOf(ctx: Pick<ShopCtx, "db" | "shop">): Promise<Set<string>> {
   try {
     return new Set((await loadShopSyncFacts(ctx.db, ctx.shop)).campaignsFinishing ?? []);
   } catch {

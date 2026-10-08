@@ -29,12 +29,12 @@ import type { Translator } from "../../i18n";
 import { describeMarginSettings, formatMoney, formatPercent } from "@won/core/discounts/describe";
 
 import { NativeDiscountsPanel, nativeSummary } from "../NativeDiscounts";
-import { collectWarnings, warningCounts, type RuleWarning } from "../model/describe";
+import type { RuleWarning } from "../model/describe";
 import { currencyCodes, currencyMarketNames, currencyViews } from "../model/markets";
 import { embedPlacement } from "../model/embed";
-import { moduleStatuses, writtenOf, type ModuleStatus } from "../model/module-status";
+import { storeStatuses, writtenOf } from "../model/module-status";
 import { shopToday } from "../model/rule-form";
-import { needsAttention, ruleStatus, ruleStatusSummary, type RuleStatus, type RuleStatusKind } from "../model/rule-status";
+import { needsAttention, ruleStatusSummary, type RuleStatus, type RuleStatusKind } from "../model/rule-status";
 import { tierSummary } from "../model/tiers";
 import { uiText } from "../model/result-copy";
 import { NOT_WIRED_SIGNALS, embedText, nativeNeedsSection, statusAllGood, statusSummary, syncNeedsRetry, syncText, targetingText } from "../model/signals";
@@ -291,11 +291,10 @@ export function OverviewScreen({
   const { t } = tr;
   const codes = currencyCodes(currencies);
   const status = signals ?? NOT_WIRED_SIGNALS;
-  const warnings = rules ? collectWarnings(rules, codes, { enabledMarkets }) : [];
-  const statusCtx = { today: today ?? null, timezone, sync: status.sync, ruleSync, gateOff, currencies: codes, enabledMarkets };
+  // The same function the strip under "Slevy" reads (model/module-status.ts): a tile, its page and its dot cannot disagree.
+  const { warnings, rules: statuses, modules: states } = storeStatuses({ rules, currencies, today, timezone, signals: status, ruleSync, gateOff, enabledMarkets, plan });
   const targeting = status.targeting;
   const syncAttention = status.sync.state === "ok" ? (status.sync.attention ?? []) : [];
-  const statuses = (rules ?? []).map((rule) => ruleStatus(rule, statusCtx));
   // B16: the same step and the same number of steps as the guide itself shows.
   const progress = onboardingProgress(onboardingStep ?? 1, { embedOn: status.embed.state === "on", rules: ruleCount, hasNative: onboardingHasNative(status.native) });
   const showOnboarding = onboardingStep !== undefined && ruleCount === 0;
@@ -315,8 +314,6 @@ export function OverviewScreen({
   const summary =
     ruleCount === 0 ? t("overview.running.none") : rules ? ruleStatusSummary(statuses, tr) : tr.tp("count.discount", ruleCount);
   const allGood = statusAllGood(status);
-  // The same function the module pages call (model/module-status.ts): a tile and its page cannot disagree.
-  const states: Partial<Record<string, ModuleStatus>> = moduleStatuses(status, { plan: plan ?? "pro", rules: statuses, warned: warningCounts(rules ?? [], warnings) });
   // N3: the tile leads with what matters ("3 aktivní z 6"), so a narrow tile never hides it behind the total.
   const liveCount = statuses.filter((s) => s.kind === "live").length;
   const tileSummary = rules && liveCount > 0 ? [t("tile.codes.liveOf", { live: liveCount, total: statuses.length }), ...summary.split(" · ").slice(2)].join(" · ") : summary;

@@ -98,11 +98,13 @@ test("harness serves the real Přehled props, built from a fixture WonDiscountsC
 
   for (const nodeEnv of ["development", "test"]) {
     await withEnv({ NODE_ENV: nodeEnv, WON_DEV_HARNESS: undefined }, () => {
-      assert.deepEqual(routeModule.loader(harnessRequest()), buildOverviewProps(DEV_OVERVIEW_FIXTURE, { readOnly: false }));
+      // The screen's props; next to them the harness' own data for the strip under "Slevy" (it has no layout loader).
+      assert.deepEqual(routeModule.loader(harnessRequest()).screen, buildOverviewProps(DEV_OVERVIEW_FIXTURE, { readOnly: false }));
       assert.deepEqual(
-        routeModule.loader(harnessRequest("?readOnly=1")),
+        routeModule.loader(harnessRequest("?readOnly=1")).screen,
         buildOverviewProps(DEV_OVERVIEW_FIXTURE, { readOnly: true }),
       );
+      assert.deepEqual(routeModule.loader(harnessRequest()).discountNav.goals, []);
     });
   }
 });

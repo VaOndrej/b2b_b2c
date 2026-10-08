@@ -12,6 +12,7 @@ import {
   rewardsGiftStatus,
   rewardsShippingStatus,
   rewardsStatus,
+  storeStatuses,
   tiersGlobalStatus,
   tiersSetsStatus,
   tiersStatus,
@@ -132,6 +133,28 @@ test("moduleStatuses: every module the signals know, from the same functions", (
   );
   // A module the signals do not know has no status (never a guess, §12).
   assert.equal(moduleStatuses({ ...NOT_WIRED_SIGNALS, sync: OK }, { plan: "pro", rules: [] }).tiers, undefined);
+});
+
+test("storeStatuses: the rules' states, their warnings and the modules' states from one set of facts", () => {
+  const signals: AdminSignals = { ...NOT_WIRED_SIGNALS, sync: OK, tiers: tiers() };
+  const runs = { id: "a", enabled: true, name: "Podzim", method: "automatic" as const, value: { kind: "percentage" as const, percent: 10 }, target: { kind: "order" as const } };
+  const noCode = { ...runs, id: "b", name: "VIP", method: "code" as const };
+  const facts = { rules: [runs, noCode], today: "2026-09-28", timezone: "Europe/Prague", signals, plan: "free" as const };
+  const all = storeStatuses(facts);
+  assert.deepEqual(all.rules.map((r) => r.kind), ["live", "no_code"]);
+  assert.deepEqual(all.warnings.map((w) => [w.ruleId, w.kind]), [["b", "noCode"]]);
+  // The same answer as moduleStatuses gets from those states: one computation, not a second one beside it.
+  assert.deepEqual(all.modules, moduleStatuses(signals, { plan: "free", rules: all.rules, warned: [0, 1] }));
+  assert.deepEqual(all.modules.codes, { state: "active", issues: 1 });
+  // Nothing runs and one discount cannot: the module needs attention. No rules at all: inactive.
+  assert.equal(storeStatuses({ ...facts, rules: [noCode] }).modules.codes?.state, "attention");
+  assert.deepEqual(storeStatuses({ signals }).modules.codes, { state: "inactive", issues: 0 });
+  // A write that failed stops the discount and the modules that travel with it.
+  const failed = storeStatuses({ ...facts, rules: [runs], signals: { ...signals, sync: FAILED } }).modules;
+  assert.equal(failed.codes?.state, "attention");
+  assert.equal(failed.tiers?.state, "attention");
+  // The plan is not known: nothing is said to be locked.
+  assert.equal(storeStatuses({ signals: { ...signals, outlet: outlet({ running: 0 }) } }).modules.outlet?.state, "inactive");
 });
 
 test("labels: 'Aktivní' / 'Active' (not 'Live'), 'Neaktivní' / 'Inactive', 'Vyžaduje pozornost' / 'Needs attention'", () => {

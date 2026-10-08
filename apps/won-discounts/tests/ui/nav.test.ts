@@ -10,12 +10,14 @@ import {
   ADMIN_MODULES,
   DISCOUNT_PAGES,
   discountPages,
+  discountPageStates,
   discountSubNavItems,
-  goalsOfLayoutData,
+  layoutReloads,
   navItems,
   orderedModules,
 } from "../../app/components/model/modules.ts";
-import { APP_LAYOUT_ROUTE_ID, DiscountsSubNav } from "../../app/components/shell/SubNav.tsx";
+import type { DiscountNavData } from "../../app/components/model/modules.ts";
+import { DiscountNav, DiscountsSubNav } from "../../app/components/shell/SubNav.tsx";
 
 // The menu after 6 Oct 2026 (docs/won-discounts/plan-zmen-2026-10-06.md, P1): the
 // Shopify sidebar has five items after the home link; the discount pages share
@@ -83,23 +85,41 @@ test("sub-navigation items: the URLs stay, labels carry no plan suffix, Pro is a
   assert.equal(discountSubNavItems("en", [])[0].label, "Discounts & codes");
 });
 
-test("goals are read defensively from the layout loader's data (the dev harness has none)", () => {
-  assert.deepEqual(goalsOfLayoutData(undefined), []);
-  assert.deepEqual(goalsOfLayoutData(null), []);
-  assert.deepEqual(goalsOfLayoutData({ goals: "outlet" }), []);
-  assert.deepEqual(goalsOfLayoutData({ apiKey: "k", locale: "cs", goals: ["outlet", "tiers"] }), ["outlet", "tiers"]);
+test("the strip's states are the modules' states; 'Slevy a kódy' is the module codes; what is not known has none", () => {
+  assert.deepEqual(discountPageStates({}), {});
+  assert.deepEqual(
+    discountPageStates({ codes: { state: "active", issues: 2 }, tiers: { state: "inactive", issues: 0 }, outlet: { state: "locked", issues: 0 }, margin: { state: "attention", issues: 1 } }),
+    { discounts: "active", tiers: "inactive", outlet: "locked" },
+  );
 });
 
-/** DiscountsSubNav inside a router; with `goals` from a loader under the layout route id the real app uses, without = the dev harness. */
-async function renderSubNav(active: (typeof DISCOUNT_PAGES)[number], goals?: string[]): Promise<string> {
-  const page = { path: "page", Component: () => createElement(DiscountsSubNav, { active }) };
-  const routes = goals ? [{ id: APP_LAYOUT_ROUTE_ID, path: "/", loader: () => ({ goals }), children: [page] }] : [{ id: "dev", path: "/", children: [page] }];
-  const handler = createStaticHandler(routes);
+test("the layout reads its data again after a save, on a new locale and on another page — not inside one page", () => {
+  const stay = { submitted: false, localeInUrl: false, fromPath: "/app/tiers", toPath: "/app/tiers" };
+  assert.equal(layoutReloads(stay), false, "a hash or a query string on the same page");
+  assert.equal(layoutReloads({ ...stay, toPath: "/app/rewards" }), true);
+  assert.equal(layoutReloads({ ...stay, submitted: true }), true);
+  assert.equal(layoutReloads({ ...stay, localeInUrl: true }), true);
+});
+
+test("an item carries its module's state for the dot; a locked module has none (the Pro badge says it)", () => {
+  const items = discountSubNavItems("cs", [], { discounts: "active", tiers: "attention", rewards: "inactive", outlet: "locked" });
+  assert.deepEqual(
+    items.map((i) => [i.key, i.state ?? null]),
+    [["discounts", "active"], ["tiers", "attention"], ["rewards", "inactive"], ["outlet", null], ["campaigns", null]],
+  );
+  assert.ok(discountSubNavItems("cs", []).every((i) => i.state === undefined), "no states known → no dots");
+});
+
+/** DiscountsSubNav inside a router; `nav` = what the layout (or the dev harness) provides through DiscountNav, absent = no provider. */
+async function renderSubNav(active: (typeof DISCOUNT_PAGES)[number], nav?: DiscountNavData, locale: "cs" | "en" = "cs"): Promise<string> {
+  const strip = createElement(DiscountsSubNav, { active });
+  const page = { path: "page", Component: () => (nav ? createElement(DiscountNav.Provider, { value: nav }, strip) : strip) };
+  const handler = createStaticHandler([{ id: "dev", path: "/", children: [page] }]);
   const context = await handler.query(new Request("http://localhost/page"));
   if (context instanceof Response) throw new Error(`unexpected response ${context.status}`);
   const router = createStaticRouter(handler.dataRoutes, context);
   // eslint-disable-next-line react/no-children-prop -- LocaleProvider types `children` as a required prop
-  return renderToStaticMarkup(createElement(LocaleProvider, { locale: "cs", children: createElement(StaticRouterProvider, { router, context }) }));
+  return renderToStaticMarkup(createElement(LocaleProvider, { locale, children: createElement(StaticRouterProvider, { router, context }) }));
 }
 
 function hrefs(html: string): string[] {
@@ -116,9 +136,9 @@ test("DiscountsSubNav: a labelled nav of links, exactly one marked as the curren
   }
 });
 
-test("DiscountsSubNav: default order without the layout loader, goal order with it; Pro said by a badge", async () => {
+test("DiscountsSubNav: default order without a provider, goal order with it; Pro said by a badge", async () => {
   assert.deepEqual(hrefs(await renderSubNav("tiers")), ["/app/discounts", "/app/tiers", "/app/rewards", "/app/outlet", "/app/campaigns"]);
-  const ordered = await renderSubNav("outlet", ["outlet", "rewards"]);
+  const ordered = await renderSubNav("outlet", { goals: ["outlet", "rewards"], states: {} });
   assert.deepEqual(hrefs(ordered), ["/app/discounts", "/app/outlet", "/app/rewards", "/app/tiers", "/app/campaigns"]);
   assert.match(ordered, /<a href="\/app\/outlet" aria-current="page"/);
   // Two Pro pages, two badges; the label itself has no "(Pro)".
@@ -129,6 +149,26 @@ test("DiscountsSubNav: default order without the layout loader, goal order with 
   assert.match(ordered, /flex-wrap:nowrap/);
   // No URL hash: WonSection anchors own it.
   for (const href of hrefs(ordered)) assert.doesNotMatch(href, /#/);
+});
+
+test("DiscountsSubNav: a dot per known state, in the pill's colours, with the state in words for screen readers", async () => {
+  const nav: DiscountNavData = { goals: [], states: { discounts: "active", tiers: "attention", rewards: "inactive", outlet: "locked" } };
+  const html = await renderSubNav("tiers", nav);
+  const link = (key: string) => html.slice(html.lastIndexOf("<a ", html.indexOf(`data-won-subnav-item="${key}"`)), html.indexOf("</a>", html.indexOf(`data-won-subnav-item="${key}"`)));
+  // Green runs, red needs attention, grey does not run: the same colours as the pill's dot (WonSection PILL_COLOR).
+  assert.match(link("discounts"), /data-won-dot="active"[\s\S]*background:#1a8f4b[\s\S]*>Aktivní: <\/span><\/span>Slevy a kódy/);
+  assert.match(link("tiers"), /data-won-dot="attention"[\s\S]*background:#b42318[\s\S]*>Vyžaduje pozornost: <\/span><\/span>Množstevní slevy/);
+  assert.match(link("rewards"), /data-won-dot="inactive"[\s\S]*background:#c3cad2[\s\S]*>Neaktivní: <\/span><\/span>Milníky/);
+  // The dot itself is hidden from screen readers; the word is in the link's text.
+  assert.match(link("tiers"), /<span aria-hidden="true" style="width:7px/);
+  // Locked and not known: no dot, the Pro badge stays.
+  for (const key of ["outlet", "campaigns"]) {
+    assert.doesNotMatch(link(key), /data-won-dot/, key);
+    assert.match(link(key), />Pro<\/span>/, key);
+  }
+  assert.equal(html.match(/data-won-dot=/g)?.length, 3);
+  assert.match(await renderSubNav("tiers", nav, "en"), /data-won-dot="attention"[\s\S]*?>Needs attention: <\/span><\/span>Quantity/);
+  assert.doesNotMatch(await renderSubNav("tiers"), /data-won-dot/, "no provider → no dots");
 });
 
 test("@won/app-kit WonNavMenu: homeLabel is optional, default unchanged", async () => {

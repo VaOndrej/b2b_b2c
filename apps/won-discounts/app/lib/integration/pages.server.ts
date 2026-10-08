@@ -23,10 +23,15 @@ import { ruleStatus } from "../../components/model/rule-status";
 import { resolveRuleCodes } from "../../components/model/try-cart-form";
 import type { GateNoteView, NativeView, UiResult } from "../../components/model/types";
 import { buildDiscountsProps } from "../../components/screens/DiscountsScreen";
-import { rewardsStatus } from "../../components/model/module-status";
+import { rewardsStatus, storeStatuses } from "../../components/model/module-status";
+import { discountPageStates, type DiscountPageStates } from "../../components/model/modules";
+import { NOT_WIRED_SIGNALS } from "../../components/model/signals";
 import { buildOnboardingProps, rewardsStored } from "../../components/screens/OnboardingScreen";
 import { rewardsOverviewOf } from "./rewards.server";
-import { readAmountSuggest } from "./themes.server";
+import { cachedRead, readAmountSuggest } from "./themes.server";
+import { tiersOverviewOf } from "./tiers.server";
+import { outletOverviewOf, outletOverviewRuns } from "./outlet-admin.server";
+import { campaignsOverviewOf, finishingOf } from "./campaigns-admin.server";
 import { buildOverviewProps } from "../../components/screens/OverviewScreen";
 import { buildRuleEditorProps } from "../../components/screens/RuleEditorScreen";
 import { buildTryCartProps } from "../../components/screens/TryCartScreen";
@@ -53,7 +58,7 @@ import {
 import { graphqlOf, nowOf, type ShopCtx } from "./context.server";
 import { formLocale } from "./locale.server";
 import { ruleNames, syncOutcome } from "./sync-copy";
-import { autoNodeAttention, ctxPlan, loadRuleSync, loadSyncView, loadTargetingView, readAutoNodeState } from "./sync-status.server";
+import { ctxPlan, loadRuleSync, loadSyncView, loadTargetingView, readAutoNodeState, syncWithAutoNode } from "./sync-status.server";
 import { appliedPlanOf } from "../sync/runs";
 import type { TryCartRun } from "./try-cart.server";
 
@@ -135,8 +140,7 @@ export async function overviewData(ctx: ShopCtx, opts: PageOptions) {
     loadTargetingView(ctx, loaded.config, timezone),
     planGateFor(ctx, loaded.config, timezone),
   ]);
-  const attention = autoNodeAttention(autoNode);
-  const sync = signals.sync.state === "ok" && attention.length > 0 ? { ...signals.sync, attention } : signals.sync;
+  const sync = syncWithAutoNode(signals.sync, autoNode);
   const ruleSync = await loadRuleSync(ctx, loaded.config, { autoNode });
   return {
     config: loaded.config,
@@ -155,6 +159,42 @@ export async function overviewData(ctx: ShopCtx, opts: PageOptions) {
       now: nowOf(ctx),
     },
   };
+}
+
+/**
+ * The states of the pages under "Slevy" for the strip on each of them (the layout loader): the same facts and
+ * the same function as Přehled's tiles (storeStatuses), so a dot and its module's tile cannot disagree.
+ *
+ * Cheap enough for every page: the stored config and the database only, plus two small Shopify reads kept for
+ * 60 s (the shop's time zone and currency; the automatic discount's own state). It never starts a write to
+ * Shopify (Přehled's loader does that) and reads neither the theme nor the native discounts: what a tile
+ * COUNTS as things to resolve may need those, the state itself does not.
+ */
+export async function loadDiscountPageStates(ctx: ShopCtx, loaded: LoadedConfig): Promise<DiscountPageStates> {
+  const { config } = loaded;
+  const [shopContext, plan, runs, finishing] = await Promise.all([
+    cachedRead(`shop-context:${ctx.shop}`, () => readShopContext(graphqlOf(ctx))),
+    ctxPlan(ctx),
+    outletOverviewRuns(ctx),
+    finishingOf(ctx),
+  ]);
+  const { timezone, currencyCode } = shopContext;
+  const stored = await loadSyncView(ctx, loaded, timezone);
+  const autoNode = stored.state === "ok" ? await cachedRead(`auto-node:${ctx.shop}`, () => readAutoNodeState(ctx)) : ("unknown" as const);
+  const [ruleSync, gate] = await Promise.all([loadRuleSync(ctx, config, { autoNode, plan }), planGateFor(ctx, config, timezone)]);
+  const now = nowOf(ctx);
+  const signals = {
+    ...NOT_WIRED_SIGNALS,
+    sync: syncWithAutoNode(stored, autoNode),
+    // Where the table stands in the theme only adds to the count of things to resolve, never changes the state.
+    tiers: tiersOverviewOf(config, plan, { state: "unknown", addUrl: null }),
+    rewards: rewardsOverviewOf(config, plan, currencyCode || config.markets.find((m) => m.enabled)?.currency || ""),
+    // The names of the variants are for Přehled's sentences only.
+    outlet: outletOverviewOf(runs, new Map(), true),
+    campaigns: campaignsOverviewOf(config.campaigns, { now: shopLocalDateTime(now, timezone ?? "UTC"), locale: ctx.locale, plan, finishing }),
+  };
+  const facts = buildOverviewProps(config, { readOnly: loaded.readOnly, plan, signals, ruleSync, gateOff: gate.gateOff, shopCurrency: currencyCode, timezone, now });
+  return discountPageStates(storeStatuses({ ...facts, signals }).modules);
 }
 
 /**

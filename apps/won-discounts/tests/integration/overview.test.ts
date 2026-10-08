@@ -5,7 +5,10 @@ import { createElement } from "react";
 
 import { loadConfig, saveConfig } from "../../app/lib/config.server.ts";
 import { cachedNativeCodes, clearDetectionCache, forgetDetection } from "../../app/lib/integration/native.server.ts";
-import { onboardingPage, overviewAction, overviewPage } from "../../app/lib/integration/pages.server.ts";
+import { loadDiscountPageStates, onboardingPage, overviewAction, overviewPage } from "../../app/lib/integration/pages.server.ts";
+import { storeStatuses } from "../../app/components/model/module-status.ts";
+import { discountPageStates } from "../../app/components/model/modules.ts";
+import { NOT_WIRED_SIGNALS } from "../../app/components/model/signals.ts";
 import { clearSignalCache } from "../../app/lib/ui-actions.server.ts";
 import { loadSyncStatus } from "../../app/lib/sync/save-and-sync.server.ts";
 import { configLockIdle } from "../../app/lib/integration/lock.server.ts";
@@ -257,4 +260,34 @@ test("Přehled reloads within 30 s never re-trigger a resync (debounce per shop)
   clock += 6 * 60_000;
   await overviewPage(ctx, PAGE);
   assert.equal(await db.prisma.syncRun.count({ where: { shop } }), 3);
+});
+
+// Navigace a stav (8 Oct 2026), bod 3: the dots of the strip under "Slevy" come from the layout loader.
+test("the strip under 'Slevy' says the same states as Přehled's tiles, without a write and with no Shopify request on the next page", async () => {
+  await seed([auto("a1")]);
+  const store = new FakeStore();
+  const ctx = testCtx(db.prisma, shop, store);
+
+  // Saved, not written yet: the strip says so and — unlike Přehled's loader — starts no write.
+  const before = await loadDiscountPageStates(ctx, await loadConfig(db.prisma, shop));
+  assert.equal(before.discounts, "inactive");
+  assert.equal(store.sync.shopMetafieldValue("function_config"), undefined, "the strip's read never writes to Shopify");
+  assert.equal((await loadSyncStatus(db.prisma, shop)) ?? null, null, "no sync was started");
+
+  // Přehled writes it; from then on the dot and the tile are the same answer of the same function.
+  const props = await overviewPage(ctx, PAGE);
+  const tiles = discountPageStates(storeStatuses({ ...props, signals: props.signals ?? NOT_WIRED_SIGNALS }).modules);
+  clearSignalCache();
+  store.ops.length = 0;
+  const loaded = await loadConfig(db.prisma, shop);
+  const states = await loadDiscountPageStates(ctx, loaded);
+  assert.deepEqual(states, tiles);
+  assert.equal(states.discounts, "active");
+  assert.equal(states.tiers, "inactive");
+  // Two small reads (the shop's zone and currency, the automatic discount's own state), kept for a minute …
+  const first = [...store.ops];
+  assert.equal(first.length, 2, first.join(", "));
+  // … so the next page in the same minute asks Shopify nothing.
+  assert.deepEqual(await loadDiscountPageStates(ctx, loaded), states);
+  assert.deepEqual(store.ops, first);
 });

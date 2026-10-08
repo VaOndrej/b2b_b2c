@@ -8,10 +8,13 @@ import { WonNavMenu } from "@won/app-kit/admin-nav";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { loadConfig } from "../lib/config.server";
+import { shopCtx } from "../lib/integration/context.server";
 import { adminLocale } from "../lib/integration/locale.server";
+import { loadDiscountPageStates } from "../lib/integration/pages.server";
 import { t, type Locale } from "../i18n";
 import { LocaleProvider } from "../i18n/context";
-import { navItems } from "../components/model/modules";
+import { layoutReloads, navItems, type DiscountNavData, type DiscountPageStates } from "../components/model/modules";
+import { DiscountNav } from "../components/shell/SubNav";
 
 // The embedded admin shell: App Bridge, the admin language (A10) and the nav.
 //
@@ -24,22 +27,27 @@ import { navItems } from "../components/model/modules";
 // Nav: the shared Won structure (@won/app-kit/admin-nav: home first, at most five
 // items after it, the plan lives in Nastavení). The discount pages share the item
 // "Slevy" and a sub-navigation on the page (components/shell/SubNav.tsx), which
-// reads `goals` from this loader (useRouteLoaderData("routes/app")) for its order.
+// gets its order (`goals`) and the state of each page's module (`states`, the dot)
+// from this loader through DiscountNav.
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
-  const [{ config }, locale] = await Promise.all([loadConfig(db, session.shop), adminLocale(request, session, db)]);
-  return {
-    // eslint-disable-next-line no-undef
-    apiKey: process.env.SHOPIFY_API_KEY || "",
-    locale,
-    goals: [...config.onboarding.goals],
-  };
+  const { admin, session } = await authenticate.admin(request);
+  const [loaded, locale] = await Promise.all([loadConfig(db, session.shop), adminLocale(request, session, db)]);
+  // eslint-disable-next-line no-undef
+  const apiKey = process.env.SHOPIFY_API_KEY || "";
+  const ctx = shopCtx(admin, session.shop, db, { locale, apiKey, scopes: session.scope });
+  // A failed read leaves the strip without dots ("not known"), never the app without its shell (REL-1).
+  const states = await loadDiscountPageStates(ctx, loaded).catch((error: unknown): DiscountPageStates => {
+    if (error instanceof Response) throw error;
+    return {};
+  });
+  const discountNav: DiscountNavData = { goals: [...loaded.config.onboarding.goals], states };
+  return { apiKey, locale, discountNav };
 };
 
-// Re-read after a form submission (e.g. onboarding goals reorder the sub-navigation) or a new
-// ?locale=; plain in-app navigations keep the layout's data.
-export const shouldRevalidate: ShouldRevalidateFunction = ({ nextUrl, formMethod, defaultShouldRevalidate }) =>
-  formMethod || nextUrl.searchParams.has("locale") ? defaultShouldRevalidate : false;
+// When the layout reads again: model/modules.ts layoutReloads. The states cost no Shopify request on a
+// navigation: the two small reads behind them are kept for 60 s (loadDiscountPageStates).
+export const shouldRevalidate: ShouldRevalidateFunction = ({ currentUrl, nextUrl, formMethod, defaultShouldRevalidate }) =>
+  layoutReloads({ submitted: formMethod !== undefined, localeInUrl: nextUrl.searchParams.has("locale"), fromPath: currentUrl.pathname, toPath: nextUrl.pathname }) ? defaultShouldRevalidate : false;
 
 export default function App() {
   const data = useLoaderData<typeof loader>();
@@ -49,7 +57,9 @@ export default function App() {
     <AppProvider embedded apiKey={data.apiKey}>
       <WonNavMenu homeLabel={t(locale, "nav.overview")} items={navItems(locale)} />
       <LocaleProvider locale={locale}>
-        <Outlet />
+        <DiscountNav.Provider value={data.discountNav}>
+          <Outlet />
+        </DiscountNav.Provider>
       </LocaleProvider>
     </AppProvider>
   );

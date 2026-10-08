@@ -317,10 +317,15 @@ export async function outletAction(ctx: ShopCtx, form: FormDataLike): Promise<Ou
 
 // --- Přehled ----------------------------------------------------------------------------------------------
 
-export async function loadOutletOverview(ctx: ShopCtx): Promise<OutletOverviewView> {
-  const rows = await ctx.db.outletRun.findMany({
+/** The sales Přehled speaks about: running ones, ended ones with returned pieces to decide, ones with a failed step. */
+export function outletOverviewRuns(ctx: Pick<ShopCtx, "db" | "shop">): Promise<RunRow[]> {
+  return ctx.db.outletRun.findMany({
     where: { shop: ctx.shop, OR: [{ status: { not: "ended" } }, { returnPending: { gt: 0 } }, { error: { not: null } }] },
   });
+}
+
+export async function loadOutletOverview(ctx: ShopCtx): Promise<OutletOverviewView> {
+  const rows = await outletOverviewRuns(ctx);
   const pending = rows.filter((r) => r.status === "ended" && r.returnPending > 0);
   const [titles, ordersCounted] = await Promise.all([
     pending.length ? variantTitles(ctx, pending.map((r) => r.variantId)) : Promise.resolve(new Map<string, string>()),

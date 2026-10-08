@@ -225,6 +225,28 @@ function Pill({ tone, label, marker }: { tone: PillTone; label: string; marker?:
   );
 }
 
+/** The tone of a module's state: the pill and the dot read the same table, so they cannot drift (§11b). */
+const STATE_TONE: Readonly<Record<Exclude<ModuleState, "locked">, PillTone>> = { active: "live", attention: "attention", inactive: "neutral" };
+
+/** Text for screen readers only (a dot alone says nothing to them). */
+const READER_ONLY: CSSProperties = { position: "absolute", width: 1, height: 1, margin: -1, padding: 0, overflow: "hidden", clipPath: "inset(50%)", whiteSpace: "nowrap", border: 0 };
+
+/**
+ * A state as a dot alone, where a pill would not fit (the strip under "Slevy", the list of a page's sections,
+ * the row of step numbers): the pill's own dot colours and the pill's own words, the words for screen readers.
+ * "locked" has no dot — the Pro marker says it.
+ */
+export function StatusDot({ state }: { state: Exclude<ModuleState, "locked"> }) {
+  const tr = useT();
+  return (
+    <span data-won-dot={state} style={{ display: "inline-flex", flex: "0 0 auto" }}>
+      <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 999, background: PILL_COLOR[STATE_TONE[state]].dot }} />
+      {/* Read before the label the dot stands at: "Aktivní: Slevy a kódy". */}
+      <span style={READER_ONLY}>{`${moduleStateLabel(state, tr)}: `}</span>
+    </span>
+  );
+}
+
 /**
  * State legible at rest (§11d). Green ONLY for "really running" — `state` for a
  * module or a section of it (model/module-status.ts: Aktivní / Neaktivní /
@@ -235,7 +257,7 @@ export function StatusPill({ on, status, state }: { on?: boolean; status?: RuleS
   const tr = useT();
   if (state) {
     if (state === "locked") return null;
-    return <Pill tone={state === "active" ? "live" : state === "attention" ? "attention" : "neutral"} label={moduleStateLabel(state, tr)} marker={{ "data-won-state": state }} />;
+    return <Pill tone={STATE_TONE[state]} label={moduleStateLabel(state, tr)} marker={{ "data-won-state": state }} />;
   }
   const live = status ? status.kind === "live" : on === true;
   const attention = status ? needsAttention(status) : false;

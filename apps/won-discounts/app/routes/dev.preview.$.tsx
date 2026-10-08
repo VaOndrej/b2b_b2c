@@ -2,11 +2,15 @@ import type { ReactNode } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { useActionData, useLoaderData, useLocation } from "react-router";
 
-import { resolveLocale } from "../i18n";
+import { resolveLocale, type Locale } from "../i18n";
 import { LocaleProvider, useT } from "../i18n/context";
 import { MoveDialog, MoveDialogBody, moveDialogHeading } from "../components/MoveDialog";
 import { isRecipeKey, shopToday } from "../components/model/rule-form";
 import { ruleStatus } from "../components/model/rule-status";
+import { storeStatuses } from "../components/model/module-status";
+import { discountPageStates, type DiscountNavData } from "../components/model/modules";
+import { NOT_WIRED_SIGNALS } from "../components/model/signals";
+import { DiscountNav } from "../components/shell/SubNav";
 import type { NativeDiscountView } from "../components/model/types";
 import { WonSection } from "../components/shell/WonSection";
 import { buildDiscountsProps, DiscountsScreen, type DiscountsScreenProps } from "../components/screens/DiscountsScreen";
@@ -189,7 +193,41 @@ function devSuggest(q: URLSearchParams) {
   return { base: "CZK", rates: q.get("rates") === "none" ? {} : { EUR: 0.04 }, ...(q.get("rates") === "market" ? { marketRates: { de: 0.05 } } : {}) };
 }
 
-export const loader = ({ request }: LoaderFunctionArgs) => {
+/** Every module from the fixtures the module pages render (Přehled ?state=modules… and the strip under "Slevy"). */
+function devModulesOverview(mode: "on" | "off" | "failed", opts: { readOnly: boolean; plan: "free" | "pro"; locale: Locale }): OverviewScreenProps {
+  return buildOverviewProps(mode === "off" ? DEV_EMPTY_FIXTURE : DEV_OVERVIEW_FIXTURE, {
+    readOnly: opts.readOnly,
+    timezone: DEV_TIMEZONE,
+    marketNames: DEV_MARKET_NAMES,
+    now: DEV_NOW,
+    plan: opts.plan,
+    signals: devModuleSignals({ mode, plan: opts.plan, locale: opts.locale }),
+    ruleSync: mode === "failed" ? DEV_RULE_SYNC_FAILED : DEV_RULE_SYNC_OK,
+  });
+}
+
+/**
+ * The harness has no layout loader: the strip's order and dots come from the same fixtures as Přehled's tiles
+ * (?state=modules), through the same function (storeStatuses), so a dot and its module's tile agree here too.
+ * ?nav=off | failed: nothing set up / the last write failed.
+ */
+function devDiscountNav(q: URLSearchParams): DiscountNavData {
+  const nav = q.get("nav");
+  const facts = devModulesOverview(nav === "off" ? "off" : nav === "failed" ? "failed" : "on", {
+    readOnly: false,
+    plan: q.get("plan") === "pro" ? "pro" : "free",
+    locale: resolveLocale(q.get("locale")),
+  });
+  return { goals: [], states: discountPageStates(storeStatuses({ ...facts, signals: facts.signals ?? NOT_WIRED_SIGNALS }).modules) };
+}
+
+export const loader = (args: LoaderFunctionArgs) => {
+  // The guard first: screenProps 404s outside development.
+  const screen = screenProps(args);
+  return { screen, discountNav: devDiscountNav(new URL(args.request.url).searchParams) };
+};
+
+const screenProps = ({ request }: LoaderFunctionArgs) => {
   if (!isDevHarnessEnabled()) {
     throw notFound();
   }
@@ -302,12 +340,7 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       }
       // Every module from the fixtures the module pages render: a tile and its page say the same state.
       if (state === "modules" || state === "modules-off" || state === "modules-failed") {
-        const mode = state === "modules" ? "on" : state === "modules-off" ? "off" : "failed";
-        return buildOverviewProps(mode === "off" ? DEV_EMPTY_FIXTURE : DEV_OVERVIEW_FIXTURE, {
-          ...wired,
-          signals: devModuleSignals({ mode, plan: wired.plan, locale }),
-          ruleSync: mode === "failed" ? DEV_RULE_SYNC_FAILED : DEV_RULE_SYNC_OK,
-        });
+        return devModulesOverview(state === "modules" ? "on" : state === "modules-off" ? "off" : "failed", { readOnly, plan: wired.plan, locale });
       }
       if (state === "empty") return buildOverviewProps(DEV_EMPTY_FIXTURE, { readOnly, timezone: DEV_TIMEZONE, now: DEV_NOW });
       return buildOverviewProps(DEV_OVERVIEW_FIXTURE, { readOnly });
@@ -519,7 +552,7 @@ function MoveDialogPreview({ discounts }: { discounts: NativeDiscountView[] }) {
 }
 
 export default function DevPreview() {
-  const data = useLoaderData<typeof loader>();
+  const { screen: data, discountNav } = useLoaderData<typeof loader>();
   // A harness form submit answers `preview_only`; the screen shows it like any result.
   const submitted = useActionData<typeof action>() ?? null;
   const location = useLocation();
@@ -584,7 +617,9 @@ export default function DevPreview() {
           @shopify/shopify-app-react-router's <AppProvider> loads it for real
           admin pages, so a screenshot of this route looks like the real app. */}
       <script src="https://cdn.shopify.com/shopifycloud/polaris.js" />
-      <LocaleProvider locale={locale}>{content}</LocaleProvider>
+      <LocaleProvider locale={locale}>
+        <DiscountNav.Provider value={discountNav}>{content}</DiscountNav.Provider>
+      </LocaleProvider>
     </>
   );
 }

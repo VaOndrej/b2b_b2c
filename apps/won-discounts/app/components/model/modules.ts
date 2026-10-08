@@ -9,6 +9,7 @@
 import type { OnboardingGoal } from "@won/core/discounts/config";
 
 import { t, type Locale, type MessageKey } from "../../i18n";
+import type { ModuleKey, ModuleState, ModuleStatus } from "./module-status";
 
 /** Every module with its own page, in the default order. */
 export const ADMIN_MODULES = ["tiers", "rewards", "outlet", "margin", "campaigns", "appearance"] as const;
@@ -76,6 +77,39 @@ export interface SubNavItem<K extends string = string> {
   to: string;
   label: string;
   pro: boolean;
+  /** Does the page's module run (model/module-status.ts)? Absent = not known, or locked (the Pro badge says that). */
+  state?: Exclude<ModuleState, "locked">;
+}
+
+/** The state of each page under "Slevy", as its module's home tile says it. Absent = not known. */
+export type DiscountPageStates = Partial<Record<DiscountPage, ModuleState>>;
+
+/** What the strip under "Slevy" needs besides the language: from the layout loader, in the dev harness from fixtures. */
+export interface DiscountNavData {
+  goals: OnboardingGoal[];
+  states: DiscountPageStates;
+}
+
+export const NO_DISCOUNT_NAV: DiscountNavData = { goals: [], states: {} };
+
+/**
+ * Does the embedded layout read its data again (the strip's order and dots)? After a form submission (a save
+ * changes a state, onboarding goals reorder the strip), on a new `?locale=` and when the page changes — a write
+ * to Shopify that finished meanwhile then shows on the next page's dots as it does on its tiles. A navigation
+ * inside one page (a query string, a hash) keeps what it has.
+ */
+export function layoutReloads(change: { submitted: boolean; localeInUrl: boolean; fromPath: string; toPath: string }): boolean {
+  return change.submitted || change.localeInUrl || change.fromPath !== change.toPath;
+}
+
+/** The strip's states out of the modules' statuses (the page "Slevy a kódy" is the module `codes`). */
+export function discountPageStates(statuses: Partial<Record<ModuleKey, ModuleStatus>>): DiscountPageStates {
+  const states: DiscountPageStates = {};
+  for (const page of DISCOUNT_PAGES) {
+    const status = statuses[page === "discounts" ? "codes" : page];
+    if (status) states[page] = status.state;
+  }
+  return states;
 }
 
 function isDiscountModule(module: AdminModule): module is Exclude<DiscountPage, "discounts"> {
@@ -87,17 +121,14 @@ export function discountPages(goals: readonly OnboardingGoal[]): DiscountPage[] 
   return ["discounts", ...orderedModules(goals).filter(isDiscountModule)];
 }
 
-/** The sub-navigation's items: the label without a plan suffix, Pro said by a badge (`pro`). */
-export function discountSubNavItems(locale: Locale, goals: readonly OnboardingGoal[]): SubNavItem<DiscountPage>[] {
-  return discountPages(goals).map((key) =>
-    key === "discounts"
-      ? { key, to: "/app/discounts", label: t(locale, "nav.discounts"), pro: false }
-      : { key, to: `/app/${key}`, label: t(locale, MODULE_META[key].nav), pro: MODULE_META[key].pro },
-  );
-}
-
-/** The goals out of the `routes/app` layout loader's data (unknown shape: the dev harness has no layout loader). */
-export function goalsOfLayoutData(data: unknown): OnboardingGoal[] {
-  const goals = (data as { goals?: unknown } | null | undefined)?.goals;
-  return Array.isArray(goals) ? (goals.filter((g) => typeof g === "string") as OnboardingGoal[]) : [];
+/**
+ * The sub-navigation's items: the label without a plan suffix, Pro said by a badge (`pro`), the module's state
+ * for the dot. A locked module has no dot: the badge says why it does not run.
+ */
+export function discountSubNavItems(locale: Locale, goals: readonly OnboardingGoal[], states: DiscountPageStates = {}): SubNavItem<DiscountPage>[] {
+  return discountPages(goals).map((key) => {
+    const state = states[key];
+    const item = key === "discounts" ? { key, to: "/app/discounts", label: t(locale, "nav.discounts"), pro: false } : { key, to: `/app/${key}`, label: t(locale, MODULE_META[key].nav), pro: MODULE_META[key].pro };
+    return state && state !== "locked" ? { ...item, state } : item;
+  });
 }

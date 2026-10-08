@@ -13,9 +13,13 @@
 // `issues` counts what the merchant can resolve on the module's page; it never
 // takes the green label away while the module runs.
 
+import type { DiscountRule } from "@won/core/discounts/config";
+
 import type { MessageKey, Translator } from "../../i18n";
-import { needsAttention, runsNow, type RuleStatus } from "./rule-status";
-import type { AdminSignals, CampaignsOverviewView, MarginOverviewView, OutletOverviewView, RewardsOverviewView, SyncView, TiersOverviewView } from "./types";
+import { collectWarnings, warningCounts, type RuleWarning } from "./describe";
+import { currencyCodes } from "./markets";
+import { needsAttention, ruleStatus, runsNow, type RuleStatus } from "./rule-status";
+import type { AdminSignals, CampaignsOverviewView, CurrencyView, MarginOverviewView, OutletOverviewView, RewardsOverviewView, RuleSyncMap, SyncView, TiersOverviewView } from "./types";
 
 export const MODULE_KEYS = ["codes", "tiers", "rewards", "outlet", "campaigns", "margin"] as const;
 export type ModuleKey = (typeof MODULE_KEYS)[number];
@@ -177,4 +181,43 @@ export function moduleStatuses(
     ...(signals.campaigns ? { campaigns: campaignsStatus(signals.campaigns, opts.plan, sync) } : {}),
     ...(signals.margin ? { margin: marginStatus(signals.margin, sync) } : {}),
   };
+}
+
+// --- The whole shop at once ---------------------------------------------------------------------------------------
+
+/** What Přehled knows about the shop (the fields of its props that decide a state). */
+export interface StoreFacts {
+  /** The discounts of "Slevy a kódy" (without the steps of Milníky). Absent = only their count is known. */
+  rules?: readonly DiscountRule[];
+  currencies?: readonly CurrencyView[];
+  /** Shop-local today and zone: a discount's schedule is judged on the shop's day. */
+  today?: string | null;
+  timezone?: string | null;
+  signals: AdminSignals;
+  ruleSync?: RuleSyncMap;
+  gateOff?: readonly string[];
+  enabledMarkets?: readonly string[];
+  /** Absent = not known: nothing is said to be locked. */
+  plan?: "free" | "pro";
+}
+
+export interface StoreStatuses {
+  /** What the merchant must fix at a discount (model/describe.ts), in the order of `rules`. */
+  warnings: RuleWarning[];
+  /** One per rule, in the order of `rules`. */
+  rules: RuleStatus[];
+  modules: Partial<Record<ModuleKey, ModuleStatus>>;
+}
+
+/**
+ * Every state of the shop from one set of facts: Přehled's tiles and the strip under "Slevy" both read this
+ * result, so a dot in the strip can never say something else than the module's tile (§19a).
+ */
+export function storeStatuses(facts: StoreFacts): StoreStatuses {
+  const rules = facts.rules ?? [];
+  const codes = currencyCodes(facts.currencies ?? []);
+  const warnings = collectWarnings(rules, codes, { enabledMarkets: facts.enabledMarkets });
+  const ctx = { today: facts.today ?? null, timezone: facts.timezone ?? null, sync: facts.signals.sync, ruleSync: facts.ruleSync, gateOff: facts.gateOff, currencies: codes, enabledMarkets: facts.enabledMarkets };
+  const statuses = rules.map((rule) => ruleStatus(rule, ctx));
+  return { warnings, rules: statuses, modules: moduleStatuses(facts.signals, { plan: facts.plan ?? "pro", rules: statuses, warned: warningCounts(rules, warnings) }) };
 }

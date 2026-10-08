@@ -7,21 +7,26 @@
 //     harness; with unsaved changes App Bridge asks first (leaveConfirmation);
 //   - one row, scrolls sideways on a narrow screen (390 px), never wraps;
 //   - no URL hash (WonSection anchors own it).
+//   - an item may carry its module's state: a dot before the label (green runs, red
+//     needs attention, grey does not run — the colours and words of StatusPill), so
+//     the state of every page is seen from any of them.
 // SubNav is presentational and knows nothing about discounts; DiscountsSubNav is
-// the one for "Slevy". It reads the onboarding goals from the `routes/app` layout
-// loader, so a screen renders it with one line and no new props. The dev harness
-// has no layout loader: the default order applies there.
+// the one for "Slevy". It reads the onboarding goals (the order) and the modules'
+// states from DiscountNav, so a screen renders it with one line and no new props.
+// The embedded layout (app/routes/app.tsx) provides them from its loader, the dev
+// harness from its fixtures; with no provider the default order applies, no dots.
 
-import { useEffect, useRef, type MouseEvent } from "react";
-import { useNavigate, useRouteLoaderData } from "react-router";
+import { createContext, useContext, useEffect, useRef, type MouseEvent } from "react";
+import { useNavigate } from "react-router";
 
 import { useT } from "../../i18n/context";
-import { discountSubNavItems, goalsOfLayoutData, type DiscountPage, type SubNavItem } from "../model/modules";
+import { discountSubNavItems, NO_DISCOUNT_NAV, type DiscountNavData, type DiscountPage, type SubNavItem } from "../model/modules";
 import { PlanBadge } from "./PlanBadge";
+import { StatusDot } from "./WonSection";
 import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT } from "./tokens";
 
-/** The id of the embedded layout route (app/routes/app.tsx) in the flat-routes manifest. */
-export const APP_LAYOUT_ROUTE_ID = "routes/app";
+/** The order and the states of the pages under "Slevy", for every screen below the provider. */
+export const DiscountNav = createContext<DiscountNavData>(NO_DISCOUNT_NAV);
 
 interface SaveBarApi {
   leaveConfirmation?: () => Promise<void>;
@@ -108,6 +113,7 @@ export function SubNav({ label, items, active }: SubNavProps) {
                   color: current ? WON_INK : WON_MUTED,
                 }}
               >
+                {item.state ? <StatusDot state={item.state} /> : null}
                 {item.label}
                 {item.pro ? <PlanBadge tier="pro" /> : null}
               </a>
@@ -122,6 +128,6 @@ export function SubNav({ label, items, active }: SubNavProps) {
 /** The strip on the five pages of "Slevy": Slevy a kódy first, then the modules in the order of the onboarding goals. */
 export function DiscountsSubNav({ active }: { active: DiscountPage }) {
   const { t, locale } = useT();
-  const goals = goalsOfLayoutData(useRouteLoaderData(APP_LAYOUT_ROUTE_ID));
-  return <SubNav label={t("nav.discountsGroup")} items={discountSubNavItems(locale, goals)} active={active} />;
+  const { goals, states } = useContext(DiscountNav);
+  return <SubNav label={t("nav.discountsGroup")} items={discountSubNavItems(locale, goals, states)} active={active} />;
 }

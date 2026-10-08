@@ -395,6 +395,12 @@ export async function readAutoNodeState(ctx: Pick<ShopCtx, "db" | "shop" | "clie
 }
 
 /** The sentence for an automatic node that does not run (Přehled sync line, with "Synchronizovat znovu"). */
+/** The sync line with what the automatic discount's own state adds to it: Přehled and the strip under "Slevy" read the same line. */
+export function syncWithAutoNode(sync: SyncView, state: AutoNodeState): SyncView {
+  const attention = autoNodeAttention(state);
+  return sync.state === "ok" && attention.length > 0 ? { ...sync, attention } : sync;
+}
+
 export function autoNodeAttention(state: AutoNodeState): UiText[] {
   if (state === "missing") return [{ key: "sync.problem.autoMissing" }];
   if (state === "inactive") return [{ key: "sync.problem.autoInactive" }];

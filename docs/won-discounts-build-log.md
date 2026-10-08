@@ -21,7 +21,13 @@ Evidence: `docs/won-discounts/evidence/navigace-stav/` (`pred-*` a `po-*`, 390 a
   Kampaně (Pro) 166 → 78 / 303 → 215; Ochrana marže 184 → 113 / 264 → 193. Nad 90 px jsou řady, kde má dlaždice větu na
   dva až tři řádky nebo řádek „k vyřešení“ (text se nezkracuje).
   Smazaná hesla (cs i en): `*.view.*.about` u pohledů, kde sekce už vysvětlující větu má, a `campaign.list.live.*`.
-- **Body 3–7 — čeká:** tečka v pruhu, tečka ve sloupci, sloupec v editoru slevy, řádek stupňů v Milnících, Přehled.
+- **Bod 3 — hotovo:** tečka stavu v pruhu pod „Slevy“ (`shell/WonSection.tsx` `StatusDot`, `shell/SubNav.tsx` `DiscountNav`).
+  Jeden výpočet: `model/module-status.ts` `storeStatuses` volá Přehled i pruh. Stavy pro pruh čte layout loader
+  (`routes/app.tsx` → `pages.server.ts` `loadDiscountPageStates`): uložená konfigurace + databáze + 2 malé dotazy do Shopify
+  (časové pásmo a měna obchodu, stav automatické slevy), oba v cache 60 s. Nespouští zápis do Shopify, nečte téma ani slevy
+  mimo Won. Layout se nově znovu načte i při přechodu na jinou stránku (`model/modules.ts` `layoutReloads`), to stojí jen
+  dotazy do databáze. Náhled bere tečky z fixtur (`?nav=off | failed`), stejnou funkcí.
+- **Body 4–7 — čeká:** tečka ve sloupci, sloupec v editoru slevy, řádek stupňů v Milnících, Přehled.
 
 ### Opravy po auditu srozumitelnosti (7. 10. 2026) — větev `won-discounts-feedback-2026-10-06`
 

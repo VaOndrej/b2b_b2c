@@ -705,3 +705,35 @@ test("navigace a stav, body 1 a 2: a view tile says only what changes; the secti
   assert.match((await render("campaigns?plan=pro")).html, /Co právě běží, co je naplánované a co už skončilo\./);
   assert.match((await render("overview?state=modules")).html, /data-won-tile="tiers"[\s\S]*?data-won-tile-about/);
 });
+
+test("navigace a stav, bod 3: the strip under 'Slevy' carries a dot per module, the same state as its home tile; a locked module has the Pro badge and no dot", async () => {
+  const link = (html: string, key: string) => {
+    const at = html.indexOf(`data-won-subnav-item="${key}"`);
+    assert.ok(at >= 0, `strip item ${key}`);
+    return html.slice(html.lastIndexOf("<a ", at), html.indexOf("</a>", at));
+  };
+  const dot = (html: string, key: string) => /data-won-dot="(\w+)"/.exec(link(html, key))?.[1] ?? null;
+  const tileState = (html: string, key: string) => /data-won-state="(\w+)"/.exec(html.slice(html.indexOf(`data-won-tile="${key}"`), html.indexOf("</s-clickable>", html.indexOf(`data-won-tile="${key}"`))))?.[1] ?? null;
+  for (const [nav, overview] of [
+    ["", "modules"],
+    ["&nav=failed", "modules-failed"],
+    ["&nav=off", "modules-off"],
+  ] as const) {
+    for (const plan of ["", "&plan=pro"]) {
+      const strip = (await render(`tiers?x=1${nav}${plan}`)).html;
+      const home = (await render(`overview?state=${overview}${plan}`)).html;
+      for (const [page, tile] of [["discounts", "codes"], ["tiers", "tiers"], ["rewards", "rewards"], ["outlet", "outlet"], ["campaigns", "campaigns"]] as const) {
+        const state = tileState(home, tile);
+        // The tile says "locked" with its Pro marker and no label; the strip then has the badge and no dot.
+        assert.equal(dot(strip, page), state, `${page}${nav}${plan}: the dot is the tile's state`);
+        if (state === null) assert.match(link(strip, page), /data-won-plan-badge="pro"/, `${page}${nav}${plan}`);
+      }
+    }
+  }
+  const free = (await render("rewards")).html;
+  assert.match(link(free, "discounts"), /data-won-dot="active"[\s\S]*>Aktivní: <\/span>/, "the state in words for screen readers");
+  assert.doesNotMatch(link(free, "outlet"), /data-won-dot/);
+  // The strip is the same on the five pages; pages outside "Slevy" have neither the strip nor its dots.
+  for (const path of ["discounts", "tiers", "rewards", "outlet", "campaigns"]) assert.equal(((await render(path)).html.match(/data-won-dot=/g) ?? []).length, 3, path);
+  for (const path of ["margin", "appearance", "analytics"]) assert.doesNotMatch((await render(path)).html, /data-won-subnav|data-won-dot=/, path);
+});
