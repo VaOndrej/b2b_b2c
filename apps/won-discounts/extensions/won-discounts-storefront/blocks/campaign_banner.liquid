@@ -3,6 +3,7 @@
   for any section of any template. The storefront config lists the campaigns with their start and end (`camps`,
   epoch seconds); pages are cached, so WHICH one runs is decided in the browser (assets/won-discounts-blocks.js)
   and the block stays hidden when none does. In the theme editor it shows a sample instead.
+  Whether the countdown shows is the banner's look, picked in the app on the Kampaně page (the config's stylesheet).
 {% endcomment %}
 {%- liquid
   assign won_camps = app.metafields.won_discounts.storefront_config.value.camps
@@ -19,7 +20,6 @@
     class="won-campaign won-campaign--{{ block.settings.align }}"
     data-won-discounts-campaign
     data-text="{{ block.settings.text | escape }}"
-    data-countdown="{{ block.settings.show_countdown }}"
     data-ends="{{ won_ends | escape }}"
     data-units="{{ won_units | escape }}"
     {% if request.design_mode %}data-sample="{{ won_sample | escape }}"{% endif %}
@@ -46,7 +46,6 @@
       "info": "{name} is replaced with the campaign's name.",
       "default": "{name}"
     },
-    { "type": "checkbox", "id": "show_countdown", "label": "Countdown to the end", "default": true },
     {
       "type": "select",
       "id": "align",

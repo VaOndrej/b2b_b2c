@@ -179,10 +179,17 @@ test("ready-made looks: the first of each element is the look it always had (no 
     for (const preset of presets.slice(1)) {
       const rules = LOOK_PRESET_CSS[element][preset]!;
       assert.ok(rules.length > 0 && !/[<\\]|url\(|@import/.test(rules), `${element}.${preset}`);
-      // Our own rules never reach outside the element either.
-      for (const selector of rules.replace(/\{[^}]*\}/g, "\n").split(/[\n,]/).filter(Boolean)) assert.ok(selector.includes(`${LOOK_ROOT[element]}${LOOK_ROOT[element]}`), `${element}.${preset}: ${selector}`);
+      // Our own rules never reach outside the element either, and none doubles a class to win: each is more
+      // specific than the extension's base rule it overrides (at most two classes), whatever order the stylesheets load in.
+      for (const selector of rules.replace(/\{[^}]*\}/g, "\n").split(/[\n,]/).filter(Boolean)) {
+        assert.ok(selector.includes(LOOK_ROOT[element]), `${element}.${preset}: ${selector}`);
+        assert.doesNotMatch(selector, /(\.won-[a-z]+)\1(?![a-z_-])/, `${element}.${preset}: ${selector}`);
+        assert.ok((selector.match(/\.[a-z]|\[|:not\(/g) ?? []).length >= 2, `${element}.${preset}: ${selector}`);
+      }
     }
   }
+  // The one base rule with two classes (the list is hidden in the compact size): the look that shows it has three.
+  assert.ok(LOOK_PRESET_CSS.milestones.checklist!.startsWith(".won-ms.won-ms--compact .won-ms__list{display:grid}"));
   assert.equal(looksCss(configOf({}).storefront), "");
   for (const element of LOOK_ELEMENTS) assert.equal(lookPreset(element, undefined), LOOK_PRESETS[element][0]);
   const junk = sanitizeConfig({ storefront: { looks: { milestones: { preset: "fireworks", accent: "pink", blink: "yes" }, outlet: "x", campaign: { preset: "countdown" } } } });

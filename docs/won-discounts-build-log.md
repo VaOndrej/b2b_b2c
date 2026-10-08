@@ -28,20 +28,13 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 > - **Část B:** body 7 až 13 v kódu s testy (viz níž), návrh a čísla v `won-discounts/navrh-kontrola-kombinaci.md`.
 > - **Část A na Free je celá ověřená naživo** (i texty tabulky a řádku na kartě; `evidence/dotazeni-8-9/runbook-vystup.txt`).
 > - **Část B je v `main`** (`492f6d0`), brána zelená: `test:packages` 941 + 53, `test:unit` 1 868 + cargo 102 + vitest 699, guard 301.
-> - **Část C, rozdělaná (necommitnuto):** z bodu 17 hotovo v pracovním stromu: klíče `appearance.*` → `looks.*`,
->   test přejmenovaný na `combination-switches.test.ts`, věta o jazycích mimo cs / sk / en na stránce Překlady
->   (`translations.lang.fallback`). **Plán bodů 14 a 15 (jádro první, test před kódem):**
->   1. `storefront.looks.tiers = { preset, accent, custom }` místo `appearancePreset` / `accent` / `custom`; převod
->      v `config/presentation.ts` (staré klíče se čtou, nezapisují); `LOOKS_ELEMENTS` / `LooksElement` zanikají ve
->      prospěch `LOOK_ELEMENTS` / `LookElement`; nový obchod má `looks.tiers.preset = "highlight"`.
->   2. Pátý prvek `cart` („Košík a pruh“, kořen `:is(.won-cart,.won-cart-slot,.won-topbar)`), sekce na stránce
->      Milníky; převod starého společného CSS rozdělí pravidla podle tříd Won mezi prvky (bez třídy Won → všem).
->   3. Aplikace: `looks.server.ts` (`lookView`, `applyLook` bez větví pro tabulku), `tiers.server.ts` a
->      `model/tiers.ts` (vzhled a barva už se neukládají s úrovněmi), `LookSection.tsx` (jedno tlačítko, tabulka má
->      hotové vzhledy jako ostatní), `TiersPreview.tsx`, `dev-harness.server.ts`, e2e fixtury (`cards-fixture.mjs`,
->      `--preset` v seedu).
->   4. Bod 16: zaškrtávátko odpočtu v bloku kampaně pryč, rozhoduje vzhled. Zdvojená třída (`.won-ms.won-ms`) až po
->      živém ověření pořadí stylů.
+> - **Část C je v `main`** (body 14 a 15 `57f4232`, bod 17 `22df3d3`, bod 16 a styly bez zdvojené třídy v posledním
+>   commitu). Vzhledy Milníků po zjednodušení stylů znovu ověřené naživo na Horizonu i Dawnu.
+> - **Brána 9. 10.:** `test:packages` 943 + 53, `test:unit` 1 869 + cargo 102 + vitest 699, guard 301, `typecheck`,
+>   `lint` (0 chyb, 2 starší varování), `build`, `validate:shopify`, vše exit 0. Funkce v pokladně beze změny
+>   (`git diff 7630525 --stat` nad `won-discounts-engine` prázdný). `test:e2e:preview` 25 z 25.
+> - **Co zbývá:** Pro běhy naživo (příkazy níž u části A) a rozhodnutí Ondřeje (bod 8, viz
+>   `won-discounts/navrh-kontrola-kombinaci.md`). `shopify app deploy` nebyl puštěn.
 > - **Logy živých běhů:** `$WON_RUN_DIR/dotazeni-8-9/` (scratchpad session, mimo repo).
 
 - **Body 5 a 6 — hotovo, v `main` (`ccf2755`).**
@@ -118,6 +111,32 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   - **Naživo neověřeno:** celá část B v běžící aplikaci (uložení → dlaždice, denní úloha, dotaz na produkty
     v obchodě bez Ochrany marže). Postgres migrace ověřená: `npm run test:postgres -w won-discounts` 5 z 5, bez
     rozdílu mezi migracemi a schématem.
+
+- **Část C (úklid kódu) — v kódu, testy zelené.** Rozhodnutí a čísla: `won-discounts/navrh-preklady-a-vzhled.md`,
+  oddíl „Dotažení: jedno uložení vzhledu a pátý prvek“.
+  - **Bod 14:** `storefront.looks.tiers = { preset, accent, custom }`; pole `appearancePreset`, `accent`, `custom` se
+    už jen čtou. Sekce vzhledu má pro každý prvek jeden tvar a jedno tlačítko; hotový vzhled a barva tabulky se
+    neukládají s úrovněmi (formulář úrovní pole `preset` ignoruje). Převod má test na třech skutečných tvarech
+    (před rozdělením, mezitvar z úkolu 8, dnešní) včetně „načíst a uložit dá stejný výsledek“; v databázi se řádek
+    přepíše do nového tvaru při prvním uložení (test v `tests/integration/looks.test.ts`).
+  - **Bod 15:** pátý prvek „Košík a pruh nahoře“ (`looks.cart`), sekce na stránce Milníky. Převod starého
+    společného CSS dělí pravidla mezi prvky podle tříd (`splitLegacyCss`); pravidlo bez třídy Won dostane každý
+    prvek, žádné nezmizí. Řádek na kartě produktu vlastním CSS stylovat nešel nikdy (karta není uvnitř žádného
+    bloku), je to zapsané v návrhu.
+  - **Bod 16:** zaškrtávátko „Countdown to the end“ v bloku kampaně je pryč, odpočet řídí jen vzhled (vzhled
+    „Pruh“ ho schová). `won-discounts-blocks.js` 1 511 → 1 478 B.
+  - **Bod 17:** `isMilestoneRuleId` v jádru; otevření scénáře nepočítá nic; klíče `looks.*`; test
+    `combination-switches.test.ts`; hotové vzhledy bez zdvojené třídy (každé pravidlo je specifičtější než
+    základní, nezáleží na pořadí stylů); stránka Překlady říká, že jazyk mimo cs / sk / en ukáže bez vlastního
+    textu anglický text aplikace (rozhodnuto: tak to zůstává, je to chování Shopify pro jazyk bez souboru).
+  - **Počet testů na soubor u souborů přepsaných skriptem (před → po):** `combination-switches.test.ts` 6 → 6,
+    `tests/integration/tiers.test.ts` 20 → 20, `tests/ui/looks.test.ts` 3 → 3, `tests/integration/looks.test.ts`
+    9 → 9, `storefront-outlet.contract.test.ts` 5 → 5, `packages/core/tests/discounts/looks.test.ts` 7 → 9,
+    `tests/integration/combination-check.test.ts` 5 → 8, `tests/ui/combination-check.test.ts` 10 → 15.
+  - **Důkazy:** aplikace 390 a 1440 px bez vodorovného posuvu: `Apps/.playwright-mcp/dotazeni-8-9/`
+    (`tiers-look-free`, `tiers-look-pro`, `rewards-cart-look-free`, `rewards-cart-look-pro`).
+  - **Naživo neověřeno:** vlastní CSS košíku a pruhu na webu (Pro), blok kampaně bez zaškrtávátka v úpravě
+    vzhledu obchodu.
 
 ### Úkoly 8 a 9 (8. 10. 2026) — zadání `won-discounts/prompt-ukol8-9.md`
 

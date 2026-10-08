@@ -151,12 +151,12 @@ export function sanitizeLooks(storefront: Record<string, unknown>, issues: Confi
 
 // --- The ready-made looks as CSS -----------------------------------------------------------------------
 // Rules over the extension's markup (assets/won-discounts.css, won-discounts-outlet.css hold each element's base
-// and what a look switches on). The element's class is doubled so a look wins over the base wherever the theme
-// puts the stylesheets.
+// and what a look switches on). Every rule is more specific than the base rule it overrides, so a look wins
+// wherever the theme puts the stylesheets — never by their order.
 
-const MS = ".won-ms.won-ms";
-const OUTLET = ".won-outlet.won-outlet";
-const CAMPAIGN = ".won-campaign.won-campaign";
+const MS = ".won-ms";
+const OUTLET = ".won-outlet";
+const CAMPAIGN = ".won-campaign";
 
 export const LOOK_PRESET_CSS: Readonly<Record<LookElement, Readonly<Record<string, string>>>> = {
   // The table's ready-made looks are classes of its block (assets/won-discounts-tiers.css), the cart has none.
@@ -164,7 +164,7 @@ export const LOOK_PRESET_CSS: Readonly<Record<LookElement, Readonly<Record<strin
   cart: {},
   milestones: {
     track: "",
-    checklist: `${MS}--compact .won-ms__list{display:grid}${MS}:not(.won-ms--bar) .won-ms__track{display:none}${MS} .won-ms__list li[data-done]{color:var(--won-tiers-accent,currentColor)}`,
+    checklist: `${MS}${MS}--compact .won-ms__list{display:grid}${MS}:not(.won-ms--bar) .won-ms__track{display:none}${MS} .won-ms__list li[data-done]{color:var(--won-tiers-accent,currentColor)}`,
     sentence: `${MS}:not(.won-ms--bar) .won-ms__track,${MS} .won-ms__list{display:none}`,
   },
   outlet: {

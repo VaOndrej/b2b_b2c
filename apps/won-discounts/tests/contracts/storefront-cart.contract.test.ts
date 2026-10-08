@@ -704,5 +704,16 @@ test("Liquid renders the same ladder for the first paint; the stylesheet keeps t
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ \.won-ms \[data-new\] \{ animation: none !important; \}/);
   // The looks' own rules win over the base wherever the stylesheets land (the element's class twice), and use only the ladder's marks.
   assert.match(LOOK_PRESET_CSS.milestones.checklist!, /^\.won-ms\.won-ms--compact \.won-ms__list\{display:grid\}/);
-  assert.equal(MILESTONE_BLINK_CSS, ".won-ms.won-ms [data-new]{animation:won-ms-new .7s ease-out}");
+  assert.equal(MILESTONE_BLINK_CSS, ".won-ms [data-new]{animation:won-ms-new .7s ease-out}");
+});
+
+test("the campaign's countdown has ONE switch, the banner's look: the block offers no setting for it, the script always writes the time, the 'strip' look hides it", () => {
+  const blocks = path.resolve(ASSETS, "../blocks");
+  const banner = readFileSync(path.join(blocks, "campaign_banner.liquid"), "utf8");
+  const schema = JSON.parse(/\{% schema %\}([\s\S]*)\{% endschema %\}/.exec(banner)![1]!) as { settings: { id: string }[] };
+  assert.deepEqual(schema.settings.map((s) => s.id), ["text", "align"]);
+  for (const file of ["campaign_banner.liquid", "won_discounts_embed.liquid", "outlet_badge.liquid"]) assert.doesNotMatch(readFileSync(path.join(blocks, file), "utf8"), /data-countdown|show_countdown/, file);
+  assert.doesNotMatch(readFileSync(path.join(ASSETS, "won-discounts-blocks.js"), "utf8"), /data-countdown|time\.hidden/);
+  assert.equal(LOOK_PRESET_CSS.campaign.strip, ".won-campaign .won-campaign__time{display:none}");
+  assert.equal(LOOK_PRESET_CSS.campaign.countdown, "");
 });

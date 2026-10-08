@@ -75,3 +75,25 @@ Tarif Free. Řádky se znakem - jsou testy, které k danému seedu nepatří (p�
    ✓ Horizon
    ✓ Dawn
 
+
+== Po úklidu stylů (část C: hotové vzhledy bez zdvojené třídy, odpočet kampaně řídí jen vzhled), 9. 10. 2026
+== looks.sh rewards --looks milestones=checklist+blink
+  ✓  4 tests/e2e/storefront.looks.spec.ts:194:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Horizon › look, Milníky: the ladder draws as the look picked, in the highlight co
+  4 skipped
+  1 passed (43.6s)
+  ✓  4 tests/e2e/storefront.looks.spec.ts:194:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › look, Milníky: the ladder draws as the look picked, in the highlight colou
+  4 skipped
+  1 passed (1.4m)
+   ✓ Horizon
+   ✓ Dawn
+
+== looks.sh rewards --looks milestones=sentence
+  ✓  4 tests/e2e/storefront.looks.spec.ts:194:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Horizon › look, Milníky: the ladder draws as the look picked, in the highlight co
+  4 skipped
+  1 passed (39.8s)
+  ✓  4 tests/e2e/storefront.looks.spec.ts:194:3 › Won Discounts texts and looks on the storefront (úkol 8) [rewards] — Dawn › look, Milníky: the ladder draws as the look picked, in the highlight colou
+  4 skipped
+  1 passed (1.4m)
+   ✓ Horizon
+   ✓ Dawn
+

@@ -180,7 +180,7 @@
     hidden
   >
     {%- if block.settings.top_bar_campaign and won_camps != blank -%}
-      <div class="won-campaign" data-won-discounts-campaign data-text="{name}" data-countdown="true" data-ends="{{ won_ends | escape }}" data-units="{{ won_units | escape }}" hidden>
+      <div class="won-campaign" data-won-discounts-campaign data-text="{name}" data-ends="{{ won_ends | escape }}" data-units="{{ won_units | escape }}" hidden>
         <script type="application/json">{{ won_camps | json | replace: '</', '<\/' }}</script>
         <p class="won-campaign__title"></p>
         <p class="won-campaign__time" aria-live="off"></p>

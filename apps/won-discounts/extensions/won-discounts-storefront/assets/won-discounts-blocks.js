@@ -52,9 +52,7 @@
       const units = (el.getAttribute("data-units") || "d,h,min,s").split(",");
       el.querySelector(".won-campaign__title").textContent = (el.getAttribute("data-text") || "{name}").replace("{name}", run.n);
       const time = el.querySelector(".won-campaign__time");
-      const show = el.getAttribute("data-countdown") !== "false";
-      time.hidden = !show;
-      if (show) time.textContent = (el.getAttribute("data-ends") || "{time}").replace("{time}", left(run.e - now, units));
+      time.textContent = (el.getAttribute("data-ends") || "{time}").replace("{time}", left(run.e - now, units));
       if (!soonest || run.e < soonest) soonest = run.e;
     }
     /* Seconds only in the last hour; otherwise once a minute is enough. */

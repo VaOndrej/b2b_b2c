@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-08T19:38:26.479Z",
+  "at": "2026-10-08T22:11:09.345Z",
   "theme": "Horizon",
   "profile": "rewards",
   "look": {
@@ -30,7 +30,7 @@
   "calm": [
     {
       "step": 0,
-      "at": 5349,
+      "at": 5045.400000095367,
       "gone": null,
       "animation": "none"
     }
@@ -38,7 +38,7 @@
   "flash": [
     {
       "step": 1,
-      "at": 15775.300000190735,
+      "at": 15452.799999952316,
       "gone": null,
       "animation": "won-ms-new"
     }

@@ -105,13 +105,20 @@ Won Discounts quantity tiers block (MVP 3, contracts K6 + K8). Liquid renders th
 ## Looks (feedback 2026-10-06, bod 13)
 
 - Every element has its own look: `.won-tiers` (the table), `.won-ms` (the ladder), `.won-outlet` (the sale badge),
-  `.won-campaign` (the banner). The storefront config's `appearance.css` is ONE stylesheet the embed prints: the
-  table's colour and custom look, then each other element's ready-made look, colour and custom look — every rule
-  under its element's root (core `looks.ts`, `custom-look.ts`). `appearance.preset` is the table's class only.
+  `.won-campaign` (the banner), and the cart panel with the top strip (`.won-cart`, `.won-cart-slot`,
+  `.won-topbar`: the frames the ladder sits in). The storefront config's `appearance.css` is ONE stylesheet the
+  embed prints: each element's ready-made look, colour and custom look — every rule under its element's root
+  (core `looks.ts`, `custom-look.ts`). `appearance.preset` is the table's class only.
+- A look's rule is always more specific than the base rule it overrides (never a doubled class, never the order
+  of the stylesheets).
 - A ready-made look is CSS over the same markup, never a script: the ladder carries its track AND its list of
   steps in `compact` and `full` (`won-discounts.css` hides the list in `compact`; the "checklist" look shows it
   and hides the track, "sentence" hides both).
-- `data-new` marks the step a cart change has just reached (`plan().hit`; never on a page load). The flash
+- `data-new` marks the step a cart change has just reached (`plan().hit`; never on a page load). The mark holds
+  for 1.5 s however often the cart is read meanwhile (a theme reports one change twice) and goes out with the
+  `won-discounts:cart:update` event (`detail.hit`), so the Milestones block and the top strip get it too. The flash
   (`@keyframes won-ms-new`) plays only when the look asks for it and never with `prefers-reduced-motion`.
+- The campaign banner's countdown is the banner's look alone (the "strip" look hides it): the block has no
+  setting for it.
 - The sale badge's time left: `appearance.oc` = a look with a countdown, the product metafield's `e` = the sales
   with an end date. Only then the block prints the banner's countdown markup and loads `won-discounts-blocks.js`.
