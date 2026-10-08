@@ -197,7 +197,7 @@ test("bod 6: Pro is marked once per section — nothing amber and no second Pro 
   // On the Pro plan the choice "Celý košík" inside an exception has no marker of its own (the shop has it).
   assert.doesNotMatch(section(await render("tiers?plan=pro"), "global"), PRO_BADGE);
   // A Pro piece inside a section that is not Pro keeps its one marker (Free: "Celý košík").
-  assert.equal(count(section(await render("tiers"), "global"), PRO_BADGE), 2, "Free: Celý košík + Vlastní barvy a CSS");
+  assert.equal(count(section(await render("tiers"), "global"), PRO_BADGE), 1, "Free: Celý košík (the link to the table's look is every plan's)");
 });
 
 test("bod 15: 'Prázdná sleva' is 'Vlastní sleva', with what it is, set apart from the recipes", async () => {

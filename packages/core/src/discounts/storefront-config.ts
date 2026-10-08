@@ -38,7 +38,7 @@ import { isMilestoneRule } from "./milestones.ts";
 import { variantNumber } from "./rewards.ts";
 import { campaignTierSets } from "./campaign-tiers.ts";
 import { shopLocalToUtc } from "./campaigns.ts";
-import { looksCss, outletCountdown } from "./looks.ts";
+import { lookPreset, looksCss, outletCountdown } from "./looks.ts";
 import { globalTierSet, reachableTierSets } from "./tiers.ts";
 
 /** App-data metafield (AppInstallation) the storefront reads. */
@@ -284,14 +284,14 @@ export function buildStorefrontConfig(given: ReadonlyDeep<WonDiscountsConfig>, o
   const campaign = opts.campaignId ? gated.campaigns.find((c) => c.id === opts.campaignId && !c.killed) : undefined;
   const run = campaign ? campaignTierSets(gated.modules.tiers, campaign) : null;
   const shown = campaign && run && run.applied.length > 0 ? { tiers: storefrontTiers(run.sets), bt: base, tc: campaign.id } : { tiers: base };
-  const preset = gated.storefront.appearancePreset;
+  const preset = lookPreset("tiers", gated.storefront.looks.tiers);
   const customCss = looksCss(gated.storefront);
   return {
     v: STOREFRONT_CONFIG_VERSION,
     cv: opts.configVersion,
     ...shown,
     margin: storefrontMargin(gated.modules.margin, opts.shopCurrency),
-    appearance: { preset: (APPEARANCE_PRESETS as readonly string[]).includes(preset) ? preset : "default", ...(customCss ? { css: customCss } : {}), ...(outletCountdown(gated.storefront.looks) ? { oc: 1 as const } : {}) },
+    appearance: { preset: APPEARANCE_PRESETS.find((p) => p === preset) ?? "default", ...(customCss ? { css: customCss } : {}), ...(outletCountdown(gated.storefront.looks) ? { oc: 1 as const } : {}) },
     ...rewardsPart(gated.modules.rewards, opts.variantHandles ?? {}, gated.modules.codes.rules),
     ...(gated.engine.combination.outletWithAnything ? { ow: 1 as const } : {}),
     ...(gated.storefront.cardPricesEnabled ? { cards: 1 as const } : {}),

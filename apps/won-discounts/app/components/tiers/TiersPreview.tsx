@@ -24,11 +24,8 @@
 // One component for every preview surface (A1): the Množstevní slevy screen,
 // the four looks on Vzhled and the dev harness. The items-in-the-cart stepper is
 // native buttons with no form name (never submitted). The look switcher is a
-// native radio group: with `lookField` it is a field of the page's form — the
-// pick is SAVED with the page (config.storefront.appearancePreset, the same
-// field Vzhled writes) and its change event reaches the form (the save bar and
-// the live draft see it); without `lookField` the radios have no name and
-// nothing is submitted.
+// native radio group shown only with `lookField`: it is then a field of the form
+// around the preview (the table's look section, saved with "Uložit vzhled").
 
 import { useId, useMemo, useState, type CSSProperties } from "react";
 
@@ -102,7 +99,7 @@ export interface TiersPreviewProps {
   product: PreviewProductView | null;
   /** The shop currency (the sample product's currency when there is no product). */
   currency?: string;
-  /** Show the look switcher and the items-in-the-cart stepper. */
+  /** Show the items-in-the-cart stepper, and with `lookField` the look switcher. */
   controls?: boolean;
   /** Margin protection is on: say the preview does not apply it. */
   marginOn?: boolean;
@@ -114,7 +111,7 @@ export interface TiersPreviewProps {
   withStyles?: boolean;
   /** What the config adds on top of the look: the Pro custom look (CSS as the storefront gets it) and the merchant's texts. */
   extras?: PreviewLookView | null;
-  /** With `controls`: the form field the picked look is submitted as (the page saves it). Absent = the switcher only changes the preview. */
+  /** With `controls`: the form field the picked look is submitted as (the table's look section saves it). Absent = no switcher, the stored look. */
   lookField?: string;
   /** With `controls`: the form field of the ready-made highlight colour (every plan). Absent = no colour picker. */
   accentField?: string;
@@ -195,7 +192,8 @@ export function TiersPreview({
   const money = (cents: number) => formatLiquidMoney(cents, shopCurrency, product?.moneyFormat ?? null, locale);
   const model = useMemo(() => previewTiersLiquid(shown, { unitPrice, currency: shopCurrency, quantity }), [shown, unitPrice, shopCurrency, quantity]);
   const priceCents = Math.round(unitPrice * 10 ** (2 - currencyExponent(shopCurrency)));
-  const activePreset = controls ? look : preset;
+  const picks = controls && lookField !== undefined;
+  const activePreset = picks ? look : preset;
   // The ready-made colour goes over the theme's (as on the storefront); a Pro custom look that sets its own accent goes over both.
   const customAccent = /--won-tiers-accent\s*:/.test(extras?.customCss ?? "");
   const pickedColor = ACCENT_COLORS[controls && accentField ? accentPick : storedAccent];
@@ -261,14 +259,15 @@ export function TiersPreview({
   return (
     <div style={{ fontFamily: WON_FONT, display: "grid", gap: 10, minWidth: 0 }}>
       {bare ? null : (
-        <div id={controls ? lookLabelId : undefined} style={{ fontSize: 13, fontWeight: 700, color: WON_INK }}>
+        <div id={picks ? lookLabelId : undefined} style={{ fontSize: 13, fontWeight: 700, color: WON_INK }}>
           {/* With the look picker the block IS "Vzhled na webu": one heading, not "Náhled" over "Vzhled". */}
-          {t(controls ? "tiers.preview.look" : "tiers.preview.title")}
+          {t(picks ? "tiers.preview.look" : "tiers.preview.title")}
           {sample ? <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 700, color: WON_AMBER_TEXT }}>{t("tiers.sample")}</span> : null}
         </div>
       )}
       {controls ? (
         <div style={{ display: "grid", gap: 8 }}>
+          {picks ? (
           <div style={{ display: "grid", gap: 5 }}>
             {bare ? (
               <div id={lookLabelId} style={{ fontSize: 13, fontWeight: 500, color: WON_INK }}>
@@ -307,8 +306,9 @@ export function TiersPreview({
               ))}
             </div>
             {accentField ? <AccentPicker name={accentField} value={accentPick} stored={storedAccent} onPick={setAccentPick} embed={embed} /> : null}
-            {lookField && look !== preset ? <div style={{ fontSize: 12, color: WON_MUTED }}>{t("tiers.preview.lookUnsaved", { preset: presetLabel(preset, tr) })}</div> : null}
+            {look !== preset ? <div style={{ fontSize: 12, color: WON_MUTED }}>{t("tiers.preview.lookUnsaved", { preset: presetLabel(preset, tr) })}</div> : null}
           </div>
+          ) : null}
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: WON_MUTED }}>
             <span>{t("tiers.preview.quantity")}</span>
             <button type="button" aria-label={t("tiers.preview.less")} onClick={() => setQuantity((q) => Math.max(1, q - 1))} style={stepper}>

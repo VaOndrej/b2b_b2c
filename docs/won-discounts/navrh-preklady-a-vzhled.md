@@ -102,6 +102,42 @@ Zkouška: `tests/e2e/storefront.looks.spec.ts`, důkazy v `evidence/dotazeni-8-9
   texty rozšíření. **Stránka v angličtině** (žádný uložený text) ukazuje jen výchozí anglické.
 - Počet dotazů navíc: žádný. Metapole jazyka čte Liquid při vykreslení stránky.
 
+## Dotažení: jedno uložení vzhledu a pátý prvek (body 14 a 15, 8. 10. 2026)
+
+**Bod 14, rozhodnuto a zavedeno:** vzhled tabulky je uložený stejně jako ostatní prvky,
+`storefront.looks.tiers = { preset, accent, custom }`. Pole `appearancePreset`, `accent` a `custom` se už jen čtou
+(převod při načtení, řádek v databázi se přepíše při příštím uložení). Sekce vzhledu má pro každý prvek stejný tvar a
+jedno tlačítko „Uložit vzhled“; hotový vzhled a barva tabulky se už neukládají s úrovněmi. Proč: dvě místa uložení
+znamenala dvě tlačítka na jedné stránce a řadu výjimek v kódu sekce.
+
+**Bod 15, rozhodnuto a zavedeno:** pátý prvek **„Košík a pruh nahoře“** (`looks.cart`, kořen
+`:is(.won-cart,.won-cart-slot,.won-topbar)`), sekce na stránce Milníky. Nemá hotové vzhledy ani vlastní barvu
+zvýraznění (žebříček uvnitř bere barvu žebříčku), na Pro má vlastní barvy a CSS. Proč pátý prvek a ne rozšíření
+kořene některého ze čtyř: košík a pruh jsou rámy, ve kterých sedí žebříček, dárky a pole pro kód; patří k Milníkům
+jen umístěním a jejich CSS nemá co dělat v tabulce ani ve štítku.
+
+Co se zvažovalo:
+
+| Varianta | Co by znamenala | Proč ne |
+|---|---|---|
+| Nechat čtyři prvky | košík a pruh nejdou stylovat vůbec | Pro o to přišlo proti stavu před rozdělením |
+| Rozšířit kořen žebříčku o košík a pruh | jedno CSS pro žebříček i panel košíku | CSS žebříčku by sahalo na dárky a pole pro kód; na stránce produktu žebříček v košíku není |
+| **Pátý prvek (zavedeno)** | vlastní sekce a vlastní kořen | o jednu sekci víc na stránce Milníky |
+
+**Převod starého společného CSS** (nastavení uložené před rozdělením, bez `looks`): pravidla se rozdělí mezi prvky
+podle tříd Won v selektoru (`.won-tiers…` k tabulce, `.won-ms…` k žebříčku, `.won-outlet…` ke štítku,
+`.won-campaign…` k banneru, `.won-cart…` / `.won-topbar…` / `.won-progress…` ke košíku a pruhu); pravidlo bez
+třídy Won platilo ve všech blocích, dostane ho proto každý prvek. Žádné pravidlo se nezahodí. Text, který rozdělit
+nejde (nevyvážené závorky), zůstane celý u tabulky.
+
+Co převod nezachrání a proč: pravidlo, jehož selektor míří na sám kořen (`.won-cart { … }`), neplatilo spolehlivě
+ani dřív (platilo jen tam, kde byl kořen vnořený v jiném kořeni). Řádek na kartě produktu (`.won-card-tier`)
+vlastním CSS stylovat nešel nikdy: karta není uvnitř žádného bloku Won. Zadání bodu 15 ho jmenuje, ale starý kód
+taková pravidla na web posílal pod kořenem, kde nic nenašla.
+
+Velikost: pět sad vlastního CSS v nejhustším případě 70,4 kB ze 124 000 B nastavení pro web (test v jádru); limit se
+nemění.
+
 ## Dluh zjištěný při měření (neřeší se v úkolu 8)
 
 - Vlastní CSS je na stránce dvakrát: jednou v JSON nastavení, jednou ve značce stylů. Skripty ho z JSON nečtou.

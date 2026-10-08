@@ -19,18 +19,16 @@
 // Pro sets travel back as hidden fields and stay; the sync gates them (K1: on
 // Free a scoped set is inert, its products never fall into the global set).
 
-import { ACCENT_PRESETS, type AccentPreset } from "@won/core/discounts/config";
 import type { DiscountRule, TierSet, WonDiscountsConfig } from "@won/core/discounts/config";
 import { explainGate, gateConfigForPlan, type ProCapability } from "@won/core/discounts/plan-gate";
 
 import { cardBlockAddUrl } from "../../components/model/embed";
-import { presetOf, readAppearanceForm } from "../../components/model/looks";
 import { currenciesWithoutAmount, currencyCodes, currencyViews, enabledCurrencies } from "../../components/model/markets";
 import type { FormDataLike } from "../../components/model/rule-form";
 import { readTiersForm, tierPayloadUse, tierSetToConfig, tierSetView, TIERS_FIELD, TIERS_INTENT } from "../../components/model/tiers";
 import { tiersGlobalStatus, tiersSetsStatus } from "../../components/model/module-status";
-import type { AppearancePresetView, FieldError, GateNoteView, SyncView, TierSetView, TiersOverviewView, TiersScreenData, UiResult } from "../../components/model/types";
-import { lookView, previewLookOf, withAppearancePreset } from "./looks.server";
+import type { FieldError, GateNoteView, SyncView, TierSetView, TiersOverviewView, TiersScreenData, UiResult } from "../../components/model/types";
+import { lookView, previewLookOf, tablePreset } from "./looks.server";
 import { loadConfig, type LoadedConfig } from "../config.server";
 import { MAX_COLLECTION_PRODUCTS } from "../sync/products";
 import { tierProductCounts } from "../sync/storefront";
@@ -171,7 +169,7 @@ export async function loadTiersScreen(ctx: ShopCtx, opts: { scopes: string; fres
     block: look.block,
     status: tiersSectionStatus(stored, plan, look.block, sync),
     storefront,
-    preview: { tokens: look.tokens, preset: presetOf(stored.storefront.appearancePreset), product, look: previewLookOf(stored, plan) },
+    preview: { tokens: look.tokens, preset: tablePreset(stored), product, look: previewLookOf(stored, plan) },
     productsWithSets: counts,
     outletWithAnything: stored.engine.combination.outletWithAnything === true,
     embed: signals.embed,
@@ -200,39 +198,17 @@ export function nextTierSets(sets: readonly TierSetView[], keep?: ReadonlyMap<st
 }
 
 /**
- * Save the page's sets (nextTierSets) like every admin change (saveConfigSection: lock, F12, saveAndSync).
- * `preset` = the look picked in the page's preview (already validated): written to
- * config.storefront.appearancePreset, the one field Vzhled writes too — then F12 covers the look as well (a look
- * changed in another tab meanwhile → base_changed). Without it the look is not touched and F12 is on the tiers only.
+ * Save the page's sets (nextTierSets) like every admin change (saveConfigSection: lock, F12, saveAndSync). The
+ * table's look is not this page's form's: it is saved by its own section, like every element's (looks.server.ts).
  */
-export function saveTiers(
-  ctx: ShopCtx,
-  sets: readonly TierSetView[],
-  opts: SaveOptions & { keep?: ReadonlyMap<string, TierSet>; preset?: AppearancePresetView; accent?: AccentPreset },
-): Promise<UiResult> {
+export function saveTiers(ctx: ShopCtx, sets: readonly TierSetView[], opts: SaveOptions & { keep?: ReadonlyMap<string, TierSet> }): Promise<UiResult> {
   const next = nextTierSets(sets, opts.keep);
-  const preset = opts.preset;
-  const accent = opts.accent;
-  /** The ready-made highlight colour, when the form carried it ("theme" = none stored). */
-  const withAccent = (config: WonDiscountsConfig): WonDiscountsConfig => {
-    if (accent === undefined) return config;
-    const storefront = { ...config.storefront };
-    if (accent === "theme") delete storefront.accent;
-    else storefront.accent = accent;
-    return { ...config, storefront };
-  };
   return saveConfigSection(ctx, {
     configVersion: opts.configVersion,
     ...(opts.replaceUnreadable !== undefined ? { replaceUnreadable: opts.replaceUnreadable } : {}),
     path: "modules.tiers",
-    pick: (config) =>
-      preset === undefined && accent === undefined
-        ? config.modules.tiers
-        : { tiers: config.modules.tiers, preset: presetOf(config.storefront.appearancePreset), accent: config.storefront.accent ?? "theme" },
-    apply: (config) => {
-      const withTiers = { ...config, modules: { ...config.modules, tiers: { ...config.modules.tiers, sets: next } } };
-      return withAccent(preset === undefined ? withTiers : withAppearancePreset(withTiers, preset));
-    },
+    pick: (config) => config.modules.tiers,
+    apply: (config) => ({ ...config, modules: { ...config.modules, tiers: { ...config.modules.tiers, sets: next } } }),
   });
 }
 
@@ -328,16 +304,6 @@ export async function tiersAction(ctx: ShopCtx, form: FormDataLike): Promise<UiR
     },
   });
   if (parsed.errors.length > 0) return { ok: false, reason: "invalid", errors: parsed.errors };
-  // The look picked in the preview: the same parser as Vzhled (one of the four, SEC-1); a form without the field leaves it.
-  let preset: AppearancePresetView | undefined;
-  if (form.get(TIERS_FIELD.preset) !== null) {
-    const look = readAppearanceForm(form);
-    if (!look.ok) return { ok: false, reason: "invalid", errors: look.errors };
-    preset = look.preset;
-  }
-  // The highlight colour picked next to it: one of the ready-made ones (SEC-1); a form without the field, or with junk, leaves it.
-  const rawAccent = form.get(TIERS_FIELD.accent);
-  const accent = typeof rawAccent === "string" && (ACCENT_PRESETS as readonly string[]).includes(rawAccent) ? (rawAccent as AccentPreset) : undefined;
   const sizeErrors = await collectionSizeErrors(
     ctx,
     parsed.sets.filter((s) => !parsed.kept.includes(s.id)),
@@ -348,7 +314,7 @@ export async function tiersAction(ctx: ShopCtx, form: FormDataLike): Promise<UiR
   // The checkout's room for tiers (CONFIG_LIMITS.tierPayloadBytes, audit): refused with what to do, never "bytes".
   const use = tierPayloadUse(nextTierSets(parsed.sets, keep));
   if (!use.fits) return { ok: false, reason: "invalid", errors: [{ field: TIERS_FIELD.set, key: "tiers.error.tooLarge", params: { percent: use.percent } }] };
-  return saveTiers(ctx, parsed.sets, { ...readSaveOptions(form), keep, ...(preset !== undefined ? { preset } : {}), ...(accent !== undefined ? { accent } : {}) });
+  return saveTiers(ctx, parsed.sets, { ...readSaveOptions(form), keep });
 }
 
 // --- Přehled --------------------------------------------------------------------------------------------------------

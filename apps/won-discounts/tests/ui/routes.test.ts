@@ -133,6 +133,6 @@ for (const [file, params] of [
     assert.deepEqual(stored.modules.codes.rules, []);
     assert.equal(stored.modules.margin.enabled, false, "margin protection stays off");
     assert.deepEqual(stored.modules.tiers.sets, [], "no tier set written");
-    assert.equal(stored.storefront.appearancePreset, "highlight", "the new-shop look, untouched");
+    assert.equal(stored.storefront.looks.tiers?.preset, "highlight", "the new-shop look, untouched");
   });
 }

@@ -58,13 +58,6 @@ export const TIERS_FIELD = {
    * keeps the STORED set by its id, exactly as stored (§14a; audit P3-4).
    */
   kept: (sid: string) => `set.${sid}.kept`,
-  /**
-   * The look of the table on the storefront (config.storefront.appearancePreset), picked in the preview on this
-   * page. The same field name and parser as Vzhled (model/appearance.ts readAppearanceForm); absent = unchanged.
-   */
-  preset: "preset",
-  /** The ready-made highlight colour (config.storefront.accent, every plan), picked next to the look; absent = unchanged. */
-  accent: "accentPreset",
 } as const;
 
 export const TIERS_INTENT = { save: "save" } as const;

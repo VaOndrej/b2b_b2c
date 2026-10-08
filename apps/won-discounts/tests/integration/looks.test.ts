@@ -48,6 +48,8 @@ const version = async () => (await loadConfig(db.prisma, shop)).version ?? "";
 const look = async (element: string, more: [string, string][]) => formOf([["intent", "save"], ["configVersion", await version()], ["element", element], ...more]);
 const liveCss = (store: FakeStore) => (store.sync.storefrontConfig() as { appearance: { css?: string; oc?: 1 } }).appearance;
 const stored = async () => (await loadConfig(db.prisma, shop)).config.storefront;
+/** A new shop's table: the highlighted look, stored with every element's look. */
+const NEW_SHOP = { tiers: { preset: "highlight" } };
 
 test("Free: an element's ready-made look, colour and flash are saved and reach the storefront; its custom look fields are not taken (BILL-1)", async () => {
   const store = new FakeStore();
@@ -55,14 +57,20 @@ test("Free: an element's ready-made look, colour and flash are saved and reach t
   const r = await looksAction(ctx, await look("milestones", [["preset", "checklist"], ["accent", "violet"], ["blink", "on"], ["look.accent", "#ff0000"], ["look.css", ".won-ms__text{color:red}"]]));
   assert.ok(r.ok, JSON.stringify(r));
   await syncIdle(shop);
-  assert.deepEqual((await stored()).looks, { milestones: { preset: "checklist", accent: "violet", blink: true } });
+  assert.deepEqual((await stored()).looks, { ...NEW_SHOP, milestones: { preset: "checklist", accent: "violet", blink: true } });
   assert.equal(liveCss(store).css, `${LOOK_PRESET_CSS.milestones.checklist}${MILESTONE_BLINK_CSS}.won-ms{--won-tiers-accent:#6d28d9}`);
   // Back to the first look, the theme's colour, no flash: nothing is stored and nothing is sent.
   const back = await looksAction(ctx, await look("milestones", [["preset", "track"], ["accent", "theme"]]));
   assert.ok(back.ok, JSON.stringify(back));
   await syncIdle(shop);
-  assert.deepEqual((await stored()).looks, {});
+  assert.deepEqual((await stored()).looks, NEW_SHOP);
   assert.equal(liveCss(store).css, undefined);
+  // The table is saved the same way, on Free too: its look and colour, never the custom look fields.
+  const table = await looksAction(ctx, await look("tiers", [["preset", "tiles"], ["accent", "orange"], ["look.css", ".won-tiers__row{color:red}"]]));
+  assert.ok(table.ok, JSON.stringify(table));
+  await syncIdle(shop);
+  assert.deepEqual((await stored()).looks, { tiers: { preset: "tiles", accent: "orange" } });
+  assert.deepEqual(liveCss(store), { preset: "tiles", css: ".won-tiers{--won-tiers-accent:#b45309}" });
 });
 
 test("Free keeps a custom look stored on Pro exactly as it is, and ships none of it", async () => {
@@ -74,14 +82,16 @@ test("Free keeps a custom look stored on Pro exactly as it is, and ships none of
   assert.ok(r.ok, JSON.stringify(r));
   await syncIdle(shop);
   assert.deepEqual((await stored()).looks, { outlet: { preset: "strip", custom } });
-  assert.deepEqual(liveCss(store), { preset: "highlight", css: LOOK_PRESET_CSS.outlet.strip, oc: 1 });
+  // (the row was written without a look for the table: the plain table it always had)
+  assert.deepEqual(liveCss(store), { preset: "default", css: LOOK_PRESET_CSS.outlet.strip, oc: 1 });
 });
 
 test("Pro: every element has its own custom look, confined to it — saving one never changes another, on the page or on the storefront", async () => {
   const store = new FakeStore();
   const ctx = ctxFor(store, "pro");
   const steps: [string, [string, string][]][] = [
-    ["tiers", [["look.accent", "#0A7D4F"], ["look.radius", "4"], ["look.css", ".won-tiers__row { font-weight: 700 }"]]],
+    ["tiers", [["preset", "chips"], ["accent", "theme"], ["look.accent", "#0A7D4F"], ["look.radius", "4"], ["look.css", ".won-tiers__row { font-weight: 700 }"]]],
+    ["cart", [["look.css", ".won-cart__saved { font-weight: 700 }"]]],
     ["milestones", [["preset", "sentence"], ["accent", "theme"], ["look.css", ".won-ms__text{letter-spacing:1px}"]]],
     ["outlet", [["preset", "countdown"], ["accent", "red"], ["look.tint", "#fff0f0"]]],
     ["campaign", [["preset", "card"], ["accent", "theme"], ["look.css", ":root{margin:0} .won-tiers{display:none}"]]],
@@ -92,21 +102,23 @@ test("Pro: every element has its own custom look, confined to it — saving one 
     await syncIdle(shop);
   }
   const s = await stored();
-  assert.deepEqual(s.custom, { vars: { accent: "#0a7d4f", radius: 4 }, css: ".won-tiers__row { font-weight: 700 }" });
-  assert.equal(s.appearancePreset, "highlight", "the table's ready-made look is its page's, untouched here");
+  assert.deepEqual(Object.keys(s).sort(), ["cardPricesEnabled", "looks"], "one place for every element's look");
   assert.deepEqual(s.looks, {
+    tiers: { preset: "chips", custom: { vars: { accent: "#0a7d4f", radius: 4 }, css: ".won-tiers__row { font-weight: 700 }" } },
+    cart: { custom: { vars: {}, css: ".won-cart__saved { font-weight: 700 }" } },
     milestones: { preset: "sentence", custom: { vars: {}, css: ".won-ms__text{letter-spacing:1px}" } },
     outlet: { preset: "countdown", accent: "red", custom: { vars: { tint: "#fff0f0" }, css: "" } },
     campaign: { preset: "card", custom: { vars: {}, css: ":root{margin:0} .won-tiers{display:none}" } },
   });
   assert.deepEqual(liveCss(store), {
-    preset: "highlight",
+    preset: "chips",
     css:
       ".won-tiers{--won-tiers-accent:#0a7d4f;--won-tiers-radius:4px}.won-tiers .won-tiers__row{font-weight: 700}" +
       `${LOOK_PRESET_CSS.milestones.sentence}.won-ms .won-ms__text{letter-spacing:1px}` +
       `${LOOK_PRESET_CSS.outlet.countdown}.won-outlet{--won-tiers-accent:#b42318}.won-outlet{--won-tiers-tint:#fff0f0}` +
       // The campaign's CSS names the table: it can only ever match a table INSIDE the banner — there is none.
-      `${LOOK_PRESET_CSS.campaign.card}.won-campaign{margin:0}.won-campaign .won-tiers{display:none}`,
+      `${LOOK_PRESET_CSS.campaign.card}.won-campaign{margin:0}.won-campaign .won-tiers{display:none}` +
+      ":is(.won-cart,.won-cart-slot,.won-topbar) .won-cart__saved{font-weight: 700}",
     oc: 1,
   });
   // Emptying one element's custom look removes that one alone.
@@ -116,16 +128,19 @@ test("Pro: every element has its own custom look, confined to it — saving one 
   assert.ok((await stored()).looks.milestones?.custom);
 });
 
-test("a config stored before the split: its looks show on their pages, and the storefront gets the same colours on the table and the ladder", async () => {
+test("a config stored before the split: its looks show on their pages, the storefront gets the same colours on the table and the ladder, and a rule for the cart stays with the cart", async () => {
   const store = new FakeStore();
   const base = (await loadConfig(db.prisma, shop)).config;
   // The stored row as it was written before `looks` existed.
-  const old = JSON.parse(JSON.stringify({ ...base, storefront: { appearancePreset: "chips", cardPricesEnabled: false, accent: "green", custom: { vars: { accent: "#0a7d4f", radius: 4 }, css: ".won-tiers__heading{text-transform:uppercase}" } } }));
+  const old = JSON.parse(JSON.stringify({ ...base, storefront: { appearancePreset: "chips", cardPricesEnabled: false, accent: "green", custom: { vars: { accent: "#0a7d4f", radius: 4 }, css: ".won-tiers__heading{text-transform:uppercase}\n.won-cart__saved{font-weight:700}" } } }));
   assert.equal("looks" in old.storefront, false);
   await saveConfig(db.prisma, shop, base);
   await db.prisma.shopConfig.update({ where: { shop }, data: { data: JSON.stringify(old) } });
   const loaded = (await loadConfig(db.prisma, shop)).config;
   assert.deepEqual(lookView(loaded, "tiers").custom, { accent: "#0a7d4f", line: "", tint: "", radius: "4", css: ".won-tiers__heading{text-transform:uppercase}" });
+  assert.deepEqual([lookView(loaded, "tiers").preset, lookView(loaded, "tiers").accent], ["chips", "green"]);
+  // The rule that styled the cart panel is now the cart's own (it used to disappear with the split).
+  assert.equal(lookView(loaded, "cart").custom.css, ".won-cart__saved{font-weight:700}");
   assert.deepEqual({ accent: lookView(loaded, "milestones").accent, custom: lookView(loaded, "milestones").custom.accent, preset: lookView(loaded, "milestones").preset }, { accent: "green", custom: "#0a7d4f", preset: "track" });
   assert.deepEqual(lookView(loaded, "outlet").custom, { accent: "", line: "", tint: "", radius: "", css: "" });
   // Saving something else (card prices) syncs the converted config: the table's rules under the table, the colours on the ladder too.
@@ -134,12 +149,22 @@ test("a config stored before the split: its looks show on their pages, and the s
   await syncIdle(shop);
   assert.equal(
     liveCss(store).css,
-    ".won-tiers{--won-tiers-accent:#1a7f45}.won-tiers{--won-tiers-accent:#0a7d4f;--won-tiers-radius:4px}.won-tiers .won-tiers__heading{text-transform:uppercase}.won-ms{--won-tiers-accent:#1a7f45}.won-ms{--won-tiers-accent:#0a7d4f}",
+    ".won-tiers{--won-tiers-accent:#1a7f45}.won-tiers{--won-tiers-accent:#0a7d4f;--won-tiers-radius:4px}.won-tiers .won-tiers__heading{text-transform:uppercase}.won-ms{--won-tiers-accent:#1a7f45}.won-ms{--won-tiers-accent:#0a7d4f}" +
+      ":is(.won-cart,.won-cart-slot,.won-topbar) .won-cart__saved{font-weight:700}",
   );
   assert.equal((store.sync.storefrontConfig() as { cards?: 1 }).cards, 1);
-  // Converted once: a second load and save changes nothing more.
+  // Converted once: the row is now written in today's shape, and a second load and save changes nothing more.
+  const row = JSON.parse((await db.prisma.shopConfig.findUnique({ where: { shop } }))!.data) as { storefront: Record<string, unknown> };
+  assert.deepEqual(Object.keys(row.storefront).sort(), ["cardPricesEnabled", "looks"]);
   const again = (await loadConfig(db.prisma, shop)).config;
-  assert.deepEqual(again.storefront.looks, { milestones: { accent: "green", custom: { vars: { accent: "#0a7d4f" }, css: "" } } });
+  assert.deepEqual(again.storefront.looks, {
+    tiers: { preset: "chips", accent: "green", custom: { vars: { accent: "#0a7d4f", radius: 4 }, css: ".won-tiers__heading{text-transform:uppercase}" } },
+    milestones: { accent: "green", custom: { vars: { accent: "#0a7d4f" }, css: "" } },
+    cart: { custom: { vars: {}, css: ".won-cart__saved{font-weight:700}" } },
+  });
+  const resaved = await looksAction(ctxFor(store, "pro"), formOf([["intent", "cards"], ["configVersion", await version()], ["cardPrices", "on"]]));
+  assert.ok(resaved.ok, JSON.stringify(resaved));
+  assert.deepEqual((await loadConfig(db.prisma, shop)).config.storefront, again.storefront);
 });
 
 test("refused on their fields, nothing saved: an unknown element, look or colour; a colour that is not a hex; a radius out of range; CSS that cannot be confined", async () => {
@@ -150,16 +175,16 @@ test("refused on their fields, nothing saved: an unknown element, look or colour
     return !r.ok && r.reason === "invalid" ? r.errors : r;
   };
   const ok: [string, string][] = [["preset", "badge"], ["accent", "theme"]];
-  assert.deepEqual(await errors("cart", ok), [{ field: "element", key: "looks.error.preset" }]);
+  assert.deepEqual(await errors("footer", ok), [{ field: "element", key: "looks.error.preset" }]);
   assert.deepEqual(await errors("outlet", [["preset", "checklist"], ["accent", "theme"]]), [{ field: "preset", key: "looks.error.preset" }]);
   assert.deepEqual(await errors("outlet", [["preset", "badge"], ["accent", "pink"]]), [{ field: "accent", key: "looks.error.accent" }]);
   assert.deepEqual(await errors("outlet", [...ok, ["look.accent", "red"]]), [{ field: "look.accent", key: "looks.error.color" }]);
   assert.deepEqual(await errors("outlet", [...ok, ["look.radius", "99"]]), [{ field: "look.radius", key: "looks.error.radius", params: { max: 32 } }]);
   assert.deepEqual(await errors("outlet", [...ok, ["look.css", ".a{background:url(https://x)}"]]), [{ field: "look.css", key: "looks.error.css.forbidden", params: { detail: "url(" } }]);
-  assert.deepEqual(await errors("tiers", [["look.css", ".a{b:c"]]), [{ field: "look.css", key: "looks.error.css.unbalanced", params: { detail: "" } }]);
+  assert.deepEqual(await errors("tiers", [["preset", "chips"], ["look.css", ".a{b:c"]]), [{ field: "look.css", key: "looks.error.css.unbalanced", params: { detail: "" } }]);
   assert.deepEqual(await looksAction(ctx, formOf([["intent", "nope"]])), { ok: false, reason: "bad_request" });
   const s = await stored();
-  assert.deepEqual({ looks: s.looks, custom: s.custom }, { looks: {}, custom: undefined });
+  assert.deepEqual(s.looks, NEW_SHOP);
   assert.equal(store.ops.filter((op) => op.startsWith("WonSync")).length, 0, "nothing was sent to Shopify");
 });
 
@@ -169,7 +194,7 @@ test("a storefront config over Shopify's metafield limit is refused before the s
   const r = await looksAction(ctx, await look("campaign", [["preset", "card"], ["accent", "theme"], ["look.css", ".won-campaign__title { font-weight: 700 }"]]), { maxStorefrontBytes: 100 });
   assert.ok(!r.ok && r.reason === "invalid", JSON.stringify(r));
   assert.equal(r.errors![0]!.key, "looks.error.tooLarge");
-  assert.deepEqual((await stored()).looks, {});
+  assert.deepEqual((await stored()).looks, NEW_SHOP);
 });
 
 test("F12: an element's look changed in another tab meanwhile → base_changed, nothing overwritten; another element's save goes through", async () => {
@@ -181,10 +206,10 @@ test("F12: an element's look changed in another tab meanwhile → base_changed, 
   await syncIdle(shop);
   const stale = await looksAction(ctx, formOf([["intent", "save"], ["configVersion", opened], ["element", "outlet"], ["preset", "countdown"], ["accent", "theme"]]));
   assert.deepEqual(stale, { ok: false, reason: "base_changed" });
-  assert.deepEqual((await stored()).looks, { outlet: { preset: "strip" } });
+  assert.deepEqual((await stored()).looks, { ...NEW_SHOP, outlet: { preset: "strip" } });
   const elsewhere = await looksAction(ctx, formOf([["intent", "save"], ["configVersion", opened], ["element", "campaign"], ["preset", "strip"], ["accent", "theme"]]));
   assert.ok(elsewhere.ok, JSON.stringify(elsewhere));
-  assert.deepEqual((await stored()).looks, { outlet: { preset: "strip" }, campaign: { preset: "strip" } });
+  assert.deepEqual((await stored()).looks, { ...NEW_SHOP, outlet: { preset: "strip" }, campaign: { preset: "strip" } });
 });
 
 test("card prices (BETA) are one switch saved on its own, on any plan", async () => {
@@ -204,15 +229,16 @@ test("card prices (BETA) are one switch saved on its own, on any plan", async ()
 
 test("the look's view and the brief for an AI are the element's own: its looks, its classes, its variables", async () => {
   const config = (await loadConfig(db.prisma, shop)).config;
-  assert.deepEqual(lookView(config, "tiers").presets, [], "the table's look is picked in its preview");
+  assert.deepEqual(lookView(config, "tiers").presets, ["default", "highlight", "chips", "tiles"]);
+  assert.deepEqual([lookView(config, "tiers").preset, lookView(config, "cart").presets], ["highlight", ["plain"]]);
   assert.deepEqual(lookView(config, "milestones").presets, ["track", "checklist", "sentence"]);
   assert.deepEqual(lookView(config, "outlet").presets, ["badge", "countdown", "strip"]);
   assert.deepEqual(lookView(config, "campaign").presets, ["countdown", "strip", "card"]);
-  for (const element of ["tiers", "milestones", "outlet", "campaign"] as const) {
+  for (const element of ["tiers", "milestones", "outlet", "campaign", "cart"] as const) {
     const brief = aiPrompt(element);
     assert.equal(lookView(config, element).aiPrompt, brief);
     for (const cls of LOOK_CLASSES[element]) assert.ok(brief.includes(cls), `${element}: ${cls}`);
-    for (const other of ["tiers", "milestones", "outlet", "campaign"] as const) {
+    for (const other of ["tiers", "milestones", "outlet", "campaign", "cart"] as const) {
       if (other !== element) for (const cls of LOOK_CLASSES[other]) assert.equal(brief.includes(`${cls},`) || brief.endsWith(`${cls}.`), false, `${element}'s brief names ${cls}`);
     }
     assert.match(brief, /--won-tiers-accent, --won-tiers-line, --won-tiers-tint, --won-tiers-radius/);

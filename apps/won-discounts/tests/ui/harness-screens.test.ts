@@ -118,8 +118,8 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
     ],
   },
   // The table's look (MVP 7): the custom look (locked amber on Free), card prices BETA, the AI brief.
-  { path: "tiers", expect: [/Vlastní vzhled tabulky/, /V Pro sladíte tabulku s webem: vlastní barvy, zaoblení rohů a vlastní CSS/, /href="\/app\/plan"/, /Ceny podle množství na kartách produktů · BETA/, /Zkopírovat zadání pro AI/, /data-won-ai-prompt="tiers"/] },
-  { path: "tiers?plan=pro&state=custom", expect: [/Vlastní barvy nebo CSS jsou nastavené/, /Zapnuto: karty ukazují první úroveň/, /Přidat prvek do karty produktu/, /--won-tiers-accent/, /data-won-custom-look=""/, /Platí jen uvnitř tabulky/] },
+  { path: "tiers", expect: [/Vzhled tabulky na webu/, /Vzhled na webu: Zvýrazněná úroveň/, /V Pro sladíte tabulku s webem: vlastní barvy, zaoblení rohů a vlastní CSS/, /href="\/app\/plan"/, /Ceny podle množství na kartách produktů · BETA/, /Zkopírovat zadání pro AI/, /data-won-ai-prompt="tiers"/] },
+  { path: "tiers?plan=pro&state=custom", expect: [/data-won-look-form="tiers"/, /Uložit vzhled/, /Zapnuto: karty ukazují první úroveň/, /Přidat prvek do karty produktu/, /--won-tiers-accent/, /data-won-custom-look=""/, /Platí jen uvnitř tabulky/] },
   { path: "tiers?plan=pro&state=issue", expect: [/Uložené vlastní CSS nejde použít/] },
   // Překlady: a table per language with human names, the default text and the merchant's own; Free's limit and the Pro CSV in amber.
   {
@@ -404,11 +404,11 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /711,00 Kč\/ks/,
       /3\u00a0ks za 2\.133,00 Kč \(711,00 Kč\/ks\)/,
       /Ještě 2\u00a0ks a zaplatíte 671,50 Kč\/ks\./,
-      // The look switcher is a visible, saved field of this form.
+      // The look switcher is a visible, saved field of the table's look form.
       /Vzhled na webu/,
       /<input type="radio" name="preset"[^>]* value="highlight"/,
       /<input type="radio" name="preset"[^>]* checked=""[^>]* value="highlight"|<input type="radio" name="preset" value="highlight"[^>]* checked=""/,
-      /Vlastní barvy a CSS/,
+      /Vzhled a barvy tabulky/,
       /href="#look-tiers"/,
       /Náhled nepočítá s ochranou marže/,
       /Tabulka je na stránce produktu \(vzhled Horizon\)/,

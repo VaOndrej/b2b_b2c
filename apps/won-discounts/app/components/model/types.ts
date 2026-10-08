@@ -719,8 +719,8 @@ export interface CombinationCheckView {
 
 /** One storefront element's stored look, as its section shows it (looks.server.ts lookView). */
 export interface LookView {
-  element: "tiers" | "milestones" | "outlet" | "campaign";
-  /** The ready-made looks to pick from; [] for the table (its look is picked in its preview). */
+  element: "tiers" | "milestones" | "outlet" | "campaign" | "cart";
+  /** The ready-made looks to pick from (one only = nothing to pick: the cart). */
   presets: string[];
   preset: string;
   /** The ready-made highlight colour ("theme" = the theme's). */
@@ -803,6 +803,8 @@ export interface RewardsScreenData {
   configVersion: string | null;
   /** The ladder's look on the storefront. */
   look?: LookView;
+  /** The look of the cart panel and the top strip (the frames the ladder sits in). */
+  cartLook?: LookView;
   currencies: CurrencyView[];
   /** The stored ladder, in ladder order (core milestones.ts). */
   steps: MilestoneStepView[];

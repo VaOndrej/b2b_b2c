@@ -108,6 +108,7 @@ export async function loadRewardsScreen(ctx: ShopCtx, opts: { scopes: string; fr
     plan,
     configVersion: loaded.version ?? null,
     look: lookView(stored, "milestones"),
+    cartLook: lookView(stored, "cart"),
     currencies: currencyViews(stored.markets, { shopCurrency: shopContext.currencyCode, marketNames }),
     ...rewardsScreenFacts(stored, { plan, locale: ctx.locale, titles }),
     status: rewardsSectionStatus(stored, plan, shopContext.currencyCode || stored.markets.find((m) => m.enabled)?.currency || "", sync),

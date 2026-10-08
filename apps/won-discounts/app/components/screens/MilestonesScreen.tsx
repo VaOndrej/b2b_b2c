@@ -737,6 +737,8 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
         <div style={{ marginTop: 16 }}>
           <ViewPanel id="web" view={view}>
             <LookSection look={props.look} plan={plan} configVersion={configVersion} embed={props.embed} />
+            {/* The frames the ladder sits in — the cart panel and the top strip — have their own look. */}
+            {props.cartLook ? <LookSection look={props.cartLook} plan={plan} configVersion={configVersion} /> : null}
           </ViewPanel>
         </div>
       ) : null}

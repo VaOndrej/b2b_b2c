@@ -716,50 +716,57 @@ function globalForm(more: [string, string][]): FormData {
   ]) as FormData;
 }
 
-test("the look switcher saves: `preset` in the tiers form writes storefront.appearancePreset (the field Vzhled writes), validated by the same parser; without the field the look is untouched", async () => {
+test("the table's look is saved by its own section, like every element's: the look, the colour and (Pro) the custom look in one save — the tiers form carries none of it", async () => {
+  const { looksAction } = await import("../../app/lib/integration/looks.server.ts");
   const ctx = ctxFor(storeFor());
   assert.equal((await loadTiersScreen(ctx, { scopes: SCOPES })).preview.preset, "highlight", "a new shop");
-  const saved = await tiersAction(ctx, globalForm([[F.preset, "chips"]]));
+  const look = (more: [string, string][]) => looksAction(ctx, formOf([["intent", "save"], ["element", "tiers"], ...more]));
+  const saved = await look([["preset", "chips"], ["accent", "green"]]);
   assert.equal(saved.ok, true, JSON.stringify(saved));
   await syncIdle(shop);
   let loaded = await loadConfig(db.prisma, shop);
-  assert.equal(loaded.config.storefront.appearancePreset, "chips");
-  assert.equal(loaded.config.modules.tiers.sets.length, 1, "the tiers are saved by the same save");
+  assert.deepEqual(loaded.config.storefront.looks.tiers, { preset: "chips", accent: "green" });
   clearSignalCache();
-  assert.equal((await loadTiersScreen(ctx, { scopes: SCOPES })).preview.preset, "chips", "the page reads it back");
+  const screen = await loadTiersScreen(ctx, { scopes: SCOPES });
+  assert.deepEqual([screen.preview.preset, screen.look?.preset, screen.look?.accent, screen.preview.look?.accent], ["chips", "chips", "green", "green"], "the page reads it back");
   // Not one of the four → refused at the field, nothing saved (SEC-1).
-  const refused = await tiersAction(ctx, globalForm([[F.configVersion, loaded.version!], [F.preset, "neon"], [F.percent("global", "r0"), "12"]]));
+  const refused = await look([["configVersion", loaded.version!], ["preset", "neon"]]);
   assert.deepEqual(refused, { ok: false, reason: "invalid", errors: [{ field: "preset", key: "looks.error.preset" }] });
-  loaded = await loadConfig(db.prisma, shop);
-  assert.equal(loaded.config.storefront.appearancePreset, "chips");
-  assert.deepEqual(loaded.config.modules.tiers.sets[0]?.breaks, [{ minQty: 3, percent: 10 }]);
-  // A form without the field (an older client) leaves the look alone.
-  const without = await tiersAction(ctx, globalForm([[F.configVersion, loaded.version!], [F.percent("global", "r0"), "12"]]));
-  assert.equal(without.ok, true, JSON.stringify(without));
+  // Saving the levels leaves the look alone — also when an older page still posts a look with them.
+  const tiers = await tiersAction(ctx, globalForm([[F.configVersion, loaded.version!], ["preset", "tiles"], ["accentPreset", "red"]]));
+  assert.equal(tiers.ok, true, JSON.stringify(tiers));
   await syncIdle(shop);
-  assert.equal((await loadConfig(db.prisma, shop)).config.storefront.appearancePreset, "chips");
+  loaded = await loadConfig(db.prisma, shop);
+  assert.deepEqual(loaded.config.storefront.looks.tiers, { preset: "chips", accent: "green" });
+  assert.deepEqual(loaded.config.modules.tiers.sets[0]?.breaks, [{ minQty: 3, percent: 10 }], "the levels are saved");
 });
 
-test("F12 covers the look when the page submits it: a look changed elsewhere meanwhile → base_changed, never overwritten with the stale one", async () => {
+test("F12 covers the table's look: changed elsewhere meanwhile → base_changed, never overwritten with the stale one; the levels saved meanwhile do not block it", async () => {
+  const { looksAction } = await import("../../app/lib/integration/looks.server.ts");
   const ctx = ctxFor(storeFor());
-  const first = await tiersAction(ctx, globalForm([[F.preset, "chips"]]));
+  const look = (version: string | null, preset: string) => looksAction(ctx, formOf([["intent", "save"], ["element", "tiers"], ["configVersion", version ?? ""], ["preset", preset]]));
+  const first = await look(null, "chips");
   assert.equal(first.ok, true, JSON.stringify(first));
   await syncIdle(shop);
   const opened = (await loadConfig(db.prisma, shop)).version!;
-  // Another tab changes the look (the page's own switcher).
-  const other = await tiersAction(ctx, globalForm([[F.configVersion, opened], [F.preset, "tiles"]]));
+  // Another tab changes the look.
+  const other = await look(opened, "tiles");
   assert.equal(other.ok, true, JSON.stringify(other));
   await syncIdle(shop);
-  const stale = await tiersAction(ctx, globalForm([[F.configVersion, opened], [F.preset, "chips"]]));
-  assert.deepEqual(stale, { ok: false, reason: "base_changed" });
-  assert.equal((await loadConfig(db.prisma, shop)).config.storefront.appearancePreset, "tiles");
+  assert.deepEqual(await look(opened, "chips"), { ok: false, reason: "base_changed" });
+  assert.equal((await loadConfig(db.prisma, shop)).config.storefront.looks.tiers?.preset, "tiles");
+  // The levels changed in another tab: the look's own part did not, so its save goes through.
+  const before = (await loadConfig(db.prisma, shop)).version!;
+  assert.equal((await tiersAction(ctx, globalForm([[F.configVersion, before]]))).ok, true);
+  await syncIdle(shop);
+  assert.equal((await look(before, "default")).ok, true);
 });
 
 test("the preview gets what the config adds: the merchant's storefront texts on any plan, the custom look only on Pro (BILL-1)", async () => {
   const { previewLookOf } = await import("../../app/lib/integration/looks.server.ts");
   await store((c) => ({
     ...c,
-    storefront: { ...c.storefront, custom: { vars: { accent: "#0a7d4f" }, css: ".won-tiers__heading{color:red}" } },
+    storefront: { ...c.storefront, looks: { ...c.storefront.looks, tiers: { ...c.storefront.looks.tiers, custom: { vars: { accent: "#0a7d4f" }, css: ".won-tiers__heading{color:red}" } } } },
     locales: { ...c.locales, cs: { "tiers.heading": "Kup víc, plať míň" } },
   }));
   const stored = (await loadConfig(db.prisma, shop)).config;

@@ -1,50 +1,23 @@
 // Storefront settings, locale texts and onboarding: never read by the function.
 
 import { normalizeLocale } from "../../toasts/locales.ts";
-import { sanitizeCustomLook } from "../custom-look.ts";
 import { sanitizeLooks } from "../looks.ts";
 import { DEFAULT_CONFIG } from "./defaults.ts";
-import { ACCENT_PRESETS, type AccentPreset, APPEARANCE_PRESETS, type AppearancePreset, ONBOARDING_GOALS, type OnboardingGoal } from "./enums.ts";
+import { ONBOARDING_GOALS, type OnboardingGoal } from "./enums.ts";
 import { CONFIG_LIMITS } from "./limits.ts";
 import { isRecord, listParams, listPreview, preview, pushIssue, sanitizeBool } from "./sanitize-helpers.ts";
 import type { ConfigIssue, LocaleDictionary, OnboardingState, StorefrontSettings } from "./types.ts";
 
-/**
- * K7: one of APPEARANCE_PRESETS. Left out → the default, silently; anything
- * else → the default with `unknown_appearance_preset` {value, fallback}.
- */
-function sanitizeAppearancePreset(v: unknown, fallback: AppearancePreset, issues: ConfigIssue[]): AppearancePreset {
-  if (v === undefined) return fallback;
-  if (typeof v === "string" && (APPEARANCE_PRESETS as readonly string[]).includes(v)) return v as AppearancePreset;
-  pushIssue(
-    issues,
-    "storefront.appearancePreset",
-    "unknown_appearance_preset",
-    `Appearance ${preview(v, 60)} is not one of ${APPEARANCE_PRESETS.join(", ")}; "${fallback}" was used.`,
-    { value: preview(v, 60), fallback },
-  );
-  return fallback;
-}
-
 export function sanitizeStorefront(v: unknown, issues: ConfigIssue[]): StorefrontSettings {
   const def = DEFAULT_CONFIG.storefront;
   const rec = isRecord(v) ? v : {};
-  const custom = sanitizeCustomLook(rec.custom, issues);
-  // The highlight colour: one of ACCENT_PRESETS; "theme" (and anything unknown) is stored as absent.
-  const accent = typeof rec.accent === "string" && rec.accent !== "theme" && (ACCENT_PRESETS as readonly string[]).includes(rec.accent) ? (rec.accent as AccentPreset) : undefined;
-  if (rec.accent !== undefined && rec.accent !== null && rec.accent !== "theme" && accent === undefined) {
-    pushIssue(issues, "storefront.accent", "unknown_accent", `Highlight colour ${preview(rec.accent, 60)} is not one of ${ACCENT_PRESETS.join(", ")}; the theme's colour was used.`, { value: preview(rec.accent, 60) });
-  }
   const languages = sanitizeLanguages(rec.languages, issues);
   return {
-    // A stored config without a (valid) look keeps the look it always had, the table: only a NEW shop
-    // starts with DEFAULT_CONFIG's look (2026-10-06), so no existing storefront changes on its own.
-    appearancePreset: sanitizeAppearancePreset(rec.appearancePreset, rec.appearancePreset === undefined && v === undefined ? def.appearancePreset : "default", issues),
     cardPricesEnabled: sanitizeBool(rec.cardPricesEnabled, def.cardPricesEnabled),
-    ...(accent ? { accent } : {}),
     ...(languages.length > 0 ? { languages } : {}),
-    ...(custom ? { custom } : {}),
-    looks: sanitizeLooks(rec.looks, { accent, custom }, issues),
+    // A stored config without a look keeps the look it always had (the plain table): only a NEW shop — no
+    // storefront settings at all — starts with DEFAULT_CONFIG's (2026-10-06), so no existing storefront changes on its own.
+    looks: v === undefined ? structuredClone(def.looks) as StorefrontSettings["looks"] : sanitizeLooks(rec, issues),
   };
 }
 

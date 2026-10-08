@@ -44,8 +44,8 @@ test("a look's form as the server reads it: only known looks and colours, the fl
   });
   // A colour not sent = the theme's; the flash is the ladder's alone; nothing typed = no custom look.
   assert.deepEqual(readLookForm(form([["element", "outlet"], ["preset", "strip"], ["blink", "on"], ["look.css", "   "]])), { ok: true, look: { element: "outlet", preset: "strip", accent: "theme", custom: null } });
-  // The table posts only its custom look: its ready-made look and colour are its page's.
-  assert.deepEqual(readLookForm(form([["element", "tiers"], ["preset", "tiles"], ["accent", "red"], ["look.tint", "#fff"]])), { ok: true, look: { element: "tiers", custom: { vars: { tint: "#fff" }, css: "" } } });
+  // The table posts the same as every element: its ready-made look, its colour, its custom look.
+  assert.deepEqual(readLookForm(form([["element", "tiers"], ["preset", "tiles"], ["accent", "red"], ["look.tint", "#fff"]])), { ok: true, look: { element: "tiers", preset: "tiles", accent: "red", custom: { vars: { tint: "#fff" }, css: "" } } });
   assert.deepEqual(readLookForm(form([["element", "campaign"], ["preset", "badge"], ["accent", "pink"], ["look.line", "blue"], ["look.radius", "33"]])), {
     ok: false,
     errors: [
@@ -55,7 +55,7 @@ test("a look's form as the server reads it: only known looks and colours, the fl
       { field: LOOK_FIELD.radius, key: "looks.error.radius", params: { max: 32 } },
     ],
   });
-  assert.deepEqual(readLookForm(form([["element", "cart"]])), { ok: false, errors: [{ field: "element", key: "looks.error.preset" }] });
+  assert.deepEqual(readLookForm(form([["element", "footer"]])), { ok: false, errors: [{ field: "element", key: "looks.error.preset" }] });
 });
 
 function sources(dir: string): string[] {

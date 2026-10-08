@@ -108,7 +108,7 @@ const COPY: Readonly<Record<string, IssueCopy | ((issue: ConfigIssue) => IssueCo
   tier_break_other_kind: { key: "fix.tier_break_other_kind", params: { min: "minQty" } },
   tier_break_lower_value: { key: "fix.tier_break_lower_value", params: { min: "minQty" } },
   clamped_tier_quantity: { key: "fix.clamped_tier_quantity", params: { from: "value", to: "to", min: "min", max: "max" } },
-  unknown_appearance_preset: { key: "fix.unknown_appearance_preset" },
+  unknown_look: { key: "fix.unknown_look" },
   unknown_accent: { key: "fix.unknown_accent" },
   unknown_language: { key: "fix.unknown_language" },
   // Plan 2026-10-06 (core config/codes.ts): a minimum quantity per item, generated code batches.

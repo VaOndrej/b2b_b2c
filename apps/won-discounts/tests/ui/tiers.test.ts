@@ -69,7 +69,7 @@ test("form field names are the contract between the screen and the server parser
   assert.equal(F.amounts("global", "r0"), "set.global.r0.amount");
   assert.deepEqual(TIERS_INTENT, { save: "save" });
   assert.match(newTierSetId(), /^t_[A-Za-z0-9]{20}$/);
-  assert.equal(F.preset, "preset", "the look: the same field name Vzhled posts");
+  assert.equal("preset" in F, false, "the table's look is its look section's, not this form's");
 });
 
 test("plan 2026-10-06: the whole-store set's id for a shop without one is deterministic (server and browser render the same)", () => {
@@ -412,7 +412,7 @@ test("the sanitizer's new tier / look issues are worded in the admin language fr
         ],
       },
     },
-    storefront: { appearancePreset: "neon" },
+    storefront: { looks: { tiers: { preset: "neon" } } },
   });
   const worded = wordIssues(issues, "cs", () => assert.fail("every issue has its own sentence"));
   assert.ok(worded.includes("Úroveň od 3 ks měla procento i částku, ponechalo se procento."), worded.join(" | "));
@@ -420,7 +420,7 @@ test("the sanitizer's new tier / look issues are worded in the admin language fr
   assert.ok(worded.includes("Úroveň od 4 ks neměla procento ani částku, vyřadila se."), worded.join(" | "));
   assert.ok(worded.includes("Úroveň bez počtu kusů se vyřadila."), worded.join(" | "));
   assert.ok(worded.includes("Jedny úrovně byly uložené dvakrát, druhá kopie se vyřadila."), worded.join(" | "));
-  assert.ok(worded.includes("Neznámý vzhled, použil se výchozí (Tabulka)."), worded.join(" | "));
+  assert.ok(worded.includes("Neznámý vzhled, použil se výchozí."), worded.join(" | "));
   assert.ok(worded.every((w) => !/\bg\b|neon/.test(w)), "no id or raw value");
   const en = wordIssues(issues, "en", () => assert.fail("worded"));
   assert.ok(en.includes("Two tiers started at 3 items; the first was kept."), en.join(" | "));

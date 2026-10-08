@@ -1,39 +1,44 @@
 // The look of each storefront element (feedback 2026-10-06, bod 13; decided 6 Oct: looks are not shared between
-// modules). Four elements: the quantity table, the Milníky ladder, the sale badge, the campaign banner.
+// modules). Five elements: the quantity table, the Milníky ladder, the sale badge, the campaign banner, and the
+// cart panel with the top strip.
 //
-// Stored:
-//   the table            storefront.appearancePreset / accent / custom — as before the split;
-//   the other three      storefront.looks[<element>] = { preset?, accent?, blink?, custom? } (ElementLook).
-// A config from before the split has no `looks`: its highlight colours (ready-made and custom) coloured the
-// ladder too, so sanitizeLooks copies them to the ladder ONCE — the storefront looks as it did. `looks` is then
-// always present ({} = nothing set), which is how a config is known to be converted.
+// Stored: storefront.looks[<element>] = { preset?, accent?, blink?, custom? } (ElementLook) — the same for every
+// element. `looks` is always present ({} = nothing set), which is how a config is known to be converted.
+//
+// Converted when read (sanitizeLooks; the stored row is rewritten by the next save):
+//   - before the split (no `looks`; one look, one colour, one custom look for every block): the table's look goes
+//     to `looks.tiers`, its colours to the ladder too (the only other element that read them), and the rules of
+//     the one custom CSS go to the elements their selectors name (splitLegacyCss) — the storefront looks as it did;
+//   - after the split, before the table moved in (`looks` without `tiers`; the table still in
+//     storefront.appearancePreset / accent / custom): those three become `looks.tiers`, nothing else changes.
 //
 // On the storefront every look is CSS in the config's one stylesheet (looksCss): a ready-made look is a few
-// rules over the element's markup (LOOK_PRESET_CSS — no script, no class to plumb through Liquid), the highlight
+// rules over the element's markup (LOOK_PRESET_CSS — no script, no class to plumb through Liquid; the table's
+// ready-made looks are a class its block prints, storefront-config.ts `appearance.preset`), the highlight
 // colour is one variable on the element's root, the Pro custom look its variables and the merchant's CSS scoped
 // under that root. Free ships no custom look (plan-gate.ts).
 
 import { ACCENT_PRESETS, APPEARANCE_PRESETS, type AccentPreset } from "./config/enums.ts";
 import { isRecord, preview, pushIssue } from "./config/sanitize-helpers.ts";
 import type { ConfigIssue, ReadonlyDeep, StorefrontSettings } from "./config/types.ts";
-import { accentCss, customLookCss, LOOK_ROOT, sanitizeCustomLook, type CustomLook, type LookElement } from "./custom-look.ts";
-
-/** The elements whose look lives in `storefront.looks` (the table keeps its own fields). */
-export const LOOKS_ELEMENTS = ["milestones", "outlet", "campaign"] as const;
-export type LooksElement = (typeof LOOKS_ELEMENTS)[number];
+import { accentCss, customLookCss, LOOK_ELEMENTS, LOOK_ROOT, sanitizeCustomLook, type CustomLook, type LookElement } from "./custom-look.ts";
+import { CUSTOM_CSS_MAX_LENGTH, topLevelRules } from "./scope-css.ts";
 
 /**
  * The ready-made looks of every plan; the first of each is the look the element always had.
+ *   tiers       default = a table · highlight = the level in force highlighted · chips · tiles
  *   milestones  track = a track with a mark per step · checklist = every step, the reached ones ticked ·
  *               sentence = one sentence
  *   outlet      badge = the badge · countdown = the badge and the time left · strip = a strip across the block
  *   campaign    countdown = the name and the time left · strip = the name alone · card = a framed card
+ *   cart        plain = the theme's own (the panel and the strip have no ready-made variants)
  */
 export const LOOK_PRESETS = {
   tiers: APPEARANCE_PRESETS,
   milestones: ["track", "checklist", "sentence"],
   outlet: ["badge", "countdown", "strip"],
   campaign: ["countdown", "strip", "card"],
+  cart: ["plain"],
 } as const satisfies Record<LookElement, readonly string[]>;
 
 export interface ElementLook {
@@ -47,16 +52,15 @@ export interface ElementLook {
   custom?: CustomLook;
 }
 
-export type ElementLooks = Partial<Record<LooksElement, ElementLook>>;
+export type ElementLooks = Partial<Record<LookElement, ElementLook>>;
 
-export function lookPreset(element: LooksElement, look: ReadonlyDeep<ElementLook> | undefined): string {
+export function lookPreset(element: LookElement, look: ReadonlyDeep<ElementLook> | undefined): string {
   const presets: readonly string[] = LOOK_PRESETS[element];
   return look?.preset !== undefined && presets.includes(look.preset) ? look.preset : presets[0]!;
 }
 
-function sanitizeLook(element: LooksElement, raw: unknown, issues: ConfigIssue[]): ElementLook | undefined {
+function sanitizeLook(element: LookElement, raw: unknown, issues: ConfigIssue[], path = `storefront.looks.${element}`): ElementLook | undefined {
   if (raw === undefined || raw === null) return undefined;
-  const path = `storefront.looks.${element}`;
   if (!isRecord(raw)) {
     pushIssue(issues, path, "invalid_look", "The look was not readable; the ready-made one was used.");
     return undefined;
@@ -78,20 +82,68 @@ function sanitizeLook(element: LooksElement, raw: unknown, issues: ConfigIssue[]
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
+/** The class prefix that says a rule of the one old stylesheet is about an element. */
+const LEGACY_CLASS: readonly [LookElement, RegExp][] = [
+  ["tiers", /\.won-tiers(?![a-z0-9])/i],
+  ["milestones", /\.won-ms(?![a-z0-9])/i],
+  ["outlet", /\.won-outlet(?![a-z0-9])/i],
+  ["campaign", /\.won-campaign(?![a-z0-9])/i],
+  ["cart", /\.won-(?:cart|topbar|progress)(?![a-z0-9])/i],
+];
+
 /**
- * `storefront.looks` as stored. `table` = the table's own fields of the same config: when `raw` is absent (a
- * config from before the split) the colours that used to reach the ladder are copied to it — see the header.
+ * The one custom CSS of before the split, divided between the elements: a rule goes to every element whose
+ * classes its text names; a rule that names no Won class applied inside every block, so every element gets it.
+ * A text that cannot be divided (unbalanced, or over an element's length limit once divided) stays whole with
+ * the table, where it was read from.
  */
-export function sanitizeLooks(raw: unknown, table: Pick<StorefrontSettings, "accent" | "custom">, issues: ConfigIssue[]): ElementLooks {
+export function splitLegacyCss(css: string): Partial<Record<LookElement, string>> {
+  const rules = css.trim() === "" ? [] : topLevelRules(css);
+  if (rules === null) return { tiers: css };
+  const out: Partial<Record<LookElement, string>> = {};
+  for (const rule of rules) {
+    const named = LEGACY_CLASS.filter(([, pattern]) => pattern.test(rule)).map(([element]) => element);
+    for (const element of named.length > 0 ? named : LOOK_ELEMENTS) out[element] = out[element] ? `${out[element]}\n${rule}` : rule;
+  }
+  return Object.values(out).every((text) => text.length <= CUSTOM_CSS_MAX_LENGTH) ? out : { tiers: css };
+}
+
+/** The table's look as stored before it moved under `looks` (the three fields of the storefront settings). */
+function legacyTableLook(storefront: Record<string, unknown>, issues: ConfigIssue[]): ElementLook | undefined {
+  const { appearancePreset: preset, accent, custom } = storefront;
+  if (preset === undefined && accent === undefined && custom === undefined) return undefined;
+  return sanitizeLook("tiers", { preset, accent, custom }, issues, "storefront");
+}
+
+/**
+ * `storefront.looks` as stored, converted when it comes from an older shape (see the header). `storefront` = the
+ * raw storefront settings the looks are part of.
+ */
+export function sanitizeLooks(storefront: Record<string, unknown>, issues: ConfigIssue[]): ElementLooks {
+  const raw = storefront.looks;
+  const table = legacyTableLook(storefront, issues);
   if (raw === undefined) {
-    const color = table.custom?.vars.accent;
-    const inherited: ElementLook = { ...(table.accent ? { accent: table.accent } : {}), ...(color ? { custom: { vars: { accent: color }, css: "" } } : {}) };
-    return Object.keys(inherited).length > 0 ? { milestones: inherited } : {};
+    // Before the split: one look for every block.
+    const out: ElementLooks = {};
+    const css = splitLegacyCss(table?.custom?.css ?? "");
+    const colour = table?.custom?.vars.accent;
+    for (const element of LOOK_ELEMENTS) {
+      const vars = element === "tiers" ? (table?.custom?.vars ?? {}) : element === "milestones" && colour ? { accent: colour } : {};
+      const custom = Object.keys(vars).length > 0 || css[element] ? { custom: { vars, css: css[element] ?? "" } } : {};
+      const look: ElementLook = {
+        ...(element === "tiers" && table?.preset ? { preset: table.preset } : {}),
+        ...((element === "tiers" || element === "milestones") && table?.accent ? { accent: table.accent } : {}),
+        ...custom,
+      };
+      if (Object.keys(look).length > 0) out[element] = look;
+    }
+    return out;
   }
   const rec = isRecord(raw) ? raw : {};
   const out: ElementLooks = {};
-  for (const element of LOOKS_ELEMENTS) {
-    const look = sanitizeLook(element, rec[element], issues);
+  for (const element of LOOK_ELEMENTS) {
+    // After the split, before the table moved in: its three fields are its look.
+    const look = element === "tiers" && rec.tiers === undefined ? table : sanitizeLook(element, rec[element], issues);
     if (look) out[element] = look;
   }
   return out;
@@ -106,7 +158,10 @@ const MS = ".won-ms.won-ms";
 const OUTLET = ".won-outlet.won-outlet";
 const CAMPAIGN = ".won-campaign.won-campaign";
 
-export const LOOK_PRESET_CSS: Readonly<Record<LooksElement, Readonly<Record<string, string>>>> = {
+export const LOOK_PRESET_CSS: Readonly<Record<LookElement, Readonly<Record<string, string>>>> = {
+  // The table's ready-made looks are classes of its block (assets/won-discounts-tiers.css), the cart has none.
+  tiers: {},
+  cart: {},
   milestones: {
     track: "",
     checklist: `${MS}--compact .won-ms__list{display:grid}${MS}:not(.won-ms--bar) .won-ms__track{display:none}${MS} .won-ms__list li[data-done]{color:var(--won-tiers-accent,currentColor)}`,
@@ -133,7 +188,7 @@ export function outletCountdown(looks: ReadonlyDeep<ElementLooks> | undefined): 
 }
 
 /** One element's look as the storefront gets it: the ready-made look, the colour, then the Pro custom look over them. */
-export function elementLookCss(element: LooksElement, look: ReadonlyDeep<ElementLook> | undefined): string {
+export function elementLookCss(element: LookElement, look: ReadonlyDeep<ElementLook> | undefined): string {
   const root = LOOK_ROOT[element];
   return (
     (LOOK_PRESET_CSS[element][lookPreset(element, look)] ?? "") +
@@ -143,11 +198,7 @@ export function elementLookCss(element: LooksElement, look: ReadonlyDeep<Element
   );
 }
 
-/**
- * The storefront's one stylesheet from the GATED storefront settings: the table's colour and custom look on its
- * root, then every other element's look on its own. "" = nothing to add.
- */
+/** The storefront's one stylesheet from the GATED storefront settings: every element's look on its own root, the table's first. "" = nothing to add. */
 export function looksCss(storefront: ReadonlyDeep<StorefrontSettings>): string {
-  const table = accentCss(storefront.accent, LOOK_ROOT.tiers) + customLookCss(storefront.custom as CustomLook | undefined, LOOK_ROOT.tiers);
-  return table + LOOKS_ELEMENTS.map((element) => elementLookCss(element, storefront.looks?.[element])).join("");
+  return LOOK_ELEMENTS.map((element) => elementLookCss(element, storefront.looks?.[element])).join("");
 }

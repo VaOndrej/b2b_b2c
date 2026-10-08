@@ -92,7 +92,7 @@ test("K5 on Free: built from the gated config — one global set counted per pro
 
 test("K5: margin off, no sets, unknown preset in a hand-made config; nothing about costs ever ships", () => {
   const config = configOf({ modules: { margin: { ...MARGIN, enabled: false } } });
-  (config.storefront as { appearancePreset: string }).appearancePreset = "neon";
+  config.storefront.looks = { tiers: { preset: "neon" } };
   const built = buildStorefrontConfig(config, { configVersion: "v" });
   assert.deepEqual(built, { v: 1, cv: "v", tiers: { global: null, sets: {} }, margin: { on: false }, appearance: { preset: "default" } });
   const json = JSON.stringify(buildStorefrontConfig(configOf(PRO), { configVersion: "v" }));

@@ -285,7 +285,7 @@ const { saveAndSync, loadSyncStatus } = await appModule("app/lib/sync/save-and-s
 const { detectNativeDiscounts } = await appModule("app/lib/native/detect.server.ts");
 const { APPEARANCE_PRESETS, createDefaultConfig } = await import("@won/core/discounts/config");
 // --preset <default|highlight|chips|tiles> (visual QA of the quantity tiers block, MVP 3): the seeded
-// config's storefront.appearancePreset. Only with a tiers profile; absent = the default preset.
+// config's storefront.looks.tiers.preset. Only with a tiers profile; absent = the default preset.
 const PRESET = option("--preset");
 if (PRESET !== undefined && !APPEARANCE_PRESETS.includes(PRESET)) throw new Error(`unknown --preset ${PRESET} (${APPEARANCE_PRESETS.join(", ")})`);
 
@@ -456,7 +456,7 @@ function seedConfig(previous, productIds, collectionIds, variantIds) {
   if (PROFILES[PROFILE].storefront) config.storefront = PROFILES[PROFILE].storefront(config.storefront);
   if (PRESET !== undefined) {
     if (!PROFILES[PROFILE].tiers) throw new Error(`--preset needs a tiers profile (--profile ${PROFILE} has no tier set)`);
-    config.storefront.appearancePreset = PRESET;
+    config.storefront.looks = { ...config.storefront.looks, tiers: { ...config.storefront.looks?.tiers, preset: PRESET } };
   }
   config.storefront = looksStorefront(config.storefront, { looks: LOOKS, texts: TEXTS, hasTiers: tierSetsOf(config).length > 0 });
   if (TEXTS) config.locales = structuredClone(LOOK_TEXTS);

@@ -245,16 +245,10 @@ export interface Campaign {
 }
 
 export interface StorefrontSettings {
-  /** K7: one of APPEARANCE_PRESETS (the sanitizer turns anything else into "default"). */
-  appearancePreset: AppearancePreset;
-  /** The TABLE's highlight colour, on every plan (ACCENT_PRESETS). Absent = "theme": the theme's text colour. */
-  accent?: AccentPreset;
   cardPricesEnabled: boolean; // BETA: quantity prices on cards/search
   /** The languages the merchant translates the storefront texts into, the shop's default first (storefront-texts.ts). Absent = none listed. */
   languages?: string[];
-  /** MVP 7 (Pro): the TABLE's custom look — validated variables + the merchant's CSS as typed (custom-look.ts). Absent = none. */
-  custom?: CustomLook;
-  /** The looks of the Milníky ladder, the sale badge and the campaign banner (looks.ts); {} = the ready-made ones. */
+  /** The look of every storefront element — the table, the ladder, the sale badge, the campaign banner, the cart (looks.ts); {} = the ready-made ones. */
   looks: ElementLooks;
 }
 

@@ -158,21 +158,52 @@ for (const [path, tile, element, preset] of [
   });
 }
 
-test("the table's own look (Pro): the CSS typed is posted for the table and shows in its preview", async ({ page }) => {
+test("the table's look: the ready-made look, the colour and (Pro) the CSS typed go out in ONE save, and the preview follows them", async ({ page }) => {
   await open(page, "tiers?plan=pro&state=custom");
   await page.locator('[data-won-view-tile="table"]').click();
   const form = page.locator('[data-won-look-form="tiers"]');
   await expect(form).toBeVisible();
   await typeInto(page, "look.css", ".won-tiers__row { letter-spacing: 3px; }");
   await expect.poll(() => form.evaluate((el) => getComputedStyle(el.querySelector(".won-tiers__row") ?? el).letterSpacing)).toBe("3px");
+  // The four ready-made looks are picked in the same form: the preview's table changes its class at once.
+  await form.locator('label:has(input[name="preset"][value="tiles"])').click();
+  await expect(form.locator(".won-tiers").first()).toHaveClass(/won-tiers--tiles/);
+  await form.locator('label:has(input[name="accent"][value="violet"])').click();
+  await expect(form.locator("s-button", { hasText: "Uložit vzhled" })).toHaveCount(1);
   const sent = await posted(page, () => form.locator("s-button", { hasText: "Uložit vzhled" }).click());
-  expect(sent.get("element")).toBe("tiers");
+  expect([sent.get("element"), sent.get("preset"), sent.get("accent")]).toEqual(["tiers", "tiles", "violet"]);
   expect(sent.get("look.css")).toBe(".won-tiers__row { letter-spacing: 3px; }");
   await expect(form).toContainText(PREVIEW_ONLY);
-  // Free: the section is locked and has no save of its own.
+  // The page's own form (the levels) carries nothing of the look, and offers no second place to pick it.
+  await expect(page.locator('form[data-save-bar] input[name="preset"]')).toHaveCount(0);
+  expect(await page.locator('input[type="radio"][name="preset"]').count()).toBe(4);
+  // Free: the same section saves the look and the colour; the custom look's fields are locked and not posted.
   await open(page, "tiers");
   await page.locator('[data-won-view-tile="table"]').click();
-  await expect(page.locator('[data-won-look-form="tiers"] s-button', { hasText: "Uložit vzhled" })).toHaveCount(0);
+  const free = page.locator('[data-won-look-form="tiers"]');
+  await free.locator('label:has(input[name="preset"][value="chips"])').click();
+  const freeSent = await posted(page, () => free.locator("s-button", { hasText: "Uložit vzhled" }).click());
+  expect([freeSent.get("element"), freeSent.get("preset"), freeSent.has("look.css")]).toEqual(["tiers", "chips", false]);
+});
+
+test("the cart and the top strip have their own look on Milníky (Pro): the CSS typed styles the sample panel and is posted for the cart", async ({ page }) => {
+  await open(page, "rewards?plan=pro");
+  await page.locator('[data-won-view-tile="web"]').click();
+  const form = page.locator('[data-won-look-form="cart"]');
+  // Nothing set: the section is closed; it has no ready-made looks and no colour of its own to pick.
+  await page.locator("section#look-cart > button").click();
+  await expect(form).toBeVisible();
+  await expect(form.locator('input[name="preset"], input[name="accent"]')).toHaveCount(0);
+  await form.evaluate((el) => {
+    const field = el.querySelector<HTMLElement & { value: string }>('[name="look.css"]')!;
+    field.value = ".won-cart__saved { letter-spacing: 2px; }";
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await expect.poll(() => form.evaluate((el) => getComputedStyle(el.querySelector(".won-cart__saved") ?? el).letterSpacing)).toBe("2px");
+  const sent = await posted(page, () => form.locator("s-button", { hasText: "Uložit vzhled" }).click());
+  expect([sent.get("element"), sent.get("look.css")]).toEqual(["cart", ".won-cart__saved { letter-spacing: 2px; }"]);
+  // The ladder's own look is next to it, its own form.
+  await expect(page.locator('[data-won-look-form="milestones"]')).toBeVisible();
 });
 
 test("Časté kombinace: Pro lists every combination with its state and the setting behind a warning; one opens in the manual cart", async ({ page }) => {

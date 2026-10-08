@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { APPEARANCE_PRESETS, DEFAULT_CONFIG } from "@won/core/discounts/config";
 
-import { LOOK_FIELD, customLookSet, isAppearancePreset, liveCustomLookCss, presetLabel, readAppearanceForm } from "../../app/components/model/looks.ts";
+import { LOOK_FIELD, customLookSet, liveCustomLookCss, presetLabel, readLookForm } from "../../app/components/model/looks.ts";
 import {
   COMBINATION_FIELD,
   COMBINATION_KEYS,
@@ -63,18 +63,19 @@ test("combination: a sentence per switch and position, and a state line of what 
   );
 });
 
-test("appearance: exactly the core presets (K7), each with a label; the form takes only one of them", () => {
+test("the table's looks: exactly the core presets (K7), each with a label; the look form takes only one of them", () => {
   assert.deepEqual([...APPEARANCE_PRESETS], ["default", "highlight", "chips", "tiles"]);
   assert.equal(LOOK_FIELD.preset, "preset");
   for (const preset of APPEARANCE_PRESETS) {
-    assert.ok(isAppearancePreset(preset));
-    assert.doesNotMatch(presetLabel("tiers", preset, cs), /appearance\./);
+    assert.doesNotMatch(presetLabel("tiers", preset, cs), /looks\./);
+    assert.deepEqual(readLookForm(form([["element", "tiers"], ["preset", preset]])), { ok: true, look: { element: "tiers", preset, accent: "theme", custom: null } });
   }
   assert.equal(presetLabel("tiers", "default", cs), "Tabulka");
   assert.equal(presetLabel("tiers", "tiles", en), "Tiles");
-  assert.deepEqual(readAppearanceForm(form([["preset", "chips"]])), { ok: true, preset: "chips" });
-  assert.deepEqual(readAppearanceForm(form([["preset", "neon"]])), { ok: false, errors: [{ field: "preset", key: "looks.error.preset" }] });
-  assert.equal(isAppearancePreset("neon"), false);
+  assert.deepEqual(readLookForm(form([["element", "tiers"], ["preset", "neon"]])), { ok: false, errors: [{ field: "preset", key: "looks.error.preset" }] });
+  assert.deepEqual(readLookForm(form([["element", "tiers"]])), { ok: false, errors: [{ field: "preset", key: "looks.error.preset" }] }, "an element with looks to pick must say which");
+  // The cart has one look only: its form posts no pick.
+  assert.deepEqual(readLookForm(form([["element", "cart"]])), { ok: true, look: { element: "cart", preset: "plain", accent: "theme", custom: null } });
 });
 
 test("theme-editor deep links: the block (addAppBlockId, product template, main section) and the embed, by the app's API key", () => {
@@ -89,7 +90,7 @@ test("theme-editor deep links: the block (addAppBlockId, product template, main 
 });
 
 test("plan 2026-10-06: a new shop starts with the highlighted look", () => {
-  assert.equal(DEFAULT_CONFIG.storefront.appearancePreset, "highlight");
+  assert.deepEqual(DEFAULT_CONFIG.storefront.looks, { tiers: { preset: "highlight" } });
 });
 
 test("plan 2026-10-06: a look's section follows its form — the custom look as the storefront would get it, under the element's own root, only values a save would take", () => {

@@ -188,7 +188,10 @@ test("the AI briefs' class lists are exactly the classes of the extension's styl
   }
   assert.deepEqual([...LOOK_ELEMENTS.flatMap((element) => [...LOOK_CLASSES[element]]), ...FRAME_CLASSES].sort(), [...found].sort());
   for (const element of LOOK_ELEMENTS) {
-    for (const cls of LOOK_CLASSES[element]) assert.ok(cls === LOOK_ROOT[element] || cls.startsWith(`${LOOK_ROOT[element]}__`) || cls.startsWith(`${LOOK_ROOT[element]}--`), `${cls} is the ${element}'s`);
+    // (the cart's root is three frames: the panel, its slot on the cart page, the top strip)
+    const roots = element === "cart" ? [".won-cart", ".won-cart-slot", ".won-topbar"] : [LOOK_ROOT[element]];
+    if (element === "cart") assert.equal(LOOK_ROOT.cart, `:is(${roots.join(",")})`);
+    for (const cls of LOOK_CLASSES[element]) assert.ok(roots.some((root) => cls === root || cls.startsWith(`${root}__`) || cls.startsWith(`${root}--`)), `${cls} is the ${element}'s`);
     for (const variable of Object.values(CUSTOM_LOOK_VARS)) assert.ok(aiPrompt(element).includes(variable));
   }
   const css = await read("assets/won-discounts-tiers.css");

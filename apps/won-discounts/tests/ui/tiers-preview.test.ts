@@ -91,13 +91,14 @@ test("a set with nothing offered in the currency (MKT-1) renders the block empty
   assert.match(html, /Produkt bez názvu/, "never an id for an untitled product");
 });
 
-test("the look switcher is a labelled radio group: with a field name it is submitted with the page's form (the look is saved), without one nothing in the preview posts", async () => {
+test("the look switcher is a labelled radio group, shown only where it is saved: with a field name it is a field of the form around it; without one the preview shows the stored look and offers no pick", async () => {
   const plain = await preview({ set: SET, preset: "default", tokens: null, product: null, controls: true });
-  assert.match(plain, /Vzhled na webu/, "a visible label, not aria-only");
-  assert.equal((plain.match(/<input type="radio"/g) ?? []).length, 4);
-  assert.doesNotMatch(plain, /<input[^>]* name=/, "no field name: nothing is submitted");
+  assert.doesNotMatch(plain, /<input/, "nothing to pick, nothing posted");
+  assert.match(plain, /class="won-tiers won-tiers--default"/);
   assert.equal((plain.match(/<button type="button"/g) ?? []).length, 2, "− and +");
   const saved = await preview({ set: SET, preset: "chips", tokens: null, product: null, controls: true, lookField: "preset" });
+  assert.match(saved, /Vzhled na webu/, "a visible label, not aria-only");
+  assert.equal((saved.match(/<input type="radio"/g) ?? []).length, 4);
   assert.equal((saved.match(/<input type="radio" name="preset"/g) ?? []).length, 4);
   assert.match(saved, /<input type="radio" name="preset"[^>]* checked=""[^>]* value="chips"|<input type="radio" name="preset" value="chips"[^>]* checked=""/, "starts on the stored look");
   assert.match(saved, /class="won-tiers won-tiers--chips"/);

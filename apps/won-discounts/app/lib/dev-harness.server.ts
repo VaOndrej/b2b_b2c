@@ -64,7 +64,6 @@ import type {
   CampaignsScreenData,
 } from "../components/model/types";
 import { CAMPAIGN_BLOCK_HANDLE, cartBlockAddUrl, outletBlockAddUrl, placementLinks, REWARDS_PROGRESS_BLOCK_HANDLE, tiersBlockAddUrl } from "../components/model/embed";
-import { presetOf } from "../components/model/looks";
 import { MS_FIELD } from "../components/model/milestones";
 import { marketRows } from "../components/model/markets-overview";
 import { rewardsOverviewOf, rewardsScreenFacts, rewardsSectionStatus } from "./integration/rewards.server";
@@ -73,7 +72,8 @@ import { currencyViews } from "../components/model/markets";
 import { TIERS_FIELD } from "../components/model/tiers";
 import { exportCsv, planImport, TRANSLATIONS_FIELD, TRANSLATIONS_INTENT, type ImportPlan } from "../components/model/translations";
 import { translator } from "../i18n";
-import { lookView, previewLookOf } from "./integration/looks.server";
+import type { ElementLook } from "@won/core/discounts/looks";
+import { lookView, previewLookOf, tablePreset } from "./integration/looks.server";
 import { tiersOverviewOf, tiersScreenFacts, tiersSectionStatus } from "./integration/tiers.server";
 import { translationsScreenData, type TranslationsResult } from "./integration/translations.server";
 import { runScenarios, type ScenarioProduct } from "./integration/combination-check";
@@ -949,7 +949,7 @@ export const DEV_TIERS_FIXTURE: WonDiscountsConfig = readStoredConfig({
       ],
     },
   },
-  storefront: { appearancePreset: "highlight", cardPricesEnabled: false },
+  storefront: { cardPricesEnabled: false, looks: { tiers: { preset: "highlight" } } },
 });
 
 /** Shopify titles of the fixture's scoped products / collections. */
@@ -1057,7 +1057,7 @@ export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | nul
   const base = devSharedMarket(opts.state === "empty" ? DEV_EMPTY_FIXTURE : opts.state === "exceptions" ? DEV_TIERS_EXCEPTIONS_FIXTURE : DEV_TIERS_FIXTURE, opts.shared === true);
   // ?accent=green: a stored ready-made colour; ?embed=off | noscope: Won on the storefront is off / not readable.
   const accent = ACCENT_PRESETS.find((a) => a === opts.accent);
-  const config = accent ? { ...base, storefront: { ...base.storefront, accent } } : base;
+  const config = accent ? withTableLook(base, { accent }) : base;
   return {
     plan: opts.plan,
     shopCurrency: "CZK",
@@ -1073,7 +1073,7 @@ export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | nul
     storefront: devStorefront(opts.state),
     preview: {
       tokens: devTokens(opts.theme === "dawn" || opts.state === "dawn" ? "dawn" : opts.theme, devBlock(opts.state)),
-      preset: presetOf(config.storefront.appearancePreset),
+      preset: tablePreset(config),
       product: DEV_PREVIEW_PRODUCT,
       // ?state=custom: a stored Pro custom look and a changed text — the preview shows both (the gate drops the look on Free).
       look: previewLookOf(opts.state === "custom" ? DEV_CUSTOM_LOOK_FIXTURE : config, opts.plan),
@@ -1112,22 +1112,27 @@ export function devTiersResult(kind: string | null): UiResult | null {
   }
 }
 
+/** `config` with something added to the table's stored look. */
+function withTableLook(config: WonDiscountsConfig, more: ElementLook): WonDiscountsConfig {
+  return { ...config, storefront: { ...config.storefront, looks: { ...config.storefront.looks, tiers: { ...config.storefront.looks.tiers, ...more } } } };
+}
+
 /** DEV_TIERS_FIXTURE with a Pro custom look and one changed storefront text (the previews of ?state=custom). */
 const DEV_CUSTOM_LOOK_FIXTURE: WonDiscountsConfig = readStoredConfig({
   ...DEV_TIERS_FIXTURE,
-  storefront: { ...DEV_TIERS_FIXTURE.storefront, custom: { vars: { accent: "#0a7d4f", tint: "#f2fbf6", radius: 4 }, css: ".won-tiers__heading { text-transform: uppercase; }" } },
+  storefront: withTableLook(DEV_TIERS_FIXTURE, { custom: { vars: { accent: "#0a7d4f", tint: "#f2fbf6", radius: 4 }, css: ".won-tiers__heading { text-transform: uppercase; }" } }).storefront,
   locales: { ...DEV_TIERS_FIXTURE.locales, cs: { "tiers.heading": "Kup víc, plať míň" } },
 });
 
 /** DEV_TIERS_FIXTURE with a stored custom CSS that cannot be confined (a hand-made config). */
-const DEV_BAD_LOOK_FIXTURE: WonDiscountsConfig = readStoredConfig({ ...DEV_TIERS_FIXTURE, storefront: { ...DEV_TIERS_FIXTURE.storefront, custom: { vars: {}, css: ".a{background:url(x)}" } } });
+const DEV_BAD_LOOK_FIXTURE: WonDiscountsConfig = readStoredConfig(withTableLook(DEV_TIERS_FIXTURE, { custom: { vars: {}, css: ".a{background:url(x)}" } }));
 
 /**
  * One element's look for a module page's fixture: `?look=<a ready-made look>` (green, and on Milníky with the
  * flash) or `?look=custom` (own colours and CSS; shown on Pro) or `?look=issue` (stored CSS that cannot be used).
  */
-export function devLook(config: WonDiscountsConfig, element: "milestones" | "outlet" | "campaign", look: string | null | undefined): LookView {
-  const custom = { vars: { accent: "#0a7d4f", tint: "#f2fbf6", radius: 4 }, css: look === "issue" ? ".a{background:url(x)}" : `.won-${element === "milestones" ? "ms__text" : element === "outlet" ? "outlet__badge" : "campaign__title"} { text-transform: uppercase; }` };
+export function devLook(config: WonDiscountsConfig, element: "milestones" | "outlet" | "campaign" | "cart", look: string | null | undefined): LookView {
+  const custom = { vars: { accent: "#0a7d4f", tint: "#f2fbf6", radius: 4 }, css: look === "issue" ? ".a{background:url(x)}" : `.won-${element === "milestones" ? "ms__text" : element === "outlet" ? "outlet__badge" : element === "cart" ? "cart__saved" : "campaign__title"} { text-transform: uppercase; }` };
   const stored = !look ? undefined : look === "custom" || look === "issue" ? { custom } : { preset: look, accent: "green", ...(element === "milestones" ? { blink: true } : {}) };
   return lookView(stored ? readStoredConfig({ ...config, storefront: { ...config.storefront, looks: { [element]: stored } } }) : config, element);
 }
@@ -1307,6 +1312,8 @@ export function devRewardsScreen(opts: { plan: "free" | "pro"; state: string | n
     plan: opts.plan,
     configVersion: "dev-config-version",
     look: devLook(config, "milestones", opts.look),
+    // ?look=custom | issue: the cart's own look too (it has no ready-made ones to pick).
+    cartLook: devLook(config, "cart", opts.look === "custom" || opts.look === "issue" ? opts.look : null),
     currencies: currencyViews(config.markets, { marketNames: DEV_MARKET_NAMES }),
     ...rewardsScreenFacts(config, { plan: opts.plan, locale: opts.locale, titles: DEV_GIFT_TITLES }),
     status: rewardsSectionStatus(config, opts.plan, "CZK", DEV_SYNC_OK),

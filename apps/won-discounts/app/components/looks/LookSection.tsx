@@ -2,14 +2,15 @@
 // not shared between modules): the ready-made looks as native radios, each previewed live (§1: the extension's
 // markup and CSS), the highlight colour on every plan, and on Pro own colours and CSS confined to the element —
 // with a brief to hand to an AI. On Free the Pro part is amber and locked with what Pro gives (§16).
-// The section is its own form: it posts to /app/looks (looks.server.ts looksAction) and says how the save went.
-// The table's ready-made look and colour are picked in its preview (the page's form); here it has its Pro part.
+// The section is its own form with ONE save: it posts to /app/looks (looks.server.ts looksAction) and says how the
+// save went. The same for every element; the table brings its own preview (the shop's levels, with the look and
+// colour pickers in it — the same two fields).
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useFetcher } from "react-router";
 
 import { accentCss, LOOK_ROOT } from "@won/core/discounts/custom-look";
-import { LOOK_PRESET_CSS, MILESTONE_BLINK_CSS, type LooksElement } from "@won/core/discounts/looks";
+import { LOOK_PRESET_CSS, MILESTONE_BLINK_CSS } from "@won/core/discounts/looks";
 
 import { useT } from "../../i18n/context";
 import { customLookSet, liveCustomLookCss, LOOK_FIELD, LOOK_INTENT, presetDetails, presetLabel } from "../model/looks";
@@ -32,7 +33,7 @@ export interface LookSectionProps {
   configVersion: string | null;
   /** Won on the storefront: every look reaches it through it. */
   embed?: EmbedView | null;
-  /** The table: its preview with the custom look as typed (the other elements preview themselves). */
+  /** The table: its own preview with the look and colour pickers in it (fields of this form), given the custom look as typed. */
   preview?: (customCss: string) => ReactNode;
   /** The dev harness: the outcome of a save, as the action would answer. */
   result?: UiResult | null;
@@ -90,7 +91,8 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
   const customCss = pro ? liveCustomLookCss(element, typed) : "";
   const blink = snapshot ? snapshot.has(LOOK_FIELD.blink) : look.blink;
   /** A ready-made look as the storefront would get it with what is picked and typed now. */
-  const cssOf = (el: LooksElement, p: string) => (LOOK_PRESET_CSS[el][p] ?? "") + (el === "milestones" && blink ? MILESTONE_BLINK_CSS : "") + accentCss(accent, LOOK_ROOT[el]) + customCss;
+  const cssOf = (p: string) => (LOOK_PRESET_CSS[element][p] ?? "") + (element === "milestones" && blink ? MILESTONE_BLINK_CSS : "") + accentCss(accent, LOOK_ROOT[element]) + customCss;
+  const picks = look.presets.length > 1;
 
   // "Zkopírovat zadání pro AI": says when it worked — and when it did not (no clipboard in this browser / frame).
   const [copied, setCopied] = useState<"done" | "failed" | null>(null);
@@ -138,14 +140,11 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
     <WonSection
       title={t(`looks.title.${element}`)}
       glyph="spark"
-      summary={element === "tiers" ? t(customSet ? "looks.custom.summary.on" : "looks.custom.summary.off") : t("looks.summary", { preset: presetLabel(element, preset, tr) })}
-      // The table's section is its Pro part alone; the others hold the looks of every plan with a Pro part inside.
-      pro={element === "tiers" ? true : undefined}
-      locked={element === "tiers" ? !pro : undefined}
-      on={element !== "tiers" || !pro ? undefined : customSet ? (storedSet ? true : undefined) : false}
+      summary={picks ? t("looks.summary", { preset: presetLabel(element, preset, tr) }) : t(customSet ? "looks.custom.summary.on" : "looks.custom.summary.off")}
       anchor={`look-${element}`}
       collapsible
-      defaultOpen={element !== "tiers" || storedSet || errors.length > 0}
+      // An element with nothing to pick (the cart) opens only when it has something set.
+      defaultOpen={picks || storedSet || errors.length > 0}
     >
       <fetcher.Form method="post" action={actions.looks} ref={formRef} data-won-look-form={element}>
         <input type="hidden" name={LOOK_FIELD.intent} value={LOOK_INTENT.save} />
@@ -153,39 +152,48 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
         {configVersion ? <input type="hidden" name={LOOK_FIELD.configVersion} value={configVersion} /> : null}
         <s-stack direction="block" gap="base">
           {fetcher.data || given ? <Notice result={result} /> : null}
-          {element !== "tiers" ? (
+          {element === "tiers" ? (
+            (preview?.(customCss) ?? null)
+          ) : (
             <>
               <LookPreviewStyles />
-              <div role="radiogroup" aria-label={t("looks.choose")} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 260px), 1fr))", gap: 12 }}>
-                {look.presets.map((p) => (
-                  <label key={p} style={{ ...selectionRing(preset === p), position: "relative", display: "grid", alignContent: "start", gap: 8, padding: 12, borderRadius: 12, cursor: "pointer", fontFamily: WON_FONT, minWidth: 0 }}>
-                    <input
-                      type="radio"
-                      name={LOOK_FIELD.preset}
-                      value={p}
-                      checked={preset === p}
-                      aria-labelledby={`${groupId}-${p}`}
-                      aria-describedby={`${groupId}-${p}-details`}
-                      onChange={() => setPreset(p)}
-                      style={{ position: "absolute", opacity: 0, width: 1, height: 1, margin: 0, pointerEvents: "none" }}
-                    />
-                    <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <span id={`${groupId}-${p}`} style={{ fontSize: 14, fontWeight: 700, color: WON_INK }}>
-                        {presetLabel(element, p, tr)}
+              {picks ? (
+                <div role="radiogroup" aria-label={t("looks.choose")} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 260px), 1fr))", gap: 12 }}>
+                  {look.presets.map((p) => (
+                    <label key={p} style={{ ...selectionRing(preset === p), position: "relative", display: "grid", alignContent: "start", gap: 8, padding: 12, borderRadius: 12, cursor: "pointer", fontFamily: WON_FONT, minWidth: 0 }}>
+                      <input
+                        type="radio"
+                        name={LOOK_FIELD.preset}
+                        value={p}
+                        checked={preset === p}
+                        aria-labelledby={`${groupId}-${p}`}
+                        aria-describedby={`${groupId}-${p}-details`}
+                        onChange={() => setPreset(p)}
+                        style={{ position: "absolute", opacity: 0, width: 1, height: 1, margin: 0, pointerEvents: "none" }}
+                      />
+                      <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span id={`${groupId}-${p}`} style={{ fontSize: 14, fontWeight: 700, color: WON_INK }}>
+                          {presetLabel(element, p, tr)}
+                        </span>
+                        {p === look.preset ? <span style={{ fontSize: 11, fontWeight: 700, color: WON_MUTED }}>{t("looks.current")}</span> : null}
                       </span>
-                      {p === look.preset ? <span style={{ fontSize: 11, fontWeight: 700, color: WON_MUTED }}>{t("looks.current")}</span> : null}
-                    </span>
-                    <span id={`${groupId}-${p}-details`} style={{ fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED }}>
-                      {presetDetails(element, p, tr)}
-                    </span>
-                    <span aria-hidden="true" style={{ display: "block", minWidth: 0 }}>
-                      <LookPreview element={element} css={cssOf(element, p)} />
-                    </span>
-                  </label>
-                ))}
-              </div>
+                      <span id={`${groupId}-${p}-details`} style={{ fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED }}>
+                        {presetDetails(element, p, tr)}
+                      </span>
+                      <span aria-hidden="true" style={{ display: "block", minWidth: 0 }}>
+                        <LookPreview element={element} css={cssOf(p)} />
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <div aria-hidden="true">
+                  <LookPreview element={element} css={cssOf(preset)} />
+                </div>
+              )}
               <FieldMessage text={errorOf(LOOK_FIELD.preset)} />
-              <AccentPicker name={LOOK_FIELD.accentPreset} value={accent} stored={look.accent} onPick={setAccent} embed={embed} />
+              {/* The cart has no highlight of its own: the ladder inside it takes the ladder's colour. */}
+              {element === "cart" ? null : <AccentPicker name={LOOK_FIELD.accentPreset} value={accent} stored={look.accent} onPick={setAccent} embed={embed} />}
               {element === "milestones" ? (
                 <div>
                   <s-checkbox name={LOOK_FIELD.blink} value="on" label={t("looks.blink")} checked={boolAttr(look.blink)} />
@@ -193,39 +201,23 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
                 </div>
               ) : null}
             </>
-          ) : preview ? (
-            preview(customCss)
-          ) : null}
-
-          {element === "tiers" ? (
-            pro ? (
+          )}
+          <div data-won-look-custom={element}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: WON_INK, marginBottom: 8 }}>{t("looks.custom.title")}</div>
+            {pro ? (
               customFields
             ) : (
               <s-stack direction="block" gap="base">
-                <ProSell benefit={t("looks.custom.benefit")} />
+                <ProSell benefit={t(`looks.benefit.${element}`)} />
                 <ProFrame locked>{customFields}</ProFrame>
               </s-stack>
-            )
-          ) : (
-            <div data-won-look-custom={element}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: WON_INK, marginBottom: 8 }}>{t("looks.custom.title")}</div>
-              {pro ? (
-                customFields
-              ) : (
-                <s-stack direction="block" gap="base">
-                  <ProSell benefit={t(`looks.benefit.${element}`)} />
-                  <ProFrame locked>{customFields}</ProFrame>
-                </s-stack>
-              )}
-            </div>
-          )}
-          {element === "tiers" && !pro ? null : (
-            <div>
-              <s-button type="submit" variant="primary" disabled={boolAttr(fetcher.state !== "idle")}>
-                {t("looks.save")}
-              </s-button>
-            </div>
-          )}
+            )}
+          </div>
+          <div>
+            <s-button type="submit" variant="primary" disabled={boolAttr(fetcher.state !== "idle")}>
+              {t("looks.save")}
+            </s-button>
+          </div>
         </s-stack>
       </fetcher.Form>
     </WonSection>

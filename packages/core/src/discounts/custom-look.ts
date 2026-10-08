@@ -15,12 +15,21 @@ import { pushIssue } from "./config/sanitize-helpers.ts";
 import type { ConfigIssue } from "./config/types.ts";
 import { CUSTOM_CSS_MAX_LENGTH, scopeCss, type ScopeCssReason } from "./scope-css.ts";
 
-/** The storefront elements with a look of their own. */
-export const LOOK_ELEMENTS = ["tiers", "milestones", "outlet", "campaign"] as const;
+/**
+ * The storefront elements with a look of their own: the quantity table, the Milníky ladder, the sale badge, the
+ * campaign banner, and the cart panel with the top strip (the frames the ladder and the gifts sit in).
+ */
+export const LOOK_ELEMENTS = ["tiers", "milestones", "outlet", "campaign", "cart"] as const;
 export type LookElement = (typeof LOOK_ELEMENTS)[number];
 
 /** The root each element's look is confined to (the theme app extension's markup). */
-export const LOOK_ROOT: Readonly<Record<LookElement, string>> = { tiers: ".won-tiers", milestones: ".won-ms", outlet: ".won-outlet", campaign: ".won-campaign" };
+export const LOOK_ROOT: Readonly<Record<LookElement, string>> = {
+  tiers: ".won-tiers",
+  milestones: ".won-ms",
+  outlet: ".won-outlet",
+  campaign: ".won-campaign",
+  cart: ":is(.won-cart,.won-cart-slot,.won-topbar)",
+};
 
 /** Variable name in the config → the CSS custom property the elements read (the extension's stylesheets). */
 export const CUSTOM_LOOK_VARS = {

@@ -268,17 +268,22 @@ test("slovníček: the words a merchant does not know are gone from the screens"
   }
 });
 
-test("7 Oct 2026: quantity levels are numbered cards, suggestions sit in their own box, the preview has one heading and a colour picker", async () => {
+test("7 Oct 2026: quantity levels are numbered cards, suggestions sit in their own box; the table's look is picked in one place, with a colour picker", async () => {
   const html = await render("tiers");
   assert.equal((html.match(/data-won-tier-row/g) ?? []).length, 3);
   assert.match(html, />Úroveň 1<\/span><span[^>]*>od 3 ks</);
   assert.match(html, />Úroveň 3<\/span><span[^>]*>od 10 ks</);
-  const text = html.replace(/<style[\s\S]*?<\/style>/g, "").replace(/<[^>]+>/g, " ");
-  assert.doesNotMatch(text, /Náhled na webu/, "one heading: Vzhled na webu");
-  assert.equal((text.match(/Vzhled na webu/g) ?? []).length, 1);
+  // The look and the colour are picked in the table's look section alone (its own form, one save); the preview
+  // next to the levels shows the stored look and offers nothing to pick.
+  assert.equal((html.match(/data-won-accent-picker/g) ?? []).length, 1);
+  const lookForm = html.slice(html.indexOf('data-won-look-form="tiers"'));
+  assert.ok(html.indexOf("data-won-accent-picker") > html.indexOf('data-won-look-form="tiers"'), "the pickers are fields of the look's form");
+  assert.equal((lookForm.match(/<input type="radio" name="preset"/g) ?? []).length, 4, "the four ready-made looks");
+  assert.equal((html.match(/<input type="radio" name="preset"/g) ?? []).length, 4, "and nowhere else");
+  assert.equal((html.match(/>Uložit vzhled<\/s-button>/g) ?? []).length, 1, "one save for the look, the colour and the custom look");
   // The ready-made colours are offered on Free; the stored one ("theme") is checked.
   const picker = html.slice(html.indexOf("data-won-accent-picker"));
-  for (const value of ["theme", "green", "blue", "orange", "red", "violet"]) assert.match(picker.slice(0, 6000), new RegExp(`<input type="radio" name="accentPreset"[^>]*value="${value}"`), value);
+  for (const value of ["theme", "green", "blue", "orange", "red", "violet"]) assert.match(picker.slice(0, 6000), new RegExp(`<input type="radio" name="accent"[^>]*value="${value}"`), value);
   assert.match(picker.slice(0, 6000), /Podle webu[\s\S]*Zelená[\s\S]*Fialová/);
   // (a fixed discount step of Milníky uses the same box for its amounts; the amounts table has one button of its own)
   const rewards = await render("rewards?plan=pro&state=discounts");
@@ -294,7 +299,7 @@ test("7 Oct 2026: Ochrana marže says 'Takhle by zasáhla' only above rows it de
 test("úkol 1 (7 Oct 2026): with Won switched off on the storefront, the colour picker says the colour cannot show there", async () => {
   // Won on: a picked colour needs no warning.
   const on = await render("tiers?accent=green");
-  assert.ok(/<input type="radio" name="accentPreset"[^>]*checked=""[^>]*value="green"/.test(on), "the stored colour is the picked one");
+  assert.ok(/<input type="radio" name="accent"[^>]*checked=""[^>]*value="green"/.test(on), "the stored colour is the picked one");
   assert.ok(!on.includes("data-won-accent-embed-off"), "Won on: no warning");
   // Won off: the sentence and the one way to switch it on.
   const off = await render("tiers?accent=green&embed=off");

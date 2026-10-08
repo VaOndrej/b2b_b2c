@@ -188,33 +188,41 @@ test("the tier sanitizer is idempotent: a sanitized config sanitizes to itself w
 
 // --- appearance preset (K7) --------------------------------------------------------------------
 
-test("K7: the appearance preset is one of APPEARANCE_PRESETS; an unknown one becomes the table with an issue; only a config without storefront settings gets the new-shop look", () => {
+test("K7: the table's look is one of APPEARANCE_PRESETS, stored with every element's look; an unknown one becomes the table with an issue; only a config without storefront settings gets the new-shop look", async () => {
+  const { lookPreset } = await import("../../src/discounts/looks.ts");
+  const presetOf = (input: unknown) => {
+    const { config, issues } = sanitizeConfig(input);
+    return { preset: lookPreset("tiers", config.storefront.looks.tiers), issues, config };
+  };
   assert.deepEqual([...APPEARANCE_PRESETS], ["default", "highlight", "chips", "tiles"]);
   for (const preset of APPEARANCE_PRESETS) {
-    const { config, issues } = sanitizeConfig({ storefront: { appearancePreset: preset } });
-    assert.equal(config.storefront.appearancePreset, preset);
-    assert.deepEqual(issues, []);
+    // As stored today, and as stored before the table's look moved under `looks` (read, never written back).
+    for (const input of [{ storefront: { looks: { tiers: { preset } } } }, { storefront: { appearancePreset: preset } }, { storefront: { appearancePreset: preset, looks: {} } }]) {
+      const read = presetOf(input);
+      assert.equal(read.preset, preset);
+      assert.deepEqual(read.issues, []);
+      assert.equal("appearancePreset" in read.config.storefront, false);
+    }
   }
-  const { config, issues } = sanitizeConfig({ storefront: { appearancePreset: "neon", cardPricesEnabled: true } });
-  assert.equal(config.storefront.appearancePreset, "default");
+  const { preset, issues, config } = presetOf({ storefront: { looks: { tiers: { preset: "neon" } }, cardPricesEnabled: true } });
+  assert.equal(preset, "default");
   assert.equal(config.storefront.cardPricesEnabled, true);
-  // A stored config that has storefront settings but no look keeps the table; a config with none is a new shop.
-  assert.equal(sanitizeConfig({ storefront: { cardPricesEnabled: true } }).config.storefront.appearancePreset, "default");
-  assert.equal(sanitizeConfig({}).config.storefront.appearancePreset, "highlight");
   assert.deepEqual(issues, [
     {
-      path: "storefront.appearancePreset",
-      code: "unknown_appearance_preset",
-      message: 'Appearance "neon" is not one of default, highlight, chips, tiles; "default" was used.',
+      path: "storefront.looks.tiers.preset",
+      code: "unknown_look",
+      message: 'Look "neon" is not one of default, highlight, chips, tiles; "default" was used.',
       params: { value: '"neon"', fallback: "default" },
     },
   ]);
-  const junk = sanitizeConfig({ storefront: { appearancePreset: 7 } });
-  assert.equal(junk.config.storefront.appearancePreset, "default");
-  assert.equal(junk.issues[0]?.code, "unknown_appearance_preset");
-  // Left out: the default (a new shop's look: highlight), silently.
+  // The same for the old field: the table, with an issue.
+  const junk = presetOf({ storefront: { appearancePreset: 7 } });
+  assert.equal(junk.preset, "default");
+  assert.equal(junk.issues[0]?.code, "unknown_look");
+  // A stored config that has storefront settings but no look keeps the table; a config with none is a new shop (highlight), silently.
+  assert.equal(presetOf({ storefront: { cardPricesEnabled: true } }).preset, "default");
   assert.deepEqual(sanitizeConfig({ storefront: {} }).issues, []);
-  assert.equal(sanitizeConfig({}).config.storefront.appearancePreset, "highlight");
+  assert.equal(presetOf({}).preset, "highlight");
 });
 
 test("the highlight colour is one of ACCENT_PRESETS on every plan; 'theme' is stored as absent; it ships as one CSS variable before the custom look", async () => {
@@ -222,12 +230,12 @@ test("the highlight colour is one of ACCENT_PRESETS on every plan; 'theme' is st
   const accentCss = (accent: string | undefined) => accentUnder(accent, LOOK_ROOT.tiers);
   const { gateConfigForPlan } = await import("../../src/discounts/plan-gate.ts");
   const { buildStorefrontConfig } = await import("../../src/discounts/storefront-config.ts");
-  const green = sanitizeConfig({ storefront: { appearancePreset: "chips", accent: "green" } });
-  assert.equal(green.config.storefront.accent, "green");
+  const green = sanitizeConfig({ storefront: { looks: { tiers: { preset: "chips", accent: "green" } } } });
+  assert.equal(green.config.storefront.looks.tiers?.accent, "green");
   assert.deepEqual(green.issues, []);
-  assert.equal(sanitizeConfig({ storefront: { accent: "theme" } }).config.storefront.accent, undefined);
-  const junk = sanitizeConfig({ storefront: { accent: "#ff0000" } });
-  assert.equal(junk.config.storefront.accent, undefined);
+  assert.equal(sanitizeConfig({ storefront: { looks: { tiers: { accent: "theme" } } } }).config.storefront.looks.tiers, undefined);
+  const junk = sanitizeConfig({ storefront: { looks: { tiers: { accent: "#ff0000" } } } });
+  assert.equal(junk.config.storefront.looks.tiers, undefined);
   assert.deepEqual(junk.issues.map((i) => i.code), ["unknown_accent"]);
 
   assert.equal(accentCss("theme"), "");

@@ -71,6 +71,32 @@ function scopeBlock(css: string, start: number, root: string, nested: boolean): 
   }
 }
 
+/**
+ * The top-level rules of `css`, each as its own text (an at-rule with its whole block is one). null = the text is
+ * not one scopeCss would take (a forbidden keyword, unbalanced braces). For splitting a stylesheet between
+ * elements (looks.ts: a look stored before the elements had their own).
+ */
+export function topLevelRules(css: string): string[] | null {
+  if (FORBIDDEN.test(css)) return null;
+  const plain = stripComments(css);
+  if (plain === null) return null;
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < plain.length; i += 1) {
+    if (plain[i] === "{") depth += 1;
+    else if (plain[i] === "}") {
+      depth -= 1;
+      if (depth < 0) return null;
+      if (depth === 0) {
+        out.push(plain.slice(start, i + 1).trim());
+        start = i + 1;
+      }
+    }
+  }
+  return depth === 0 && plain.slice(start).trim() === "" ? out : null;
+}
+
 export function scopeCss(css: string, root: string): ScopeCssResult {
   if (css.length > CUSTOM_CSS_MAX_LENGTH) return { ok: false, reason: "too_long" };
   const forbidden = FORBIDDEN.exec(css);

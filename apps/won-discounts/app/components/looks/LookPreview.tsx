@@ -7,7 +7,7 @@ import { useId } from "react";
 
 import baseCss from "../../../extensions/won-discounts-storefront/assets/won-discounts.css?raw";
 import outletCss from "../../../extensions/won-discounts-storefront/assets/won-discounts-outlet.css?raw";
-import type { LooksElement } from "@won/core/discounts/looks";
+import type { LookElement } from "@won/core/discounts/custom-look";
 
 import { useT } from "../../i18n/context";
 import { WON_LINE } from "../shell/tokens";
@@ -25,7 +25,8 @@ export function LookPreviewStyles() {
 
 const FRAME = { fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', fontSize: 15, lineHeight: 1.5, color: "#121212", background: "#ffffff", padding: 14, borderRadius: 10, border: `1px solid ${WON_LINE}`, textAlign: "start" } as const;
 
-export function LookPreview({ element, css }: { element: LooksElement; css: string }) {
+/** Every element but the table, which previews itself with the shop's own levels (tiers/TiersPreview). */
+export function LookPreview({ element, css }: { element: Exclude<LookElement, "tiers">; css: string }) {
   const { t } = useT();
   // A class of its own for this preview's look (useId gives ":r1:" — only letters and digits make a class).
   const scope = `won-look-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
@@ -65,6 +66,19 @@ export function LookPreview({ element, css }: { element: LooksElement; css: stri
               <span className="won-campaign__time">{t("looks.sample.time")}</span>
             </span>
           </p>
+        </div>
+      ) : element === "cart" ? (
+        <div className="won-cart">
+          <div className="won-ms won-ms--full">
+            <p className="won-ms__text">{t("looks.sample.ms.text")}</p>
+            <div className="won-ms__track" role="presentation">
+              <span style={{ width: "55%" }} />
+            </div>
+          </div>
+          <div className="won-cart__row">
+            <p>{t("looks.sample.cart.gift")}</p>
+          </div>
+          <p className="won-cart__saved">{t("looks.sample.cart.saved")}</p>
         </div>
       ) : (
         <div className="won-campaign won-campaign--center">

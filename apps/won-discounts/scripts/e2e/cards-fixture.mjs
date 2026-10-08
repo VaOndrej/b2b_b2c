@@ -1,7 +1,7 @@
 // The MVP 7 E2E fixture (prices by quantity on product cards BETA + the Pro custom look), shared by the seed
 // (scripts/e2e/seed-mvp1.mjs --profile cards) and the spec (tests/e2e/storefront.cards.spec.ts):
 //   global tier set "e2e-cards-global", counted per line: from 2 items −10 %
-//   storefront: card prices ON; a custom look (accent #0a7d4f + a CSS rule) — applied on Pro only (BILL-1).
+//   storefront: card prices ON; the table's custom look (accent #0a7d4f + a CSS rule) — applied on Pro only (BILL-1).
 // No rule, no margin protection: the card may say the first break, and the cart gives exactly it.
 
 export const CARDS_HANDLES = ["won-e2e-simple-a"];
@@ -22,6 +22,6 @@ export function cardsStorefront(storefront) {
   return {
     ...storefront,
     cardPricesEnabled: true,
-    custom: { vars: { accent: CARDS_ACCENT }, css: ".won-tiers__heading { letter-spacing: 0.05em; } .won-card-tier { color: #0a7d4f; }" },
+    looks: { ...storefront.looks, tiers: { ...storefront.looks?.tiers, custom: { vars: { accent: CARDS_ACCENT }, css: ".won-tiers__heading { letter-spacing: 0.05em; }" } } },
   };
 }

@@ -62,16 +62,15 @@ test("config → gate → storefront config: Pro ships the scoped stylesheet, Fr
   const { buildStorefrontConfig } = await import("../../src/discounts/storefront-config.ts");
   const { config, issues } = sanitizeConfig({ storefront: { appearancePreset: "chips", cardPricesEnabled: true, custom: { vars: { accent: "#0A7D4F" }, css: ".won-tiers__row{color:red}" } } });
   assert.deepEqual(issues, []);
-  assert.deepEqual(config.storefront.custom, { vars: { accent: "#0a7d4f" }, css: ".won-tiers__row{color:red}" });
+  assert.deepEqual(config.storefront.looks.tiers, { preset: "chips", custom: { vars: { accent: "#0a7d4f" }, css: ".won-tiers__row{color:red}" } });
   const pro = buildStorefrontConfig(gateConfigForPlan(config, "pro").config, { configVersion: "v" });
   // The table's look on the table, and (a config from before the split) its colour on the ladder, as it always showed.
   assert.equal(pro.appearance.css, ".won-tiers{--won-tiers-accent:#0a7d4f}.won-tiers .won-tiers__row{color:red}.won-ms{--won-tiers-accent:#0a7d4f}");
   assert.equal(pro.cards, 1);
   const free = gateConfigForPlan(config, "free");
-  assert.equal("custom" in free.config.storefront, false);
-  assert.deepEqual(free.config.storefront.looks, { milestones: {} }, "the custom colour copied to the ladder is Pro too");
+  assert.deepEqual(free.config.storefront.looks, { tiers: { preset: "chips" }, milestones: {} }, "the custom look, and the custom colour copied to the ladder, are Pro");
   assert.deepEqual(buildStorefrontConfig(free.config, { configVersion: "v" }).appearance, { preset: "chips" });
-  assert.deepEqual(config.storefront.custom?.vars, { accent: "#0a7d4f" }, "the stored config is untouched by the gate");
+  assert.deepEqual(config.storefront.looks.tiers?.custom?.vars, { accent: "#0a7d4f" }, "the stored config is untouched by the gate");
   const plain = buildStorefrontConfig(sanitizeConfig({}).config, { configVersion: "v" });
   assert.equal("cards" in plain || "css" in plain.appearance, false);
 });
