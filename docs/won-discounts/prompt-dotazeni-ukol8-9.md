@@ -17,7 +17,7 @@ Po každé kompakci kontextu přečti tohle zadání a checkpoint znovu; checkpo
 - **Pracuj v hlavním adresáři na větvi `main`** (Ondřej to tak chce; běží nad ním `shopify app dev`, takže změny
   rozšíření jdou hned do dev obchodu). Začni `git status` a `git log origin/main..HEAD`. Když adresář není na čistém
   `main` shodném s `origin/main`, **nic neopravuj sám**, napiš Ondřejovi přesné příkazy a počkej.
-- Starý pracovní adresář `../b2b_b2c-preklady` (větev `won-discounts-preklady`) je celý v `main`; nepoužívej ho.
+- Dřívější pracovní adresáře (`b2b_b2c-preklady`, `b2b_b2c-funkce`) jsou zrušené, vše z nich je v `main`.
 - Kód, kterého se nálezy týkají: `app/lib/integration/combination-check.ts`, `combination-check.server.ts`,
   `looks.server.ts`, `translations.server.ts`, `app/components/looks/`, `app/components/model/looks.ts`,
   `packages/core/src/discounts/looks.ts`, `custom-look.ts`, `storefront-texts.ts`,

@@ -11,9 +11,9 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 > **CHECKPOINT (po kompakci kontextu začni tady).** Nejdřív přečti celé zadání
 > [`won-discounts/prompt-ukol8-9.md`](won-discounts/prompt-ukol8-9.md), potom tento oddíl.
-> - **Kde pracuju:** adresář `~/Development/WonCommerce/Apps/b2b_b2c-preklady`, větev `won-discounts-preklady`.
->   Do hlavního adresáře `b2b_b2c` nesahám (přepnutí větve a commit tam mi zamítla ochrana oprávnění; má v něm sedm
->   cizích necommitnutých souborů a běží nad ním `shopify app dev` se starým kódem `dd48a75`).
+> - **Kde se pracuje:** hlavní adresář `~/Development/WonCommerce/Apps/b2b_b2c` na větvi `main` (čistý, shodný
+>   s `origin/main`). Pracovní adresáře `b2b_b2c-preklady` a `b2b_b2c-funkce` i sloučené větve `won-discounts-*` jsou
+>   8. 10. večer zrušené; vše z nich je v `main`.
 > - **Úkol 8: hotový, v `main` (`125f05e`).** Naživo neověřeno (web na Horizonu a Dawnu, `read_locales`, klikání).
 > - **Úkol 9: hotový, v `main`** (viz `git log origin/main --oneline -8`). Naživo neověřeno.
 > - **Dotažení je zadané v [`won-discounts/prompt-dotazeni-ukol8-9.md`](won-discounts/prompt-dotazeni-ukol8-9.md)** (17 nálezů: živé
