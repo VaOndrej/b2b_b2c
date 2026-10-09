@@ -1,7 +1,7 @@
 import { DEFAULT_CONFIG } from "./defaults.ts";
 import { CONFIG_LIMITS } from "./limits.ts";
 import { isRecord, preview, pushIssue, sanitizeBoolWithIssue, sanitizeReference } from "./sanitize-helpers.ts";
-import type { ConfigIssue, MarginCollectionOverride, MarginModule } from "./types.ts";
+import type { ConfigIssue, MarginCollectionOverride, MarginModule, MarginProductOverride } from "./types.ts";
 
 // Margin percents (MVP 2) keep ONE decimal, rounded to the stricter side: a
 // minimum margin up, a maximum discount down — never a larger discount than the
@@ -87,6 +87,19 @@ function sanitizeMarginOverride(v: unknown, issues: ConfigIssue[], path: string)
   return out;
 }
 
+function sanitizeMarginProduct(v: unknown, issues: ConfigIssue[], path: string): MarginProductOverride | null {
+  if (!isRecord(v)) return null;
+  const productId = sanitizeReference(v.productId, issues, `${path}.productId`) ?? "";
+  if (!productId) return null;
+  const out: MarginProductOverride = { productId };
+  const inherit = { fallback: undefined, fallbackText: "the collection or global value applies" };
+  const min = marginPercent(v.minMarginPercent, { ...MIN_MARGIN, ...inherit }, `${path}.minMarginPercent`, issues);
+  if (min !== undefined) out.minMarginPercent = min;
+  const max = marginPercent(v.maxDiscountPercent, { ...MAX_DISCOUNT, ...inherit }, `${path}.maxDiscountPercent`, issues);
+  if (max !== undefined) out.maxDiscountPercent = max;
+  return out;
+}
+
 export function sanitizeMargin(v: unknown, issues: ConfigIssue[]): MarginModule {
   const def = DEFAULT_CONFIG.modules.margin;
   const rec = isRecord(v) ? v : {};
@@ -135,7 +148,35 @@ export function sanitizeMargin(v: unknown, issues: ConfigIssue[]): MarginModule 
     );
     perCollection = perCollection.slice(0, CONFIG_LIMITS.marginOverrides);
   }
+  // A product listed twice keeps its first setting. A config stored before the product settings has no key: none.
+  const seenProducts = new Set<string>();
+  let perProduct = Array.isArray(rec.perProduct)
+    ? rec.perProduct
+        .map((item, i) => sanitizeMarginProduct(item, issues, `modules.margin.perProduct[${i}]`))
+        .filter((x): x is MarginProductOverride => x !== null && !seenProducts.has(x.productId) && !!seenProducts.add(x.productId))
+    : [];
+  if (perProduct.length > CONFIG_LIMITS.marginProductOverrides) {
+    // Over the limit: folded into the global setting like the collections, the strictest value wins — never looser.
+    const extra = perProduct.slice(CONFIG_LIMITS.marginProductOverrides);
+    for (const o of extra) {
+      if (o.maxDiscountPercent !== undefined) global.maxDiscountPercent = Math.min(global.maxDiscountPercent, o.maxDiscountPercent);
+      if (o.minMarginPercent !== undefined) global.minMarginPercent = Math.max(global.minMarginPercent ?? 0, o.minMarginPercent);
+    }
+    pushIssue(
+      issues,
+      "modules.margin.perProduct",
+      "margin_overrides_folded",
+      `At most ${CONFIG_LIMITS.marginProductOverrides} products can have their own margin setting (the discount function reads them from a size-limited config); the first ${CONFIG_LIMITS.marginProductOverrides} are kept, ${extra.length} more were merged into the store-wide setting (the strictest value wins).`,
+      {
+        max: CONFIG_LIMITS.marginProductOverrides,
+        count: extra.length,
+        maxDiscountPercent: global.maxDiscountPercent,
+        minMarginPercent: global.minMarginPercent ?? 0,
+      },
+    );
+    perProduct = perProduct.slice(0, CONFIG_LIMITS.marginProductOverrides);
+  }
   // Off unless the merchant turned it on: a config stored before MVP 2 has no key and stays off.
   const enabled = sanitizeBoolWithIssue(rec.enabled, def.enabled, "modules.margin.enabled", issues);
-  return { enabled, global, perCollection };
+  return { enabled, global, perCollection, perProduct };
 }

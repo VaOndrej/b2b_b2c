@@ -110,6 +110,7 @@ export const PRO_CAPABILITIES = [
   "milestone_steps",
   "gift_choices",
   "margin_per_collection",
+  "margin_per_product",
 ] as const;
 export type ProCapability = (typeof PRO_CAPABILITIES)[number];
 
@@ -339,6 +340,30 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
     });
     margin.perCollection = [];
   }
+  // Per-product settings fold the same way (never looser than what the merchant set for any product).
+  if (margin.perProduct.length > 0) {
+    const before = { max: margin.global.maxDiscountPercent, min: margin.global.minMarginPercent ?? null };
+    for (const o of margin.perProduct) {
+      if (o.maxDiscountPercent !== undefined) margin.global.maxDiscountPercent = Math.min(margin.global.maxDiscountPercent, o.maxDiscountPercent);
+      if (o.minMarginPercent !== undefined) {
+        margin.global.minMarginPercent = Math.max(margin.global.minMarginPercent ?? 0, o.minMarginPercent);
+      }
+    }
+    const values: NonNullable<StrippedCapability["values"]> = {};
+    if (margin.global.maxDiscountPercent !== before.max) {
+      values.maxDiscountPercent = { from: before.max, to: margin.global.maxDiscountPercent };
+    }
+    const minAfter = margin.global.minMarginPercent;
+    if (minAfter !== undefined && minAfter !== before.min) values.minMarginPercent = { from: before.min, to: minAfter };
+    stripped.push({
+      capability: "margin_per_product",
+      reason: "folded",
+      count: margin.perProduct.length,
+      removedIds: margin.perProduct.map((o) => o.productId),
+      values,
+    });
+    margin.perProduct = [];
+  }
 
   return { config: out, stripped };
 }
@@ -451,6 +476,17 @@ function sentence(s: StrippedCapability, locale: UiLocale): string {
       return change
         ? `Margin protection per collection is a Pro feature. On Free one minimum applies to the whole store: we used the strictest of your settings, ${change}.`
         : "Margin protection per collection is a Pro feature. On Free one minimum applies to the whole store; your global setting stays as it is.";
+    }
+    case "margin_per_product": {
+      const change = marginChange(s.values, locale);
+      if (cs) {
+        return change
+          ? `Ochrana marže pro jednotlivé produkty je funkce Pro. Ve Free platí jedno minimum pro celý obchod: použili jsme to nejpřísnější z vašeho nastavení, ${change}.`
+          : "Ochrana marže pro jednotlivé produkty je funkce Pro. Ve Free platí jedno minimum pro celý obchod, vaše globální nastavení se nemění.";
+      }
+      return change
+        ? `Margin protection per product is a Pro feature. On Free one minimum applies to the whole store: we used the strictest of your settings, ${change}.`
+        : "Margin protection per product is a Pro feature. On Free one minimum applies to the whole store; your global setting stays as it is.";
     }
   }
 }

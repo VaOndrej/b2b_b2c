@@ -25,16 +25,18 @@
 // (ProductTargetIndex.value) with the core marginImpact — not from orders
 // (that needs read_orders; MVP 7). Loaders only read the stored result.
 
-import { CONFIG_LIMITS, type MarginModule } from "@won/core/discounts/config";
-import { explainGate, gateConfigForPlan } from "@won/core/discounts/plan-gate";
+import { CONFIG_LIMITS, type MarginModule, type WonDiscountsConfig } from "@won/core/discounts/config";
+import { explainGate, gateConfigForPlan, type ShopPlan } from "@won/core/discounts/plan-gate";
 
 import type { MessageKey } from "../../i18n";
-import { COLLECTION_GID } from "../../components/model/ids";
+import { COLLECTION_GID, PRODUCT_GID } from "../../components/model/ids";
 import type { FormDataLike } from "../../components/model/rule-form";
 import type {
   FieldError,
   MarginCollectionView,
+  MarginProductView,
   MarginOverviewView,
+  MarginWatchView,
   MarginRuleImpactView,
   MarginScreenData,
   MarginSettingsView,
@@ -64,6 +66,8 @@ export const MARGIN_FORM_ERRORS = {
   percent: "margin.error.percent",
   collection: "margin.error.collection",
   tooManyCollections: "margin.error.tooManyCollections",
+  product: "margin.error.product",
+  tooManyProducts: "margin.error.tooManyProducts",
 } as const satisfies Record<string, MessageKey>;
 
 const errorKey = (key: MessageKey): MessageKey => key;
@@ -120,8 +124,30 @@ export function readMarginForm(form: FormDataLike): { ok: true; settings: Margin
   if (collections.length > CONFIG_LIMITS.marginOverrides) {
     errors.push({ field: "collectionId[]", key: errorKey(MARGIN_FORM_ERRORS.tooManyCollections), params: { max: CONFIG_LIMITS.marginOverrides } });
   }
+  // Products with their own setting: the same three repeated fields (`productId[]`, `productMin[]`, `productMax[]`).
+  const productIds = form.getAll("productId[]");
+  const productMins = form.getAll("productMin[]");
+  const productMaxes = form.getAll("productMax[]");
+  const products: MarginProductView[] = [];
+  const seenProducts = new Set<string>();
+  for (let i = 0; i < productIds.length; i += 1) {
+    const raw = productIds[i];
+    const id = typeof raw === "string" ? raw.trim() : "";
+    const pMin = percentField(productMins[i], CONFIG_LIMITS.minMarginPercent);
+    const pMax = percentField(productMaxes[i], 100);
+    if (!PRODUCT_GID.test(id)) errors.push({ field: `productId[${i}]`, key: errorKey(MARGIN_FORM_ERRORS.product) });
+    if (pMin === undefined) errors.push({ field: `productMin[${i}]`, key: errorKey(MARGIN_FORM_ERRORS.percent), params: { max: CONFIG_LIMITS.minMarginPercent } });
+    if (pMax === undefined) errors.push({ field: `productMax[${i}]`, key: errorKey(MARGIN_FORM_ERRORS.percent), params: { max: 100 } });
+    if (!PRODUCT_GID.test(id) || pMin === undefined || pMax === undefined) continue;
+    if ((pMin === null && pMax === null) || seenProducts.has(id)) continue;
+    seenProducts.add(id);
+    products.push({ productId: id, title: "", minMarginPercent: pMin, maxDiscountPercent: pMax });
+  }
+  if (products.length > CONFIG_LIMITS.marginProductOverrides) {
+    errors.push({ field: "productId[]", key: errorKey(MARGIN_FORM_ERRORS.tooManyProducts), params: { max: CONFIG_LIMITS.marginProductOverrides } });
+  }
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, settings: { enabled, minMarginPercent: min ?? null, maxDiscountPercent: max as number, collections } };
+  return { ok: true, settings: { enabled, minMarginPercent: min ?? null, maxDiscountPercent: max as number, collections, products } };
 }
 
 /** The save's form options: `configVersion` (F12 token; empty = none stored) and `replaceUnreadable` ("1"). */
@@ -147,6 +173,11 @@ function toModule(settings: MarginSettingsView): MarginModule {
       ...(c.minMarginPercent !== null ? { minMarginPercent: c.minMarginPercent } : {}),
       ...(c.maxDiscountPercent !== null ? { maxDiscountPercent: c.maxDiscountPercent } : {}),
     })),
+    perProduct: settings.products.map((p) => ({
+      productId: p.productId,
+      ...(p.minMarginPercent !== null ? { minMarginPercent: p.minMarginPercent } : {}),
+      ...(p.maxDiscountPercent !== null ? { maxDiscountPercent: p.maxDiscountPercent } : {}),
+    })),
   };
 }
 
@@ -158,6 +189,12 @@ function toSettings(margin: MarginModule, titles: ReadonlyMap<string, string>): 
     collections: margin.perCollection.map((o) => ({
       collectionId: o.collectionId,
       title: titles.get(o.collectionId) ?? "", // never a GID: the screen says "Kolekce bez názvu"
+      minMarginPercent: o.minMarginPercent ?? null,
+      maxDiscountPercent: o.maxDiscountPercent ?? null,
+    })),
+    products: (margin.perProduct ?? []).map((o) => ({
+      productId: o.productId,
+      title: titles.get(o.productId) ?? "", // never a GID: the screen says "Produkt bez názvu"
       minMarginPercent: o.minMarginPercent ?? null,
       maxDiscountPercent: o.maxDiscountPercent ?? null,
     })),
@@ -254,6 +291,10 @@ export const COLLECTION_TITLES_DOCUMENT = `query WonMarginCollectionTitles($ids:
       id
       title
     }
+    ... on Product {
+      id
+      title
+    }
   }
 }`;
 
@@ -265,7 +306,7 @@ async function collectionTitles(ctx: ShopCtx, ids: readonly string[]): Promise<M
       ids: [...new Set(ids)].slice(0, 100),
     });
     for (const node of result.data?.nodes ?? []) {
-      if (node?.__typename === "Collection" && node.id && node.title) out.set(node.id, node.title);
+      if ((node?.__typename === "Collection" || node?.__typename === "Product") && node.id && node.title) out.set(node.id, node.title);
     }
   } catch (error) {
     if (error instanceof Response) throw error;
@@ -290,7 +331,11 @@ export async function loadMarginScreen(ctx: ShopCtx, opts: { focusRuleId?: strin
   const loaded = await loadConfig(ctx.db, ctx.shop);
   const [margin, shopCurrency, timezone] = await Promise.all([gatedMargin(ctx, loaded), marginCurrency(ctx), shopTimezoneOf(ctx)]);
   const { stored, plan, gate, gated, enabled, syncable } = margin;
-  const titles = await collectionTitles(ctx, stored.config.modules.margin.perCollection.map((o) => o.collectionId));
+  // Collections and products with their own setting, in one read (at most 50 + 50 ids).
+  const titles = await collectionTitles(ctx, [
+    ...stored.config.modules.margin.perCollection.map((o) => o.collectionId),
+    ...(stored.config.modules.margin.perProduct ?? []).map((o) => o.productId),
+  ]);
   if (syncable) await ensureCostsFresh(ctx.shop, laneDeps(ctx), enabled).catch(() => undefined);
   const [mirror, coverage, tooLarge, sync] = await Promise.all([
     costMirrorView({ db: ctx.db, shop: ctx.shop, now: ctx.now }, { enabled, timezone }),
@@ -304,6 +349,10 @@ export async function loadMarginScreen(ctx: ShopCtx, opts: { focusRuleId?: strin
     gate.stripped.filter((s) => s.capability === "margin_per_collection"),
     ctx.locale,
   ).map((e) => ({ text: e.text, ...(e.ruleId !== undefined ? { ruleId: e.ruleId } : {}) }));
+  const productGateNotes = explainGate(
+    gate.stripped.filter((s) => s.capability === "margin_per_product"),
+    ctx.locale,
+  ).map((e) => ({ text: e.text }));
   // The impact is what checkout runs: a collection too large to read is folded into the whole store's values (P1-1);
   // the same config the background computes for (impactConfigOf), whether protection is on or off.
   const running = await impactConfigOf(ctx.db, ctx.shop, gated);
@@ -325,6 +374,7 @@ export async function loadMarginScreen(ctx: ShopCtx, opts: { focusRuleId?: strin
     coverage,
     impact,
     gateNotes,
+    productGateNotes,
     tooLarge,
   };
 }
@@ -349,6 +399,20 @@ export async function ruleMarginImpact(ctx: ShopCtx, ruleId: string): Promise<Ma
   if (!rule || rule.variants === 0) return null;
   const state = read.status === "ready" ? "ready" : "updating";
   return plan === "pro" ? { state, discountClass: rule.discountClass, variants: rule.variants } : { state, discountClass: rule.discountClass };
+}
+
+/**
+ * Does protection lower an active discount right now (Přehled's "Co Won hlídá")? Read from what the background
+ * computed, like the rule editor's note: a number only on Pro.
+ */
+async function marginWatch(ctx: ShopCtx, gated: WonDiscountsConfig, plan: ShopPlan, shopCurrency?: string | null): Promise<MarginWatchView> {
+  const currency = await marginCurrency(ctx, shopCurrency);
+  if (!currency) return { state: "computing" };
+  const read = await readMarginImpact({ db: ctx.db, shop: ctx.shop, config: await impactConfigOf(ctx.db, ctx.shop, gated), currency });
+  if (!read.impact) return { state: "computing" };
+  const lowered = read.impact.rules.filter((rule) => rule.variants > 0);
+  if (lowered.length === 0) return { state: "none" };
+  return plan === "pro" ? { state: "some", rules: lowered.length, variants: lowered.reduce((n, rule) => n + rule.variants, 0) } : { state: "some" };
 }
 
 /**
@@ -378,5 +442,6 @@ export async function loadMarginOverview(
     productsWithoutCost: coverage ? coverage.productsWithoutCost : null,
     mirror,
     ...(tooLarge.length > 0 ? { tooLarge } : {}),
+    ...(enabled ? { watch: await marginWatch(ctx, gated, plan, opts.shopCurrency) } : {}),
   };
 }

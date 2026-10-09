@@ -206,6 +206,15 @@ export interface OutletModule {
   reopenOnReturnAfterEnd: ReopenOnReturnMode; // default "ask"
 }
 
+/** One product's own margin setting (Pro): the most specific, it wins over its collections and the global values. */
+export interface MarginProductOverride {
+  productId: string;
+  /** 0–95; absent = what the product would have without its own setting (its collections, else the global value). */
+  minMarginPercent?: number;
+  /** 0–100; absent = the same. */
+  maxDiscountPercent?: number;
+}
+
 export interface MarginCollectionOverride {
   collectionId: string;
   /** 0–95; absent = the global value. */
@@ -229,6 +238,8 @@ export interface MarginModule {
     maxDiscountPercent: number;
   };
   perCollection: MarginCollectionOverride[]; // Pro
+  /** Pro: a product's own setting, before its collections (feedback 9 Oct 2026, 3rd round, bod 7). */
+  perProduct: MarginProductOverride[];
 }
 
 export interface RuleOverride {

@@ -7,6 +7,36 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
+### Třetí kolo 9. 10. 2026 (10 bodů) — zadání a pochopení `won-discounts/pochopeni-zadani-2026-10-09-kolo3.md`
+
+> **CHECKPOINT.** Všech 10 bodů je v kódu na `main`. Důkazy: `won-discounts/evidence/kolo3-2026-10-09/`.
+> - **1, 2:** záložní dárek v rámečku s tlačítkem; věta u posuvníku pryč.
+> - **3:** Milníky mají třetí dlaždici „Vzhled a vlastní CSS“ (obě sekce vzhledu, otevřené). Pole CSS je Pro.
+> - **4:** blok `blocks/top_bar.liquid` („Top bar“) pro záhlaví v editoru; přepínače ve vložení zůstaly jako
+>   záložní cesta. **Důvod:** Horizon nemá v záhlaví žádnou sekci s bloky aplikací (`section.liquid` je tam
+>   zakázaná, `apps.liquid` chybí); Dawn má `apps.liquid` bez omezení. Naživo v editoru neověřeno.
+> - **5:** výprodej do pruhu nahoře nepatří (rozhodnutí Ondřeje), neděláno.
+> - **6:** štítek výprodeje jen u vybrané varianty, bez názvu varianty; skript sleduje výběr.
+> - **7:** `modules.margin.perProduct` → payload `prod`; pořadí produkt → kolekce → obchod po polích; jádro,
+>   Rust (`margin_own`), tabulka slev a karta na webu, PDP podlaha, přehled zásahů, pátá dlaždice. Limit 50.
+>   Free: sloučí se do hodnot obchodu jako kolekce. Parita jádro × Rust: `lines-margin-product-own-setting`.
+> - **8, 9:** sekce pod dlaždicemi marže nejdou sbalit; „Snížené slevy“ (dlaždice i sekce), stránka se při
+>   přepočtu sama obnovuje.
+> - **10:** formulář kampaně má úvodní větu a tři číslované kroky; hlubší přestavba čeká na Ondřejův názor.
+> - **Nezkoušeno naživo:** pokladna s produktovou hranicí (`shopify app dev` + košík), blok v editoru šablony.
+
+### Změny 9. 10. 2026 (7 bodů feedbacku) — plán a výsledek `won-discounts/plan-zmen-2026-10-09.md`
+
+> **CHECKPOINT.** Všech 7 bodů je hotových v pracovním stromu na `main`, **necommitnuto**. Brána zelená
+> (`test:unit` 1 870 + cargo 102 + vitest 699, `test:packages` 943 + 53, `typecheck`, `lint`, `build`,
+> `test:e2e:preview` 32 z 32). Zbývá: Ondřej ověří body 3 a 6 naživo v Shopify adminu, potom commit.
+> **Druhé kolo (6 bodů, tentýž den):** hotovo tamtéž, necommitnuto; brána zelená, `test:e2e:preview` 36 z 36.
+> Milníky jsou seznam se stupněm otevíraným po jednom a náhledem mimo formulář; Přehled má blok „Co Won hlídá a
+> co přinesl“ (WIP: skutečná čísla z objednávek o ochraně marže a kusech navíc se zatím nesbírají).
+> Poučení: nativní posluchač `input` na formuláři, který nastavuje stav, překreslí stránku dřív, než React uslyší
+> událost — řízený `<input type="range">` uvnitř takového formuláře se nehýbe (řešení: neřízený, `defaultValue`).
+
+
 ### Dotažení úkolů 8 a 9 (od 8. 10. 2026 večer) — zadání `won-discounts/prompt-dotazeni-ukol8-9.md`
 
 > **CHECKPOINT (po kompakci kontextu začni tady).** Nejdřív přečti celé zadání

@@ -63,12 +63,13 @@ test("one amount column per market: a currency of one market keeps its key, a sh
 
 test("the Milníky table: a column per market, each starting from the amount stored for the euro", async () => {
   const html = await render("rewards?markets=shared");
-  ok(/<s-number-field name="ms\.shipping\.amount\.EUR@sk" label="1\. stupeň, Slovensko \(EUR\)" labelAccessibilityVisibility="exclusive" value="40"[^>]*suffix="EUR"/.test(html), "Slovensko");
-  ok(/<s-number-field name="ms\.shipping\.amount\.EUR@de" label="1\. stupeň, Německo \(EUR\)" labelAccessibilityVisibility="exclusive" value="40"[^>]*suffix="EUR"/.test(html), "Německo");
+  ok(/<s-number-field name="ms\.shipping\.amount\.EUR@sk" label="Slovensko \(EUR\)" value="40"[^>]*suffix="EUR"/.test(html), "Slovensko");
+  ok(/<s-number-field name="ms\.shipping\.amount\.EUR@de" label="Německo \(EUR\)" value="40"[^>]*suffix="EUR"/.test(html), "Německo");
   ok(!/name="ms\.shipping\.amount\.EUR"/.test(html) && !html.includes("EUR@"+"sk)"), "no shared euro field, no key in a label");
-  assert.deepEqual([...html.matchAll(/data-won-ms-column="[^"]+"[^>]*>([^<]+)</g)].map((m) => m[1]), ["Česko (CZK)", "Slovensko (EUR)", "Německo (EUR)"]);
+  // (Since 9 Oct 2026 the amounts are in each step's own form: a field per market, named by the market.)
+  assert.deepEqual([...html.matchAll(/<s-number-field name="ms\.shipping\.amount\.[^"]+" label="([^"]+)"/g)].map((m) => m[1]), ["Česko (CZK)", "Slovensko (EUR)", "Německo (EUR)"]);
   // Without the second euro market the page is what it was.
-  ok(/<s-number-field name="ms\.shipping\.amount\.EUR" label="1\. stupeň, Slovensko \(EUR\)" labelAccessibilityVisibility="exclusive" value="40"/.test(await render("rewards")), "one euro market: the plain key");
+  ok(/<s-number-field name="ms\.shipping\.amount\.EUR" label="Slovensko \(EUR\)" value="40"/.test(await render("rewards")), "one euro market: the plain key");
 });
 
 test("a save stores each market's amount: different → a key per market, the same → one key, an empty market → not offered there", () => {

@@ -93,6 +93,8 @@ export const CONFIG_LIMITS = Object.freeze({
    * 2: 500 codes + 100 collections alone took 8 890 of the 9 000 B.
    */
   marginOverrides: 50,
+  /** Products with their own margin setting (the same size-limited function config as the collections). */
+  marginProductOverrides: 50,
   /**
    * Highest minimum margin, percent (MVP 2). The floor is cost / (1 − m/100):
    * at 100 % no price would do, and near it the floor explodes, so 95 % (the

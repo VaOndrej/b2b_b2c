@@ -130,6 +130,7 @@ const CAPABILITY_META: { readonly [K in ProCapability]: { label: string; area: A
   milestone_steps: { label: "Up to 6 Milestones steps per market (Free: 2)", area: "rewards" },
   gift_choices: { label: "A choice of gifts at one step", area: "rewards" },
   margin_per_collection: { label: "Margin protection settings per collection", area: "margin" },
+  margin_per_product: { label: "Margin protection settings per product", area: "margin" },
   item_minimum_quantity: { label: "A minimum quantity per product or collection", area: "discounts" },
   code_batch_pattern: { label: "Generated codes with your own pattern", area: "discounts" },
   code_batch_size: { label: "More than 100 generated codes in a batch", area: "discounts" },
@@ -197,6 +198,7 @@ function freeGateReasons(): Map<ProCapability, StrippedCapability["reason"]> {
     { id: "g3", threshold: { USD: 3000 }, choices: ["v4"] },
   ];
   probe.modules.margin.perCollection = [{ collectionId: "1", minMarginPercent: 20 }];
+  probe.modules.margin.perProduct = [{ productId: "1", minMarginPercent: 20 }];
 
   const reasons = new Map<ProCapability, StrippedCapability["reason"]>();
   for (const s of gateConfigForPlan(probe, "free").stripped) if (!reasons.has(s.capability)) reasons.set(s.capability, s.reason);
@@ -250,7 +252,13 @@ margin protection and moving Shopify discounts work in full on Free.
 
 | Pro capability | Area | On Free |
 |---|---|---|
-${available.map(capRow).join("\n")}
+${available.filter((c) => CAPABILITY_META[c].area !== "margin").map(capRow).join("\n")}
+
+For ${en["nav.margin"]}, Pro adds settings of their own for a collection and for a single product:
+
+| Pro capability | Area | On Free |
+|---|---|---|
+${available.filter((c) => CAPABILITY_META[c].area === "margin").map(capRow).join("\n")}
 
 Pro also opens **${en["nav.tryCart"]}** (${en["nav.settings"]} → ${en["settings.tools.title"]}): which discounts apply to a cart and why.
 

@@ -138,12 +138,13 @@ test("návrh 2: an amount for another market is suggested only from the rate set
   assert.equal(asked, 1);
 
   // The gift of the fixture has 1 500 Kč and no amount for Slovakia: the suggestion, or the sentence that no rate is set.
-  // Milníky: one button for the whole amounts table (the empty cells are filled on the click, to be checked and saved).
+  // Milníky (since 9 Oct 2026): the amounts are in each step's own form, with the same suggestion box under the
+  // fields as every other amount form — no page-wide "Navrhnout ostatní trhy" (its one sentence for two opposite
+  // cases confused: "Není co doplnit…" with every field filled in).
   const withRate = await render("rewards");
-  assert.match(withRate, /Vyplňte sloupec Česko \(CZK\)\. Ostatní trhy doplníme podle kurzu, který máte u trhu nastavený v Shopify\./);
-  assert.match(withRate, /data-won-ms-suggest=""[\s\S]{0,900}<s-button variant="secondary">Navrhnout ostatní trhy<\/s-button>/);
+  assert.match(withRate, /data-won-ms-amounts="gift-socks"[\s\S]*?data-won-amount-suggest/);
+  assert.doesNotMatch(withRate, /Navrhnout ostatní trhy|Není co doplnit|data-won-ms-suggest/);
   const without = await render("rewards?rates=none");
-  assert.match(without, /Bez návrhu: Slovensko\. Trh nemá v Shopify ručně nastavený kurz, částku zadejte sami\./);
   assert.doesNotMatch(without, /Navrhnout ostatní trhy/);
 });
 
@@ -151,8 +152,10 @@ test("N9 + N1: Milníky opened from the guide has a first step (free shipping) w
   const html = await render("rewards?state=empty&start=shipping");
   assert.match(html, /<input type="hidden" name="ms\.step" value="shipping"\/>/);
   assert.match(html, /<input type="radio" name="ms\.shipping\.kind"[^>]*checked=""[^>]*value="shipping"\/>/);
-  assert.match(html, /name="ms\.shipping\.amount\.CZK" label="1\. stupeň, Česko \(CZK\)"[^>]*value="1500"/);
-  assert.match(html, /name="ms\.shipping\.amount\.EUR" label="1\. stupeň, Slovensko \(EUR\)"[^>]*value="60"/);
+  assert.match(html, /name="ms\.shipping\.amount\.CZK" label="Česko \(CZK\)"[^>]*value="1500"/);
+  assert.match(html, /name="ms\.shipping\.amount\.EUR" label="Slovensko \(EUR\)"[^>]*value="60"/);
+  // The guide's prefilled step is not stored yet: its form starts open.
+  assert.match(html, /data-won-ms-editor="open"/);
   assert.doesNotMatch(html, /částka chybí, v tomto trhu se stupeň nenabízí/);
   const plain = await render("rewards?state=empty");
   assert.doesNotMatch(plain, /name="ms\.step"/);
@@ -285,15 +288,15 @@ test("7 Oct 2026: quantity levels are numbered cards, suggestions sit in their o
   const picker = html.slice(html.indexOf("data-won-accent-picker"));
   for (const value of ["theme", "green", "blue", "orange", "red", "violet"]) assert.match(picker.slice(0, 6000), new RegExp(`<input type="radio" name="accent"[^>]*value="${value}"`), value);
   assert.match(picker.slice(0, 6000), /Podle webu[\s\S]*Zelená[\s\S]*Fialová/);
-  // (a fixed discount step of Milníky uses the same box for its amounts; the amounts table has one button of its own)
+  // (a step of Milníky uses the same box for its cart values and for a fixed discount's amounts)
   const rewards = await render("rewards?plan=pro&state=discounts");
   assert.match(rewards, /data-won-amount-suggest/);
-  assert.match(rewards, /data-won-ms-suggest=""/);
+  assert.doesNotMatch(rewards, /data-won-ms-suggest=""/);
 });
 
 test("7 Oct 2026: Ochrana marže says 'Takhle by zasáhla' only above rows it describes", async () => {
   const off = (await render("margin?state=off&plan=pro")).replace(/<[^>]+>/g, " ");
-  if (/Žádná aktivní sleva teď pod hranici nejde/.test(off)) assert.doesNotMatch(off, /Takhle by zasáhla/);
+  if (/Ochrana teď žádnou slevu nesnižuje/.test(off)) assert.doesNotMatch(off, /Takhle by zasáhla/);
 });
 
 test("úkol 1 (7 Oct 2026): with Won switched off on the storefront, the colour picker says the colour cannot show there", async () => {

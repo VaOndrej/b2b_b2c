@@ -163,3 +163,24 @@ test("an empty cell of an import puts the extension's own text back", () => {
   const plan = planImport("key,cs\ntiers.heading,", ROWS, LANGS, VALUES);
   assert.deepEqual(plan.changes, [{ key: "tiers.heading", locale: "cs", from: "Kup víc, plať míň", to: "" }]);
 });
+
+test("feedback 9 Oct 2026, bod 1: a language is complete when the customer never reads another language in it", async () => {
+  const { missingTexts, languageProgressText } = await import("../../app/components/model/translations.ts");
+  const { translator } = await import("../../app/i18n/index.ts");
+  const cs = translator("cs");
+  const rows = ["a", "b", "c", "d", "e"].map((key) => ({ key, defaults: { cs: "x", sk: "x", en: "x" } }));
+  // The extension's own languages are always complete, with or without the merchant's texts.
+  assert.equal(missingTexts("cs", {}, rows), 0);
+  assert.equal(missingTexts("sk", undefined, rows), 0);
+  assert.equal(missingTexts("en-GB", {}, rows), 0);
+  // Any other language lacks every text the merchant has not written (a blank one is not written).
+  assert.equal(missingTexts("de", { a: "Hallo", b: "  " }, rows), 4);
+  assert.equal(missingTexts("de", Object.fromEntries(rows.map((row) => [row.key, "x"])), rows), 0);
+  // Přehled knows only the counts.
+  assert.equal(missingTexts("de", { a: "Hallo" }, 5), 4);
+  assert.equal(missingTexts("cs", undefined, 5), 0);
+  assert.equal(languageProgressText(0, cs), "Hotovo");
+  assert.equal(languageProgressText(1, cs), "Chybí 1 text");
+  assert.equal(languageProgressText(4, cs), "Chybí 4 texty");
+  assert.equal(languageProgressText(37, cs), "Chybí 37 textů");
+});

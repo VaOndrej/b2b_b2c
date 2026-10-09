@@ -51,6 +51,7 @@ const SETTINGS: MarginSettingsView = {
     { collectionId: "gid://shopify/Collection/7", title: "Podzimní kolekce", minMarginPercent: 30, maxDiscountPercent: null },
     { collectionId: "gid://shopify/Collection/9", title: "Doplňky", minMarginPercent: null, maxDiscountPercent: 10 },
   ],
+  products: [],
 };
 
 const NO_RAW = /\b(max_percent|cost|collection|global|running|fresh|stale|failed|off)\b(?![a-z])/;
@@ -66,6 +67,9 @@ test("form field names are the contract with readMarginForm (margin.server.ts)",
     collectionId: "collectionId[]",
     collectionMin: "collectionMin[]",
     collectionMax: "collectionMax[]",
+    productId: "productId[]",
+    productMin: "productMin[]",
+    productMax: "productMax[]",
   });
   assert.deepEqual(MARGIN_INTENT, { save: "save", refreshCosts: "refreshCosts" });
   assert.equal(MARGIN_ACTION, "/app/margin");
@@ -101,7 +105,7 @@ test("live draft: reads the typed values, keeps the stored one where a field doe
   const off = new FormData();
   off.set("minMarginPercent", "");
   off.set("maxDiscountPercent", "30");
-  assert.deepEqual(readMarginDraft(off, SETTINGS), { enabled: false, minMarginPercent: null, maxDiscountPercent: 30, collections: [] });
+  assert.deepEqual(readMarginDraft(off, SETTINGS), { enabled: false, minMarginPercent: null, maxDiscountPercent: 30, collections: [], products: [] });
   assert.equal(readPercentField(null), null);
   assert.equal(readPercentField(" "), null);
   assert.equal(readPercentField("7.5"), 7.5);
@@ -140,8 +144,8 @@ test("cost mirror: one sentence per state, the refresh button only where it can 
   const texts = states.map((s) => mirrorText(s, cs));
   assert.deepEqual(texts, [
     "Nákupní ceny načítáme, jen když je ochrana zapnutá.",
-    "Právě načítáme nákupní ceny: 340 z 1\u00a0240.",
-    "Právě načítáme nákupní ceny (zatím 250).",
+    "Právě načítáme nákupní ceny: 340 z 1\u00a0240 variant. Stránka se obnovuje sama.",
+    "Právě načítáme nákupní ceny (zatím 250 variant). Stránka se obnovuje sama.",
     "Aktuální, naposledy načteno 28. 9. 2026 06:10.",
     "Naposledy načteno 26. 9. 2026 06:10. Načti je znovu, ať pokladna zná aktuální ceny.",
     "Načtení se zatím nedokončilo. Načti je znovu.",
@@ -161,7 +165,7 @@ test("Přehled zásahů is counted per rule from the full counts (audit P2-2), n
   assert.equal(impactSummary(view({ rules: [rule("a", 1)] }), true, true, en), "Protection lowers 1 discount");
   assert.equal(impactSummary(view({ status: "updating" }), true, true, cs), "Ochrana sníží 3 slevy · přepočítává se");
   assert.equal(impactSummary(view({ status: "computing", rules: [] }), true, true, cs), "Počítáme, kde ochrana zasáhne");
-  assert.equal(impactSummary(view({ rules: [] }), true, true, cs), "Žádná aktivní sleva teď pod hranici nejde");
+  assert.equal(impactSummary(view({ rules: [] }), true, true, cs), "Ochrana teď žádnou slevu nesnižuje");
   assert.equal(impactSummary(null, false, true, cs), "Kde ochrana sníží slevy a o kolik");
   assert.equal(impactRuleSummary(rule("a", 834), cs), "Sníží se u 834 variant");
   assert.equal(impactRuleSummary(rule("a", 1), cs), "Sníží se u 1 varianty");
@@ -336,14 +340,14 @@ test("B14 / P4 helpers: a refused form's values are echoed and read back; the co
   assert.deepEqual(refusedValues(refused), values);
   assert.equal(refusedValues(withValues({ ok: true as const, message: "saved" as const }, () => values)), null);
   // The same pure reader works on the echoed values (the live summary after a remount).
-  const stored = { enabled: false, minMarginPercent: 20, maxDiscountPercent: 40, collections: [{ collectionId: "gid://shopify/Collection/7", title: "Podzim", minMarginPercent: null, maxDiscountPercent: null }] };
+  const stored = { enabled: false, minMarginPercent: 20, maxDiscountPercent: 40, collections: [{ collectionId: "gid://shopify/Collection/7", title: "Podzim", minMarginPercent: null, maxDiscountPercent: null }], products: [] };
   const draft = readMarginDraft(asForm(values), stored);
   assert.equal(draft.enabled, true);
   assert.equal(draft.maxDiscountPercent, 35);
   assert.equal(draft.minMarginPercent, 20, "an out-of-range percent keeps the stored one in the summary");
   assert.equal(draft.collections[0]!.title, "Podzim");
 
-  assert.equal(collectionsSummary([], cs), "Všude platí nastavení výš");
+  assert.equal(collectionsSummary([], cs), "Všude platí nastavení pro celý obchod");
   assert.equal(collectionsSummary([{ title: "Podzim" }, { title: "" }], cs), "Vlastní nastavení: Podzim a Kolekce bez názvu");
   assert.match(collectionsSummary(Array.from({ length: 7 }, (_, i) => ({ title: `K${i}` })), cs), /^Vlastní nastavení: K0, K1, K2, K3, K4 a další \(2\)$/);
 });

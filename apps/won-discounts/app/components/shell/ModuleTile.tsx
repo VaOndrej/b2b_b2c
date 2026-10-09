@@ -25,6 +25,7 @@ const GRID_CSS = `
 .won-tiles>*{display:grid;min-width:0}
 .won-tile{min-height:104px}
 @media (min-width:900px){.won-tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.won-tiles--4{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (min-width:1100px){.won-tiles--5{grid-template-columns:repeat(5,minmax(0,1fr))}}
 .won-tile{height:100%;box-sizing:border-box}
 .won-tile__about{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .won-tile__active{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -41,15 +42,16 @@ const GRID_CSS = `
 .won-view-tile{row-gap:8px}
 .won-view-tile__glyph{grid-row:1}
 .won-view-tile__labels{align-self:center}
+.won-view-tile__labels [data-won-state]{max-width:100%;box-sizing:border-box;white-space:normal!important;border-radius:10px!important;line-height:1.25}
 .won-view-tile__text{grid-column:1 / -1}}
 `;
 
-/** `columns={4}`: a page with four parts keeps them in one row on a desktop. */
-export function ModuleTiles({ label, children, columns = 3 }: { label: string; children: ReactNode; columns?: 3 | 4 }) {
+/** `columns={4}`: a page with four parts keeps them in one row on a desktop; `{5}` five on a wide one (three a row below 1 100 px). */
+export function ModuleTiles({ label, children, columns = 3 }: { label: string; children: ReactNode; columns?: 3 | 4 | 5 }) {
   return (
     <nav aria-label={label}>
       <style data-won-tiles-css="" dangerouslySetInnerHTML={{ __html: GRID_CSS }} />
-      <div className={columns === 4 ? "won-tiles won-tiles--4" : "won-tiles"} data-won-tiles>
+      <div className={columns === 4 ? "won-tiles won-tiles--4" : columns === 5 ? "won-tiles won-tiles--5" : "won-tiles"} data-won-tiles>
         {children}
       </div>
     </nav>

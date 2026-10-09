@@ -248,7 +248,7 @@ test("honest sentences' facts: margin protection on, active product rules that c
     ...c,
     modules: {
       ...c.modules,
-      margin: { enabled: true, global: { maxDiscountPercent: 40 }, perCollection: [] },
+      margin: { enabled: true, global: { maxDiscountPercent: 40 }, perCollection: [], perProduct: [] },
       codes: {
         rules: [
           { id: "p1", enabled: true, name: "Mikiny −20 %", method: "automatic", value: { kind: "percentage", percent: 20 }, target: { kind: "products", productIds: [P1], variantIds: [] } },

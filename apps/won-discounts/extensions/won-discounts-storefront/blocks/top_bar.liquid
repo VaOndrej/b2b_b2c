@@ -1,0 +1,78 @@
+{% comment %}
+  Top bar (feedback 9 Oct 2026, 3rd round, bod 4): the strip with the Milestones sentence and / or the running
+  campaign as a block of its own, so the merchant adds it in the theme editor like any other piece — in the header
+  group (Add section → Apps) above or below the theme's announcement bar — sees it in the editor's tree, moves it
+  and hides it there. A theme's own announcement bar takes no app block (Dawn and Horizon list only their own block
+  type), so this is the nearest thing to an announcement item an app can offer.
+  It stays where the merchant put it (the embed's fallback strip is the one that is moved to the top of <body>) and
+  hides itself while it has nothing to say (assets/won-discounts-blocks.js); in the theme editor it shows a sample
+  instead of a gap. With this block on the page the embed's own strip is not shown a second time.
+{% endcomment %}
+{%- liquid
+  assign won_cfg = app.metafields.won_discounts.storefront_config.value
+  assign won_rw = won_cfg.rewards
+  assign won_camps = won_cfg.camps
+  assign won_cur = cart.currency.iso_code
+  assign won_tx_key = 'tx_' | append: request.locale.iso_code | downcase
+  assign won_tx = app.metafields.won_discounts[won_tx_key].value
+  assign won_ends = 'campaign.ends' | t
+  assign won_ends = won_tx['campaign.ends'] | default: won_ends
+  assign won_units = 'campaign.units' | t
+  assign won_units = won_tx['campaign.units'] | default: won_units
+  assign won_sample = 'campaign.sample' | t
+-%}
+{%- capture won_rows -%}
+  {%- if block.settings.show_rewards and won_rw != blank -%}
+    {%- render 'won-milestones', rw: won_rw, cur: won_cur, size: 'bar', tx: won_tx -%}
+  {%- endif -%}
+{%- endcapture -%}
+{%- assign won_rows = won_rows | strip -%}
+<div
+  class="won-topbar won-topbar--block"
+  data-won-discounts-topbar-block
+  style="--won-topbar-bg: {{ block.settings.background }}; --won-topbar-text: {{ block.settings.text_color }};"
+  {% unless request.design_mode %}hidden{% endunless %}
+  {{ block.shopify_attributes }}
+>
+  {%- if block.settings.show_campaign -%}
+    {%- if won_camps != blank or request.design_mode -%}
+      <div
+        class="won-campaign"
+        data-won-discounts-campaign
+        data-text="{{ block.settings.campaign_text | escape }}"
+        data-ends="{{ won_ends | escape }}"
+        data-units="{{ won_units | escape }}"
+        {% if request.design_mode %}data-sample="{{ won_sample | escape }}"{% endif %}
+        hidden
+      >
+        <script type="application/json">{% if won_camps != blank %}{{ won_camps | json | replace: '</', '<\/' }}{% else %}[]{% endif %}</script>
+        <p class="won-campaign__title"></p>
+        <p class="won-campaign__time" aria-live="off"></p>
+      </div>
+    {%- endif -%}
+  {%- endif -%}
+  {%- if won_rows contains 'won-ms' -%}
+    <div class="won-progress" data-won-discounts-progress data-size="bar">
+      {{ won_rows }}
+    </div>
+  {%- elsif request.design_mode and block.settings.show_rewards -%}
+    <p class="won-topbar__empty">{{ 'progress.empty' | t }}</p>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Top bar",
+  "target": "section",
+  "stylesheet": "won-discounts.css",
+  "javascript": "won-discounts-blocks.js",
+  "settings": [
+    { "type": "paragraph", "content": "A strip with the reward progress and the running campaign. Add it to the header, above or below the announcement bar. It hides itself when it has nothing to say." },
+    { "type": "checkbox", "id": "show_rewards", "label": "Show reward progress", "default": true },
+    { "type": "checkbox", "id": "show_campaign", "label": "Show the running campaign", "default": true },
+    { "type": "text", "id": "campaign_text", "label": "Campaign text", "info": "{name} is replaced with the campaign's name.", "default": "{name}" },
+    { "type": "color", "id": "background", "label": "Background", "default": "#111111" },
+    { "type": "color", "id": "text_color", "label": "Text", "default": "#ffffff" }
+  ]
+}
+{% endschema %}

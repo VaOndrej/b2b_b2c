@@ -277,6 +277,19 @@ test("themePlacementsIn: each block by its template; the top bar from the embed'
     topBarRewards: true,
     topBarCampaign: false,
   });
+  // The "Top bar" block in the header group (9 Oct 2026, bod 4) counts like the embed's switches; its own switches decide what it shows.
+  const headerGroup = (settings: Record<string, unknown>, disabled = false) =>
+    JSON.stringify({ sections: { apps: { type: "apps", blocks: { a: { type: `${APP}/top_bar/019a`, disabled, settings } } } }, order: ["apps"] });
+  assert.deepEqual(themePlacementsIn([{ filename: "sections/header-group.json", content: headerGroup({}) }]), { topBarRewards: true, topBarCampaign: true });
+  assert.deepEqual(themePlacementsIn([{ filename: "sections/header-group.json", content: headerGroup({ show_campaign: false }) }]), { topBarRewards: true, topBarCampaign: false });
+  assert.deepEqual(themePlacementsIn([{ filename: "sections/header-group.json", content: headerGroup({}, true) }]), { topBarRewards: false, topBarCampaign: false });
+  assert.deepEqual(
+    themePlacementsIn([
+      { filename: "config/settings_data.json", content: embedSettings({ top_bar_rewards: false, top_bar_campaign: true }) },
+      { filename: "sections/header-group.json", content: JSON.stringify({ sections: {} }) },
+    ]),
+    { topBarRewards: false, topBarCampaign: true },
+  );
   // A disabled block or a disabled embed does not count.
   const disabled = JSON.stringify({ sections: { main: { type: "main", blocks: { a: { type: `${APP}/outlet_badge/1`, disabled: true } } } } });
   assert.equal(themePlacementsIn([{ filename: "templates/product.json", content: disabled }]).outletBadge, false);

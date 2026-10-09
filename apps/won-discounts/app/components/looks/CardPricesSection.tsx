@@ -12,7 +12,24 @@ import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 
-export function CardPricesSection({ cardPrices, cardBlockUrl, configVersion }: { cardPrices: boolean; cardBlockUrl: string | null; configVersion: string | null }) {
+export function CardPricesSection({
+  cardPrices,
+  cardBlockUrl,
+  viewUrl = null,
+  editorUrl = null,
+  themeName = null,
+  configVersion,
+}: {
+  cardPrices: boolean;
+  cardBlockUrl: string | null;
+  /** A storefront page with product cards (the live theme): shown only while the line is on, else there is nothing to see. */
+  viewUrl?: string | null;
+  /** The live theme's editor on the collection template. */
+  editorUrl?: string | null;
+  /** The live theme's name, when the page knows it. */
+  themeName?: string | null;
+  configVersion: string | null;
+}) {
   const { t } = useT();
   const fetcher = useFetcher<UiResult>();
   const actions = useFormActions();
@@ -34,6 +51,29 @@ export function CardPricesSection({ cardPrices, cardBlockUrl, configVersion }: {
           <s-checkbox name={LOOK_FIELD.cardPrices} value="on" label={t("looks.cards.toggle")} checked={boolAttr(cardPrices)} />
           <RowNote>{t("looks.cards.what")}</RowNote>
           <RowNote>{t("looks.cards.auto")}</RowNote>
+          {/* Bod 6: how it looks in the live theme, one click away — only while it is on (nothing to see otherwise). */}
+          {cardPrices && (viewUrl || editorUrl) ? (
+            <div data-won-cards-view="">
+              <WonRow
+                action={
+                  <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 8 }}>
+                    {viewUrl ? (
+                      <s-button href={viewUrl} target="_blank" variant="primary">
+                        {t("looks.cards.view")}
+                      </s-button>
+                    ) : null}
+                    {editorUrl ? (
+                      <s-button href={editorUrl} target="_blank" variant="secondary">
+                        {t("looks.cards.editor")}
+                      </s-button>
+                    ) : null}
+                  </span>
+                }
+              >
+                <RowNote>{themeName ? t("looks.cards.viewNote.theme", { theme: themeName }) : t("looks.cards.viewNote")}</RowNote>
+              </WonRow>
+            </div>
+          ) : null}
           <WonRow
             action={
               cardBlockUrl ? (

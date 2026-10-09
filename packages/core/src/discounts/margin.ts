@@ -22,6 +22,11 @@
 // Collections (Pro): a product in collections with their own setting takes the
 // strictest across them (max m, min p); a field a collection leaves empty is the
 // global value. Free: plan-gate.ts has already folded collections into global.
+// Products (Pro, feedback 9 Oct 2026): a product with its OWN setting takes it
+// before anything else — each of its two fields, when set, replaces what the
+// product would have from its collections or the global values (so it can be
+// looser than a collection too: the merchant said so for that product). The
+// payload carries them as `prod`, keyed by the product's numeric id.
 // A product whose metafield lists more than MAX_MARGIN_REFS (4) refs is not
 // resolved ref by ref: it takes the payload's strictest setting (every
 // collection folded into the global values), never looser than any of its
@@ -49,15 +54,15 @@ export type MarginCollectionTuple = [number | null, number | null];
  */
 export type FunctionMarginPayload =
   | { enabled: false }
-  | { enabled: true; min?: number; max: number; cur?: string; col?: Record<string, MarginCollectionTuple> };
+  | { enabled: true; min?: number; max: number; cur?: string; col?: Record<string, MarginCollectionTuple>; prod?: Record<string, MarginCollectionTuple> };
 
 export type MarginBasis = "cost" | "max_percent";
-export type MarginSource = "global" | "collection";
+export type MarginSource = "global" | "collection" | "product";
 
 export interface MarginSettings {
   minMarginPercent: number;
   maxDiscountPercent: number;
-  /** "collection" when at least one of the product's margin collections has a setting. */
+  /** "product" when the product has its own setting; "collection" when at least one of its margin collections has one. */
   source: MarginSource;
 }
 
@@ -115,12 +120,24 @@ export function buildMarginPayload(margin: ReadonlyDeep<MarginModule> | undefine
       : [m, p];
     any = true;
   }
+  const prod: Record<string, MarginCollectionTuple> = {};
+  let anyProduct = false;
+  for (const o of margin.perProduct ?? []) {
+    const m = o.minMarginPercent ?? null;
+    const p = o.maxDiscountPercent ?? null;
+    const key = variantKey(o.productId);
+    // The first setting of a product is the one (config/margin.ts keeps one a product).
+    if ((m === null && p === null) || key === "" || hasOwn(prod, key)) continue;
+    prod[key] = [m, p];
+    anyProduct = true;
+  }
   return {
     enabled: true,
     ...(min !== undefined ? { min } : {}),
     max: margin.global.maxDiscountPercent,
     ...(CURRENCY_RE.test(currency) ? { cur: currency } : {}),
     ...(any ? { col } : {}),
+    ...(anyProduct ? { prod } : {}),
   };
 }
 
@@ -143,14 +160,16 @@ function readTuplePart(v: unknown, max: number): number | null | undefined {
  *   - `col`: ignored unless an object; each entry is kept only when it is an
  *     array of exactly 2 elements, each `null` or a finite number (clamped: the
  *     first to 0–95, the second to 0–100); any other entry is ignored (its
- *     collection then has no own setting: the global values apply).
+ *     collection then has no own setting: the global values apply);
+ *   - `prod`: read exactly as `col` (a junk entry = the product has no own
+ *     setting: its collections, else the global values).
  * Never throws. Protection that is ON never reads as off because of a junk
  * optional field: a junk `min` means "never below the cost", a junk `cur` the
  * `max` ceiling for every line, a junk `col` entry the global values.
  */
 export function readMarginPayload(raw: unknown): FunctionMarginPayload {
   if (!isRecord(raw) || raw.enabled !== true || !finite(raw.max)) return { enabled: false };
-  const out: { enabled: true; min?: number; max: number; cur?: string; col?: Record<string, MarginCollectionTuple> } = {
+  const out: { enabled: true; min?: number; max: number; cur?: string; col?: Record<string, MarginCollectionTuple>; prod?: Record<string, MarginCollectionTuple> } = {
     enabled: true,
     max: clamp(raw.max, 100),
   };
@@ -170,7 +189,34 @@ export function readMarginPayload(raw: unknown): FunctionMarginPayload {
     }
     if (any) out.col = col;
   }
+  if (isRecord(raw.prod)) {
+    const prod: Record<string, MarginCollectionTuple> = {};
+    let any = false;
+    for (const key of Object.keys(raw.prod)) {
+      const v = raw.prod[key];
+      if (!Array.isArray(v) || v.length !== 2) continue;
+      const m = readTuplePart(v[0], CONFIG_LIMITS.minMarginPercent);
+      const p = readTuplePart(v[1], 100);
+      if (m === undefined || p === undefined) continue;
+      prod[key] = [m, p];
+      any = true;
+    }
+    if (any) out.prod = prod;
+  }
   return out;
+}
+
+/**
+ * The product's own setting laid over `base` (what it has from its collections
+ * or the global values): each field the product sets replaces the base's, an
+ * empty one keeps it. `productId` = its GID or numeric id; no entry → `base`.
+ */
+export function applyProductMargin(payload: FunctionMarginPayload, base: MarginSettings | null, productId: string | null | undefined): MarginSettings | null {
+  if (!base || !payload.enabled || !payload.prod || !productId) return base;
+  const key = variantKey(productId);
+  if (key === "" || !hasOwn(payload.prod, key)) return base;
+  const [m, p] = payload.prod[key];
+  return { minMarginPercent: m ?? base.minMarginPercent, maxDiscountPercent: p ?? base.maxDiscountPercent, source: "product" };
 }
 
 /**
@@ -246,10 +292,11 @@ export function strictestMargin(payload: FunctionMarginPayload): MarginSettings 
  * The settings of a product by its metafield's `marginRefs`: `count` = how many
  * entries the metafield's array has (junk included; normalizeCart
  * `marginRefCount`). More than MAX_MARGIN_REFS → strictestMargin, else
- * resolveMargin over the (string) refs.
+ * resolveMargin over the (string) refs. With `productId`, the product's own
+ * setting comes first (applyProductMargin).
  */
-export function resolveProductMargin(payload: FunctionMarginPayload, marginRefs: readonly string[], count = marginRefs.length): MarginSettings | null {
-  return count > MAX_MARGIN_REFS ? strictestMargin(payload) : resolveMargin(payload, marginRefs);
+export function resolveProductMargin(payload: FunctionMarginPayload, marginRefs: readonly string[], count = marginRefs.length, productId?: string | null): MarginSettings | null {
+  return applyProductMargin(payload, count > MAX_MARGIN_REFS ? strictestMargin(payload) : resolveMargin(payload, marginRefs), productId);
 }
 
 /** Minor units per major unit of a currency: exactly 1, 100 or 1000 (money.ts exponents 0, 2, 3). */
@@ -378,7 +425,7 @@ export function marginImpact(
   const payload = buildMarginPayload({ ...config.modules.margin, enabled: true }, currency);
   let withoutCost = 0;
   const measured = variants.map((v) => {
-    const settings = resolveProductMargin(payload, v.marginRefs, v.marginRefCount) as MarginSettings;
+    const settings = resolveProductMargin(payload, v.marginRefs, v.marginRefCount, v.productId) as MarginSettings;
     const costMinor = finite(v.cost) && v.cost > 0 ? v.cost : null;
     if (costMinor === null) withoutCost += 1;
     const price = finite(v.price) ? Math.max(0, Math.floor(v.price)) : 0;

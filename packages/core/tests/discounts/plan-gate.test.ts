@@ -120,7 +120,7 @@ test("Free: every Pro capability is out of the gated config; the stored config i
   ]);
   // Per-collection margin folds into the global floor, the strictest value wins (never a larger discount).
   // (`enabled` is the stored switch — the gate folds values, it never turns protection on or off.)
-  assert.deepEqual(free.modules.margin, { enabled: false, global: { maxDiscountPercent: 20, minMarginPercent: 25 }, perCollection: [] });
+  assert.deepEqual(free.modules.margin, { enabled: false, global: { maxDiscountPercent: 20, minMarginPercent: 25 }, perCollection: [], perProduct: [] });
 
   // Exactly what changed: no entry for the rule that was already off or the campaign that already
   // ended ("summer", July), the ids of what was removed, and the margin's old and new values.

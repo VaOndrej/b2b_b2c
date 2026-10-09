@@ -221,3 +221,14 @@ export function storeStatuses(facts: StoreFacts): StoreStatuses {
   const statuses = rules.map((rule) => ruleStatus(rule, ctx));
   return { warnings, rules: statuses, modules: moduleStatuses(facts.signals, { plan: facts.plan ?? "pro", rules: statuses, warned: warningCounts(rules, warnings) }) };
 }
+
+/**
+ * A tile about a place on the storefront (the quantity table, the ladder in the cart, a campaign's places) carries
+ * the same labels as every other tile (feedback 9 Oct 2026: "aktivní držíme vždy u dlaždic"): on the site = active,
+ * missing = to resolve, not known = no label (never "Neaktivní" for something that could not be checked).
+ */
+export function placementStatus(placement: "in_theme" | "missing" | "unknown"): ModuleStatus | undefined {
+  if (placement === "in_theme") return { state: "active", issues: 0 };
+  if (placement === "missing") return { state: "attention", issues: 1 };
+  return undefined;
+}

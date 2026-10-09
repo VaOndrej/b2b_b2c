@@ -36,7 +36,8 @@ test("view tiles: low, the sentence never cut, the state once; a click opens the
   await expect(page.locator("[data-won-view-tile] [data-won-tile-about]")).toHaveCount(0);
   // The label is on the tile and not again in the section's header under it.
   await expect(page.locator('[data-won-view-tile="global"] [data-won-state="active"]')).toHaveCount(1);
-  await expect(page.locator("section#global [data-won-state]")).toHaveCount(0);
+  // (Under the header the whole-store discount is a list row with its own label — feedback 9 Oct 2026, bod 4.)
+  await expect(page.locator("section#global [data-won-state]:not([data-won-tiers-list] *)")).toHaveCount(0);
   await page.locator('[data-won-view-tile="table"]').click();
   // The view has two panels: the page's own form, and under it the look that saves on its own.
   const panels = page.locator('[data-won-view-panel="table"]');
@@ -119,35 +120,46 @@ test("Nastavení: the dot is only at the section with a state; a link of the lis
   await plain.close();
 });
 
-test("Milníky: the row of step numbers follows the live list and marks a step that a market does not get", async ({ page }) => {
-  const marks = () => page.evaluate(() => [...document.querySelectorAll("[data-won-jump-row] a")].map((a) => `${a.getAttribute("href")}${a.getAttribute("data-won-jump-state") ? "!" : ""}`).join(" "));
+test("Milníky: the ladder is a list; a step's form opens on \"Upravit\", one at a time, and the rows follow what is typed", async ({ page }) => {
+  const rows = () => page.evaluate(() => [...document.querySelectorAll("[data-won-ms-step]")].map((el) => `${el.id}${el.querySelector('[data-won-ms-editor="open"]') ? "*" : ""}`).join(" "));
   await open(page, "rewards");
-  expect(await marks()).toBe("#step-1 #step-2! #step-3");
-  // The amount for Slovensko typed in: the red goes without a save.
-  const empty = await page.evaluate(() => [...document.querySelectorAll<HTMLElement & { value: string }>("[data-won-ms-amounts] s-number-field")].filter((f) => !f.value).map((f) => f.getAttribute("name") ?? ""));
+  // Three stored steps, every form closed: nothing can be changed by a stray click.
+  expect(await rows()).toBe("step-1 step-2 step-3");
+  await expect(page.locator("[data-won-ms-editor] s-number-field").first()).toBeHidden();
+  // The second step has no amount for Slovensko: its closed row says so. Opened and typed in, the red goes without a save.
+  const second = page.locator("[data-won-ms-step]").nth(1);
+  await expect(second).toContainText("Slovensko (EUR): částka chybí");
+  await second.locator("s-button", { hasText: "Upravit" }).click();
+  expect(await rows()).toBe("step-1 step-2* step-3");
+  const empty = await page.evaluate(() => [...document.querySelectorAll<HTMLElement & { value: string }>('[data-won-ms-editor="open"] [data-won-ms-amounts] s-number-field')].filter((f) => !f.value).map((f) => f.getAttribute("name") ?? ""));
   expect(empty).toHaveLength(1);
   await typeInto(page, empty[0] ?? "", "60");
-  await expect.poll(marks).toBe("#step-1 #step-2 #step-3");
-  // A jump lands on the step's card and writes no hash.
-  await page.locator('[data-won-jump-row] a[href="#step-3"]').click();
-  await expect.poll(() => page.evaluate(() => { const top = document.getElementById("step-3")?.getBoundingClientRect().top; return top !== undefined && top >= 0 && top < window.innerHeight; })).toBe(true);
-  expect(new URL(page.url()).hash).toBe("");
+  await expect(second).not.toContainText("částka chybí");
+  await expect(second.locator("[data-won-ms-row]")).toContainText("60");
+  // Another step opened: the first one closes (its fields stay in the form).
+  await page.locator("[data-won-ms-step]").nth(2).locator("s-button", { hasText: "Upravit" }).click();
+  expect(await rows()).toBe("step-1 step-2 step-3*");
+  expect(await page.evaluate((name) => new FormData(document.querySelector<HTMLFormElement>("form[data-save-bar]")!).get(name), empty[0] ?? "")).toBe("60");
+  // A link to a step from another page opens that step.
+  await open(page, "rewards#step-3");
+  await expect.poll(rows).toBe("step-1 step-2 step-3*");
 
-  // From nothing to the plan's maximum and back: no row under two steps, never a sideways scroll at 390 px.
+  // From nothing to the plan's maximum and back: a new step opens by itself, never a sideways scroll at 390 px.
   await open(page, "rewards?state=empty&plan=pro", 390);
   const add = page.locator("s-button", { hasText: /^Přidat (první )?stupeň$/ });
-  await expect(page.locator("[data-won-jump-row]")).toHaveCount(0);
+  await expect(page.locator('[data-won-ms-list="empty"]')).toHaveCount(1);
   await add.click();
   await expect(page.locator("[data-won-ms-step]")).toHaveCount(1);
-  await expect(page.locator("[data-won-jump-row]")).toHaveCount(0);
+  expect(await rows()).toBe("step-1*");
   for (let steps = 2; steps <= 12; steps += 1) {
     await add.click();
-    await expect(page.locator("[data-won-jump-row] a")).toHaveCount(steps);
+    await expect(page.locator("[data-won-ms-step]")).toHaveCount(steps);
   }
+  await expect(page.locator('[data-won-ms-editor="open"]')).toHaveCount(1);
   expect(await sideways(page)).toBeLessThanOrEqual(0);
   await page.locator("[data-won-ms-step]").nth(1).locator("s-button", { hasText: "Odebrat" }).click();
-  await expect(page.locator("[data-won-jump-row] a")).toHaveCount(11);
   expect(await page.evaluate(() => [...document.querySelectorAll("[data-won-ms-step]")].map((el) => el.id).join(" "))).toBe(Array.from({ length: 11 }, (_, i) => `step-${i + 1}`).join(" "));
+  await expect(add).toBeEnabled();
 });
 
 test("Přehled: the module tiles are above the discounts made in Shopify, and `#native` still leads to them", async ({ page }) => {

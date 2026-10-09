@@ -97,6 +97,7 @@ const settings = (patch: Partial<MarginSettingsView> = {}): MarginSettingsView =
   minMarginPercent: 25,
   maxDiscountPercent: 30,
   collections: [],
+  products: [],
   ...patch,
 });
 
@@ -136,10 +137,23 @@ test("readMarginForm: the toggle, percents (a comma decimal too), collections in
         { collectionId: COLLECTION, title: "", minMarginPercent: 30, maxDiscountPercent: null },
         { collectionId: "gid://shopify/Collection/6", title: "", minMarginPercent: null, maxDiscountPercent: 10 },
       ],
+      products: [],
     },
   });
+  // Products with their own setting (bod 7): the same three repeated fields; an empty row is dropped, a repeated product keeps its first row.
+  const withProducts = readMarginForm(
+    formOf([
+      ["maxDiscountPercent", "40"],
+      ["productId[]", "gid://shopify/Product/1"], ["productMin[]", "7,5"], ["productMax[]", ""],
+      ["productId[]", "gid://shopify/Product/2"], ["productMin[]", ""], ["productMax[]", ""],
+      ["productId[]", "gid://shopify/Product/1"], ["productMin[]", "50"], ["productMax[]", ""],
+    ]),
+  );
+  assert.deepEqual(withProducts.ok && withProducts.settings.products, [{ productId: "gid://shopify/Product/1", title: "", minMarginPercent: 7.5, maxDiscountPercent: null }]);
+  const badProduct = readMarginForm(formOf([["maxDiscountPercent", "40"], ["productId[]", "gid://shopify/Collection/1"], ["productMin[]", "120"], ["productMax[]", ""]]));
+  assert.deepEqual(!badProduct.ok && badProduct.errors.map((e) => e.field), ["productId[0]", "productMin[0]"]);
   const off = readMarginForm(formOf([["minMarginPercent", ""], ["maxDiscountPercent", "50"]]));
-  assert.deepEqual(off, { ok: true, settings: { enabled: false, minMarginPercent: null, maxDiscountPercent: 50, collections: [] } });
+  assert.deepEqual(off, { ok: true, settings: { enabled: false, minMarginPercent: null, maxDiscountPercent: 50, collections: [], products: [] } });
 });
 
 test("readMarginForm: out of range, a missing ceiling, a bad collection id → field errors, nothing else", () => {
@@ -168,6 +182,38 @@ test("readMarginForm: out of range, a missing ceiling, a bad collection id → f
 
 // --- saveMarginSettings ---------------------------------------------------------------------
 
+test("a product's own setting (9 Oct 2026, bod 7): Pro → stored, in the shop config checkout reads (`prod`), on the screen by its title; Free → folded into the whole store and said so", async () => {
+  const store = storeWithCatalogue();
+  const ctx = ctxFor(store, "pro");
+  const P1 = "gid://shopify/Product/1";
+  store.collectionTitles.set(P1, "Tričko");
+  const own = settings({
+    collections: [{ collectionId: COLLECTION, title: "", minMarginPercent: 40, maxDiscountPercent: null }],
+    products: [{ productId: P1, title: "", minMarginPercent: 5, maxDiscountPercent: null }],
+  });
+  const result = await saveMarginSettings(ctx, own, { configVersion: null });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  await settle();
+  assert.deepEqual((await loadConfig(db.prisma, shop)).config.modules.margin.perProduct, [{ productId: P1, minMarginPercent: 5 }]);
+  const shopConfig = JSON.parse(store.sync.shopMetafieldValue("function_config")!) as { modules: { margin: { col?: unknown; prod?: unknown } } };
+  assert.deepEqual(shopConfig.modules.margin.prod, { "1": [5, null] });
+  assert.deepEqual(shopConfig.modules.margin.col, { "5": [40, null] });
+  const data = await loadMarginScreen(ctx);
+  assert.deepEqual(data.settings.products, [{ productId: P1, title: "Tričko", minMarginPercent: 5, maxDiscountPercent: null }]);
+  assert.deepEqual(data.productGateNotes, []);
+  // The same stored settings on Free: nothing per product reaches checkout, the strictest value is the whole store's.
+  const free = ctxFor(store, "free");
+  await saveMarginSettings(free, { ...own, products: [{ productId: P1, title: "", minMarginPercent: 60, maxDiscountPercent: null }] }, { configVersion: (await loadConfig(db.prisma, shop)).version });
+  await settle();
+  const freeConfig = JSON.parse(store.sync.shopMetafieldValue("function_config")!) as { modules: { margin: Record<string, unknown> } };
+  assert.equal("prod" in freeConfig.modules.margin, false);
+  assert.equal(freeConfig.modules.margin.min, 60);
+  const freeData = await loadMarginScreen(free);
+  assert.equal(freeData.settings.products.length, 1, "stored even on Free");
+  assert.equal(freeData.productGateNotes.length, 1);
+  assert.match(freeData.productGateNotes[0]!.text, /jednotlivé produkty je funkce Pro/);
+});
+
 test("switching protection on: saved + synced (the shop config carries the margin with the shop currency), a full cost pass in the background", async () => {
   const store = storeWithCatalogue();
   const ctx = ctxFor(store);
@@ -182,7 +228,7 @@ test("switching protection on: saved + synced (the shop config carries the margi
   assert.deepEqual(store.sync.variantCostMetafield("gid://shopify/ProductVariant/301"), { cost: 4, cur: "CZK" });
   assert.equal(store.sync.variantCostMetafield("gid://shopify/ProductVariant/201"), undefined);
   const stored = (await loadConfig(db.prisma, shop)).config.modules.margin;
-  assert.deepEqual(stored, { enabled: true, global: { minMarginPercent: 25, maxDiscountPercent: 30 }, perCollection: [] });
+  assert.deepEqual(stored, { enabled: true, global: { minMarginPercent: 25, maxDiscountPercent: 30 }, perCollection: [], perProduct: [] });
 });
 
 test("switching protection off clears the variant metafields the mirror wrote", async () => {
@@ -263,7 +309,9 @@ test("Free: stored settings with collection titles, the Pro setting explained as
     minMarginPercent: 25,
     maxDiscountPercent: 30,
     collections: [{ collectionId: COLLECTION, title: "Zimní", minMarginPercent: 40, maxDiscountPercent: null }],
+    products: [],
   });
+  assert.deepEqual(data.productGateNotes, []);
   assert.equal(data.gateNotes.length, 1);
   assert.match(data.gateNotes[0]!.text, /marž/i);
   assert.equal(data.mirror.state, "fresh");
@@ -378,6 +426,8 @@ test("ruleMarginImpact: null while protection is off; on: Pro gets the number of
   await settle();
   // Free: protection lowers "half" somewhere — said without a number (přehled zásahů is Pro).
   assert.deepEqual(await ruleMarginImpact(ctx, "half"), { state: "ready", discountClass: "product" });
+  // Přehled's "Co Won hlídá" (9 Oct 2026): the same answer for the whole shop — Free without numbers.
+  assert.deepEqual((await loadMarginOverview(ctx, await loadConfig(db.prisma, shop), { timezone: null, trigger: false, shopCurrency: "CZK" })).watch, { state: "some" });
   assert.equal(await ruleMarginImpact(ctx, "tiny"), null, "never lowered: no note");
   assert.equal(await ruleMarginImpact(ctx, "missing"), null);
   // Pro: the count of variants.
@@ -385,6 +435,8 @@ test("ruleMarginImpact: null while protection is off; on: Pro gets the number of
   await ruleMarginImpact(pro, "half");
   await settle();
   assert.deepEqual(await ruleMarginImpact(pro, "half"), { state: "ready", discountClass: "product", variants: 3 });
+  // Pro: how many discounts and on how many variants.
+  assert.deepEqual((await loadMarginOverview(pro, await loadConfig(db.prisma, shop), { timezone: null, trigger: false, shopCurrency: "CZK" })).watch, { state: "some", rules: 1, variants: 3 });
 });
 
 // --- Přehled + Vyzkoušet košík ---------------------------------------------------------------

@@ -1,4 +1,4 @@
-/* Won Discounts — won-discounts-blocks.js: the "Milestones" and "Campaign banner" blocks and the embed's top bar. Notes: extensions/won-discounts-storefront/README.md */
+/* Won Discounts — won-discounts-blocks.js: the "Milestones", "Campaign banner" and "Top bar" blocks and the embed's fallback top bar. Notes: extensions/won-discounts-storefront/README.md */
 ((w, d) => {
   "use strict";
   if (w.__wonBlocks) return;
@@ -62,15 +62,37 @@
   };
 
   /* The embed's top bar is printed at the end of <body>: it belongs at the top of the page, and only with something to say. */
+  const says = (bar) => !!bar.querySelector(".won-ms, [data-won-discounts-campaign]:not([hidden]), .won-topbar__empty");
   const topbar = () => {
+    /* The "Top bar" block stays where the merchant put it; it only hides while it has nothing to say. */
+    const blocks = all("[data-won-discounts-topbar-block]");
+    for (const el of blocks) el.hidden = !says(el);
     const bar = d.querySelector("[data-won-discounts-topbar]");
     if (!bar) return;
+    /* With a block on the page the embed's strip is not shown a second time. */
+    if (blocks.length) {
+      bar.hidden = true;
+      return;
+    }
     if (d.body.firstElementChild !== bar) d.body.prepend(bar);
-    bar.hidden = !bar.querySelector(".won-ms, [data-won-discounts-campaign]:not([hidden])");
+    bar.hidden = !says(bar);
   };
+  /* Sale badge: only the row of the variant the shopper has picked (the product form's `id`, else the address). */
+  const outlet = () => {
+    for (const box of all("[data-won-discounts-outlet]")) {
+      const rows = [...box.querySelectorAll("[data-won-discounts-outlet-variant]")];
+      const scope = box.closest(".shopify-section") || d;
+      const id = scope.querySelector('form[action*="/cart/add"] [name="id"]')?.value || new URLSearchParams(w.location.search).get("variant");
+      if (!id) continue;
+      for (const row of rows) row.hidden = row.getAttribute("data-won-discounts-outlet-variant") !== String(id);
+    }
+  };
+  /* Themes set the form's `id` after their own work (some after a fetch): look again shortly after a change. */
+  d.addEventListener("change", () => [0, 200, 800, 1600].forEach((ms) => setTimeout(outlet, ms)));
   const start = () => {
     campaigns();
     topbar();
+    outlet();
   };
   if (d.readyState === "loading") d.addEventListener("DOMContentLoaded", start);
   else start();

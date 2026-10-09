@@ -11,7 +11,7 @@ use super::cart::{CampaignInput, CartInput, LineInput, LineTier};
 use super::tiers::{resolve_set, SetIndex};
 use super::config::Config;
 use super::emit::{emit_for_node, NodeEmission, NodeRole};
-use super::margin::{ceil_tol, cost_minor_units, margin_floor_unit, resolve_margin, strictest_margin, MarginBasis, MarginRef, MARGIN_TOLERANCE, MAX_MARGIN_REFS};
+use super::margin::{apply_product_margin, ceil_tol, cost_minor_units, margin_floor_unit, resolve_margin, strictest_margin, MarginBasis, MarginRef, MARGIN_TOLERANCE, MAX_MARGIN_REFS};
 use super::order_search::{order_set_limit, search_order_sets, OrderSet, OrderSetLine, EXACT_LINES, NEAR_FACTOR, SAFE_BELOW};
 use super::plan::{plan_cart, CartPlan, EmittedValue, Excluded, PlanFailure, RuleState, ShippingValue};
 use crate::json::ShopConfig;
@@ -94,6 +94,7 @@ fn cart<'a>(lines: &'a [Line], codes: &[&'a str]) -> CartInput<'a> {
                 unit_cost_currency: l.cur,
                 margin_refs: &l.margin_refs,
                 margin_ref_count: l.margin_refs.len(),
+                margin_own: None,
             })
             .collect(),
         tiers: Vec::new(),
@@ -963,6 +964,34 @@ fn margin_off_plans_exactly_like_mvp1() {
         assert_eq!((order.stack.amount, order.base, order.excluded_line_ids.len()), (33_000, 110_000, 0));
         assert_eq!(order.stack.value, EmittedValue::Percent(30.0));
     }
+}
+
+#[test]
+fn a_products_own_setting_comes_before_its_collections_field_by_field() {
+    let margin = r#"{"enabled": true, "min": 10, "max": 50, "cur": "CZK", "col": {"1": [20, 40]},
+        "prod": {"7": [5, null], "8": [null, 90], "9": [60, 10], "__proto__": [1, 1], "10": [1], "11": [200, 200]}}"#;
+    let c = margin_rules(&pct("a", 90.0, ""), margin, "");
+    let payload = c.margin.as_ref().unwrap();
+    assert_eq!(payload.prod.len(), 4);
+    assert_eq!(payload.product("gid://shopify/Product/7"), Some((Some(5.0), None)));
+    assert_eq!(payload.product("8"), Some((None, Some(90.0))));
+    assert_eq!(payload.product("gid://shopify/Product/11"), Some((Some(95.0), Some(100.0))));
+    assert_eq!(payload.product("gid://shopify/Product/10"), None);
+    assert_eq!(payload.product("gid://shopify/Product/99"), None);
+    assert_eq!(payload.product(""), None);
+    let settings = |refs: &[&str], product: &str| {
+        let refs: Vec<MarginRef> = refs.iter().map(|r| MarginRef::from(*r)).collect();
+        let s = apply_product_margin(resolve_margin(payload, &refs), payload.product(product));
+        (s.min_margin_percent, s.max_discount_percent)
+    };
+    assert_eq!(settings(&["1"], "99"), (20.0, 40.0));
+    // Looser minimum than its collection's; the empty maximum stays the collection's.
+    assert_eq!(settings(&["1"], "7"), (5.0, 40.0));
+    assert_eq!(settings(&[], "8"), (10.0, 90.0));
+    assert_eq!(settings(&["1"], "9"), (60.0, 10.0));
+    // No product settings in the payload: nothing is looked up.
+    let bare = margin_rules(&pct("a", 90.0, ""), r#"{"enabled": true, "max": 50}"#, "");
+    assert_eq!(bare.margin.as_ref().unwrap().product("gid://shopify/Product/7"), None);
 }
 
 #[test]

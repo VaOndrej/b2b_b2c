@@ -92,16 +92,25 @@ export const MARGIN_COLLECTION_TITLE = "Won E2E — Margin (Pro)";
 export const MARGIN_COLLECTION_MEMBER_HANDLE = MARGIN_PRODUCT_B_HANDLE;
 export const MARGIN_COLLECTION_MAX_DISCOUNT_PERCENT = 10;
 
+// A product's OWN setting (feedback 9 Oct 2026, 3rd round, bod 7; Pro): simple-b — the collection's only member —
+// also has its own maximum discount, 20 %. A product's setting comes before its collection's, so checkout gives
+// simple-b 20 %, not the collection's 10 % (which still ships as `col`, with the product's `marginRefs`).
+export const MARGIN_OWN_PRODUCT_HANDLE = MARGIN_PRODUCT_B_HANDLE;
+export const MARGIN_OWN_MAX_DISCOUNT_PERCENT = 20;
+
 /**
  * modules.margin of the seed config (the stored, admin shape). With
  * `collectionId` (the GID of won-e2e-margin): the Pro override on it,
- * maximum discount 10 %, minimum margin left to the global value.
+ * maximum discount 10 %, minimum margin left to the global value. With
+ * `productId` (the GID of won-e2e-simple-b): that product's own maximum
+ * discount, 20 %.
  */
-export function marginModule(collectionId) {
+export function marginModule(collectionId, productId) {
   return {
     enabled: true,
     global: { minMarginPercent: MARGIN_MIN_MARGIN_PERCENT, maxDiscountPercent: MARGIN_MAX_DISCOUNT_PERCENT },
     perCollection: collectionId ? [{ collectionId, maxDiscountPercent: MARGIN_COLLECTION_MAX_DISCOUNT_PERCENT }] : [],
+    perProduct: productId ? [{ productId, maxDiscountPercent: MARGIN_OWN_MAX_DISCOUNT_PERCENT }] : [],
   };
 }
 

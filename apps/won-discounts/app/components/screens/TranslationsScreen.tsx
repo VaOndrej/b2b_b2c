@@ -16,6 +16,8 @@ import { requestScopes, type ScopeRequestResult } from "../model/app-bridge";
 import {
   changedCount,
   groupLabel,
+  languageProgressText,
+  missingTexts,
   isDefaultTextLang,
   languageName,
   languagesNotShipped,
@@ -38,6 +40,7 @@ import { snapshotOf } from "../shell/form-snapshot";
 import { Notice } from "../shell/Notice";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
+import { SectionNav, type SectionNavItem } from "../shell/SectionNav";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 import { WON_FAINT, WON_INK, WON_LINE, WON_MUTED } from "../shell/tokens";
 
@@ -216,8 +219,18 @@ export function TranslationsScreen(props: TranslationsScreenProps) {
     </s-stack>
   );
 
+  // The list of the page's sections on the side (SectionNav, as on Nastavení): a language's dot says whether it
+  // is complete (green) or lacks texts (amber), live from what is typed.
+  const typedOf = (locale: string) => (snapshot ? Object.fromEntries(rows.map((row) => [row.key, valueOf(locale, row)])) : values[locale]);
+  const sections: SectionNavItem[] = [
+    { anchor: "add", label: t("translations.add.title") },
+    ...languages.map((locale) => ({ anchor: `lang-${locale}`, label: languageName(locale, tr), state: missingTexts(locale, typedOf(locale), rows) > 0 ? ("attention" as const) : ("active" as const) })),
+    { anchor: "csv", label: t("translations.csv.title") },
+  ];
+
   return (
     <s-page heading={t("module.translations")}>
+      <SectionNav label={t("common.onThisPage")} items={sections}>
       <s-stack direction="block" gap="base">
         <Notice result={csvSaved ?? (csvFailure && !csvError ? csvFailure : result)} onReplace={replaceUnreadable} />
         <Form method="post" ref={formRef} data-save-bar>
@@ -226,68 +239,7 @@ export function TranslationsScreen(props: TranslationsScreenProps) {
           <s-stack direction="block" gap="base">
             <div style={{ fontSize: 13, lineHeight: 1.45, color: WON_MUTED }}>{t("translations.intro")}</div>
             <FieldMessage text={serverError(TRANSLATIONS_FIELD.language)} />
-            {languages.map((locale, index) => {
-              const held = notShipped.includes(locale);
-              const changed = changedCount(snapshot ? Object.fromEntries(rows.map((row) => [row.key, valueOf(locale, row)])) : values[locale], rows);
-              const stored = props.languages.includes(locale);
-              return (
-                <WonSection
-                  key={locale}
-                  title={index === 0 ? `${languageName(locale, tr)} · ${t("translations.lang.default")}` : languageName(locale, tr)}
-                  glyph="code"
-                  summary={changed > 0 ? t("translations.lang.summary.some", { n: changed }) : t("translations.lang.summary.none")}
-                  anchor={`lang-${locale}`}
-                  collapsible
-                  defaultOpen={index === 0 || !stored || errors.some((e) => e.field.startsWith(`${TRANSLATIONS_FIELD.text}${locale}.`))}
-                >
-                  <input type="hidden" name={TRANSLATIONS_FIELD.language} value={locale} />
-                  <s-stack direction="block" gap="base">
-                    {held ? (
-                      <WonRow tone="attention">
-                        <RowNote tone="attention">{t("translations.lang.notShipped")}</RowNote>
-                      </WonRow>
-                    ) : null}
-                    {isDefaultTextLang(locale) ? null : (
-                      <div data-won-lang-fallback={locale}>
-                        <RowNote>{t("translations.lang.fallback")}</RowNote>
-                      </div>
-                    )}
-                    {grouped.map(({ group, rows: groupRows }) => (
-                      <div key={group} data-won-text-group={group}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: WON_INK, marginBottom: 4 }}>{groupLabel(group, tr)}</div>
-                        {groupRows.map((row) => {
-                          const label = textLabel(row, tr);
-                          return (
-                            <div key={row.key} data-won-text={row.key} style={ROW_GRID}>
-                              <div style={{ fontSize: 13, lineHeight: 1.4, color: WON_INK, minWidth: 0 }}>{label}</div>
-                              <div data-won-text-default style={{ fontSize: 13, lineHeight: 1.4, color: WON_FAINT, minWidth: 0, overflowWrap: "anywhere" }}>
-                                {textDefault(row, locale)}
-                              </div>
-                              <div style={{ minWidth: 0 }}>
-                                <s-text-field name={textField(locale, row.key)} label={label} labelAccessibilityVisibility="exclusive" value={values[locale]?.[row.key] ?? ""} placeholder={textDefault(row, locale)} />
-                                <FieldMessage text={messageOf(locale, row)} />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-                    {index > 0 ? (
-                      <WonRow
-                        action={
-                          <s-button variant="secondary" tone="critical" onClick={() => setLanguages((list) => list.filter((code) => code !== locale))}>
-                            {t("translations.lang.remove")}
-                          </s-button>
-                        }
-                      >
-                        <RowNote>{t("translations.lang.removeNote")}</RowNote>
-                      </WonRow>
-                    ) : null}
-                  </s-stack>
-                </WonSection>
-              );
-            })}
-
+            {/* First on the page (feedback 9 Oct 2026): a new language is what the merchant comes for. */}
             <WonSection title={t("translations.add.title")} glyph="store" summary={t("translations.add.summary")} anchor="add">
               <s-stack direction="block" gap="base">
                 {shopLanguages === null ? (
@@ -333,6 +285,73 @@ export function TranslationsScreen(props: TranslationsScreenProps) {
                 )}
               </s-stack>
             </WonSection>
+            {languages.map((locale, index) => {
+              const held = notShipped.includes(locale);
+              const typed = typedOf(locale);
+              const changed = changedCount(typed, rows);
+              const missing = missingTexts(locale, typed, rows);
+              const stored = props.languages.includes(locale);
+              return (
+                <WonSection
+                  key={locale}
+                  title={index === 0 ? `${languageName(locale, tr)} · ${t("translations.lang.default")}` : languageName(locale, tr)}
+                  glyph="code"
+                  // "Hotovo" / "Chybí 4 texty" (what the side list's dot says too), then how many texts are the merchant's own.
+                  summary={missing > 0 ? languageProgressText(missing, tr) : changed > 0 ? t("translations.lang.doneOwn", { n: changed }) : `${t("translations.lang.done")} · ${t("translations.lang.summary.none")}`}
+                  // A language past the plan's limit is not on the storefront: no label, its amber row says why.
+                  state={held ? undefined : missing > 0 ? "attention" : "active"}
+                  anchor={`lang-${locale}`}
+                  collapsible
+                  defaultOpen={index === 0 || !stored || errors.some((e) => e.field.startsWith(`${TRANSLATIONS_FIELD.text}${locale}.`))}
+                >
+                  <input type="hidden" name={TRANSLATIONS_FIELD.language} value={locale} />
+                  <s-stack direction="block" gap="base">
+                    {held ? (
+                      <WonRow tone="attention">
+                        <RowNote tone="attention">{t("translations.lang.notShipped")}</RowNote>
+                      </WonRow>
+                    ) : null}
+                    {isDefaultTextLang(locale) ? null : (
+                      <div data-won-lang-fallback={locale}>
+                        <RowNote>{t("translations.lang.fallback")}</RowNote>
+                        {missing > 0 ? <RowNote tone="attention">{`${languageProgressText(missing, tr)}. ${t("translations.lang.missingNote")}`}</RowNote> : null}
+                      </div>
+                    )}
+                    {grouped.map(({ group, rows: groupRows }) => (
+                      <div key={group} data-won-text-group={group}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: WON_INK, marginBottom: 4 }}>{groupLabel(group, tr)}</div>
+                        {groupRows.map((row) => {
+                          const label = textLabel(row, tr);
+                          return (
+                            <div key={row.key} data-won-text={row.key} style={ROW_GRID}>
+                              <div style={{ fontSize: 13, lineHeight: 1.4, color: WON_INK, minWidth: 0 }}>{label}</div>
+                              <div data-won-text-default style={{ fontSize: 13, lineHeight: 1.4, color: WON_FAINT, minWidth: 0, overflowWrap: "anywhere" }}>
+                                {textDefault(row, locale)}
+                              </div>
+                              <div style={{ minWidth: 0 }}>
+                                <s-text-field name={textField(locale, row.key)} label={label} labelAccessibilityVisibility="exclusive" value={values[locale]?.[row.key] ?? ""} placeholder={textDefault(row, locale)} />
+                                <FieldMessage text={messageOf(locale, row)} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                    {index > 0 ? (
+                      <WonRow
+                        action={
+                          <s-button variant="secondary" tone="critical" onClick={() => setLanguages((list) => list.filter((code) => code !== locale))}>
+                            {t("translations.lang.remove")}
+                          </s-button>
+                        }
+                      >
+                        <RowNote>{t("translations.lang.removeNote")}</RowNote>
+                      </WonRow>
+                    ) : null}
+                  </s-stack>
+                </WonSection>
+              );
+            })}
 
             <div>
               <s-button type="submit" variant="primary">
@@ -353,6 +372,7 @@ export function TranslationsScreen(props: TranslationsScreenProps) {
           )}
         </WonSection>
       </s-stack>
+      </SectionNav>
     </s-page>
   );
 }

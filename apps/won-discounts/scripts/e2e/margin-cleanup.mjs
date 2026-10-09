@@ -23,6 +23,7 @@
 
 import {
   MARGIN_COLLECTION_MAX_DISCOUNT_PERCENT,
+  MARGIN_OWN_MAX_DISCOUNT_PERCENT,
   MARGIN_MAX_DISCOUNT_PERCENT,
   MARGIN_MIN_MARGIN_PERCENT,
 } from "./margin-fixture.mjs";
@@ -59,21 +60,30 @@ function isDefault(margin) {
  * @param {{ isFixtureCollection: (collectionId: string) => boolean }} opts
  * @returns {{ kind: "default" } | { kind: "fixture", profile: "margin" | "margin-pro" | "tiers", collectionId?: string } | { kind: "foreign", reason: string }}
  */
-export function classifyStoredMargin(margin, { isFixtureCollection }) {
-  if (margin === undefined || margin === null) return { kind: "default" };
-  if (!isRecord(margin)) return { kind: "foreign", reason: "not an object" };
-  if (isDefault(margin)) return { kind: "default" };
+export function classifyStoredMargin(stored, { isFixtureCollection }) {
+  if (stored === undefined || stored === null) return { kind: "default" };
+  if (!isRecord(stored)) return { kind: "foreign", reason: "not an object" };
+  // Products with their own setting (9 Oct 2026): none (a config stored before them has no key), or exactly the
+  // Pro fixture's one — a maximum discount of its own, no minimum. Anything else is somebody's real setting.
+  const { perProduct, ...margin } = stored;
+  const own = perProduct === undefined ? [] : perProduct;
+  if (!Array.isArray(own)) return { kind: "foreign", reason: "perProduct is not a list" };
+  if (own.length > 1 || (own.length === 1 && !(isRecord(own[0]) && sameKeys(own[0], ["productId", "maxDiscountPercent"]) && own[0].maxDiscountPercent === MARGIN_OWN_MAX_DISCOUNT_PERCENT))) {
+    return { kind: "foreign", reason: `product settings ${JSON.stringify(own)} are not the fixture's (one product, maximum discount ${MARGIN_OWN_MAX_DISCOUNT_PERCENT} %, no minimum)` };
+  }
+  const alone = { kind: "foreign", reason: "a product setting without the Pro fixture's collection" };
+  if (isDefault(margin)) return own.length === 0 ? { kind: "default" } : alone;
   if (!sameKeys(margin, ["enabled", "global", "perCollection"])) return { kind: "foreign", reason: `unexpected fields ${JSON.stringify(keysOf(margin))}` };
   if (typeof margin.enabled !== "boolean") return { kind: "foreign", reason: "enabled is not a boolean" };
   if (isGlobal(margin.global, TIERS_MIN_MARGIN_PERCENT, TIERS_MAX_DISCOUNT_PERCENT) && Array.isArray(margin.perCollection) && margin.perCollection.length === 0) {
-    return { kind: "fixture", profile: "tiers" };
+    return own.length === 0 ? { kind: "fixture", profile: "tiers" } : alone;
   }
   if (!isFixtureGlobal(margin.global)) {
     return { kind: "foreign", reason: `global settings ${JSON.stringify(margin.global)} are not the fixture's (min ${MARGIN_MIN_MARGIN_PERCENT} %, max ${MARGIN_MAX_DISCOUNT_PERCENT} %)` };
   }
   const overrides = Array.isArray(margin.perCollection) ? margin.perCollection : null;
   if (overrides === null) return { kind: "foreign", reason: "perCollection is not a list" };
-  if (overrides.length === 0) return { kind: "fixture", profile: "margin" };
+  if (overrides.length === 0) return own.length === 0 ? { kind: "fixture", profile: "margin" } : alone;
   if (overrides.length > 1) return { kind: "foreign", reason: `${overrides.length} collection overrides (the Pro fixture has exactly 1)` };
   const o = overrides[0];
   if (!isRecord(o) || !sameKeys(o, ["collectionId", "maxDiscountPercent"]) || o.maxDiscountPercent !== MARGIN_COLLECTION_MAX_DISCOUNT_PERCENT) {

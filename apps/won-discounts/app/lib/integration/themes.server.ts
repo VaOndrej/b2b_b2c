@@ -23,7 +23,7 @@
 // patterns below (hex / rgb() colors, font handles of letters and digits).
 // Queries validated against Admin API 2026-04 with the Shopify dev MCP.
 
-import { CAMPAIGN_BLOCK_HANDLE, CART_BLOCK_HANDLE, EMBED_BLOCK_HANDLE, OUTLET_BLOCK_HANDLE, REWARDS_PROGRESS_BLOCK_HANDLE, tiersBlockAddUrl } from "../../components/model/embed";
+import { CAMPAIGN_BLOCK_HANDLE, CART_BLOCK_HANDLE, EMBED_BLOCK_HANDLE, OUTLET_BLOCK_HANDLE, REWARDS_PROGRESS_BLOCK_HANDLE, tiersBlockAddUrl, TOP_BAR_BLOCK_HANDLE } from "../../components/model/embed";
 import type { MarketNames } from "../../components/model/markets";
 import { toMinorUnits } from "@won/core/discounts/money";
 import { normalizeLocale } from "@won/core/toasts/locales";
@@ -372,6 +372,21 @@ function embedSettingsIn(content: string | null): Rec | null | undefined {
   return null;
 }
 
+const HEADER_GROUP = "sections/header-group.json";
+
+/** The settings of every enabled "Top bar" block in the header group's JSON; null = the file is not readable JSON. */
+function topBarBlocksIn(content: string | null): Rec[] | null {
+  const data = parseThemeJson(content);
+  if (!isRec(data) || !isRec(data.sections)) return null;
+  const type = `/blocks/${TOP_BAR_BLOCK_HANDLE}/`;
+  const out: Rec[] = [];
+  for (const section of Object.values(data.sections)) {
+    if (!isRec(section) || section.disabled === true) continue;
+    for (const block of enabledBlocks(section)) if (typeof block.type === "string" && block.type.includes(type)) out.push(isRec(block.settings) ? block.settings : {});
+  }
+  return out;
+}
+
 const TEMPLATE_PLACEMENTS: readonly { filename: string; blocks: readonly [PlacementKey, string][] }[] = [
   { filename: MAIN_PRODUCT_TEMPLATE, blocks: [["rewardsProduct", REWARDS_PROGRESS_BLOCK_HANDLE], ["campaignProduct", CAMPAIGN_BLOCK_HANDLE], ["outletBadge", OUTLET_BLOCK_HANDLE]] },
   { filename: "templates/index.json", blocks: [["rewardsHome", REWARDS_PROGRESS_BLOCK_HANDLE], ["campaignHome", CAMPAIGN_BLOCK_HANDLE]] },
@@ -380,7 +395,7 @@ const TEMPLATE_PLACEMENTS: readonly { filename: string; blocks: readonly [Placem
 
 /**
  * Where the app's pieces sit in the theme's files (feedback 3, bod 5): each block by the template it belongs to,
- * the top bar by the embed's two switches. Only what was read is answered — a missing or unreadable file leaves
+ * the top bar by the "Top bar" block in the header group, else by the embed's two fallback switches. Only what was read is answered — a missing or unreadable file leaves
  * its keys out ("not verified"), it never says "missing".
  */
 export function themePlacementsIn(files: readonly { filename: string; content: string | null }[]): ThemePlacements {
@@ -400,6 +415,14 @@ export function themePlacementsIn(files: readonly { filename: string; content: s
       out.topBarRewards = embed?.top_bar_rewards === true;
       out.topBarCampaign = embed?.top_bar_campaign === true;
     }
+  }
+  // The block in the header (its two switches are on unless the merchant turned one off).
+  const header = files.find((f) => f.filename === HEADER_GROUP);
+  const bars = header ? topBarBlocksIn(header.content) : null;
+  if (bars) {
+    const shows = (key: string) => bars.some((s) => s[key] !== false);
+    out.topBarRewards = out.topBarRewards === true || shows("show_rewards");
+    out.topBarCampaign = out.topBarCampaign === true || shows("show_campaign");
   }
   return out;
 }
@@ -446,7 +469,7 @@ query WonTiersThemeLook {
     nodes {
       id
       name
-      files(filenames: ["config/settings_data.json", "templates/product*.json", "templates/index.json", "templates/cart.json"], first: 50) {
+      files(filenames: ["config/settings_data.json", "sections/header-group.json", "templates/product*.json", "templates/index.json", "templates/cart.json"], first: 50) {
         nodes {
           filename
           body {

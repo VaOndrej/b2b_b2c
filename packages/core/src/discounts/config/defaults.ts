@@ -26,7 +26,7 @@ export const DEFAULT_CONFIG: ReadonlyDeep<WonDiscountsConfig> = deepFreeze<WonDi
     tiers: { sets: [] },
     rewards: { gifts: [], countOtherDiscounts: false, giftDeclinable: true },
     outlet: { display: "strike_badge", reopenOnReturnAfterEnd: "ask" },
-    margin: { enabled: false, global: { maxDiscountPercent: 50 }, perCollection: [] },
+    margin: { enabled: false, global: { maxDiscountPercent: 50 }, perCollection: [], perProduct: [] },
   },
   campaigns: [],
   // A new shop starts with the highlighted look (plan 2026-10-06, dávka 5); a stored value is never changed by this.

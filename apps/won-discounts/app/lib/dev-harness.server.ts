@@ -75,7 +75,7 @@ import { translator } from "../i18n";
 import type { ElementLook } from "@won/core/discounts/looks";
 import { lookView, previewLookOf, tablePreset } from "./integration/looks.server";
 import { tiersOverviewOf, tiersScreenFacts, tiersSectionStatus } from "./integration/tiers.server";
-import { translationsScreenData, type TranslationsResult } from "./integration/translations.server";
+import { textRows, translationsScreenData, type TranslationsResult } from "./integration/translations.server";
 import { runScenarios, type ScenarioProduct } from "./integration/combination-check";
 import { combinationView, scenarioCartOf, storedCheck, type StoredCheck } from "./integration/combination-check.server";
 import { lossText, undoCostTexts, warningText } from "./native/copy";
@@ -565,6 +565,7 @@ function marginSettingsView(config: WonDiscountsConfig, opts: { collections: boo
           maxDiscountPercent: c.maxDiscountPercent ?? null,
         }))
       : [],
+    products: [],
   };
 }
 
@@ -698,6 +699,7 @@ function devMarginScreenData(opts: { plan: "free" | "pro"; state: string | null;
     coverage: DEV_COVERAGE,
     impact: impact(),
     gateNotes: [],
+    productGateNotes: [],
     tooLarge: [],
   };
   if (state === "gate" && !pro) {
@@ -708,6 +710,18 @@ function devMarginScreenData(opts: { plan: "free" | "pro"; state: string | null;
     ).map((e) => ({ text: e.text }));
   }
   switch (state) {
+    case "products":
+      // A product with its own setting (bod 7): the row as stored, on Pro editable, on Free folded and said so.
+      return {
+        ...base,
+        settings: { ...base.settings, products: [{ productId: "gid://shopify/Product/5", title: "Nákrčník", minMarginPercent: 5, maxDiscountPercent: null }] },
+        productGateNotes: pro
+          ? []
+          : explainGate(
+              gateConfigForPlan({ ...DEV_MARGIN_FIXTURE, modules: { ...DEV_MARGIN_FIXTURE.modules, margin: { ...DEV_MARGIN_FIXTURE.modules.margin, perProduct: [{ productId: "gid://shopify/Product/5", minMarginPercent: 5 }] } } }, "free", { now: "2026-09-28T14:00:00" }).stripped.filter((x) => x.capability === "margin_per_product"),
+              opts.locale,
+            ).map((e) => ({ text: e.text })),
+      };
     case "running":
       return { ...base, mirror: { state: "running", done: 340, total: 1240, since: "2026-09-28T13:55:00" }, coverage: null, impact: impact({ status: "computing" }) };
     case "failed-first":
@@ -853,7 +867,16 @@ export function devMarginOverview(state: "fresh" | "stale" | "off" | "running" |
     maxDiscountPercent: 40,
     productsWithoutCost: DEV_COVERAGE.productsWithoutCost,
     mirror: state === "stale" ? { state: "stale", at: "2026-09-26T06:10:00" } : DEV_MIRROR_FRESH,
+    watch: { state: "none" },
   };
+}
+
+/** Přehled &watch=some: protection lowers two discounts (the counts only on Pro, BILL-1); &watch=computing: not computed yet. */
+export function devMarginWatch(margin: MarginOverviewView, watch: string | null, plan: "free" | "pro"): MarginOverviewView {
+  if (!margin.enabled) return margin;
+  if (watch === "some") return { ...margin, watch: plan === "pro" ? { state: "some", rules: 2, variants: 14 } : { state: "some" } };
+  if (watch === "computing") return { ...margin, watch: { state: "computing" } };
+  return margin;
 }
 
 /** A shop-currency → EUR rate estimated from market prices (what try-cart does when the cart is not in CZK). */
@@ -1064,7 +1087,12 @@ export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | nul
     configVersion: "dev-config-version",
     // ?state=custom: a stored Pro custom look and card prices on; ?state=issue: stored CSS that cannot be used.
     look: lookView(opts.state === "custom" ? DEV_CUSTOM_LOOK_FIXTURE : opts.state === "issue" ? DEV_BAD_LOOK_FIXTURE : config, "tiers"),
-    cards: { on: opts.state === "custom", blockUrl: "https://won-dev.myshopify.com/admin/themes/current/editor?template=collection&addAppBlockId=dev/card_tiers&target=mainSection" },
+    cards: {
+      on: opts.state === "custom",
+      blockUrl: "https://won-dev.myshopify.com/admin/themes/current/editor?template=collection&addAppBlockId=dev/card_tiers&target=mainSection",
+      viewUrl: "https://won-dev.myshopify.com/collections/all",
+      editorUrl: "https://won-dev.myshopify.com/admin/themes/current/editor?template=collection",
+    },
     currencies: currencyViews(config.markets, { marketNames: DEV_MARKET_NAMES }),
     ...tiersScreenFacts(config, { plan: opts.plan, locale: opts.locale, titles: DEV_TIER_TITLES, syncable: true }),
     block: devBlock(opts.state),
@@ -1142,6 +1170,15 @@ export function devLook(config: WonDiscountsConfig, element: "milestones" | "out
  * more languages on offer; `empty` = nothing changed yet; `no-scope` = the app may not read the shop's languages;
  * `downgraded` = three languages stored (on Free the third is not on the storefront); `import` = a planned import.
  */
+/** Přehled ?state=languages: Czech and Slovak (the extension's own languages) and German with one text of its own. */
+export const DEV_LANGUAGES_FIXTURE: WonDiscountsConfig = readStoredConfig({
+  ...DEV_OVERVIEW_FIXTURE,
+  storefront: { ...DEV_OVERVIEW_FIXTURE.storefront, languages: ["cs", "sk", "de"] },
+  locales: { cs: { "tiers.heading": "Kup víc, plať míň" }, sk: {}, de: { "tiers.heading": "Mehr kaufen, weniger zahlen" } },
+});
+/** How many storefront texts Překlady lists for `config` (Přehled's tile counts with it). */
+export const devTextCount = (config: WonDiscountsConfig, locale: "cs" | "en"): number => textRows(config, locale).length;
+
 export function devTranslationsScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en" }): TranslationsScreenData & { importPreview?: { plan: ImportPlan; csv: string } } {
   const locales: Record<string, Record<string, string>> =
     opts.state === "empty"

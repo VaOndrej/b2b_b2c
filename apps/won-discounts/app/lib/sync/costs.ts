@@ -510,6 +510,7 @@ export async function olderCostsThatStay(ctx: Pick<CostCtx, "floors">, snapshots
       floors.payload,
       raw.filter((r): r is string => typeof r === "string"),
       raw.length,
+      s.productId,
     );
     const price = toMinorUnits(s.price, currency);
     if (!settings || price === null) continue;
@@ -546,7 +547,7 @@ async function desiredPdps(ctx: CostCtx, snapshots: readonly VariantSnapshot[]):
     const raw = refs.get(s.productId) ?? [];
     // More than MAX_MARGIN_REFS entries: the engine takes the store's strictest setting (every collection).
     const collectionIds = raw.length > MAX_MARGIN_REFS ? everyCollection : raw.filter((ref): ref is string => typeof ref === "string");
-    const floor = pdpFloor({ unitCost: cost.cost, costCurrency: cost.cur, shopCurrency, margin: pdp.margin, collectionIds });
+    const floor = pdpFloor({ unitCost: cost.cost, costCurrency: cost.cur, shopCurrency, margin: pdp.margin, collectionIds, productId: s.productId });
     out.set(s.variantId, floor === null ? null : JSON.stringify({ f: floor.f, k: floor.k }));
   }
   return out;

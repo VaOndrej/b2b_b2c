@@ -162,7 +162,9 @@
 
 {%- comment -%}
   Feedback 2 (2026-10-06, body 5 a 7): the top bar. The theme's announcement bar takes no app block, so the embed
-  offers its own strip: the Milestones ladder (one sentence and a thin track) and / or the running campaign. It is printed here and moved to the top
+  offers its own strip. Since 9 Oct 2026 (3rd round, bod 4) the block blocks/top_bar.liquid is the way to add it in
+  the editor; this one stays for themes whose header group takes no app block at all (Horizon), and gives way to
+  the block when one is on the page. The strip: the Milestones ladder (one sentence and a thin track) and / or the running campaign. It is printed here and moved to the top
   of <body> by assets/won-discounts-blocks.js, which also hides it while it has nothing to say.
 {%- endcomment -%}
 {%- if block.settings.top_bar_rewards or block.settings.top_bar_campaign -%}
@@ -202,7 +204,8 @@
   "stylesheet": "won-discounts.css",
   "javascript": "won-discounts.js",
   "settings": [
-    { "type": "header", "content": "Top bar" },
+    { "type": "header", "content": "Top bar (fallback)" },
+    { "type": "paragraph", "content": "Prefer the block Top bar: in the header choose Add section, then Apps. Use these switches only when your theme does not offer that there. With the block on the page this strip is not shown twice." },
     { "type": "checkbox", "id": "top_bar_rewards", "label": "Show reward progress at the top of the store", "default": false },
     { "type": "checkbox", "id": "top_bar_campaign", "label": "Show the running campaign at the top of the store", "default": false },
     { "type": "color", "id": "top_bar_bg", "label": "Top bar background", "default": "#111111" },

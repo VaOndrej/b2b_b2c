@@ -80,7 +80,9 @@ export function MilestonePreview({ steps, currencies }: { steps: readonly Previe
 
       <label style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 12px", fontSize: 13, color: WON_MUTED }}>
         <span>{t("milestones.preview.cart", { amount: money(cart) })}</span>
-        <input type="range" min={0} max={100} step={1} value={share} onChange={(event) => setShare(Number(event.target.value))} style={{ flex: "1 1 180px", minWidth: 0, accentColor: WON_INK }} data-won-ms-preview-range="" />
+        {/* Uncontrolled: the page's form re-reads itself on every native `input` and re-renders before React hears
+            the event — a controlled slider was written back to its old value and never moved. */}
+        <input type="range" min={0} max={100} step={1} defaultValue={share} onChange={(event) => setShare(Number(event.target.value))} style={{ flex: "1 1 180px", minWidth: 0, accentColor: WON_INK }} data-won-ms-preview-range="" />
       </label>
 
       {/* Compact: the track with a mark per step and the sentence about the next one (product page, cart drawer). */}

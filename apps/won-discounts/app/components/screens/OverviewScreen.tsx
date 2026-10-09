@@ -25,18 +25,19 @@
 
 import type { DiscountRule, OnboardingGoal, WonDiscountsConfig } from "@won/core/discounts/config";
 import { isMilestoneRule } from "@won/core/discounts/milestones";
-import { storefrontTexts } from "@won/core/discounts/storefront-texts";
+import { storefrontTexts, textLanguages } from "@won/core/discounts/storefront-texts";
 
 import { useT } from "../../i18n/context";
+import { usePollWhile } from "../shell/poll";
 import type { Translator } from "../../i18n";
 import { describeMarginSettings, formatMoney, formatPercent } from "@won/core/discounts/describe";
 
 import { NativeDiscountsPanel, nativeSummary } from "../NativeDiscounts";
 import type { RuleWarning } from "../model/describe";
 import { currencyMarketNames, currencyViews } from "../model/markets";
-import { languageName } from "../model/translations";
+import { languageName, languageProgressText, missingTexts } from "../model/translations";
 import { embedPlacement } from "../model/embed";
-import { storeStatuses, writtenOf } from "../model/module-status";
+import { storeStatuses, writtenOf, type ModuleStatus } from "../model/module-status";
 import { shopToday } from "../model/rule-form";
 import { needsAttention, ruleStatusSummary, type RuleStatus, type RuleStatusKind } from "../model/rule-status";
 import { tierSummary } from "../model/tiers";
@@ -46,8 +47,8 @@ import type { AdminSignals, CurrencyView, GateNoteView, RuleSyncMap, UiResult } 
 import { GateNotes } from "../shell/GateNotes";
 import { ModuleTile, ModuleTiles } from "../shell/ModuleTile";
 import { RefreshTargetingButton, ResyncButton } from "../shell/Notice";
-import { PlacementPill, RowNote, WonRow, WonSection } from "../shell/WonSection";
-import { WON_ATTENTION } from "../shell/tokens";
+import { PlacementPill, RowNote, StatusPill, WonRow, WonSection } from "../shell/WonSection";
+import { WON_ATTENTION, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
 import { onboardingHasNative, onboardingProgress } from "./OnboardingScreen";
 
 export interface OverviewScreenProps {
@@ -80,8 +81,11 @@ export interface OverviewScreenProps {
   enabledMarkets?: string[];
   /** Kontrola kombinací: how many common carts are fine and how many have a warning (every plan sees the counts). */
   combos?: { ok: number; warnings: number };
-  /** Překlady: the languages with a changed storefront text and how many texts are changed in all. */
-  translations?: { languages: string[]; changed: number };
+  /**
+   * Překlady: the languages with a changed storefront text and how many texts are changed in all; `progress` =
+   * every language the page lists with the texts it still lacks (absent = the number of texts is not known).
+   */
+  translations?: { languages: string[]; changed: number; progress?: { locale: string; missing: number }[] };
   /** The plan in force: on Free the Pro cards (Kampaně, Výprodej) say so instead of offering their setup. Absent = not known. */
   plan?: "free" | "pro";
 }
@@ -100,6 +104,8 @@ export function buildOverviewProps(
     marketNames?: Readonly<Record<string, string>>;
     now?: Date;
     plan?: "free" | "pro";
+    /** How many storefront texts Překlady has (its rows); with it the tile says which languages are complete. */
+    textCount?: number;
   },
 ): OverviewScreenProps {
   // "Slevy a kódy" counts its own discounts: an order discount that is a step of Milníky belongs to that tile.
@@ -116,7 +122,7 @@ export function buildOverviewProps(
     today: shopToday(timezone, opts.now),
     timezone,
     enabledMarkets: config.markets.filter((m) => m.enabled).map((m) => m.handle),
-    translations: translationsOf(config),
+    translations: translationsOf(config, opts.textCount),
   };
   if (opts.signals) props.signals = opts.signals;
   if (opts.ruleSync) props.ruleSync = { ...opts.ruleSync };
@@ -128,9 +134,11 @@ export function buildOverviewProps(
 }
 
 /** What Překlady holds: the languages with a text of the merchant's own, and the texts counted. */
-function translationsOf(config: WonDiscountsConfig): NonNullable<OverviewScreenProps["translations"]> {
+function translationsOf(config: WonDiscountsConfig, textCount?: number): NonNullable<OverviewScreenProps["translations"]> {
   const texts = storefrontTexts(config);
-  return { languages: Object.keys(texts), changed: Object.values(texts).reduce((n, language) => n + Object.keys(language).length, 0) };
+  const base = { languages: Object.keys(texts), changed: Object.values(texts).reduce((n, language) => n + Object.keys(language).length, 0) };
+  if (textCount === undefined) return base;
+  return { ...base, progress: textLanguages(config).map((locale) => ({ locale, missing: missingTexts(locale, texts[locale], textCount) })) };
 }
 
 function warningText(w: RuleWarning, tr: Translator, currencies: readonly CurrencyView[] = []): string {
@@ -307,6 +315,8 @@ export function OverviewScreen({
   const tr = useT();
   const { t } = tr;
   const status = signals ?? NOT_WIRED_SIGNALS;
+  // The purchase costs being read: the Ochrana marže tile follows it without a reload.
+  usePollWhile(status.margin?.mirror.state === "running");
   // The same function the strip under "Slevy" reads (model/module-status.ts): a tile, its page and its dot cannot disagree.
   const { warnings, rules: statuses, modules: states } = storeStatuses({ rules, currencies, today, timezone, signals: status, ruleSync, gateOff, enabledMarkets, plan });
   const targeting = status.targeting;
@@ -359,11 +369,34 @@ export function OverviewScreen({
   const missingMarkets = currencies.filter((c) => missingCodes.has(c.code)).flatMap((c) => c.markets.map((m) => m.name));
   const planName = plan === "pro" ? "Pro" : "Free";
   const marketsLine = marketCount > 0 ? tr.tp("tile.settings.markets", marketCount, { plan: planName }) : t(plan === "pro" ? "tile.settings.pro" : "tile.settings.free");
+  // "Co Won hlídá": margin protection in one sentence (Free without numbers, BILL-1).
+  const watch = status.margin?.watch;
+  const watchText = !status.margin
+    ? ""
+    : !status.margin.enabled
+      ? t("watch.margin.off")
+      : !watch || watch.state === "computing"
+        ? t("watch.margin.computing")
+        : watch.state === "none"
+          ? t("watch.margin.none")
+          : watch.rules !== undefined && watch.variants !== undefined
+            ? `${tr.tp("watch.margin.rules", watch.rules)} ${tr.tp("watch.margin.variants", watch.variants)}`
+            : `${t("watch.margin.some")} ${t("watch.margin.somePro")}`;
+  // Překlady: which of the listed languages are complete and which lack texts (the tiles' own labels).
+  const langProgress = translations?.progress ?? [];
+  const lacking = langProgress.filter((p) => p.missing > 0);
+  const complete = langProgress.filter((p) => p.missing === 0);
   const translationsLine = !translations
     ? undefined
-    : translations.changed > 0
-      ? t("tile.translations.changed", { languages: tr.list(translations.languages.map((code) => languageName(code, tr))), n: translations.changed })
-      : t("tile.translations.default");
+    : langProgress.length > 0
+      ? complete.length > 0
+        ? t("tile.translations.done", { languages: tr.list(complete.map((p) => languageName(p.locale, tr))) })
+        : undefined
+      : translations.changed > 0
+        ? t("tile.translations.changed", { languages: tr.list(translations.languages.map((code) => languageName(code, tr))), n: translations.changed })
+        : t("tile.translations.default");
+  const translationsStatus: ModuleStatus | undefined = langProgress.length === 0 ? undefined : lacking.length > 0 ? { state: "attention", issues: lacking.length } : { state: "active", issues: 0 };
+  const translationsIssues = lacking.length > 0 ? lacking.map((p) => t("tile.translations.missing", { language: languageName(p.locale, tr), missing: languageProgressText(p.missing, tr).toLocaleLowerCase(tr.locale) })).join(" · ").replace(/^./, (ch) => ch.toLocaleUpperCase(tr.locale)) : undefined;
   const settingsLine = missingMarkets.length > 0 ? t("tile.settings.missing", { summary: marketsLine, markets: tr.list(missingMarkets) }) : marketsLine;
   const lockedTile = (key: "outlet" | "campaigns") => states[key]?.state === "locked";
 
@@ -497,10 +530,68 @@ export function OverviewScreen({
           <ModuleTile id="campaigns" href="/app/campaigns" title={t("module.campaigns")} glyph="calendar" about={t("tile.about.campaigns")} aboutShort={t("tile.short.campaigns")} active={bodies.campaigns} status={states.campaigns} issueText={waits("campaigns")} pro={proMark} locked={lockedTile("campaigns") || (free && !states.campaigns)} />
           <ModuleTile id="margin" href="/app/margin" title={t("module.margin")} glyph="shield" about={t("tile.about.margin")} aboutShort={t("tile.short.margin")} active={bodies.margin} status={states.margin} issueText={waits("margin")} />
           <ModuleTile id="analytics" href="/app/analytics" title={t("nav.analytics")} glyph="check" about={t("tile.about.analytics")} aboutShort={t("tile.short.analytics")} active={bodies.analytics} />
-          <ModuleTile id="translations" href="/app/translations" title={t("nav.translations")} glyph="code" about={t("tile.about.translations")} aboutShort={t("tile.short.translations")} active={translationsLine} />
+          <ModuleTile id="translations" href="/app/translations" title={t("nav.translations")} glyph="code" about={t("tile.about.translations")} aboutShort={t("tile.short.translations")} active={translationsLine} status={translationsStatus} issueText={translationsIssues} />
           <ModuleTile id="tryCart" href="/app/try-cart" title={t("nav.tryCart")} glyph="cart" about={t("tile.about.tryCart")} aboutShort={t("tile.short.tryCart")} active={combos ? t("combos.summary", combos) : free ? t("tile.tryCart.locked") : undefined} pro={proMark} locked={free} />
           <ModuleTile id="settings" href="/app/settings" title={t("nav.settings")} glyph="sliders" about={t("tile.about.settings")} aboutShort={t("tile.short.settings")} active={plan ? settingsLine : undefined} />
         </ModuleTiles>
+
+        {/* Feedback 9 Oct 2026 (2nd round, bod 2): under the tiles, what the app watches and what it brought — the
+            first quick look; the detail is Přehledy. WIP: the numbers shown are the ones the app already has
+            (margin protection from the settings and the costs; orders from Přehledy's counts); what is not
+            collected yet is named as coming, never shown as a zero. */}
+        <WonSection title={t("watch.title")} glyph="shield" summary={t("watch.summary")} anchor="watch">
+          <div data-won-watch="">
+            {status.margin ? (
+              <WonRow
+                tone={status.margin.enabled ? undefined : "attention"}
+                action={
+                  <s-button href={!status.margin.enabled ? "/app/margin" : watch?.state === "some" && !free ? "/app/margin#impact" : "/app/margin"} variant={status.margin.enabled ? "secondary" : "primary"}>
+                    {t(!status.margin.enabled ? "watch.margin.turnOn" : watch?.state === "some" && !free ? "watch.margin.where" : "watch.margin.open")}
+                  </s-button>
+                }
+              >
+                <div data-won-watch-margin={!status.margin.enabled ? "off" : (watch?.state ?? "computing")}>
+                  <span style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                    <s-text type="strong">{t("watch.margin.label")}</s-text>
+                    {status.margin.enabled ? <StatusPill state="active" /> : null}
+                  </span>
+                  <RowNote tone={status.margin.enabled ? undefined : "attention"}>{watchText}</RowNote>
+                </div>
+              </WonRow>
+            ) : null}
+            {status.analytics ? (
+              <WonRow
+                action={
+                  <s-button href="/app/analytics" variant="secondary">
+                    {t("watch.orders.open")}
+                  </s-button>
+                }
+              >
+                <div data-won-watch-orders="">
+                  <s-text type="strong">{t("watch.orders.label", { days: status.analytics.days })}</s-text>
+                  {status.analytics.available && !status.analytics.empty ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 130px), 1fr))", gap: 8, marginTop: 8 }}>
+                      {status.analytics.tiles.map((tile) => (
+                        <div key={tile.id} data-won-watch-number={tile.id} style={{ padding: "8px 10px", borderRadius: 10, background: WON_WASH, border: `1px solid ${WON_LINE}`, fontFamily: WON_FONT }}>
+                          <div style={{ fontSize: 12, color: WON_MUTED }}>{t(`analytics.tile.${tile.id}` as "analytics.tile.cost")}</div>
+                          <div style={{ marginTop: 2, fontSize: 16, fontWeight: 700, color: WON_INK }}>{tile.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <RowNote>{t(status.analytics.available ? "analytics.empty.summary" : "analytics.unavailable.summary")}</RowNote>
+                  )}
+                </div>
+              </WonRow>
+            ) : null}
+            <WonRow>
+              <div data-won-watch-soon="">
+                <span style={{ display: "inline-block", padding: "1px 8px", borderRadius: 999, fontFamily: WON_FONT, fontSize: 11, fontWeight: 700, color: WON_MUTED, background: WON_WASH, border: `1px solid ${WON_LINE}` }}>{t("watch.soon.label")}</span>
+                <RowNote>{t("watch.soon.text")}</RowNote>
+              </div>
+            </WonRow>
+          </div>
+        </WonSection>
 
         {/* Under the signpost: a list as long as the shop's own discounts, with its own actions. `#native` still leads here. */}
         {showNative ? (

@@ -36,7 +36,7 @@ export function impactRulesOf(config: WonDiscountsConfig, variants: readonly Mar
   // The settings checkout resolves (more than 4 refs → the store's strictest setting).
   const sourceOf = (variantId: string) => {
     const v = variantOf.get(variantId);
-    return resolveProductMargin(payload, v?.marginRefs ?? [], v?.marginRefCount)?.source ?? "global";
+    return resolveProductMargin(payload, v?.marginRefs ?? [], v?.marginRefCount, v?.productId)?.source ?? "global";
   };
   return {
     rules: impact.rules.map((rule) => ({

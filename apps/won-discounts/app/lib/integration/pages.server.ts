@@ -30,6 +30,7 @@ import { buildOnboardingProps, rewardsStored } from "../../components/screens/On
 import { rewardsOverviewOf } from "./rewards.server";
 import { cachedRead, readAmountSuggest } from "./themes.server";
 import { tiersOverviewOf } from "./tiers.server";
+import { textRows } from "./translations.server";
 import { outletOverviewOf, outletOverviewRuns } from "./outlet-admin.server";
 import { campaignsOverviewOf, finishingOf } from "./campaigns-admin.server";
 import { buildOverviewProps } from "../../components/screens/OverviewScreen";
@@ -158,6 +159,8 @@ export async function overviewData(ctx: ShopCtx, opts: PageOptions) {
       timezone,
       marketNames: reads.marketNames,
       now: nowOf(ctx),
+      // Překlady's tile: which languages are complete (the page's rows, counted).
+      textCount: textRows(loaded.config, ctx.locale).length,
     },
   };
 }

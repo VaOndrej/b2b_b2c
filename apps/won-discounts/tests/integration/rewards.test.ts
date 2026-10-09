@@ -415,11 +415,10 @@ test("screen: the stored rewards as a ladder; Free shows the step past its limit
   assert.match(free, /Ve Free platí v každém trhu 2 stupně Milníků s nejnižší částkou\. Jeden stupeň se proto někde nenabízí/, "the gate note");
   assert.match(free, /Stupňů: 3 z 4/, "two markets on Free: room for two steps in each");
   assert.match(freeHtml, /href="\/app\/plan"/, "the Pro note leads to the plan");
-  // The amounts table: a row per step, a column per market, the market by name with its currency.
-  assert.match(freeHtml, /data-won-ms-table="2"/);
-  assert.deepEqual([...freeHtml.matchAll(/data-won-ms-column="([^"]+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]}=${m[2]}`), ["CZK=Česko (CZK)", "EUR=Slovensko (EUR)"]);
-  assert.match(freeHtml, /<s-number-field name="ms\.shipping\.amount\.CZK" label="1\. stupeň, Česko \(CZK\)" labelAccessibilityVisibility="exclusive" value="1000"/);
-  assert.match(freeHtml, /<s-number-field name="ms\.gift-socks\.amount\.EUR" label="2\. stupeň, Slovensko \(EUR\)" labelAccessibilityVisibility="exclusive" value=""/);
+  // The amounts (since 9 Oct 2026 in each step's own form): a field per market, the market by name with its currency.
+  assert.deepEqual([...freeHtml.matchAll(/<s-number-field name="ms\.shipping\.amount\.([^"]+)" label="([^"]+)"/g)].map((m) => `${m[1]}=${m[2]}`), ["CZK=Česko (CZK)", "EUR=Slovensko (EUR)"]);
+  assert.match(freeHtml, /<s-number-field name="ms\.shipping\.amount\.CZK" label="Česko \(CZK\)" value="1000"/);
+  assert.match(freeHtml, /<s-number-field name="ms\.gift-socks\.amount\.EUR" label="Slovensko \(EUR\)" value=""/);
   // A stored step says at once where it is not offered (N2), by the market's name.
   assert.match(free, /Slovensko \(EUR\): částka chybí, v tomto trhu se stupeň nenabízí/);
   assert.match(free, /Slovensko: některý stupeň se nenabízí · /, "the tile names the market too");
@@ -431,11 +430,13 @@ test("screen: the stored rewards as a ladder; Free shows the step past its limit
   // The green label is the stored state the loader hands over (the same as the home tile); without it there is none.
   assert.match(free, /Aktivní/);
   const noStatus = { ...devRewardsScreen({ plan: "free", state: null, locale: "cs" }), status: undefined };
-  assert.doesNotMatch(text(await renderPage(createElement(MilestonesScreen, noStatus))), /Aktivní/, "never a green pill from this page's own form");
+  // (The "Na webu" tile's own label is about the theme, read by the loader — not the form; it is cut off here.)
+  const noStatusHtml = await renderPage(createElement(MilestonesScreen, noStatus));
+  assert.doesNotMatch(text(noStatusHtml.slice(0, noStatusHtml.indexOf('data-won-view-tile="web"'))), /Aktivní/, "never a green pill from this page's own form");
   const proHtml = await renderPage(createElement(MilestonesScreen, devRewardsScreen({ plan: "pro", state: null, locale: "cs" })));
   const pro = text(proHtml);
   assert.doesNotMatch(proHtml, /data-won-ms-over/);
-  assert.match(pro, /3\. stupeň/);
+  assert.match(proHtml, /id="step-3" data-won-ms-step="gift-choice"/);
   assert.match(pro, /Dárek \(na výběr až 3\)/);
   assert.match(pro, /Dárek: Kšiltovka Won, Plátěná taška Won nebo Hrnek Won od 3 000 Kč \/ 120 €/);
   assert.match(pro, /Přidat stupeň/);

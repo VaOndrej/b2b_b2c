@@ -31,7 +31,7 @@ import {
   type TierCountAcross,
   type WonDiscountsConfig,
 } from "./config.ts";
-import { buildMarginPayload, costMinorUnits, marginFloorUnit, resolveMargin } from "./margin.ts";
+import { applyProductMargin, buildMarginPayload, costMinorUnits, marginFloorUnit, resolveMargin } from "./margin.ts";
 import { fnv1a32Hex } from "./code-hash.ts";
 import { currencyExponent, moneyFor } from "./money.ts";
 import { isMilestoneRule } from "./milestones.ts";
@@ -79,6 +79,8 @@ export type StorefrontMargin =
       max: number;
       /** Numeric collection id → that collection's maximum discount % (a product with several of its `marginRefs` takes the lowest). */
       col?: Record<string, number>;
+      /** Numeric product id → that product's OWN maximum discount % (before its collections; only products that set one). */
+      prod?: Record<string, number>;
       /**
        * K4 v2: marginKey of the gated margin + shop currency; a variant's `pdp`
        * counts only when its `k` is this one. Present when the builder was given
@@ -254,6 +256,17 @@ function storefrontMargin(margin: ReadonlyDeep<MarginModule>, shopCurrency: stri
     for (const key of Object.keys(payload.col)) setOwn(col, key, payload.col[key][1] ?? payload.max);
     out.col = col;
   }
+  if (payload.prod) {
+    const prod: Record<string, number> = {};
+    let any = false;
+    for (const key of Object.keys(payload.prod)) {
+      const p = payload.prod[key][1];
+      if (p === null) continue; // its collections' (or the global) maximum applies
+      setOwn(prod, key, p);
+      any = true;
+    }
+    if (any) out.prod = prod;
+  }
   if (shopCurrency !== undefined) {
     out.k = marginKey(margin, shopCurrency);
     out.cur = shopCurrency;
@@ -391,6 +404,10 @@ export function marginKey(margin: ReadonlyDeep<MarginModule>, shopCurrency: stri
         ...Object.keys(payload.col ?? {})
           .sort((a, b) => a.length - b.length || (a < b ? -1 : a > b ? 1 : 0))
           .map((key) => `${key}:${payload.col![key][0] ?? "-"},${payload.col![key][1] ?? "-"}`),
+        // Products with their own setting ("p" apart from a collection of the same id); none = the key as before.
+        ...Object.keys(payload.prod ?? {})
+          .sort((a, b) => a.length - b.length || (a < b ? -1 : a > b ? 1 : 0))
+          .map((key) => `p${key}:${payload.prod![key][0] ?? "-"},${payload.prod![key][1] ?? "-"}`),
       ].join("|");
   return fnv1a32Hex(text);
 }
@@ -406,6 +423,8 @@ export interface PdpFloorInput {
   margin: ReadonlyDeep<MarginModule>;
   /** The product's collections (GIDs or numeric ids); those with a margin setting decide, as at checkout. */
   collectionIds: readonly string[];
+  /** The product (GID or numeric id): its own margin setting comes before its collections, as at checkout. */
+  productId?: string | null;
 }
 
 /**
@@ -422,7 +441,7 @@ export function pdpFloor(input: PdpFloorInput): PdpMetafieldValue | null {
   if (!payload.enabled) return null;
   const costMinor = costMinorUnits(input.unitCost ?? undefined, input.costCurrency ?? undefined, 1, shopCurrency, shopCurrency);
   if (costMinor === null) return null;
-  const settings = resolveMargin(payload, input.collectionIds.map(variantKey));
+  const settings = applyProductMargin(payload, resolveMargin(payload, input.collectionIds.map(variantKey)), input.productId);
   if (!settings) return null;
   const { floorUnit } = marginFloorUnit({ unitPrice: 0, costMinor, ...settings });
   return { f: floorUnit, k: marginKey(input.margin, shopCurrency) };
@@ -443,6 +462,8 @@ export interface PdpMaxDiscountInput {
   margin: ReadonlyDeep<MarginModule>;
   /** The product's collections (GIDs or numeric ids); those with a margin setting decide, as at checkout. */
   collectionIds: readonly string[];
+  /** The product (GID or numeric id): its own margin setting comes before its collections, as at checkout. */
+  productId?: string | null;
 }
 
 /**
@@ -464,7 +485,7 @@ export function pdpMaxDiscountPercent(input: PdpMaxDiscountInput): number | null
   const shopCurrency = input.shopCurrency;
   const costMinor = costMinorUnits(input.unitCost ?? undefined, input.costCurrency ?? undefined, 1, shopCurrency, shopCurrency);
   if (costMinor === null) return null;
-  const settings = resolveMargin(payload, input.collectionIds.map(variantKey));
+  const settings = applyProductMargin(payload, resolveMargin(payload, input.collectionIds.map(variantKey)), input.productId);
   if (!settings) return null;
   const unitPrice = Number.isFinite(input.unitPrice) ? Math.max(0, Math.floor(input.unitPrice)) : 0;
   if (unitPrice === 0) return 0;

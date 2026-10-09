@@ -4,7 +4,7 @@
 // and never copied.
 
 use super::js;
-use super::margin::MarginRef;
+use super::margin::{MarginRef, Setting};
 use super::money::mul_sat;
 use super::table::bytes_eq;
 
@@ -40,6 +40,10 @@ pub struct LineInput<'a> {
     /// How many entries the metafield's `marginRefs` has, junk included (0 when
     /// not read): above MAX_MARGIN_REFS the payload's strictest setting applies.
     pub margin_ref_count: usize,
+    /// The product's OWN margin setting (the payload's `prod` entry of its id),
+    /// looked up once by the reader; none = it has none (or the payload has no
+    /// product settings: the product id is then not read at all).
+    pub margin_own: Option<Setting>,
 }
 
 /// What quantity tiers need of a cart line (MVP 3; CartLineInput `tierRef` and
@@ -105,6 +109,10 @@ pub struct NormalizedLine<'a> {
     pub unit_cost_currency: Option<&'a str>,
     pub margin_refs: &'a [MarginRef],
     pub margin_ref_count: usize,
+    /// The product's OWN margin setting (the payload's `prod` entry of its id),
+    /// looked up once by the reader; none = it has none (or the payload has no
+    /// product settings: the product id is then not read at all).
+    pub margin_own: Option<Setting>,
 }
 
 impl NormalizedLine<'_> {
@@ -166,6 +174,7 @@ pub fn normalize_cart(input: CartInput<'_>) -> NormalizedCart<'_> {
                 unit_cost_currency: line.unit_cost_currency,
                 margin_refs: line.margin_refs,
                 margin_ref_count: line.margin_ref_count,
+                margin_own: line.margin_own,
             }
         })
         .collect();

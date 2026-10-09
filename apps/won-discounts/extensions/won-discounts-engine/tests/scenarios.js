@@ -738,6 +738,29 @@ function allScenarios() {
     expected: out(products(pc("Letní sleva", [1], perItem("100.00")), pc("Letní sleva", [3], perItem("222.22")))),
   },
   {
+    name: "lines-margin-product-own-setting",
+    description:
+      "Products with their own margin setting (Pro, the most specific one): it comes before the product's collections and the global values, field by field. Global minimum 10 % and maximum 50 %, collection 1 minimum 30 %. Line 1 (cost 700 Kč, collection 1, own minimum 20 %): floor 875 Kč → 125 Kč, although its collection alone would allow nothing. Line 2 (no cost, own maximum 10 %): 100 Kč. Line 3 (cost 700 Kč, collection 1, own maximum only): the empty minimum stays the collection's 30 % → floor 1 000 Kč, no product discount. Line 4 (cost 700 Kč, no own setting): the global 10 % → 222,22 Kč.",
+    target: "lines",
+    rules: [pct("summer", 30, { name: "Letní sleva" })],
+    margin: {
+      ...marginOn({ minMarginPercent: 10, maxDiscountPercent: 50 }, [{ collectionId: "gid://shopify/Collection/1", minMarginPercent: 30 }]),
+      perProduct: [
+        { productId: "gid://shopify/Product/1", minMarginPercent: 20 },
+        { productId: "gid://shopify/Product/2", maxDiscountPercent: 10 },
+        { productId: "gid://shopify/Product/3", maxDiscountPercent: 5 },
+      ],
+    },
+    role: AUTO,
+    lines: [
+      { n: 1, price: "1000.0", won: { ruleIds: ["summer"], marginRefs: ["1"] }, variantMeta: costOf(700) },
+      { n: 2, price: "1000.0", won: { ruleIds: ["summer"] } },
+      { n: 3, price: "1000.0", won: { ruleIds: ["summer"], marginRefs: ["1"] }, variantMeta: costOf(700) },
+      { n: 4, price: "1000.0", won: { ruleIds: ["summer"] }, variantMeta: costOf(700) },
+    ],
+    expected: out(products(pc("Letní sleva", [1], perItem("125.00")), pc("Letní sleva", [2], perItem("100.00")), pc("Letní sleva", [4], perItem("222.22")))),
+  },
+  {
     name: "lines-margin-refs-over-limit",
     description:
       "A product whose metafield lists more than 4 marginRefs (legacy data, or hand-made; the sync writes at most 4) is not resolved ref by ref: it takes the store's strictest margin setting, every collection folded into the global values — never looser than any collection it could be in. Global minimum margin 10 % and maximum discount 50 %; collection 1 minimum 20 %, collection 2 maximum 30 %, collection 3 minimum 5 % and maximum 80 % (looser). 90 % off 1 000 Kč: line 1 (collection 3) and line 4 (collection 3 listed 4 times) may give 800 Kč; line 2 (collection 3 listed 5 times) only the strictest 30 % → 300 Kč; line 3 (cost 400 Kč, 5 entries, junk included) the strictest 20 % margin → floor 500 Kč → 500 Kč.",

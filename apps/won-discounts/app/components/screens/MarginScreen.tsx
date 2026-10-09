@@ -37,9 +37,10 @@ import { useView, ViewPanel } from "../shell/views";
 import { Form, useSubmit } from "react-router";
 
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
+import { formatMoney } from "@won/core/discounts/describe";
 
 import { useT } from "../../i18n/context";
-import { pickCollections } from "../model/app-bridge";
+import { pickCollections, pickProducts } from "../model/app-bridge";
 import {
   ceilingOnlyText,
   collectionsSummary,
@@ -52,17 +53,21 @@ import {
   marginInForce,
   marginSummary,
   percentInput,
+  productsSummary,
   readMarginDraft,
 } from "../model/margin";
 import { asForm, useRefusedSeed } from "../model/submitted";
-import type { FieldError, MarginCollectionView, MarginScreenData, MarginSettingsView, UiResult } from "../model/types";
+import type { FieldError, MarginCollectionView, MarginProductView, MarginScreenData, MarginSettingsView, UiResult } from "../model/types";
 import { CollectionsSection } from "../margin/CollectionsSection";
 import { CostsSection, coverageSummary } from "../margin/CostsSection";
 import { ImpactSection } from "../margin/ImpactSection";
 import { MarginProof } from "../margin/MarginProof";
+import { ProductsSection } from "../margin/ProductsSection";
 import { FieldMessage } from "../rule-editor/parts";
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
+import { usePollWhile } from "../shell/poll";
+import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
 import { WonSection } from "../shell/WonSection";
 
 export interface MarginScreenProps extends MarginScreenData {
@@ -75,6 +80,11 @@ export function MarginScreen(props: MarginScreenProps) {
   const pro = plan === "pro";
   const tr = useT();
   const { t } = tr;
+  // The examples in the fields' help, in the shop's currency (a shop that sells in euros reads euros).
+  const exampleMoney = (minor: number) => formatMoney(minor, shopCurrency || "CZK", tr.locale);
+  // The read of the purchase costs runs in the background: its count and its end show up without a reload.
+  // So does the recompute of the impact: "přepočítává se" goes away by itself (feedback 9 Oct 2026, 3rd round, bod 9).
+  usePollWhile(mirror.state === "running" || (!!impact && impact.status !== "ready"));
 
   // §2/§17b: the live draft, re-read from the whole form on native events.
   const formRef = useRef<HTMLFormElement>(null);
@@ -83,6 +93,10 @@ export function MarginScreen(props: MarginScreenProps) {
   const titled = (rows: readonly MarginCollectionView[], known: readonly MarginCollectionView[]): MarginCollectionView[] => {
     const titles = new Map(known.map((c) => [c.collectionId, c.title]));
     return rows.map((c) => ({ ...c, title: c.title || titles.get(c.collectionId) || "" }));
+  };
+  const productsTitled = (rows: readonly MarginProductView[], known: readonly MarginProductView[]): MarginProductView[] => {
+    const titles = new Map(known.map((p) => [p.productId, p.title]));
+    return rows.map((p) => ({ ...p, title: p.title || titles.get(p.productId) || "" }));
   };
   const refusedDraft = refused ? readMarginDraft(asForm(refused), settings) : null;
   const [draft, setDraft] = useState<MarginSettingsView>(refusedDraft ?? settings);
@@ -108,6 +122,7 @@ export function MarginScreen(props: MarginScreenProps) {
 
   // Collections: the resource picker (App Bridge seam) feeds the rows; a pick keeps typed values.
   const [collections, setCollections] = useState<MarginCollectionView[]>(refusedDraft ? titled(refusedDraft.collections, settings.collections) : settings.collections);
+  const [products, setProducts] = useState<MarginProductView[]>(refusedDraft ? productsTitled(refusedDraft.products, settings.products) : settings.products);
   // A new refusal remounts the fields: the rows take the posted values before that render commits.
   const [seededKey, setSeededKey] = useState(seedKey);
   if (seededKey !== seedKey) {
@@ -115,6 +130,7 @@ export function MarginScreen(props: MarginScreenProps) {
     if (refusedDraft) {
       setDraft(refusedDraft);
       setCollections(titled(refusedDraft.collections, [...collections, ...settings.collections]));
+      setProducts(productsTitled(refusedDraft.products, [...products, ...settings.products]));
     }
   }
   const [pickUnavailable, setPickUnavailable] = useState(false);
@@ -148,6 +164,32 @@ export function MarginScreen(props: MarginScreenProps) {
     setCollections((list) => list.filter((c) => c.collectionId !== collectionId));
   };
 
+  // Products with their own setting (bod 7): the same picker seam, a pick keeps typed values.
+  const [productPickUnavailable, setProductPickUnavailable] = useState(false);
+  useEffect(() => {
+    if (touched.current) recompute();
+  }, [products, recompute]);
+  const pickProduct = async () => {
+    const res = await pickProducts(products.map((p) => p.productId), { variants: false });
+    if (!res.ok) {
+      if (res.reason === "unavailable") setProductPickUnavailable(true);
+      return;
+    }
+    touched.current = true;
+    const typed = new Map(readMarginDraft(new FormData(formRef.current ?? undefined), settings).products.map((p) => [p.productId, p]));
+    const known = new Map(products.map((p) => [p.productId, p]));
+    setProducts(
+      res.items.slice(0, CONFIG_LIMITS.marginProductOverrides).map((item) => {
+        const prev = typed.get(item.id) ?? known.get(item.id);
+        return { productId: item.id, title: item.title || prev?.title || "", minMarginPercent: prev?.minMarginPercent ?? null, maxDiscountPercent: prev?.maxDiscountPercent ?? null };
+      }),
+    );
+  };
+  const removeProduct = (productId: string) => {
+    touched.current = true;
+    setProducts((list) => list.filter((p) => p.productId !== productId));
+  };
+
   // "Discard" in the App Bridge save bar resets the form: remount the fields
   // with the stored values so the rows, the summary and the proof go back together.
   const [formKey, setFormKey] = useState(0);
@@ -159,6 +201,7 @@ export function MarginScreen(props: MarginScreenProps) {
       setFormKey((k) => k + 1);
       setDraft(settings);
       setCollections(settings.collections);
+      setProducts(settings.products);
       window.setTimeout(recompute, 0);
     };
     el.addEventListener("reset", onReset);
@@ -189,6 +232,7 @@ export function MarginScreen(props: MarginScreenProps) {
   };
   // A collection error not tied to one row (readMarginForm indexes row errors: `collectionMax[1]`).
   const collectionError = errors.find((e) => e.field.startsWith("collection") && !/\[\d+\]$/.test(e.field));
+  const productError = errors.find((e) => e.field.startsWith("product") && !/\[\d+\]$/.test(e.field));
   // What the plan runs (Free folds collection settings into the global values):
   // the proof and the ceiling sentence show THAT, like the state line (§10b, §17c).
   const global = marginInForce(draft, plan).global;
@@ -212,9 +256,9 @@ export function MarginScreen(props: MarginScreenProps) {
     submit(data, { method: "post" });
   };
 
-  const [view, setView] = useView<"settings" | "costs" | "collections" | "impact">({
+  const [view, setView] = useView<"settings" | "costs" | "collections" | "products" | "impact">({
     initial: () => "settings",
-    hash: { settings: "settings", costs: "costs", collections: "collections", impact: "impact" },
+    hash: { settings: "settings", costs: "costs", collections: "collections", products: "products", impact: "impact" },
     resetKey: result,
   });
 
@@ -232,8 +276,8 @@ export function MarginScreen(props: MarginScreenProps) {
         {configVersion ? <input type="hidden" name={MARGIN_FIELD.configVersion} value={configVersion} /> : null}
         <s-stack key={`${formKey}-${seedKey}`} direction="block" gap="base">
           <Notice result={result} onReplace={replaceUnreadable} />
-          {/* Four tiles, one panel at a time (doctrine §19e); the panels stay in the one form with its one Save. */}
-          <ModuleTiles label={t("margin.view.label")} columns={4}>
+          {/* Five tiles, one panel at a time (doctrine §19e); the panels stay in the one form with its one Save. */}
+          <ModuleTiles label={t("margin.view.label")} columns={5}>
             <ViewTile id="settings" title={t("margin.view.settings.title")} glyph="shield" active={marginSummary(draft, plan, tr)} status={props.status} selected={view === "settings"} onPick={() => setView("settings")} />
             <ViewTile id="costs" title={t("margin.costs.title")} glyph="receipt" active={coverageSummary(coverage, mirror, tr)} selected={view === "costs"} onPick={() => setView("costs")} />
             <ViewTile
@@ -247,6 +291,17 @@ export function MarginScreen(props: MarginScreenProps) {
               selected={view === "collections"}
               onPick={() => setView("collections")}
             />
+            <ViewTile
+              id="products"
+              title={t("margin.products.title")}
+              glyph="tag"
+              // Pro: the products by name. Free: how many are stored, none of them applies on its own.
+              active={products.length === 0 ? undefined : pro ? productsSummary(products, tr) : tr.tp("count.product", products.length)}
+              pro={!pro}
+              locked={!pro}
+              selected={view === "products"}
+              onPick={() => setView("products")}
+            />
             <ViewTile id="impact" title={t("margin.view.impact.title")} glyph="alert" active={pro ? impactSummary(impact, pro, draft.enabled, tr) : undefined} pro={!pro} locked={!pro} selected={view === "impact"} onPick={() => setView("impact")} />
           </ModuleTiles>
           <ViewPanel id="settings" view={view}>
@@ -259,6 +314,15 @@ export function MarginScreen(props: MarginScreenProps) {
             aside={<MarginProof settings={inForce} currency={shopCurrency} />}
           >
             <s-stack direction="block" gap="base">
+              {/* Feedback 9 Oct 2026, bod 2: first what it does, in three plain steps; then what to fill in. */}
+              <div data-won-margin-how="" style={{ padding: "10px 12px", borderRadius: 11, background: WON_WASH, border: `1px solid ${WON_LINE}`, fontFamily: WON_FONT }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: WON_INK }}>{t("margin.how.title")}</div>
+                <ol style={{ margin: "6px 0 0", paddingLeft: 20, fontSize: 13, lineHeight: 1.5, color: WON_INK }}>
+                  <li>{t("margin.how.1")}</li>
+                  <li>{t("margin.how.2")}</li>
+                  <li>{t("margin.how.3")}</li>
+                </ol>
+              </div>
               <s-switch name={MARGIN_FIELD.enabled} value="on" label={t("margin.enabled")} checked={boolAttr(seed.active ? seed.one(MARGIN_FIELD.enabled, "") === "on" : settings.enabled)} />
               <s-stack direction="block" gap="small-200">
                 <s-text color="subdued">{t("margin.never")}</s-text>
@@ -268,12 +332,16 @@ export function MarginScreen(props: MarginScreenProps) {
                 </s-text>
                 {/* §12: until the first complete read, the ceiling is all there is for unread products (also those with a cost). */}
                 {ceilingOnly ? (
-                  <s-text type="strong">
+                  <s-text color="subdued">
                     {ceilingOnly}
                     {afterSaveCeiling !== null ? ` ${t("margin.afterSave", { percent: percentText(afterSaveCeiling, tr) })}` : ""} <s-link href="#costs">{t("margin.costs.link")}</s-link>
                   </s-text>
                 ) : null}
               </s-stack>
+              <div style={{ fontFamily: WON_FONT }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: WON_INK }}>{t("margin.fill.title")}</div>
+                <div style={{ marginTop: 2, fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED }}>{t("margin.fill.note")}</div>
+              </div>
               <s-number-field
                 name={MARGIN_FIELD.minMarginPercent}
                 label={t("margin.min.label")}
@@ -283,7 +351,7 @@ export function MarginScreen(props: MarginScreenProps) {
                 step={MARGIN_PERCENT_STEP}
                 suffix="%"
                 inputMode="decimal"
-                details={t("margin.min.details")}
+                details={t("margin.min.details", { cost: exampleMoney(60000), floor: exampleMoney(75000) })}
               />
               <FieldMessage text={decimalErrorFor(MARGIN_FIELD.minMarginPercent) ?? errorFor(MARGIN_FIELD.minMarginPercent)} />
               <s-number-field
@@ -295,7 +363,7 @@ export function MarginScreen(props: MarginScreenProps) {
                 step={MARGIN_PERCENT_STEP}
                 suffix="%"
                 inputMode="decimal"
-                details={t("margin.max.details")}
+                details={t("margin.max.details", { price: exampleMoney(100000), half: exampleMoney(50000) })}
               />
               <FieldMessage text={decimalErrorFor(MARGIN_FIELD.maxDiscountPercent) ?? errorFor(MARGIN_FIELD.maxDiscountPercent)} />
               <FieldMessage text={errorFor(MARGIN_FIELD.enabled)} />
@@ -317,8 +385,23 @@ export function MarginScreen(props: MarginScreenProps) {
             decimalErrorFor={decimalErrorFor}
             error={collectionError ? t(collectionError.key, collectionError.params) : undefined}
             tooLarge={tooLarge}
+            store={{ minMarginPercent: settings.minMarginPercent, maxDiscountPercent: settings.maxDiscountPercent }}
             posted={refused && pro ? { ids: refused[MARGIN_FIELD.collectionId] ?? [], min: refused[MARGIN_FIELD.collectionMin] ?? [], max: refused[MARGIN_FIELD.collectionMax] ?? [] } : null}
           />
+          </ViewPanel>
+          <ViewPanel id="products" view={view}>
+            <ProductsSection
+              pro={pro}
+              products={products}
+              gateNotes={props.productGateNotes}
+              onPick={() => void pickProduct()}
+              onRemove={removeProduct}
+              pickUnavailable={productPickUnavailable}
+              errorFor={errorFor}
+              decimalErrorFor={decimalErrorFor}
+              error={productError ? t(productError.key, productError.params) : undefined}
+              posted={refused && pro ? { ids: refused[MARGIN_FIELD.productId] ?? [], min: refused[MARGIN_FIELD.productMin] ?? [], max: refused[MARGIN_FIELD.productMax] ?? [] } : null}
+            />
           </ViewPanel>
           <ViewPanel id="impact" view={view}>
             <ImpactSection pro={pro} enabled={draft.enabled} unsaved={unsaved} impact={impact} currency={shopCurrency} />

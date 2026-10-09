@@ -19,23 +19,31 @@
 // holds typed text): the server's and the live messages sit under the row.
 
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
+import { formatPercent } from "@won/core/discounts/describe";
 
 import { useT } from "../../i18n/context";
 import { COLLECTION_READ_LIMIT, MARGIN_FIELD, MARGIN_PERCENT_STEP, percentInput } from "../model/margin";
 import type { GateNoteView, MarginCollectionView, MarginTooLargeView } from "../model/types";
 import { FieldGrid, FieldMessage } from "../rule-editor/parts";
 import { boolAttr } from "../shell/attrs";
+import { WON_FONT, WON_INK, WON_LINE, WON_WASH } from "../shell/tokens";
 import { GateNotes } from "../shell/GateNotes";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 
-function PercentFields({
+export function PercentFields({
   min,
   max,
   named,
   disabled,
+  names = { min: MARGIN_FIELD.collectionMin, max: MARGIN_FIELD.collectionMax },
+  texts = "collections",
 }: {
+  /** The two fields' form names (the collections' by default; the products section passes its own). */
+  names?: { min: string; max: string };
+  /** Whose help and placeholder the fields carry. */
+  texts?: "collections" | "products";
   /** The field's value as text: the stored percent, or exactly what a refused save posted. */
   min: string;
   max: string;
@@ -47,10 +55,11 @@ function PercentFields({
   return (
     <FieldGrid>
       <s-number-field
-        name={named ? MARGIN_FIELD.collectionMin : undefined}
+        name={named ? names.min : undefined}
         label={t("margin.collections.min")}
         value={min}
-        placeholder={t("margin.collections.inherit")}
+        placeholder={t(`margin.${texts}.inherit`)}
+        details={t(`margin.${texts}.min.details`)}
         min={0}
         max={95}
         step={MARGIN_PERCENT_STEP}
@@ -59,10 +68,11 @@ function PercentFields({
         disabled={boolAttr(disabled)}
       />
       <s-number-field
-        name={named ? MARGIN_FIELD.collectionMax : undefined}
+        name={named ? names.max : undefined}
         label={t("margin.collections.max")}
         value={max}
-        placeholder={t("margin.collections.inherit")}
+        placeholder={t(`margin.${texts}.inherit`)}
+        details={t(`margin.${texts}.max.details`)}
         min={0}
         max={100}
         step={MARGIN_PERCENT_STEP}
@@ -86,7 +96,10 @@ export function CollectionsSection({
   error,
   tooLarge = [],
   posted = null,
+  store,
 }: {
+  /** The whole-store values in force (what an empty field falls back to), said in words above the rows. */
+  store?: { minMarginPercent: number | null; maxDiscountPercent: number };
   pro: boolean;
   collections: readonly MarginCollectionView[];
   /** Pro settings stored but not in force on this plan (core explainGate, BILL-1). */
@@ -121,8 +134,6 @@ export function CollectionsSection({
       pro
       locked={!pro}
       summary={t("margin.view.collections.about")}
-      collapsible
-      defaultOpen={pro || collections.length > 0 || gateNotes.length > 0 || !!error}
       anchor="collections"
     >
       <s-stack direction="block" gap="base">
@@ -130,7 +141,25 @@ export function CollectionsSection({
         {!pro ? <ProSell benefit={t("margin.collections.benefit")} /> : null}
         <ProFrame locked={!pro}>
           <s-stack direction="block" gap="base">
+            {/* Feedback 9 Oct 2026 (2nd round): what the section is for, how to fill it in, an example in numbers. */}
+            <div data-won-margin-collections-how="" style={{ padding: "10px 12px", borderRadius: 11, background: WON_WASH, border: `1px solid ${WON_LINE}`, fontFamily: WON_FONT }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: WON_INK }}>{t("margin.collections.how.title")}</div>
+              <ol style={{ margin: "6px 0 0", paddingLeft: 20, fontSize: 13, lineHeight: 1.5, color: WON_INK }}>
+                <li>{t("margin.collections.how.1")}</li>
+                <li>{t("margin.collections.how.2")}</li>
+                <li>{t("margin.collections.how.3")}</li>
+              </ol>
+            </div>
+            {store ? (
+              <s-text>
+                {t("margin.collections.store", {
+                  min: store.minMarginPercent === null ? t("margin.collections.store.minNone") : t("margin.collections.store.min", { percent: formatPercent(store.minMarginPercent, tr.locale) }),
+                  max: t("margin.collections.store.max", { percent: formatPercent(store.maxDiscountPercent, tr.locale) }),
+                })}
+              </s-text>
+            ) : null}
             <s-text color="subdued">{t("margin.collections.body")}</s-text>
+            {collections.length === 0 ? <RowNote>{t("margin.collections.empty")}</RowNote> : null}
             {collections.length > 0 ? (
               <div>
                 {collections.map((c, i) => (

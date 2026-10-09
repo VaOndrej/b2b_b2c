@@ -6,9 +6,11 @@
   A sale whose badge the merchant hid for its variant is simply not in `v` (the app leaves it out).
   - silent / strike: nothing here (the theme strikes compare_at_price itself);
   - strike_badge: "Výprodej"; strike_badge_left: + "Zbývá X ks" (X > 0, the real quota).
-  A product with one variant gets one badge; otherwise one row per sale variant, named — so the badge is
-  right whatever variant the shopper picks, with no script (SF-2 budget untouched) and the same in every
-  theme. Never reads or changes the cart (SF-1). Markers data-won-discounts-outlet*.
+  One row per sale variant, and only the row of the variant the shopper has picked is shown (feedback 9 Oct 2026,
+  3rd round, bod 6: every sale variant listed by name read as "Sale 400 g" and said nothing). Liquid shows the
+  variant the page was rendered for; assets/won-discounts-blocks.js follows the shopper's pick (loaded only for a
+  product with more variants, or a sale with a countdown). A variant that is not on sale shows no badge.
+  Never reads or changes the cart (SF-1). Markers data-won-discounts-outlet*.
   The looks with a countdown (the storefront config's `appearance.oc`; the look itself is CSS in the config's
   stylesheet) add the time left to a sale that has an end: the campaign banner's countdown markup and script
   (assets/won-discounts-blocks.js), loaded only then.
@@ -32,6 +34,11 @@
   if d == 'strike_badge' or d == 'strike_badge_left'
     assign show = true
   endif
+  assign won_picked = product.selected_or_first_available_variant.id
+  assign won_many = false
+  if product.variants.size > 1
+    assign won_many = true
+  endif
 -%}
 {%- if show and ov.v != blank -%}
   <div class="won-outlet" data-won-discounts-outlet>
@@ -42,11 +49,8 @@
       -%}
       {%- if left != nil -%}
         {%- assign left = left | plus: 0 -%}
-        <p class="won-outlet__row" data-won-discounts-outlet-variant="{{ v.id }}">
+        <p class="won-outlet__row" data-won-discounts-outlet-variant="{{ v.id }}"{% if won_many and v.id != won_picked %} hidden{% endif %}>
           <span class="won-outlet__badge" data-won-discounts-outlet-badge>{{ t_badge | escape }}</span>
-          {%- unless product.has_only_default_variant -%}
-            <span class="won-outlet__variant">{{ v.title | escape }}</span>
-          {%- endunless -%}
           {%- if d == 'strike_badge_left' and left > 0 -%}
             <span class="won-outlet__left" data-won-discounts-outlet-left>{{ 'outlet.left' | t: count: left }}</span>
           {%- endif -%}
@@ -61,7 +65,7 @@
       {%- endif -%}
     {%- endfor -%}
   </div>
-  {%- if won_timed -%}
+  {%- if won_timed or won_many -%}
     <script src="{{ 'won-discounts-blocks.js' | asset_url }}" defer></script>
   {%- endif -%}
 {%- endif -%}

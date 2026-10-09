@@ -244,6 +244,15 @@ export interface MarginCollectionView {
   maxDiscountPercent: number | null;
 }
 
+/** One product's own margin setting (Pro): before its collections and the global values. */
+export interface MarginProductView {
+  productId: string;
+  /** The product's Shopify title ("" when unknown: the screen says "Produkt bez názvu", never the id). */
+  title: string;
+  minMarginPercent: number | null;
+  maxDiscountPercent: number | null;
+}
+
 /** The stored margin settings as the form edits them. */
 export interface MarginSettingsView {
   enabled: boolean;
@@ -252,6 +261,8 @@ export interface MarginSettingsView {
   maxDiscountPercent: number;
   /** Pro. Stored even on Free (then folded into the global values, see gateNotes). */
   collections: MarginCollectionView[];
+  /** Pro. A product's own setting, the most specific one; stored even on Free (folded like the collections). */
+  products: MarginProductView[];
 }
 
 /** One place where margin protection lowers an active product discount (1 item, shop currency). */
@@ -263,7 +274,7 @@ export interface MarginImpactRowView {
   wanted: number;
   allowed: number;
   basis: "cost" | "max_percent";
-  source: "global" | "collection";
+  source: "global" | "collection" | "product";
 }
 
 /** One rule margin protection lowers (Přehled zásahů, audit P2-2: counted per rule, never from the shown rows). */
@@ -320,6 +331,8 @@ export interface MarginScreenData {
   impact: MarginImpactView | null;
   /** Pro settings stored but not in force on this plan (core explainGate). */
   gateNotes: GateNoteView[];
+  /** The same for the products with their own setting. */
+  productGateNotes: GateNoteView[];
   /** Pro collections the last product pass could not read (their values apply to the whole store). */
   tooLarge: MarginTooLargeView[];
 }
@@ -344,7 +357,21 @@ export interface MarginOverviewView {
   mirror: CostMirrorView;
   /** Pro collections the last product pass could not read (absent = none). */
   tooLarge?: MarginTooLargeView[];
+  /**
+   * Přehled's "Co Won hlídá" (feedback 9 Oct 2026): does protection lower any active discount right now — from the
+   * settings and the cost mirror, computed in the background (never from orders). Absent = protection is off.
+   * Free gets the answer without numbers (the list of where and by how much is Pro, BILL-1); Pro gets the counts.
+   */
+  watch?: MarginWatchView;
 }
+
+export type MarginWatchView =
+  /** Not computed yet. */
+  | { state: "computing" }
+  /** No active discount goes below the floor. */
+  | { state: "none" }
+  /** Some do; `rules` / `variants` only on Pro. */
+  | { state: "some"; rules?: number; variants?: number };
 
 /**
  * A Pro setting that is stored but not in force on the shop's plan (BILL-1,
@@ -643,7 +670,8 @@ export interface TiersScreenData {
   /** The table's custom look (Pro) for its section; additive in fixtures. */
   look?: LookView;
   /** BETA: prices by quantity on product cards, and the deep link that adds the card block to the theme. */
-  cards?: { on: boolean; blockUrl: string | null };
+  /** `viewUrl`: a storefront page with product cards; `editorUrl`: the live theme's editor on the collection template. */
+  cards?: { on: boolean; blockUrl: string | null; viewUrl?: string | null; editorUrl?: string | null };
   /** Currencies of the enabled markets (amount inputs per currency). */
   currencies: CurrencyView[];
   /** Config order; the global set first when there is one. Pro sets are listed on Free too (gateNotes say they do not apply). */

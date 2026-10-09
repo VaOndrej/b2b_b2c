@@ -114,8 +114,6 @@ export function ImpactSection({
       pro
       locked={!pro}
       summary={t("margin.view.impact.about")}
-      collapsible
-      defaultOpen={pro || !!focus}
       anchor="impact"
     >
       <s-stack direction="block" gap="base">

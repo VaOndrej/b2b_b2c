@@ -32,6 +32,10 @@ describe("classifyStoredMargin", () => {
 
   it("recognises the Pro seed (margin-pro) with the E2E test collection", () => {
     assert.deepEqual(classifyStoredMargin(marginModule(COLLECTION), onlyFixture), { kind: "fixture", profile: "margin-pro", collectionId: COLLECTION });
+    assert.deepEqual(classifyStoredMargin(marginModule(COLLECTION, "gid://shopify/Product/1"), onlyFixture), { kind: "fixture", profile: "margin-pro", collectionId: COLLECTION });
+    // A config stored before the product settings has no `perProduct` key at all.
+    const { perProduct: _none, ...legacy } = marginModule(COLLECTION);
+    assert.deepEqual(classifyStoredMargin(legacy, onlyFixture), { kind: "fixture", profile: "margin-pro", collectionId: COLLECTION });
   });
 
   it("recognises the tiers seed (MVP 3): min margin 30 %, max 30 %, no override, on or off", () => {
@@ -64,6 +68,10 @@ describe("classifyStoredMargin", () => {
       [{ ...marginModule(COLLECTION), perCollection: [{ collectionId: COLLECTION, minMarginPercent: 40, maxDiscountPercent: 10 }] }, /collection override/u],
       [{ ...marginModule(COLLECTION), perCollection: [{ collectionId: COLLECTION, maxDiscountPercent: 10 }, { collectionId: OTHER_COLLECTION, maxDiscountPercent: 10 }] }, /2 collection overrides/u],
       [{ ...marginModule(), extra: 1 }, /unexpected fields/u],
+      // Products with their own setting (9 Oct 2026): only the Pro fixture's one, and only with its collection.
+      [{ ...marginModule(COLLECTION, "gid://shopify/Product/1"), perProduct: [{ productId: "gid://shopify/Product/1", maxDiscountPercent: 5 }] }, /product settings/u],
+      [{ ...marginModule(COLLECTION, "gid://shopify/Product/1"), perProduct: [{ productId: "gid://shopify/Product/1", minMarginPercent: 5, maxDiscountPercent: 20 }] }, /product settings/u],
+      [marginModule(undefined, "gid://shopify/Product/1"), /product setting without/u],
       [{ enabled: "true", global: { minMarginPercent: 25, maxDiscountPercent: 30 }, perCollection: [] }, /not a boolean/u],
       ["on", /not an object/u],
     ];

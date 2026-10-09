@@ -103,6 +103,7 @@ import { classifyStoredMargin } from "./margin-cleanup.mjs";
 import {
   MARGIN_CODE,
   MARGIN_COLLECTION_HANDLE,
+  MARGIN_OWN_PRODUCT_HANDLE,
   MARGIN_HANDLES,
   MARGIN_ORDER_CAP_CODE,
   MARGIN_RULE_IDS,
@@ -205,8 +206,8 @@ const PROFILES = {
     handles: MARGIN_HANDLES,
     rules: marginRules,
     collections: [MARGIN_COLLECTION_HANDLE],
-    margin: (collectionIds) => marginModule(collectionIds[MARGIN_COLLECTION_HANDLE]),
-    label: `margin protection on (min margin 25 %, max discount 30 %) + Pro: collection ${MARGIN_COLLECTION_HANDLE} max discount 10 %, auto 50 % on ${MARGIN_HANDLES.length} products + codes ${MARGIN_CODE}, ${MARGIN_ORDER_CAP_CODE}`,
+    margin: (collectionIds, productIds) => marginModule(collectionIds[MARGIN_COLLECTION_HANDLE], productIds[MARGIN_OWN_PRODUCT_HANDLE]),
+    label: `margin protection on (min margin 25 %, max discount 30 %) + Pro: collection ${MARGIN_COLLECTION_HANDLE} max discount 10 %, product ${MARGIN_OWN_PRODUCT_HANDLE} own max discount 20 %, auto 50 % on ${MARGIN_HANDLES.length} products + codes ${MARGIN_CODE}, ${MARGIN_ORDER_CAP_CODE}`,
   },
   tiers: {
     handles: [],
@@ -449,7 +450,7 @@ function seedConfig(previous, productIds, collectionIds, variantIds) {
   const config = createDefaultConfig();
   config.markets = previous.markets ?? [];
   config.modules.codes.rules = PROFILES[PROFILE].rules(productIds);
-  if (PROFILES[PROFILE].margin) config.modules.margin = PROFILES[PROFILE].margin(collectionIds);
+  if (PROFILES[PROFILE].margin) config.modules.margin = PROFILES[PROFILE].margin(collectionIds, productIds);
   if (PROFILES[PROFILE].tiers) config.modules.tiers = PROFILES[PROFILE].tiers(collectionIds);
   if (PROFILES[PROFILE].rewards) config.modules.rewards = PROFILES[PROFILE].rewards(variantIds);
   // MVP 7: a profile's storefront settings (card prices, the custom look).

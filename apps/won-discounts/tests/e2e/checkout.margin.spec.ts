@@ -18,6 +18,8 @@ import {
   MARGIN_COLLECTION_MEMBER_HANDLE,
   MARGIN_HANDLES,
   MARGIN_MAX_DISCOUNT_PERCENT,
+  MARGIN_OWN_MAX_DISCOUNT_PERCENT,
+  MARGIN_OWN_PRODUCT_HANDLE,
   MARGIN_MIN_MARGIN_PERCENT,
   MARGIN_MULTIAXIS_HANDLE,
   MARGIN_ORDER_CAP_CART,
@@ -152,11 +154,15 @@ const RATE_TOLERANCE: Record<Country, number> = { CZ: 0.05, SK: 0.12 };
 interface Settings {
   minMarginPercent: number;
   maxDiscountPercent: number;
-  source: "global" | "collection";
+  source: "global" | "collection" | "product";
 }
 
 /** The settings that must apply to a product, from the fixture (restated, not read from the payload). */
 function settingsFor(handle: string): Settings {
+  if (PRO && handle === MARGIN_OWN_PRODUCT_HANDLE) {
+    // Its own maximum discount comes before its collection's 10 % (9 Oct 2026, bod 7); the minimum margin stays the global one.
+    return { minMarginPercent: MARGIN_MIN_MARGIN_PERCENT, maxDiscountPercent: MARGIN_OWN_MAX_DISCOUNT_PERCENT, source: "product" };
+  }
   if (PRO && handle === MARGIN_COLLECTION_MEMBER_HANDLE) {
     // The override leaves the minimum margin to the global value.
     return { minMarginPercent: MARGIN_MIN_MARGIN_PERCENT, maxDiscountPercent: MARGIN_COLLECTION_MAX_DISCOUNT_PERCENT, source: "collection" };
@@ -251,7 +257,12 @@ function expectMainPlan(a: Analysis): void {
   }
   expect(A.settings.source, "simple-a: the global settings (not in the collection)").toBe("global");
   expect(A.planLine.marginCapped?.minMarginPercent).toBe(A.settings.minMarginPercent);
-  expect(B.settings.source, `simple-b: ${PRO ? "its collection's setting" : "the global settings"}`).toBe(PRO ? "collection" : "global");
+  expect(B.settings.source, `simple-b: ${PRO ? "its own setting, before its collection's" : "the global settings"}`).toBe(PRO ? "product" : "global");
+  if (PRO) {
+    // The product's own 20 % decides — NOT the 10 % of the collection it is in.
+    const byCollection = B.planLine.subtotal - ceilTol(B.item.original_price * (1 - MARGIN_COLLECTION_MAX_DISCOUNT_PERCENT / 100)) * B.planLine.quantity;
+    expect(B.planLine.product?.amount, `simple-b: NOT what its collection's ${MARGIN_COLLECTION_MAX_DISCOUNT_PERCENT} % would give (${byCollection})`).not.toBe(byCollection);
+  }
   for (const L of [B, X]) {
     expect(L.planLine.marginCapped?.maxDiscountPercent, `${L.handle}: the ${L.settings.source} maximum discount`).toBe(L.settings.maxDiscountPercent);
     expect(((L.planLine.product?.amount ?? 0) * 100) / L.planLine.subtotal, `${L.handle}: ≈ ${L.settings.maxDiscountPercent} %`).toBeCloseTo(L.settings.maxDiscountPercent, 0);
@@ -427,6 +438,7 @@ function expectLivePayload(inputs: MarginInputs): { collectionId: string | null 
     max: MARGIN_MAX_DISCOUNT_PERCENT,
     cur: inputs.shopCurrency,
     col: { [key]: [null, MARGIN_COLLECTION_MAX_DISCOUNT_PERCENT] },
+    prod: { [numericId(inputs.productIdByHandle[MARGIN_OWN_PRODUCT_HANDLE]!)]: [null, MARGIN_OWN_MAX_DISCOUNT_PERCENT] },
   });
   for (const handle of MARGIN_CART_HANDLES) {
     const want = handle === MARGIN_COLLECTION_MEMBER_HANDLE ? [key] : undefined;
@@ -705,7 +717,7 @@ test.describe(`Won Discounts margin protection in cart and checkout (MVP 2)${PRO
     if (page.url().startsWith(new URL(baseURL!).origin)) await clearCartQuietly(page);
   });
 
-  const bLabel = PRO ? `simple-b to its collection's ${MARGIN_COLLECTION_MAX_DISCOUNT_PERCENT} %` : `simple-b to ${MARGIN_MAX_DISCOUNT_PERCENT} %`;
+  const bLabel = PRO ? `simple-b to its own ${MARGIN_OWN_MAX_DISCOUNT_PERCENT} % (before its collection's ${MARGIN_COLLECTION_MAX_DISCOUNT_PERCENT} %)` : `simple-b to ${MARGIN_MAX_DISCOUNT_PERCENT} %`;
   test(`cart: simple-a to its cost floor, ${bLabel}, spare to ${MARGIN_MAX_DISCOUNT_PERCENT} %, Small none, WONE2EM20 applicable as an exact amount = planCart with the logged rate`, async ({ page }, testInfo) => {
     test.setTimeout(300_000);
     const inputs = await readMarginInputs(MARGIN_CART_HANDLES, [MARGIN_COLLECTION_HANDLE]);

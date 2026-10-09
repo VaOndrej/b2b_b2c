@@ -21,11 +21,14 @@ test("Liquid: reads the product's `outlet` metafield (app-owned), shows only for
   assert.doesNotMatch(code, /\bcart\b/, "never reads the cart (SF-1)");
 });
 
-test("Liquid: a row per sale variant (by its numeric id), named unless the product has only the default variant; 'Zbývá X ks' only for strike_badge_left and X > 0", () => {
+test("Liquid: a row per sale variant (by its numeric id), only the picked variant's shown and none named (9 Oct 2026, bod 6); 'Zbývá X ks' only for strike_badge_left and X > 0", () => {
   assert.match(liquid, /for v in product\.variants/);
   assert.match(liquid, /assign key = v\.id \| append: ''\s+assign left = ov\.v\[key\]/);
   assert.match(liquid, /if left != nil/);
-  assert.match(liquid, /unless product\.has_only_default_variant[\s\S]*?v\.title \| escape/);
+  // The variant the page was rendered for; the others are in the markup, hidden, for the script to switch to.
+  assert.match(liquid, /assign won_picked = product\.selected_or_first_available_variant\.id/);
+  assert.match(liquid, /data-won-discounts-outlet-variant="\{\{ v\.id \}\}"\{% if won_many and v\.id != won_picked %\} hidden\{% endif %\}/);
+  assert.doesNotMatch(code, /v\.title/, "a row never names its variant: only the picked one is shown");
   assert.match(liquid, /if d == 'strike_badge_left' and left > 0/);
   assert.match(liquid, /'outlet\.left' \| t: count: left/);
   for (const marker of ["data-won-discounts-outlet", "data-won-discounts-outlet-variant", "data-won-discounts-outlet-badge", "data-won-discounts-outlet-left"]) {
@@ -33,12 +36,13 @@ test("Liquid: a row per sale variant (by its numeric id), named unless the produ
   }
 });
 
-test("no script of its own: the block names no javascript and there is no outlet asset; only a look with a countdown loads the banner's countdown script, for a sale with an end", () => {
+test("no script of its own: the block names no javascript and there is no outlet asset; the blocks script is loaded only for a product with more variants (it follows the pick) or a sale with a countdown", () => {
   assert.doesNotMatch(liquid, /"javascript"/);
   assert.equal(existsSync(path.join(EXT, "assets/won-discounts-outlet.js")), false);
   // One script tag, behind the look's flag (`appearance.oc`) and a sale's end date (`ov.e`).
   assert.equal((liquid.match(/<script src=/g) ?? []).length, 1);
-  assert.match(liquid, /\{%- if won_timed -%\}\s*<script src="\{\{ 'won-discounts-blocks\.js' \| asset_url \}\}" defer><\/script>\s*\{%- endif -%\}/);
+  assert.match(liquid, /if product\.variants\.size > 1\s+assign won_many = true/);
+  assert.match(liquid, /\{%- if won_timed or won_many -%\}\s*<script src="\{\{ 'won-discounts-blocks\.js' \| asset_url \}\}" defer><\/script>\s*\{%- endif -%\}/);
   assert.match(liquid, /if app\.metafields\.won_discounts\.storefront_config\.value\.appearance\.oc == 1 and ov\.e != blank\s+assign won_timed = true/);
   // The countdown is the banner's markup (assets/won-discounts-blocks.js reads it), one per timed variant, hidden until it runs.
   assert.match(liquid, /\{%- if won_timed and ov\.e\[key\] != nil -%\}\s*<span class="won-outlet__time" data-won-discounts-campaign[^>]* hidden>/);

@@ -6,7 +6,7 @@
 // float expressions in the same order.
 
 import type { NormalizedCart } from "./cart.ts";
-import { costMinorUnits, type FunctionMarginPayload, MAX_MARGIN_REFS, marginFloorUnit, type MarginSettings, resolveMargin, strictestMargin } from "./margin.ts";
+import { applyProductMargin, costMinorUnits, type FunctionMarginPayload, MAX_MARGIN_REFS, marginFloorUnit, type MarginSettings, resolveMargin, strictestMargin } from "./margin.ts";
 import type { EmittedValue, PlanOrder, PlanStack } from "./plan.ts";
 import { type Candidate, label, orderAmount, ownerOf, type Rule, type StackContext, type WorkLine } from "./plan-internal.ts";
 
@@ -24,10 +24,12 @@ export function computeFloors(work: WorkLine[], margin: MarginOn, cart: Normaliz
   let strictest: MarginSettings | null = null;
   for (const w of work) {
     if (w.excluded !== null) continue;
-    const settings =
+    const fromCollections =
       w.line.marginRefCount > MAX_MARGIN_REFS
         ? (strictest ??= strictestMargin(margin) as MarginSettings)
         : (resolveMargin(margin, w.line.marginRefs) as MarginSettings);
+    // The product's own setting first (margin.ts applyProductMargin); without `prod` this is `fromCollections` itself.
+    const settings = applyProductMargin(margin, fromCollections, w.line.productId) as MarginSettings;
     const costMinor = costMinorUnits(
       w.line.unitCost ?? undefined,
       w.line.unitCostCurrency ?? undefined,

@@ -156,6 +156,24 @@ export function changedCount(values: Readonly<Record<string, string>> | undefine
   return rows.filter((row) => (values?.[row.key] ?? "").trim() !== "").length;
 }
 
+/**
+ * How many texts a customer reading `locale` gets in another language (feedback 9 Oct 2026: "jestli mám překlady
+ * hotové"). A language the extension has its own texts in is always complete; any other one shows the English
+ * text wherever the merchant has none of their own. `own` = the merchant's texts in that language (the rows'
+ * values, or their count when only the count is known).
+ */
+export function missingTexts(locale: string, own: Readonly<Record<string, string>> | number | undefined, rows: readonly TextRow[] | number): number {
+  if (isDefaultTextLang(locale)) return 0;
+  const total = typeof rows === "number" ? rows : rows.length;
+  const have = typeof own === "number" ? own : typeof rows === "number" ? Object.values(own ?? {}).filter((text) => text.trim() !== "").length : changedCount(own, rows);
+  return Math.max(0, total - have);
+}
+
+/** A language's state in one sentence: "Hotovo" / "Chybí 4 texty". */
+export function languageProgressText(missing: number, tr: Translator): string {
+  return missing > 0 ? tr.tp("translations.lang.missing", missing) : tr.t("translations.lang.done");
+}
+
 // --- CSV (Pro) -----------------------------------------------------------------------------------------
 
 const CSV_KEY = "key";

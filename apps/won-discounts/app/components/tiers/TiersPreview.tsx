@@ -87,8 +87,15 @@ function percentText(pct: number, locale: Locale): string {
   return locale === "en" ? text : text.replace(".", ",");
 }
 
-/** The sample product's price when the shop has no product to show: 200 in the currency's major unit. */
-const SAMPLE_PRICE = 20000;
+/**
+ * The sample product's price, major units: a round price high enough that an amount off per item reads as a
+ * discount, not as most of the price (feedback 9 Oct 2026: "20 Kč je dost málo, lepší 1000 Kč nebo 50 eur").
+ */
+const SAMPLE_MAJOR: Readonly<Record<string, number>> = { CZK: 1000, EUR: 50, USD: 50, GBP: 50, CHF: 50, PLN: 200, HUF: 20000, SEK: 500, NOK: 500, DKK: 400, RON: 250, JPY: 8000 };
+/** The sample product's price in the currency's minor units. */
+export function samplePrice(currency: string): number {
+  return (SAMPLE_MAJOR[currency] ?? 100) * 10 ** currencyExponent(currency);
+}
 
 export interface TiersPreviewProps {
   /** The set to show; null = the labelled example (§15a). */
@@ -97,6 +104,11 @@ export interface TiersPreviewProps {
   preset: AppearancePresetView;
   tokens: ThemeTokensView | null;
   product: PreviewProductView | null;
+  /**
+   * Show the labelled sample product (its round price) instead of the shop's own one — the page's main previews:
+   * a real product may cost so little that the levels say nothing. The shop's currency and money format stay.
+   */
+  sampleProduct?: boolean;
   /** The shop currency (the sample product's currency when there is no product). */
   currency?: string;
   /** Show the items-in-the-cart stepper, and with `lookField` the look switcher. */
@@ -162,6 +174,7 @@ export function TiersPreview({
   preset,
   tokens,
   product,
+  sampleProduct = false,
   currency,
   controls = false,
   marginOn = false,
@@ -187,7 +200,8 @@ export function TiersPreview({
   const firstMin = shown.breaks[0]?.minQty ?? 1;
   const [quantity, setQuantity] = useState<number>(Math.max(1, initialQuantity ?? firstMin));
   const shopCurrency = product?.currency ?? (currency && /^[A-Z]{3}$/.test(currency) ? currency : "CZK");
-  const unitPrice = product?.unitPrice ?? SAMPLE_PRICE;
+  const ownProduct = sampleProduct ? null : product;
+  const unitPrice = ownProduct?.unitPrice ?? samplePrice(shopCurrency);
   // The block computes and writes money in Liquid money units (major × 100) — so does the preview.
   const money = (cents: number) => formatLiquidMoney(cents, shopCurrency, product?.moneyFormat ?? null, locale);
   const model = useMemo(() => previewTiersLiquid(shown, { unitPrice, currency: shopCurrency, quantity }), [shown, unitPrice, shopCurrency, quantity]);
@@ -329,7 +343,7 @@ export function TiersPreview({
         <div style={pageStyle(tokens)}>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontFamily: fontStack(tokens?.fontHeading ?? tokens?.fontBody ?? null), fontWeight: 600, fontSize: "1.15em" }}>
-              {product?.title?.trim() || (product ? t("common.untitledProduct") : t("tiers.preview.sampleProduct"))}
+              {ownProduct?.title?.trim() || (ownProduct ? t("common.untitledProduct") : t("tiers.preview.sampleProduct"))}
             </div>
             <div style={{ opacity: 0.85 }}>{money(priceCents)}</div>
           </div>

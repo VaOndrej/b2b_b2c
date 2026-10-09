@@ -36,6 +36,7 @@ import {
   campaignTimeOptions,
   minorFromInput,
 } from "../model/campaigns";
+import { placementStatus } from "../model/module-status";
 import { formatDateTime } from "../model/signals";
 import { seedOf, submittedOf, useRefusedSeed, type Seed } from "../model/submitted";
 import type { AmountSuggestView } from "../model/markets";
@@ -47,6 +48,7 @@ import { Notice, ResyncButton } from "../shell/Notice";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
 import { DiscountsSubNav } from "../shell/SubNav";
+import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 
 export interface CampaignsScreenProps extends CampaignsScreenData {
@@ -228,6 +230,19 @@ function TierSetFields({
   );
 }
 
+/** One numbered step of the campaign form (feedback 9 Oct 2026, 3rd round, bod 10): what to do here, in the order it is done. */
+function StepHeading({ n, title, hint }: { n: number; title: string; hint?: string }) {
+  return (
+    <div data-won-campaign-step={n} style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", gap: "2px 10px", alignItems: "center", fontFamily: WON_FONT }}>
+      <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff", background: WON_INK }}>
+        {n}
+      </span>
+      <span style={{ fontSize: 15, fontWeight: 700, color: WON_INK }}>{title}</span>
+      {hint ? <span style={{ gridColumn: 2, fontSize: 13, lineHeight: 1.45, color: WON_MUTED }}>{hint}</span> : null}
+    </div>
+  );
+}
+
 export function CampaignsScreen(props: CampaignsScreenProps) {
   const tr = useT();
   const { t } = tr;
@@ -376,6 +391,11 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
       {editing ? <input type="hidden" name={F.id} value={editing.id} /> : null}
       {configVersion ? <input type="hidden" name="configVersion" value={configVersion} /> : null}
       <s-stack key={seedKey} direction="block" gap="base">
+        {/* What a campaign is, before anything is asked (it changes discounts that exist, it creates none). */}
+        <div data-won-campaign-what="" style={{ padding: "10px 12px", borderRadius: 11, background: WON_WASH, border: `1px solid ${WON_LINE}`, fontFamily: WON_FONT, fontSize: 13, lineHeight: 1.5, color: WON_INK }}>
+          <strong>{t("campaign.what.title")}</strong> {t("campaign.what.body")}
+        </div>
+        <StepHeading n={1} title={t("campaign.step.when")} hint={t("campaign.step.when.hint")} />
         <div>
           <s-text-field name={F.name} label={t("campaign.field.name")} value={init.one(F.name, "")} disabled={boolAttr(!pro)} />
           <FieldMessage text={err(F.name)} />
@@ -402,7 +422,7 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
         <RowNote>{t(timezone ? "campaign.field.zone" : "campaign.field.zoneUnknown", { zone: timezone ?? "", now: `${today} ${nowTime}`, n: limits.maxDays })}</RowNote>
         {editing?.status === "running" ? <RowNote tone="attention">{t("campaign.edit.running")}</RowNote> : null}
         <s-stack direction="block" gap="small-300">
-          <s-text>{t("campaign.rules.title")}</s-text>
+          <StepHeading n={2} title={t("campaign.rules.title")} />
           {rules.length === 0 ? (
             <RowNote>
               {t("campaign.rules.none")} <s-link href="/app/discounts">{t("campaign.rules.create")}</s-link>
@@ -512,6 +532,7 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
           {tierSets.length > 0 ? <RowNote>{t("campaign.tiers.timing")}</RowNote> : null}
         </s-stack>
         <RowNote>{t("campaign.scope")}</RowNote>
+        <StepHeading n={3} title={t("campaign.step.check")} hint={t("campaign.step.check.hint")} />
         {pro ? (
           <s-box padding="small-300" border="base" borderRadius="base" data-won-campaign-summary>
             <s-stack direction="block" gap="small-300">
@@ -570,7 +591,7 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
           <ViewTile id="list" title={t("campaign.list.title")} glyph="calendar" active={listActive} status={running ? props.status : undefined} selected={view === "list"} onPick={() => setView("list")} />
           <ViewTile id="form" title={t(editing ? "campaign.edit.title" : "campaign.new.title")} glyph="tag" active={pro ? undefined : t("overview.campaigns.locked")} pro={!pro} locked={!pro} selected={view === "form"} onPick={() => setView("form")} />
           {showPlaces ? (
-            <ViewTile id="places" title={t("campaign.places.title")} glyph="store" active={placesActive} selected={view === "places"} onPick={() => setView("places")} />
+            <ViewTile id="places" title={t("campaign.places.title")} glyph="store" active={placesActive} status={placedCount > 0 ? placementStatus("in_theme") : undefined} selected={view === "places"} onPick={() => setView("places")} />
           ) : null}
         </ModuleTiles>
 
@@ -638,7 +659,7 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
               rows={[
                 { place: "home", key: "campaignHome", text: "campaign.places.home" },
                 { place: "product", key: "campaignProduct", text: "campaign.places.product" },
-                { place: "topBar", key: "topBarCampaign", text: "campaign.places.topBar", action: "placements.openEmbed" },
+                { place: "topBar", key: "topBarCampaign", text: "campaign.places.topBar", action: "placements.addTopBar" },
               ]}
             />
           </WonSection>

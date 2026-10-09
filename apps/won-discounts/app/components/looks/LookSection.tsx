@@ -143,8 +143,8 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
       summary={picks ? t("looks.summary", { preset: presetLabel(element, preset, tr) }) : t(customSet ? "looks.custom.summary.on" : "looks.custom.summary.off")}
       anchor={`look-${element}`}
       collapsible
-      // An element with nothing to pick (the cart) opens only when it has something set.
-      defaultOpen={picks || storedSet || errors.length > 0}
+      // Open from the start (feedback 9 Oct 2026, 3rd round, bod 3): a closed section hid the custom CSS of the cart and the top bar.
+      defaultOpen
     >
       <fetcher.Form method="post" action={actions.looks} ref={formRef} data-won-look-form={element}>
         <input type="hidden" name={LOOK_FIELD.intent} value={LOOK_INTENT.save} />

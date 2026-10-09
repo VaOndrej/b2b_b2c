@@ -34,7 +34,7 @@ use super::describe::{describe_short, DescribedValue};
 use super::table::{bytes_eq, Message, Table, Text};
 use super::hash::{hash_value, normalized_hash_within, parse_hash, MAX_ENTERED_CODES};
 use super::js;
-use super::margin::{resolve_margin, strictest_margin, CostContext, FloorRule, MarginPayload, MarginRef, MAX_MARGIN_REFS};
+use super::margin::{apply_product_margin, resolve_margin, strictest_margin, CostContext, FloorRule, MarginPayload, MarginRef, MAX_MARGIN_REFS};
 use super::money::mul_sat;
 use super::order_search::{order_set_limit, search_order_sets, OrderSetLine, EXACT_LINES, SAFE_BELOW};
 use super::tiers::{prepare_tiers, SetIndex, TierCandidate};
@@ -1381,7 +1381,12 @@ fn compute_floors(work: &mut [WorkLine], margin: &MarginPayload, cart: &Normaliz
         if w.excluded.is_some() {
             continue;
         }
-        let rule = if line.margin_ref_count > MAX_MARGIN_REFS {
+        let rule = if line.margin_own.is_some() {
+            // Its own setting over what its collections give it (rare lines: resolved as they come).
+            let base = if line.margin_ref_count > MAX_MARGIN_REFS { strictest_margin(margin) } else { resolve_margin(margin, line.margin_refs) };
+            let settings = apply_product_margin(base, line.margin_own);
+            FloorRule::new(settings.min_margin_percent, settings.max_discount_percent)
+        } else if line.margin_ref_count > MAX_MARGIN_REFS {
             *strictest.get_or_insert_with(|| {
                 let settings = strictest_margin(margin);
                 FloorRule::new(settings.min_margin_percent, settings.max_discount_percent)

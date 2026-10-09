@@ -48,7 +48,13 @@ margin protection and moving Shopify discounts work in full on Free.
 | Quantity discounts counted across the whole cart | Quantity discounts | Kept within the Free limit. |
 | Up to 6 Milestones steps per market (Free: 2) | Milestones | Kept within the Free limit. |
 | A choice of gifts at one step | Milestones | Kept within the Free limit. |
+
+For Margin protection, Pro adds settings of their own for a collection and for a single product:
+
+| Pro capability | Area | On Free |
+|---|---|---|
 | Margin protection settings per collection | Margin protection | Merged into the store-wide setting; the strictest value wins. |
+| Margin protection settings per product | Margin protection | Merged into the store-wide setting; the strictest value wins. |
 
 Pro also opens **Try a cart** (Settings → Tools): which discounts apply to a cart and why.
 

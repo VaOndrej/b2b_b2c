@@ -42,6 +42,7 @@ import {
   DEV_MARKET_NAMES,
   DEV_NOW,
   DEV_ONBOARDING_FIXTURE,
+  DEV_LANGUAGES_FIXTURE,
   DEV_OVERVIEW_FIXTURE,
   DEV_REWARDS_FIXTURE,
   DEV_RULE_SYNC_FAILED,
@@ -61,7 +62,9 @@ import {
   devAnalyticsScreen,
   devCampaignsScreen,
   devMovedResult,
+  devMarginWatch,
   devNative,
+  devTextCount,
   devNativeMoved,
   devTryCartPlan,
   devMarginOverview,
@@ -274,6 +277,10 @@ const screenProps = ({ request }: LoaderFunctionArgs) => {
       // ?plan=pro: the Pro cards (Kampaně, Výprodej) as a Pro shop sees them; Free says they are Pro.
       const wired = { readOnly, timezone: DEV_TIMEZONE, marketNames: names, now: DEV_NOW, plan: q.get("plan") === "pro" ? ("pro" as const) : ("free" as const) };
       // Nothing outside Won, the website on, everything synced: "Slevy mimo Won" is not rendered and the store status is all good.
+      // Překlady's tile: two complete languages and one that lacks texts.
+      if (state === "languages") {
+        return buildOverviewProps(DEV_LANGUAGES_FIXTURE, { ...wired, signals: { ...DEV_SIGNALS, native: devNative(locale) }, ruleSync: DEV_RULE_SYNC_OK, textCount: devTextCount(DEV_LANGUAGES_FIXTURE, locale) });
+      }
       if (state === "clean") {
         return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
           ...wired,
@@ -342,7 +349,7 @@ const screenProps = ({ request }: LoaderFunctionArgs) => {
         const card = state === "margin" ? "stale" : state === "margin-off" ? "off" : state === "margin-running" ? "running" : state === "margin-reauth" ? "reauth" : "too-large";
         return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
           ...wired,
-          signals: { ...DEV_SIGNALS, native: devNative(locale), margin: devMarginOverview(card) },
+          signals: { ...DEV_SIGNALS, native: devNative(locale), margin: devMarginWatch(devMarginOverview(card), q.get("watch"), wired.plan), ...(q.get("watch") ? { analytics: { available: true, empty: false, days: 30, tiles: [{ id: "orders" as const, value: "128" }, { id: "discounted" as const, value: "46" }, { id: "cost" as const, value: "12 480 Kč" }, { id: "average" as const, value: "1 140 Kč" }] } } : {}) },
           ruleSync: DEV_RULE_SYNC_OK,
         });
       }
@@ -544,11 +551,15 @@ const screenProps = ({ request }: LoaderFunctionArgs) => {
       return { ...devOutletScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, orders: q.get("orders") === "on", look: q.get("look") }), result: devOutletResult(q.get("result")) };
     case "translations":
       return devTranslationsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale });
-    case "margin":
+    case "margin": {
+      // ?state=running&until=<epoch ms>: the read of the costs ends at that time (the page polls while it runs).
+      const until = Number(q.get("until"));
+      const marginState = state === "running" && until > 0 && Date.now() >= until ? null : state;
       return {
-        ...devMarginScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, focusRuleId: q.get("rule") }),
+        ...devMarginScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state: marginState, locale, focusRuleId: q.get("rule") }),
         result: devMarginResult(q.get("result"), locale),
       };
+    }
     default:
       throw notFound();
   }

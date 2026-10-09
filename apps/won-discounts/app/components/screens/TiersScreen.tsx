@@ -30,7 +30,9 @@ import { Form, useSubmit } from "react-router";
 import { useT } from "../../i18n/context";
 import { CardPricesSection } from "../looks/CardPricesSection";
 import { LookSection } from "../looks/LookSection";
+import { blockPlacement } from "../model/embed";
 import { LOOK_FIELD } from "../model/looks";
+import { placementStatus } from "../model/module-status";
 import { pickCollections, pickProducts } from "../model/app-bridge";
 import { amountLabels, currencyCodes } from "../model/markets";
 import { freeGlobalSetId, newTierSetId, readTiersForm, tierPayloadUse, tierSetToConfig, TIERS_FIELD, TIERS_INTENT, tierSummary, blockText } from "../model/tiers";
@@ -42,7 +44,8 @@ import { Notice } from "../shell/Notice";
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
 import { useView, ViewPanel } from "../shell/views";
 import { DiscountsSubNav } from "../shell/SubNav";
-import { RowNote, WonSection } from "../shell/WonSection";
+import { RowNote, StatusPill, WonRow, WonSection } from "../shell/WonSection";
+import { WON_LINE } from "../shell/tokens";
 import { ProTierSets, TIERS_CAPACITY_ANCHOR } from "../tiers/ProTierSets";
 import { TierSetEditor } from "../tiers/TierSetEditor";
 import { TiersBlockSection } from "../tiers/TiersBlockSection";
@@ -197,6 +200,7 @@ export function TiersScreen(props: TiersScreenProps) {
       setDraft(sets);
       setSnapshot(null);
       setRowCounts(null);
+      setEditing(false);
       window.setTimeout(recompute, 0);
     };
     el.addEventListener("reset", onReset);
@@ -220,6 +224,15 @@ export function TiersScreen(props: TiersScreenProps) {
   };
 
   const globalDraft = draft.find((s) => s.id === globalSet.id) ?? globalSet;
+  // Bod 4: the whole-store discount as a list. Its editor opens on "Upravit" / "Přidat", and by itself when a save
+  // was refused (an error in a closed editor would be a dead end, §13). A save remounts the page: closed again.
+  const storedGlobal = sets.find((s) => s.scope.kind === "global" && s.breaks.length > 0) ?? null;
+  const [editing, setEditing] = useState(errors.length > 0);
+  useEffect(() => {
+    if (errors.length > 0) setEditing(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new result opens it
+  }, [result]);
+  const storedSummary = tierSummary(storedGlobal, tr, codes, amountLabels(currencies));
   // The checkout's room for tiers, live from what is typed (the server refuses a save over it).
   const capacity = useMemo(() => tierPayloadUse(draft.map(tierSetToConfig)), [draft]);
   const hasTiers = globalDraft.breaks.length > 0;
@@ -233,9 +246,11 @@ export function TiersScreen(props: TiersScreenProps) {
   const tooLarge = errors.find((e) => e.field === F.set && e.key === "tiers.error.tooLarge");
   const capacityError = tooLarge ? t(tooLarge.key, tooLarge.params) : undefined;
   const pageError = errors.find((e) => e.field === F.set && e.key !== "tiers.error.tooLarge");
+  // Closed with something typed: the list says so (the fields are still in the form and a save takes them).
+  const unsavedGlobal = snapshot !== null && globalSummary !== storedSummary;
   const [view, setView] = useView<"global" | "table" | "exceptions">({
     initial: () => "global",
-    hash: { global: "global", block: "table", pro: "exceptions", [TIERS_CAPACITY_ANCHOR]: "exceptions" },
+    hash: { global: "global", block: "table", cards: "table", pro: "exceptions", [TIERS_CAPACITY_ANCHOR]: "exceptions" },
     resetKey: result,
   });
   useEffect(() => {
@@ -262,7 +277,7 @@ export function TiersScreen(props: TiersScreenProps) {
           {/* Three tiles, one panel at a time (doctrine §19e); the panels stay in the one form with its one Save. */}
           <ModuleTiles label={t("tiers.view.label")}>
             <ViewTile id="global" title={t("tiers.view.global.title")} glyph="layers" active={globalSummary} status={globalTileStatus} selected={view === "global"} onPick={() => setView("global")} />
-            <ViewTile id="table" title={t("tiers.view.table.title")} glyph="store" active={blockText(block, tr)} selected={view === "table"} onPick={() => setView("table")} />
+            <ViewTile id="table" title={t("tiers.view.table.title")} glyph="store" active={blockText(block, tr)} status={placementStatus(blockPlacement(block.state))} selected={view === "table"} onPick={() => setView("table")} />
             <ViewTile
               id="exceptions"
               title={t("tiers.view.exceptions.title")}
@@ -289,6 +304,7 @@ export function TiersScreen(props: TiersScreenProps) {
                   preset={preview.preset}
                   tokens={preview.tokens}
                   product={preview.product}
+                  sampleProduct
                   currency={shopCurrency}
                   controls
                   extras={preview.look ?? null}
@@ -305,7 +321,40 @@ export function TiersScreen(props: TiersScreenProps) {
             }
           >
             <s-stack direction="block" gap="base">
-              <TierSetEditor set={globalSet} currencies={currencies} kept={kept} pro={pro} live={live} errorFor={errorFor} onChange={reread} attempted={errors.length > 0} suggest={props.suggest} />
+              {/* Bod 4 (9 Oct 2026): the page opens on a LIST — empty, or the one stored discount with what it gives.
+                  Its fields open only after "Upravit" / "Přidat", so a set that runs is not changed by a stray click.
+                  The editor stays mounted while closed (hidden, never unmounted): its fields still submit (§17d). */}
+              <div data-won-tiers-list={storedGlobal ? "stored" : "empty"} style={{ border: `1px solid ${WON_LINE}`, borderRadius: 12, padding: "2px 12px", ...(storedGlobal ? {} : { borderStyle: "dashed" }) }}>
+                <WonRow
+                  action={
+                    editing ? (
+                      <s-button variant="tertiary" onClick={() => setEditing(false)}>
+                        {t("tiers.list.close")}
+                      </s-button>
+                    ) : (
+                      <s-button variant={storedGlobal ? "secondary" : "primary"} onClick={() => setEditing(true)}>
+                        {t(storedGlobal ? "common.edit" : "tiers.list.add")}
+                      </s-button>
+                    )
+                  }
+                >
+                  {storedGlobal ? (
+                    <>
+                      <span style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                        <s-text type="strong">{t("tiers.global.title")}</s-text>
+                        {props.status?.global ? <StatusPill state={props.status.global.state} /> : null}
+                      </span>
+                      <RowNote>{storedSummary}</RowNote>
+                    </>
+                  ) : (
+                    <RowNote>{t("tiers.list.empty")}</RowNote>
+                  )}
+                  {!editing && unsavedGlobal ? <RowNote tone="attention">{t("tiers.list.unsaved")}</RowNote> : null}
+                </WonRow>
+              </div>
+              <div data-won-tiers-editor={editing ? "open" : "closed"} style={{ display: editing ? "block" : "none" }}>
+                <TierSetEditor set={globalSet} currencies={currencies} kept={kept} pro={pro} live={live} errorFor={errorFor} onChange={reread} attempted={errors.length > 0} suggest={props.suggest} />
+              </div>
               <HonestNotes marginOn={marginOn} competingRules={competingRules} outletWithAnything={props.outletWithAnything === true} />
             </s-stack>
           </WonSection>
@@ -356,13 +405,13 @@ export function TiersScreen(props: TiersScreenProps) {
               preview={(customCss) => (
                 <>
                   <TiersPreviewStyles customCss={customCss || null} />
-                  <TiersPreview set={hasTiers ? globalDraft : null} preset={preview.preset} tokens={preview.tokens} product={preview.product} currency={shopCurrency} bare controls lookField={LOOK_FIELD.preset} accentField={LOOK_FIELD.accentPreset} withStyles={false} extras={{ ...(preview.look ?? { texts: {} }), customCss: customCss || null }} embed={props.embed ?? null} />
+                  <TiersPreview set={hasTiers ? globalDraft : null} preset={preview.preset} tokens={preview.tokens} product={preview.product} sampleProduct currency={shopCurrency} bare controls lookField={LOOK_FIELD.preset} accentField={LOOK_FIELD.accentPreset} withStyles={false} extras={{ ...(preview.look ?? { texts: {} }), customCss: customCss || null }} embed={props.embed ?? null} />
                   <RowNote>{t("looks.tiers.where")}</RowNote>
                 </>
               )}
             />
           ) : null}
-          {props.cards ? <CardPricesSection cardPrices={props.cards.on} cardBlockUrl={props.cards.blockUrl} configVersion={configVersion} /> : null}
+          {props.cards ? <CardPricesSection cardPrices={props.cards.on} cardBlockUrl={props.cards.blockUrl} viewUrl={props.cards.viewUrl ?? null} editorUrl={props.cards.editorUrl ?? null} themeName={block.state === "on" ? block.themeName : null} configVersion={configVersion} /> : null}
         </ViewPanel>
       </div>
     </s-page>

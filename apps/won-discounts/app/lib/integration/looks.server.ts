@@ -30,9 +30,9 @@ import { ctxPlan } from "./sync-status.server";
 export const LOOK_CLASSES: Readonly<Record<LookElement, readonly string[]>> = {
   tiers: [".won-tiers", ".won-tiers--default", ".won-tiers--highlight", ".won-tiers--chips", ".won-tiers--tiles", ".won-tiers__heading", ".won-tiers__list", ".won-tiers__row", ".won-tiers__qty", ".won-tiers__save", ".won-tiers__unit", ".won-tiers__live", ".won-tiers__next"],
   milestones: [".won-ms", ".won-ms--bar", ".won-ms--compact", ".won-ms__text", ".won-ms__track", ".won-ms__list"],
-  outlet: [".won-outlet", ".won-outlet__row", ".won-outlet__badge", ".won-outlet__variant", ".won-outlet__left", ".won-outlet__time"],
+  outlet: [".won-outlet", ".won-outlet__row", ".won-outlet__badge", ".won-outlet__left", ".won-outlet__time"],
   campaign: [".won-campaign", ".won-campaign--center", ".won-campaign__title", ".won-campaign__time"],
-  cart: [".won-cart", ".won-cart-slot", ".won-cart__row", ".won-cart__code", ".won-cart__applied", ".won-cart__warn", ".won-cart__saved", ".won-topbar"],
+  cart: [".won-cart", ".won-cart-slot", ".won-cart__row", ".won-cart__code", ".won-cart__applied", ".won-cart__warn", ".won-cart__saved", ".won-topbar", ".won-topbar__empty"],
 };
 
 /** The extension's other classes, which carry no look of their own: the line on a product card and the wrapper of the Milestones block. */

@@ -73,12 +73,29 @@ pub struct MarginPayload {
     /// Per collection (its `col` key, normally the numeric id): (minimum margin,
     /// maximum discount), one entry per key; a none is the global value.
     pub col: CollectionSettings,
+    /// Per product (its `prod` key, the product's numeric id): the product's
+    /// OWN setting, before its collections; a none keeps what its collections
+    /// (or the global values) give it (`applyProductMargin`).
+    pub prod: CollectionSettings,
 }
 
 impl MarginPayload {
     /// The setting of one collection (`hasOwn(col, ref) ? col[ref] : none`).
     pub fn collection(&self, key: &MarginRef) -> Option<Setting> {
         self.col.get(key)
+    }
+
+    /// The own setting of a product by its GID or numeric id (`variantKey`:
+    /// the text after the last "/"); none when it has none.
+    pub fn product(&self, product_id: &str) -> Option<Setting> {
+        if self.prod.is_empty() || product_id.is_empty() {
+            return None;
+        }
+        let key = product_id.rsplit('/').next().unwrap_or(product_id);
+        if key.is_empty() {
+            return None;
+        }
+        self.prod.get(&MarginRef::from(key))
     }
 }
 
@@ -236,6 +253,7 @@ pub fn read_margin_payload(raw: &Value) -> Option<MarginPayload> {
         max,
         cur: string(&prop(raw, Key::Cur)).filter(|c| is_currency(c)),
         col: CollectionSettings::default(),
+        prod: CollectionSettings::default(),
     };
     let col = prop(raw, Key::Col);
     if col.is_obj() {
@@ -249,6 +267,18 @@ pub fn read_margin_payload(raw: &Value) -> Option<MarginPayload> {
             // JSON.parse keeps the last of duplicate keys, so a later entry
             // replaces (or, when invalid, removes) an earlier one.
             out.col.set(key, valid);
+        }
+    }
+    // `prod` is read exactly as `col`.
+    let prod = prop(raw, Key::Prod);
+    if prod.is_obj() {
+        for (key, v) in entries(&prod) {
+            let valid = if key == "__proto__" || v.array_len() != Some(2) {
+                None
+            } else {
+                tuple_part(&v.get_at_index(0), MAX_MIN_MARGIN_PERCENT).zip(tuple_part(&v.get_at_index(1), 100.0))
+            };
+            out.prod.set(key, valid);
         }
     }
     Some(out)
@@ -283,6 +313,19 @@ pub fn resolve_margin(payload: &MarginPayload, margin_refs: &[MarginRef]) -> Mar
         }
     }
     out
+}
+
+/// `applyProductMargin`: the product's own setting laid over `base` — each
+/// field it sets replaces the base's, a none keeps it.
+pub fn apply_product_margin(base: MarginSettings, own: Option<Setting>) -> MarginSettings {
+    match own {
+        Some((m, p)) => MarginSettings {
+            min_margin_percent: m.unwrap_or(base.min_margin_percent),
+            max_discount_percent: p.unwrap_or(base.max_discount_percent),
+            collection: base.collection,
+        },
+        None => base,
+    }
 }
 
 /// `strictestMargin`: every collection folded into the global values (max m,

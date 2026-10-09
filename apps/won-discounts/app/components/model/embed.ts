@@ -55,9 +55,30 @@ export function cardBlockAddUrl(shop: string, apiKey: string): string | null {
   return `https://${shop}/admin/themes/current/editor?template=collection&addAppBlockId=${encodeURIComponent(apiKey)}/${CARD_BLOCK_HANDLE}&target=mainSection`;
 }
 
+/**
+ * Where the card line can be SEEN (feedback 9 Oct 2026, bod 6): "Všechny produkty" on the live storefront — every
+ * product is there, so the whole-store levels show on its cards. The storefront's own address when a product's
+ * URL told it (the shop's domain), else the myshopify one (Shopify sends it on to the shop's domain).
+ */
+export function cardsStorefrontUrl(shop: string, productUrl?: string | null): string | null {
+  try {
+    if (productUrl) return `${new URL(productUrl).origin}/collections/all`;
+  } catch {
+    // not an address: the shop's own below
+  }
+  return SHOP_DOMAIN.test(shop) ? `https://${shop}/collections/all` : null;
+}
+
+/** The theme editor of the LIVE theme on the collection template: the cards as the theme draws them, editable. */
+export function collectionEditorUrl(shop: string): string | null {
+  return SHOP_DOMAIN.test(shop) ? `https://${shop}/admin/themes/current/editor?template=collection` : null;
+}
+
 /** The "Rewards progress" and "Campaign banner" blocks (feedback 2, body 5 a 7): any section of any template. */
 export const REWARDS_PROGRESS_BLOCK_HANDLE = "rewards_progress";
 export const CAMPAIGN_BLOCK_HANDLE = "campaign_banner";
+/** The "Top bar" block (blocks/top_bar.liquid): the strip the merchant adds in the header group in the theme editor. */
+export const TOP_BAR_BLOCK_HANDLE = "top_bar";
 
 /** One-click links into the theme editor for a block that fits anywhere, and for the embed's top bar. */
 export interface PlacementLinks {
@@ -67,19 +88,22 @@ export interface PlacementLinks {
   home: string | null;
   /** The cart page: the block in its main section. */
   cart: string | null;
-  /** The embed's settings (the top bar is switched on there). */
+  /** The header group in the theme editor with the "Top bar" block ready to add (Add section → Apps does the same by hand). */
   topBar: string | null;
+  /** The embed's settings: the fallback top bar for a theme whose header takes no app block. */
+  topBarEmbed: string | null;
 }
 
 export function placementLinks(shop: string, apiKey: string, handle: string): PlacementLinks {
-  if (!SHOP_DOMAIN.test(shop) || !apiKey) return { product: null, home: null, cart: null, topBar: null };
+  if (!SHOP_DOMAIN.test(shop) || !apiKey) return { product: null, home: null, cart: null, topBar: null, topBarEmbed: null };
   const block = `${encodeURIComponent(apiKey)}/${handle}`;
   const editor = `https://${shop}/admin/themes/current/editor`;
   return {
     product: `${editor}?template=product&addAppBlockId=${block}&target=mainSection`,
     home: `${editor}?template=index&addAppBlockId=${block}&target=newAppsSection`,
     cart: `${editor}?template=cart&addAppBlockId=${block}&target=mainSection`,
-    topBar: embedActivationUrl(shop, apiKey),
+    topBar: `${editor}?template=index&addAppBlockId=${encodeURIComponent(apiKey)}/${TOP_BAR_BLOCK_HANDLE}&target=sectionGroup:header`,
+    topBarEmbed: embedActivationUrl(shop, apiKey),
   };
 }
 

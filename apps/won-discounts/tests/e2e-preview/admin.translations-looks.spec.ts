@@ -125,8 +125,8 @@ test("Překlady without the permission: once the merchant grants it, the page te
 });
 
 for (const [path, tile, element, preset] of [
-  ["rewards", "web", "milestones", "checklist"],
-  ["rewards?plan=pro", "web", "milestones", "sentence"],
+  ["rewards", "look", "milestones", "checklist"],
+  ["rewards?plan=pro", "look", "milestones", "sentence"],
   ["outlet?plan=pro", "info", "outlet", "countdown"],
   ["outlet?plan=pro", "info", "outlet", "strip"],
   ["campaigns?plan=pro", "places", "campaign", "strip"],
@@ -188,10 +188,9 @@ test("the table's look: the ready-made look, the colour and (Pro) the CSS typed 
 
 test("the cart and the top strip have their own look on Milníky (Pro): the CSS typed styles the sample panel and is posted for the cart", async ({ page }) => {
   await open(page, "rewards?plan=pro");
-  await page.locator('[data-won-view-tile="web"]').click();
+  // The looks have their own tile (9 Oct 2026, 3rd round, bod 3), and the section is open from the start.
+  await page.locator('[data-won-view-tile="look"]').click();
   const form = page.locator('[data-won-look-form="cart"]');
-  // Nothing set: the section is closed; it has no ready-made looks and no colour of its own to pick.
-  await page.locator("section#look-cart > button").click();
   await expect(form).toBeVisible();
   await expect(form.locator('input[name="preset"], input[name="accent"]')).toHaveCount(0);
   await form.evaluate((el) => {

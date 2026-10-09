@@ -22,7 +22,7 @@
 import type { DiscountRule, TierSet, WonDiscountsConfig } from "@won/core/discounts/config";
 import { explainGate, gateConfigForPlan, type ProCapability } from "@won/core/discounts/plan-gate";
 
-import { cardBlockAddUrl } from "../../components/model/embed";
+import { cardBlockAddUrl, cardsStorefrontUrl, collectionEditorUrl } from "../../components/model/embed";
 import { currenciesWithoutAmount, currencyCodes, currencyViews, enabledCurrencies } from "../../components/model/markets";
 import type { FormDataLike } from "../../components/model/rule-form";
 import { readTiersForm, tierPayloadUse, tierSetToConfig, tierSetView, TIERS_FIELD, TIERS_INTENT } from "../../components/model/tiers";
@@ -162,7 +162,7 @@ export async function loadTiersScreen(ctx: ShopCtx, opts: { scopes: string; fres
     shopCurrency: shopContext.currencyCode ?? "",
     configVersion: loaded.version ?? null,
     look: lookView(stored, "tiers"),
-    cards: { on: stored.storefront.cardPricesEnabled === true, blockUrl: cardBlockAddUrl(ctx.shop, ctx.apiKey) },
+    cards: { on: stored.storefront.cardPricesEnabled === true, blockUrl: cardBlockAddUrl(ctx.shop, ctx.apiKey), viewUrl: cardsStorefrontUrl(ctx.shop, product?.url), editorUrl: collectionEditorUrl(ctx.shop) },
     currencies: currencyViews(stored.markets, { shopCurrency: shopContext.currencyCode, marketNames }),
     suggest: await readAmountSuggest(graphql, ctx.shop, opts.scopes, shopContext.currencyCode),
     ...tiersScreenFacts(stored, { plan, locale: ctx.locale, titles, syncable }),

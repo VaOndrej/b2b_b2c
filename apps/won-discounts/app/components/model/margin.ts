@@ -30,6 +30,9 @@ export const MARGIN_FIELD = {
   collectionId: "collectionId[]",
   collectionMin: "collectionMin[]",
   collectionMax: "collectionMax[]",
+  productId: "productId[]",
+  productMin: "productMin[]",
+  productMax: "productMax[]",
 } as const;
 
 /** The settings fields a refused save gets back (B14). */
@@ -40,6 +43,9 @@ export const MARGIN_SAVE_FIELDS = [
   MARGIN_FIELD.collectionId,
   MARGIN_FIELD.collectionMin,
   MARGIN_FIELD.collectionMax,
+  MARGIN_FIELD.productId,
+  MARGIN_FIELD.productMin,
+  MARGIN_FIELD.productMax,
 ] as const;
 
 /** `intent`: the settings form saves; "Obnovit nákupní ceny" asks for a new read of the costs. */
@@ -73,6 +79,11 @@ function toModule(settings: MarginSettingsView): MarginModule {
       collectionId: c.collectionId,
       ...(c.minMarginPercent !== null ? { minMarginPercent: c.minMarginPercent } : {}),
       ...(c.maxDiscountPercent !== null ? { maxDiscountPercent: c.maxDiscountPercent } : {}),
+    })),
+    perProduct: settings.products.map((p) => ({
+      productId: p.productId,
+      ...(p.minMarginPercent !== null ? { minMarginPercent: p.minMarginPercent } : {}),
+      ...(p.maxDiscountPercent !== null ? { maxDiscountPercent: p.maxDiscountPercent } : {}),
     })),
   };
 }
@@ -118,6 +129,10 @@ export function readMarginDraft(form: FormDataLike, stored: MarginSettingsView):
   const mins = form.getAll(MARGIN_FIELD.collectionMin);
   const maxes = form.getAll(MARGIN_FIELD.collectionMax);
   const titles = new Map(stored.collections.map((c) => [c.collectionId, c.title]));
+  const productIds = form.getAll(MARGIN_FIELD.productId).map(String);
+  const productMins = form.getAll(MARGIN_FIELD.productMin);
+  const productMaxes = form.getAll(MARGIN_FIELD.productMax);
+  const productTitles = new Map(stored.products.map((p) => [p.productId, p.title]));
   return {
     enabled: form.get(MARGIN_FIELD.enabled) === "on",
     minMarginPercent: min === undefined ? stored.minMarginPercent : min,
@@ -127,6 +142,12 @@ export function readMarginDraft(form: FormDataLike, stored: MarginSettingsView):
       title: titles.get(collectionId) ?? "", // never a GID: the screen says "Kolekce bez názvu"
       minMarginPercent: pct(mins[i] ?? null, 95) ?? null,
       maxDiscountPercent: pct(maxes[i] ?? null, 100) ?? null,
+    })),
+    products: productIds.map((productId, i) => ({
+      productId,
+      title: productTitles.get(productId) ?? "",
+      minMarginPercent: pct(productMins[i] ?? null, 95) ?? null,
+      maxDiscountPercent: pct(productMaxes[i] ?? null, 100) ?? null,
     })),
   };
 }
@@ -157,6 +178,8 @@ export function marginDecimalErrors(form: FormDataLike): FieldError[] {
   check(form.get(MARGIN_FIELD.maxDiscountPercent), MARGIN_FIELD.maxDiscountPercent);
   form.getAll(MARGIN_FIELD.collectionMin).forEach((raw, i) => check(raw, `collectionMin[${i}]`));
   form.getAll(MARGIN_FIELD.collectionMax).forEach((raw, i) => check(raw, `collectionMax[${i}]`));
+  form.getAll(MARGIN_FIELD.productMin).forEach((raw, i) => check(raw, `productMin[${i}]`));
+  form.getAll(MARGIN_FIELD.productMax).forEach((raw, i) => check(raw, `productMax[${i}]`));
   return errors;
 }
 
@@ -273,6 +296,14 @@ export function collectionsSummary(collections: readonly { title: string }[], tr
   return tr.t("margin.collections.named", { names: rest > 0 ? `${shown.join(", ")} ${tr.t("margin.costs.more", { n: rest })}` : tr.list(shown) });
 }
 
+/** The products header: their names, the first five and how many more. */
+export function productsSummary(products: readonly { title: string }[], tr: Translator): string {
+  if (products.length === 0) return tr.t("margin.products.none");
+  const shown = products.slice(0, 5).map((p) => p.title.trim() || tr.t("margin.impact.untitledProduct"));
+  const rest = products.length - shown.length;
+  return tr.t("margin.products.named", { names: rest > 0 ? `${shown.join(", ")} ${tr.t("margin.costs.more", { n: rest })}` : tr.list(shown) });
+}
+
 /** One rule's line: on how many variants (all of them, the editor's number too). */
 export function impactRuleSummary(rule: Pick<MarginImpactRuleView, "discountClass" | "variants">, tr: Translator): string {
   return rule.discountClass === "order" ? tr.tp("margin.impact.orderRule", rule.variants) : tr.tp("margin.impact.ruleVariants", rule.variants);
@@ -308,6 +339,7 @@ export function ceilingOnlyText(opts: { enabled: boolean; mirror: CostMirrorView
 /** Why one row is lowered, in words (§4c: basis/source never render raw). */
 export function impactReason(row: Pick<MarginImpactRowView, "basis" | "source">, tr: Translator): string {
   const basis = tr.t(row.basis === "cost" ? "margin.impact.basis.cost" : "margin.impact.basis.maxPercent");
+  if (row.source === "product") return `${basis} · ${tr.t("margin.impact.source.product")}`;
   return row.source === "collection" ? `${basis} · ${tr.t("margin.impact.source.collection")}` : basis;
 }
 

@@ -69,7 +69,6 @@ Set them in the admin (Look → Custom look) or in your CSS on the root:
 - `.won-outlet__left`
 - `.won-outlet__row`
 - `.won-outlet__time`
-- `.won-outlet__variant`
 - `.won-progress`
 - `.won-progress--center`
 - `.won-tiers`
@@ -86,6 +85,7 @@ Set them in the admin (Look → Custom look) or in your CSS on the root:
 - `.won-tiers__save`
 - `.won-tiers__unit`
 - `.won-topbar`
+- `.won-topbar__empty`
 
 ## Data markers
 
@@ -114,6 +114,7 @@ Stable hooks for scripts and tests (do not style by them; classes are for stylin
 - `data-won-discounts-tiers`
 - `data-won-discounts-tiers-data`
 - `data-won-discounts-topbar`
+- `data-won-discounts-topbar-block`
 
 ## Events
 

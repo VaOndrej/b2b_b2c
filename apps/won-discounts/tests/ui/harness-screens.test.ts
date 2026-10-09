@@ -128,8 +128,9 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /<s-page heading="Překlady"/,
       /čeština · výchozí jazyk obchodu/,
       /slovenština/,
-      /Upravených textů: 3/,
-      /Upravených textů: 1/,
+      // Feedback 9 Oct 2026, bod 1: a language says first whether it is complete, then how many texts are the merchant's own.
+      /Hotovo · upravených textů: 3/,
+      /Hotovo · upravených textů: 1/,
       // Grouped by where the text shows; a row = its place, the extension's text, the merchant's own.
       /data-won-text-group="tiers"[\s\S]*data-won-text-group="milestones"[\s\S]*data-won-text-group="cart"[\s\S]*data-won-text-group="outlet"[\s\S]*data-won-text-group="campaigns"[\s\S]*data-won-text-group="cards"/,
       /Nadpis tabulky<\/div><div data-won-text-default="true"[^>]*>Množstevní sleva<\/div>/,
@@ -265,12 +266,15 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
     expect: [
       /Ochrana marže/,
       /Min\. marže 20\u00a0% · bez nákupní ceny sleva nejvýš 40\u00a0%/,
-      /\(cena po slevách − nákupní cena\) \/ cena po slevách, z ceny, kterou platí zákazník — u cen s DPH včetně DPH/,
+      // Feedback 9 Oct 2026, bod 2: what to fill in, with an example in numbers; how it is computed comes after.
+      /Nevíte\? Nechte prázdné\./,
+      /Počítá se jako marže v Shopify, z ceny, kterou zákazník zaplatí \(u cen s DPH včetně DPH\)/,
+      /data-won-margin-how=""/,
       /nikdy neblokuje objednávku/,
       /Ochrana hlídá jen slevy, které běží přes Won Discounts\. O slevách vytvořených přímo v Shopify neví\./,
       /href="\/app#native"/,
       /step="0\.1"/,
-      /Nejvyšší sleva pro produkty bez nákupní ceny/,
+      /2\. Nejvyšší sleva na produkty bez nákupní ceny/,
       /8 produktů nemá nákupní cenu/,
       /Ponožky Won/,
       /shopify:\/\/admin\/products\/3/,
@@ -279,7 +283,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /Nastavení podle kolekcí/,
       /Pro · odemknout/,
       /S Pro uvidíte, u kterých produktů a slev ochrana zasáhne/,
-      /Přehled zásahů/,
+      /Snížené slevy/,
       /Zaplatí 750|zaplatí 750\u00a0Kč/,
     ],
   },
@@ -334,13 +338,13 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "overview?state=margin-too-large", expect: [/data-won-state="active"/, /1 věc k vyřešení/] },
   { path: "rule-editor?rule=dev-f2-collection&margin=1&plan=pro", expect: [/Na 4 variantách se sleva sníží na hranici marže/, /\/app\/margin\?rule=dev-f2-collection#impact/] },
   // Free: no number (přehled zásahů is Pro), the link goes to its Pro preview.
-  { path: "rule-editor?rule=dev-f2-collection&margin=1", expect: [/Ochrana marže tuhle slevu u některých produktů sníží\./, /Přehled zásahů v Pro/, /href="\/app\/margin#impact"/] },
+  { path: "rule-editor?rule=dev-f2-collection&margin=1", expect: [/Ochrana marže tuhle slevu u některých produktů sníží\./, /Snížené slevy v Pro/, /href="\/app\/margin#impact"/] },
   { path: "rule-editor?rule=dev-f2-collection&margin=computing&plan=pro", expect: [/Dopad ochrany marže na tuhle slevu se právě počítá\./] },
   {
     path: "try-cart?state=margin",
     expect: [/Hranice marže/, /kurzem odhadnutým z cen v trhu/, /pokladna použije aktuální kurz Shopify/, /1 položka nemá nákupní cenu/, /cena neklesne pod nákupní cenu s minimální marží 30/],
   },
-  { path: "margin?plan=pro&locale=en", expect: [/Margin protection/, /tax included for tax-inclusive prices/, /Refresh cost prices/, /Where protection steps in/] },
+  { path: "margin?plan=pro&locale=en", expect: [/Margin protection/, /tax included when your prices include tax/, /Refresh cost prices/, /Lowered discounts/] },
   { path: "plan", expect: [/Tarif/, /Pro · 29 USD/, /nejvýš 20 aktivních s kódem/, /Shopify jich od aplikací spustí nejvýš 25/] },
   // Nastavení after the menu change: markets with their one action, the tools, and the plan sections (Tarif) at the end.
   {
@@ -400,10 +404,12 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /data-won-discounts-tiers=""/,
       /data-count-mode="product"/,
       /data-won-discounts-tier-row="" data-min="3" data-active="true"/,
-      /data-won-discounts-live-price="" data-unit-cents="71100"/,
-      /711,00 Kč\/ks/,
-      /3\u00a0ks za 2\.133,00 Kč \(711,00 Kč\/ks\)/,
-      /Ještě 2\u00a0ks a zaplatíte 671,50 Kč\/ks\./,
+      // The preview's product is the labelled sample at a round price (feedback 9 Oct 2026): 1 000 Kč, −10 % = 900 Kč.
+      /Ukázkový produkt/,
+      /data-won-discounts-live-price="" data-unit-cents="90000"/,
+      /900,00 Kč\/ks/,
+      /3\u00a0ks za 2\.700,00 Kč \(900,00 Kč\/ks\)/,
+      /Ještě 2\u00a0ks a zaplatíte 850,00 Kč\/ks\./,
       // The look switcher is a visible, saved field of the table's look form.
       /Vzhled na webu/,
       /<input type="radio" name="preset"[^>]* value="highlight"/,
@@ -466,9 +472,9 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "tiers?plan=pro&state=custom", expect: [/data-won-custom-look=""/, /--won-tiers-accent:#0a7d4f/, /<p class="won-tiers__heading">Kup víc, plať míň<\/p>/] },
   // Odměny: the state lines say the real values; every state of the app embed check has its sentence and action.
   { path: "rewards", expect: [/<s-page heading="Milníky"/, /Doprava zdarma od 1\u00a0000\u00a0Kč \/ 40\u00a0€/, /Dárek: Ponožky Won — M od 1\u00a0500\u00a0Kč/, /Hodnota košíku se počítá před slevami/, /Kde je to vidět na webu/, /Česko: ve Free tu tento stupeň neplatí/, /Stupňů: 3 z 4/] },
-  { path: "rewards?plan=pro", expect: [/3\. stupeň/, /Kšiltovka Won, Plátěná taška Won nebo Hrnek Won od 3\u00a0000\u00a0Kč \/ 120\u00a0€/, /Přidat stupeň/, /Změnit záložní dárek/] },
+  { path: "rewards?plan=pro", expect: [/data-won-ms-row="gift-choice"/, /Kšiltovka Won, Plátěná taška Won nebo Hrnek Won od 3\u00a0000\u00a0Kč \/ 120\u00a0€/, /Přidat stupeň/, /Změnit záložní dárek/] },
   { path: "rewards?plan=pro&state=discounts", expect: [/Sleva 5\u00a0% od 2\u00a0000\u00a0Kč \/ 80\u00a0€/, /Sleva 500\u00a0Kč \/ 20\u00a0€ od 5\u00a0000\u00a0Kč \/ 200\u00a0€/, /Stupňů: 5 z 12/, /Na rozdíl od dárku se sleva počítá ze zboží po slevách na produkty/] },
-  { path: "rewards?plan=pro&state=discounts&markets=shared", expect: [/data-won-ms-table="3"/, /name="ms\.ms-fixed\.amount\.EUR@de" label="5\. stupeň, Německo \(EUR\)"/, /name="ms\.ms-fixed\.off\.EUR@sk" label="Sleva: Slovensko \(EUR\)"/] },
+  { path: "rewards?plan=pro&state=discounts&markets=shared", expect: [/data-won-ms-amounts="ms-fixed"/, /name="ms\.ms-fixed\.amount\.EUR@de" label="Německo \(EUR\)"/, /name="ms\.ms-fixed\.off\.EUR@sk" label="Sleva: Slovensko \(EUR\)"/] },
   { path: "rewards?state=empty", expect: [/Žádný stupeň/, /Přidat první stupeň/, /Košík žebříček neukazuje\. Won není na webu zapnutý/, /Zapnout na webu/] },
   { path: "rewards?state=embed-draft", expect: [/Won je zapnutý jen v nepublikovaném vzhledu obchodu/, /Zapněte Won i ve vzhledu, který zákazníci vidí/] },
   { path: "rewards?state=embed-unknown", expect: [/Nepodařilo se zjistit, jestli je Won na webu zapnutý/, /Otevřít úpravu vzhledu obchodu/] },
@@ -484,7 +490,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "tiers?result=invalid", expect: [/Sleva tady musí být aspoň taková jako od 3 ks/, /Úroveň od 5 ks už tu je/] },
   {
     path: "tiers?locale=en",
-    expect: [/Quantity discounts/, /Quantity discount for the whole store/, /From 3 items −10%, from 5 items −15%, from 10 items −20%/, /Quantity discount/, /711,00 Kč each/, /Add table to the product page|View on my site/],
+    expect: [/Quantity discounts/, /Quantity discount for the whole store/, /From 3 items −10%, from 5 items −15%, from 10 items −20%/, /Quantity discount/, /900,00 Kč each/, /Add table to the product page|View on my site/],
   },
   {
     path: "settings",
@@ -633,7 +639,11 @@ test("plan 2026-10-06, dávka 5: nothing without content or action — no room-f
   const rewards = (await render("rewards")).html;
   // The green label is the STORED state (the same as the home tile), never the page's own unsaved form: the
   // "Stupně" tile carries it, once (the section under the tile does not repeat it).
-  assert.equal((rewards.replace(/<script[\s\S]*?<\/script>/g, "").match(/data-won-state="active"/g) ?? []).length, 1, "the tile alone");
+  // (The "Na webu" tile has its own label since 9 Oct 2026: where the ladder stands on the storefront, read from the theme.)
+  const rewardsBody = rewards.replace(/<script[\s\S]*?<\/script>/g, "");
+  const stepsTile = rewardsBody.slice(rewardsBody.indexOf('data-won-view-tile="steps"'), rewardsBody.indexOf('data-won-view-tile="web"'));
+  assert.equal((stepsTile.match(/data-won-state="active"/g) ?? []).length, 1, "the tile alone");
+  assert.equal((rewardsBody.slice(rewardsBody.indexOf("<section")).match(/data-won-state="active"/g) ?? []).length, 0, "no section repeats it");
 });
 
 test("the tier note is only for a product rule (an order rule does not compete with a tier)", async () => {
@@ -712,7 +722,7 @@ test("Ochrana marže: one save for the whole form, last on the page — after th
     const { html } = await render(path);
     const submit = html.lastIndexOf('type="submit"');
     assert.equal(html.indexOf('type="submit"'), submit, `${path}: exactly one submit button`);
-    for (const section of ["Ochrana marže", "Nákupní ceny", "Nastavení podle kolekcí", "Přehled zásahů"]) {
+    for (const section of ["Ochrana marže", "Nákupní ceny", "Nastavení podle kolekcí", "Snížené slevy"]) {
       assert.ok(html.indexOf(section) < submit, `${path}: "${section}" comes before Uložit`);
     }
   }
@@ -769,7 +779,9 @@ test("navigace a stav, body 1 a 2: a view tile says only what changes; the secti
   assert.match(viewTile(tiers, "global"), /data-won-state="active"[\s\S]*Od 3 ks −10\s%, od 5 ks −15\s%, od 10 ks −20\s%/);
   assert.doesNotMatch(viewTile(tiers, "global"), /data-won-tile-about|Úrovně slevy podle počtu kusů/);
   assert.match(section(tiers, "global"), /Množstevní sleva pro celý obchod[\s\S]*Platí pro všechny produkty\./);
-  assert.doesNotMatch(section(tiers, "global").slice(0, 2500), /data-won-state=|Od 3 ks −10\s%, od 5 ks −15\s%/);
+  // The section's HEADER repeats neither; under it the whole-store discount is a list row (feedback 9 Oct 2026, bod 4).
+  assert.doesNotMatch(section(tiers, "global").split("data-won-tiers-list")[0]!, /data-won-state=|Od 3 ks −10\s%, od 5 ks −15\s%/);
+  assert.match(section(tiers, "global"), /data-won-tiers-list="stored"[\s\S]*data-won-tiers-editor="closed"/);
   // The table: where it stands is the tile's sentence; the section says what it is for .
   assert.equal(count(tiers, "Tabulka je na stránce produktu (vzhled Horizon)."), 1);
   assert.match(section(tiers, "block"), /Tabulka úrovní na stránce produktu: jestli je na webu a jak ji přidat\./);
@@ -783,7 +795,7 @@ test("navigace a stav, body 1 a 2: a view tile says only what changes; the secti
   assert.doesNotMatch(section(margin, "settings").slice(0, 2500), /data-won-state=/);
   for (const anchor of ["costs", "collections", "impact"]) assert.match(viewTile(margin, anchor), /data-won-tile-active/, `${anchor}: the tile says what is set`);
   assert.match(section(margin, "costs"), /Ke kolika produktům známe nákupní cenu a které ji nemají\./);
-  assert.match(section(margin, "impact"), /Které slevy ochrana sníží a u kolika variant\./);
+  assert.match(section(margin, "impact"), /Aktivní slevy, které by šly pod vaši hranici\. Pokladna je sníží na povolenou výši\./);
 
   // Milníky, Výprodej, Kampaně: the green / red label is the tile's alone; the home tile still describes the module.
   for (const [path, view, anchor] of [
@@ -832,7 +844,11 @@ test("navigace a stav, bod 3: the strip under 'Slevy' carries a dot per module, 
   // The strip is the same on the five pages; pages outside "Slevy" have neither the strip nor its dots.
   const stripOf = (html: string) => html.slice(html.indexOf("data-won-subnav"), html.indexOf("</nav>", html.indexOf("data-won-subnav")));
   for (const path of ["discounts", "tiers", "rewards", "outlet", "campaigns"]) assert.equal((stripOf((await render(path)).html).match(/data-won-dot=/g) ?? []).length, 3, path);
-  for (const path of ["margin", "translations", "analytics"]) assert.doesNotMatch((await render(path)).html, /data-won-subnav|data-won-dot=/, path);
+  for (const path of ["margin", "analytics"]) assert.doesNotMatch((await render(path)).html, /data-won-subnav|data-won-dot=/, path);
+  // Překlady has its own list of sections on the side (9 Oct 2026): a dot per language, never the strip of "Slevy".
+  const translations = (await render("translations")).html;
+  assert.doesNotMatch(translations, /data-won-subnav/);
+  assert.equal((translations.match(/data-won-dot=/g) ?? []).length, 2, "one dot per language");
 });
 
 test("navigace a stav, bod 5: the rule editor has the list of its sections; a red dot where the draft has something to fix, none elsewhere", async () => {
@@ -865,28 +881,32 @@ test("navigace a stav, bod 5: the rule editor has the list of its sections; a re
   assert.equal((html.match(/<form /g) ?? []).length, 1);
 });
 
-test("navigace a stav, bod 6: Milníky — a row of step numbers in the header of 'Stupně a odměny'; a step not offered in a market is red", async () => {
-  const row = (html: string) => {
-    const start = html.indexOf('<nav class="won-jumps"');
-    return start < 0 ? null : html.slice(start, html.indexOf("</nav>", start));
-  };
-  const marks = (html: string) => [...(row(html) ?? "").matchAll(/<a class="won-jumps__link" href="#(step-\d+)" title="([^"]+)"( data-won-jump-state="(\w+)")?/g)].map((m) => `${m[1]}${m[4] ? `:${m[4]}` : ""}`);
+test("Milníky (9 Oct 2026): the ladder is a list — a row per step, one form per step, no table of amounts and no row of numbers", async () => {
   const html = (await render("rewards")).html;
-  // Three steps; the second has no amount for Slovensko (the row under it says so) — its number is red, with the dot.
-  assert.deepEqual(marks(html), ["step-1", "step-2:attention", "step-3"]);
-  assert.match(row(html) ?? "", /aria-label="Přejít na stupeň"/);
-  assert.match(row(html) ?? "", /href="#step-2"[^>]*><span data-won-dot="attention"[\s\S]{0,600}?>Vyžaduje pozornost: <\/span><\/span><\/span><span aria-hidden="true">2<\/span><span data-won-reader-only[^>]*><span[^>]*>2\. stupeň<\/span><\/span><\/a>/);
-  assert.doesNotMatch((row(html) ?? "").split('href="#step-2"')[0] ?? "", /data-won-dot/, "the first step has nothing to say");
-  // Every number has its card; the row sits in the section's header, above the table.
-  for (const id of ["step-1", "step-2", "step-3"]) assert.match(html, new RegExp(`<div id="${id}" data-won-ms-step=`), id);
-  assert.ok(html.indexOf('<section id="steps"') < html.indexOf("data-won-jump-row") && html.indexOf("data-won-jump-row") < html.indexOf('id="amounts"'));
-  // The tiles stay; there is no list of sections on this page (it would be a third navigation).
+  const rows = [...html.matchAll(/<div id="(step-\d+)" data-won-ms-step="([^"]+)"/g)].map((m) => `${m[1]}=${m[2]}`);
+  assert.deepEqual(rows, ["step-1=shipping", "step-2=gift-socks", "step-3=gift-choice"]);
+  const step = (uid: string) => html.slice(html.indexOf(`data-won-ms-step="${uid}"`), html.indexOf("data-won-ms-step=", html.indexOf(`data-won-ms-step="${uid}"`) + 20));
+  // A row says what the step gives and from what cart value, with "Upravit" and "Odebrat stupeň"; its form is closed.
+  assert.match(step("shipping"), /Doprava zdarma<\/span><span[^>]*>od 1\u00a0000\u00a0Kč \/ 40\u00a0€<\/span>/);
+  assert.match(step("shipping"), /aria-expanded="false">Upravit<\/s-button>[\s\S]*Odebrat stupeň/);
+  assert.match(step("shipping"), /data-won-ms-editor="closed" style="[^"]*display:none/);
+  // A closed row still tells the truth: the second step has no amount for Slovensko.
+  assert.match(step("gift-socks"), /Slovensko \(EUR\): částka chybí, v tomto trhu se stupeň nenabízí/);
+  // The form asks in order: what the customer gets, then from what cart value (a field per market).
+  assert.ok(step("shipping").indexOf("1. Co zákazník dostane") < step("shipping").indexOf("2. Od jaké hodnoty košíku"));
+  assert.match(step("shipping"), /data-won-ms-amounts="shipping"[\s\S]*name="ms\.shipping\.amount\.CZK" label="Česko \(CZK\)" value="1000"/);
+  // Neither the common table nor the row of numbers is there any more; the tiles stay.
+  assert.doesNotMatch(html, /data-won-ms-table|data-won-jump-row|won-jumps/);
   assert.match(html, /data-won-view-tile="steps"/);
   assert.doesNotMatch(html, /data-won-section-nav/);
-  // No step, or one: nothing to jump between, no row (P2).
-  assert.equal(row((await render("rewards?state=empty")).html), null);
-  // English.
-  assert.match(row((await render("rewards?locale=en")).html) ?? "", /aria-label="Go to step"[\s\S]*title="Step 2" data-won-jump-state="attention"/);
+  // The preview is a tool: it sits OUTSIDE the page's form, so its slider is never an unsaved change.
+  const form = html.slice(html.indexOf("<form"), html.indexOf("</form>"));
+  assert.doesNotMatch(form, /data-won-ms-preview/);
+  assert.match(html.slice(html.indexOf("</form>")), /data-won-ms-preview-aside=""[\s\S]*data-won-ms-preview-range=""/);
+  assert.doesNotMatch(html, /data-won-ms-preview-tool/);
+  // No step: an empty list and the one button.
+  const empty = (await render("rewards?state=empty")).html;
+  assert.match(empty, /data-won-ms-list="empty"[\s\S]*Přidat první stupeň/);
 });
 
 test("navigace a stav, bod 7: Přehled — the module tiles come before the discounts made in Shopify; 'Vyžaduje pozornost' stays first", async () => {

@@ -14,7 +14,7 @@ import { codeHash } from "@won/core/discounts/code-hash";
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
 import { emitForNode } from "@won/core/discounts/emit";
 import { mapToFunctionOutput, roundingTiePossible } from "@won/core/discounts/function-output";
-import { ceilTol, costMinorUnits, MARGIN_TOLERANCE, MAX_MARGIN_REFS, marginFloorUnit, readMarginPayload, resolveMargin, strictestMargin } from "@won/core/discounts/margin";
+import { applyProductMargin, ceilTol, costMinorUnits, MARGIN_TOLERANCE, MAX_MARGIN_REFS, marginFloorUnit, readMarginPayload, resolveMargin, strictestMargin } from "@won/core/discounts/margin";
 import { ENTERED_CODE_PADDING, MAX_ENTERED_CODES, planCart } from "@won/core/discounts/plan";
 import { ORDER_SEARCH_EXACT_LINES, ORDER_SEARCH_NEAR, orderSetLimit, searchOrderSets } from "@won/core/discounts/plan-margin";
 import { readTiersPayload } from "@won/core/discounts/tiers";
@@ -598,6 +598,27 @@ const TWINS = {
     expect(readMarginPayload({ enabled: true, max: 30, min: "x", cur: "EUR" })).toEqual({ enabled: true, max: 30, cur: "EUR" });
   },
 
+  a_products_own_setting_comes_before_its_collections_field_by_field() {
+    const payload = readMarginPayload(
+      JSON.parse('{"enabled": true, "min": 10, "max": 50, "cur": "CZK", "col": {"1": [20, 40]}, "prod": {"7": [5, null], "8": [null, 90], "9": [60, 10], "__proto__": [1, 1], "10": [1], "11": [200, 200]}}'),
+    );
+    expect(Object.keys(payload.prod).length).toBe(4);
+    expect(payload.prod["7"]).toEqual([5, null]);
+    expect(payload.prod["8"]).toEqual([null, 90]);
+    expect(payload.prod["11"]).toEqual([95, 100]);
+    expect(Object.hasOwn(payload.prod, "10")).toBe(false);
+    const settings = (refs, product) => {
+      const s = applyProductMargin(payload, resolveMargin(payload, refs), product);
+      return [s.minMarginPercent, s.maxDiscountPercent];
+    };
+    expect(settings(["1"], "gid://shopify/Product/99")).toEqual([20, 40]);
+    expect(settings(["1"], "gid://shopify/Product/7")).toEqual([5, 40]);
+    expect(settings([], "8")).toEqual([10, 90]);
+    expect(settings(["1"], "9")).toEqual([60, 10]);
+    expect(settings(["1"], "")).toEqual([20, 40]);
+    const bare = readMarginPayload({ enabled: true, max: 50 });
+    expect(applyProductMargin(bare, resolveMargin(bare, []), "gid://shopify/Product/7").source).toBe("global");
+  },
   a_product_takes_the_strictest_of_its_collections_settings() {
     const payload = readMarginPayload({ enabled: true, min: 10, max: 50, col: { 1: [30, null], 2: [null, 10], 3: [null, null] } });
     const settings = (refs) => {

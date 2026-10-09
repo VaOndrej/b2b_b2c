@@ -59,7 +59,8 @@ function viewTile(html: string, id: string): string {
  * the label (doctrine §19e: the state once and on top).
  */
 function viewState(html: string, view: string, anchor: string): string | null {
-  assert.equal(stateOf(section(html, anchor)), null, `section #${anchor} does not repeat the tile's label`);
+  // (Under the header, Množstevní slevy lists the whole-store discount as a row with its label — feedback 9 Oct 2026, bod 4.)
+  assert.equal(stateOf(section(html, anchor).split("data-won-tiers-list")[0]!), null, `section #${anchor} does not repeat the tile's label`);
   return stateOf(viewTile(html, view));
 }
 
@@ -260,10 +261,10 @@ test("Výprodej: three tiles instead of one long page — the sales (with their 
 test("the module pages are tiles and one panel at a time: Množstevní slevy, Odměny, Kampaně, Ochrana marže", async () => {
   const pages: [string, string[], string][] = [
     ["tiers?plan=pro", ["global", "table", "exceptions"], "global"],
-    ["rewards", ["steps", "web"], "steps"],
+    ["rewards", ["steps", "web", "look"], "steps"],
     ["campaigns?plan=pro", ["list", "form", "places"], "list"],
     ["campaigns?plan=pro&edit=weekend", ["list", "form", "places"], "form"],
-    ["margin?plan=pro", ["settings", "costs", "collections", "impact"], "settings"],
+    ["margin?plan=pro", ["settings", "costs", "collections", "products", "impact"], "settings"],
   ];
   for (const [path, views, open] of pages) {
     const html = await render(path);

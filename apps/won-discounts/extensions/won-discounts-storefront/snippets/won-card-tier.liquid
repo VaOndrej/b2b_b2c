@@ -71,6 +71,12 @@
                 endif
               endfor
             endif
+            # The product's own maximum comes before its collections' (as at checkout).
+            assign own_key = p.id | append: ''
+            assign own_max = cfg.margin.prod[own_key]
+            if own_max != nil
+              assign cap = own_max
+            endif
             assign cap = cap | at_least: 0 | at_most: 100
           endif
           if b.pct > 0 and b.pct <= cap

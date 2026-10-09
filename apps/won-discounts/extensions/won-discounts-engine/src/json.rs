@@ -130,6 +130,7 @@ keys! {
     Max = "max",
     Min = "min",
     Col = "col",
+    Prod = "prod",
 }
 
 thread_local! {

@@ -33,6 +33,7 @@ test("impactRulesOf: a variant whose product lists 5+ refs is measured and label
       { collectionId: "gid://shopify/Collection/5", maxDiscountPercent: 10 },
       { collectionId: "gid://shopify/Collection/6", maxDiscountPercent: 90 },
     ],
+    perProduct: [],
   };
   const variant = (id: string, marginRefs: string[], marginRefCount?: number) => ({
     productId: `gid://shopify/Product/${id}`,

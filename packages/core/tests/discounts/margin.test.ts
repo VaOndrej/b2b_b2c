@@ -30,7 +30,7 @@ test("sanitizer: margin protection is OFF by default, and a stored config withou
   const legacy = sanitizeConfig({ modules: { margin: { global: { maxDiscountPercent: 30, minMarginPercent: 10 }, perCollection: [] } } });
   assert.equal(legacy.config.modules.margin.enabled, false);
   assert.deepEqual(legacy.issues, []);
-  assert.deepEqual(legacy.config.modules.margin, { enabled: false, global: { maxDiscountPercent: 30, minMarginPercent: 10 }, perCollection: [] });
+  assert.deepEqual(legacy.config.modules.margin, { enabled: false, global: { maxDiscountPercent: 30, minMarginPercent: 10 }, perCollection: [], perProduct: [] });
 });
 
 test("sanitizer: `enabled` must be a boolean (junk → off, with an issue)", () => {

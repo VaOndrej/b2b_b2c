@@ -36,7 +36,7 @@ use crate::engine::emit::NodeRole;
 use crate::engine::batch::PREFIX;
 use crate::engine::hash::{parse_hash, MAX_ENTERED_CODES};
 use crate::engine::js;
-use crate::engine::margin::MarginRef;
+use crate::engine::margin::{MarginRef, Setting};
 use crate::engine::money::{currency_exponent, to_minor_units_with};
 use crate::engine::tiers::{resolve_set, SetIndex};
 use crate::json::{is_true, non_empty, number, prop, string, DecimalNumber, DecimalText, Key, NodeVars, OutletLists, WonProduct, WonVariant};
@@ -219,6 +219,7 @@ struct ReadLine {
     unit_cost_currency: Option<String>,
     margin_refs: Vec<MarginRef>,
     margin_ref_count: usize,
+    margin_own: Option<Setting>,
 }
 
 /// What quantity tiers need of a line (`LineTier`), owned: its set, resolved once here.
@@ -282,6 +283,8 @@ impl RunInput {
         let margin_on = config.margin.is_some();
         // A ref matters only when some collection has a setting (resolveMargin).
         let margin_refs_on = config.margin.as_ref().is_some_and(|m| !m.col.is_empty());
+        // A product's own setting: its id is read only when the payload has some (`prod`).
+        let margin_products = config.margin.as_ref().filter(|m| !m.prod.is_empty());
         let exponent = currency_exponent(&currency);
         let lines_value = field(&cart, Key::Lines);
         let line_count = lines_value.and_then(|l| l.array_len()).unwrap_or(0);
@@ -317,6 +320,7 @@ impl RunInput {
                 unit_cost_currency: None,
                 margin_refs: Vec::new(),
                 margin_ref_count: 0,
+                margin_own: None,
             };
             let mut tier_ref: Option<String> = None;
             let merchandise = line_shape.get(&line, 4);
@@ -329,6 +333,15 @@ impl RunInput {
                 _ => Some(product_shape.get_sized(&product, product_keys, 1)),
             }
             .and_then(|metafield| sole(&metafield, Key::JsonValue));
+            // Its own margin setting, by `product.id` (first in the query's order;
+            // a product of one key carries no id: none).
+            if let Some(margin) = margin_products {
+                if product_keys != Some(1) {
+                    if let Some(product_id) = string(&product_shape.get_sized(&product, product_keys, 0)) {
+                        read.margin_own = margin.product(&product_id);
+                    }
+                }
+            }
             if let Some(won) = won {
                 let mut won = WonProduct::read(&won, margin_refs_on, tiers_on);
                 // The variant id is read only when the metafield needs it.
@@ -437,6 +450,7 @@ impl RunInput {
                     unit_cost_currency: l.unit_cost_currency.as_deref(),
                     margin_refs: &l.margin_refs,
                     margin_ref_count: l.margin_ref_count,
+                    margin_own: l.margin_own,
                 })
                 .collect(),
             tiers: self.tiers.iter().map(|t| LineTier { set: t.set, product_id: &t.product_id }).collect(),

@@ -250,6 +250,10 @@
   line-height: 1.4;
   text-align: center;
 }
+.won-topbar__empty {
+  margin: 0;
+  opacity: 0.8;
+}
 .won-topbar .won-progress,
 .won-topbar .won-campaign {
   display: flex;

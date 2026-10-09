@@ -564,7 +564,7 @@ export interface MarginReason {
   basis: "cost" | "max_percent";
   minMarginPercent?: number;
   maxDiscountPercent?: number;
-  source: "global" | "collection";
+  source: "global" | "collection" | "product";
 }
 
 /**
@@ -588,6 +588,7 @@ export function describeMarginReason(reason: MarginReason, locale: UiLocale): st
     text = cs ? `položka nemá nákupní cenu, proto je sleva nejvýš ${percent}` : `the item has no cost price, so the discount is at most ${percent}`;
   }
   if (reason.source === "collection") text += cs ? " (nastavení kolekce)" : " (collection setting)";
+  if (reason.source === "product") text += cs ? " (nastavení produktu)" : " (product setting)";
   return text;
 }
 
@@ -596,6 +597,7 @@ export interface DescribableMargin {
   enabled: boolean;
   global: { readonly minMarginPercent?: number; readonly maxDiscountPercent: number };
   perCollection: readonly unknown[];
+  perProduct?: readonly unknown[];
 }
 
 /**
@@ -624,6 +626,14 @@ export function describeMarginSettings(margin: DescribableMargin, locale: UiLoca
       cs
         ? `${n} ${csPlural(n, ["kolekce", "kolekce", "kolekcí"])} s vlastním nastavením`
         : `${n} ${enPlural(n, "collection", "collections")} with ${n === 1 ? "its" : "their"} own setting`,
+    );
+  }
+  const products = margin.perProduct?.length ?? 0;
+  if (products > 0) {
+    parts.push(
+      cs
+        ? `${products} ${csPlural(products, ["produkt", "produkty", "produktů"])} s vlastním nastavením`
+        : `${products} ${enPlural(products, "product", "products")} with ${products === 1 ? "its" : "their"} own setting`,
     );
   }
   return parts.join(" · ");
