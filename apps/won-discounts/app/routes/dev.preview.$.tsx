@@ -11,6 +11,7 @@ import { storeStatuses } from "../components/model/module-status";
 import { discountPageStates, type DiscountNavData } from "../components/model/modules";
 import { NOT_WIRED_SIGNALS } from "../components/model/signals";
 import { FormActionsContext } from "../components/shell/form-actions";
+import { HoverStyles } from "../components/shell/hover";
 import { DiscountNav } from "../components/shell/SubNav";
 import type { NativeDiscountView } from "../components/model/types";
 import { WonSection } from "../components/shell/WonSection";
@@ -667,6 +668,7 @@ export default function DevPreview() {
           @shopify/shopify-app-react-router's <AppProvider> loads it for real
           admin pages, so a screenshot of this route looks like the real app. */}
       <script src="https://cdn.shopify.com/shopifycloud/polaris.js" />
+      <HoverStyles />
       <LocaleProvider locale={locale}>
         <FormActionsContext.Provider value={{ looks: here, translations: here }}>
           <DiscountNav.Provider value={discountNav}>{content}</DiscountNav.Provider>

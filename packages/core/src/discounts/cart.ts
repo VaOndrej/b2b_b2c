@@ -36,8 +36,12 @@ export interface CartLineInput {
    * margin `col` lists change anything.
    */
   marginRefs?: readonly string[];
-  /** Active outlet run on the variant (A1.1): excluded from product and order discounts. */
-  outlet?: boolean;
+  /**
+   * Active outlet run on the variant (A1.1), the variant metafield's own value: `true` = excluded from product
+   * and order discounts; a number 1–6 = the sale takes SOME of them, the sum of the allowed ones
+   * (OUTLET_ALLOW: 1 quantity tiers, 2 product discounts and codes, 4 the order discount). 7 = every one, like no flag.
+   */
+  outlet?: boolean | number;
   /** A Won gift line (`_won_gift`, A1.2): outside every discount and every threshold. */
   giftTierId?: string;
   /**
@@ -117,6 +121,25 @@ export interface CartPlanInput {
   shopToCartRate?: number;
 }
 
+/** What a sale that combines may take (the variant flag as a number is the sum of these). */
+export const OUTLET_ALLOW = { tiers: 1, product: 2, order: 4 } as const;
+const OUTLET_ALLOW_ALL = 7;
+
+/**
+ * The variant flag of a product that NEVER takes a discount — a gift card (decided 10 Oct 2026: a 1 000 Kč card
+ * bought for 700 Kč and spent as 1 000 Kč is money given away). The number 0 = "takes none of the classes"; unlike
+ * a sale's `true` it holds even when sales combine with anything (plan.ts prepareLines). The app's sync writes it
+ * on every gift card variant (apps/won-discounts app/lib/sync/gift-cards.ts).
+ */
+export const NEVER_DISCOUNTED_FLAG = 0;
+/** `outletNo` of a line that stays out of every class, whatever the shop's combination settings say. */
+export const OUTLET_NO_ALL = OUTLET_ALLOW_ALL;
+
+/** The classes a partly combining sale line stays out of; 7 for the flag 0 (a gift card: out of all, always); 0 for `true` (out of all, `outlet`), no flag, 7 or junk. */
+function outletNoOf(flag: unknown): number {
+  return typeof flag === "number" && Number.isInteger(flag) && flag >= 0 && flag < OUTLET_ALLOW_ALL ? OUTLET_ALLOW_ALL & ~flag : 0;
+}
+
 export interface NormalizedLine {
   id: string;
   variantId: string;
@@ -124,7 +147,10 @@ export interface NormalizedLine {
   quantity: number;
   unitPrice: number;
   subtotal: number;
+  /** Out of every product and order discount (the flag `true`). */
   outlet: boolean;
+  /** A sale that takes some discounts: the classes it does NOT take (OUTLET_ALLOW bits); 0 = no such limit. */
+  outletNo: number;
   gift: boolean;
   /** The `_won_gift` attribute (the gift tier id, MVP 4 R3); null when not a gift line. */
   giftTierId: string | null;
@@ -293,6 +319,7 @@ export function normalizeCart(input: CartPlanInput): NormalizedCart {
       unitPrice,
       subtotal: quantity * unitPrice,
       outlet: raw.outlet === true,
+      outletNo: outletNoOf(raw.outlet),
       gift: typeof raw.giftTierId === "string" && raw.giftTierId !== "",
       giftTierId: typeof raw.giftTierId === "string" && raw.giftTierId !== "" ? raw.giftTierId : null,
       ruleIds: variantRefs.length > 0 ? [...strings(raw.ruleIds), ...variantRefs] : strings(raw.ruleIds),

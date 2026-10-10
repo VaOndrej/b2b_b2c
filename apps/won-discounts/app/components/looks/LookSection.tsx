@@ -9,8 +9,8 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useFetcher } from "react-router";
 
-import { accentCss, LOOK_ROOT } from "@won/core/discounts/custom-look";
-import { LOOK_PRESET_CSS, MILESTONE_BLINK_CSS } from "@won/core/discounts/looks";
+import { accentCss, isMilestoneElement, LOOK_ROOT } from "@won/core/discounts/custom-look";
+import { LOOK_PRESET_CSS, milestoneBlinkCss } from "@won/core/discounts/looks";
 
 import { useT } from "../../i18n/context";
 import { customLookSet, liveCustomLookCss, LOOK_FIELD, LOOK_INTENT, presetDetails, presetLabel } from "../model/looks";
@@ -18,6 +18,7 @@ import type { EmbedView, LookView, UiResult } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
 import { boolAttr } from "../shell/attrs";
 import { useFormActions } from "../shell/form-actions";
+import { hoverMark } from "../shell/hover";
 import { snapshotOf } from "../shell/form-snapshot";
 import { Notice } from "../shell/Notice";
 import { ProFrame } from "../shell/ProFrame";
@@ -26,6 +27,16 @@ import { RowNote, WonSection } from "../shell/WonSection";
 import { selectionRing, WON_FONT, WON_INK, WON_MUTED } from "../shell/tokens";
 import { AccentPicker } from "./AccentPicker";
 import { LookPreview, LookPreviewStyles } from "./LookPreview";
+
+/** The settings and, beside them from 1 000 px, the live preview (it sticks while the settings scroll; above them on a narrow screen). */
+const SIDE_CSS = `
+.won-look-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.won-look-side{order:-1;padding:12px;border-radius:12px;background:#f5f7f9;border:1px solid #e3e7ec;font-family:${WON_FONT};min-width:0}
+@media (min-width:1000px){
+.won-look-layout{grid-template-columns:minmax(0,1fr) minmax(280px,34%);gap:20px;align-items:start}
+.won-look-side{order:0;position:sticky;top:16px}
+}
+`;
 
 export interface LookSectionProps {
   look: LookView;
@@ -44,6 +55,7 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
   const tr = useT();
   const { t } = tr;
   const { element } = look;
+  const ladder = isMilestoneElement(element);
   const fetcher = useFetcher<UiResult>();
   const actions = useFormActions();
   const result = fetcher.data ?? given;
@@ -91,7 +103,7 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
   const customCss = pro ? liveCustomLookCss(element, typed) : "";
   const blink = snapshot ? snapshot.has(LOOK_FIELD.blink) : look.blink;
   /** A ready-made look as the storefront would get it with what is picked and typed now. */
-  const cssOf = (p: string) => (LOOK_PRESET_CSS[element][p] ?? "") + (element === "milestones" && blink ? MILESTONE_BLINK_CSS : "") + accentCss(accent, LOOK_ROOT[element]) + customCss;
+  const cssOf = (p: string) => (LOOK_PRESET_CSS[element][p] ?? "") + (ladder && blink ? milestoneBlinkCss(element) : "") + accentCss(accent, LOOK_ROOT[element]) + customCss;
   const picks = look.presets.length > 1;
 
   // "Zkopírovat zadání pro AI": says when it worked — and when it did not (no clipboard in this browser / frame).
@@ -142,14 +154,14 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
       glyph="spark"
       summary={picks ? t("looks.summary", { preset: presetLabel(element, preset, tr) }) : t(customSet ? "looks.custom.summary.on" : "looks.custom.summary.off")}
       anchor={`look-${element}`}
-      collapsible
-      // Open from the start (feedback 9 Oct 2026, 3rd round, bod 3): a closed section hid the custom CSS of the cart and the top bar.
-      defaultOpen
+      // Never an accordion (7th round): the section is the only thing under its tile or its place, so there is nothing to fold away.
     >
       <fetcher.Form method="post" action={actions.looks} ref={formRef} data-won-look-form={element}>
         <input type="hidden" name={LOOK_FIELD.intent} value={LOOK_INTENT.save} />
         <input type="hidden" name={LOOK_FIELD.element} value={element} />
         {configVersion ? <input type="hidden" name={LOOK_FIELD.configVersion} value={configVersion} /> : null}
+        <style dangerouslySetInnerHTML={{ __html: SIDE_CSS }} />
+        <div className={element === "tiers" ? undefined : "won-look-layout"}>
         <s-stack direction="block" gap="base">
           {fetcher.data || given ? <Notice result={result} /> : null}
           {element === "tiers" ? (
@@ -160,7 +172,7 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
               {picks ? (
                 <div role="radiogroup" aria-label={t("looks.choose")} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 260px), 1fr))", gap: 12 }}>
                   {look.presets.map((p) => (
-                    <label key={p} style={{ ...selectionRing(preset === p), position: "relative", display: "grid", alignContent: "start", gap: 8, padding: 12, borderRadius: 12, cursor: "pointer", fontFamily: WON_FONT, minWidth: 0 }}>
+                    <label key={p} {...hoverMark("card", preset === p)} style={{ ...selectionRing(preset === p), position: "relative", display: "grid", alignContent: "start", gap: 8, padding: 12, borderRadius: 12, cursor: "pointer", fontFamily: WON_FONT, minWidth: 0 }}>
                       <input
                         type="radio"
                         name={LOOK_FIELD.preset}
@@ -194,7 +206,7 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
               <FieldMessage text={errorOf(LOOK_FIELD.preset)} />
               {/* The cart has no highlight of its own: the ladder inside it takes the ladder's colour. */}
               {element === "cart" ? null : <AccentPicker name={LOOK_FIELD.accentPreset} value={accent} stored={look.accent} onPick={setAccent} embed={embed} />}
-              {element === "milestones" ? (
+              {ladder ? (
                 <div>
                   <s-checkbox name={LOOK_FIELD.blink} value="on" label={t("looks.blink")} checked={boolAttr(look.blink)} />
                   <RowNote>{t("looks.blinkHint")}</RowNote>
@@ -219,6 +231,17 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
             </s-button>
           </div>
         </s-stack>
+        {/* Beside the settings, the element as a customer will see it with what is picked and typed now — the look, the
+            colour, the custom look (7th round: the small previews in the cards did not say what the page will show).
+            It stays in view while the settings scroll; on a narrow screen it stands above them. */}
+        {element === "tiers" ? null : (
+          <aside className="won-look-side" data-won-look-side={element} aria-label={t("looks.side.title")}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: WON_INK }}>{t("looks.side.title")}</div>
+            <div style={{ margin: "2px 0 10px", fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED }}>{picks ? t("looks.side.hint", { preset: presetLabel(element, preset, tr) }) : t("looks.side.hintPlain")}</div>
+            <LookPreview element={element} css={cssOf(preset)} />
+          </aside>
+        )}
+        </div>
       </fetcher.Form>
     </WonSection>
   );

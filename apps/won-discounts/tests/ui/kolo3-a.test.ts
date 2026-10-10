@@ -231,16 +231,29 @@ test("home tiles: each says what is under it, and below that what is active now"
   assert.match(tile(off, "rewards"), /data-won-tile-active[^>]*>[^<]*Žádný stupeň/);
 });
 
-test("Výprodej: three tiles instead of one long page — the sales (with their state), a new sale, how it works; one panel at a time", async () => {
+test("Výprodej: four tiles instead of one long page — the sales (with their state), a new sale, the badge in the store, the rules; one panel at a time", async () => {
   const html = await render("outlet?plan=pro&orders=on");
-  assert.equal(count(html, /data-won-view-tile="/g), 3);
-  for (const key of ["sales", "new", "info"]) assert.match(html, new RegExp(`data-won-view-tile="${key}"`));
+  assert.equal(count(html, /data-won-view-tile="/g), 4);
+  for (const key of ["sales", "new", "web", "info"]) assert.match(html, new RegExp(`data-won-view-tile="${key}"`));
   // The sales tile carries the module's state; a shop with running sales lands on them, not on the form.
   assert.match(html, /data-won-view-tile="sales"[^>]*aria-pressed="true"/);
   const panel = (key: string) => new RegExp(`data-won-view-panel="${key}"[^>]*style="display:(block|none)"`).exec(html)?.[1];
   assert.equal(panel("sales"), "block");
   assert.equal(panel("new"), "none");
   assert.equal(panel("info"), "none");
+  assert.equal(panel("web"), "none");
+  // 10 Oct 2026, body 5 a 7: the badge's block and its look sit under "Štítek na webu", never under the rules;
+  // the rules say which running sale takes the other discounts, each with its switch.
+  const at = (marker: string) => html.indexOf(marker);
+  assert.ok(at('data-won-view-panel="web"') < at('id="look-outlet"') && at('id="look-outlet"') < at('data-won-view-panel="info"'));
+  assert.ok(at('data-won-view-panel="info"') < at("data-won-outlet-combine-list"));
+  // Each running sale is a row of the rules: what it takes (✓ / ✕ per discount) and the button to its card.
+  assert.match(html, /data-won-outlet-combine-row="[^"]+"[\s\S]*?data-won-outlet-combine-marks=""[\s\S]*?Změnit/);
+  // No pointer under the chosen tile (6th round): the blue frame says which one is open.
+  assert.doesNotMatch(html, /aria-pressed="true"\]::after/);
+  // The ended sales are folded away until one of them needs a decision; a running sale shows its four facts.
+  assert.match(html, /data-won-outlet-facts/);
+  assert.match(html, /<section id="ended"[\s\S]*?aria-expanded="(true|false)"/);
   // Inside the sales panel the running ones come first, the ended ones last.
   assert.ok(html.indexOf('<section id="running"') < html.indexOf('<section id="ended"'));
   assert.ok(html.indexOf('data-won-view-panel="sales"') < html.indexOf('<section id="running"'));
@@ -286,4 +299,34 @@ test("the module pages are tiles and one panel at a time: Množstevní slevy, Od
   // Free: the Pro parts are amber tiles.
   assert.match(await render("tiers"), /data-won-view-tile="exceptions"[^>]*data-won-tile-locked/);
   assert.match(await render("margin"), /data-won-view-tile="collections"[^>]*data-won-tile-locked/);
+});
+
+test("Výprodej (10 Oct 2026): a new sale is three numbered steps — what, how it shows (per sale, with a preview and the block's state), the start; the shop-wide display setting is gone", async () => {
+  const html = await render("outlet?plan=pro");
+  const form = html.slice(html.indexOf("data-won-outlet-new"));
+  const at = (marker: string) => form.indexOf(marker);
+  for (const n of [1, 2, 3, 4]) assert.ok(at(`data-won-step="${n}"`) !== -1, `step ${n}`);
+  // Step 3: what this sale combines with, two cards to click.
+  assert.ok(at('data-won-step="3"') < at('data-won-outlet-combine="0"') && at('data-won-outlet-combine="1"') < at('data-won-step="4"'));
+  assert.ok(at('data-won-step="1"') < at('name="ol.quota"') && at('name="ol.quota"') < at('data-won-step="2"'));
+  assert.ok(at('data-won-step="2"') < at('name="ol.saleDisplay"') && at('name="ol.saleDisplay"') < at("data-won-outlet-preview") && at("data-won-outlet-preview") < at('data-won-step="3"'));
+  assert.ok(at('data-won-step="4"') < at("data-won-outlet-summary"));
+  assert.match(form, /Takhle to vidí zákazník/);
+  // Step 3 (6th round): under "I s vybranými slevami" a box for each discount, and the marker that says the boxes are there.
+  for (const c of ["_", "tiers", "product", "order"]) assert.match(form, new RegExp(`name="ol\\.combineWith"[^>]* value="${c}"`), c);
+  assert.doesNotMatch(html, /name="ol\.hideBadge"/);
+  // The shop-wide select is gone: how a sale shows is set with the sale.
+  assert.doesNotMatch(html, /name="ol\.display"/);
+  assert.match(html, /Jak je výprodej vidět na webu, nastavujete u každého výprodeje zvlášť\./);
+  // A running sale says what the store shows now, with its own text, and offers the two ways to look.
+  // A running sale: a card that draws what the customer sees now, and a card of what it combines with.
+  assert.match(html, /data-won-outlet-web="[^"]+"[\s\S]*Štítek se zákazníkovi neukáže\. V šabloně produktu chybí prvek „Sale badge“\.[\s\S]*Přidat štítek do šablony/);
+  const placed = await render("outlet?plan=pro&state=badge");
+  assert.match(placed, /data-won-outlet-web="[^"]+"[\s\S]*data-won-outlet-preview-badge=""[^>]*>Doprodej · zbývá \d+ ks/);
+  assert.match(placed, /Je až pod tlačítkem pro vložení do košíku/);
+  // The block is in the theme: the button opens the editor on the product (nothing is added), in orange words.
+  assert.match(placed, /Štítek je pod tlačítkem Do košíku[\s\S]*?<s-button href="[^"]*previewPath=[^"]*"[^>]*>Přesunout štítek v šabloně/);
+  assert.doesNotMatch(placed.slice(placed.indexOf("data-won-outlet-web="), placed.indexOf("data-won-outlet-combine-card=")), /addAppBlockId/);
+  assert.match(html, /Zobrazit produkt na webu/);
+  assert.match(placed, /data-won-outlet-combine-card="[^"]+"[\s\S]*data-won-yesno="no"[\s\S]*Množstevní sleva/);
 });

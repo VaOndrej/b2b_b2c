@@ -7,6 +7,7 @@
 import { useState, type ReactNode } from "react";
 
 import { useT } from "../../i18n/context";
+import { hoverMark } from "./hover";
 import { WON_FAINT, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SURFACE, WON_WASH } from "./tokens";
 
 export interface SelectedItem {
@@ -76,6 +77,7 @@ export function SelectedList({
                 disabled={disabled}
                 aria-label={t("selected.remove", { name: item.title || fallback })}
                 title={t("selected.remove", { name: item.title || fallback })}
+                {...hoverMark("icon")}
                 style={{ flex: "0 0 auto", width: 28, height: 28, border: "none", borderRadius: 6, background: "transparent", color: disabled ? WON_FAINT : WON_MUTED, cursor: disabled ? "default" : "pointer", fontSize: 18, lineHeight: 1 }}
               >
                 ×
@@ -90,6 +92,7 @@ export function SelectedList({
           <button
             type="button"
             onClick={() => setAll((value) => !value)}
+            {...hoverMark("link")}
             style={{ border: "none", background: "transparent", padding: 0, font: "inherit", fontSize: 13, color: WON_INK, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer" }}
           >
             {all ? t("selected.showLess") : t("selected.showAll", { n: items.length })}

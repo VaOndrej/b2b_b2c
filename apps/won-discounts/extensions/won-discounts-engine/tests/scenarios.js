@@ -390,6 +390,51 @@ function allScenarios() {
     expected: out(products(pc("Letní sleva", [1, 2], percent(10))), order("5 % na objednávku", [], percent(5))),
   },
   {
+    name: "lines-outlet-variant-flag-allows-some",
+    description:
+      "6th round: the variant flag as a number is the sum of what the sale takes (1 quantity tiers, 2 product discounts, 4 the order discount). 2 = the product discount applies and the line is out of the order subtotal; 4 = no product discount, in the order subtotal; 7 and 1.5 are no flag (0 is a gift card: lines-gift-card-never-discounted).",
+    target: "lines",
+    rules: [SUMMER, ORDER5],
+    role: AUTO,
+    lines: [
+      { n: 1, price: "100.0", won: won("summer") },
+      { n: 2, price: "100.0", won: won("summer"), variantOutlet: 2 },
+      { n: 3, price: "100.0", won: won("summer"), variantOutlet: 4 },
+      { n: 4, price: "100.0", won: won("summer"), variantOutlet: 7 },
+      { n: 5, price: "100.0", won: won("summer"), variantOutlet: 1.5 },
+      { n: 6, price: "100.0", won: won("summer"), variantOutlet: 1 },
+    ],
+    expected: out(products(pc("Letní sleva", [1, 2, 4, 5], percent(10))), order("5 % na objednávku", [2, 6], percent(5))),
+  },
+  {
+    name: "lines-gift-card-never-discounted",
+    description:
+      "Decided 10 Oct 2026: a gift card takes no discount. The app flags its variants with 0 (takes none of the classes): no product discount for the line and it is out of the order subtotal.",
+    target: "lines",
+    rules: [SUMMER, ORDER5],
+    role: AUTO,
+    lines: [
+      { n: 1, price: "100.0", won: won("summer") },
+      { n: 2, price: "1000.0", won: won("summer"), variantOutlet: 0 },
+    ],
+    expected: out(products(pc("Letní sleva", [1], percent(10))), order("5 % na objednávku", [2], percent(5))),
+  },
+  {
+    name: "lines-gift-card-never-discounted-outlet-with-anything",
+    description:
+      "A gift card (the variant flag 0) stays out of every discount even when sales combine with anything: that switch lifts a sale's flag (line 3), never a gift card's (line 2).",
+    target: "lines",
+    rules: [SUMMER, ORDER5],
+    role: AUTO,
+    configExtra: { engine: { combination: { outletWithAnything: true } } },
+    lines: [
+      { n: 1, price: "100.0", won: won("summer") },
+      { n: 2, price: "1000.0", won: won("summer"), variantOutlet: 0 },
+      { n: 3, price: "100.0", won: won("summer"), variantOutlet: true },
+    ],
+    expected: out(products(pc("Letní sleva", [1, 3], percent(10))), order("5 % na objednávku", [2], percent(5))),
+  },
+  {
     name: "lines-gift-excluded",
     description: "A `_won_gift` line is outside every discount: no product discount, excluded from the order subtotal.",
     target: "lines",

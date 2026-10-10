@@ -104,7 +104,9 @@ test("plan 2026-10-06: a look's section follows its form — the custom look as 
     ".won-tiers{--won-tiers-accent:#0a7d4f;--won-tiers-radius:4px}.won-tiers .won-tiers__heading{color:red}",
   );
   // The same fields in the ladder's section stay inside the ladder.
-  assert.equal(liveCustomLookCss("milestones", values({ [LOOK_FIELD.accent]: "#0A7D4F", [LOOK_FIELD.css]: ".won-tiers{display:none}" })), ".won-ms{--won-tiers-accent:#0a7d4f}.won-ms .won-tiers{display:none}");
+  assert.equal(liveCustomLookCss("milestones", values({ [LOOK_FIELD.accent]: "#0A7D4F", [LOOK_FIELD.css]: ".won-tiers{display:none}" })), ":not(.won-topbar)>.won-progress>.won-ms{--won-tiers-accent:#0a7d4f}:not(.won-topbar)>.won-progress>.won-ms .won-tiers{display:none}");
+  // …and the same fields of the strip's section inside the strip's ladder.
+  assert.equal(liveCustomLookCss("msBar", values({ [LOOK_FIELD.css]: ":root{gap:2em}" })), ".won-topbar .won-ms{gap:2em}");
   // What the server would refuse never reaches the preview: a colour that is not a hex, a radius out of range, CSS that cannot be scoped.
   assert.equal(liveCustomLookCss("tiers", values({ [LOOK_FIELD.accent]: "red", [LOOK_FIELD.radius]: "99", [LOOK_FIELD.css]: ".a{background:url(x)}" })), "");
 });

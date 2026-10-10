@@ -29,7 +29,8 @@
       assign on_sale = false
       for v in p.variants
         assign vmf = v.metafields['$app:won_discounts']
-        if vmf.outlet.value == true
+        assign v_sale = vmf.outlet.value
+        if v_sale == true or v_sale == 2 or v_sale == 4 or v_sale == 6
           assign on_sale = true
         endif
         if vmf.variant != nil or vmf.pdp != nil
@@ -38,6 +39,10 @@
       endfor
       assign show = true
       if on_sale and cfg.ow != 1
+        assign show = false
+      endif
+      # A gift card never takes a discount: no line on its card.
+      if p.gift_card?
         assign show = false
       endif
       assign margin_on = false

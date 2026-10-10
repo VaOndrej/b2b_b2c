@@ -57,7 +57,7 @@ not a second source of truth.
 
 # PART I — PRODUCT & ADMIN-UX
 
-## The principles (§1–§19)
+## The principles (§1–§20)
 
 ### §1 — Preview-first `[INV]`
 Every merchant-editable surface shows a **live preview** of the real result, not an
@@ -163,6 +163,12 @@ Each visual code carries **exactly one meaning**, the same everywhere.
 - **§11d — State is legible at rest.** Selected / on / Pro readable **without
   interacting** — a word, a dot, the ring. *↳ Consolidates the old "is it live?" status
   invariant and A3's "lead with status": the merchant never clicks to discover state.*
+
+- **§11e** — everything hand-built that can be clicked **answers the pointer**, from one
+  shared stylesheet (a merchant must see what the mouse is on: a strip of links, a tile,
+  a choice card, a collapsible header, a bare icon button). The chosen one and a disabled
+  one do not answer: hover never competes with "selected" (§11a). Polaris elements keep
+  their own hover. *(Won Discounts: `shell/hover.tsx`, `hoverMark(kind)`; 10 Oct 2026.)*
 
 ### §12 — Honest by construction (never fabricate what looks like proof) `[INV]`
 Anything that reads to a shopper as a **fact about the store** — social proof, scarcity,
@@ -399,6 +405,96 @@ form as §18: each rule names its symptom.
   whether the thing behind it runs; two dots of the same module that disagree.
   *Example:* `StatusDot`, `SubNav`, `SectionNav`, `JumpRow`, `storeStatuses`
   (Won Discounts).
+
+### §20 — Nine rules from the sixth round of the walkthrough `[WON]`
+Written after the owner's sixth pass through Won Discounts (10 Oct 2026). Same
+form as §18 and §19: each rule names its symptom. The working assumption behind
+all nine: **the merchant is in a hurry and does not read** — the screen has to
+be understood from its shapes before its sentences.
+
+- **§20a — The chosen thing is marked by its own surface, never by an ornament
+  attached to it.** A selected tile, tab or card shows it with the selection
+  colour on its frame, its tint and its glyph. No pointer, arrow or connector
+  hangs off it towards the content. *Tightens §11. Symptom:* a caret under a
+  tile that reads as a stray shape or a tooltip tail.
+  *Example:* `ViewTile` (Won Discounts).
+
+- **§20b — A tile is wider than it is tall, at every count.** Its title is one
+  or two words, its sentence at most two short lines written FOR the tile (not
+  the section's long summary reused). When so many tiles share a row that the
+  text column would be narrower than about 200 px, the text runs under the
+  glyph across the whole tile. What does not fit belongs on another tile or in
+  the section. *Tightens §19e. Symptom:* a row of tall, narrow tiles where a
+  sentence breaks into six lines of two words.
+  *Example:* `ModuleTiles columns={5}`, `marginTileSummary`.
+
+- **§20c — A part that only shows something says so, and has no control near
+  it.** A report, a list of effects or a coverage count carries a neutral
+  "Overview only" label on its tile (where a state label would be) and one line
+  at the top of its panel: nothing is switched on or saved here, and what the
+  numbers are for. The page's Save is not shown under it. The label is neutral
+  — not green (it is not a state), not red, not the plan colour. *Extends §19a
+  / §18b. Symptom:* "is this on or off? do I have to save it?" asked of a
+  screen that sets nothing.
+  *Example:* `ViewTile note`, `InfoStrip`.
+
+- **§20d — Several things in one section are several cards.** When a section
+  holds more than one thing that has its own state and its own action (how it
+  shows · what it combines with), each is a card with a header strip (name,
+  state label, its button) and a body. A flat run of sentences, buttons and
+  disclosure triangles in one box is not a layout. A main action is never
+  inside a `<details>`: it is a button in its card's header, and what it edits
+  opens in that card. *Tightens §6 / §8. Symptom:* "flat, unclear, mixed
+  together"; an edit form found only by opening a triangle.
+  *Example:* `SubCard` (title, label, action, footer).
+
+- **§20e — Steps are separate cards on the page.** A form filled in order is
+  cut into numbered steps; each step is its own raised card standing on the
+  page's background (not nested in one white section), with "Step n / N", a
+  header strip, and a rail that joins the numbers. Inside a step: the picked
+  object is a card with its change button; a computed result (the new price)
+  is drawn as a result, large, not as a note; what is set sits beside the
+  preview of what the customer will see; the last step repeats every decision
+  as label–value rows above the one primary button. Background reading goes
+  behind a disclosure. *Tightens §8 / §10. Symptom:* steps that "blend
+  together"; a form that still "feels flat" after it got numbers.
+  *Example:* `StepCard`.
+
+- **§20f — An either/or is two cards to click; what applies is a ✓ / ✕ mark.**
+  A choice between two behaviours is two selectable cards, each with one
+  sentence of the consequence. When the second one has parts ("with which
+  ones"), they are checkboxes inside that card, ticked individually — never one
+  all-or-nothing switch for things a merchant may want apart. Elsewhere the
+  same decision is read back as named marks (✓ applies / ✕ does not, never by
+  colour alone). *Extends §9 / §11. Symptom:* a switch that forces "everything
+  or nothing"; a sentence the merchant must parse to learn what applies.
+  *Example:* `choiceCardStyle`, `YesNo`.
+
+- **§20g — A warning says what happened, what to do, and has the button.**
+  Every finding is a card with two labelled lines — *What happened* (the fact)
+  and *What to do* (the choice in plain words, including "if this is what you
+  want, do nothing") — and a primary button that goes to the fix; a second
+  button when the fix may be on another page. A link at the end of a sentence
+  is not an action. What is fine is listed after the warnings, quietly.
+  *Tightens §13. Symptom:* a list of "Warning" rows that leaves the merchant
+  asking "and now what?".
+  *Example:* `CombinationsSection` (`TODO` by finding kind).
+
+- **§20h — Long pages get the side menu; no exception for tools.** Any page
+  longer than about 1.5 screens with three or more sections uses the "On this
+  page" column of §19f, with the state dot of a section that has one.
+  *Applies §19f. Symptom:* a tool page scrolled end to end to reach its form.
+  *Example:* `SectionNav` on the cart simulator.
+
+- **§20i — A link to something that exists opens it; it never makes a second
+  one.** Where the app can add its piece somewhere (a block into a theme), the
+  link changes with what is there: *missing* → add it (primary); *present* →
+  open it, selected, nothing added; *present but misplaced* → the label is the
+  warning colour, the sentence says where it is and where it belongs, and the
+  button says "move". The app reads the position; it never asks the merchant
+  to go and look. *Extends §13 / §19c. Symptom:* "it says the block is there,
+  and the link added another one"; a green label over a block nobody sees.
+  *Example:* `editorOpenUrl(url, spot)`, `spotAdvice`, `PlacementPill move`.
 
 ## Architecture decisions (cross-cutting) `[WON]` unless tagged
 
@@ -907,6 +1003,14 @@ These back the `[PLAT]` rules. Re-verify against Shopify Dev docs when stale.
 Won-Toasts/theme project history; **a new app clones the doctrine, not this log** (start
 it empty). Newest first.
 
+- **2026-10-10 — §20 (nine rules from the sixth walkthrough of Won Discounts).** Nine
+  complaints about one module (a caret under a tile, a flat sale card, steps that
+  blend, an all-or-nothing switch, tall tiles, a report that looked like a setting,
+  warnings without a next step, a long tool page, a link that added a second block)
+  were written as rules with one shared component each (`SubCard`, `StepCard`,
+  `InfoStrip`, `YesNo`, `SectionNav`, `editorOpenUrl`), so they hold wherever the
+  component is used. Where each holds and where not yet:
+  `docs/won-discounts/pravidla-vzhledu-kolo6-2026-10-10.md`.
 - **2026-08-21 — §17 (a section leads with its state) + A7 (one section shell per app).**
   Five separate merchant complaints — "the sections aren't sexy", "this list says
   nothing", "Look & timing is hidden", "Custom CSS is badly explained", "unify

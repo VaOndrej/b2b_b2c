@@ -99,7 +99,7 @@
 // lines tied for the minimum and a safe bound beyond (plan-margin.ts
 // orderSetLimit), which is what lets the Rust function do O(lines × 16).
 
-import { type CartPlanInput, ENTERED_CODE_PADDING, type NormalizedCart, type NormalizedLine, normalizeCart, type PlanLocale } from "./cart.ts";
+import { type CartPlanInput, ENTERED_CODE_PADDING, type NormalizedCart, type NormalizedLine, normalizeCart, OUTLET_ALLOW, OUTLET_NO_ALL, type PlanLocale } from "./cart.ts";
 import { matchesCodeBatch, readCodeBatch, type ReadCodeBatch } from "./code-batch.ts";
 import { codeHash } from "./code-hash.ts";
 import type { DiscountMethod, DiscountRuleValue, DiscountTargetKind, MinimumScope, ReadonlyDeep, TierCountAcross } from "./config.ts";
@@ -119,6 +119,7 @@ import {
   type StackContext,
   type ValueKind,
   type WorkLine,
+  outOfOrder,
 } from "./plan-internal.ts";
 import { applyMarginProtection, computeFloors, markTightLines, protectOrder } from "./plan-margin.ts";
 import { planGifts, rewardBase, rewardsProgress, SHIPPING_REWARD_ID, SHIPPING_REWARD_LABEL, shippingReward } from "./plan-rewards.ts";
@@ -795,6 +796,8 @@ function prepareLines(cart: NormalizedCart, engine: EngineFlags, campaignId: str
     return {
       line,
       excluded: line.gift ? "gift" : line.outlet && !engine.outletWithAnything ? "outlet" : null,
+      // A line out of every class (a gift card, cart.ts NEVER_DISCOUNTED_FLAG) stays out even when sales combine with anything.
+      no: line.gift || (engine.outletWithAnything && line.outletNo !== OUTLET_NO_ALL) ? 0 : line.outletNo,
       ruleSet: targeting.ruleIds,
       plain: targeting.plain,
       items: targeting.items,
@@ -825,7 +828,8 @@ function prepareLines(cart: NormalizedCart, engine: EngineFlags, campaignId: str
       s.subtotal += w.line.subtotal;
       s.quantity += w.line.quantity;
       s.lines += 1;
-      s.discountable += discountable;
+      // A sale line that takes no product discounts gives a product rule nothing to discount.
+      s.discountable += w.no & OUTLET_ALLOW.product && known.get(id)?.cls === "product" ? 0 : discountable;
     }
   }
   return { work, cartScope, ruleScopes, groupCounts, itemRuleIds };
@@ -1079,7 +1083,7 @@ function planProducts(work: WorkLine[], ctx: StackContext): void {
     const positive: Candidate[] = [];
     for (const id of w.ruleSet) {
       const rule = ctx.byId.get(id);
-      if (!rule || rule.cls !== "product" || rule.state !== null) continue;
+      if (!rule || rule.cls !== "product" || rule.state !== null || w.no & OUTLET_ALLOW.product) continue;
       const amount = productAmount(rule, w.line);
       if (amount > 0) positive.push({ rule, amount });
     }
@@ -1112,7 +1116,7 @@ function planOrderStage(
   marginOn: boolean,
 ): PlanOrder | null {
   const orderRules = rules.filter((r) => r.cls === "order" && r.state === null);
-  const excludedLineIds = work.filter((w) => w.excluded !== null).map((w) => w.line.id);
+  const excludedLineIds = work.filter(outOfOrder).map((w) => w.line.id);
   const planAt = (base: number): PlanOrder | null => {
     const positive = orderRules.map((rule) => ({ rule, amount: orderAmount(rule, base) })).filter((c) => c.amount > 0);
     if (positive.length === 0) return null;
@@ -1126,10 +1130,12 @@ function planOrderStage(
     return stack ? { ...stack, base, excludedLineIds, marginExcludedLineIds: [] } : null;
   };
   const productTotal = work.reduce((sum, w) => sum + (w.product?.amount ?? 0), 0);
-  const discountableSubtotal = work.reduce((sum, w) => sum + (w.excluded === null ? w.line.subtotal : 0), 0);
+  // A sale line that takes no order discount is out of its base, with whatever product discount it got.
+  const baseProductTotal = work.reduce((sum, w) => sum + (outOfOrder(w) ? 0 : (w.product?.amount ?? 0)), 0);
+  const discountableSubtotal = work.reduce((sum, w) => sum + (outOfOrder(w) ? 0 : w.line.subtotal), 0);
   // [spec] The order discount is taken from the subtotal AFTER product discounts.
   if (engine.productWithOrder) {
-    const order = planAt(discountableSubtotal - productTotal);
+    const order = planAt(discountableSubtotal - baseProductTotal);
     return marginOn ? protectOrder(order, work, (w) => w.line.subtotal - (w.product?.amount ?? 0), ctx) : order;
   }
 

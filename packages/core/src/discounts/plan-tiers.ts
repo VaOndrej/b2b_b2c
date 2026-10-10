@@ -205,7 +205,8 @@ export function prepareTiers(work: WorkLine[], raw: unknown, locale: PlanLocale,
     if (sw) sw.lines.push(w);
   }
   for (const sw of sets) {
-    const eligible = sw.lines.filter((w) => w.excluded === null);
+    // (A sale line that takes no quantity tier: `no` bit 1, cart.ts OUTLET_ALLOW.tiers.)
+    const eligible = sw.lines.filter((w) => w.excluded === null && (w.no & 1) === 0);
     sw.eligible = eligible.length;
     const labels = new Map<number, string>();
     for (const lines of groupsOf(sw.set.count, eligible)) {

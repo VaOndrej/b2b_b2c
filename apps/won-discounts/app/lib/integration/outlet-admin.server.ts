@@ -10,12 +10,12 @@
 // Both say when the quota is not counted: no order access yet (5a, F-O1, orders-access.server.ts).
 // The session shop only (SEC-2).
 
-import { OUTLET_LIMITS, outletLeft, outletOversold, type OutletDraftError } from "@won/core/discounts/outlet";
-import type { WonDiscountsConfig } from "@won/core/discounts/config";
+import { OUTLET_COMBINE_CLASSES, OUTLET_LIMITS, OUTLET_MESSAGE_MAX, outletCombineWith, outletLeft, outletMessageOf, outletOversold, type OutletDraftError } from "@won/core/discounts/outlet";
+import { OUTLET_DISPLAY_MODES, type OutletDisplay, type WonDiscountsConfig } from "@won/core/discounts/config";
 
 import { t, type Locale, type MessageKey } from "../../i18n";
 import { outletBlockAddUrl } from "../../components/model/embed";
-import { OUTLET_FIELD, OUTLET_INTENT, OUTLET_START_FIELDS, readOutletDraft, readOutletSettings } from "../../components/model/outlet";
+import { OUTLET_FIELD, OUTLET_INTENT, OUTLET_START_FIELDS, readCombineWith, readOutletDraft, readOutletSettings } from "../../components/model/outlet";
 import { submittedOf } from "../../components/model/submitted";
 import { shopMidnightIso, shopToday, type FormDataLike } from "../../components/model/rule-form";
 import type { FieldError, OutletActionResult, OutletHistoryView, OutletOverviewView, OutletPriceListView, OutletRunView, OutletScreenData, UiResult } from "../../components/model/types";
@@ -26,7 +26,7 @@ import { GQL } from "../sync/graphql";
 import { lookView } from "./looks.server";
 import { graphqlOf, nowOf, type ShopCtx } from "./context.server";
 import { GIFT_TITLES_DOCUMENT } from "./rewards.server";
-import { endOutletRun, keepOutletEnded, reopenOutletRun, setOutletBadge, startOutletRun, writeOutletStorefront, type OutletDeps } from "./outlet.server";
+import { displayOf, endOutletRun, keepOutletEnded, reopenOutletRun, setOutletBadge, setOutletCombine, setOutletWeb, startOutletRun, writeOutletStorefront, type OutletDeps } from "./outlet.server";
 import { readSaveOptions, saveConfigSection } from "./settings.server";
 import { outletStatus } from "../../components/model/module-status";
 import { ctxPlan } from "./sync-status.server";
@@ -46,6 +46,9 @@ const FIELD_OF: Record<OutletDraftError["field"], string> = {
   percent: OUTLET_FIELD.percent,
   endsAt: OUTLET_FIELD.endsOn,
   priceListIds: OUTLET_FIELD.priceList,
+  display: OUTLET_FIELD.saleDisplay,
+  message: OUTLET_FIELD.message,
+  combineWith: OUTLET_FIELD.combineWith,
 };
 
 const parse = (text: string | null): unknown => {
@@ -104,6 +107,10 @@ export interface OutletViewOptions {
   locale: Locale;
   timezone: string | null;
   titles: ReadonlyMap<string, string>;
+  /** Variant GID → where to look at it (feedback 9 Oct 2026, 4th round): the storefront page and the theme editor. */
+  links?: ReadonlyMap<string, { webUrl: string | null; editorUrl: string | null }>;
+  /** The shop's display level: what a sale without its own (started before they were per sale) shows. */
+  display?: OutletDisplay;
   /** Price list id → its name (absent or unknown: the list is named by its currency). */
   listTitles?: ReadonlyMap<string, string>;
   money: (minor: number, currency: string) => string;
@@ -130,6 +137,12 @@ export function outletRunView(run: RunRow, events: readonly EventRow[], opts: Ou
     left: outletLeft(run),
     oversold: outletOversold(run),
     showBadge: run.showBadge !== false,
+    display: displayOf(run, { display: opts.display ?? "strike_badge" }),
+    message: run.message ?? "",
+    combine: run.combine === true,
+    combineWith: outletCombineWith(run.combine, run.combineWith),
+    webUrl: opts.links?.get(run.variantId)?.webUrl ?? null,
+    editorUrl: opts.links?.get(run.variantId)?.editorUrl ?? null,
     status: run.status as OutletRunView["status"],
     endReason: (run.endReason as OutletRunView["endReason"]) ?? null,
     endsAt: when(run.endsAt),
@@ -158,6 +171,63 @@ async function variantTitles(ctx: ShopCtx, ids: readonly string[]): Promise<Map<
       for (const node of result.data?.nodes ?? []) {
         if (!node?.id || !node.product?.title) continue;
         out.set(node.id, node.title && node.title !== "Default Title" ? `${node.product.title} — ${node.title}` : node.product.title);
+      }
+    } catch (error) {
+      if (error instanceof Response) throw error;
+    }
+  }
+  return out;
+}
+
+/** Validated shape: ProductVariant.product { handle onlineStoreUrl onlineStorePreviewUrl } (Admin API). */
+export const OUTLET_LINKS_DOCUMENT = `#graphql
+query WonOutletVariantLinks($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    ... on ProductVariant {
+      id
+      product {
+        handle
+        onlineStoreUrl
+        onlineStorePreviewUrl
+      }
+    }
+  }
+}`;
+
+/** The product page with the variant picked (`?variant=`), keeping what the address already carries (a preview key). */
+function withVariant(address: string, variantId: string): string | null {
+  try {
+    const url = new URL(address);
+    url.searchParams.set("variant", variantId.split("/").pop() ?? "");
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Where each sale variant can be looked at: its product page on the storefront (a product that is not published
+ * has only a preview) and the theme editor on the product template with that product in the preview. A variant
+ * Shopify does not return has no links; a failed read leaves them all out (the card then shows no button).
+ */
+async function variantLinks(ctx: ShopCtx, ids: readonly string[]): Promise<Map<string, { webUrl: string | null; editorUrl: string | null }>> {
+  const out = new Map<string, { webUrl: string | null; editorUrl: string | null }>();
+  for (let i = 0; i < ids.length; i += 100) {
+    try {
+      type Node = { id?: string; product?: { handle?: string; onlineStoreUrl?: string | null; onlineStorePreviewUrl?: string | null } } | null;
+      const result = await ctx.client.graphql<{ nodes?: Node[] }>(OUTLET_LINKS_DOCUMENT, { ids: ids.slice(i, i + 100) });
+      for (const node of result.data?.nodes ?? []) {
+        if (!node?.id || !node.product) continue;
+        const { handle, onlineStoreUrl, onlineStorePreviewUrl } = node.product;
+        const page = onlineStoreUrl || onlineStorePreviewUrl || null;
+        const numeric = node.id.split("/").pop() ?? "";
+        out.set(node.id, {
+          webUrl: page ? withVariant(page, node.id) : null,
+          editorUrl:
+            handle && /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(ctx.shop)
+              ? `https://${ctx.shop}/admin/themes/current/editor?template=product&previewPath=${encodeURIComponent(`/products/${handle}?variant=${numeric}`)}`
+              : null,
+        });
       }
     } catch (error) {
       if (error instanceof Response) throw error;
@@ -208,8 +278,10 @@ export async function loadOutletScreen(ctx: ShopCtx): Promise<OutletScreenData> 
   const events = runs.length
     ? await ctx.db.outletEvent.findMany({ where: { shop: ctx.shop, runId: { in: runs.map((r) => r.id) } }, orderBy: { at: "desc" } })
     : [];
-  const titles = await variantTitles(ctx, [...new Set(runs.map((r) => r.variantId))]);
-  const opts: OutletViewOptions = { locale: ctx.locale, timezone: shop.timezone, titles, listTitles: new Map(priceLists.map((l) => [l.id, l.title])), money: moneyOf(ctx.locale) };
+  const variantIds = [...new Set(runs.map((r) => r.variantId))];
+  // Links only for the sales that run: an ended one has nothing to look at.
+  const [titles, links] = await Promise.all([variantTitles(ctx, variantIds), variantLinks(ctx, [...new Set(running.map((r) => r.variantId))])]);
+  const opts: OutletViewOptions = { locale: ctx.locale, timezone: shop.timezone, titles, links, display: loaded.config.modules.outlet.display, listTitles: new Map(priceLists.map((l) => [l.id, l.title])), money: moneyOf(ctx.locale) };
   const view = (r: RunRow) => outletRunView(r, events.filter((e) => e.runId === r.id), opts);
   return {
     plan,
@@ -285,6 +357,27 @@ export async function outletAction(ctx: ShopCtx, form: FormDataLike): Promise<Ou
       const show = String(form.get(OUTLET_FIELD.badge) ?? "") !== "hide";
       const r = await setOutletBadge(deps, runId, show);
       return r.ok ? { ok: true, kind: show ? "badgeShown" : "badgeHidden" } : { ok: false, reason: "failed", message: r.message };
+    }
+    case OUTLET_INTENT.combine: {
+      // One running sale: its variant takes the other discounts too, or not (only its sale flag changes).
+      const on = String(form.get(OUTLET_FIELD.combine) ?? "") === "1";
+      // Which ones: the ticked boxes (the boxes' form always posts the marker "_" too); a form without boxes means every one.
+      const takes = !on ? [] : form.getAll(OUTLET_FIELD.combineWith).length > 0 ? readCombineWith(form) : [...OUTLET_COMBINE_CLASSES];
+      if (on && takes.length === 0) return { ok: false, reason: "invalid", errors: [{ field: OUTLET_FIELD.combineWith, key: "outlet.error.combineWith" }] };
+      const r = await setOutletCombine(deps, runId, takes);
+      return r.ok ? { ok: true, kind: on ? "combineOn" : "combineOff" } : { ok: false, reason: "failed", message: r.message };
+    }
+    case OUTLET_INTENT.web: {
+      // How one running sale shows on the storefront: its badge level and its own text (SEC-1: read and checked here).
+      const display = String(form.get(OUTLET_FIELD.saleDisplay) ?? "");
+      const message = outletMessageOf(form.get(OUTLET_FIELD.message));
+      const errors: FieldError[] = [];
+      if (!(OUTLET_DISPLAY_MODES as readonly string[]).includes(display)) errors.push({ field: OUTLET_FIELD.saleDisplay, key: "outlet.error.display" });
+      if (message === "too_long") errors.push({ field: OUTLET_FIELD.message, key: "outlet.error.message", params: { max: OUTLET_MESSAGE_MAX } });
+      if (errors.length > 0) return { ok: false, reason: "invalid", errors };
+      const r = await setOutletWeb(deps, runId, { display: display as OutletDisplay, message: message as string | null });
+      if (r.ok) return { ok: true, kind: "webSaved" };
+      return r.reason === "price" ? { ok: false, reason: "invalid", errors: [{ field: OUTLET_FIELD.saleDisplay, key: "outlet.error.displayPrice" }] } : { ok: false, reason: "failed", message: r.message };
     }
     case OUTLET_INTENT.reopen:
       return outcome(await reopenOutletRun(deps, runId), "reopened");

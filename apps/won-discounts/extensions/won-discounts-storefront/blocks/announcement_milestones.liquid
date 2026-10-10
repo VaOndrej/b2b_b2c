@@ -1,0 +1,51 @@
+{% comment %}
+  Announcement: Milestones (feedback 10 Oct 2026, 7th round, bod 5): the Milestones sentence with its thin track as
+  an announcement strip of its own, so the theme editor lists it by name (Add section → Apps in the header group,
+  above or below the theme's announcement bar) and the merchant moves, colours and hides it there. The "Top bar"
+  block (blocks/top_bar.liquid) carried it together with the campaign; that one stays for the themes that have it.
+  The strip's markup and behaviour are the top bar's (assets/won-discounts-blocks.js: it hides itself while it has
+  nothing to say, and with it on the page the embed's fallback strip is not shown a second time). In the theme
+  editor a shop without a step says so instead of leaving a gap. The ladder's look is the one picked in the app
+  for the strip (Milníky → Vzhled → Pruh nahoře).
+{% endcomment %}
+{%- liquid
+  assign won_rw = app.metafields.won_discounts.storefront_config.value.rewards
+  assign won_cur = cart.currency.iso_code
+  assign won_tx_key = 'tx_' | append: request.locale.iso_code | downcase
+  assign won_tx = app.metafields.won_discounts[won_tx_key].value
+-%}
+{%- capture won_rows -%}
+  {%- if won_rw != blank -%}
+    {%- render 'won-milestones', rw: won_rw, cur: won_cur, size: 'bar', tx: won_tx -%}
+  {%- endif -%}
+{%- endcapture -%}
+{%- assign won_rows = won_rows | strip -%}
+<div
+  class="won-topbar won-topbar--block"
+  data-won-discounts-topbar-block="milestones"
+  style="--won-topbar-bg: {{ block.settings.background }}; --won-topbar-text: {{ block.settings.text_color }};"
+  {% unless request.design_mode %}hidden{% endunless %}
+  {{ block.shopify_attributes }}
+>
+  {%- if won_rows contains 'won-ms' -%}
+    <div class="won-progress" data-won-discounts-progress data-size="bar">
+      {{ won_rows }}
+    </div>
+  {%- elsif request.design_mode -%}
+    <p class="won-topbar__empty">{{ 'progress.empty' | t }}</p>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Announcement: Milestones",
+  "target": "section",
+  "stylesheet": "won-discounts.css",
+  "javascript": "won-discounts-blocks.js",
+  "settings": [
+    { "type": "paragraph", "content": "A strip with the reward progress: how much is left to free shipping, a gift or a discount. Add it to the header, above or below the announcement bar. It hides itself when no step is offered." },
+    { "type": "color", "id": "background", "label": "Background", "default": "#111111" },
+    { "type": "color", "id": "text_color", "label": "Text", "default": "#ffffff" }
+  ]
+}
+{% endschema %}

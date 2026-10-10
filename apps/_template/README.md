@@ -29,7 +29,7 @@ Dawn (nebo na variant morphu v Horizonu):
 
 Šablona nemá vlastní komponenty adminu; kostru (`WonSection`, dlaždice, štítky)
 převezmi z poslední Won appky a drž se doktríny `docs/won-app-design-doctrine.md`
-§18 a §19. Čtyři pravidla ze třetího průchodu Won Discounts (§19), která se
+§18 až §20. Čtyři pravidla ze třetího průchodu Won Discounts (§19), která se
 vyplatí postavit hned:
 
 - **Stav říká jedna funkce.** „Aktivní“ znamená uložené, zapsané v Shopify
@@ -45,3 +45,17 @@ vyplatí postavit hned:
 - **Stránka modulu je pár dlaždic a jeden panel.** Dlaždice říká, k čemu část je
   a co je nastavené. Co běží, je první panel. Skrytý panel zůstává ve formuláři,
   uložení je jedno. Chyba ve skrytém panelu ho sama otevře.
+
+Devět pravidel ze šestého průchodu (§20). Počítej s tím, že obchodník spěchá a nečte:
+
+- **Výběr značí rámeček, ne šipka.** Vybraná dlaždice má modrý rámeček a ikonu, nic z ní netrčí.
+- **Dlaždice je širší než vyšší.** Název jedno až dvě slova, věta nejvýš dva krátké řádky, psaná pro dlaždici.
+- **Přehled se hlásí jako přehled.** Štítek „Jen přehled“, věta „tady nic nezapínáte ani neukládáte“, žádné Uložit pod ním.
+- **Víc věcí v sekci = víc karet.** Každá má hlavičku se stavem a svým tlačítkem. Hlavní akce není v rozbalovacím řádku.
+- **Kroky jsou samostatné karty na stránce.** Číslo, „Krok 1 / 4“, šedá hlavička. Výsledek výpočtu je velký, ne poznámka. Poslední krok shrne rozhodnutí nad jedním tlačítkem.
+- **„Buď, nebo“ jsou dvě karty.** Části druhé volby se zaškrtávají zvlášť, nikdy „všechno, nebo nic“. Co platí, ukazuje ✓ / ✕.
+- **Upozornění má „Co se stalo“, „Co s tím“ a tlačítko.** Odkaz na konci věty není akce.
+- **Dlouhá stránka má boční menu s kotvami.** I nástroj, ne jen nastavení.
+- **Odkaz na věc, která už existuje, ji otevře.** Chybí → přidat. Je tam → otevřít vybranou, nic nepřidat. Je na špatném místě → oranžový štítek a tlačítko „přesunout“.
+
+Součástky k převzetí z Won Discounts: `shell/SubCard.tsx`, `StepCard.tsx`, `InfoStrip.tsx`, `SectionNav.tsx`, `ModuleTile.tsx`.

@@ -7,6 +7,7 @@
 import { useId, useState } from "react";
 
 import { PlanBadge } from "./PlanBadge";
+import { hoverMark } from "./hover";
 import { WON_FONT, WON_INK, WON_MUTED, WON_SELECT } from "./tokens";
 
 export interface ChoiceOption {
@@ -60,6 +61,7 @@ export function SegmentedChoice({
           return (
             <label
               key={option.value}
+              {...(off ? {} : hoverMark("chip", active))}
               style={{
                 position: "relative",
                 display: "inline-flex",

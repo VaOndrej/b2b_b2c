@@ -158,7 +158,7 @@ test("MVP 3–7: the extension ships the embed, the quantity_tiers, cart_rewards
   const blocks = (await readdir(path.join(extensionRoot, "blocks"))).filter((f) => f.endsWith(".liquid")).sort();
   // The handles `quantity_tiers` / `cart_rewards` are the file names: the admin deep links (addAppBlockId,
   // CART_BLOCK_HANDLE) and the theme template's block type `shopify://apps/won-discounts/blocks/<handle>/<uuid>` use them.
-  assert.deepEqual(blocks, ["campaign_banner.liquid", "card_tiers.liquid", "cart_rewards.liquid", "outlet_badge.liquid", "quantity_tiers.liquid", "rewards_progress.liquid", "top_bar.liquid", "won_discounts_embed.liquid"]);
+  assert.deepEqual(blocks, ["announcement_campaign.liquid", "announcement_milestones.liquid", "campaign_banner.liquid", "card_tiers.liquid", "cart_rewards.liquid", "outlet_badge.liquid", "quantity_tiers.liquid", "rewards_progress.liquid", "top_bar.liquid", "won_discounts_embed.liquid"]);
   assert.equal(CART_BLOCK_HANDLE, "cart_rewards");
   const cartSchema = JSON.parse((await readExtension("blocks/cart_rewards.liquid")).match(/\{%\s*schema\s*%\}([\s\S]*?)\{%\s*endschema\s*%\}/)?.[1] ?? "{}");
   assert.deepEqual(cartSchema.enabled_on, { templates: ["cart"] }, "the cart panel block only on the cart template");

@@ -50,6 +50,7 @@ import { boolAttr } from "../shell/attrs";
 import { Notice, ResyncButton } from "../shell/Notice";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
+import { SectionNav, type SectionNavItem } from "../shell/SectionNav";
 import { SegmentedChoice } from "../shell/SegmentedChoice";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 import { WON_ATTENTION, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
@@ -399,7 +400,7 @@ export function TryCartScreen(props: TryCartScreenProps) {
     <Form method="post" ref={formRef}>
       <input type="hidden" name="intent" value="run" />
       <input type="hidden" name="locale" value={tr.locale} />
-      <WonSection title={t("tryCart.cart.title")} glyph="cart" summary={cartSummary}>
+      <WonSection title={t("tryCart.cart.title")} glyph="cart" summary={cartSummary} anchor="cart">
         <s-stack direction="block" gap="base">
           {/* P7: the lines are the cart — always visible. An empty cart is one sentence (the summary) and the button. */}
           {lines.length > 0 ? (
@@ -555,10 +556,19 @@ export function TryCartScreen(props: TryCartScreenProps) {
   const showResult = !locked && (plan !== null || (result !== null && !(result.ok === false && result.reason === "invalid")));
   const needsResync = (plan?.warnings ?? []).some((w) => RESYNC_WARNINGS.includes(w.key));
 
+  // The page is long (the combinations, the cart, the result): the same side menu with anchors as Nastavení.
+  const navItems: SectionNavItem[] = [
+    ...(props.combos ? [{ anchor: "combos", label: t("combos.title"), ...(props.combos.warnings > 0 ? { state: "attention" as const } : {}) }] : []),
+    { anchor: "cart", label: t("tryCart.cart.title") },
+    ...(showResult ? [{ anchor: "result", label: t("tryCart.result.title") }] : []),
+  ];
+
   return (
     <s-page heading={t("tryCart.title")}>
       <s-stack direction="block" gap="base">
         <s-paragraph color="subdued">{t("tryCart.intro")}</s-paragraph>
+        <SectionNav label={t("tryCart.nav")} items={navItems}>
+          <s-stack direction="block" gap="base">
 
         {/* The main way in: the common combinations, already calculated. The manual cart below is the second. */}
         {props.combos ? <CombinationsSection check={props.combos} pro={pro} /> : null}
@@ -575,7 +585,7 @@ export function TryCartScreen(props: TryCartScreenProps) {
         )}
 
         {showResult ? (
-          <WonSection title={t("tryCart.result.title")} glyph="receipt" summary={stale ? t("tryCart.result.stale") : resultSummary(plan, tr)}>
+          <WonSection title={t("tryCart.result.title")} glyph="receipt" summary={stale ? t("tryCart.result.stale") : resultSummary(plan, tr)} anchor="result">
             <s-stack direction="block" gap="base">
               {stale ? (
                 <div data-won-try-cart-stale style={{ fontFamily: WON_FONT, fontSize: 12.5, color: WON_ATTENTION }}>
@@ -647,6 +657,8 @@ export function TryCartScreen(props: TryCartScreenProps) {
             </s-stack>
           </WonSection>
         ) : null}
+          </s-stack>
+        </SectionNav>
       </s-stack>
     </s-page>
   );

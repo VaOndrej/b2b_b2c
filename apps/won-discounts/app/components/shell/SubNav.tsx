@@ -21,6 +21,7 @@ import { useNavigate } from "react-router";
 
 import { useT } from "../../i18n/context";
 import { discountSubNavItems, NO_DISCOUNT_NAV, type DiscountNavData, type DiscountPage, type SubNavItem } from "../model/modules";
+import { hoverMark } from "./hover";
 import { PlanBadge } from "./PlanBadge";
 import { StatusDot } from "./WonSection";
 import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT } from "./tokens";
@@ -96,6 +97,7 @@ export function SubNav({ label, items, active }: SubNavProps) {
                 href={item.to}
                 aria-current={current ? "page" : undefined}
                 data-won-subnav-item={item.key}
+                {...hoverMark("tab")}
                 onClick={(event) => go(event, item.to, current)}
                 style={{
                   display: "inline-flex",

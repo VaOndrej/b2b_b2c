@@ -8,6 +8,7 @@ import { WonNavMenu } from "@won/app-kit/admin-nav";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { loadConfig } from "../lib/config.server";
+import { HoverStyles } from "../components/shell/hover";
 import { shopCtx } from "../lib/integration/context.server";
 import { adminLocale } from "../lib/integration/locale.server";
 import { loadDiscountPageStates } from "../lib/integration/pages.server";
@@ -57,6 +58,7 @@ export default function App() {
     <AppProvider embedded apiKey={data.apiKey}>
       <WonNavMenu homeLabel={t(locale, "nav.overview")} items={navItems(locale)} />
       <LocaleProvider locale={locale}>
+        <HoverStyles />
         <DiscountNav.Provider value={data.discountNav}>
           <Outlet />
         </DiscountNav.Provider>

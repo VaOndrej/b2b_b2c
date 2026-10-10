@@ -332,7 +332,7 @@ export function planTryCartDetail(config: WonDiscountsConfig, input: TryCartPlan
       ...(entry && entry.tierRef !== undefined ? { tierRef: entry.tierRef as CartLineInput["tierRef"] } : {}),
       ...(line.unitCost !== undefined ? { unitCost: line.unitCost } : {}),
       ...(line.unitCostCurrency !== undefined ? { unitCostCurrency: line.unitCostCurrency } : {}),
-      ...(line.outlet ? { outlet: true } : {}),
+      ...(line.outlet ? { outlet: line.outlet } : {}),
       ...(line.giftTierId ? { giftTierId: line.giftTierId } : {}),
     };
   });

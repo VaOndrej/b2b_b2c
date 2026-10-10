@@ -8,7 +8,7 @@
 import type { NormalizedCart } from "./cart.ts";
 import { applyProductMargin, costMinorUnits, type FunctionMarginPayload, MAX_MARGIN_REFS, marginFloorUnit, type MarginSettings, resolveMargin, strictestMargin } from "./margin.ts";
 import type { EmittedValue, PlanOrder, PlanStack } from "./plan.ts";
-import { type Candidate, label, orderAmount, ownerOf, type Rule, type StackContext, type WorkLine } from "./plan-internal.ts";
+import { type Candidate, label, orderAmount, outOfOrder, ownerOf, type Rule, type StackContext, type WorkLine } from "./plan-internal.ts";
 
 // --- Floors and the product stage ----------------------------------------------------------------
 
@@ -296,7 +296,7 @@ export function protectOrder(order: PlanOrder | null, work: WorkLine[], afterOf:
   const carrying: WorkLine[] = [];
   const lines: OrderSetLine[] = [];
   for (const w of work) {
-    if (w.excluded !== null || !w.floor) continue;
+    if (outOfOrder(w) || !w.floor) continue;
     const after = afterOf(w);
     if (after <= 0) continue;
     carrying.push(w);
@@ -336,7 +336,7 @@ export function protectOrder(order: PlanOrder | null, work: WorkLine[], afterOf:
   return {
     ...restack(kept, value, ctx),
     base: best.base,
-    excludedLineIds: work.filter((w) => w.excluded !== null || left.has(w)).map((w) => w.line.id),
+    excludedLineIds: work.filter((w) => outOfOrder(w) || left.has(w)).map((w) => w.line.id),
     marginExcludedLineIds: work.filter((w) => left.has(w)).map((w) => w.line.id),
     ...(best.amount < order.amount ? { marginCapped: { before: order.amount, after: best.amount } } : {}),
   };

@@ -25,6 +25,42 @@ export function LookPreviewStyles() {
 
 const FRAME = { fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', fontSize: 15, lineHeight: 1.5, color: "#121212", background: "#ffffff", padding: 14, borderRadius: 10, border: `1px solid ${WON_LINE}`, textAlign: "start" } as const;
 
+/** The ladder's markup as the extension prints it (snippets/won-milestones.liquid), with a sample cart. */
+function Ladder({ size }: { size: "bar" | "compact" | "full" }) {
+  const { t } = useT();
+  return (
+    <div className={`won-ms won-ms--${size}`}>
+      <p className="won-ms__text">{t("looks.sample.ms.text")}</p>
+      <div className="won-ms__track" role="presentation">
+        <span style={{ width: "55%" }} />
+        {size === "bar" ? null : (
+          <>
+            <i style={{ left: "38%" }} data-done="" data-new="" />
+            <i style={{ left: "63%" }} />
+            <i style={{ left: "100%" }} />
+          </>
+        )}
+      </div>
+      {size === "bar" ? null : (
+        <ol className="won-ms__list">
+          <li data-done="" data-new="">
+            <span>{t("looks.sample.ms.ship")}</span>
+            <span>{t("looks.sample.ms.from1")}</span>
+          </li>
+          <li>
+            <span>{t("looks.sample.ms.gift")}</span>
+            <span>{t("looks.sample.ms.from2")}</span>
+          </li>
+          <li>
+            <span>{t("looks.sample.ms.disc")}</span>
+            <span>{t("looks.sample.ms.from3")}</span>
+          </li>
+        </ol>
+      )}
+    </div>
+  );
+}
+
 /** Every element but the table, which previews itself with the shop's own levels (tiers/TiersPreview). */
 export function LookPreview({ element, css }: { element: Exclude<LookElement, "tiers">; css: string }) {
   const { t } = useT();
@@ -34,28 +70,26 @@ export function LookPreview({ element, css }: { element: Exclude<LookElement, "t
     <div className={`${LOOK_PREVIEW_SCOPE} ${scope}`} data-won-look-preview={element} style={FRAME}>
       {css ? <style data-won-look-css="" dangerouslySetInnerHTML={{ __html: scopeCss(css, `.${scope}`) }} /> : null}
       {element === "milestones" ? (
-        <div className="won-ms won-ms--compact">
-          <p className="won-ms__text">{t("looks.sample.ms.text")}</p>
-          <div className="won-ms__track" role="presentation">
-            <span style={{ width: "55%" }} />
-            <i style={{ left: "38%" }} data-done="" data-new="" />
-            <i style={{ left: "63%" }} />
-            <i style={{ left: "100%" }} />
+        // The "Milestones" block of a page: the ladder is a child of the block's wrapper (the look's root).
+        <div className="won-progress">
+          <Ladder size="compact" />
+        </div>
+      ) : element === "msBar" ? (
+        // The announcement strip: one line, the sentence and a thin track.
+        <div className="won-topbar" style={{ margin: -14, borderRadius: 9 }}>
+          <div className="won-progress">
+            <Ladder size="bar" />
           </div>
-          <ol className="won-ms__list">
-            <li data-done="" data-new="">
-              <span>{t("looks.sample.ms.ship")}</span>
-              <span>{t("looks.sample.ms.from1")}</span>
-            </li>
-            <li>
-              <span>{t("looks.sample.ms.gift")}</span>
-              <span>{t("looks.sample.ms.from2")}</span>
-            </li>
-            <li>
-              <span>{t("looks.sample.ms.disc")}</span>
-              <span>{t("looks.sample.ms.from3")}</span>
-            </li>
-          </ol>
+        </div>
+      ) : element === "msCart" ? (
+        // The cart page: every step with its reward.
+        <div className="won-cart won-cart--page">
+          <Ladder size="full" />
+        </div>
+      ) : element === "msDrawer" ? (
+        // The cart drawer: narrow.
+        <div className="won-cart won-cart--drawer" style={{ maxWidth: 320 }}>
+          <Ladder size="compact" />
         </div>
       ) : element === "outlet" ? (
         <div className="won-outlet">

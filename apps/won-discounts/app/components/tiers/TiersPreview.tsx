@@ -37,6 +37,7 @@ import { ACCENT_COLORS } from "@won/core/discounts/custom-look";
 import { currencyExponent } from "@won/core/discounts/money";
 
 import { useT } from "../../i18n/context";
+import { hoverMark } from "../shell/hover";
 import type { Locale } from "../../i18n";
 import { AccentPicker } from "../looks/AccentPicker";
 import { presetLabel as lookLabel } from "../model/looks";
@@ -292,6 +293,7 @@ export function TiersPreview({
               {APPEARANCE_PRESETS.map((p) => (
                 <label
                   key={p}
+                  {...hoverMark("chip", look === p)}
                   style={{
                     ...selectionRing(look === p),
                     position: "relative",

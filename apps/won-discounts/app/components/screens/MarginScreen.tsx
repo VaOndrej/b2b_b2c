@@ -51,7 +51,7 @@ import {
   MARGIN_PERCENT_STEP,
   marginDecimalErrors,
   marginInForce,
-  marginSummary,
+  marginTileSummary,
   percentInput,
   productsSummary,
   readMarginDraft,
@@ -256,6 +256,7 @@ export function MarginScreen(props: MarginScreenProps) {
     submit(data, { method: "post" });
   };
 
+  const impactTile = !pro || !impact || impact.status !== "ready" || impact.rules.length > 0 || impact.focus !== undefined;
   const [view, setView] = useView<"settings" | "costs" | "collections" | "products" | "impact">({
     initial: () => "settings",
     hash: { settings: "settings", costs: "costs", collections: "collections", products: "products", impact: "impact" },
@@ -277,13 +278,17 @@ export function MarginScreen(props: MarginScreenProps) {
         <s-stack key={`${formKey}-${seedKey}`} direction="block" gap="base">
           <Notice result={result} onReplace={replaceUnreadable} />
           {/* Five tiles, one panel at a time (doctrine §19e); the panels stay in the one form with its one Save. */}
-          <ModuleTiles label={t("margin.view.label")} columns={5}>
-            <ViewTile id="settings" title={t("margin.view.settings.title")} glyph="shield" active={marginSummary(draft, plan, tr)} status={props.status} selected={view === "settings"} onPick={() => setView("settings")} />
-            <ViewTile id="costs" title={t("margin.costs.title")} glyph="receipt" active={coverageSummary(coverage, mirror, tr)} selected={view === "costs"} onPick={() => setView("costs")} />
+          {/* "Snížené slevy" has a tile only while it has something to show (7th round, bod 3: a tile that says "nothing is
+              lowered" brought nothing): a lowered discount, numbers still being computed, a rule the editor linked to, or —
+              on Free — the Pro part itself. That nothing is lowered is said on Přehled ("Co aplikace hlídá"). */}
+          <ModuleTiles label={t("margin.view.label")} columns={impactTile ? 5 : 4}>
+            <ViewTile id="settings" title={t("margin.view.settings.title")} glyph="shield" active={marginTileSummary(draft, plan, tr)} status={props.status} selected={view === "settings"} onPick={() => setView("settings")} />
+            <ViewTile id="costs" title={t("margin.costs.title")} glyph="receipt" note={t("common.infoOnly")} active={coverageSummary(coverage, mirror, tr)} selected={view === "costs"} onPick={() => setView("costs")} />
             <ViewTile
               id="collections"
-              title={t("margin.collections.title")}
+              title={t("margin.view.collections.title")}
               glyph="target"
+              about={t("margin.collections.none")}
               // Pro: the collections by name (P4). Free: how many are stored, none of them applies.
               active={collections.length === 0 ? undefined : pro ? collectionsSummary(collections, tr) : tr.tp("count.collection", collections.length)}
               pro={!pro}
@@ -293,8 +298,9 @@ export function MarginScreen(props: MarginScreenProps) {
             />
             <ViewTile
               id="products"
-              title={t("margin.products.title")}
+              title={t("margin.view.products.title")}
               glyph="tag"
+              about={t("margin.products.none")}
               // Pro: the products by name. Free: how many are stored, none of them applies on its own.
               active={products.length === 0 ? undefined : pro ? productsSummary(products, tr) : tr.tp("count.product", products.length)}
               pro={!pro}
@@ -302,7 +308,9 @@ export function MarginScreen(props: MarginScreenProps) {
               selected={view === "products"}
               onPick={() => setView("products")}
             />
-            <ViewTile id="impact" title={t("margin.view.impact.title")} glyph="alert" active={pro ? impactSummary(impact, pro, draft.enabled, tr) : undefined} pro={!pro} locked={!pro} selected={view === "impact"} onPick={() => setView("impact")} />
+            {impactTile ? (
+              <ViewTile id="impact" title={t("margin.view.impact.title")} glyph="alert" note={pro ? t("common.infoOnly") : undefined} active={pro ? impactSummary(impact, pro, draft.enabled, tr) : undefined} pro={!pro} locked={!pro} selected={view === "impact"} onPick={() => setView("impact")} />
+            ) : null}
           </ModuleTiles>
           <ViewPanel id="settings" view={view}>
           <WonSection
@@ -407,7 +415,8 @@ export function MarginScreen(props: MarginScreenProps) {
             <ImpactSection pro={pro} enabled={draft.enabled} unsaved={unsaved} impact={impact} currency={shopCurrency} />
           </ViewPanel>
           {/* One save for the whole form, last on the page like the rule editor (plus the App Bridge save bar). */}
-          <div>
+          {/* Not under a panel that only shows something: a Save there reads as "this is a setting" (6th round). */}
+          <div data-won-margin-save="" style={{ display: view === "impact" || view === "costs" ? "none" : "block" }}>
             <s-button type="submit" variant="primary">
               {t("common.save")}
             </s-button>

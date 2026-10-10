@@ -169,6 +169,47 @@ const TWINS = {
     expect(productOf(anything, "l1")[2]).toBe(1000);
   },
 
+  a_partly_combining_sale_line_takes_only_what_it_allows() {
+    const c = cfg([pct("a", 20), order("o", { kind: "percentage", percent: 10 })]);
+    // Rust `outlet_no` 6 / 5 / 3 = the flag 1 / 2 / 4 (what the sale takes).
+    const plan = planCart(cart([line("s", 3, 10000, ["a"], { outlet: 1 }), line("n", 1, 10000, ["a"])]), c);
+    expect(plan.lines[0].excluded).toBeNull();
+    expect(plan.lines[0].product).toBeNull();
+    expect(productOf(plan, "n")[2]).toBe(2000);
+    expect([plan.order.base, plan.order.amount]).toEqual([8000, 800]);
+    expect(plan.order.excludedLineIds).toEqual(["s"]);
+    const product = planCart(cart([line("s", 3, 10000, ["a"], { outlet: 2 })]), c);
+    expect(productOf(product, "s")[2]).toBe(6000);
+    expect(product.order).toBeNull();
+    const orderOnly = planCart(cart([line("s", 3, 10000, ["a"], { outlet: 4 })]), c);
+    expect(orderOnly.lines[0].product).toBeNull();
+    expect(gated(orderOnly, "a")).toBe("outlet_only");
+    expect([orderOnly.order.base, orderOnly.order.amount]).toEqual([30000, 3000]);
+    expect(orderOnly.order.excludedLineIds).toEqual([]);
+    const anything = planCart(cart([line("s", 3, 10000, ["a"], { outlet: 1 })]), cfg([pct("a", 20), order("o", { kind: "percentage", percent: 10 })], { engine: { combination: { outletWithAnything: true } } }));
+    expect(productOf(anything, "s")[2]).toBe(6000);
+    expect(anything.order.excludedLineIds).toEqual([]);
+  },
+
+  a_gift_card_line_takes_no_discount_whatever_the_combination_says() {
+    // Rust `outlet_no` 7 = the flag 0 (a gift card: takes none of the classes, ever).
+    for (const extra of [{}, { engine: { combination: { outletWithAnything: true } } }]) {
+      const c = cfg([pct("a", 20), order("o", { kind: "percentage", percent: 10 })], extra);
+      const plan = planCart(cart([line("g", 3, 10000, ["a"], { outlet: 0 }), line("n", 1, 10000, ["a"])]), c);
+      expect(plan.lines[0].product).toBeNull();
+      expect(productOf(plan, "n")[2]).toBe(2000);
+      expect([plan.order.base, plan.order.amount]).toEqual([8000, 800]);
+      expect(plan.order.excludedLineIds).toEqual(["g"]);
+    }
+  },
+
+  a_partly_combining_sale_line_and_its_quantity_tier() {
+    const tiers = { global: "g", sets: [["g", "line", [], [[3, 10]]]] };
+    const plan = planCart(cart([tline("l1", 3, 10000, "P1", undefined, { outlet: 1 }), tline("l2", 3, 10000, "P2", undefined, { outlet: 6 })]), tcfg([], tiers));
+    expect(productOf(plan, "l1")).toEqual(["tier:g", { percent: 10 }, 3000]);
+    expect(productOf(plan, "l2")).toBeNull();
+  },
+
   gift_lines_are_outside_every_discount_and_every_threshold() {
     const ship = { id: "s", enabled: true, name: "s", method: "automatic", value: { kind: "freeShipping" }, target: { kind: "shipping" }, minimum: { subtotal: { CZK: 20000 } } };
     const plan = planCart(cart([line("l1", 1, 10000, ["a"]), line("gift", 1, 50000, ["a"], { giftTierId: "t" })]), cfg([pct("a", 10), ship]));

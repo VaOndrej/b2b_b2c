@@ -21,6 +21,11 @@
 //   combinations.daily  daily     Kontrola kombinací: every shop's stored check is planned again from the database
 //                                 (a campaign's first day, a sale that ended, a plan that changed move it). A shop
 //                                 without the cost mirror gets its few products read from Shopify here, once.
+//   giftcards.hourly  hourly      Gift cards never take a discount (decided 10 Oct 2026): every shop's gift card
+//                                 variants get the flag the checkout function reads (sync/gift-cards.ts). Its own
+//                                 task, not a step of the sync: a shop without gift cards, or a failed read, must
+//                                 never hold or fail the write of the discounts. A gift card created in between is
+//                                 covered within the hour (the storefront hides its table at once, from Liquid).
 // The cost mirror reconcile (hourly, at most 5 shops a run) and the stale-claim sweep keep their own timers from
 // MVP 1–2 (jobs/cost-reconcile.server.ts, jobs/stale-claims.server.ts) — they already run with nobody looking.
 // Disabled under NODE_ENV=test unless forced; tests call runDueTasks / the *Once functions with an injected clock.
@@ -38,7 +43,8 @@ import { refreshCombinationCheck } from "../integration/combination-check.server
 import { endOutletRun, writeOutletStorefront, type OutletDeps } from "../integration/outlet.server";
 import { resyncShop } from "../sync/save-and-sync.server";
 import type { Sync } from "../sync/sync.server";
-import { errorText } from "../sync/transport";
+import { syncGiftCards } from "../sync/gift-cards";
+import { errorText, Transport } from "../sync/transport";
 import type { SyncLogger } from "../sync/types";
 
 export interface ScheduledTask {
@@ -306,12 +312,45 @@ export async function runCombinationsDailyOnce(deps: CombinationsDailyDeps): Pro
   return out;
 }
 
+export interface GiftCardsDeps {
+  db: PrismaClient;
+  clientFor: (shop: string) => Promise<AdminClient | null>;
+  logger?: SyncLogger;
+}
+
+/** giftcards.hourly (see the header): every shop the app has synced, with its offline session; one without a session waits. */
+export async function runGiftCardsOnce(deps: GiftCardsDeps): Promise<{ done: string[]; failed: string[]; skippedNoSession: number }> {
+  const logger = deps.logger ?? quiet;
+  const out = { done: [] as string[], failed: [] as string[], skippedNoSession: 0 };
+  const shops = await deps.db.shopSyncState.findMany({ select: { shop: true }, orderBy: { shop: "asc" } });
+  for (const { shop } of shops) {
+    try {
+      const client = await deps.clientFor(shop).catch(() => null);
+      if (!client) {
+        out.skippedNoSession += 1;
+        continue;
+      }
+      const step = await syncGiftCards(new Transport(client, undefined, undefined, logger));
+      if (step.ok) out.done.push(shop);
+      else {
+        logger.warn(`giftcards.hourly ${shop}: ${step.detail}`);
+        out.failed.push(shop);
+      }
+    } catch (error) {
+      logger.warn(`giftcards.hourly ${shop}: ${error instanceof Response ? `HTTP ${error.status}` : errorText(error)}`);
+      out.failed.push(shop);
+    }
+  }
+  return out;
+}
+
 export function appTasks(deps: OutletDueDeps): ScheduledTask[] {
   return [
     { name: "outlet.due", everyMs: 60_000, run: (now) => runOutletDueOnce({ ...deps, now: () => now }) },
     { name: "campaigns.due", everyMs: 60_000, run: (now) => runCampaignsDueOnce({ db: deps.db, clientFor: deps.clientFor, now: () => now, ...(deps.logger ? { logger: deps.logger } : {}) }) },
     { name: "history.prune", everyMs: 24 * 3_600_000, run: (now) => pruneHistoryOnce(deps.db, now) },
     { name: "billing.reconcile", everyMs: 24 * 3_600_000, run: (now) => runBillingReconcileOnce({ db: deps.db, clientFor: deps.clientFor, now: () => now, ...(deps.logger ? { logger: deps.logger } : {}) }) },
+    { name: "giftcards.hourly", everyMs: 3_600_000, run: () => runGiftCardsOnce({ db: deps.db, clientFor: deps.clientFor, ...(deps.logger ? { logger: deps.logger } : {}) }) },
     { name: "combinations.daily", everyMs: 24 * 3_600_000, run: (now) => runCombinationsDailyOnce({ db: deps.db, clientFor: deps.clientFor, now: () => now, ...(deps.plan ? { plan: deps.plan } : {}), ...(deps.logger ? { logger: deps.logger } : {}) }) },
   ];
 }

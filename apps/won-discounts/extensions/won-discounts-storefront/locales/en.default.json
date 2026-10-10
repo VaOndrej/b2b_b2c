@@ -40,7 +40,8 @@
   },
   "outlet": {
     "badge": "Sale",
-    "left": "Only {{ count }} left"
+    "left": "Only {{ count }} left",
+    "sample": "Sample. This product is not in a sale, so customers see nothing here. Start a sale in the Won Discounts app."
   },
   "progress": {
     "empty": "Milestones are not set up yet. In the Won Discounts app open Discounts → Milestones."

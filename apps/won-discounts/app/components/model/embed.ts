@@ -79,6 +79,17 @@ export const REWARDS_PROGRESS_BLOCK_HANDLE = "rewards_progress";
 export const CAMPAIGN_BLOCK_HANDLE = "campaign_banner";
 /** The "Top bar" block (blocks/top_bar.liquid): the strip the merchant adds in the header group in the theme editor. */
 export const TOP_BAR_BLOCK_HANDLE = "top_bar";
+/**
+ * The announcement strips of ONE thing each (7th round, bod 5; blocks/announcement_milestones.liquid and
+ * announcement_campaign.liquid): what the app adds to the header now. "Top bar" stays for the themes that have it.
+ */
+export const ANNOUNCEMENT_MILESTONES_BLOCK_HANDLE = "announcement_milestones";
+export const ANNOUNCEMENT_CAMPAIGN_BLOCK_HANDLE = "announcement_campaign";
+
+/** The announcement strip that goes with a block: the campaign banner's is the campaign's, every other the Milestones'. */
+export function announcementHandleOf(handle: string): string {
+  return handle === CAMPAIGN_BLOCK_HANDLE ? ANNOUNCEMENT_CAMPAIGN_BLOCK_HANDLE : ANNOUNCEMENT_MILESTONES_BLOCK_HANDLE;
+}
 
 /** One-click links into the theme editor for a block that fits anywhere, and for the embed's top bar. */
 export interface PlacementLinks {
@@ -88,7 +99,7 @@ export interface PlacementLinks {
   home: string | null;
   /** The cart page: the block in its main section. */
   cart: string | null;
-  /** The header group in the theme editor with the "Top bar" block ready to add (Add section → Apps does the same by hand). */
+  /** The header group in the theme editor with the module's announcement strip ready to add (Add section → Apps does the same by hand). */
   topBar: string | null;
   /** The embed's settings: the fallback top bar for a theme whose header takes no app block. */
   topBarEmbed: string | null;
@@ -102,9 +113,66 @@ export function placementLinks(shop: string, apiKey: string, handle: string): Pl
     product: `${editor}?template=product&addAppBlockId=${block}&target=mainSection`,
     home: `${editor}?template=index&addAppBlockId=${block}&target=newAppsSection`,
     cart: `${editor}?template=cart&addAppBlockId=${block}&target=mainSection`,
-    topBar: `${editor}?template=index&addAppBlockId=${encodeURIComponent(apiKey)}/${TOP_BAR_BLOCK_HANDLE}&target=sectionGroup:header`,
+    topBar: `${editor}?template=index&addAppBlockId=${encodeURIComponent(apiKey)}/${announcementHandleOf(handle)}&target=sectionGroup:header`,
     topBarEmbed: embedActivationUrl(shop, apiKey),
   };
+}
+
+/**
+ * The theme editor WITHOUT adding anything, from a link that adds a block (feedback 10 Oct 2026, bod 6): a block
+ * that is already in the theme is opened to be moved — following the add link again would put a second one in.
+ * With the block's place known (`spot.select`) the editor opens with that block selected, so it is not looked for
+ * in the tree (feedback 10 Oct 2026, 6th round). Shopify documents no such link: these are the parameters the
+ * editor writes to its own address; an editor that does not know them opens the template as before.
+ */
+export function editorOpenUrl(addUrl: string | null | undefined, spot?: { select?: { section: string; block: string } } | null): string | null {
+  if (!addUrl) return null;
+  try {
+    const url = new URL(addUrl);
+    url.searchParams.delete("addAppBlockId");
+    url.searchParams.delete("target");
+    if (spot?.select) {
+      url.searchParams.set("section", spot.select.section);
+      url.searchParams.set("block", spot.select.block);
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * An editor link with the product another editor link previews (feedback 10 Oct 2026, 7th round, bod 2): a link
+ * that adds or opens the sale badge without it shows the editor's default product, which is rarely the one on
+ * sale. `from` = a link that carries `previewPath`; without one the link stays as it is.
+ */
+export function editorOnProductOf(url: string | null | undefined, from: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const path = from ? new URL(from).searchParams.get("previewPath") : null;
+    if (!path) return url;
+    const out = new URL(url);
+    out.searchParams.set("previewPath", path);
+    return out.toString();
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * What to say about where a block sits (types.ts PlacementSpot): a sentence, and whether it asks for a move.
+ * Local shapes on purpose (this file imports nothing). A banner or a ladder below the second section of the home
+ * page is seen only after scrolling; a block under the buy buttons of the product page is past the decision.
+ */
+export function spotAdvice(
+  spot: ({ at: "page"; index: number; of: number } | { at: "product"; belowBuy: boolean }) | undefined,
+): { key: "placement.spot.pageLow" | "placement.spot.pageTop" | "placement.spot.belowBuy" | "placement.spot.aboveBuy"; params: Record<string, number>; move: boolean } | null {
+  if (!spot) return null;
+  if (spot.at === "page") {
+    const move = spot.index > 2;
+    return { key: move ? "placement.spot.pageLow" : "placement.spot.pageTop", params: { index: spot.index, of: spot.of }, move };
+  }
+  return { key: spot.belowBuy ? "placement.spot.belowBuy" : "placement.spot.aboveBuy", params: {}, move: spot.belowBuy };
 }
 
 // --- Where a piece stands in the live theme (feedback 3, bod 5; doctrine §19c) --------------------------------

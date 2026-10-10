@@ -164,3 +164,39 @@ test("O9: storefront value — display + what is left per variant (numeric id); 
     { d: "strike_badge", v: { "1": 2, "2": 2 }, e: { "1": 1796079599 } },
   );
 });
+
+// --- Per sale: how it shows and the badge's own text (feedback 9 Oct 2026, 4th round) -------------------------
+
+test("a new sale carries its own display level and badge text; absent = not said (the shop's setting), no own text", async () => {
+  const { outletMessageOf, OUTLET_MESSAGE_MAX } = await import("../../src/discounts/outlet.ts");
+  const plain = validateOutletDraft(draft, ctx());
+  assert.deepEqual(plain.ok && [plain.draft.display, plain.draft.message], [null, null]);
+  const own = validateOutletDraft({ ...draft, display: "strike_badge_left", message: "  Doprodej,   zbývá {left} ks " }, ctx());
+  assert.deepEqual(own.ok && [own.draft.display, own.draft.message], ["strike_badge_left", "Doprodej, zbývá {left} ks"]);
+  const bad = validateOutletDraft({ ...draft, display: "loud", message: "x".repeat(OUTLET_MESSAGE_MAX + 1) }, ctx());
+  assert.deepEqual(!bad.ok && bad.errors.map((e) => [e.field, e.key]), [
+    ["display", "outlet.error.display"],
+    ["message", "outlet.error.message"],
+  ]);
+  assert.equal(outletMessageOf(""), null);
+  assert.equal(outletMessageOf(42), null);
+  assert.equal(outletMessageOf("x".repeat(OUTLET_MESSAGE_MAX)), "x".repeat(OUTLET_MESSAGE_MAX));
+});
+
+test("the storefront value says per variant what the badge block shows (`s`) and the sale's own text (`m`); a sale without its own level follows `d`", () => {
+  const value = outletStorefrontValue("strike", [
+    { variantId: V(1), left: 4, display: "strike_badge_left", message: "Doprodej, zbývá {left} ks" },
+    { variantId: V(2), left: 9, display: "strike_badge", message: null },
+    { variantId: V(3), left: 2, display: "silent", message: "nikdy vidět" },
+    { variantId: V(4), left: 7 },
+    { variantId: V(5), left: 1, display: "strike_badge_left", showBadge: false },
+  ]);
+  assert.deepEqual(value, {
+    d: "strike",
+    v: { "1": 4, "2": 9, "3": 2, "4": 7 },
+    s: { "1": 2, "2": 1, "3": 0 },
+    m: { "1": "Doprodej, zbývá {left} ks", "3": "nikdy vidět" },
+  });
+  // Nothing per sale: exactly the value as before.
+  assert.deepEqual(outletStorefrontValue("strike_badge", [{ variantId: V(4), left: 7 }]), { d: "strike_badge", v: { "4": 7 } });
+});

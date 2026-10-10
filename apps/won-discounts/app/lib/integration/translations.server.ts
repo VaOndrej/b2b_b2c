@@ -44,7 +44,7 @@ import { readShopLanguages, type ShopLanguage } from "./themes.server";
 
 const LOCALE_FILES: Record<DefaultTextLang, string> = { cs: "cs.json", sk: "sk.json", en: "en.default.json" };
 /** Not a merchant's to change: a plural Shopify fills in (`{{ count }}`), and what only the theme editor shows. */
-const NOT_EDITABLE = new Set(["outlet.left", "progress.empty", "campaign.sample"]);
+const NOT_EDITABLE = new Set(["outlet.left", "outlet.sample", "progress.empty", "campaign.sample"]);
 let extensionTexts: Record<DefaultTextLang, Record<string, string>> | null = null;
 
 /** `{group: {key: text}}` → `{"group.key": text}`. */

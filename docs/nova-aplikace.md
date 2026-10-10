@@ -6,7 +6,7 @@ existují** — hlavně E2E témata a produkty.
 
 > **Povinná četba před návrhem:** [`won-app-design-doctrine.md`](won-app-design-doctrine.md)
 > — kompletní **Won App Doctrine** platná pro **všechny** `won-*` appky:
-> **Part I** Product/Admin-UX (`§1–§19`, `A1–A7`) **a Part II** Engineering/Platform
+> **Part I** Product/Admin-UX (`§1–§20`, `A1–A7`) **a Part II** Engineering/Platform
 > (SEC/WBH/BILL/DATA/API/REL/SF/PERF/PRIV/TEST/DEPLOY/OBS/MKT/…). Nová appka ji dědí;
 > cituj sekce (`doctrine §7b`, `WBH-3`) v kódu i PR. **Compliant-by-construction
 > (STORE-1):** scaffold z `apps/_template` už splňuje WBH-3 (compliance webhooky),
@@ -73,6 +73,15 @@ eventy/pravidla nešly proti breaking migracím. Badge appky v roadmapě postupu
   vybírat místo psaní; pod rozbalovačkou jen vzácné volby; Pro funkce hotová,
   nebo neviditelná; ovládací prvek dělá, co říká. Každá obrazovka se proti nim
   projde před uzavřením MVP a má test, který na ni v adminu kliká.
+- **Devět pravidel ze šestého průchodu (doktrína §20):** vychází se z toho, že
+  obchodník spěchá a nečte. Vybraná dlaždice se pozná rámečkem, žádná šipka;
+  dlaždice je širší než vyšší a má vlastní krátkou větu; část, která jen něco
+  ukazuje, má štítek „Jen přehled“ a žádné Uložit; víc věcí v sekci = víc karet
+  s hlavičkou a tlačítkem, hlavní akce není v rozbalovacím řádku; kroky formuláře
+  jsou samostatné karty na stránce; „buď, nebo“ jsou dvě karty a části druhé
+  volby se zaškrtávají zvlášť, co platí, ukazuje ✓ / ✕; upozornění říká „Co se
+  stalo“, „Co s tím“ a má tlačítko; dlouhá stránka má boční menu; odkaz na věc,
+  která už existuje, ji otevře vybranou a nic nepřidá, špatné místo je oranžově.
 - **Pět pravidel ze třetího průchodu (doktrína §19):** stav modulu říká jedna
   funkce a stejný štítek („Aktivní“ / „Neaktivní“ / „Vyžaduje pozornost“) je na
   úvodní dlaždici i na stránce modulu; Pro se značí jednou za sekci, nic uvnitř

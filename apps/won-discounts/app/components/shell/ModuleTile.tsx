@@ -16,6 +16,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { useT } from "../../i18n/context";
 import type { ModuleStatus } from "../model/module-status";
+import { hoverMark } from "./hover";
 import { PlanBadge } from "./PlanBadge";
 import { SectionGlyph, StatusPill, type SectionGlyphName } from "./WonSection";
 import { WON_AMBER, WON_AMBER_TINT, WON_ATTENTION, WON_CARD_SHADOW, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "./tokens";
@@ -31,10 +32,18 @@ const GRID_CSS = `
 .won-tile__active{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .won-tile-button{display:grid;width:100%;margin:0;padding:0;border:0;background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer;border-radius:14px}
 .won-tile-button:focus-visible{outline:2px solid #1a73e8;outline-offset:2px}
+.won-tile-button{position:relative}
+.won-tile-button .won-view-tile{min-height:76px}
+.won-view-tile__about{font-size:12.5px;line-height:1.4;color:#5f6b78;overflow-wrap:anywhere}
 .won-tile__about-short{display:none}
 .won-view-tile{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;align-content:start;height:100%;box-sizing:border-box}
 .won-view-tile__glyph{grid-row:1 / span 3}
-.won-view-tile__labels,.won-view-tile__text{grid-column:2}
+.won-view-tile__labels,.won-view-tile__text,.won-view-tile__about{grid-column:2}
+.won-tiles--5 .won-view-tile{row-gap:8px}
+.won-tiles--5 .won-view-tile__glyph{grid-row:1}
+.won-tiles--5 .won-view-tile__labels{align-self:center}
+.won-tiles--5 .won-view-tile__text,.won-tiles--5 .won-view-tile__about{grid-column:1 / -1}
+.won-tile-note{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:700;line-height:1.5;color:#48525f;background:#eef1f4;border:1px solid #d6dbe1;white-space:nowrap}
 @media (max-width:520px){.won-tile{padding:12px!important;min-height:138px}.won-tile__head{flex-direction:column;align-items:flex-start!important;gap:8px!important}
 .won-tile__about{-webkit-line-clamp:2}
 .won-tile__about--long{display:none}.won-tile__about-short{display:inline}
@@ -43,7 +52,7 @@ const GRID_CSS = `
 .won-view-tile__glyph{grid-row:1}
 .won-view-tile__labels{align-self:center}
 .won-view-tile__labels [data-won-state]{max-width:100%;box-sizing:border-box;white-space:normal!important;border-radius:10px!important;line-height:1.25}
-.won-view-tile__text{grid-column:1 / -1}}
+.won-view-tile__text,.won-view-tile__about{grid-column:1 / -1}}
 `;
 
 /** `columns={4}`: a page with four parts keeps them in one row on a desktop; `{5}` five on a wide one (three a row below 1 100 px). */
@@ -88,21 +97,22 @@ export interface ModuleTileProps extends TileContent {
 }
 
 /** The surface of a tile: amber = a Pro part the plan does not run, blue = the chosen view (§11a). */
-function tileFrame({ pro = false, locked = false, selected = false }: { pro?: boolean; locked?: boolean; selected?: boolean }): CSSProperties {
+function tileFrame({ pro = false, locked = false, selected = false, action = false }: { pro?: boolean; locked?: boolean; selected?: boolean; action?: boolean }): CSSProperties {
   return {
     fontFamily: WON_FONT,
     background: locked ? WON_AMBER_TINT : selected ? "#f2f7ff" : WON_SURFACE,
     // ONE `border` declaration (never the shorthand plus `borderColor`): React drops the colour of a tile that
     // stops being selected and the border then falls back to the text colour — a third, dark border (audit N18).
     // Blue = selected (§11a), also on a Pro tile: which panel is open is not a plan signal.
-    border: `1px solid ${selected ? WON_SELECT : locked ? WON_AMBER : pro ? "rgba(217,168,58,.55)" : WON_LINE}`,
+    // A tile that STARTS something ("Nový výprodej") is dashed until it is the open one: it is not a part with a state.
+    border: `${selected ? 2 : 1}px ${action && !selected && !locked ? "dashed" : "solid"} ${selected ? WON_SELECT : locked ? WON_AMBER : pro ? "rgba(217,168,58,.55)" : action ? "#b9c2cc" : WON_LINE}`,
     borderRadius: 14,
-    boxShadow: selected ? `0 0 0 1px ${WON_SELECT}, 0 2px 8px rgba(26,115,232,.16)` : WON_CARD_SHADOW,
+    boxShadow: selected ? "0 0 0 3px rgba(26,115,232,.14), 0 4px 14px rgba(26,115,232,.16)" : WON_CARD_SHADOW,
     minWidth: 0,
   };
 }
 
-function TileGlyph({ name, className }: { name: SectionGlyphName; className?: string }) {
+function TileGlyph({ name, className, selected = false }: { name: SectionGlyphName; className?: string; /** The open view's glyph is filled in selection blue. */ selected?: boolean }) {
   return (
     <span
       aria-hidden="true"
@@ -111,13 +121,13 @@ function TileGlyph({ name, className }: { name: SectionGlyphName; className?: st
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        width: 30,
-        height: 30,
-        borderRadius: 9,
+        width: 34,
+        height: 34,
+        borderRadius: 10,
         flex: "0 0 auto",
-        background: WON_WASH,
-        border: `1px solid ${WON_LINE}`,
-        color: "#48525f",
+        background: selected ? WON_SELECT : WON_WASH,
+        border: `1px solid ${selected ? WON_SELECT : WON_LINE}`,
+        color: selected ? "#ffffff" : "#48525f",
       }}
     >
       <SectionGlyph name={name} />
@@ -125,13 +135,18 @@ function TileGlyph({ name, className }: { name: SectionGlyphName; className?: st
   );
 }
 
-/** The name with the Pro marker and the state label beside it. */
-function TileLabels({ title, status, pro = false, locked = false, className }: Pick<TileContent, "title" | "status" | "pro" | "locked"> & { className?: string }) {
+/** The name with the Pro marker and the state label beside it. `note`: a neutral label for a part that has no state ("Jen přehled"). */
+function TileLabels({ title, status, pro = false, locked = false, className, note }: Pick<TileContent, "title" | "status" | "pro" | "locked"> & { className?: string; note?: string }) {
   return (
     <span className={className} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 8px", minWidth: 0 }}>
       <span style={{ fontSize: 14.5, fontWeight: 700, color: WON_INK, letterSpacing: "-0.01em", overflowWrap: "anywhere" }}>{title}</span>
       {pro ? <PlanBadge tier="pro" locked={locked} /> : null}
       {status ? <StatusPill state={status.state} /> : null}
+      {note && !status ? (
+        <span className="won-tile-note" data-won-tile-note="">
+          {note}
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -157,7 +172,7 @@ function TileIssues({ issueText, className, gap, ...counted }: Pick<TileContent,
 function TileBody({ title, glyph, about, aboutShort, active, status, issues, issueText, pro = false, locked = false, marker }: Omit<ModuleTileProps, "href" | "id"> & { marker: Record<string, string> }) {
   const hasIssues = issueCount({ status, issues }) > 0;
   return (
-    <div className="won-tile" {...marker} {...(locked ? { "data-won-tile-locked": "" } : {})} style={{ ...tileFrame({ pro, locked }), padding: 16 }}>
+    <div className="won-tile" {...marker} {...hoverMark("card")} {...(locked ? { "data-won-tile-locked": "" } : {})} style={{ ...tileFrame({ pro, locked }), padding: 16 }}>
       <div className="won-tile__head" style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <TileGlyph name={glyph} />
         <TileLabels title={title} status={status} pro={pro} locked={locked} />
@@ -199,15 +214,43 @@ export function ModuleTile({ href, ...content }: ModuleTileProps) {
  * than a home tile: the glyph beside the name, the label, the sentence of what is set (it wraps, never cut) and
  * the things to resolve.
  */
-export function ViewTile({ selected, onPick, id, title, glyph, active, status, issues, issueText, pro = false, locked = false }: TileContent & { selected: boolean; onPick: () => void }) {
+export function ViewTile({
+  selected,
+  onPick,
+  id,
+  title,
+  glyph,
+  active,
+  status,
+  issues,
+  issueText,
+  pro = false,
+  locked = false,
+  about,
+  action = false,
+  note,
+}: TileContent & {
+  selected: boolean;
+  onPick: () => void;
+  /** What is under the tile, said only while it has nothing set to show (`active`): a tile is never a bare name. */
+  about?: string;
+  /** The tile starts something new (a sale, a campaign) instead of showing a part of the page: drawn dashed. */
+  action?: boolean;
+  /** A neutral label for a tile that only shows something and sets nothing ("Jen přehled"): the merchant is not left guessing whether it is on. */
+  note?: string;
+}) {
   return (
     <button data-won-view-tile={id} {...(locked ? { "data-won-tile-locked": "" } : {})} aria-pressed={selected} type="button" className="won-tile-button" onClick={onPick}>
-      <div className="won-view-tile" data-won-view-body={id} {...(locked ? { "data-won-tile-locked": "" } : {})} style={{ ...tileFrame({ pro, locked, selected }), padding: 12 }}>
-        <TileGlyph name={glyph} className="won-view-tile__glyph" />
-        <TileLabels title={title} status={status} pro={pro} locked={locked} className="won-view-tile__labels" />
+      <div className="won-view-tile" data-won-view-body={id} {...hoverMark("card", selected)} {...(locked ? { "data-won-tile-locked": "" } : {})} style={{ ...tileFrame({ pro, locked, selected, action }), padding: selected ? 11 : 12 }}>
+        <TileGlyph name={glyph} className="won-view-tile__glyph" selected={selected} />
+        <TileLabels title={title} status={status} pro={pro} locked={locked} note={note} className="won-view-tile__labels" />
         {active ? (
           <div className="won-view-tile__text" data-won-tile-active style={ACTIVE_STYLE}>
             {active}
+          </div>
+        ) : about ? (
+          <div className="won-view-tile__about" data-won-tile-hint="">
+            {about}
           </div>
         ) : null}
         <TileIssues status={status} issues={issues} issueText={issueText} className="won-view-tile__text" gap={0} />

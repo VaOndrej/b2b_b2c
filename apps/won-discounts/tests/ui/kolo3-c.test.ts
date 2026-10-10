@@ -71,7 +71,8 @@ test("stav 1: every exception is one row — its name, what it gives, Upravit an
   const page = text(html);
   ok(page.includes("2 výjimky"), "the section says how many");
   ok(page.includes("Když produkt patří do více výjimek, platí první v seznamu"), "which one wins, once there are two");
-  ok(/<s-button[^>]*>Přidat výjimku<\/s-button>/.test(html), "Přidat výjimku");
+  // The way to the next one is a card of its own at the end of the list, with the steps in order (7th round).
+  ok(/<button[^>]*data-won-picked-add=""[^>]*>[\s\S]*?Přidat další výjimku[\s\S]*?vyberete produkty nebo kolekce[\s\S]*?uložíte/.test(html), "Přidat další výjimku");
   // One exception: nothing to say about which wins.
   ok(!text(await render("tiers?plan=pro")).includes("Když produkt patří do více výjimek"), "one exception: no sentence about precedence");
 });

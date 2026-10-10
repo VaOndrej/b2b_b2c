@@ -21,6 +21,7 @@
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
 import { formatPercent } from "@won/core/discounts/describe";
 
+import type { Translator } from "../../i18n";
 import { useT } from "../../i18n/context";
 import { COLLECTION_READ_LIMIT, MARGIN_FIELD, MARGIN_PERCENT_STEP, percentInput } from "../model/margin";
 import type { GateNoteView, MarginCollectionView, MarginTooLargeView } from "../model/types";
@@ -30,7 +31,17 @@ import { WON_FONT, WON_INK, WON_LINE, WON_WASH } from "../shell/tokens";
 import { GateNotes } from "../shell/GateNotes";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
-import { RowNote, WonRow, WonSection } from "../shell/WonSection";
+import { PickedAdd, PickedCard, PickedList } from "../shell/PickedCard";
+import { RowNote, WonSection } from "../shell/WonSection";
+
+/** What a picked collection or product has set, for its card's header: its own values, else that nothing is its own yet. */
+export function pickedSummary(row: { minMarginPercent: number | null; maxDiscountPercent: number | null }, tr: Translator): string {
+  const parts = [
+    row.minMarginPercent === null ? null : tr.t("margin.picked.min", { value: formatPercent(row.minMarginPercent, tr.locale) }),
+    row.maxDiscountPercent === null ? null : tr.t("margin.picked.max", { value: formatPercent(row.maxDiscountPercent, tr.locale) }),
+  ].filter((part): part is string => part !== null);
+  return parts.length > 0 ? parts.join(" · ") : tr.t("margin.picked.none");
+}
 
 export function PercentFields({
   min,
@@ -159,12 +170,16 @@ export function CollectionsSection({
               </s-text>
             ) : null}
             <s-text color="subdued">{t("margin.collections.body")}</s-text>
-            {collections.length === 0 ? <RowNote>{t("margin.collections.empty")}</RowNote> : null}
-            {collections.length > 0 ? (
-              <div>
+            <PickedList count={collections.length} title={t("margin.collections.list", { count: tr.tp("count.collection", collections.length) })} empty={t("margin.collections.empty")} emptyHint={t("margin.collections.emptyHint")}>
                 {collections.map((c, i) => (
-                  <WonRow
+                  <PickedCard
                     key={c.collectionId}
+                    n={i + 1}
+                    kind={t("margin.picked.collection")}
+                    title={c.title.trim() || t("common.untitledCollection")}
+                    set={pickedSummary(c, tr)}
+                    tone={pro && tooLargeOf.has(c.collectionId) ? "attention" : undefined}
+                    marker={{ "data-won-margin-collection": c.collectionId }}
                     action={
                       <s-button variant="tertiary" onClick={() => onRemove(c.collectionId)}>
                         {t("margin.collections.remove")}
@@ -179,7 +194,6 @@ export function CollectionsSection({
                       </>
                     ) : null}
                     <div style={{ marginBottom: 8 }}>
-                      <s-text type="strong">{c.title.trim() || t("common.untitledCollection")}</s-text>
                       <FieldMessage text={errorFor(`collectionId[${i}]`)} />
                       {pro && tooLargeOf.has(c.collectionId) ? (
                         <RowNote tone="attention">
@@ -213,17 +227,18 @@ export function CollectionsSection({
                           .join(" ") || undefined
                       }
                     />
-                  </WonRow>
+                  </PickedCard>
                 ))}
-              </div>
-            ) : null}
+            </PickedList>
             <FieldMessage text={error} />
             <s-stack direction="block" gap="small-200">
-              <s-stack direction="inline" gap="base" alignItems="center">
-                <s-button onClick={onPick} disabled={boolAttr(!pro || full)}>
-                  {t("editor.pick.collections")}
-                </s-button>
-              </s-stack>
+              <PickedAdd
+                label={t(collections.length === 0 ? "margin.collections.first" : "margin.collections.more")}
+                steps={[t("margin.collections.step.pick"), t("margin.picked.step.fill"), t("margin.picked.step.save")]}
+                onAdd={onPick}
+                disabled={!pro || full}
+                primary={collections.length === 0}
+              />
               {full ? <RowNote>{t("margin.collections.limit", { max: CONFIG_LIMITS.marginOverrides })}</RowNote> : null}
               {pickUnavailable ? <s-text color="subdued">{t("editor.pick.unavailable")}</s-text> : null}
             </s-stack>

@@ -6,7 +6,7 @@
 // Pure; tests/ui/looks.test.ts.
 
 import { ACCENT_PRESETS, type AccentPreset } from "@won/core/discounts/config";
-import { customLookCss, LOOK_ELEMENTS, LOOK_ROOT, type LookElement } from "@won/core/discounts/custom-look";
+import { customLookCss, isMilestoneElement, LOOK_ELEMENTS, LOOK_ROOT, type LookElement } from "@won/core/discounts/custom-look";
 import { LOOK_PRESETS } from "@won/core/discounts/looks";
 
 import type { MessageKey, Translator } from "../../i18n";
@@ -88,7 +88,7 @@ export function readLookForm(form: FormDataLike): { ok: true; look: LookForm } |
   const accent = text(LOOK_FIELD.accentPreset) || "theme";
   if ((ACCENT_PRESETS as readonly string[]).includes(accent)) look.accent = accent as AccentPreset;
   else errors.push({ field: LOOK_FIELD.accentPreset, key: "looks.error.accent" });
-  if (element === "milestones") look.blink = form.get(LOOK_FIELD.blink) === "on";
+  if (isMilestoneElement(element)) look.blink = form.get(LOOK_FIELD.blink) === "on";
   const vars: CustomLookForm["vars"] = {};
   for (const key of ["accent", "line", "tint"] as const) {
     const value = text(LOOK_FIELD[key]);

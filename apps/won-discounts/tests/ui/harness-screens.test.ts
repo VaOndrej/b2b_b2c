@@ -157,9 +157,11 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /Množstevní sleva \+ sleva z objednávky \+ doprava zdarma \+ dárek ze stupně/,
       /Stupeň se slevou · Slovensko/,
       /Ceny v této měně jsou odhad podle vašich částek/,
-      /data-won-combo-finding="margin"[^>]*>Ochrana marže slevu snížila nebo zrušila[^<]*(<!-- -->)? <s-link href="\/app\/tiers#global">Otevřít množstevní slevy/,
-      /data-won-combo-finding="step_superseded"[^>]*>[^<]*(<!-- -->)? <s-link href="\/app\/rewards#step-3">Otevřít 3\. stupeň Milníků/,
-      /<s-link href="\/app\/try-cart\?scenario=tiers">Otevřít v košíku/,
+      // A finding is a card: what happened, what to do, and the buttons that go there (6th round).
+      /data-won-combo-finding="margin"[\s\S]*?Co se stalo[\s\S]*?Ochrana marže slevu snížila nebo zrušila[\s\S]*?Co s tím[\s\S]*?<s-button href="\/app\/tiers#global" variant="primary">Otevřít množstevní slevy<\/s-button><s-button href="\/app\/margin#settings" variant="secondary">Upravit ochranu marže/,
+      /data-won-combo-finding="step_superseded"[\s\S]*?<s-button href="\/app\/rewards#step-3" variant="primary">Otevřít 3\. stupeň Milníků/,
+      /data-won-section-nav/,
+      /<s-(link|button) href="\/app\/try-cart\?scenario=tiers"[^>]*>Zkusit v košíku níže/,
     ],
     absent: [/data-won-combos-locked/],
   },
@@ -183,7 +185,12 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   {
     path: "rewards?look=checklist",
     expect: [
-      /Vzhled žebříčku na webu/,
+      // The ladder has a look per place: the places as buttons, each with its own section.
+      /Vzhled bloku Milníky na stránce/,
+      /Vzhled milníků v pruhu nahoře/,
+      /Vzhled milníků na stránce košíku/,
+      /Vzhled milníků ve vysouvacím košíku/,
+      /data-won-look-place="msBar"[^>]*aria-pressed="true"/,
       /Vzhled na webu: Odškrtávací seznam/,
       /<input type="radio" name="preset"[^>]*value="checklist"[^>]*checked=""|<input type="radio" name="preset"[^>]*checked=""[^>]*value="checklist"/,
       /Ukazatel se značkami/,
@@ -248,14 +255,14 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "campaigns?state=finishing", expect: [/Běžela při přechodu na Free, doběhne do konce/] },
   { path: "overview?state=campaigns", expect: [/Kampaně/, /Aktivní: Víkend −20 % do 29\. 9\. 2026 0:00/, /<s-clickable href="\/app\/campaigns"/] },
   { path: "overview?state=campaigns&finishing=1", expect: [/1 věc k vyřešení/] },
-  { path: "outlet", expect: [/Výprodej/, /S Pro doprodáte zvolený počet kusů varianty se slevou/, /Zobrazit tarif Pro/, /Aktivní výprodeje/, /Mikina Won — L/, /Znovu otevřít výprodej jde v tarifu Pro/, /Zobrazení a vratky/] },
+  { path: "outlet", expect: [/Výprodej/, /S Pro doprodáte zvolený počet kusů varianty se slevou/, /Zobrazit tarif Pro/, /Aktivní výprodeje/, /Mikina Won — L/, /Znovu otevřít výprodej jde v tarifu Pro/, /Vratky po konci výprodeje/] },
   {
     path: "outlet?plan=pro",
-    expect: [/Spustit výprodej/, /Vyberte variantu, počet kusů a slevu/, /Prodáno 7 z 10 ks, vráceno 1, zbývá 4/, /Prodáno o 1 ks víc, než bylo k doprodeji/, /Upravené trhy s vlastní cenou: Slovensko/, /Zkusit znovu/, /Ukončit výprodej „Mikina Won — L“\?/, /Znovu otevřít/],
+    expect: [/Spustit výprodej/, /Vyberte variantu, počet kusů a slevu/, /4 z 10 ks/, /prodáno 7, vráceno 1/, /Prodáno o 1 ks víc, než bylo k doprodeji/, /Upravené trhy s vlastní cenou: Slovensko/, /Zkusit znovu/, /Ukončit výprodej „Mikina Won — L“\?/, /Znovu otevřít/],
   },
   { path: "outlet?plan=pro&result=invalid", expect: [/Vyberte variantu/, /Kusů k doprodeji zadejte celým číslem od 1 do/, /0 ks · −30\s% · do 12\. 10\. 2026/, /value="2026-10-12"/] },
   // B14: a failed start keeps the picked variant and the typed values; the price before → after is computed.
-  { path: "outlet?plan=pro&result=failed", expect: [/Mikina Won — L · 10 ks · −30\s% · bez data konce/, /Cena varianty: 1\s490\sKč → 1\s043\sKč/, /Změnit variantu/] },
+  { path: "outlet?plan=pro&result=failed", expect: [/Mikina Won — L · 10 ks · −30\s% · bez data konce/, /data-won-outlet-price=""[\s\S]*?Nová cena[\s\S]*?1\s490\sKč[\s\S]*?1\s043\sKč/, /Změnit variantu/] },
   { path: "outlet?result=settings-pro&state=empty", expect: [/Zobrazení výprodeje jde nastavit v tarifu Pro/] },
   { path: "overview?state=outlet", expect: [/Výprodej/, /data-won-state="attention"/, /3 věci k vyřešení/, /<s-clickable href="\/app\/outlet"/] },
   // 5a (F-O1): no order access yet — the module and the card say the quota is not counted (harness default).
@@ -265,7 +272,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
     path: "margin",
     expect: [
       /Ochrana marže/,
-      /Min\. marže 20\u00a0% · bez nákupní ceny sleva nejvýš 40\u00a0%/,
+      /Marže aspoň 20\u00a0% · sleva nejvýš 40\u00a0%/,
       // Feedback 9 Oct 2026, bod 2: what to fill in, with an example in numbers; how it is computed comes after.
       /Nevíte\? Nechte prázdné\./,
       /Počítá se jako marže v Shopify, z ceny, kterou zákazník zaplatí \(u cen s DPH včetně DPH\)/,
@@ -321,8 +328,8 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "margin?plan=pro&state=impact-updating", expect: [/Ochrana sníží 5 slev · přepočítává se/, /Čísla se na pozadí přepočítávají/] },
   { path: "margin?plan=pro&state=impact-computing", expect: [/Počítáme, kde ochrana zasáhne/, /Počítá se na pozadí z nastavení slev a nákupních cen/] },
   { path: "margin?plan=pro&state=zero", expect: [/Nákupní cenu mají všechny produkty/] },
-  { path: "margin?state=off", expect: [/Ochrana marže je vypnutá/, /Neaktivní/, /Načteme je ze Shopify, až ochranu zapnete a uložíte/] },
-  { path: "margin?state=gate", expect: [/Tohle je v tarifu Pro, zákazník to nedostane/, /Ochrana marže pro jednotlivé kolekce je funkce Pro/, /Min\. marže 30\u00a0% · bez nákupní ceny sleva nejvýš 10\u00a0%/] },
+  { path: "margin?state=off", expect: [/Ochrana je vypnutá/, /Neaktivní/, /Načteme je ze Shopify, až ochranu zapnete a uložíte/] },
+  { path: "margin?state=gate", expect: [/Tohle je v tarifu Pro, zákazník to nedostane/, /Ochrana marže pro jednotlivé kolekce je funkce Pro/, /Marže aspoň 30\u00a0% · sleva nejvýš 10\u00a0%/] },
   { path: "margin?state=failed&result=refreshed", expect: [/Načtení selhalo 28\. 9\. 2026 06:10/, /Načítání nákupních cen běží/] },
   { path: "margin?plan=pro&rule=dev-f2-collection", expect: [/Jen sleva „Podzimní kolekce 20 %“/, /Zobrazit všechny zásahy/, /Ochrana sníží 1 slevu/, /Sníží se u 4 variant/] },
   { path: "margin?result=invalid", expect: [/Zadejte 0 až 95 %/, /value="150"/] },
@@ -399,7 +406,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /Teď se to týká 1 slevy na produkty\./,
       /href="\/app\/settings#combination"/,
       /Ochrana marže je zapnutá: u produktů s nízkou marží může úroveň vyjít nižší/,
-      /Zboží ve výprodeji a dárky úroveň nedostanou/,
+      /Zboží ve výprodeji, dárky a dárkové karty úroveň nedostanou/,
       /class="won-tiers won-tiers--highlight"/,
       /data-won-discounts-tiers=""/,
       /data-count-mode="product"/,
@@ -462,7 +469,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   // Audit P3-8: only in an alternate template → not "on the product page"; the fix button stays.
   { path: "tiers?state=alternate", expect: [/Tabulka je jen u produktů se šablonou „bundle“\. Na stránce produktu, kterou používá většina produktů, zatím není\./, /Na webu chybí/, /Přidat na web/] },
   // Review fix 5: clearance items combine → they can get a tier; gifts never.
-  { path: "tiers?state=outlet", expect: [/Dárky úroveň nedostanou\. Zboží ve výprodeji ji dostat může/] },
+  { path: "tiers?state=outlet", expect: [/Dárky a dárkové karty úroveň nedostanou\. Zboží ve výprodeji ji dostat může/] },
   // Review fix 18: Pro sees how many products each Pro set reaches (Free sees nothing).
   { path: "tiers?plan=pro&state=dawn", expect: [/Podle poslední synchronizace platí pro 14 produktů/] },
   // Audit: the checkout's room for tiers as a share (cap 550 B), with what takes room.
@@ -612,7 +619,7 @@ test("review fixes in the harness: no Pro product counts on Free, no 'per produc
   const free = await render("tiers");
   assert.doesNotMatch(free.html, /Podle poslední synchronizace platí pro/, "Free: no Pro numbers (BILL-1)");
   assert.doesNotMatch(free.html, /Na Free se místo celého košíku počítá po produktech/, "the stored set counts per product: nothing to explain");
-  assert.match(free.html, /Zboží ve výprodeji a dárky úroveň nedostanou/);
+  assert.match(free.html, /Zboží ve výprodeji, dárky a dárkové karty úroveň nedostanou/);
   assert.doesNotMatch((await render("settings")).html, /V Pro se sečtou/, "Free: no Pro stacking claim");
 });
 
@@ -621,13 +628,13 @@ test("plan 2026-10-06, dávka 5: nothing without content or action — no room-f
   assert.doesNotMatch(pro, /Místo pro úrovně v pokladně/, "far from the limit: nothing to say");
   assert.doesNotMatch(pro, /Web má aktuální nastavení/);
   assert.doesNotMatch(pro, /Barvy a písmo z tématu|náhled ukáže, jen pokud/, "no font / theme notes under the preview");
-  assert.match(pro, /Přidat výjimku/);
+  assert.match(pro, /Přidat (další )?výjimku/);
   const free = (await render("tiers")).html;
-  assert.doesNotMatch(free, /Přidat výjimku/, "Free: no button that does nothing");
+  assert.doesNotMatch(free, /Přidat (další )?výjimku/, "Free: no button that does nothing");
   assert.doesNotMatch(free, /Kolekce Doplňky|data-won-custom-look/, "no invented sample; no Pro look on Free");
   assert.match(free, /<s-link href="\/app\/plan">[\s\S]{0,400}?Pro · odemknout/, "the locked Pro marker is a link to the plan");
   const empty = (await render("tiers?state=empty")).html;
-  assert.doesNotMatch(empty, /Kolekce Doplňky|Přidat výjimku/);
+  assert.doesNotMatch(empty, /Kolekce Doplňky|Přidat (další )?výjimku/);
   // Feedback 3, bod 5: a placement that cannot be checked says so with the grey label and "Zkontrolovat znovu".
   assert.match((await render("tiers?state=no-scope")).html, /data-won-placement="unknown"[\s\S]*Zkontrolovat znovu/);
   assert.doesNotMatch((await render("tiers?plan=pro&state=custom&plan=free")).html, /Kolekce Doplňky/);

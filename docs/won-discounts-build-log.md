@@ -7,6 +7,91 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
+### Sedmé kolo 10. 10. 2026 (6 bodů) — důkazy `won-discounts/evidence/kolo7-2026-10-10/`
+
+> **CHECKPOINT.** V pracovním stromu na `main`, **necommitnuto** (spolu se čtvrtým až šestým kolem). Commit a push
+> čeká na Ondřejovo „go“.
+
+- Bod 1 a 1.5 (hover): jedna šablona `shell/hover.tsx` (`HoverStyles` v `routes/app.tsx` a v dev náhledu). Prvek se
+  označí `hoverMark("tab" | "card" | "row" | "chip" | "icon" | "link")`. Označeno: horní lišta, dlaždice, karty volby,
+  hotové vzhledy, barvy, segmenty, hlavičky sbalovacích sekcí, křížky, textová tlačítka, recepty.
+- Bod 2: odkazy do editoru u štítku výprodeje nesou `previewPath` produktu ve výprodeji (`editorOnProductOf`);
+  blok `outlet_badge` v editoru ukáže označenou ukázku, když produkt ve výprodeji není (`outlet.sample`).
+- Bod 3: vzhled milníků má čtyři prvky: `milestones` (blok na stránce), `msBar`, `msCart`, `msDrawer`
+  (`core custom-look.ts`, `looks.ts`). Panel košíku nese třídu `won-cart--page` / `won-cart--drawer`. Starý jeden
+  vzhled se při čtení zkopíruje do všech míst; po prvním uložení se místa ukládají vždy (`{}` = hotový vzhled,
+  `setLook`). Stránka Milníky → Vzhled: přepínač míst (`PlaceLooks`).
+- Bod 4: druhá hlavička „Nová kampaň“ pryč, živý souhrn je na dlaždici.
+- Bod 5: nové bloky `announcement_milestones` a `announcement_campaign`; appka do záhlaví přidává je
+  (`announcementHandleOf`), `top_bar` zůstává pro šablony, které ho mají. Detekce v `themes.server.ts`.
+- Bod 6: výjimky jsou očíslované karty s popisky „Pro co platí“ / „Co dostanou“ a prázdným stavem.
+- Brána: node 1 878/1 878, balíček core 961/961, typecheck, lint 0 chyb, build, `theme check` 0.
+  Cargo a vitest nepuštěny (Rust se neměnil).
+- Neověřeno naživo: `previewPath` v editoru šablon (Shopify ho nedokumentuje), nové bloky v editoru, vzhledy podle
+  místa na webu. Rozšíření je potřeba nasadit (`shopify app dev` ho nahraje samo).
+- Pozor: osm vlastních CSS na maximu (4 000 znaků každé, nejhustší možný text) se do metapole nevejde
+  (140 kB ze 124 kB); uložení to odmítne (`looks.error.tooLarge`). Běžný text zabere třetinu.
+- **Dárkové karty (rozhodnuto 10. 10.): nikdy žádná sleva.** Příznak varianty `outlet` = `0` (`core cart.ts`
+  `NEVER_DISCOUNTED_FLAG`) = mimo všechny třídy slev, i když se výprodej kombinuje se vším (`plan.ts`, Rust
+  `input.rs`, `plan.rs`). Zapisuje ho úloha `giftcards.hourly` (`sync/gift-cards.ts`, `jobs/scheduler.server.ts`),
+  ne hlavní synchronizace. Výprodej na dárkové kartě příznak nepřepíše (`writeOutletFlag`). Web: tabulka ani řádek
+  na kartě se u `product.gift_card?` neukáže. Fixtury `lines-gift-card-never-discounted*`, Wasm 237 328 B.
+  Brána po změně: node 1 884/1 884, core 963/963, cargo 106, vitest 719, typecheck, lint, theme check 0.
+  Neověřeno naživo: úloha proti dev obchodu, pokladna s dárkovou kartou. Milníky hodnotu dárkové karty do košíku
+  dál počítají (práh dopravy zdarma), slevu z objednávky na ni nedají.
+- Ochrana marže: vybrané kolekce a produkty jsou očíslované karty (`shell/PickedCard.tsx`), prázdný stav říká,
+  co se tam objeví; tlačítko je „Přidat další kolekci / produkt“.
+- Doladění (odpoledne 10. 10.): `selectionRing` už nemění rozměr vybrané karty (1 px rámeček + 1 px vnitřní stín);
+  sekce vzhledu není rozbalovací (`LookSection`); druhá hlavička „Nový výprodej“ pryč, souhrn je na dlaždici;
+  „S čím se výprodej kombinuje“ je věta + řádky se slovy „Přičte se / Nepřičte se“ (`CombineMarks`).
+  Node testy 1 884/1 884.
+- Doladění 2 (10. 10. večer): sekce vzhledu má boční živý náhled (`LookSection` `won-look-side`, od 1 000 px
+  vpravo a drží se při scrollu, na mobilu nahoře); vzhled kampaně „Pruh“ barví název barvou zvýraznění (`looks.ts`);
+  přidávání další kolekce / produktu / výjimky je čárkovaná karta s kroky (`PickedAdd`); dlaždice „Snížené slevy“
+  je vidět jen, když má co ukázat (Přehled to říká v „Co aplikace hlídá“). Node 1 884/1 884, core 963/963.
+- Otevřené: pruh pro výprodej a množstevní slevy neexistuje; dárková karta se počítá do prahu milníků.
+
+### Šesté kolo 10. 10. 2026 (9 bodů + výběr slev u výprodeje) — důkazy `won-discounts/evidence/kolo6-2026-10-10/`
+
+> **CHECKPOINT.** V pracovním stromu na `main`, **necommitnuto** (spolu se čtvrtým a pátým kolem). Commit a push
+> čeká na Ondřejovo „go“. Pravidla vzhledu a kde platí: [`won-discounts/pravidla-vzhledu-kolo6-2026-10-10.md`](won-discounts/pravidla-vzhledu-kolo6-2026-10-10.md).
+
+- Hotovo: šipka pod dlaždicí pryč; karta běžícího výprodeje ze samostatných karet (`shell/SubCard.tsx`); kroky s hloubkou
+  (`StepCard`, výprodej i kampaň stojí na stránce, ne v jedné sekci); výprodej bere vybrané slevy (sloupec
+  `OutletRun.combineWith`, migrace `20261010150000_outlet_combine_with` + postgres `0006`, příznak varianty jako číslo,
+  jádro + Rust + Liquid); odkaz do editoru vybírá blok (`section`, `block`); Vyzkoušet košík má boční menu a karty
+  „Co se stalo / Co s tím“; dlaždice marže kratší, „Jen přehled“ (`InfoStrip`), Uložit se pod přehledem neukazuje.
+- Brána: node 1 878/1 878, cargo 105, vitest 710 (parita Wasm = TS), balíčky 960 + 53, typecheck, lint, build, validate 0.
+  Wasm 237 322 B z 256 000.
+- Neověřeno naživo: výběr bloku v editoru, pokladna s částečně kombinovaným výprodejem. Preview E2E nepuštěno.
+- Před použitím: `npm run setup -w won-discounts` (nová migrace).
+
+### Páté kolo 10. 10. 2026 (vzhled a postup, 7 bodů) — důkazy `won-discounts/evidence/kolo5-2026-10-10/`
+
+> **CHECKPOINT.** V pracovním stromu na `main`, **necommitnuto** (spolu se čtvrtým kolem).
+> - Dárky: výběr přes produkty (`gift-picker.ts`, dřív plochý seznam variant); uložené dárky se v okně nepředvyberou.
+> - Dlaždice (`ViewTile`): vybraná má modrou ikonu a šipku k obsahu, akční („Nový…“) je čárkovaná s větou.
+> - Kroky formuláře: `shell/StepCard.tsx` (Výprodej 4 kroky, Kampaň 3).
+> - Výprodej: dlaždice Výprodeje / Nový / Štítek na webu (blok + vzhled) / Pravidla; karta běžícího výprodeje se
+>   čtyřmi údaji; historie sbalená; `OutletRun.combine` (migrace `20261010120000_outlet_combine`, postgres `0005`):
+>   výprodej s ostatními slevami se neoznačí variantovým příznakem `outlet`, pokladní funkce beze změny.
+> - Umístění bloků: `editorOpenUrl` (otevřít bez přidání), oranžový štítek „Na webu, špatné místo“.
+> - **Před spuštěním:** `npm run setup -w won-discounts`.
+
+### Čtvrté kolo 9. 10. 2026 (umístění bloků, Výprodej) — návrh `won-discounts/navrh-vyprodej-workflow-2026-10-09.md`
+
+> **CHECKPOINT.** V pracovním stromu na `main`, **necommitnuto**. `test:unit:node` 1 861 z 1 861 (po opravě
+> jednoho očekávání), typy, lint, build, `validate:shopify` bez chyb. `test:e2e:preview` nepuštěno (dev server neběžel).
+> - Hotovo: `blockSpotIn` + `spotAdvice` (kde blok v šabloně leží), `SpotNote` u všech umístění; u výprodeje
+>   `outletWebLine` („Na webu teď“) a odkazy na produkt na webu a v editoru (`OUTLET_LINKS_DOCUMENT`).
+> - **Varianta A postavena (10. 10.):** nový výprodej jsou tři kroky; zobrazení a vlastní text štítku patří
+>   výprodeji (`OutletRun.display`, `OutletRun.message`, migrace `20261010090000_outlet_display_message` +
+>   postgres `0004`). Hodnota pro blok má navíc `s` (úroveň štítku po variantě) a `m` (text); výprodej bez
+>   vlastní úrovně se řídí starým `d`. Běžící výprodej: „Upravit zobrazení na webu“ (intent `web`).
+>   Varianta C (štítek bez bloku) se nedělá: štítek se vkládá jako blok. Pozici bloku odkazem určit nejde.
+> - **Před spuštěním u Ondřeje:** `npm run setup -w won-discounts` (migrace DB).
+> - Test `margin.test.ts` „a loader never reads the catalogue“ pod zátěží občas spadne, samostatně prochází.
+
 ### Třetí kolo 9. 10. 2026 (10 bodů) — zadání a pochopení `won-discounts/pochopeni-zadani-2026-10-09-kolo3.md`
 
 > **CHECKPOINT.** Všech 10 bodů je v kódu na `main`. Důkazy: `won-discounts/evidence/kolo3-2026-10-09/`.

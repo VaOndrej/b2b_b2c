@@ -441,6 +441,30 @@ export const GQL = {
   }
 }`,
 
+  // Gift cards never take a discount (gift-cards.ts): every gift card product with its variants' flag.
+  // Admin 2026-04: `gift_card` is a filter of the products query, `isGiftCard` a field of Product; read_products.
+  // Four products a page: with 100 variants each the document stays under 1 000 points (a shop has a few gift cards).
+  giftCardVariants: `query WonGiftCardVariants($after: String, $namespace: String!, $key: String!) {
+  products(first: 4, after: $after, query: "gift_card:true") {
+    nodes {
+      id
+      isGiftCard
+      variants(first: 100) {
+        nodes {
+          id
+          flag: metafield(namespace: $namespace, key: $key) {
+            jsonValue
+          }
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}`,
+
   metafieldsDelete: `mutation WonSyncMetafieldsDelete($metafields: [MetafieldIdentifierInput!]!) {
   metafieldsDelete(metafields: $metafields) {
     deletedMetafields {
@@ -739,6 +763,7 @@ export const GQL = {
     product {
       id
       title
+      isGiftCard
     }
   }
 }`,

@@ -23,8 +23,9 @@
 // patterns below (hex / rgb() colors, font handles of letters and digits).
 // Queries validated against Admin API 2026-04 with the Shopify dev MCP.
 
-import { CAMPAIGN_BLOCK_HANDLE, CART_BLOCK_HANDLE, EMBED_BLOCK_HANDLE, OUTLET_BLOCK_HANDLE, REWARDS_PROGRESS_BLOCK_HANDLE, tiersBlockAddUrl, TOP_BAR_BLOCK_HANDLE } from "../../components/model/embed";
+import { ANNOUNCEMENT_CAMPAIGN_BLOCK_HANDLE, ANNOUNCEMENT_MILESTONES_BLOCK_HANDLE, TIERS_BLOCK_HANDLE, editorOpenUrl, CAMPAIGN_BLOCK_HANDLE, CART_BLOCK_HANDLE, EMBED_BLOCK_HANDLE, OUTLET_BLOCK_HANDLE, REWARDS_PROGRESS_BLOCK_HANDLE, tiersBlockAddUrl, TOP_BAR_BLOCK_HANDLE } from "../../components/model/embed";
 import type { MarketNames } from "../../components/model/markets";
+import type { PlacementSpot } from "../../components/model/types";
 import { toMinorUnits } from "@won/core/discounts/money";
 import { normalizeLocale } from "@won/core/toasts/locales";
 
@@ -374,17 +375,61 @@ function embedSettingsIn(content: string | null): Rec | null | undefined {
 
 const HEADER_GROUP = "sections/header-group.json";
 
-/** The settings of every enabled "Top bar" block in the header group's JSON; null = the file is not readable JSON. */
-function topBarBlocksIn(content: string | null): Rec[] | null {
+/** The settings of every enabled block with this handle in the header group's JSON; null = the file is not readable JSON. */
+function headerBlocksIn(content: string | null, handle: string): Rec[] | null {
   const data = parseThemeJson(content);
   if (!isRec(data) || !isRec(data.sections)) return null;
-  const type = `/blocks/${TOP_BAR_BLOCK_HANDLE}/`;
+  const type = `/blocks/${handle}/`;
   const out: Rec[] = [];
   for (const section of Object.values(data.sections)) {
     if (!isRec(section) || section.disabled === true) continue;
     for (const block of enabledBlocks(section)) if (typeof block.type === "string" && block.type.includes(type)) out.push(isRec(block.settings) ? block.settings : {});
   }
   return out;
+}
+
+/** The key a block has in its section's `blocks` (what the theme editor selects it by). */
+const BLOCK_ID = "__wonBlockId";
+
+/** The enabled blocks of a section in the order the page prints them (`block_order`, else as stored), nested ones after their parent. */
+function* blocksInOrder(node: Rec): Generator<Rec & { [BLOCK_ID]?: string }> {
+  const blocks = node.blocks;
+  if (!isRec(blocks)) return;
+  const order = Array.isArray(node.block_order) ? node.block_order.filter((id): id is string => typeof id === "string") : Object.keys(blocks);
+  for (const id of order) {
+    const block = blocks[id];
+    if (!isRec(block) || block.disabled === true) continue;
+    yield { ...block, [BLOCK_ID]: id };
+    yield* blocksInOrder(block);
+  }
+}
+
+const BUY_BUTTONS = /(^|[^a-z])buy[-_]?buttons?($|[^a-z])/i;
+
+/**
+ * Where the app block of this handle sits in a template (see PlacementSpot): on the product template against
+ * the buy buttons of its section, elsewhere by its section's place on the page. null = the block is not there,
+ * the file is not readable, or (product) the section has no buy-buttons block to compare with.
+ */
+export function blockSpotIn(content: string | null, handle: string, kind: "product" | "page", themeId: string | null = null): PlacementSpot | null {
+  const data = parseThemeJson(content);
+  if (!isRec(data) || !isRec(data.sections)) return null;
+  const type = `/blocks/${handle}/`;
+  const ids = Array.isArray(data.order) ? data.order.filter((id): id is string => typeof id === "string") : Object.keys(data.sections);
+  const sections = ids.map((id) => [id, (data.sections as Rec)[id]] as const).filter((s): s is readonly [string, Rec] => isRec(s[1]) && s[1].disabled !== true);
+  for (let i = 0; i < sections.length; i += 1) {
+    const [sectionId, section] = sections[i]!;
+    const blocks = [...blocksInOrder(section)];
+    const at = blocks.findIndex((b) => typeof b.type === "string" && b.type.includes(type));
+    if (at === -1) continue;
+    // What the theme editor selects the block by: the section as the editor names it and the block's own key.
+    const blockId = blocks[at]![BLOCK_ID];
+    const select = themeId && /^\d+$/.test(themeId) && blockId ? { select: { section: `template--${themeId}__${sectionId}`, block: blockId } } : {};
+    if (kind === "page") return { at: "page", index: i + 1, of: sections.length, ...select };
+    const buy = blocks.findIndex((b) => typeof b.type === "string" && !b.type.includes("/blocks/") && BUY_BUTTONS.test(b.type));
+    return buy === -1 ? null : { at: "product", belowBuy: at > buy, ...select };
+  }
+  return null;
 }
 
 const TEMPLATE_PLACEMENTS: readonly { filename: string; blocks: readonly [PlacementKey, string][] }[] = [
@@ -398,7 +443,7 @@ const TEMPLATE_PLACEMENTS: readonly { filename: string; blocks: readonly [Placem
  * the top bar by the "Top bar" block in the header group, else by the embed's two fallback switches. Only what was read is answered — a missing or unreadable file leaves
  * its keys out ("not verified"), it never says "missing".
  */
-export function themePlacementsIn(files: readonly { filename: string; content: string | null }[]): ThemePlacements {
+export function themePlacementsIn(files: readonly { filename: string; content: string | null }[], themeId: string | null = null): ThemePlacements {
   const out: ThemePlacements = {};
   for (const { filename, blocks } of TEMPLATE_PLACEMENTS) {
     const file = files.find((f) => f.filename === filename);
@@ -406,8 +451,14 @@ export function themePlacementsIn(files: readonly { filename: string; content: s
     for (const [key, handle] of blocks) {
       const found = hasBlock(file.content, handle);
       if (found !== null) out[key] = found;
+      const spot = found ? blockSpotIn(file.content, handle, filename === MAIN_PRODUCT_TEMPLATE ? "product" : filename === "templates/index.json" ? "page" : "product", themeId) : null;
+      if (spot && filename !== "templates/cart.json") out.spots = { ...out.spots, [key]: spot };
     }
   }
+  // The quantity table on the product page: the same question.
+  const product = files.find((f) => f.filename === MAIN_PRODUCT_TEMPLATE);
+  const tiersSpot = product ? blockSpotIn(product.content, TIERS_BLOCK_HANDLE, "product", themeId) : null;
+  if (tiersSpot) out.spots = { ...out.spots, tiersBlock: tiersSpot };
   const settings = files.find((f) => f.filename === "config/settings_data.json");
   if (settings) {
     const embed = embedSettingsIn(settings.content);
@@ -418,11 +469,13 @@ export function themePlacementsIn(files: readonly { filename: string; content: s
   }
   // The block in the header (its two switches are on unless the merchant turned one off).
   const header = files.find((f) => f.filename === HEADER_GROUP);
-  const bars = header ? topBarBlocksIn(header.content) : null;
+  const bars = header ? headerBlocksIn(header.content, TOP_BAR_BLOCK_HANDLE) : null;
   if (bars) {
     const shows = (key: string) => bars.some((s) => s[key] !== false);
-    out.topBarRewards = out.topBarRewards === true || shows("show_rewards");
-    out.topBarCampaign = out.topBarCampaign === true || shows("show_campaign");
+    // An announcement strip of one thing (7th round, bod 5) counts as that thing's strip.
+    const strip = (handle: string) => (headerBlocksIn(header!.content, handle)?.length ?? 0) > 0;
+    out.topBarRewards = out.topBarRewards === true || shows("show_rewards") || strip(ANNOUNCEMENT_MILESTONES_BLOCK_HANDLE);
+    out.topBarCampaign = out.topBarCampaign === true || shows("show_campaign") || strip(ANNOUNCEMENT_CAMPAIGN_BLOCK_HANDLE);
   }
   return out;
 }
@@ -507,7 +560,7 @@ async function loadThemeLook(ctx: LookCtx): Promise<ThemeLook> {
   const addUrl = tiersBlockAddUrl(ctx.shop, ctx.apiKey);
   try {
     const result = await ctx.client.graphql<{
-      themes?: { nodes?: { name?: string; files?: { nodes?: { filename?: string; body?: { content?: string } | null }[] } }[] };
+      themes?: { nodes?: { id?: string; name?: string; files?: { nodes?: { filename?: string; body?: { content?: string } | null }[] } }[] };
     }>(THEME_LOOK_DOCUMENT);
     const theme = result.data?.themes?.nodes?.[0];
     if (!theme) return { tokens: null, block: { state: "unknown", addUrl }, placements: {} };
@@ -520,10 +573,10 @@ async function loadThemeLook(ctx: LookCtx): Promise<ThemeLook> {
     const mainTemplate = templates.find((f) => f.filename === (found.template ?? "templates/product.json"))?.content ?? null;
     const themeName = typeof theme.name === "string" ? theme.name : null;
     const tokens = themeTokensFrom({ themeName, settingsData: settings, productTemplate: mainTemplate, blockAccent: found.accent });
-    const placements = themePlacementsIn(files);
+    const placements = themePlacementsIn(files, typeof theme.id === "string" ? (theme.id.split("/").pop() ?? null) : null);
     if (templates.length === 0) return { tokens, block: { state: "unknown", addUrl }, placements };
     const alternates = found.alternates.length > 0 ? { alternates: found.alternates } : {};
-    return { tokens, block: found.on ? { state: "on", themeName: themeName ?? "", ...alternates } : { state: "off", addUrl, ...alternates }, placements };
+    return { tokens, block: found.on ? { state: "on", themeName: themeName ?? "", ...alternates, ...(placements.spots?.tiersBlock ? { spot: placements.spots.tiersBlock } : {}), openUrl: editorOpenUrl(addUrl, placements.spots?.tiersBlock) } : { state: "off", addUrl, ...alternates }, placements };
   } catch (error) {
     if (error instanceof Response) throw error;
     return { tokens: null, block: { state: "unknown", addUrl }, placements: {} };

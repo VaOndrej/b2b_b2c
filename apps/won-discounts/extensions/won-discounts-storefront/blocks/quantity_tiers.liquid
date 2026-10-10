@@ -136,7 +136,15 @@
   if cfg.ow == 1
     assign no_outlet = false
   endif
-  if no_outlet and variant.metafields['$app:won_discounts'].outlet.value == true
+  assign won_sale = variant.metafields['$app:won_discounts'].outlet.value
+  if no_outlet
+    if won_sale == true or won_sale == 2 or won_sale == 4 or won_sale == 6
+      assign path = 'none'
+    endif
+  endif
+  # A gift card never takes a discount (decided 10 Oct 2026; the app flags its variants with 0): no table for it,
+  # whatever the shop's settings say and before the app has flagged it.
+  if product.gift_card? or won_sale == 0
     assign path = 'none'
   endif
   if path == 'f'
@@ -394,7 +402,13 @@
               assign v_cap = ''
             endif
           endif
-          if no_outlet and v.metafields['$app:won_discounts'].outlet.value == true
+          assign v_sale = v.metafields['$app:won_discounts'].outlet.value
+          if no_outlet
+            if v_sale == true or v_sale == 2 or v_sale == 4 or v_sale == 6
+              assign v_cap = ''
+            endif
+          endif
+          if product.gift_card? or v_sale == 0
             assign v_cap = ''
           endif
           assign merge_key = ',' | append: v.id | append: ':'

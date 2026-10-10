@@ -17,6 +17,9 @@ pub struct LineInput<'a> {
     pub unit_price: i64,
     /// Outlet run on the variant (product metafield `outlet`).
     pub outlet: bool,
+    /// A sale that takes only some discounts (the variant flag as a number, cart.ts OUTLET_ALLOW): the
+    /// classes it stays out of — 1 quantity tiers, 2 product discounts, 4 the order discount; 0 = no limit.
+    pub outlet_no: u8,
     /// A Won gift line (`_won_gift` attribute, non-empty).
     pub gift: bool,
     /// MVP 4 (R3): a gift line whose `_won_gift` names a gift tier of the
@@ -98,6 +101,7 @@ pub struct NormalizedLine<'a> {
     pub unit_price: i64,
     pub subtotal: i64,
     pub outlet: bool,
+    pub outlet_no: u8,
     pub gift: bool,
     /// The valid gift tier of a gift line (LineInput `gift_tier`).
     pub gift_tier: Option<u32>,
@@ -166,6 +170,7 @@ pub fn normalize_cart(input: CartInput<'_>) -> NormalizedCart<'_> {
                 unit_price,
                 subtotal: mul_sat(quantity, unit_price),
                 outlet: line.outlet,
+                outlet_no: line.outlet_no,
                 gift: line.gift,
                 gift_tier: line.gift_tier,
                 rule_ids: line.rule_ids,

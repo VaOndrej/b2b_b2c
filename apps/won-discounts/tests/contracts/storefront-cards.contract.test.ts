@@ -23,7 +23,7 @@ test("the snippet holds every condition of core cardTier, in a fail-closed form"
     ["cards on, config v1, at most 50 variants checked", /if cfg\.v == 1 and cfg\.cards == 1 and p\.variants\.size <= 50/],
     ["K1: tierRef, else the global set", /assign set_id = pmf\.tierRef\s+if set_id == nil\s+assign set_id = cfg\.tiers\.global/],
     ["the FIRST break only", /cfg\.tiers\.sets\[set_id\]\.breaks\.first/],
-    ["a sale variant", /vmf\.outlet\.value == true[\s\S]*if on_sale and cfg\.ow != 1\s+assign show = false/],
+    ["a sale variant", /v_sale == true or v_sale == 2 or v_sale == 4 or v_sale == 6[\s\S]*if on_sale and cfg\.ow != 1\s+assign show = false/],
     ["a purchase cost under margin protection", /vmf\.variant != nil or vmf\.pdp != nil[\s\S]*if margin_on and costed\s+assign show = false/],
     ["a percent within the ceiling", /if b\.pct > 0 and b\.pct <= cap/],
     ["the ceiling of more than 4 refs = the lowest of all collections", /if pmf\.marginRefs\.size > 4\s+for pair in cfg\.margin\.col\s+assign cap = cap \| at_most: pair\.last/],
@@ -181,15 +181,18 @@ test("cards.js: text goes in as text (never markup), junk data and a missing dat
 test("the AI briefs' class lists are exactly the classes of the extension's stylesheets, each element's starting with its own root; the variables are the ones a custom look sets", async () => {
   const { readdir } = await import("node:fs/promises");
   const { LOOK_CLASSES, FRAME_CLASSES, aiPrompt } = await import("../../app/lib/integration/looks.server.ts");
-  const { CUSTOM_LOOK_VARS, LOOK_ELEMENTS, LOOK_ROOT } = await import("@won/core/discounts/custom-look");
+  const { CUSTOM_LOOK_VARS, isMilestoneElement, LOOK_ELEMENTS, LOOK_ROOT } = await import("@won/core/discounts/custom-look");
   const found = new Set<string>();
   for (const file of (await readdir(path.join(extensionRoot, "assets"))).filter((f) => f.endsWith(".css"))) {
     for (const m of (await read(`assets/${file}`)).matchAll(/\.(won-[a-z]+(?:(?:__|--)[a-z-]+|-[a-z]+)?)/g)) found.add(`.${m[1]}`);
   }
-  assert.deepEqual([...LOOK_ELEMENTS.flatMap((element) => [...LOOK_CLASSES[element]]), ...FRAME_CLASSES].sort(), [...found].sort());
+  // (the ladder has a look per place and the same classes in each: counted once)
+  assert.deepEqual([...new Set([...LOOK_ELEMENTS.flatMap((element) => [...LOOK_CLASSES[element]]), ...FRAME_CLASSES])].sort(), [...found].sort());
   for (const element of LOOK_ELEMENTS) {
     // (the cart's root is three frames: the panel, its slot on the cart page, the top strip)
-    const roots = element === "cart" ? [".won-cart", ".won-cart-slot", ".won-topbar"] : [LOOK_ROOT[element]];
+    // (a place of the ladder: its root ends at the ladder's own element, whose classes these are)
+    const roots = element === "cart" ? [".won-cart", ".won-cart-slot", ".won-topbar"] : isMilestoneElement(element) ? [".won-ms"] : [LOOK_ROOT[element]];
+    if (isMilestoneElement(element)) assert.ok(LOOK_ROOT[element].endsWith(".won-ms"), `${element}: ${LOOK_ROOT[element]}`);
     if (element === "cart") assert.equal(LOOK_ROOT.cart, `:is(${roots.join(",")})`);
     for (const cls of LOOK_CLASSES[element]) assert.ok(roots.some((root) => cls === root || cls.startsWith(`${root}__`) || cls.startsWith(`${root}--`)), `${cls} is the ${element}'s`);
     for (const variable of Object.values(CUSTOM_LOOK_VARS)) assert.ok(aiPrompt(element).includes(variable));

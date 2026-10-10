@@ -27,9 +27,11 @@ export const WON_SELECT = "#1a73e8";
 /** The shared "this option is selected" treatment (§11b: one source, never re-typed). */
 export function selectionRing(active: boolean, tint = true): import("react").CSSProperties {
   return {
-    border: active ? `2px solid ${WON_SELECT}` : "1px solid #d6dbe1",
+    // The chosen one is drawn two pixels thick WITHOUT growing: one pixel of border and one of inset shadow. A
+    // thicker border made the card narrower inside, so its text wrapped differently once picked (7th round).
+    border: `1px solid ${active ? WON_SELECT : "#d6dbe1"}`,
     background: active && tint ? "#f2f7ff" : "#ffffff",
-    boxShadow: active ? "0 2px 8px rgba(26,115,232,.16)" : "0 1px 2px rgba(0,0,0,.04)",
+    boxShadow: active ? `inset 0 0 0 1px ${WON_SELECT}, 0 2px 8px rgba(26,115,232,.16)` : "0 1px 2px rgba(0,0,0,.04)",
   };
 }
 

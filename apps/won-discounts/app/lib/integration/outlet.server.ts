@@ -21,7 +21,11 @@ import { randomUUID } from "node:crypto";
 
 import { fromMinorUnits, toMinorUnits } from "@won/core/discounts/money";
 import {
+  OUTLET_COMBINE_CLASSES,
   outletAfterReturn,
+  outletCombineWith,
+  outletFlagFor,
+  type OutletCombineClass,
   outletExhausted,
   outletLeft,
   outletOversold,
@@ -34,11 +38,13 @@ import {
   type OutletEndReason,
   type OutletPriceSnapshot,
 } from "@won/core/discounts/outlet";
+import { OUTLET_DISPLAY_MODES, type OutletDisplay } from "@won/core/discounts/config";
 import type { ShopPlan } from "@won/core/discounts/plan-gate";
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import type { AdminClient } from "../admin-client.server";
 import { loadConfig } from "../config.server";
+import { NEVER_DISCOUNTED_FLAG } from "@won/core/discounts/cart";
 import { OUTLET_STOREFRONT_KEY, OUTLET_VARIANT_KEY, WON_NAMESPACE } from "../sync/graphql";
 import { errorText, Transport, userErrorText, type UserErrorLike } from "../sync/transport";
 import type { RetryOptions, SyncLogger } from "../sync/types";
@@ -82,6 +88,11 @@ async function planFor(deps: OutletDeps): Promise<ShopPlan> {
   if (deps.plan) return deps.plan(deps.shop);
   const { planOf } = await import("../plan.server");
   return planOf(deps.shop);
+}
+
+/** How a sale shows: its own level, else (a sale from before they were per sale) the shop's. */
+export function displayOf(run: { display?: string | null }, settings: { display: OutletDisplay }): OutletDisplay {
+  return typeof run.display === "string" && (OUTLET_DISPLAY_MODES as readonly string[]).includes(run.display) ? (run.display as OutletDisplay) : settings.display;
 }
 
 /** The module's settings (display on the web, return after the end) from the stored config. */
@@ -128,17 +139,19 @@ interface VariantRead {
   currency: string;
   price: number;
   compareAt: number | null;
+  /** A gift card never takes a discount: its flag is not the sale's to write (writeOutletFlag). */
+  giftCard: boolean;
 }
 
 async function readVariant(transport: Transport, variantId: string): Promise<VariantRead | null> {
-  type Data = { shop?: { currencyCode?: string }; productVariant?: { price?: string; compareAtPrice?: string | null; product?: { id?: string } } | null };
+  type Data = { shop?: { currencyCode?: string }; productVariant?: { price?: string; compareAtPrice?: string | null; product?: { id?: string; isGiftCard?: boolean } } | null };
   const data: Data = await transport.call("outletVariant", { id: variantId });
   const currency = data.shop?.currencyCode ?? "";
   const v = data.productVariant;
   if (!v?.product?.id || !currency) return null;
   const price = money(v.price, currency);
   if (price === null) return null;
-  return { productId: v.product.id, currency, price, compareAt: money(v.compareAtPrice, currency) };
+  return { productId: v.product.id, currency, price, compareAt: money(v.compareAtPrice, currency), giftCard: v.product.isGiftCard === true };
 }
 
 /** The variant's fixed price on one list, or null (no fixed price for it there). */
@@ -233,6 +246,10 @@ export async function startOutletRun(deps: OutletDeps, raw: unknown): Promise<Ou
         endsAt: draft.endsAt,
         priceListIds: JSON.stringify(draft.priceListIds),
         showBadge: draft.showBadge,
+        display: draft.display,
+        message: draft.message,
+        combine: draft.combine,
+        combineWith: draft.combine ? draft.combineWith.join(",") : null,
         status: "starting",
       },
     });
@@ -306,16 +323,16 @@ async function applySale(deps: OutletDeps, runId: string): Promise<OutletResult>
     } catch (error) {
       return fail(errorText(error), false);
     }
-    if (fixed && outletPricesFor({ price: fixed.price, compareAt: fixed.compareAt }, run.percent, settings.display)) lists.push(fixed);
+    if (fixed && outletPricesFor({ price: fixed.price, compareAt: fixed.compareAt }, run.percent, displayOf(run, settings))) lists.push(fixed);
     else skippedLists.push(id);
   }
-  const salePrices = outletPricesFor({ price: variant.price, compareAt: variant.compareAt }, run.percent, settings.display);
+  const salePrices = outletPricesFor({ price: variant.price, compareAt: variant.compareAt }, run.percent, displayOf(run, settings));
   if (!salePrices) return fail("the sale would not lower the price", false);
   const backup: PriceRecord = { currency: variant.currency, variant: { price: variant.price, compareAt: variant.compareAt }, lists };
   const sale: PriceRecord = {
     currency: variant.currency,
     variant: salePrices,
-    lists: lists.map((l) => ({ ...l, ...outletPricesFor({ price: l.price, compareAt: l.compareAt }, run.percent, settings.display)! })),
+    lists: lists.map((l) => ({ ...l, ...outletPricesFor({ price: l.price, compareAt: l.compareAt }, run.percent, displayOf(run, settings))! })),
   };
   // Write-ahead (§14c): the backup is stored before the first write.
   // `startedAt` too: an order placed from the first lowered price on counts (audit: the `starting` window).
@@ -444,16 +461,24 @@ async function endNow(deps: OutletDeps, runId: string, reason: OutletEndReason):
 
 /**
  * O6: the variant's sale flag — the variant metafield `outlet` = true while a run of it is not ended and its
- * prices are not back (`endedAt` null); deleted otherwise. Only this module writes the key (the sync and the
+ * prices are not back (`endedAt` null); deleted otherwise. A sale that takes SOME other discounts is flagged with
+ * a number (core outletFlagFor: the sum of what it takes); one that takes every one is not flagged: checkout and
+ * the storefront then treat its variant as any other product. Only this module writes the key (the sync and the
  * cost mirror never touch it). Null = done, else the error.
  */
 export async function writeOutletFlag(deps: OutletDeps, variantId: string): Promise<string | null> {
   const transport = transportOf(deps);
-  const flagged = await deps.db.outletRun.count({ where: { shop: deps.shop, variantId, status: { in: [...OUTLET_NOT_ENDED] }, endedAt: null } });
+  const runs = await deps.db.outletRun.findMany({ where: { shop: deps.shop, variantId, status: { in: [...OUTLET_NOT_ENDED] }, endedAt: null }, select: { combine: true, combineWith: true } });
+  // One run not ended per variant; were there ever two, a class is allowed only when both allow it.
+  const takes = runs.map((r) => outletCombineWith(r.combine, r.combineWith));
+  let flag: true | number | null = runs.length === 0 ? null : outletFlagFor(OUTLET_COMBINE_CLASSES.filter((c) => takes.every((t) => t.includes(c))));
   try {
-    if (flagged > 0) {
+    // A gift card never takes a discount, on sale or not: its flag stays "none, ever" (sync/gift-cards.ts) — a
+    // sale's own flag would let discounts in while it runs, and its end would delete the guard.
+    if ((await readVariant(transport, variantId))?.giftCard) flag = NEVER_DISCOUNTED_FLAG;
+    if (flag !== null) {
       const data: { metafieldsSet: { userErrors: UserErrorLike[] } } = await transport.call("metafieldsSet", {
-        metafields: [{ ownerId: variantId, namespace: WON_NAMESPACE, key: OUTLET_VARIANT_KEY, type: "json", value: "true" }],
+        metafields: [{ ownerId: variantId, namespace: WON_NAMESPACE, key: OUTLET_VARIANT_KEY, type: "json", value: JSON.stringify(flag) }],
       });
       return userErrorText(data.metafieldsSet.userErrors);
     }
@@ -478,13 +503,46 @@ export async function setOutletBadge(deps: OutletDeps, runId: string, show: bool
   return error ? { ok: false, message: error } : { ok: true };
 }
 
+/**
+ * Whether ONE running sale's variant takes the other discounts too, changed while it runs: only the variant's
+ * sale flag is written or removed; the price and the quota stay.
+ */
+export async function setOutletCombine(deps: OutletDeps, runId: string, combineWith: readonly OutletCombineClass[]): Promise<{ ok: true } | { ok: false; message: string }> {
+  const run = await deps.db.outletRun.findFirst({ where: { id: runId, shop: deps.shop, status: { in: [...OUTLET_NOT_ENDED] } } });
+  if (!run) return { ok: false, message: "not a running sale" };
+  // (An empty list = no other discount.)
+  await deps.db.outletRun.update({ where: { id: run.id }, data: { combine: combineWith.length > 0, combineWith: combineWith.length > 0 ? combineWith.join(",") : null } });
+  const error = await writeOutletFlag(deps, run.variantId);
+  return error ? { ok: false, message: error } : { ok: true };
+}
+
+/**
+ * How ONE running sale shows on the storefront, changed while it runs (feedback 9 Oct 2026, 4th round): the badge
+ * level and the badge's text. The price was written when the sale started and is not touched: a sale started
+ * "silent" (no struck price) stays so, and a sale with a struck price cannot become silent.
+ */
+export async function setOutletWeb(
+  deps: OutletDeps,
+  runId: string,
+  next: { display: OutletDisplay; message: string | null },
+): Promise<{ ok: true } | { ok: false; message: string; reason?: "price" }> {
+  const run = await deps.db.outletRun.findFirst({ where: { id: runId, shop: deps.shop, status: { in: [...OUTLET_NOT_ENDED] } } });
+  if (!run) return { ok: false, message: "not a running sale" };
+  const settings = await outletSettings(deps);
+  const now = displayOf(run, settings);
+  if ((now === "silent") !== (next.display === "silent")) return { ok: false, message: "the struck price is written at the start", reason: "price" };
+  await deps.db.outletRun.update({ where: { id: run.id }, data: { display: next.display, message: next.message, showBadge: true } });
+  const error = await writeOutletStorefront(deps, [run.productId]);
+  return error ? { ok: false, message: error } : { ok: true };
+}
+
 /** O9: the storefront block's product metafield `outlet` — the active sales and what they have left; deleted when none. */
 export async function writeOutletStorefront(deps: OutletDeps, productIds: readonly string[]): Promise<string | null> {
   const transport = transportOf(deps);
   const settings = await outletSettings(deps);
   for (const productId of new Set(productIds)) {
     const runs = await deps.db.outletRun.findMany({ where: { shop: deps.shop, productId, status: "active" } });
-    const value = outletStorefrontValue(settings.display, runs.map((r) => ({ variantId: r.variantId, left: outletLeft(r), showBadge: r.showBadge, endsAt: r.endsAt })));
+    const value = outletStorefrontValue(settings.display, runs.map((r) => ({ variantId: r.variantId, left: outletLeft(r), showBadge: r.showBadge, endsAt: r.endsAt, display: r.display, message: r.message })));
     try {
       if (value) {
         const data: { metafieldsSet: { userErrors: UserErrorLike[] } } = await transport.call("metafieldsSet", {

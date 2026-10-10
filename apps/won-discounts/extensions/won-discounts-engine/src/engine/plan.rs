@@ -411,6 +411,8 @@ impl Scope {
 
 struct WorkLine<'a> {
     excluded: Option<Excluded>,
+    /// A sale line that takes only some discounts: the classes it stays out of (`NormalizedLine::outlet_no`).
+    no: u8,
     /// The rules that target this line (`lineRuleIds`), as rule indices, deduplicated.
     rule_set: Vec<usize>,
     product: Option<PlanStack<'a>>,
@@ -486,7 +488,7 @@ fn collect_item_refs<'a>(
             }
             w.rule_set.push(rule as usize);
             if let (Some(scope), true) = (rule_scopes.get_mut(rule as usize), w.excluded != Some(Excluded::Gift)) {
-                scope.add(line, w.excluded.is_none());
+                scope.add(line, w.excluded.is_none() && !(w.no & 2 != 0 && rules[rule as usize].cls == DiscountClass::Product));
             }
         }
     }
@@ -1310,10 +1312,13 @@ fn plan_products<'a>(work: &mut [WorkLine<'a>], tiers: &[Option<TierCandidate>],
             continue;
         }
         positive.clear();
-        for &i in &w.rule_set {
-            if let Some(amount) = values[i].amount(line) {
-                if amount > 0 {
-                    positive.push(Component { rule: i, amount });
+        // (A sale line that takes no product discounts keeps only its tier.)
+        if w.no & 2 == 0 {
+            for &i in &w.rule_set {
+                if let Some(amount) = values[i].amount(line) {
+                    if amount > 0 {
+                        positive.push(Component { rule: i, amount });
+                    }
                 }
             }
         }
@@ -1539,7 +1544,7 @@ fn protect_order<'a>(
     let rules = ctx.rules;
     let mut lines: Vec<OrderLine> = Vec::with_capacity(work.len());
     for (index, (w, line)) in work.iter().zip(&ctx.cart.lines).enumerate() {
-        let (None, Some(floor)) = (w.excluded, w.floor) else { continue };
+        let (None, Some(floor), 0) = (w.excluded, w.floor, w.no & 4) else { continue };
         let after = if after_products { line.subtotal - w.product.as_ref().map_or(0, |p| p.amount) } else { line.subtotal };
         if after <= 0 {
             continue;
@@ -1606,7 +1611,7 @@ fn protect_order<'a>(
         EmittedValue::FixedTotal(amount)
     };
     let excluded_line_ids =
-        work.iter().zip(&ctx.cart.lines).filter(|(w, _)| w.excluded.is_some() || w.order_left).map(|(_, line)| line.id).collect();
+        work.iter().zip(&ctx.cart.lines).filter(|(w, _)| w.excluded.is_some() || w.no & 4 != 0 || w.order_left).map(|(_, line)| line.id).collect();
     Some(PlanOrder { stack: restack(rules, &ctx.labels, kept, value), base: best_base, excluded_line_ids, margin_protected: false })
 }
 
@@ -1618,7 +1623,7 @@ fn mark_tight_lines(work: &mut [WorkLine], cart: &NormalizedCart, has_order: boo
     for (w, line) in work.iter_mut().zip(&cart.lines) {
         let (Some(product), Some(floor)) = (w.product.as_ref(), w.floor) else { continue };
         let room = line.subtotal.saturating_sub(product.amount).saturating_sub(floor_total(floor, line.quantity));
-        let in_order_base = has_order && w.excluded.is_none() && !w.order_left;
+        let in_order_base = has_order && w.excluded.is_none() && w.no & 4 == 0 && !w.order_left;
         w.margin_tight = room < 1 || in_order_base;
     }
 }
@@ -1636,7 +1641,7 @@ fn plan_order_stage<'a>(
         return None;
     }
     let excluded_line_ids: Vec<&'a str> =
-        work.iter().zip(&ctx.cart.lines).filter(|(w, _)| w.excluded.is_some()).map(|(_, line)| line.id).collect();
+        work.iter().zip(&ctx.cart.lines).filter(|(w, _)| w.excluded.is_some() || w.no & 4 != 0).map(|(_, line)| line.id).collect();
     let plan_at = |base: i64| -> Option<PlanOrder<'a>> {
         let mut positive: Vec<Component> = order_rules
             .iter()
@@ -1662,11 +1667,15 @@ fn plan_order_stage<'a>(
         Some(PlanOrder { stack, base, excluded_line_ids: excluded_line_ids.clone(), margin_protected: false })
     };
     let product_total = work.iter().map(|w| w.product.as_ref().map_or(0, |p| p.amount)).fold(0i64, i64::saturating_add);
+    // A sale line that takes no order discount is out of its base, with whatever product discount it got.
+    let in_base = |w: &WorkLine| w.excluded.is_none() && w.no & 4 == 0;
+    let base_product_total =
+        work.iter().filter(|w| in_base(w)).map(|w| w.product.as_ref().map_or(0, |p| p.amount)).fold(0i64, i64::saturating_add);
     let discountable_subtotal =
-        work.iter().zip(&ctx.cart.lines).filter(|(w, _)| w.excluded.is_none()).map(|(_, l)| l.subtotal).fold(0i64, i64::saturating_add);
+        work.iter().zip(&ctx.cart.lines).filter(|(w, _)| in_base(w)).map(|(_, l)| l.subtotal).fold(0i64, i64::saturating_add);
     // [spec] The order discount is taken from the subtotal AFTER product discounts.
     if engine.product_with_order {
-        let order = plan_at(discountable_subtotal - product_total);
+        let order = plan_at(discountable_subtotal - base_product_total);
         if !margin_on {
             return order;
         }
@@ -1889,15 +1898,19 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
                 rule_set
             }
         };
+        // A line out of every class (7: a gift card) stays out even when sales combine with anything.
+        let no = if line.gift || (engine.outlet_with_anything && line.outlet_no != 7) { 0 } else { line.outlet_no };
         if excluded != Some(Excluded::Gift) {
             let discountable = excluded.is_none();
             cart_scope.add(line, discountable);
             for &i in &rule_set {
-                rule_scopes[i].add(line, discountable);
+                // A sale line that takes no product discounts gives a product rule nothing to discount.
+                rule_scopes[i].add(line, discountable && !(no & 2 != 0 && rules[i].cls == DiscountClass::Product));
             }
         }
         work.push(WorkLine {
             excluded,
+            no,
             rule_set,
             product: None,
             floor: None,
@@ -1930,7 +1943,7 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
     drop(items);
 
     // Quantity tiers (MVP 3): each line's candidate, from the sets as shipped.
-    let tiers = prepare_tiers(&config.tiers, &cart.lines, &cart.tiers, |i| work[i].excluded.is_none(), &cart.currency, !cart.locale_en);
+    let tiers = prepare_tiers(&config.tiers, &cart.lines, &cart.tiers, |i| work[i].excluded.is_none() && work[i].no & 1 == 0, &cart.currency, !cart.locale_en);
 
     let any_partners = !partners.bits.is_empty();
     let shadows = tier_shadows(&rules, first_tier, &config.tiers.sets);

@@ -1482,8 +1482,9 @@ test("MVP 5 (contracts O6, O9): a sale variant (its metafield `outlet` = true) g
   const liquid = await read(BLOCK);
   assert.match(liquid, /if cfg\.ow == 1\s+assign no_outlet = false/);
   // The selected variant (server render) and every variant of the data JSON (the script) the same way.
-  assert.match(liquid, /if no_outlet and variant\.metafields\['\$app:won_discounts'\]\.outlet\.value == true\s+assign path = 'none'/);
-  assert.match(liquid, /if no_outlet and v\.metafields\['\$app:won_discounts'\]\.outlet\.value == true\s+assign v_cap = ''/);
+  // `true` = no other discount; 2, 4, 6 = a sale that takes some discounts but not the quantity one (core OUTLET_ALLOW: 1 is odd).
+  assert.match(liquid, /assign won_sale = variant\.metafields\['\$app:won_discounts'\]\.outlet\.value\s+if no_outlet\s+if won_sale == true or won_sale == 2 or won_sale == 4 or won_sale == 6\s+assign path = 'none'/);
+  assert.match(liquid, /assign v_sale = v\.metafields\['\$app:won_discounts'\]\.outlet\.value\s+if no_outlet\s+if v_sale == true or v_sale == 2 or v_sale == 4 or v_sale == 6\s+assign v_cap = ''/);
 });
 
 // MVP 6.1 (plan docs/plans/2026-10-04-won-discounts-mvp6-1.md, L6): while a campaign's tier sets are on show the

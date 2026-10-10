@@ -211,6 +211,7 @@ struct ReadLine {
     quantity: i64,
     unit_price: i64,
     outlet: bool,
+    outlet_no: u8,
     gift: bool,
     gift_tier: Option<u32>,
     rule_ids: Vec<String>,
@@ -312,6 +313,7 @@ impl RunInput {
                 quantity: 0,
                 unit_price: 0,
                 outlet: false,
+                outlet_no: 0,
                 gift: false,
                 gift_tier: None,
                 rule_ids: Vec::new(),
@@ -357,7 +359,13 @@ impl RunInput {
             }
             // MVP 5 (Výprodej, contract O6): the variant's own flag `outlet` = true.
             if !read.outlet {
-                read.outlet = sole(&variant_shape.get(&merchandise, 3), Key::JsonValue).is_some_and(|flag| is_true(&flag));
+                // `true` = no other discount; a whole number 1–6 = the discounts the sale takes; 0 = none, ever (a gift card; cart.ts `outletNoOf`).
+                if let Some(flag) = sole(&variant_shape.get(&merchandise, 3), Key::JsonValue) {
+                    read.outlet = is_true(&flag);
+                    if let Some(allow) = number(&flag).filter(|n| (0.0..7.0).contains(n) && n.fract() == 0.0) {
+                        read.outlet_no = 7 & !(allow as u8);
+                    }
+                }
             }
             if margin_on {
                 if let Some(cost) = sole(&variant_shape.get(&merchandise, 2), Key::JsonValue) {
@@ -442,6 +450,7 @@ impl RunInput {
                     quantity: l.quantity,
                     unit_price: l.unit_price,
                     outlet: l.outlet,
+                    outlet_no: l.outlet_no,
                     gift: l.gift,
                     gift_tier: l.gift_tier,
                     rule_ids: &l.rule_ids,

@@ -5,10 +5,12 @@ import {
   parseThemeJson,
   readThemeLook,
   storefrontSyncViewOf,
+  blockSpotIn,
   themePlacementsIn,
   themeTokensFrom,
   tiersBlockIn,
 } from "../../app/lib/integration/themes.server.ts";
+import { editorOpenUrl, spotAdvice } from "../../app/components/model/embed.ts";
 import { clearSignalCache } from "../../app/lib/ui-actions.server.ts";
 import { FakeStore } from "./helpers.ts";
 
@@ -200,7 +202,7 @@ test("readThemeLook: one read of the MAIN theme → tokens + block; cached per s
   ]);
   const ctx = { shop: "look-1.myshopify.com", client: store, apiKey: "key-1" };
   const look = await readThemeLook(ctx, { scopes: "write_discounts,read_themes" });
-  assert.deepEqual(look.block, { state: "on", themeName: "Horizon" });
+  assert.deepEqual(look.block, { state: "on", themeName: "Horizon", openUrl: "https://look-1.myshopify.com/admin/themes/current/editor?template=product" });
   assert.equal(look.tokens?.colorAccent, "#c0392b");
   assert.equal(look.tokens?.fontBody, "Inter");
   await readThemeLook(ctx, { scopes: "write_discounts,read_themes" });
@@ -276,7 +278,47 @@ test("themePlacementsIn: each block by its template; the top bar from the embed'
     cartBlock: true,
     topBarRewards: true,
     topBarCampaign: false,
+    // Where a block sits: the home page's by its section (here the only one); the product's only against buy buttons, which this template lacks.
+    spots: { campaignHome: { at: "page", index: 1, of: 1 } },
   });
+  // 9 Oct 2026, 4th round: Shopify adds a block at the END — of the page, of the product information. The spot is read, never assumed.
+  const home = JSON.stringify({
+    sections: { hero: { type: "hero" }, off: { type: "x", disabled: true }, list: { type: "product-list" }, apps: { type: "apps", blocks: { a: { type: `${APP}/campaign_banner/1` } }, block_order: ["a"] } },
+    order: ["hero", "off", "list", "apps"],
+  });
+  assert.deepEqual(blockSpotIn(home, "campaign_banner", "page"), { at: "page", index: 3, of: 3 });
+  assert.equal(blockSpotIn(home, "rewards_progress", "page"), null);
+  const product = (order: string[]) =>
+    JSON.stringify({
+      sections: {
+        main: {
+          type: "main-product",
+          blocks: { title: { type: "title" }, price: { type: "price" }, buy: { type: "buy_buttons" }, badge: { type: `${APP}/outlet_badge/1` }, tiers: { type: `${APP}/quantity_tiers/1` } },
+          block_order: order,
+        },
+      },
+      order: ["main"],
+    });
+  assert.deepEqual(blockSpotIn(product(["title", "price", "buy", "badge", "tiers"]), "outlet_badge", "product"), { at: "product", belowBuy: true });
+  assert.deepEqual(blockSpotIn(product(["title", "price", "badge", "buy", "tiers"]), "outlet_badge", "product"), { at: "product", belowBuy: false });
+  // Horizon nests the blocks of the product information in a group: the order is still the page's.
+  const nested = JSON.stringify({
+    sections: { main: { type: "product-information", blocks: { details: { type: "_product-details", blocks: { price: { type: "price" }, buy: { type: "buy-buttons" }, badge: { type: `${APP}/outlet_badge/1` } }, block_order: ["price", "badge", "buy"] } }, block_order: ["details"] } },
+    order: ["main"],
+  });
+  assert.deepEqual(blockSpotIn(nested, "outlet_badge", "product"), { at: "product", belowBuy: false });
+  const placedLow = themePlacementsIn([{ filename: "templates/product.json", content: product(["title", "price", "buy", "badge", "tiers"]) }]);
+  assert.deepEqual(placedLow.spots, { outletBadge: { at: "product", belowBuy: true }, tiersBlock: { at: "product", belowBuy: true } });
+  assert.deepEqual(spotAdvice(placedLow.spots?.outletBadge), { key: "placement.spot.belowBuy", params: {}, move: true });
+  assert.deepEqual(spotAdvice({ at: "page", index: 3, of: 3 }), { key: "placement.spot.pageLow", params: { index: 3, of: 3 }, move: true });
+  assert.deepEqual(spotAdvice({ at: "page", index: 2, of: 5 }), { key: "placement.spot.pageTop", params: { index: 2, of: 5 }, move: false });
+  assert.equal(spotAdvice(undefined), null);
+  // 10 Oct 2026, bod 6: a block that is in the theme is OPENED to be moved — never the link that adds one more.
+  assert.equal(
+    editorOpenUrl("https://x.myshopify.com/admin/themes/current/editor?template=product&addAppBlockId=key/outlet_badge&target=mainSection"),
+    "https://x.myshopify.com/admin/themes/current/editor?template=product",
+  );
+  assert.equal(editorOpenUrl(null), null);
   // The "Top bar" block in the header group (9 Oct 2026, bod 4) counts like the embed's switches; its own switches decide what it shows.
   const headerGroup = (settings: Record<string, unknown>, disabled = false) =>
     JSON.stringify({ sections: { apps: { type: "apps", blocks: { a: { type: `${APP}/top_bar/019a`, disabled, settings } } } }, order: ["apps"] });
@@ -290,6 +332,11 @@ test("themePlacementsIn: each block by its template; the top bar from the embed'
     ]),
     { topBarRewards: false, topBarCampaign: true },
   );
+  // 7th round, bod 5: an announcement strip of one thing counts as that thing's strip, and only as that.
+  const strip = (handle: string, disabled = false) => JSON.stringify({ sections: { apps: { type: "apps", blocks: { a: { type: `${APP}/${handle}/019a`, disabled } } } }, order: ["apps"] });
+  assert.deepEqual(themePlacementsIn([{ filename: "sections/header-group.json", content: strip("announcement_milestones") }]), { topBarRewards: true, topBarCampaign: false });
+  assert.deepEqual(themePlacementsIn([{ filename: "sections/header-group.json", content: strip("announcement_campaign") }]), { topBarRewards: false, topBarCampaign: true });
+  assert.deepEqual(themePlacementsIn([{ filename: "sections/header-group.json", content: strip("announcement_campaign", true) }]), { topBarRewards: false, topBarCampaign: false });
   // A disabled block or a disabled embed does not count.
   const disabled = JSON.stringify({ sections: { main: { type: "main", blocks: { a: { type: `${APP}/outlet_badge/1`, disabled: true } } } } });
   assert.equal(themePlacementsIn([{ filename: "templates/product.json", content: disabled }]).outletBadge, false);

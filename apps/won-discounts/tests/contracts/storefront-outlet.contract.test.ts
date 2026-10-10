@@ -29,7 +29,14 @@ test("Liquid: a row per sale variant (by its numeric id), only the picked varian
   assert.match(liquid, /assign won_picked = product\.selected_or_first_available_variant\.id/);
   assert.match(liquid, /data-won-discounts-outlet-variant="\{\{ v\.id \}\}"\{% if won_many and v\.id != won_picked %\} hidden\{% endif %\}/);
   assert.doesNotMatch(code, /v\.title/, "a row never names its variant: only the picked one is shown");
-  assert.match(liquid, /if d == 'strike_badge_left' and left > 0/);
+  // Each sale says for itself what shows (`s`: 0 nothing, 1 the badge, 2 + the pieces left); a sale without an entry follows `d`.
+  assert.match(liquid, /assign won_level = ov\.s\[key\] \| default: won_legacy/);
+  assert.match(liquid, /if left != nil and won_level > 0/);
+  assert.match(liquid, /if won_level == 2 and left > 0 and won_msg_left == false/);
+  // The sale's own text replaces the default label; its "{left}" is the pieces left (then no separate "Zbývá").
+  assert.match(liquid, /assign won_msg = ov\.m\[key\]/);
+  assert.match(liquid, /assign won_left_token = '%7Bleft%7D' \| url_decode/);
+  assert.match(liquid, /if won_msg != blank -%\}\{\{ won_msg \| escape \}\}/);
   assert.match(liquid, /'outlet\.left' \| t: count: left/);
   for (const marker of ["data-won-discounts-outlet", "data-won-discounts-outlet-variant", "data-won-discounts-outlet-badge", "data-won-discounts-outlet-left"]) {
     assert.ok(liquid.includes(marker), marker);

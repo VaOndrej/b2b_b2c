@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { ConfigIssue } from "../../src/discounts/config.ts";
-import { customLookCss as cssUnder, customLookIssue as issueUnder, LOOK_ROOT, sanitizeCustomLook } from "../../src/discounts/custom-look.ts";
+import { customLookCss as cssUnder, customLookIssue as issueUnder, LOOK_ROOT, MILESTONE_ELEMENTS, sanitizeCustomLook } from "../../src/discounts/custom-look.ts";
 
 // The table's root: what the table's custom look is confined to.
 const WON_BLOCK_ROOT = LOOK_ROOT.tiers;
@@ -65,10 +65,10 @@ test("config → gate → storefront config: Pro ships the scoped stylesheet, Fr
   assert.deepEqual(config.storefront.looks.tiers, { preset: "chips", custom: { vars: { accent: "#0a7d4f" }, css: ".won-tiers__row{color:red}" } });
   const pro = buildStorefrontConfig(gateConfigForPlan(config, "pro").config, { configVersion: "v" });
   // The table's look on the table, and (a config from before the split) its colour on the ladder, as it always showed.
-  assert.equal(pro.appearance.css, ".won-tiers{--won-tiers-accent:#0a7d4f}.won-tiers .won-tiers__row{color:red}.won-ms{--won-tiers-accent:#0a7d4f}");
+  assert.equal(pro.appearance.css, ".won-tiers{--won-tiers-accent:#0a7d4f}.won-tiers .won-tiers__row{color:red}" + MILESTONE_ELEMENTS.map((e) => `${LOOK_ROOT[e]}{--won-tiers-accent:#0a7d4f}`).join(""));
   assert.equal(pro.cards, 1);
   const free = gateConfigForPlan(config, "free");
-  assert.deepEqual(free.config.storefront.looks, { tiers: { preset: "chips" }, milestones: {} }, "the custom look, and the custom colour copied to the ladder, are Pro");
+  assert.deepEqual(free.config.storefront.looks, { tiers: { preset: "chips" }, milestones: {}, msBar: {}, msCart: {}, msDrawer: {} }, "the custom look, and the custom colour copied to the ladder, are Pro");
   assert.deepEqual(buildStorefrontConfig(free.config, { configVersion: "v" }).appearance, { preset: "chips" });
   assert.deepEqual(config.storefront.looks.tiers?.custom?.vars, { accent: "#0a7d4f" }, "the stored config is untouched by the gate");
   const plain = buildStorefrontConfig(sanitizeConfig({}).config, { configVersion: "v" });

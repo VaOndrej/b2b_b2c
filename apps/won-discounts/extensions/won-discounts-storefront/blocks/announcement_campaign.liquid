@@ -1,0 +1,57 @@
+{% comment %}
+  Announcement: Campaign (feedback 10 Oct 2026, 7th round, bod 5): the running campaign's name and the time left as
+  an announcement strip of its own, so the theme editor lists it by name (Add section → Apps in the header group,
+  above or below the theme's announcement bar). The "Top bar" block (blocks/top_bar.liquid) carried it together
+  with the Milestones sentence; that one stays for the themes that have it.
+  WHICH campaign runs is decided in the browser (pages are cached; assets/won-discounts-blocks.js), the strip hides
+  itself while none does, and with it on the page the embed's fallback strip is not shown a second time. In the
+  theme editor it shows a sample. Whether the countdown shows is the campaign's look, picked in the app.
+{% endcomment %}
+{%- liquid
+  assign won_camps = app.metafields.won_discounts.storefront_config.value.camps
+  assign won_tx_key = 'tx_' | append: request.locale.iso_code | downcase
+  assign won_tx = app.metafields.won_discounts[won_tx_key].value
+  assign won_ends = 'campaign.ends' | t
+  assign won_ends = won_tx['campaign.ends'] | default: won_ends
+  assign won_units = 'campaign.units' | t
+  assign won_units = won_tx['campaign.units'] | default: won_units
+  assign won_sample = 'campaign.sample' | t
+-%}
+<div
+  class="won-topbar won-topbar--block"
+  data-won-discounts-topbar-block="campaign"
+  style="--won-topbar-bg: {{ block.settings.background }}; --won-topbar-text: {{ block.settings.text_color }};"
+  {% unless request.design_mode %}hidden{% endunless %}
+  {{ block.shopify_attributes }}
+>
+  {%- if won_camps != blank or request.design_mode -%}
+    <div
+      class="won-campaign"
+      data-won-discounts-campaign
+      data-text="{{ block.settings.text | escape }}"
+      data-ends="{{ won_ends | escape }}"
+      data-units="{{ won_units | escape }}"
+      {% if request.design_mode %}data-sample="{{ won_sample | escape }}"{% endif %}
+      hidden
+    >
+      <script type="application/json">{% if won_camps != blank %}{{ won_camps | json | replace: '</', '<\/' }}{% else %}[]{% endif %}</script>
+      <p class="won-campaign__title"></p>
+      <p class="won-campaign__time" aria-live="off"></p>
+    </div>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Announcement: Campaign",
+  "target": "section",
+  "stylesheet": "won-discounts.css",
+  "javascript": "won-discounts-blocks.js",
+  "settings": [
+    { "type": "paragraph", "content": "A strip with the running campaign and the time left to its end. Add it to the header, above or below the announcement bar. It hides itself when no campaign runs." },
+    { "type": "text", "id": "text", "label": "Text", "info": "{name} is replaced with the campaign's name.", "default": "{name}" },
+    { "type": "color", "id": "background", "label": "Background", "default": "#111111" },
+    { "type": "color", "id": "text_color", "label": "Text", "default": "#ffffff" }
+  ]
+}
+{% endschema %}

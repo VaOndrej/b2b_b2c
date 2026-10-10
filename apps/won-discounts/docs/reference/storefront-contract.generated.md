@@ -105,6 +105,7 @@ Stable hooks for scripts and tests (do not style by them; classes are for stylin
 - `data-won-discounts-outlet`
 - `data-won-discounts-outlet-badge`
 - `data-won-discounts-outlet-left`
+- `data-won-discounts-outlet-sample`
 - `data-won-discounts-outlet-variant`
 - `data-won-discounts-progress`
 - `data-won-discounts-saved`

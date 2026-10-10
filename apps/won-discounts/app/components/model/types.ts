@@ -573,7 +573,7 @@ export interface TierSetView {
 /** Is the quantity table on the live theme's product page (read_themes, templates/product*.json)? */
 export type TiersBlockView =
   /** In `templates/product.json` (audit P3-8). `alternates` = alternate product templates that have it too (additive, T5). */
-  | { state: "on"; themeName: string; alternates?: string[] }
+  | { state: "on"; themeName: string; alternates?: string[]; /** Where it sits against the buy buttons (PlacementSpot); absent = not known. */ spot?: PlacementSpot; /** The theme editor on the product template with the table selected (nothing is added). */ openUrl?: string | null }
   /**
    * Not in `templates/product.json`. `addUrl`: theme-editor deep link with addAppBlockId (null when the shop / API key is
    * unknown). `alternates` = alternate product templates that do have it ("jen v šabloně X"; additive, T5).
@@ -588,7 +588,19 @@ export type TiersBlockView =
  * (no access to the theme, a Liquid template): "not verified", never "missing".
  */
 export type PlacementKey = "cartBlock" | "rewardsProduct" | "rewardsHome" | "topBarRewards" | "campaignHome" | "campaignProduct" | "topBarCampaign" | "outletBadge";
-export type ThemePlacements = Partial<Record<PlacementKey, boolean>>;
+/**
+ * WHERE a block that is in the theme sits (feedback 9 Oct 2026, 4th round): Shopify adds a block at the end of
+ * the page or of the product section and the app cannot choose the spot, so the app reads it and says when the
+ * block landed where a customer will not see it.
+ *   page     the block's section is the `index`-th of `of` enabled sections of the template (1 = the top);
+ *   product  whether the block comes after the buy buttons of the product section (known only when the section
+ *            has a buy-buttons block to compare with).
+ */
+/** `select`: what the theme editor opens the block by (the section as the editor names it, the block's key); absent = not known. */
+export type SpotSelect = { section: string; block: string };
+export type PlacementSpot = ({ at: "page"; index: number; of: number } | { at: "product"; belowBuy: boolean }) & { select?: SpotSelect };
+export type SpotKey = PlacementKey | "tiersBlock";
+export type ThemePlacements = Partial<Record<PlacementKey, boolean>> & { spots?: Partial<Record<SpotKey, PlacementSpot>> };
 
 /**
  * The storefront config metafield (K5) as the last sync left it: `cv` (the
@@ -747,7 +759,7 @@ export interface CombinationCheckView {
 
 /** One storefront element's stored look, as its section shows it (looks.server.ts lookView). */
 export interface LookView {
-  element: "tiers" | "milestones" | "outlet" | "campaign" | "cart";
+  element: "tiers" | "milestones" | "msBar" | "msCart" | "msDrawer" | "outlet" | "campaign" | "cart";
   /** The ready-made looks to pick from (one only = nothing to pick: the cart). */
   presets: string[];
   preset: string;
@@ -829,8 +841,10 @@ export interface RewardsScreenData {
   status?: ModuleStatus;
   plan: "free" | "pro";
   configVersion: string | null;
-  /** The ladder's look on the storefront. */
+  /** The look of the ladder in the "Milestones" block of a page. */
   look?: LookView;
+  /** The ladder's look in its other places — the top strip, the cart page, the cart drawer (7th round, bod 3) — in that order. */
+  placeLooks?: LookView[];
   /** The look of the cart panel and the top strip (the frames the ladder sits in). */
   cartLook?: LookView;
   currencies: CurrencyView[];
@@ -907,6 +921,18 @@ export interface OutletRunView {
   oversold: number;
   /** The storefront badge block shows this variant (false = hidden for this sale by the merchant). */
   showBadge: boolean;
+  /** How THIS sale shows on the storefront (its own level; a sale from before they were per sale: the shop's). */
+  display: "silent" | "strike" | "strike_badge" | "strike_badge_left";
+  /** The merchant's own badge text for this sale ("" = the default label). */
+  message: string;
+  /** This sale's variant takes the other discounts too (its own switch; the shop-wide rule is `withOthers`). */
+  combine: boolean;
+  /** The discounts the sale takes ([] = none; all three = like any product). */
+  combineWith: ("tiers" | "product" | "order")[];
+  /** The product page on the storefront with this variant picked (a draft product: its preview); null = not known. */
+  webUrl: string | null;
+  /** The theme editor on the product template showing this product and variant; null = not known. */
+  editorUrl: string | null;
   status: OutletRunStatus;
   endReason: "quota" | "date" | "manual" | null;
   endsAt: string | null;
@@ -963,7 +989,7 @@ export interface OutletScreenData {
 }
 
 export type OutletActionResult =
-  | { ok: true; kind: "started" | "ended" | "reopened" | "kept" | "retried" | "badgeShown" | "badgeHidden"; skippedLists?: number; pending?: boolean }
+  | { ok: true; kind: "started" | "ended" | "reopened" | "kept" | "retried" | "badgeShown" | "badgeHidden" | "webSaved" | "combineOn" | "combineOff"; skippedLists?: number; pending?: boolean }
   | { ok: false; reason: "invalid"; errors: FieldError[]; values?: SubmittedValues }
   | { ok: false; reason: "failed"; message: string; values?: SubmittedValues };
 

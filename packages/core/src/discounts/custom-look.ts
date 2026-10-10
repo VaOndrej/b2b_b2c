@@ -16,16 +16,37 @@ import type { ConfigIssue } from "./config/types.ts";
 import { CUSTOM_CSS_MAX_LENGTH, scopeCss, type ScopeCssReason } from "./scope-css.ts";
 
 /**
- * The storefront elements with a look of their own: the quantity table, the Milníky ladder, the sale badge, the
- * campaign banner, and the cart panel with the top strip (the frames the ladder and the gifts sit in).
+ * The storefront elements with a look of their own: the quantity table, the Milníky ladder — once per place it
+ * stands in (feedback 10 Oct 2026, 7th round, bod 3: a strip at the top cannot look like the ladder of the cart
+ * page): the "Milestones" block of a page (`milestones`), the announcement strip (`msBar`), the cart page
+ * (`msCart`) and the cart drawer (`msDrawer`) —, the sale badge, the campaign banner, and the cart panel with the
+ * top strip (the frames the ladder and the gifts sit in).
  */
-export const LOOK_ELEMENTS = ["tiers", "milestones", "outlet", "campaign", "cart"] as const;
+export const LOOK_ELEMENTS = ["tiers", "milestones", "msBar", "msCart", "msDrawer", "outlet", "campaign", "cart"] as const;
 export type LookElement = (typeof LOOK_ELEMENTS)[number];
 
-/** The root each element's look is confined to (the theme app extension's markup). */
+/** The ladder's looks: the block of a page first (the look the ladder had everywhere before the places had their own). */
+export const MILESTONE_ELEMENTS = ["milestones", "msBar", "msCart", "msDrawer"] as const satisfies readonly LookElement[];
+/** The places that got a look of their own on 10 Oct 2026 (a config from before has none of them: looks.ts converts it). */
+export const MILESTONE_PLACES = ["msBar", "msCart", "msDrawer"] as const satisfies readonly LookElement[];
+export type MilestonePlace = (typeof MILESTONE_PLACES)[number];
+
+export function isMilestoneElement(element: LookElement): boolean {
+  return (MILESTONE_ELEMENTS as readonly string[]).includes(element);
+}
+
+/**
+ * The root each element's look is confined to (the theme app extension's markup). The ladder's four roots never
+ * match the same element: the block's ladder is a child of `.won-progress` outside the strip, the strip's is
+ * inside `.won-topbar`, the cart's inside the panel, which says where it stands (`.won-cart--page` /
+ * `.won-cart--drawer`, assets/won-discounts-cart.js).
+ */
 export const LOOK_ROOT: Readonly<Record<LookElement, string>> = {
   tiers: ".won-tiers",
-  milestones: ".won-ms",
+  milestones: ":not(.won-topbar)>.won-progress>.won-ms",
+  msBar: ".won-topbar .won-ms",
+  msCart: ".won-cart--page .won-ms",
+  msDrawer: ".won-cart--drawer .won-ms",
   outlet: ".won-outlet",
   campaign: ".won-campaign",
   cart: ":is(.won-cart,.won-cart-slot,.won-topbar)",

@@ -1159,7 +1159,7 @@ const DEV_BAD_LOOK_FIXTURE: WonDiscountsConfig = readStoredConfig(withTableLook(
  * One element's look for a module page's fixture: `?look=<a ready-made look>` (green, and on Milníky with the
  * flash) or `?look=custom` (own colours and CSS; shown on Pro) or `?look=issue` (stored CSS that cannot be used).
  */
-export function devLook(config: WonDiscountsConfig, element: "milestones" | "outlet" | "campaign" | "cart", look: string | null | undefined): LookView {
+export function devLook(config: WonDiscountsConfig, element: "milestones" | "msBar" | "msCart" | "msDrawer" | "outlet" | "campaign" | "cart", look: string | null | undefined): LookView {
   const custom = { vars: { accent: "#0a7d4f", tint: "#f2fbf6", radius: 4 }, css: look === "issue" ? ".a{background:url(x)}" : `.won-${element === "milestones" ? "ms__text" : element === "outlet" ? "outlet__badge" : element === "cart" ? "cart__saved" : "campaign__title"} { text-transform: uppercase; }` };
   const stored = !look ? undefined : look === "custom" || look === "issue" ? { custom } : { preset: look, accent: "green", ...(element === "milestones" ? { blink: true } : {}) };
   return lookView(stored ? readStoredConfig({ ...config, storefront: { ...config.storefront, looks: { [element]: stored } } }) : config, element);
@@ -1349,6 +1349,8 @@ export function devRewardsScreen(opts: { plan: "free" | "pro"; state: string | n
     plan: opts.plan,
     configVersion: "dev-config-version",
     look: devLook(config, "milestones", opts.look),
+    // The other places keep the ready-made look unless the custom one is asked for (a look's name is not every place's).
+    placeLooks: (["msBar", "msCart", "msDrawer"] as const).map((place) => devLook(config, place, opts.look === "custom" || opts.look === "issue" ? opts.look : null)),
     // ?look=custom | issue: the cart's own look too (it has no ready-made ones to pick).
     cartLook: devLook(config, "cart", opts.look === "custom" || opts.look === "issue" ? opts.look : null),
     currencies: currencyViews(config.markets, { marketNames: DEV_MARKET_NAMES }),
@@ -1467,6 +1469,10 @@ function devRun(id: string, variant: number, over: Partial<DevRun>): DevRun {
     endsAt: null,
     priceListIds: "[]",
     showBadge: true,
+    display: "strike_badge_left",
+    message: "Doprodej · zbývá {left} ks",
+    combine: null,
+    combineWith: null,
     status: "active",
     endReason: null,
     sold: 0,
@@ -1548,7 +1554,7 @@ export function devOutletScreen(opts: { plan: "free" | "pro"; state: string | nu
     outletRunView(
       r,
       DEV_OUTLET_EVENTS.filter((e) => e.runId === r.id),
-      { locale: opts.locale, timezone: DEV_TIMEZONE, titles: DEV_OUTLET_TITLES, listTitles: new Map([["gid://shopify/PriceList/1", "Slovensko"]]), money: devMoney(opts.locale) },
+      { locale: opts.locale, timezone: DEV_TIMEZONE, titles: DEV_OUTLET_TITLES, links: new Map(runs.map((x) => [x.variantId, { webUrl: `https://won-dev.myshopify.com/products/won-demo?variant=${x.variantId.split("/").pop()}`, editorUrl: `https://won-dev.myshopify.com/admin/themes/current/editor?template=product&previewPath=${encodeURIComponent(`/products/won-demo?variant=${x.variantId.split("/").pop()}`)}` }])), listTitles: new Map([["gid://shopify/PriceList/1", "Slovensko"]]), money: devMoney(opts.locale) },
     );
   return {
     plan: opts.plan,
@@ -1567,7 +1573,8 @@ export function devOutletScreen(opts: { plan: "free" | "pro"; state: string | nu
     ],
     limits: { percentMin: OUTLET_LIMITS.percentMin, percentMax: OUTLET_LIMITS.percentMax, quotaMax: OUTLET_LIMITS.quotaMax, running: OUTLET_LIMITS.running, priceLists: OUTLET_LIMITS.priceLists },
     badgeBlockAddUrl: outletBlockAddUrl(DEV_SHOP, "dev-api-key"),
-    placed: { outletBadge: false },
+    // ?state=badge: the block is in the theme, where Shopify added it (below the buy buttons).
+    placed: opts.state === "badge" ? { outletBadge: true, spots: { outletBadge: { at: "product", belowBuy: true } } } : { outletBadge: false },
     ordersCounted: opts.orders ?? false,
   };
 }
@@ -1698,7 +1705,8 @@ export function devCampaignsScreen(opts: { plan: "free" | "pro"; state: string |
     editing: opts.edit ? (views.find((v) => v.id === opts.edit && (v.status === "running" || v.status === "scheduled")) ?? null) : null,
     limits: { campaigns: CONFIG_LIMITS.campaigns, maxDays: CAMPAIGN_LIMITS.maxDays, minLeadMinutes: CAMPAIGN_LIMITS.minLeadMinutes },
     placements: placementLinks(DEV_SHOP, "dev-api-key", CAMPAIGN_BLOCK_HANDLE),
-    placed: { campaignHome: true, campaignProduct: false, topBarCampaign: false },
+    // The banner where Shopify adds it: the last section of the home page (the row says so and asks for a move).
+    placed: { campaignHome: true, campaignProduct: false, topBarCampaign: false, spots: { campaignHome: { at: "page", index: 6, of: 6 } } },
   };
 }
 

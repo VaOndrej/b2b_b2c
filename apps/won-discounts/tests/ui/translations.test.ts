@@ -42,7 +42,7 @@ test("every text the merchant can change has a place and a name in both admin la
   const keys = storefrontTextKeys();
   assert.ok(keys.length >= 36, String(keys.length));
   assert.equal(keys.includes("outlet.left"), false, "a plural Shopify fills in");
-  assert.equal(keys.includes("progress.empty") || keys.includes("campaign.sample"), false, "what only the theme editor shows");
+  assert.equal(keys.includes("progress.empty") || keys.includes("campaign.sample") || keys.includes("outlet.sample"), false, "what only the theme editor shows");
   for (const key of keys) {
     assert.ok(TEXT_GROUPS.includes(textGroup(key)));
     for (const locale of ["cs", "en"] as const) {

@@ -141,8 +141,9 @@
         p.setAttribute("data-won-discounts-cart", "");
         slot.prepend(p);
       }
-      /* Milníky: every step on the cart page, the compact ladder in the cart drawer. */
+      /* Milníky: every step on the cart page, the compact ladder in the cart drawer; the panel says where it stands (each place has its own look). */
       p.__size = slot.matches?.(DRAWERS.join(",")) ? "compact" : "full";
+      p.className = `won-cart won-cart--${p.__size === "full" ? "page" : "drawer"}`;
       return p;
     });
   };

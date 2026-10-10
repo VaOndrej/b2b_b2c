@@ -71,9 +71,14 @@ export interface Candidate {
   cappedLabel?: string;
 }
 
+/** The line is not in the order discount's base: excluded, or a sale line that does not take the order discount (OUTLET_ALLOW.order = 4). */
+export const outOfOrder = (w: WorkLine): boolean => w.excluded !== null || (w.no & 4) !== 0;
+
 export interface WorkLine {
   line: NormalizedLine;
   excluded: "outlet" | "gift" | null;
+  /** A sale line that takes only some discounts: the classes it stays out of (cart.ts OUTLET_ALLOW bits); 0 = none. */
+  no: number;
   ruleSet: Set<string>;
   /** Rules the line lists by a plain ref (targeting.ts lineTargeting): their common minimum decides for it. */
   plain: Set<string>;

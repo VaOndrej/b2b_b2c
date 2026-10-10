@@ -131,7 +131,7 @@ test("a new shop: no sets, the market currencies, the table on the product page,
   assert.deepEqual(data.gateNotes, []);
   assert.equal(data.marginOn, false);
   assert.equal(data.competingRules, 0);
-  assert.deepEqual(data.block, { state: "on", themeName: "Horizon" });
+  assert.deepEqual(data.block, { state: "on", themeName: "Horizon", openUrl: "https://tiers-1.myshopify.com/admin/themes/current/editor?template=product" });
   assert.deepEqual(data.storefront, { state: "missing" });
   assert.equal(data.preview.preset, "highlight");
   assert.equal(data.preview.tokens?.fontBody, "Inter");

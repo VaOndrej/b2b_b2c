@@ -296,9 +296,60 @@ test("badge per variant: a sale started with 'bez štítku' runs like any other,
   const page = await loadOutletScreen(own);
   assert.equal(page.running.find((r) => r.id === run.id)!.showBadge, false);
   const html = text(await renderPage(createElement(OutletScreen, page)));
-  assert.match(html, /Štítek na webu je u této varianty skrytý/);
-  assert.match(html, /Ukázat štítek/);
-  assert.match(html, /Skrýt štítek/, "the other running sale offers to hide it");
+  // The card "Na webu teď" draws what the customer sees: no badge for the hidden one.
+  assert.match(html, /data-won-outlet-web="[^"]+"[\s\S]*Bez štítku\. Zákazník vidí přeškrtnutou cenu\./);
+  // Since 10 Oct 2026 how a sale shows is changed in one place of the sale: its level and its own text.
+  assert.match(html, /Upravit štítek/);
+  assert.doesNotMatch(html, /Skrýt štítek|Ukázat štítek/);
+
+  // "Upravit zobrazení": the level and the badge's own text of the running sale; the block's value follows, the price does not move.
+  const webForm = (display: string, message: string) => formOf([[F.intent, OUTLET_INTENT.web], [F.run, run.id], [F.saleDisplay, display], [F.message, message]]);
+  assert.deepEqual(await outletAction(own, webForm("strike_badge_left", "  Doprodej,  zbývá {left} ks ")), { ok: true, kind: "webSaved" });
+  const value = JSON.parse(stored()!.value) as { v: Record<string, number>; s?: Record<string, number>; m?: Record<string, string> };
+  assert.deepEqual(Object.keys(value.v).sort(), [numeric(shown), numeric(hidden)].sort(), "saving how it shows brings a hidden badge back");
+  assert.equal(value.s?.[numeric(hidden)], 2);
+  assert.equal(value.m?.[numeric(hidden)], "Doprodej, zbývá {left} ks");
+  assert.equal(fake.variants.get(hidden)!.price, "15.00");
+  const after = (await loadOutletScreen(own)).running.find((r) => r.id === run.id)!;
+  assert.deepEqual([after.display, after.message, after.showBadge], ["strike_badge_left", "Doprodej, zbývá {left} ks", true]);
+  // Only the badge can change while it runs: the struck price was written at the start.
+  const silent = await outletAction(own, webForm("silent", ""));
+  assert.deepEqual(!silent.ok && silent.reason === "invalid" && silent.errors?.map((e) => e.key), ["outlet.error.displayPrice"]);
+  const junk = await outletAction(own, webForm("loud", "x".repeat(81)));
+  assert.deepEqual(!junk.ok && junk.reason === "invalid" && junk.errors?.map((e) => e.key), ["outlet.error.display", "outlet.error.message"]);
+});
+
+test("a sale that takes the other discounts too (10 Oct 2026, bod 5): its variant is not flagged as a sale item, so checkout and the store treat it as any product; switched per sale, also while it runs", async () => {
+  const { fake, ctx, product, variant } = setup("pro");
+  const flag = () => fake.variants.get(variant)!.metafields?.get("$app:won_discounts/outlet");
+  // Started with "i s ostatními slevami": the price is lowered, the flag is not written.
+  const form = startForm(variant, product.id);
+  form.set(F.combine, "1");
+  assert.equal((await outletAction(ctx, form)).ok, true);
+  const run = (await db.prisma.outletRun.findFirst({ where: { shop, variantId: variant } }))!;
+  assert.equal(run.combine, true);
+  assert.equal(flag(), undefined, "no sale flag: the other discounts apply");
+  assert.equal((await loadOutletScreen(ctx)).running[0]!.combine, true);
+  // Switched off while it runs: the flag is written now; and back on: removed again.
+  const toggle = (value: "0" | "1") => outletAction(ctx, formOf([[F.intent, OUTLET_INTENT.combine], [F.run, run.id], [F.combine, value]]));
+  assert.deepEqual(await toggle("0"), { ok: true, kind: "combineOff" });
+  assert.notEqual(flag(), undefined, "flagged: no other discount");
+  assert.deepEqual(await toggle("1"), { ok: true, kind: "combineOn" });
+  assert.equal(flag(), undefined);
+
+  // 6th round: WHICH discounts the sale takes. The flag is then a number, the sum of the allowed ones (core OUTLET_ALLOW).
+  const pick = (...takes: string[]) => outletAction(ctx, formOf([[F.intent, OUTLET_INTENT.combine], [F.run, run.id], [F.combine, "1"], [F.combineWith, "_"], ...takes.map((c) => [F.combineWith, c] as [string, string])]));
+  assert.deepEqual(await pick("tiers"), { ok: true, kind: "combineOn" });
+  assert.equal(flag()?.value, "1", "the quantity discount only");
+  assert.deepEqual((await loadOutletScreen(ctx)).running[0]!.combineWith, ["tiers"]);
+  assert.deepEqual(await pick("order", "tiers"), { ok: true, kind: "combineOn" });
+  assert.equal(flag()?.value, "5");
+  assert.deepEqual(await pick("tiers", "product", "order"), { ok: true, kind: "combineOn" });
+  assert.equal(flag(), undefined, "every one = like any product");
+  // "With the discounts I pick" and none ticked: refused, nothing changes.
+  const none = await pick();
+  assert.deepEqual(!none.ok && none.reason === "invalid" && none.errors?.map((e) => e.key), ["outlet.error.combineWith"]);
+  assert.deepEqual((await loadOutletScreen(ctx)).running[0]!.combineWith, ["tiers", "product", "order"]);
 });
 
 test("badge per variant: another shop's sale is never touched (SEC-2); an ended sale has nothing to switch", async () => {

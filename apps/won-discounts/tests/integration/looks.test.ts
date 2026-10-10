@@ -6,6 +6,7 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 
+import { LOOK_ROOT, MILESTONE_ELEMENTS, MILESTONE_PLACES } from "@won/core/discounts/custom-look";
 import { LOOK_PRESET_CSS, MILESTONE_BLINK_CSS } from "@won/core/discounts/looks";
 
 import type { PrismaClient } from "../../app/generated/prisma/client.ts";
@@ -50,6 +51,9 @@ const liveCss = (store: FakeStore) => (store.sync.storefrontConfig() as { appear
 const stored = async () => (await loadConfig(db.prisma, shop)).config.storefront;
 /** A new shop's table: the highlighted look, stored with every element's look. */
 const NEW_SHOP = { tiers: { preset: "highlight" } };
+/** The ladder's places as they are stored once any look of the ladder was saved: ready-made, and never converted again. */
+const PLACES = { msBar: {}, msCart: {}, msDrawer: {} };
+const MS = LOOK_ROOT.milestones;
 
 test("Free: an element's ready-made look, colour and flash are saved and reach the storefront; its custom look fields are not taken (BILL-1)", async () => {
   const store = new FakeStore();
@@ -57,19 +61,20 @@ test("Free: an element's ready-made look, colour and flash are saved and reach t
   const r = await looksAction(ctx, await look("milestones", [["preset", "checklist"], ["accent", "violet"], ["blink", "on"], ["look.accent", "#ff0000"], ["look.css", ".won-ms__text{color:red}"]]));
   assert.ok(r.ok, JSON.stringify(r));
   await syncIdle(shop);
-  assert.deepEqual((await stored()).looks, { ...NEW_SHOP, milestones: { preset: "checklist", accent: "violet", blink: true } });
-  assert.equal(liveCss(store).css, `${LOOK_PRESET_CSS.milestones.checklist}${MILESTONE_BLINK_CSS}.won-ms{--won-tiers-accent:#6d28d9}`);
-  // Back to the first look, the theme's colour, no flash: nothing is stored and nothing is sent.
+  assert.deepEqual((await stored()).looks, { ...NEW_SHOP, milestones: { preset: "checklist", accent: "violet", blink: true }, ...PLACES });
+  // Only the block of a page: the strip and the cart keep their own look (7th round, bod 3).
+  assert.equal(liveCss(store).css, `${LOOK_PRESET_CSS.milestones.checklist}${MILESTONE_BLINK_CSS}${MS}{--won-tiers-accent:#6d28d9}`);
+  // Back to the first look, the theme's colour, no flash: the ladder has no look of its own and nothing is sent.
   const back = await looksAction(ctx, await look("milestones", [["preset", "track"], ["accent", "theme"]]));
   assert.ok(back.ok, JSON.stringify(back));
   await syncIdle(shop);
-  assert.deepEqual((await stored()).looks, NEW_SHOP);
+  assert.deepEqual((await stored()).looks, { ...NEW_SHOP, ...PLACES });
   assert.equal(liveCss(store).css, undefined);
   // The table is saved the same way, on Free too: its look and colour, never the custom look fields.
   const table = await looksAction(ctx, await look("tiers", [["preset", "tiles"], ["accent", "orange"], ["look.css", ".won-tiers__row{color:red}"]]));
   assert.ok(table.ok, JSON.stringify(table));
   await syncIdle(shop);
-  assert.deepEqual((await stored()).looks, { tiers: { preset: "tiles", accent: "orange" } });
+  assert.deepEqual((await stored()).looks, { tiers: { preset: "tiles", accent: "orange" }, ...PLACES });
   assert.deepEqual(liveCss(store), { preset: "tiles", css: ".won-tiers{--won-tiers-accent:#b45309}" });
 });
 
@@ -107,6 +112,7 @@ test("Pro: every element has its own custom look, confined to it — saving one 
     tiers: { preset: "chips", custom: { vars: { accent: "#0a7d4f", radius: 4 }, css: ".won-tiers__row { font-weight: 700 }" } },
     cart: { custom: { vars: {}, css: ".won-cart__saved { font-weight: 700 }" } },
     milestones: { preset: "sentence", custom: { vars: {}, css: ".won-ms__text{letter-spacing:1px}" } },
+    ...PLACES,
     outlet: { preset: "countdown", accent: "red", custom: { vars: { tint: "#fff0f0" }, css: "" } },
     campaign: { preset: "card", custom: { vars: {}, css: ":root{margin:0} .won-tiers{display:none}" } },
   });
@@ -114,7 +120,7 @@ test("Pro: every element has its own custom look, confined to it — saving one 
     preset: "chips",
     css:
       ".won-tiers{--won-tiers-accent:#0a7d4f;--won-tiers-radius:4px}.won-tiers .won-tiers__row{font-weight: 700}" +
-      `${LOOK_PRESET_CSS.milestones.sentence}.won-ms .won-ms__text{letter-spacing:1px}` +
+      `${LOOK_PRESET_CSS.milestones.sentence}${MS} .won-ms__text{letter-spacing:1px}` +
       `${LOOK_PRESET_CSS.outlet.countdown}.won-outlet{--won-tiers-accent:#b42318}.won-outlet{--won-tiers-tint:#fff0f0}` +
       // The campaign's CSS names the table: it can only ever match a table INSIDE the banner — there is none.
       `${LOOK_PRESET_CSS.campaign.card}.won-campaign{margin:0}.won-campaign .won-tiers{display:none}` +
@@ -149,7 +155,9 @@ test("a config stored before the split: its looks show on their pages, the store
   await syncIdle(shop);
   assert.equal(
     liveCss(store).css,
-    ".won-tiers{--won-tiers-accent:#1a7f45}.won-tiers{--won-tiers-accent:#0a7d4f;--won-tiers-radius:4px}.won-tiers .won-tiers__heading{text-transform:uppercase}.won-ms{--won-tiers-accent:#1a7f45}.won-ms{--won-tiers-accent:#0a7d4f}" +
+    ".won-tiers{--won-tiers-accent:#1a7f45}.won-tiers{--won-tiers-accent:#0a7d4f;--won-tiers-radius:4px}.won-tiers .won-tiers__heading{text-transform:uppercase}" +
+      // (the one ladder of then stood in every place: each place keeps its colours)
+      MILESTONE_ELEMENTS.map((e) => `${LOOK_ROOT[e]}{--won-tiers-accent:#1a7f45}${LOOK_ROOT[e]}{--won-tiers-accent:#0a7d4f}`).join("") +
       ":is(.won-cart,.won-cart-slot,.won-topbar) .won-cart__saved{font-weight:700}",
   );
   assert.equal((store.sync.storefrontConfig() as { cards?: 1 }).cards, 1);
@@ -160,6 +168,8 @@ test("a config stored before the split: its looks show on their pages, the store
   assert.deepEqual(again.storefront.looks, {
     tiers: { preset: "chips", accent: "green", custom: { vars: { accent: "#0a7d4f", radius: 4 }, css: ".won-tiers__heading{text-transform:uppercase}" } },
     milestones: { accent: "green", custom: { vars: { accent: "#0a7d4f" }, css: "" } },
+    // The one ladder of then stood in every place: each place took its look, once.
+    ...Object.fromEntries(MILESTONE_PLACES.map((place) => [place, { accent: "green", custom: { vars: { accent: "#0a7d4f" }, css: "" } }])),
     cart: { custom: { vars: {}, css: ".won-cart__saved{font-weight:700}" } },
   });
   const resaved = await looksAction(ctxFor(store, "pro"), formOf([["intent", "cards"], ["configVersion", await version()], ["cardPrices", "on"]]));
@@ -232,6 +242,10 @@ test("the look's view and the brief for an AI are the element's own: its looks, 
   assert.deepEqual(lookView(config, "tiers").presets, ["default", "highlight", "chips", "tiles"]);
   assert.deepEqual([lookView(config, "tiers").preset, lookView(config, "cart").presets], ["highlight", ["plain"]]);
   assert.deepEqual(lookView(config, "milestones").presets, ["track", "checklist", "sentence"]);
+  // The ladder has a look per place; a strip has no list of steps, so no checklist.
+  assert.deepEqual(MILESTONE_PLACES.map((place) => lookView(config, place).presets), [["track", "sentence"], ["track", "checklist", "sentence"], ["track", "checklist", "sentence"]]);
+  for (const place of MILESTONE_PLACES) assert.deepEqual([lookView(config, place).element, lookView(config, place).aiPrompt.includes(".won-ms__track")], [place, true]);
+  assert.equal(new Set(MILESTONE_ELEMENTS.map((e) => aiPrompt(e))).size, 4, "each place's brief says where the ladder stands");
   assert.deepEqual(lookView(config, "outlet").presets, ["badge", "countdown", "strip"]);
   assert.deepEqual(lookView(config, "campaign").presets, ["countdown", "strip", "card"]);
   for (const element of ["tiers", "milestones", "outlet", "campaign", "cart"] as const) {

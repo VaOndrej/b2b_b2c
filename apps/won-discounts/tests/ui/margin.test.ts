@@ -347,7 +347,7 @@ test("B14 / P4 helpers: a refused form's values are echoed and read back; the co
   assert.equal(draft.minMarginPercent, 20, "an out-of-range percent keeps the stored one in the summary");
   assert.equal(draft.collections[0]!.title, "Podzim");
 
-  assert.equal(collectionsSummary([], cs), "Všude platí nastavení pro celý obchod");
+  assert.equal(collectionsSummary([], cs), "Žádná kolekce nemá vlastní hranici");
   assert.equal(collectionsSummary([{ title: "Podzim" }, { title: "" }], cs), "Vlastní nastavení: Podzim a Kolekce bez názvu");
   assert.match(collectionsSummary(Array.from({ length: 7 }, (_, i) => ({ title: `K${i}` })), cs), /^Vlastní nastavení: K0, K1, K2, K3, K4 a další \(2\)$/);
 });

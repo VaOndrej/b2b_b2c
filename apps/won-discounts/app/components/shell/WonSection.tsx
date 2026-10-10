@@ -22,6 +22,7 @@ import { useContext, useEffect, useId, useState, type CSSProperties, type ReactN
 import { useT } from "../../i18n/context";
 import { moduleStateLabel, type ModuleState, type ModuleStatus } from "../model/module-status";
 import { needsAttention, statusLabel, type RuleStatus } from "../model/rule-status";
+import { hoverMark } from "./hover";
 import { PlanBadge } from "./PlanBadge";
 import { ProMarked } from "./pro-marked";
 import {
@@ -190,11 +191,13 @@ function Glyph({ name }: { name: SectionGlyphName }) {
 /** Is a module's piece on the storefront in the live theme? (feedback 3, bod 5; doctrine §19c) */
 export type PlacementState = "in_theme" | "missing" | "unknown";
 
-type PillTone = "live" | "attention" | "neutral";
+type PillTone = "live" | "attention" | "warning" | "neutral";
 
 const PILL_COLOR: Readonly<Record<PillTone, { text: string; dot: string; background: string; border: string }>> = {
   live: { text: WON_LIVE, dot: WON_LIVE, background: "rgba(26,143,75,.10)", border: "rgba(26,143,75,.28)" },
   attention: { text: WON_ATTENTION, dot: WON_ATTENTION, background: "rgba(180,35,24,.07)", border: "rgba(180,35,24,.3)" },
+  // Orange (not the Pro amber): it is there and works, but not where it should be (feedback 10 Oct 2026, bod 6).
+  warning: { text: "#B4530A", dot: "#E0700E", background: "rgba(224,112,14,.10)", border: "rgba(224,112,14,.35)" },
   neutral: { text: "#5f6b78", dot: "#c3cad2", background: WON_WASH, border: WON_LINE },
 };
 
@@ -282,11 +285,12 @@ export function StatusPill({ on, status, state }: { on?: boolean; status?: RuleS
 }
 
 /** Green "V tématu" / red "Chybí v tématu" / grey "Neověřeno": the same three everywhere a piece sits in the theme. */
-export function PlacementPill({ placement }: { placement: PlacementState }) {
+export function PlacementPill({ placement, move = false }: { placement: PlacementState; /** In the theme, but in a spot a customer misses (model/embed.ts spotAdvice): orange. */ move?: boolean }) {
   const { t } = useT();
-  const tone: PillTone = placement === "in_theme" ? "live" : placement === "missing" ? "attention" : "neutral";
-  const label = t(placement === "in_theme" ? "placement.inTheme" : placement === "missing" ? "placement.missing" : "placement.unknown");
-  return <Pill tone={tone} label={label} marker={{ "data-won-placement": placement }} />;
+  const misplaced = placement === "in_theme" && move;
+  const tone: PillTone = misplaced ? "warning" : placement === "in_theme" ? "live" : placement === "missing" ? "attention" : "neutral";
+  const label = t(misplaced ? "placement.misplaced" : placement === "in_theme" ? "placement.inTheme" : placement === "missing" ? "placement.missing" : "placement.unknown");
+  return <Pill tone={tone} label={label} marker={{ "data-won-placement": misplaced ? "misplaced" : placement }} />;
 }
 
 /** The collapse affordance: a clear chevron in a ring, pointing down when open. */
@@ -367,6 +371,8 @@ export interface WonSectionProps {
   state?: ModuleState | ModuleStatus;
   /** Where the section's piece of the storefront stands in the live theme. */
   placement?: PlacementState;
+  /** The piece is in the theme but should be moved (the pill turns orange). */
+  placementMove?: boolean;
   /** The section's one action, in the header (the fix of a missing placement). */
   action?: ReactNode;
   /** Pro-gated section: amber edge + marker; `locked` sells it. */
@@ -392,6 +398,7 @@ export function WonSection({
   status,
   state,
   placement,
+  placementMove = false,
   action,
   pro,
   locked = false,
@@ -432,7 +439,7 @@ export function WonSection({
           <span style={{ fontSize: 15, fontWeight: 700, color: WON_INK, letterSpacing: "-0.01em" }}>{title}</span>
           {pro ? <PlanBadge tier="pro" locked={locked} /> : null}
           {moduleState ? <StatusPill state={moduleState} /> : status ? <StatusPill status={status} /> : on !== undefined ? <StatusPill on={on} /> : null}
-          {placement ? <PlacementPill placement={placement} /> : null}
+          {placement ? <PlacementPill placement={placement} move={placementMove} /> : null}
         </span>
         {summary ? (
           <span style={{ display: "block", marginTop: 3, fontSize: 12.5, lineHeight: 1.35, color: WON_MUTED }}>
@@ -474,6 +481,7 @@ export function WonSection({
           onClick={() => setOpen((v) => !v)}
           aria-expanded={expanded}
           aria-controls={bodyId}
+          {...hoverMark("row")}
           style={{ ...headerRow, border: 0, background: "transparent", padding: 0, margin: 0, cursor: "pointer", font: "inherit", color: "inherit" }}
         >
           {header}
@@ -586,6 +594,7 @@ export function WonBlock({
           onClick={() => setOpen((v) => !v)}
           aria-expanded={expanded}
           aria-controls={bodyId}
+          {...hoverMark("row")}
           style={{ ...row, border: 0, background: "transparent", padding: 0, margin: 0, cursor: "pointer", font: "inherit", color: "inherit" }}
         >
           {head}

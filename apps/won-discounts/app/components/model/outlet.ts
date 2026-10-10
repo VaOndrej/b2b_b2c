@@ -5,12 +5,12 @@
 
 import { OUTLET_DISPLAY_MODES, REOPEN_ON_RETURN_MODES, type OutletDisplay, type ReopenOnReturnMode } from "@won/core/discounts/config";
 import { toMinorUnits } from "@won/core/discounts/money";
-import { outletPricesFor } from "@won/core/discounts/outlet";
+import { OUTLET_COMBINE_CLASSES, outletPricesFor, type OutletCombineClass } from "@won/core/discounts/outlet";
 
 import type { FormDataLike } from "./rule-form";
 
 export const OUTLET_ACTION = "/app/outlet";
-export const OUTLET_INTENT = { start: "start", end: "end", retry: "retry", reopen: "reopen", keep: "keep", settings: "settings", badge: "badge" } as const;
+export const OUTLET_INTENT = { start: "start", end: "end", retry: "retry", reopen: "reopen", keep: "keep", settings: "settings", badge: "badge", web: "web", combine: "combine" } as const;
 export type OutletIntent = (typeof OUTLET_INTENT)[keyof typeof OUTLET_INTENT];
 
 export const OUTLET_FIELD = {
@@ -33,7 +33,21 @@ export const OUTLET_FIELD = {
   hideBadge: "ol.hideBadge",
   /** The running sale's switch: "show" | "hide". */
   badge: "ol.badge",
+  /** How THIS sale shows on the storefront (a new sale's step 2, a running sale's "Upravit zobrazení"). */
+  saleDisplay: "ol.saleDisplay",
+  /** The sale's own badge text ("{left}" = the pieces left); empty = the default label. */
+  message: "ol.message",
+  /** "1" = this sale's variant takes the other discounts too. */
+  combine: "ol.combine",
+  /** With `combine` = "1": the discounts the sale takes (one value each: tiers, product, order). */
+  combineWith: "ol.combineWith",
 } as const;
+
+/** The ticked discounts of a form (unknown values dropped, the fixed order). */
+export function readCombineWith(form: FormDataLike): OutletCombineClass[] {
+  const ticked = new Set(form.getAll(OUTLET_FIELD.combineWith).map(String));
+  return OUTLET_COMBINE_CLASSES.filter((c) => ticked.has(c));
+}
 
 /** The raw draft core validateOutletDraft checks (strings as typed; endsAt as an ISO instant or null). */
 export function readOutletDraft(form: FormDataLike, toInstant: (day: string) => string | null): Record<string, unknown> {
@@ -47,6 +61,11 @@ export function readOutletDraft(form: FormDataLike, toInstant: (day: string) => 
     endsAt: day === "" ? null : (/^\d{4}-\d{2}-\d{2}$/.test(day) ? toInstant(day) : "invalid") ?? "invalid",
     priceListIds: form.getAll(OUTLET_FIELD.priceList).map(String),
     showBadge: text(OUTLET_FIELD.hideBadge) !== "1",
+    display: text(OUTLET_FIELD.saleDisplay),
+    message: String(form.get(OUTLET_FIELD.message) ?? ""),
+    combine: text(OUTLET_FIELD.combine) === "1",
+    // The boxes' form always posts the marker "_": without it (a form from before the boxes) the sale takes every one.
+    ...(form.getAll(OUTLET_FIELD.combineWith).length > 0 ? { combineWith: readCombineWith(form) } : {}),
   };
 }
 
@@ -63,6 +82,10 @@ export function readOutletSettings(form: FormDataLike, stored: { display: Outlet
 /** The new-sale fields a refused form gets back (B14). */
 export const OUTLET_START_FIELDS = [
   OUTLET_FIELD.hideBadge,
+  OUTLET_FIELD.saleDisplay,
+  OUTLET_FIELD.message,
+  OUTLET_FIELD.combine,
+  OUTLET_FIELD.combineWith,
   OUTLET_FIELD.variant,
   OUTLET_FIELD.product,
   OUTLET_FIELD.variantTitle,
@@ -81,6 +104,12 @@ export interface OutletLiveDraft {
   /** `YYYY-MM-DD` or "". */
   endsOn: string;
   priceListIds: string[];
+  /** How the sale shows ("" = nothing picked yet: the form's default applies). */
+  display: string;
+  message: string;
+  combine: boolean;
+  /** The ticked discounts (read whether or not `combine` is picked: the boxes keep their ticks). */
+  combineWith: OutletCombineClass[];
 }
 
 export function readOutletLive(form: FormDataLike): OutletLiveDraft {
@@ -94,6 +123,10 @@ export function readOutletLive(form: FormDataLike): OutletLiveDraft {
     percent: whole(OUTLET_FIELD.percent),
     endsOn: /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : "",
     priceListIds: form.getAll(OUTLET_FIELD.priceList).map(String),
+    display: String(form.get(OUTLET_FIELD.saleDisplay) ?? ""),
+    message: String(form.get(OUTLET_FIELD.message) ?? ""),
+    combine: String(form.get(OUTLET_FIELD.combine) ?? "") === "1",
+    combineWith: readCombineWith(form),
   };
 }
 

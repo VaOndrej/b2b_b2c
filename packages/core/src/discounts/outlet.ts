@@ -14,8 +14,9 @@
 //   validateOutletDraft                 a new sale from the admin form (Pro only, bounds, caps);
 //   outletStorefrontValue               what the storefront block's product metafield carries.
 
-import type { OutletDisplay, ReopenOnReturnMode } from "./config/enums.ts";
+import { OUTLET_DISPLAY_MODES, type OutletDisplay, type ReopenOnReturnMode } from "./config/enums.ts";
 import type { ShopPlan } from "./plan-gate.ts";
+import { OUTLET_ALLOW } from "./cart.ts";
 
 export const OUTLET_LIMITS = {
   percentMin: 1,
@@ -106,10 +107,53 @@ export interface OutletDraft {
   priceListIds: string[];
   /** false = the storefront badge block does not show this sale's variant (the sale itself is the same). */
   showBadge: boolean;
+  /** How this sale shows on the storefront (per sale since 9 Oct 2026); null = not said: the shop's setting applies. */
+  display: OutletDisplay | null;
+  /** The merchant's own badge text for this sale ("{left}" = the pieces left); null = the default label. */
+  message: string | null;
+  /** true = the sale's variant takes other discounts too; false = the shop's rule. Which ones: `combineWith`. */
+  combine: boolean;
+  /** With `combine`: the discounts this sale takes (at least one). All three = like any product (no sale flag). */
+  combineWith: OutletCombineClass[];
 }
 
+/** The discounts a sale can be allowed to take; the order of the checkboxes. Shipping and gifts always apply. */
+export const OUTLET_COMBINE_CLASSES = ["tiers", "product", "order"] as const;
+export type OutletCombineClass = (typeof OUTLET_COMBINE_CLASSES)[number];
+
+/** What a stored sale takes: `combine` off → nothing; on with no list (a sale from before the list) → every class. */
+export function outletCombineWith(combine: boolean | null | undefined, stored: string | null | undefined): OutletCombineClass[] {
+  if (combine !== true) return [];
+  if (stored === null || stored === undefined) return [...OUTLET_COMBINE_CLASSES];
+  const picked = new Set(stored.split(","));
+  return OUTLET_COMBINE_CLASSES.filter((c) => picked.has(c));
+}
+
+/**
+ * The variant's sale flag for what the sale takes (the function's and the storefront's `outlet`): `true` = no
+ * other discount, a number = the sum of the allowed classes (cart.ts OUTLET_ALLOW), null = no flag at all (the
+ * sale takes everything, its variant is like any product).
+ */
+export function outletFlagFor(combineWith: readonly OutletCombineClass[]): true | number | null {
+  const allow = combineWith.reduce((sum, c) => sum | OUTLET_ALLOW[c], 0);
+  return allow === 0 ? true : allow === 7 ? null : allow;
+}
+
+/** The longest badge text a sale may carry (a badge, not a paragraph). */
+export const OUTLET_MESSAGE_MAX = 80;
+
+/** A badge text as stored: trimmed, inner whitespace collapsed; "" → null. Longer than the limit → "too_long". */
+export function outletMessageOf(raw: unknown): string | null | "too_long" {
+  const text = typeof raw === "string" ? raw.replace(/\s+/g, " ").trim() : "";
+  if (text === "") return null;
+  return text.length > OUTLET_MESSAGE_MAX ? "too_long" : text;
+}
+
+/** Does this display level show the badge / the pieces left. */
+export const outletShowsBadge = (display: OutletDisplay): boolean => display === "strike_badge" || display === "strike_badge_left";
+
 export interface OutletDraftError {
-  field: "plan" | "variantId" | "quota" | "percent" | "endsAt" | "priceListIds";
+  field: "plan" | "variantId" | "quota" | "percent" | "endsAt" | "priceListIds" | "display" | "message" | "combineWith";
   key: string;
   params?: Record<string, string | number>;
 }
@@ -152,6 +196,17 @@ export function validateOutletDraft(raw: unknown, ctx: OutletDraftContext): { ok
   if (lists.some((x) => x === null) || new Set(lists).size > OUTLET_LIMITS.priceLists || (rec.priceListIds !== undefined && !Array.isArray(rec.priceListIds))) {
     errors.push({ field: "priceListIds", key: "outlet.error.priceLists", params: { max: OUTLET_LIMITS.priceLists } });
   }
+  // How it shows: absent = not said (the shop's setting applies, as before the levels were per sale); anything else must be a known level.
+  const display = rec.display === undefined || rec.display === null || rec.display === "" ? null : rec.display;
+  if (display !== null && !(OUTLET_DISPLAY_MODES as readonly unknown[]).includes(display)) errors.push({ field: "display", key: "outlet.error.display" });
+  const message = outletMessageOf(rec.message);
+  if (message === "too_long") errors.push({ field: "message", key: "outlet.error.message", params: { max: OUTLET_MESSAGE_MAX } });
+  // What it combines with: with "takes other discounts" at least one of them must be ticked.
+  const combineWith = OUTLET_COMBINE_CLASSES.filter((c) => Array.isArray(rec.combineWith) && rec.combineWith.includes(c));
+  // (No list sent at all = every class: the switch as it was before the list.)
+  const combine = rec.combine === true;
+  const takes = combine ? (rec.combineWith === undefined ? [...OUTLET_COMBINE_CLASSES] : combineWith) : [];
+  if (combine && takes.length === 0) errors.push({ field: "combineWith", key: "outlet.error.combineWith" });
   if (errors.length > 0) return { ok: false, errors };
   if (ctx.runningVariantIds.has(variantId!)) return { ok: false, errors: [{ field: "variantId", key: "outlet.error.running" }] };
   if (ctx.runningVariantIds.size >= OUTLET_LIMITS.running) {
@@ -159,7 +214,7 @@ export function validateOutletDraft(raw: unknown, ctx: OutletDraftContext): { ok
   }
   return {
     ok: true,
-    draft: { variantId: variantId!, productId: productId!, quota, percent, endsAt, priceListIds: [...new Set(lists as string[])], showBadge: rec.showBadge !== false },
+    draft: { variantId: variantId!, productId: productId!, quota, percent, endsAt, priceListIds: [...new Set(lists as string[])], showBadge: rec.showBadge !== false, display: display as OutletDisplay | null, message: message as string | null, combine, combineWith: takes },
   };
 }
 
@@ -170,21 +225,45 @@ export interface OutletStorefrontValue {
   v: Record<string, number>;
   /** Variant numeric id → when its sale ends, epoch seconds: only sales with an end date (the looks with a countdown). */
   e?: Record<string, number>;
+  /**
+   * Variant numeric id → what the badge block shows for THAT sale (per sale since 9 Oct 2026): 0 = nothing,
+   * 1 = the badge, 2 = the badge and the pieces left. A variant without an entry (a sale from before) follows `d`.
+   */
+  s?: Record<string, 0 | 1 | 2>;
+  /** Variant numeric id → the merchant's own badge text for that sale ("{left}" = the pieces left); absent = the default label. */
+  m?: Record<string, string>;
 }
 
 /**
  * A sale whose badge the merchant hid (`showBadge: false`) is left out: the block lists only the variants in `v`,
  * so that variant gets no badge and no "zbývá X ks" while its sale runs as any other. No shown variant = null.
  */
-export function outletStorefrontValue(display: OutletDisplay, runs: readonly { variantId: string; left: number; showBadge?: boolean; endsAt?: Date | null }[]): OutletStorefrontValue | null {
+export function outletStorefrontValue(
+  display: OutletDisplay,
+  runs: readonly { variantId: string; left: number; showBadge?: boolean; endsAt?: Date | null; display?: string | null; message?: string | null }[],
+): OutletStorefrontValue | null {
   const shown = runs.filter((run) => run.showBadge !== false);
   if (shown.length === 0) return null;
   const v: Record<string, number> = {};
   const e: Record<string, number> = {};
+  const s: Record<string, 0 | 1 | 2> = {};
+  const m: Record<string, string> = {};
   for (const run of shown) {
     const id = String(run.variantId).split("/").pop()!;
     v[id] = Math.max(0, Math.floor(run.left) || 0);
     if (run.endsAt && Number.isFinite(run.endsAt.getTime())) e[id] = Math.floor(run.endsAt.getTime() / 1000);
+    // The sale's own level; a sale without one (started before they were per sale) follows `d`.
+    if (typeof run.display === "string" && (OUTLET_DISPLAY_MODES as readonly string[]).includes(run.display)) {
+      s[id] = run.display === "strike_badge_left" ? 2 : run.display === "strike_badge" ? 1 : 0;
+    }
+    const text = outletMessageOf(run.message);
+    if (text && text !== "too_long") m[id] = text;
   }
-  return Object.keys(e).length > 0 ? { d: display, v, e } : { d: display, v };
+  return {
+    d: display,
+    v,
+    ...(Object.keys(e).length > 0 ? { e } : {}),
+    ...(Object.keys(s).length > 0 ? { s } : {}),
+    ...(Object.keys(m).length > 0 ? { m } : {}),
+  };
 }

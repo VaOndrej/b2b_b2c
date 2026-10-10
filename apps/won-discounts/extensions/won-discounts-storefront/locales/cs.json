@@ -40,7 +40,8 @@
   },
   "outlet": {
     "badge": "Výprodej",
-    "left": "Zbývá {{ count }} ks"
+    "left": "Zbývá {{ count }} ks",
+    "sample": "Ukázka. Tenhle produkt ve výprodeji není, zákazník tu nic neuvidí. Výprodej spustíte v aplikaci Won Discounts."
   },
   "progress": {
     "empty": "Milníky zatím nejsou nastavené. V aplikaci Won Discounts otevřete Slevy → Milníky."

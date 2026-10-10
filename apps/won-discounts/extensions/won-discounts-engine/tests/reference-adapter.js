@@ -209,7 +209,9 @@ function readLine(line, currency) {
     if (won.tierRef !== undefined) out.tierRef = won.tierRef;
   }
   // MVP 5 (Výprodej, contract O6): the variant's own flag `outlet` = true.
-  if (isVariant && merchandise.wonOutlet?.jsonValue === true) out.outlet = true;
+  // `true` = no other discount; a number = the discounts the sale takes (cart.ts OUTLET_ALLOW).
+  const flag = isVariant ? merchandise.wonOutlet?.jsonValue : undefined;
+  if (flag === true || (typeof flag === "number" && out.outlet !== true)) out.outlet = flag;
   const cost = isVariant ? merchandise.wonVariant?.jsonValue : null;
   if (typeof cost === "object" && cost !== null) {
     if (cost.cost !== undefined) out.unitCost = cost.cost;

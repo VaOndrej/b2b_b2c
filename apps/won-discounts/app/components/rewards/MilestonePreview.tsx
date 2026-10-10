@@ -11,6 +11,7 @@ import { formatMoney } from "@won/core/discounts/describe";
 
 import { useT } from "../../i18n/context";
 import type { CurrencyView } from "../model/types";
+import { hoverMark } from "../shell/hover";
 import { WON_FONT, WON_INK, WON_LINE, WON_LIVE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "../shell/tokens";
 
 export interface PreviewStep {
@@ -69,6 +70,7 @@ export function MilestonePreview({ steps, currencies }: { steps: readonly Previe
                 data-won-ms-preview-market={view.code}
                 aria-pressed={active}
                 onClick={() => setColumn(view.code)}
+                {...hoverMark("chip")}
                 style={{ ...CHIP, border: `1px solid ${active ? WON_SELECT : "#d6dbe1"}`, background: active ? "#f2f7ff" : WON_SURFACE, color: active ? WON_INK : WON_MUTED }}
               >
                 {marketName(view)}

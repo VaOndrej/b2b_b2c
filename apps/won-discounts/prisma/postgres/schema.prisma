@@ -272,6 +272,18 @@ model OutletRun {
   /// The storefront badge block shows this sale's variant (false = the merchant hid it for this sale; the price
   /// and everything else stay the same).
   showBadge     Boolean   @default(true)
+  /// How THIS sale shows on the storefront ("silent" | "strike" | "strike_badge" | "strike_badge_left"), picked
+  /// when it is started (feedback 9 Oct 2026, 4th round). null = a sale from before: the shop's setting applies.
+  display       String?
+  /// The merchant's own text of the badge for this sale ("{left}" = the pieces left); null = the default label.
+  message       String?
+  /// true = this sale's variant takes the other discounts too (quantity levels, discounts and codes), like any
+  /// product: its `outlet` flag is then not written, so checkout and the storefront treat it the same (feedback
+  /// 10 Oct 2026, bod 5). null / false = the shop's rule applies (a sale item gets no other discount).
+  combine       Boolean?
+  /// With `combine`: the discounts the sale takes, "tiers,product,order" or a part of it (6th round). The variant's
+  /// `outlet` flag is then a number (their sum, core OUTLET_ALLOW) and no flag when all three. null = every one.
+  combineWith   String?
   /// "starting" | "active" | "ending" | "ended"
   status        String
   /// "quota" | "date" | "manual" | null

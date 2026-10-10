@@ -7,9 +7,9 @@
 
 import { useT } from "../i18n/context";
 import type { MessageKey } from "../i18n";
-import { placementOf, type PlacementLinks } from "./model/embed";
-import type { PlacementKey, ThemePlacements } from "./model/types";
-import { PlacementPill, RowNote, WonRow } from "./shell/WonSection";
+import { editorOpenUrl, placementOf, spotAdvice, type PlacementLinks } from "./model/embed";
+import type { PlacementKey, PlacementSpot, ThemePlacements } from "./model/types";
+import { PlacementPill, type PlacementState, RowNote, WonRow } from "./shell/WonSection";
 
 export interface PlacementRow {
   place: keyof PlacementLinks;
@@ -23,6 +23,24 @@ export interface PlacementRow {
   action?: MessageKey;
 }
 
+/**
+ * Where a block landed, or — before it is added — where Shopify will put it (feedback 9 Oct 2026, 4th round: a
+ * banner added to the home page lands at its very end, and nothing said so).
+ */
+export function SpotNote({ placement, spot, place, spotKey }: { placement: PlacementState; spot: PlacementSpot | undefined; place: "product" | "home" | "cart" | "topBar" | "topBarEmbed"; spotKey: string }) {
+  const { t } = useT();
+  const advice = placement === "in_theme" ? spotAdvice(spot) : null;
+  if (advice) {
+    return (
+      <span data-won-placement-spot={spotKey} data-won-placement-move={advice.move ? "yes" : "no"}>
+        <RowNote tone={advice.move ? "attention" : undefined}>{t(advice.key, advice.params)}</RowNote>
+      </span>
+    );
+  }
+  if (placement !== "missing" || (place !== "home" && place !== "product")) return null;
+  return <RowNote>{t(place === "home" ? "placement.spot.howPage" : "placement.spot.howProduct")}</RowNote>;
+}
+
 export function StorefrontPlacements({ links, rows, placed = {} }: { links: PlacementLinks; rows: readonly PlacementRow[]; placed?: ThemePlacements }) {
   const { t } = useT();
   const shown = rows.filter((row) => links[row.place]);
@@ -31,18 +49,22 @@ export function StorefrontPlacements({ links, rows, placed = {} }: { links: Plac
     <div data-won-placements>
       {shown.map((row) => {
         const placement = placementOf(placed[row.key]);
+        const move = placement === "in_theme" && spotAdvice(placed.spots?.[row.key])?.move === true;
+        // In the theme already: the button opens the editor, it never adds a second block.
+        const href = placement === "in_theme" && !row.action ? (editorOpenUrl(links[row.place], placed.spots?.[row.key]) ?? links[row.place]!) : links[row.place]!;
         return (
           <WonRow
             key={row.place}
             tone={placement === "missing" ? "attention" : undefined}
             action={
-              <s-button href={links[row.place]!} target="_top" variant={placement === "missing" ? "primary" : "secondary"}>
+              <s-button href={href} target="_top" variant={placement === "missing" ? "primary" : "secondary"}>
                 {t(row.action ?? (placement === "in_theme" ? "placement.open" : "placement.add"))}
               </s-button>
             }
           >
-            <PlacementPill placement={placement} />
+            <PlacementPill placement={placement} move={move} />
             <RowNote>{t(placement === "in_theme" && row.textOn ? row.textOn : row.text)}</RowNote>
+            <SpotNote placement={placement} spot={placed.spots?.[row.key]} place={row.place} spotKey={row.key} />
           </WonRow>
         );
       })}

@@ -21,6 +21,7 @@ import { formatMoney } from "@won/core/discounts/describe";
 import { useT } from "../../i18n/context";
 import { impactReason, impactRuleSummary, marginImpactHref } from "../model/margin";
 import type { MarginImpactRowView, MarginImpactRuleView, MarginImpactView } from "../model/types";
+import { InfoStrip } from "../shell/InfoStrip";
 import { ProSell } from "../shell/ProSell";
 import { RowNote, WonBlock, WonRow, WonSection } from "../shell/WonSection";
 
@@ -127,6 +128,7 @@ export function ImpactSection({
           </s-text>
         ) : (
           <>
+            <InfoStrip label={t("common.infoOnly")}>{t(enabled ? "margin.impact.info.on" : "margin.impact.info.off")}</InfoStrip>
             {unsaved ? <s-text type="strong">{t("margin.impact.saved")}</s-text> : null}
             {focus ? (
               <s-stack direction="inline" gap="base" alignItems="center">

@@ -5,8 +5,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { sanitizeConfig, type WonDiscountsConfig } from "../../src/discounts/config.ts";
-import { LOOK_ELEMENTS, LOOK_ROOT } from "../../src/discounts/custom-look.ts";
-import { elementLookCss, LOOK_PRESET_CSS, LOOK_PRESETS, lookPreset, looksCss, MILESTONE_BLINK_CSS, outletCountdown, splitLegacyCss } from "../../src/discounts/looks.ts";
+import { LOOK_ELEMENTS, LOOK_ROOT, MILESTONE_ELEMENTS, MILESTONE_PLACES } from "../../src/discounts/custom-look.ts";
+import { elementLookCss, LOOK_PRESET_CSS, LOOK_PRESETS, lookPreset, looksCss, MILESTONE_BLINK_CSS, milestoneBlinkCss, outletCountdown, setLook, splitLegacyCss } from "../../src/discounts/looks.ts";
 import { gateConfigForPlan } from "../../src/discounts/plan-gate.ts";
 import { scopeCss } from "../../src/discounts/scope-css.ts";
 import { buildStorefrontConfig } from "../../src/discounts/storefront-config.ts";
@@ -16,6 +16,8 @@ function configOf(input: Record<string, unknown>): WonDiscountsConfig {
   assert.deepEqual(issues, []);
   return config;
 }
+/** One text per place the ladder stands in (the block of a page, the strip, the cart page, the drawer), in the stylesheet's order. */
+const everyPlace = (text: (root: string, element: (typeof MILESTONE_ELEMENTS)[number]) => string) => MILESTONE_ELEMENTS.map((element) => text(LOOK_ROOT[element], element)).join("");
 const css = (config: WonDiscountsConfig, plan: "free" | "pro") => buildStorefrontConfig(gateConfigForPlan(config, plan).config, { configVersion: "v" }).appearance.css ?? "";
 
 // The storefront settings a shop has stored today (before the split): one look, one colour, one custom look.
@@ -41,6 +43,10 @@ test("conversion: a config stored before the split keeps the storefront as it wa
   assert.deepEqual(config.storefront.looks, {
     tiers: { preset: "chips", accent: "green", custom: STORED_TODAY.storefront.custom },
     milestones: { accent: "green", custom: { vars: { accent: "#0a7d4f" }, css: "" } },
+    // 10 Oct 2026: the one ladder stood in every place, so every place takes its look.
+    msBar: { accent: "green", custom: { vars: { accent: "#0a7d4f" }, css: "" } },
+    msCart: { accent: "green", custom: { vars: { accent: "#0a7d4f" }, css: "" } },
+    msDrawer: { accent: "green", custom: { vars: { accent: "#0a7d4f" }, css: "" } },
   });
 
   // On the storefront: the same declarations and the same rules as before, the table's under the table…
@@ -49,13 +55,13 @@ test("conversion: a config stored before the split keeps the storefront as it wa
     now,
     ".won-tiers{--won-tiers-accent:#1a7f45}.won-tiers{--won-tiers-accent:#0a7d4f;--won-tiers-tint:#f2fbf6;--won-tiers-radius:4px}" +
       `.won-tiers .won-tiers__heading{text-transform: uppercase;}.won-tiers .won-tiers__row[data-active="true"]{font-weight: 700}` +
-      // …and the highlight colour on the ladder (the only other element that read it).
-      ".won-ms{--won-tiers-accent:#1a7f45}.won-ms{--won-tiers-accent:#0a7d4f}",
+      // …and the highlight colour on the ladder (the only other element that read it), wherever it stands.
+      everyPlace((root) => `${root}{--won-tiers-accent:#1a7f45}${root}{--won-tiers-accent:#0a7d4f}`),
   );
   // The old stylesheet with its shared root narrowed to the table is exactly the table's part of the new one.
   assert.ok(now.startsWith(OLD_CSS.split(OLD_ROOT).join(".won-tiers")));
   // Free: the ready-made colour on both, no custom look on either.
-  assert.equal(css(config, "free"), ".won-tiers{--won-tiers-accent:#1a7f45}.won-ms{--won-tiers-accent:#1a7f45}");
+  assert.equal(css(config, "free"), ".won-tiers{--won-tiers-accent:#1a7f45}" + everyPlace((root) => `${root}{--won-tiers-accent:#1a7f45}`));
   assert.equal(buildStorefrontConfig(config, { configVersion: "v" }).appearance.preset, "chips");
 });
 
@@ -76,6 +82,9 @@ test("conversion of the one old CSS: a rule goes to the element its selector nam
     tiers: of(0, 7),
     cart: of(1, 2, 6, 7),
     milestones: of(2, 3, 7),
+    msBar: of(2, 3, 7),
+    msCart: of(2, 3, 7),
+    msDrawer: of(2, 3, 7),
     outlet: of(4, 7),
     campaign: of(5, 7),
   });
@@ -84,7 +93,7 @@ test("conversion of the one old CSS: a rule goes to the element its selector nam
   const config = configOf({ storefront: { appearancePreset: "default", custom: { vars: {}, css: old.join("\n") } } });
   assert.deepEqual(Object.fromEntries(LOOK_ELEMENTS.map((e) => [e, config.storefront.looks[e]?.custom?.css])), split);
   const shipped = css(config, "pro");
-  for (const rule of [".won-tiers .won-tiers__row{padding: 4px}", ":is(.won-cart,.won-cart-slot,.won-topbar) .won-cart__saved{font-weight: 700}", ".won-ms .won-ms__track span{height: 6px}", ".won-outlet .won-outlet__badge{text-transform: uppercase}", ".won-campaign .won-campaign__title{font-size: 2em}", "@media (min-width: 750px){:is(.won-cart,.won-cart-slot,.won-topbar) .won-cart__code input{min-width: 12em}}", ".won-outlet p{margin: 0}"]) {
+  for (const rule of [".won-tiers .won-tiers__row{padding: 4px}", ":is(.won-cart,.won-cart-slot,.won-topbar) .won-cart__saved{font-weight: 700}", ...MILESTONE_ELEMENTS.map((e) => `${LOOK_ROOT[e]} .won-ms__track span{height: 6px}`), ".won-outlet .won-outlet__badge{text-transform: uppercase}", ".won-campaign .won-campaign__title{font-size: 2em}", "@media (min-width: 750px){:is(.won-cart,.won-cart-slot,.won-topbar) .won-cart__code input{min-width: 12em}}", ".won-outlet p{margin: 0}"]) {
     assert.ok(shipped.includes(rule), rule);
   }
   // A text that cannot be divided stays whole with the table (the page then says why it is not used).
@@ -97,10 +106,11 @@ test("conversion of the shape in between (the looks split off, the table still i
   const config = configOf(between);
   assert.deepEqual(config.storefront, {
     cardPricesEnabled: true,
-    looks: { tiers: { preset: "tiles", accent: "red", custom: { vars: { radius: 2 }, css: ".won-ms__text{color:red}" } }, milestones: { preset: "sentence" } },
+    // The ladder's look goes to its places; the strip never followed the ready-made look, so it keeps its own ({}).
+    looks: { tiers: { preset: "tiles", accent: "red", custom: { vars: { radius: 2 }, css: ".won-ms__text{color:red}" } }, milestones: { preset: "sentence" }, msBar: {}, msCart: { preset: "sentence" }, msDrawer: { preset: "sentence" } },
   });
   // The storefront gets what it got: the table's colour and custom look under the table, the ladder's look.
-  assert.equal(css(config, "pro"), ".won-tiers{--won-tiers-accent:#b42318}.won-tiers{--won-tiers-radius:2px}.won-tiers .won-ms__text{color:red}" + LOOK_PRESET_CSS.milestones.sentence);
+  assert.equal(css(config, "pro"), ".won-tiers{--won-tiers-accent:#b42318}.won-tiers{--won-tiers-radius:2px}.won-tiers .won-ms__text{color:red}" + LOOK_PRESET_CSS.milestones.sentence + LOOK_PRESET_CSS.msCart.sentence + LOOK_PRESET_CSS.msDrawer.sentence);
   // Once the table has its look under `looks`, a leftover old field is not read any more.
   assert.deepEqual(configOf({ storefront: { appearancePreset: "tiles", looks: { tiers: { preset: "chips" } } } }).storefront.looks, { tiers: { preset: "chips" } });
 });
@@ -141,18 +151,19 @@ test("every element has its own look: a ready-made one, a colour, and on Pro own
       },
     },
   });
-  assert.deepEqual(Object.keys(config.storefront.looks), ["tiers", "milestones", "outlet", "campaign", "cart"]);
+  assert.deepEqual(Object.keys(config.storefront.looks), [...LOOK_ELEMENTS]);
   assert.equal(buildStorefrontConfig(config, { configVersion: "v" }).appearance.preset, "tiles");
   const pro = css(config, "pro");
   assert.equal(
     pro,
-    LOOK_PRESET_CSS.milestones.checklist + MILESTONE_BLINK_CSS + ".won-ms{--won-tiers-accent:#6d28d9}.won-ms{--won-tiers-accent:#123456}.won-ms .won-ms__text{letter-spacing:1px}" +
+    // The ladder in each of its places (a config from before they had their own look): the strip has no list, so no checklist.
+    everyPlace((root, e) => (e === "msBar" ? "" : LOOK_PRESET_CSS[e].checklist) + milestoneBlinkCss(e) + `${root}{--won-tiers-accent:#6d28d9}${root}{--won-tiers-accent:#123456}${root} .won-ms__text{letter-spacing:1px}`) +
       LOOK_PRESET_CSS.outlet.strip + ".won-outlet{--won-tiers-tint:#fff0f0;--won-tiers-radius:0px}.won-outlet{margin:0}.won-outlet .won-outlet__badge{text-transform:uppercase}" +
       LOOK_PRESET_CSS.campaign.card + ".won-campaign{--won-tiers-accent:#b45309}" +
       ":is(.won-cart,.won-cart-slot,.won-topbar) .won-cart__saved{font-weight:700}",
   );
   // Free: the ready-made looks and colours stay, every custom look goes; the stored config keeps them.
-  assert.equal(css(config, "free"), LOOK_PRESET_CSS.milestones.checklist + MILESTONE_BLINK_CSS + ".won-ms{--won-tiers-accent:#6d28d9}" + LOOK_PRESET_CSS.outlet.strip + LOOK_PRESET_CSS.campaign.card + ".won-campaign{--won-tiers-accent:#b45309}");
+  assert.equal(css(config, "free"), everyPlace((root, e) => (e === "msBar" ? "" : LOOK_PRESET_CSS[e].checklist) + milestoneBlinkCss(e) + `${root}{--won-tiers-accent:#6d28d9}`) + LOOK_PRESET_CSS.outlet.strip + LOOK_PRESET_CSS.campaign.card + ".won-campaign{--won-tiers-accent:#b45309}");
   assert.ok(config.storefront.looks.outlet?.custom);
 });
 
@@ -162,16 +173,18 @@ test("one element's custom CSS can never style another: every rule a merchant wr
     const root = LOOK_ROOT[element];
     assert.equal(out, `${root} .won-tiers{display:none}${root} .won-ms,${root} .won-outlet,${root} .won-campaign{color:red}${root}{opacity:.5}@media (min-width:1px){${root}{margin:0}}`);
   }
-  // The roots: four elements of the extension's markup and the frames the ladder sits in (the cart panel, its slot, the top strip).
-  assert.deepEqual(LOOK_ELEMENTS.map((e) => LOOK_ROOT[e]), [".won-tiers", ".won-ms", ".won-outlet", ".won-campaign", ":is(.won-cart,.won-cart-slot,.won-topbar)"]);
+  // The roots: the extension's markup — the ladder once per place it stands in — and the frames the ladder sits in (the cart panel, its slot, the top strip).
+  assert.deepEqual(LOOK_ELEMENTS.map((e) => LOOK_ROOT[e]), [".won-tiers", ":not(.won-topbar)>.won-progress>.won-ms", ".won-topbar .won-ms", ".won-cart--page .won-ms", ".won-cart--drawer .won-ms", ".won-outlet", ".won-campaign", ":is(.won-cart,.won-cart-slot,.won-topbar)"]);
+  assert.equal(MILESTONE_BLINK_CSS, milestoneBlinkCss("milestones"));
 });
 
 test("ready-made looks: the first of each element is the look it always had (no CSS at all); an unknown one falls back to it with an issue", () => {
   // The table's ready-made looks are classes of its block and the cart has one look: neither has CSS here.
   assert.deepEqual([LOOK_PRESET_CSS.tiers, LOOK_PRESET_CSS.cart, LOOK_PRESETS.tiers.length, LOOK_PRESETS.cart.length], [{}, {}, 4, 1]);
-  for (const element of ["milestones", "outlet", "campaign"] as const) {
-    const presets = LOOK_PRESETS[element];
-    assert.equal(presets.length, 3);
+  for (const element of ["milestones", "msBar", "msCart", "msDrawer", "outlet", "campaign"] as const) {
+    const presets: readonly string[] = LOOK_PRESETS[element];
+    // A strip has no list of steps: two looks. Every other element three.
+    assert.equal(presets.length, element === "msBar" ? 2 : 3);
     assert.deepEqual(Object.keys(LOOK_PRESET_CSS[element]), [...presets]);
     assert.equal(LOOK_PRESET_CSS[element][presets[0]], "");
     assert.equal(lookPreset(element, undefined), presets[0]);
@@ -189,7 +202,7 @@ test("ready-made looks: the first of each element is the look it always had (no 
     }
   }
   // The one base rule with two classes (the list is hidden in the compact size): the look that shows it has three.
-  assert.ok(LOOK_PRESET_CSS.milestones.checklist!.startsWith(".won-ms.won-ms--compact .won-ms__list{display:grid}"));
+  for (const element of ["milestones", "msCart", "msDrawer"] as const) assert.ok(LOOK_PRESET_CSS[element].checklist!.startsWith(`${LOOK_ROOT[element]}.won-ms--compact .won-ms__list{display:grid}`));
   assert.equal(looksCss(configOf({}).storefront), "");
   for (const element of LOOK_ELEMENTS) assert.equal(lookPreset(element, undefined), LOOK_PRESETS[element][0]);
   const junk = sanitizeConfig({ storefront: { looks: { milestones: { preset: "fireworks", accent: "pink", blink: "yes" }, outlet: "x", campaign: { preset: "countdown" } } } });
@@ -208,10 +221,39 @@ test("the sale badge's countdown: the storefront config says when the block need
 
 // --- The size behind the storage decision (docs/won-discounts/navrh-preklady-a-vzhled.md) ------------------
 
-test("five custom looks at their densest fit the storefront config with room to spare", () => {
+test("custom looks and the storefront config's room: a full stylesheet per element fits; only the artificial densest case does not, and the save refuses it", () => {
+  const withCss = (text: string) => configOf({ storefront: { looks: Object.fromEntries(LOOK_ELEMENTS.map((e) => [e, { preset: LOOK_PRESETS[e][LOOK_PRESETS[e].length - 1], custom: { vars: {}, css: text } }])) } });
+  const bytesOf = (text: string) => new TextEncoder().encode(css(withCss(text), "pro")).length;
+  // 124 000 B is what the storefront config may hold. Eight elements with 4 000 characters of ordinary rules each
+  // (a selector, three declarations) take about a third of it.
+  const ordinary = ".won-ms__text{font-size:15px;letter-spacing:.02em;color:#123456}".repeat(Math.floor(4000 / 64));
+  assert.ok(bytesOf(ordinary) < 50_000, `${bytesOf(ordinary)} B`);
+  // The densest text there is (571 seven-character rules, each gets its element's root in front) is past the room
+  // since the ladder has a look per place (10 Oct 2026): the app's save refuses the look that would pass the limit
+  // (looks.server.ts looksAction, "looks.error.tooLarge") — nothing is cut silently.
   const dense = ".a{b:c}".repeat(Math.floor(4000 / 7));
-  const config = configOf({ storefront: { looks: Object.fromEntries(LOOK_ELEMENTS.map((e) => [e, { preset: LOOK_PRESETS[e][LOOK_PRESETS[e].length - 1], custom: { vars: {}, css: dense } }])) } });
-  const bytes = new TextEncoder().encode(css(config, "pro")).length;
-  // 124 000 B is what the storefront config may hold: the looks take about half of it at the very most.
-  assert.ok(bytes > 65_000 && bytes < 75_000, `${bytes} B`);
+  assert.ok(bytesOf(dense) > 124_000 && bytesOf(dense) < 150_000, `${bytesOf(dense)} B`);
+});
+
+test("the ladder's places: once any look of the ladder is saved all three places are stored, so a place put back to the ready-made look stays there", () => {
+  // Nothing of the ladder stored: nothing is added (a config without looks stays as it is).
+  assert.deepEqual(configOf({ storefront: { looks: { outlet: { preset: "strip" } } } }).storefront.looks, { outlet: { preset: "strip" } });
+  assert.deepEqual(setLook({ outlet: { preset: "strip" } }, "campaign", { preset: "card" }), { outlet: { preset: "strip" }, campaign: { preset: "card" } });
+  // The block's look is saved first: the places are stored ready-made and do NOT take it on the next read.
+  const saved = setLook({}, "milestones", { preset: "checklist" });
+  assert.deepEqual(saved, { milestones: { preset: "checklist" }, msBar: {}, msCart: {}, msDrawer: {} });
+  const read = configOf({ storefront: { looks: saved } });
+  assert.deepEqual(read.storefront.looks, saved);
+  assert.equal(css(read, "free"), LOOK_PRESET_CSS.milestones.checklist);
+  // One place gets its own look, the others keep theirs; putting it back leaves {} — never the block's look again.
+  const strip = setLook(read.storefront.looks, "msBar", { preset: "sentence", accent: "red" });
+  assert.equal(css(configOf({ storefront: { looks: strip } }), "free"), LOOK_PRESET_CSS.milestones.checklist + LOOK_PRESET_CSS.msBar.sentence + ".won-topbar .won-ms{--won-tiers-accent:#b42318}");
+  const back = setLook(strip, "msBar", undefined);
+  assert.deepEqual(back.msBar, {});
+  assert.deepEqual(configOf({ storefront: { looks: JSON.parse(JSON.stringify(back)) } }).storefront.looks, saved);
+  // The four roots never match the same ladder: a look of one place is not a look of another.
+  for (const place of MILESTONE_PLACES) assert.notEqual(LOOK_ROOT[place], LOOK_ROOT.milestones);
+  // A strip has no list: "checklist" is not one of its looks and falls back with an issue.
+  const junk = sanitizeConfig({ storefront: { looks: { msBar: { preset: "checklist" } } } });
+  assert.deepEqual([junk.config.storefront.looks.msBar, junk.issues.map((i) => i.code)], [{}, ["unknown_look"]]);
 });

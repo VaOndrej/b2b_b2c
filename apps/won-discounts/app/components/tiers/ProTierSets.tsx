@@ -27,10 +27,12 @@ import { useT } from "../../i18n/context";
 import { exceptionTitle, tierCapacityShown, TIERS_FIELD, tierSummary, type TierCountMode, type TierPayloadUse } from "../model/tiers";
 import { amountLabels, type AmountSuggestView } from "../model/markets";
 import type { CurrencyView, TierSetView } from "../model/types";
+import { hoverMark } from "../shell/hover";
 import { FieldMessage } from "../rule-editor/parts";
+import { PickedAdd } from "../shell/PickedCard";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
-import { selectionRing, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SURFACE, WON_WASH } from "../shell/tokens";
+import { selectionRing, WON_ATTENTION, WON_CARD_SHADOW, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "../shell/tokens";
 import { RowNote, WonSection } from "../shell/WonSection";
 import { HiddenTierSet, TierSetEditor } from "./TierSetEditor";
 
@@ -38,6 +40,9 @@ const F = TIERS_FIELD;
 
 /** The DOM id of the room-for-tiers line (the page scrolls to it when a save is refused for it). */
 export const TIERS_CAPACITY_ANCHOR = "capacity";
+
+/** The caption over a fact of an exception's card. */
+const CAPTION = { fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: WON_MUTED, marginBottom: 2 } as const;
 
 /** How many names a list shows before "Zobrazit všech N" (every name is one click away, P4). */
 const TITLES_SHOWN = 12;
@@ -78,7 +83,7 @@ function ModeCards({ sid, value, onPick }: { sid: string; value: Mode; onPick: (
       <div style={{ fontSize: 13, fontWeight: 500, color: WON_INK, marginBottom: 6 }}>{t("tiers.pro.mode")}</div>
       <div role="radiogroup" aria-label={t("tiers.pro.mode")} data-won-exception-mode style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 10 }}>
         {options.map((option) => (
-          <label key={option.value} style={{ ...selectionRing(value === option.value), position: "relative", display: "block", borderRadius: 12, padding: "10px 12px", cursor: "pointer", minWidth: 0 }}>
+          <label key={option.value} {...hoverMark("card", value === option.value)} style={{ ...selectionRing(value === option.value), position: "relative", display: "block", borderRadius: 12, padding: "10px 12px", cursor: "pointer", minWidth: 0 }}>
             <input
               type="radio"
               name={MODE_FIELD(sid)}
@@ -182,7 +187,12 @@ export function ProTierSets({
             <s-text color="subdued">{t("tiers.pro.body")}</s-text>
             {pro || sets.length > 0 ? <s-text color="subdued">{t("tiers.pro.only")}</s-text> : null}
             {sets.length > 0 ? (
-              <div data-won-exceptions style={{ border: `1px solid ${WON_LINE}`, borderRadius: 12, background: WON_SURFACE, overflow: "hidden", fontFamily: WON_FONT }}>
+              <div data-won-exceptions style={{ display: "grid", gap: 12, fontFamily: WON_FONT }}>
+                {/* The list says it is a list: how many there are, and that the number is the order they are tried in. */}
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: "4px 12px" }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: WON_INK }}>{t("tiers.pro.list", { count: tr.tp("count.tierSet", sets.length) })}</span>
+                  {sets.length > 1 ? <span style={{ fontSize: 12.5, color: WON_MUTED }}>{t("tiers.pro.list.order")}</span> : null}
+                </div>
                 {sets.map((set, i) => {
                   const draft = drafts.find((d) => d.id === set.id) ?? set;
                   const sid = set.id;
@@ -193,16 +203,32 @@ export function ProTierSets({
                   const name = exceptionTitle(set.scope, tr);
                   const gives = mode === "none" ? t("tiers.pro.mode.none") : tierSummary(draft, tr, codes, amountLabels(currencies));
                   const nothingPicked = set.scope.kind === "selection" && set.scope.products.length === 0 && set.scope.collections.length === 0;
+                  const attention = editable && nothingPicked;
+                  const forWhat =
+                    set.scope.kind === "global"
+                      ? t("tiers.scope.global")
+                      : nothingPicked
+                        ? t("tiers.scope.empty")
+                        : tr.list([set.scope.products.length > 0 ? tr.tp("count.product", set.scope.products.length) : null, set.scope.collections.length > 0 ? tr.tp("count.collection", set.scope.collections.length) : null].filter((x): x is string => x !== null));
                   return (
-                    <div key={sid} data-won-exception={open ? "open" : "closed"} style={{ borderTop: i === 0 ? "none" : `1px solid ${WON_LINE}` }}>
+                    <div
+                      key={sid}
+                      data-won-exception={open ? "open" : "closed"}
+                      // A card of its own (7th round, bod 6: joined rows did not read as a list): a numbered header strip, under it
+                      // what the exception is for and what those products get. The one being edited has the selection ring.
+                      style={{ border: `${open ? 2 : 1}px solid ${open ? WON_SELECT : WON_LINE}`, borderLeft: attention && !open ? `3px solid ${WON_ATTENTION}` : undefined, borderRadius: 12, background: WON_SURFACE, boxShadow: open ? "0 0 0 3px rgba(26,115,232,.12)" : WON_CARD_SHADOW, overflow: "hidden" }}
+                    >
                       <input type="hidden" name={F.set} value={sid} />
-                      {/* The row: what the exception is for, what it gives, and its two buttons. */}
-                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "8px 12px", padding: "10px 12px", background: open ? WON_WASH : "transparent" }}>
-                        <div style={{ flex: "1 1 220px", minWidth: 0 }}>
-                          <div data-won-exception-name style={{ fontSize: 14, fontWeight: 700, color: WON_INK, overflowWrap: "anywhere" }}>{name}</div>
-                          <div data-won-exception-gives style={{ marginTop: 2, fontSize: 13, lineHeight: 1.4, color: WON_MUTED, overflowWrap: "anywhere" }}>{gives}</div>
-                          {/* P3: an exception that picks nothing cannot be saved — said in the list too, the row may be closed. */}
-                          {editable && nothingPicked && !open ? <RowNote tone="attention">{t("tiers.error.scopeEmpty")}</RowNote> : null}
+                      {/* The header: its place in the list, what the exception is for, its kind, and its two buttons. */}
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "8px 12px", padding: "9px 12px", background: open ? "#f2f7ff" : WON_WASH, borderBottom: `1px solid ${WON_LINE}` }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: "1 1 220px", minWidth: 0 }}>
+                          <span aria-hidden="true" style={{ flex: "0 0 auto", width: 24, height: 24, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, fontWeight: 700, color: "#fff", background: open ? WON_SELECT : "#48525f" }}>
+                            {i + 1}
+                          </span>
+                          <div data-won-exception-name style={{ fontSize: 14.5, fontWeight: 700, color: WON_INK, overflowWrap: "anywhere", minWidth: 0 }}>{name}</div>
+                          <span data-won-exception-kind={mode} style={{ flex: "0 0 auto", padding: "1px 9px", borderRadius: 999, fontSize: 11.5, fontWeight: 700, lineHeight: 1.5, whiteSpace: "nowrap", color: mode === "none" ? WON_MUTED : WON_INK, background: WON_SURFACE, border: `1px solid ${mode === "none" ? "#d6dbe1" : "#b9c2cc"}` }}>
+                            {t(mode === "none" ? "tiers.pro.kind.none" : "tiers.pro.kind.own")}
+                          </span>
                         </div>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, flex: "0 0 auto" }}>
                           {editable ? (
@@ -213,6 +239,19 @@ export function ProTierSets({
                           <s-button variant="tertiary" onClick={() => onRemove(sid)} accessibilityLabel={t("tiers.pro.removeNamed", { name })}>
                             {t("tiers.pro.removeShort")}
                           </s-button>
+                        </div>
+                      </div>
+                      {/* What it is for and what those products get, each under its own caption — read without opening it. */}
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: "10px 20px", padding: "10px 12px" }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={CAPTION}>{t("tiers.pro.col.for")}</div>
+                          <div data-won-exception-for style={{ fontSize: 13.5, lineHeight: 1.4, color: nothingPicked ? WON_ATTENTION : WON_INK, overflowWrap: "anywhere" }}>{forWhat}</div>
+                          {/* P3: an exception that picks nothing cannot be saved — said in the list too, the card may be closed. */}
+                          {editable && nothingPicked && !open ? <RowNote tone="attention">{t("tiers.error.scopeEmpty")}</RowNote> : null}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={CAPTION}>{t("tiers.pro.col.gives")}</div>
+                          <div data-won-exception-gives style={{ fontSize: 13.5, lineHeight: 1.4, color: WON_INK, overflowWrap: "anywhere" }}>{gives}</div>
                         </div>
                       </div>
                       {set.scope.kind === "global" ? (
@@ -227,7 +266,7 @@ export function ProTierSets({
                         </div>
                       ) : (
                         // Closed = out of sight, still in the form: the one Save of the page saves every exception.
-                        <div data-won-exception-body style={{ display: open ? "block" : "none", padding: 12, borderTop: `1px solid ${WON_LINE}` }}>
+                        <div data-won-exception-body style={{ display: open ? "block" : "none", padding: 12, borderTop: `1px solid ${WON_LINE}`, background: "#fbfcfd" }}>
                           <input type="hidden" name={F.scope(sid)} value="selection" />
                           {set.scope.products.map((p) => (
                             <input key={p.id} type="hidden" name={F.product(sid)} value={p.id} />
@@ -287,13 +326,22 @@ export function ProTierSets({
             ) : null}
             {/* Which exception wins matters only once there are two. */}
             {sets.length > 1 ? <s-text color="subdued">{t("tiers.pro.precedence")}</s-text> : null}
+            {/* Nothing yet: said as a place where the first one goes, not as an empty section. */}
+            {pro && sets.length === 0 ? (
+              <div data-won-exceptions-empty style={{ padding: "14px 16px", borderRadius: 12, border: "1px dashed #b9c2cc", background: WON_WASH, fontFamily: WON_FONT }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: WON_INK }}>{t("tiers.pro.none")}</div>
+                <div style={{ marginTop: 2, fontSize: 13, lineHeight: 1.45, color: WON_MUTED }}>{t("tiers.pro.none.hint")}</div>
+              </div>
+            ) : null}
             {pro ? (
-              <s-stack direction="inline" gap="base" alignItems="center">
-                <s-button onClick={add} disabled={full ? true : undefined}>
-                  {t("tiers.pro.add")}
-                </s-button>
-                {full ? <s-text color="subdued">{t("tiers.pro.limit", { max: CONFIG_LIMITS.tierSets })}</s-text> : null}
-              </s-stack>
+              <PickedAdd
+                label={t(sets.length === 0 ? "tiers.pro.add" : "tiers.pro.addMore")}
+                steps={[t("tiers.pro.step.pick"), t("tiers.pro.step.fill"), t("margin.picked.step.save")]}
+                onAdd={add}
+                disabled={full}
+                primary={sets.length === 0}
+                note={full ? t("tiers.pro.limit", { max: CONFIG_LIMITS.tierSets }) : undefined}
+              />
             ) : null}
           </s-stack>
         </ProFrame>

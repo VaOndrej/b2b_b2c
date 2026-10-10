@@ -7,8 +7,8 @@
 // change (settings.server.ts saveConfigSection: lock, F12, unreadable guard, saveAndSync).
 
 import { APPEARANCE_PRESETS, type AccentPreset, type WonDiscountsConfig } from "@won/core/discounts/config";
-import { CUSTOM_LOOK_VARS, customLookCss, customLookIssue, LOOK_ROOT, type LookElement } from "@won/core/discounts/custom-look";
-import { lookPreset, LOOK_PRESETS, type ElementLook } from "@won/core/discounts/looks";
+import { CUSTOM_LOOK_VARS, customLookCss, customLookIssue, isMilestoneElement, LOOK_ROOT, type LookElement } from "@won/core/discounts/custom-look";
+import { lookPreset, LOOK_PRESETS, setLook, type ElementLook } from "@won/core/discounts/looks";
 import { gateConfigForPlan, type ShopPlan } from "@won/core/discounts/plan-gate";
 import { CUSTOM_CSS_MAX_LENGTH } from "@won/core/discounts/scope-css";
 import { buildStorefrontConfig } from "@won/core/discounts/storefront-config";
@@ -23,13 +23,19 @@ import type { ShopCtx } from "./context.server";
 import { readSaveOptions, saveConfigSection } from "./settings.server";
 import { ctxPlan } from "./sync-status.server";
 
+/** The ladder's classes: the same markup in every place it stands in. */
+const MS_CLASSES = [".won-ms", ".won-ms--bar", ".won-ms--compact", ".won-ms__text", ".won-ms__track", ".won-ms__list"] as const;
+
 /**
  * The class names a custom look can style, per element (the extension's CSS; tests/contracts pin the lists to the
  * files): each starts with its element's root, so a rule written with them stays inside the element.
  */
 export const LOOK_CLASSES: Readonly<Record<LookElement, readonly string[]>> = {
   tiers: [".won-tiers", ".won-tiers--default", ".won-tiers--highlight", ".won-tiers--chips", ".won-tiers--tiles", ".won-tiers__heading", ".won-tiers__list", ".won-tiers__row", ".won-tiers__qty", ".won-tiers__save", ".won-tiers__unit", ".won-tiers__live", ".won-tiers__next"],
-  milestones: [".won-ms", ".won-ms--bar", ".won-ms--compact", ".won-ms__text", ".won-ms__track", ".won-ms__list"],
+  milestones: MS_CLASSES,
+  msBar: MS_CLASSES,
+  msCart: MS_CLASSES,
+  msDrawer: MS_CLASSES,
   outlet: [".won-outlet", ".won-outlet__row", ".won-outlet__badge", ".won-outlet__left", ".won-outlet__time"],
   campaign: [".won-campaign", ".won-campaign--center", ".won-campaign__title", ".won-campaign__time"],
   cart: [".won-cart", ".won-cart-slot", ".won-cart__row", ".won-cart__code", ".won-cart__applied", ".won-cart__warn", ".won-cart__saved", ".won-topbar", ".won-topbar__empty"],
@@ -38,9 +44,15 @@ export const LOOK_CLASSES: Readonly<Record<LookElement, readonly string[]>> = {
 /** The extension's other classes, which carry no look of their own: the line on a product card and the wrapper of the Milestones block. */
 export const FRAME_CLASSES = [".won-card-tier", ".won-progress", ".won-progress--center"] as const;
 
+const MS_BRIEF =
+  ".won-ms is the ladder of rewards by cart value (free shipping, gifts, discounts): a sentence (.won-ms__text), a track with a mark per step (.won-ms__track, its <span> is the filled part, each <i> a step) and the list of steps (.won-ms__list); a reached step has data-done.";
+
 const ELEMENT_BRIEF: Readonly<Record<LookElement, string>> = {
   tiers: '.won-tiers is the quantity discount table on the product page; the active row has data-active="true".',
-  milestones: ".won-ms is the ladder of rewards by cart value (free shipping, gifts, discounts): a sentence (.won-ms__text), a track with a mark per step (.won-ms__track, its <span> is the filled part, each <i> a step) and the list of steps (.won-ms__list); a reached step has data-done.",
+  milestones: `${MS_BRIEF} This is the ladder of the "Milestones" block on a page (the product page, the home page).`,
+  msBar: `${MS_BRIEF} This is the ladder in the announcement strip at the top of every page: one line, the sentence and a thin track (.won-ms--bar), no list of steps.`,
+  msCart: `${MS_BRIEF} This is the ladder on the cart page: every step with its reward.`,
+  msDrawer: `${MS_BRIEF} This is the ladder in the cart drawer: narrow, the sentence and the track (.won-ms--compact).`,
   outlet: ".won-outlet is the sale badge on the product page: one row per variant on sale with the badge, the pieces left and the time left.",
   campaign: ".won-campaign is the campaign banner: the campaign's name and a countdown to its end.",
   cart: ".won-cart is the panel in the cart (the cart page and the cart drawer): the rewards a customer has reached, the gift rows, the discount code field and what the cart saved. .won-topbar is the strip at the top of every page. :root is any of them.",
@@ -102,7 +114,6 @@ export const STOREFRONT_CONFIG_HEADROOM_BYTES = 4_000;
 
 /** `config` with one element's look as the form carried it. The custom look is written on Pro only. */
 export function applyLook(config: WonDiscountsConfig, look: LookForm, plan: ShopPlan): WonDiscountsConfig {
-  const storefront: WonDiscountsConfig["storefront"] = { ...config.storefront, looks: { ...config.storefront.looks } };
   const element = look.element;
   const before = config.storefront.looks[element];
   // BILL-1: only a Pro shop writes the custom look; on Free the stored one stays exactly as it is.
@@ -111,17 +122,18 @@ export function applyLook(config: WonDiscountsConfig, look: LookForm, plan: Shop
   const next: ElementLook = {
     ...(look.preset && look.preset !== LOOK_PRESETS[element][0] ? { preset: look.preset } : {}),
     ...(accent ? { accent } : {}),
-    ...(look.blink ? { blink: true as const } : {}),
+    ...(look.blink && isMilestoneElement(element) ? { blink: true as const } : {}),
     ...(custom ? { custom } : {}),
   };
-  if (Object.keys(next).length > 0) storefront.looks[element] = next;
-  else delete storefront.looks[element];
-  return { ...config, storefront };
+  // core setLook: a look of the ladder stores all its places, so a place put back to the ready-made look stays there.
+  return { ...config, storefront: { ...config.storefront, looks: setLook(config.storefront.looks, element, next) } };
 }
 
 /** The part of the config a look's section owns (the F12 base check compares it). */
 function lookPart(config: WonDiscountsConfig, element: LookElement) {
-  return config.storefront.looks[element] ?? null;
+  // {} (a place of the ladder with the ready-made look) and "not stored" are the same look.
+  const look = config.storefront.looks[element];
+  return look && Object.keys(look).length > 0 ? look : null;
 }
 
 /**

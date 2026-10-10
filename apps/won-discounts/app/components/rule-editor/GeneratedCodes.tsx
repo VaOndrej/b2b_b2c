@@ -22,6 +22,7 @@ import { useT } from "../../i18n/context";
 import { FIELD } from "../model/rule-form";
 import type { GeneratedBatchView } from "../model/types";
 import { boolAttr } from "../shell/attrs";
+import { hoverMark } from "../shell/hover";
 import { PlanBadge } from "../shell/PlanBadge";
 import { ProFrame } from "../shell/ProFrame";
 import { SegmentedChoice } from "../shell/SegmentedChoice";
@@ -82,21 +83,21 @@ function BatchCard({ batch, disabled }: { batch: GeneratedBatchView; disabled: b
       {dropped ? (
         <div style={{ fontSize: 12.5, color: WON_ATTENTION }}>
           {t("editor.batch.dropped")}{" "}
-          <button type="button" style={linkButton} onClick={(event) => { setDropped(false); touchForm(event.currentTarget); }}>
+          <button type="button" {...hoverMark("link")} style={linkButton} onClick={(event) => { setDropped(false); touchForm(event.currentTarget); }}>
             {t("editor.batch.keep")}
           </button>
         </div>
       ) : (
         <>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px", alignItems: "center" }}>
-            <button type="button" style={linkButton} onClick={copy}>
+            <button type="button" {...hoverMark("link")} style={linkButton} onClick={copy}>
               {t("editor.batch.copy")}
             </button>
             <a href={csv} download={`${batch.pattern.replace(/[^A-Za-z0-9_-]+/g, "") || "kody"}.csv`} style={{ ...linkButton, display: "inline-block" }}>
               {t("editor.batch.csv")}
             </a>
             {!disabled ? (
-              <button type="button" style={{ ...linkButton, color: WON_ATTENTION }} onClick={(event) => { setDropped(true); touchForm(event.currentTarget); }}>
+              <button type="button" {...hoverMark("link")} style={{ ...linkButton, color: WON_ATTENTION }} onClick={(event) => { setDropped(true); touchForm(event.currentTarget); }}>
                 {t("editor.batch.drop")}
               </button>
             ) : null}
@@ -122,6 +123,7 @@ function BatchCard({ batch, disabled }: { batch: GeneratedBatchView; disabled: b
                     aria-label={t("editor.batch.removeCode", { code })}
                     title={t("editor.batch.removeCode", { code })}
                     onClick={(event) => { setGone((list) => [...list, code]); touchForm(event.currentTarget); }}
+                    {...hoverMark("icon")}
                     style={{ flex: "0 0 auto", width: 24, height: 24, border: "none", borderRadius: 6, background: "transparent", color: WON_MUTED, cursor: "pointer", fontSize: 16, lineHeight: 1 }}
                   >
                     ×
@@ -133,7 +135,7 @@ function BatchCard({ batch, disabled }: { batch: GeneratedBatchView; disabled: b
           {shown.length === 0 ? <div style={{ fontSize: 13, color: WON_MUTED }}>{t(left.length === 0 ? "editor.batch.allRemoved" : "selected.noMatch")}</div> : null}
           {left.length > CODES_SHOWN && !needle ? (
             <div>
-              <button type="button" style={linkButton} onClick={() => setAll((value) => !value)}>
+              <button type="button" {...hoverMark("link")} style={linkButton} onClick={() => setAll((value) => !value)}>
                 {all ? t("selected.showLess") : t("selected.showAll", { n: left.length })}
               </button>
             </div>

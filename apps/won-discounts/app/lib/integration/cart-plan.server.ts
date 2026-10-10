@@ -153,7 +153,9 @@ export function cartPlanInput(request: CartPlanRequest, facts: ReadonlyMap<numbe
       if (Object.prototype.hasOwnProperty.call(won, "tierRef")) line.tierRef = won.tierRef as string | null;
     }
     // MVP 5 (O6): the variant's own sale flag, like the function's `wonOutlet`.
-    if (parseJson(fact?.outlet ?? null) === true) line.outlet = true;
+    // `true` = no other discount; a number = the discounts the sale takes (core cart.ts OUTLET_ALLOW).
+    const flag = parseJson(fact?.outlet ?? null);
+    if (flag === true || (typeof flag === "number" && line.outlet !== true)) line.outlet = flag;
     const cost = parseJson(fact?.cost ?? null);
     if (isRecord(cost) && typeof cost.cost === "number") {
       line.unitCost = cost.cost;

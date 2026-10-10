@@ -9,6 +9,7 @@ import { ACCENT_COLORS } from "@won/core/discounts/custom-look";
 
 import { useT } from "../../i18n/context";
 import type { EmbedView } from "../model/types";
+import { hoverMark } from "../shell/hover";
 import { selectionRing, WON_ATTENTION, WON_FONT, WON_INK, WON_MUTED } from "../shell/tokens";
 
 export function AccentPicker({ name, value, stored, onPick, embed }: { name: string; value: string; stored: string; onPick: (accent: string) => void; embed?: EmbedView | null }) {
@@ -24,6 +25,7 @@ export function AccentPicker({ name, value, stored, onPick, embed }: { name: str
         {ACCENT_PRESETS.map((a) => (
           <label
             key={a}
+            {...hoverMark("chip", value === a)}
             style={{
               ...selectionRing(value === a),
               position: "relative",

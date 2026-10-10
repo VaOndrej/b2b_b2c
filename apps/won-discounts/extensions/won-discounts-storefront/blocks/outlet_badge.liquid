@@ -3,6 +3,9 @@
   App block, product template only. Reads the product metafield `outlet` the sale writes:
   {"d": display, "v": {"<variant numeric id>": pieces left}, "e": {"<variant numeric id>": end, epoch seconds}}
   (absent = nothing on sale; `e` only for a sale with an end date).
+  Since 10 Oct 2026 each sale says for itself what shows: `s` {"<variant id>": 0 nothing | 1 badge | 2 badge and
+  pieces left} and `m` {"<variant id>": the merchant's own badge text, "{left}" = the pieces left}. A variant
+  without an `s` entry (a sale from before) follows `d` as below.
   A sale whose badge the merchant hid for its variant is simply not in `v` (the app leaves it out).
   - silent / strike: nothing here (the theme strikes compare_at_price itself);
   - strike_badge: "Výprodej"; strike_badge_left: + "Zbývá X ks" (X > 0, the real quota).
@@ -11,6 +14,8 @@
   variant the page was rendered for; assets/won-discounts-blocks.js follows the shopper's pick (loaded only for a
   product with more variants, or a sale with a countdown). A variant that is not on sale shows no badge.
   Never reads or changes the cart (SF-1). Markers data-won-discounts-outlet*.
+  In the theme editor a product with nothing on sale shows a labelled sample (7th round, bod 2: an empty block
+  could be neither seen nor placed); a customer never sees it.
   The looks with a countdown (the storefront config's `appearance.oc`; the look itself is CSS in the config's
   stylesheet) add the time left to a sale that has an end: the campaign banner's countdown markup and script
   (assets/won-discounts-blocks.js), loaded only then.
@@ -31,8 +36,17 @@
     assign won_units = 'campaign.units' | t
     assign won_units = tx['campaign.units'] | default: won_units
   endif
-  if d == 'strike_badge' or d == 'strike_badge_left'
+  if d == 'strike_badge' or d == 'strike_badge_left' or ov.s != blank
     assign show = true
+  endif
+  # The placeholder of the pieces left in a sale's own text, written without a closing brace in this file
+  # (Shopify's tokenizer ends an output at the first one).
+  assign won_left_token = '%7Bleft%7D' | url_decode
+  assign won_legacy = 0
+  if d == 'strike_badge'
+    assign won_legacy = 1
+  elsif d == 'strike_badge_left'
+    assign won_legacy = 2
   endif
   assign won_picked = product.selected_or_first_available_variant.id
   assign won_many = false
@@ -40,18 +54,31 @@
     assign won_many = true
   endif
 -%}
-{%- if show and ov.v != blank -%}
-  <div class="won-outlet" data-won-discounts-outlet>
+{%- capture won_rows -%}
+  {%- if show and ov.v != blank -%}
     {%- for v in product.variants -%}
       {%- liquid
         assign key = v.id | append: ''
         assign left = ov.v[key]
+        assign won_level = ov.s[key] | default: won_legacy
+        if ov.s[key] == 0
+          assign won_level = 0
+        endif
+        assign won_msg = ov.m[key]
+        assign won_msg_left = false
+        if won_msg contains won_left_token
+          assign won_msg_left = true
+          assign won_left_text = left | plus: 0 | append: ''
+          assign won_msg = won_msg | replace: won_left_token, won_left_text
+        endif
       -%}
-      {%- if left != nil -%}
+      {%- if left != nil and won_level > 0 -%}
         {%- assign left = left | plus: 0 -%}
         <p class="won-outlet__row" data-won-discounts-outlet-variant="{{ v.id }}"{% if won_many and v.id != won_picked %} hidden{% endif %}>
-          <span class="won-outlet__badge" data-won-discounts-outlet-badge>{{ t_badge | escape }}</span>
-          {%- if d == 'strike_badge_left' and left > 0 -%}
+          <span class="won-outlet__badge" data-won-discounts-outlet-badge>
+            {%- if won_msg != blank -%}{{ won_msg | escape }}{%- else -%}{{ t_badge | escape }}{%- endif -%}
+          </span>
+          {%- if won_level == 2 and left > 0 and won_msg_left == false -%}
             <span class="won-outlet__left" data-won-discounts-outlet-left>{{ 'outlet.left' | t: count: left }}</span>
           {%- endif -%}
           {%- if won_timed and ov.e[key] != nil -%}
@@ -64,10 +91,24 @@
         </p>
       {%- endif -%}
     {%- endfor -%}
+  {%- endif -%}
+{%- endcapture -%}
+{%- assign won_rows = won_rows | strip -%}
+{%- if won_rows != blank -%}
+  <div class="won-outlet" data-won-discounts-outlet {{ block.shopify_attributes }}>
+    {{ won_rows }}
   </div>
   {%- if won_timed or won_many -%}
     <script src="{{ 'won-discounts-blocks.js' | asset_url }}" defer></script>
   {%- endif -%}
+{%- elsif request.design_mode -%}
+  <div class="won-outlet" data-won-discounts-outlet data-won-discounts-outlet-sample {{ block.shopify_attributes }}>
+    <p class="won-outlet__row">
+      <span class="won-outlet__badge">{{ t_badge | escape }}</span>
+      <span class="won-outlet__left">{{ 'outlet.left' | t: count: 5 }}</span>
+      <span style="flex-basis:100%;font-size:12px;line-height:1.4;opacity:.7">{{ 'outlet.sample' | t }}</span>
+    </p>
+  </div>
 {%- endif -%}
 
 {% schema %}

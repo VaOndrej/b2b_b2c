@@ -11,13 +11,13 @@ import { useT } from "../../i18n/context";
 import { MARGIN_FIELD, percentInput } from "../model/margin";
 import type { GateNoteView, MarginProductView } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
-import { boolAttr } from "../shell/attrs";
 import { GateNotes } from "../shell/GateNotes";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
 import { WON_FONT, WON_INK, WON_LINE, WON_WASH } from "../shell/tokens";
-import { RowNote, WonRow, WonSection } from "../shell/WonSection";
-import { PercentFields } from "./CollectionsSection";
+import { PickedAdd, PickedCard, PickedList } from "../shell/PickedCard";
+import { RowNote, WonSection } from "../shell/WonSection";
+import { PercentFields, pickedSummary } from "./CollectionsSection";
 
 const NAMES = { min: MARGIN_FIELD.productMin, max: MARGIN_FIELD.productMax };
 
@@ -48,7 +48,8 @@ export function ProductsSection({
   /** B14: the rows a refused save posted, as typed. */
   posted?: { ids: readonly string[]; min: readonly string[]; max: readonly string[] } | null;
 }) {
-  const { t } = useT();
+  const tr = useT();
+  const { t } = tr;
   const full = products.length >= CONFIG_LIMITS.marginProductOverrides;
   const typed = (p: MarginProductView, which: "min" | "max"): string => {
     const at = posted ? posted.ids.indexOf(p.productId) : -1;
@@ -70,12 +71,15 @@ export function ProductsSection({
                 <li>{t("margin.products.how.3")}</li>
               </ol>
             </div>
-            {products.length === 0 ? <RowNote>{t("margin.products.empty")}</RowNote> : null}
-            {products.length > 0 ? (
-              <div>
+            <PickedList count={products.length} title={t("margin.products.list", { count: tr.tp("count.product", products.length) })} empty={t("margin.products.empty")} emptyHint={t("margin.products.emptyHint")}>
                 {products.map((p, i) => (
-                  <WonRow
+                  <PickedCard
                     key={p.productId}
+                    n={i + 1}
+                    kind={t("margin.picked.product")}
+                    title={p.title.trim() || t("margin.impact.untitledProduct")}
+                    set={pickedSummary(p, tr)}
+                    marker={{ "data-won-margin-product": p.productId }}
                     action={
                       <s-button variant="tertiary" onClick={() => onRemove(p.productId)}>
                         {t("margin.collections.remove")}
@@ -89,10 +93,7 @@ export function ProductsSection({
                         <input type="hidden" name={MARGIN_FIELD.productMax} value={percentInput(p.maxDiscountPercent)} />
                       </>
                     ) : null}
-                    <div style={{ marginBottom: 8 }} data-won-margin-product={p.productId}>
-                      <s-text type="strong">{p.title.trim() || t("margin.impact.untitledProduct")}</s-text>
-                      <FieldMessage text={errorFor(`productId[${i}]`)} />
-                    </div>
+                    <FieldMessage text={errorFor(`productId[${i}]`)} />
                     <PercentFields min={typed(p, "min")} max={typed(p, "max")} named={pro} disabled={!pro} names={NAMES} texts="products" />
                     <FieldMessage
                       text={
@@ -110,17 +111,18 @@ export function ProductsSection({
                           .join(" ") || undefined
                       }
                     />
-                  </WonRow>
+                  </PickedCard>
                 ))}
-              </div>
-            ) : null}
+            </PickedList>
             <FieldMessage text={error} />
             <s-stack direction="block" gap="small-200">
-              <s-stack direction="inline" gap="base" alignItems="center">
-                <s-button onClick={onPick} disabled={boolAttr(!pro || full)}>
-                  {t("editor.pick.products")}
-                </s-button>
-              </s-stack>
+              <PickedAdd
+                label={t(products.length === 0 ? "margin.products.first" : "margin.products.more")}
+                steps={[t("margin.products.step.pick"), t("margin.picked.step.fill"), t("margin.picked.step.save")]}
+                onAdd={onPick}
+                disabled={!pro || full}
+                primary={products.length === 0}
+              />
               {full ? <RowNote>{t("margin.products.limit", { max: CONFIG_LIMITS.marginProductOverrides })}</RowNote> : null}
               {pickUnavailable ? <s-text color="subdued">{t("editor.pick.unavailable")}</s-text> : null}
             </s-stack>

@@ -44,6 +44,7 @@ struct Line {
     price: i64,
     refs: Vec<String>,
     outlet: bool,
+    outlet_no: u8,
     gift: bool,
     /// Margin protection: cost of one item in MAJOR units of `cur` (variant metafield).
     cost: Option<f64>,
@@ -61,6 +62,7 @@ fn line(id: &'static str, qty: i64, price: i64, refs: &[&str]) -> Line {
         price,
         refs: refs.iter().map(|r| r.to_string()).collect(),
         outlet: false,
+        outlet_no: 0,
         gift: false,
         cost: None,
         cur: None,
@@ -86,6 +88,7 @@ fn cart<'a>(lines: &'a [Line], codes: &[&'a str]) -> CartInput<'a> {
                 quantity: l.qty,
                 unit_price: l.price,
                 outlet: l.outlet,
+                outlet_no: l.outlet_no,
                 gift: l.gift,
                 gift_tier: None,
                 rule_ids: &l.refs,
@@ -203,6 +206,73 @@ fn outlet_lines_are_out_of_product_and_order_discounts() {
     let plan = plan_cart(cart(&only, &[]), Some(&c));
     assert_eq!(plan.lines[0].excluded, None);
     assert_eq!(product_of(&plan, "l1").unwrap().2, 1000);
+}
+
+/// outlet-allow.test.ts: a sale that takes only some discounts (`outlet_no` = the classes it stays out of).
+#[test]
+fn a_partly_combining_sale_line_takes_only_what_it_allows() {
+    let order = r#"{"id": "o", "enabled": true, "name": "o", "method": "automatic",
+        "value": {"kind": "percentage", "percent": 10}, "target": {"kind": "order"}}"#;
+    let c = rules(&[pct("a", 20.0, ""), order.to_string()].join(","), "");
+    // Tiers only (allow 1 → no 6): no product discount, out of the order base; the other line is ordinary.
+    let lines = [Line { outlet_no: 6, ..line("s", 3, 10000, &["a"]) }, line("n", 1, 10000, &["a"])];
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    assert_eq!(plan.lines[0].excluded, None);
+    assert!(plan.lines[0].product.is_none());
+    assert_eq!(product_of(&plan, "n").unwrap().2, 2000);
+    let o = plan.order.as_ref().unwrap();
+    assert_eq!((o.base, o.stack.amount), (8000, 800));
+    assert_eq!(o.excluded_line_ids, vec!["s"]);
+    // Product discounts only (allow 2 → no 5): the product discount applies, no order discount is left to give.
+    let only = [Line { outlet_no: 5, ..line("s", 3, 10000, &["a"]) }];
+    let plan = plan_cart(cart(&only, &[]), Some(&c));
+    assert_eq!(product_of(&plan, "s").unwrap().2, 6000);
+    assert!(plan.order.is_none());
+    // The order discount only (allow 4 → no 3): the product rule has nothing to discount; the order counts the full price.
+    let only = [Line { outlet_no: 3, ..line("s", 3, 10000, &["a"]) }];
+    let plan = plan_cart(cart(&only, &[]), Some(&c));
+    assert!(plan.lines[0].product.is_none());
+    assert_eq!(state(&plan, "a"), Some(RuleState::OutletOnly));
+    let o = plan.order.as_ref().unwrap();
+    assert_eq!((o.base, o.stack.amount), (30000, 3000));
+    assert!(o.excluded_line_ids.is_empty());
+    // outletWithAnything lifts the limits; a gift line ignores them.
+    let c = rules(&[pct("a", 20.0, ""), order.to_string()].join(","), r#""engine": {"combination": {"outletWithAnything": true}}"#);
+    let only = [Line { outlet_no: 6, ..line("s", 3, 10000, &["a"]) }];
+    let plan = plan_cart(cart(&only, &[]), Some(&c));
+    assert_eq!(product_of(&plan, "s").unwrap().2, 6000);
+    assert!(plan.order.as_ref().unwrap().excluded_line_ids.is_empty());
+}
+
+/// Gift cards (10 Oct 2026): `outlet_no` 7 = out of every class, and "sales combine with anything" does not lift it.
+#[test]
+fn a_gift_card_line_takes_no_discount_whatever_the_combination_says() {
+    let order = r#"{"id": "o", "enabled": true, "name": "o", "method": "automatic",
+        "value": {"kind": "percentage", "percent": 10}, "target": {"kind": "order"}}"#;
+    for extra in ["", r#""engine": {"combination": {"outletWithAnything": true}}"#] {
+        let c = rules(&[pct("a", 20.0, ""), order.to_string()].join(","), extra);
+        let lines = [Line { outlet_no: 7, ..line("g", 3, 10000, &["a"]) }, line("n", 1, 10000, &["a"])];
+        let plan = plan_cart(cart(&lines, &[]), Some(&c));
+        assert!(plan.lines[0].product.is_none());
+        assert_eq!(product_of(&plan, "n").unwrap().2, 2000);
+        let o = plan.order.as_ref().unwrap();
+        assert_eq!((o.base, o.stack.amount), (8000, 800));
+        assert_eq!(o.excluded_line_ids, vec!["g"]);
+    }
+}
+
+/// A sale line that takes quantity tiers gets its tier; one that does not neither counts nor gets one.
+#[test]
+fn a_partly_combining_sale_line_and_its_quantity_tier() {
+    let tiers = r#"{"global": "g", "sets": [["g", "line", [], [[3, 10]]]]}"#;
+    let c = tier_rules("", tiers, "");
+    let lines = [
+        Line { outlet_no: 6, ..tier_line("l1", 3, 10000, "P1", None, &[]) },
+        Line { outlet_no: 1, ..tier_line("l2", 3, 10000, "P2", None, &[]) },
+    ];
+    let plan = plan_cart(tcart(&lines, &[], &c), Some(&c));
+    assert_eq!(product_of(&plan, "l1"), Some(("tier:g", &EmittedValue::Percent(10.0), 3000)));
+    assert_eq!(product_of(&plan, "l2"), None);
 }
 
 #[test]

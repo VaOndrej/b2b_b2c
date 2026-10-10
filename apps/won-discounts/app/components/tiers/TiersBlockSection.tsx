@@ -11,7 +11,7 @@
 // the same pattern as every other placement on the storefront (§19c).
 
 import { useT } from "../../i18n/context";
-import { blockPlacement } from "../model/embed";
+import { blockPlacement, spotAdvice } from "../model/embed";
 import { blockAlternatesText, blockText, storefrontSyncText } from "../model/tiers";
 import { uiText } from "../model/result-copy";
 import type { PreviewProductView, StorefrontSyncView, TiersBlockView } from "../model/types";
@@ -46,13 +46,18 @@ export function TiersBlockSection({
       <s-button href={addUrl} target="_blank" variant="primary">
         {t("placement.add")}
       </s-button>
+    ) : block.state === "on" && block.openUrl ? (
+      // In the theme already: the editor opens with the table selected, nothing is added.
+      <s-button href={block.openUrl} target="_blank" variant="secondary">
+        {t("placement.open")}
+      </s-button>
     ) : placement === "unknown" ? (
       <s-button variant="secondary" onClick={() => window.location.reload()}>
         {t("placement.recheck")}
       </s-button>
     ) : undefined;
   return (
-    <WonSection title={t("tiers.block.title")} glyph="store" summary={about ?? blockText(block, tr)} anchor="block" placement={placement} action={action}>
+    <WonSection title={t("tiers.block.title")} glyph="store" summary={about ?? blockText(block, tr)} anchor="block" placement={placement} placementMove={block.state === "on" && spotAdvice(block.spot)?.move === true} action={action}>
       <div>
         {needsAction ? (
           // The state and the button are in the header; the row says what the button does (§13a).
@@ -67,6 +72,18 @@ export function TiersBlockSection({
             }
           >
             <RowNote tone={block.state === "off" ? "attention" : undefined}>{addUrl ? t("tiers.block.addHint") : t("tiers.block.noLink")}</RowNote>
+          </WonRow>
+        ) : null}
+        {/* Where the table landed (Shopify adds it at the end of the product information). */}
+        {block.state === "on" && spotAdvice(block.spot) ? (
+          <WonRow tone={spotAdvice(block.spot)!.move ? "attention" : undefined}>
+            <span data-won-placement-spot="tiersBlock">
+              <RowNote tone={spotAdvice(block.spot)!.move ? "attention" : undefined}>{t(spotAdvice(block.spot)!.key)}</RowNote>
+            </span>
+          </WonRow>
+        ) : block.state === "off" && addUrl ? (
+          <WonRow>
+            <RowNote>{t("placement.spot.howProduct")}</RowNote>
           </WonRow>
         ) : null}
         {alternates ? (

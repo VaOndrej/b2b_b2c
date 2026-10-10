@@ -8,6 +8,7 @@
 import type { MessageKey } from "../i18n";
 import { useT } from "../i18n/context";
 import type { RecipeKey } from "./model/rule-form";
+import { hoverMark } from "./shell/hover";
 import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "./shell/tokens";
 
 const RECIPES: readonly { key: Exclude<RecipeKey, "blank">; title: MessageKey; body: MessageKey }[] = [
@@ -35,6 +36,7 @@ export function RecipeGrid({ withBlank = false }: { withBlank?: boolean }) {
         {RECIPES.map((recipe) => (
           <s-clickable key={recipe.key} href={recipeHref(recipe.key)} borderRadius="base">
             <div
+              {...hoverMark("card")}
               style={{
                 border: `1px solid ${WON_LINE}`,
                 borderRadius: 11,
@@ -54,6 +56,7 @@ export function RecipeGrid({ withBlank = false }: { withBlank?: boolean }) {
           <s-clickable href={recipeHref("blank")} borderRadius="base">
             <div
               data-won-recipe="blank"
+              {...hoverMark("card")}
               style={{
                 border: `1px dashed #b7c0cb`,
                 borderRadius: 11,

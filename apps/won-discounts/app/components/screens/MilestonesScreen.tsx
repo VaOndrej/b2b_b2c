@@ -30,11 +30,12 @@ import type { MessageKey } from "../../i18n";
 import { useT } from "../../i18n/context";
 import { LookSection } from "../looks/LookSection";
 import { presetLabel } from "../model/looks";
-import { embedPlacement, placementOf } from "../model/embed";
+import { editorOpenUrl, embedPlacement, placementOf, spotAdvice } from "../model/embed";
+import { SpotNote } from "../StorefrontPlacements";
 import { placementStatus } from "../model/module-status";
 import { amountInput, amountsText, emptyStepView, liveAmounts, MILESTONES_INTENT, milestoneRowsMax, MS_FIELD, overLimitColumns, rewardText, stepMissingColumns, stepSummary } from "../model/milestones";
 import { freeShippingDefaults } from "../model/rule-form";
-import type { EmbedState, GiftVariantView, MilestoneStepView, RewardsScreenData, UiResult } from "../model/types";
+import type { EmbedState, EmbedView, GiftVariantView, LookView, MilestoneStepView, RewardsScreenData, UiResult } from "../model/types";
 import { pickGiftVariants } from "../rewards/gift-picker";
 import { MilestonePreview, type PreviewStep } from "../rewards/MilestonePreview";
 import { FieldMessage, Shown } from "../rule-editor/parts";
@@ -42,12 +43,13 @@ import { AmountSuggestions } from "../shell/AmountSuggestions";
 import { boolAttr } from "../shell/attrs";
 import { snapshotOf } from "../shell/form-snapshot";
 import { GateNotes } from "../shell/GateNotes";
+import { hoverMark } from "../shell/hover";
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
 import { Notice } from "../shell/Notice";
 import { ProSell } from "../shell/ProSell";
 import { SegmentedChoice } from "../shell/SegmentedChoice";
 import { DiscountsSubNav } from "../shell/SubNav";
-import { WON_ATTENTION, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SURFACE, WON_WASH } from "../shell/tokens";
+import { WON_ATTENTION, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "../shell/tokens";
 import { useView, ViewPanel } from "../shell/views";
 import { PlacementPill, RowNote, WonRow, WonSection, type PlacementState } from "../shell/WonSection";
 
@@ -122,6 +124,56 @@ function GiftList({ items, onRemove, removeLabel, unknown }: { items: readonly G
   );
 }
 
+/**
+ * The ladder's look, one place at a time (7th round, bod 3: a strip at the top cannot look like the ladder of the
+ * cart page): the places as a row of buttons, under it the chosen place's look — its own form with its own Save.
+ * The others stay mounted and out of sight, so what was picked or typed in one is not lost by looking at another.
+ * A deep link `#look-<place>` opens that place.
+ */
+function PlaceLooks({ looks, plan, configVersion, embed }: { looks: readonly LookView[]; plan: "free" | "pro"; configVersion: string | null; embed?: EmbedView | null }) {
+  const tr = useT();
+  const { t } = tr;
+  const [place, setPlace] = useState(looks[0]?.element ?? "milestones");
+  useEffect(() => {
+    const wanted = window.location.hash.replace(/^#look-/, "");
+    if (looks.some((look) => look.element === wanted)) setPlace(wanted as LookView["element"]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the address is read once, when the panel mounts
+  }, []);
+  if (looks.length === 1) return <LookSection look={looks[0]!} plan={plan} configVersion={configVersion} embed={embed} />;
+  return (
+    <s-stack direction="block" gap="base">
+      <div data-won-look-places="" style={{ fontFamily: WON_FONT }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: WON_INK }}>{t("milestones.look.places")}</div>
+        <div style={{ marginTop: 2, marginBottom: 10, fontSize: 13, lineHeight: 1.45, color: WON_MUTED }}>{t("milestones.look.intro")}</div>
+        <div role="group" aria-label={t("milestones.look.places")} style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {looks.map((look) => {
+            const on = look.element === place;
+            return (
+              <button
+                key={look.element}
+                type="button"
+                data-won-look-place={look.element}
+                aria-pressed={on}
+                onClick={() => setPlace(look.element)}
+                {...hoverMark("chip", on)}
+                style={{ display: "grid", gap: 1, padding: on ? "7px 13px" : "8px 14px", borderRadius: 10, textAlign: "left", cursor: "pointer", font: "inherit", border: `${on ? 2 : 1}px solid ${on ? WON_SELECT : "#d6dbe1"}`, background: on ? "#f2f7ff" : WON_SURFACE, boxShadow: on ? "0 0 0 3px rgba(26,115,232,.12)" : "none" }}
+              >
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: WON_INK }}>{t(`milestones.look.place.${look.element}` as "milestones.look.place.msBar")}</span>
+                <span style={{ fontSize: 12, color: WON_MUTED }}>{look.presets.length > 1 ? presetLabel(look.element, look.preset, tr) : t(Object.values(look.custom).some((v) => v.trim() !== "") ? "looks.custom.summary.on" : "looks.custom.summary.off")}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {looks.map((look) => (
+        <div key={look.element} data-won-look-panel={look.element} style={{ display: look.element === place ? "block" : "none" }}>
+          <LookSection look={look} plan={plan} configVersion={configVersion} embed={look.element === "cart" ? undefined : embed} />
+        </div>
+      ))}
+    </s-stack>
+  );
+}
+
 export function MilestonesScreen(props: MilestonesScreenProps) {
   const tr = useT();
   const { t } = tr;
@@ -143,6 +195,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
   }, [steps, start, codes]);
   const [rows, setRows] = useState<Row[]>(storedRows);
   const [pickError, setPickError] = useState(false);
+  const [pickTrimmed, setPickTrimmed] = useState<{ uid: string; max: number } | null>(null);
   // The list: one step open at a time. A refused save opens the first step it is about (an error behind a closed
   // row would be a dead end, §13); the setup guide's prefilled first step starts open.
   const rowErrors = useMemo(() => {
@@ -225,6 +278,8 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
     const picked = await pickGiftVariants(current, max);
     setPickError(!picked.ok && picked.reason === "unavailable");
     if (!picked.ok) return;
+    // More variants ticked than the limit: said at the row, never trimmed silently.
+    setPickTrimmed(picked.trimmed ? { uid: row.uid, max } : null);
     if (which === "fallback") update(row.uid, { fallback: picked.items[0] ?? null });
     else update(row.uid, { choices: picked.items });
   };
@@ -305,9 +360,9 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
   const cartBlock = placementOf(placed.cartBlock);
   const places: { key: string; placement: PlacementState; text: MessageKey; href: string | null | undefined; action: MessageKey; primary: boolean }[] = [
     { key: "topBar", placement: placementOf(placed.topBarRewards), text: placed.topBarRewards ? "milestones.places.topBar.on" : "milestones.places.topBar", href: props.placements?.topBar, action: placed.topBarRewards ? "placement.open" : "placements.addTopBar", primary: false },
-    { key: "product", placement: placementOf(placed.rewardsProduct), text: "milestones.places.product", href: props.placements?.product, action: placed.rewardsProduct ? "placement.open" : "placement.add", primary: placed.rewardsProduct === false },
+    { key: "product", placement: placementOf(placed.rewardsProduct), text: "milestones.places.product", href: placed.rewardsProduct ? (editorOpenUrl(props.placements?.product, placed.spots?.rewardsProduct) ?? props.placements?.product) : props.placements?.product, action: placed.rewardsProduct ? "placement.open" : "placement.add", primary: placed.rewardsProduct === false },
     { key: "drawer", placement: embedPlacement(embed.state), text: embedCopy ? embedCopy.fix : "milestones.places.drawer", href: embedCopy ? embed.activateUrl : null, action: embedCopy?.action ?? "rewards.cart.activate", primary: embedCopy?.primary === true },
-    { key: "cart", placement: cartBlock, text: "milestones.places.cart", href: cartBlockAddUrl, action: cartBlock === "in_theme" ? "placement.open" : "placement.add", primary: cartBlock === "missing" },
+    { key: "cart", placement: cartBlock, text: "milestones.places.cart", href: cartBlock === "in_theme" ? (editorOpenUrl(cartBlockAddUrl) ?? cartBlockAddUrl) : cartBlockAddUrl, action: cartBlock === "in_theme" ? "placement.open" : "placement.add", primary: cartBlock === "missing" },
   ];
   const webParts = [
     t(placed.topBarRewards ? "rewards.web.topBar.yes" : "rewards.web.topBar.no"),
@@ -320,7 +375,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
   const [view, setView] = useView<"steps" | "web" | "look">({
     initial: () => "steps",
     // `#step-N` (Kontrola kombinací links to a step): the view with the list; the effect below opens that step.
-    hash: { steps: "steps", preview: "steps", amounts: "steps", count: "steps", shipping: "steps", gift: "steps", web: "web", places: "web", cart: "web", look: "look", "look-milestones": "look", "look-cart": "look", ...Object.fromEntries(rows.map((_, i) => [stepAnchor(i), "steps" as const])) },
+    hash: { steps: "steps", preview: "steps", amounts: "steps", count: "steps", shipping: "steps", gift: "steps", web: "web", places: "web", cart: "web", look: "look", "look-milestones": "look", "look-msBar": "look", "look-msCart": "look", "look-msDrawer": "look", "look-cart": "look", ...Object.fromEntries(rows.map((_, i) => [stepAnchor(i), "steps" as const])) },
     resetKey: result,
   });
 
@@ -394,7 +449,11 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
             id="look"
             title={t("milestones.view.look.title")}
             glyph="spark"
-            active={`${presetLabel("milestones", props.look.preset, tr)} · ${t([props.look.custom.accent, props.look.custom.line, props.look.custom.tint, props.look.custom.radius, props.look.custom.css].some((v) => v.trim() !== "") ? "looks.custom.summary.on" : "milestones.view.look.custom")}`}
+            active={
+              props.placeLooks?.length
+                ? t("milestones.view.look.places")
+                : `${presetLabel("milestones", props.look.preset, tr)} · ${t([props.look.custom.accent, props.look.custom.line, props.look.custom.tint, props.look.custom.radius, props.look.custom.css].some((v) => v.trim() !== "") ? "looks.custom.summary.on" : "milestones.view.look.custom")}`
+            }
             selected={view === "look"}
             onPick={() => setView("look")}
           />
@@ -515,6 +574,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
                                   {t(row.choices.length > 0 ? "rewards.gift.change" : "rewards.gift.pick")}
                                 </s-button>
                               </div>
+                              {pickTrimmed?.uid === row.uid ? <RowNote tone="attention">{t("rewards.gift.trimmed", { max: pickTrimmed.max })}</RowNote> : null}
                               {/* A gift step without a gift cannot be saved — said here once there was a go at the row, or by the refused save. */}
                               {choiceError ? <RowNote tone="attention">{choiceError}</RowNote> : row.choices.length === 0 && tried(row) ? <RowNote tone="attention">{t("rewards.error.giftChoice")}</RowNote> : <RowNote>{t("rewards.gift.stockHint")}</RowNote>}
                               {/* Its own framed box with a real button (feedback 9 Oct 2026, 3rd round, bod 1): as a bare text link it was overlooked. */}
@@ -641,10 +701,11 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
                     <div data-won-ms-place={place.key}>
                       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 4 }}>
                         <span style={{ fontFamily: WON_FONT, fontSize: 13.5, fontWeight: 700, color: WON_INK }}>{t(`milestones.places.${place.key}.name` as MessageKey)}</span>
-                        <PlacementPill placement={place.placement} />
+                        <PlacementPill placement={place.placement} move={place.key === "product" && spotAdvice(placed.spots?.rewardsProduct)?.move === true} />
                       </div>
                       {/* Every state of the check has its own sentence, and what to do about it. */}
                       {place.key === "drawer" && embedCopy ? <RowNote tone={embedCopy.primary ? "attention" : undefined}>{t(embedCopy.summary)}</RowNote> : null}
+                      {place.key === "product" ? <SpotNote placement={place.placement} spot={placed.spots?.rewardsProduct} place="product" spotKey="rewardsProduct" /> : null}
                       <RowNote tone={place.key === "drawer" && embedCopy?.primary ? "attention" : undefined}>{t(place.key === "drawer" && embedCopy && !embed.activateUrl ? "rewards.cart.noLink" : place.text)}</RowNote>
                     </div>
                   </WonRow>
@@ -682,9 +743,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
       {props.look ? (
         <div style={{ marginTop: 16 }}>
           <ViewPanel id="look" view={view}>
-            <LookSection look={props.look} plan={plan} configVersion={configVersion} embed={props.embed} />
-            {/* The frames the ladder sits in — the cart panel and the top strip — have their own look. */}
-            {props.cartLook ? <LookSection look={props.cartLook} plan={plan} configVersion={configVersion} /> : null}
+            <PlaceLooks looks={[...(props.placeLooks ?? []), props.look, ...(props.cartLook ? [props.cartLook] : [])]} plan={plan} configVersion={configVersion} embed={props.embed} />
           </ViewPanel>
         </div>
       ) : null}

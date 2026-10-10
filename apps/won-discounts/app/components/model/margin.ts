@@ -104,6 +104,18 @@ export function marginSummary(settings: MarginSettingsView, plan: "free" | "pro"
   return describeMarginSettings(marginInForce(settings, plan), tr.locale);
 }
 
+/**
+ * The same for the tile: only the two limits, short enough for a narrow tile (five in a row). How many
+ * collections and products have their own setting is on their own tiles.
+ */
+export function marginTileSummary(settings: MarginSettingsView, plan: "free" | "pro", tr: Translator): string {
+  const inForce = marginInForce(settings, plan);
+  if (!inForce.enabled) return tr.t("margin.tile.off");
+  const min = inForce.global.minMarginPercent ?? 0;
+  const max = formatPercent(inForce.global.maxDiscountPercent, tr.locale);
+  return min > 0 ? tr.t("margin.tile.min", { min: formatPercent(min, tr.locale), max }) : tr.t("margin.tile.cost", { max });
+}
+
 // --- The live draft (§2 / §17b) -----------------------------------------------------------
 
 /** A percent field: "" → null; "12,5" / "12.5" → 12.5; junk → NaN (the server refuses it, the summary keeps the stored value). */

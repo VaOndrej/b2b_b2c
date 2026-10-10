@@ -9,6 +9,7 @@
 //                            unreadable guard, saveAndSync);
 //   rewardsOverviewOf(...)   the Přehled card: what the PLAN runs (§17c).
 
+import { MILESTONE_PLACES } from "@won/core/discounts/custom-look";
 import type { WonDiscountsConfig } from "@won/core/discounts/config";
 import { isMilestoneRule, MILESTONE_LIMITS, milestoneSteps, milestonesOverLimit, withMilestones, type MilestoneStep } from "@won/core/discounts/milestones";
 import { explainGate, gateConfigForPlan, type ProCapability } from "@won/core/discounts/plan-gate";
@@ -108,6 +109,7 @@ export async function loadRewardsScreen(ctx: ShopCtx, opts: { scopes: string; fr
     plan,
     configVersion: loaded.version ?? null,
     look: lookView(stored, "milestones"),
+    placeLooks: MILESTONE_PLACES.map((place) => lookView(stored, place)),
     cartLook: lookView(stored, "cart"),
     currencies: currencyViews(stored.markets, { shopCurrency: shopContext.currencyCode, marketNames }),
     ...rewardsScreenFacts(stored, { plan, locale: ctx.locale, titles }),

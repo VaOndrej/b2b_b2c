@@ -4,7 +4,7 @@ import { test } from "node:test";
 import type { MilestoneStep } from "@won/core/discounts/milestones";
 
 import { amountsText, liveAmounts, milestoneRowsMax, milestoneStepView, MS_FIELD as F, overLimitColumns, readMilestonesForm, rewardText, stepId, stepMissingColumns, stepSummary } from "../../app/components/model/milestones.ts";
-import { giftsFromPicked, giftTitle } from "../../app/components/rewards/gift-picker.ts";
+import { giftsFromPicked, giftsFromProducts, giftTitle } from "../../app/components/rewards/gift-picker.ts";
 import { translator } from "../../app/i18n/index.ts";
 
 // Milníky (feedback 6 Oct 2026, bod 9; dřív Odměny, plan 2026-10-06 dávka 5): the page's state lines say the real
@@ -131,4 +131,18 @@ test("B6: the variant picker's answer is the selection — variant ids only, eac
     { id: "gid://shopify/ProductVariant/2", title: "Hrnek" },
   ]);
   assert.equal(giftsFromPicked(picked, 1).length, 1);
+});
+
+test("the gift picker is the product picker (10 Oct 2026, bod 1): the ticked variants of the picked products are the gifts, named Product — Variant", () => {
+  const V = (n: number) => `gid://shopify/ProductVariant/${n}`;
+  const picked = [
+    { id: "gid://shopify/Product/1", title: "Ponožky Won", variants: [{ id: V(11), title: "M" }, { id: V(12), title: "L" }, { id: "junk", title: "x" }] },
+    { id: "gid://shopify/Product/2", title: "Hrnek Won", variants: [{ id: V(21), title: "Default Title" }, { id: V(11), title: "M" }] },
+    { id: "gid://shopify/Product/3", title: "Bez variant" },
+  ];
+  assert.deepEqual(giftsFromProducts(picked), [
+    { id: V(11), title: "Ponožky Won — M" },
+    { id: V(12), title: "Ponožky Won — L" },
+    { id: V(21), title: "Hrnek Won" },
+  ]);
 });
