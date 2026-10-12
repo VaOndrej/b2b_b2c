@@ -241,7 +241,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "plan?result=uninstall_partial", expect: [/Část se nepovedla\. Ukončené výprodeje: 1, obnovené slevy: 1\. Nepovedlo se: výprodej \(cena se nezapsala\)/] },
   { path: "plan?result=cancelled", expect: [/Pro je zrušené\. Platí tarif Free\./] },
   // Přehledy (MVP 7): Free numbers + a labelled example of the Pro rows; Pro: the shop's own rows; honest empty states.
-  { path: "analytics", expect: [/Posledních 30 dní/, /Slevy stály/, /Průměrná objednávka/, /Ukázka, ne vaše čísla/, /Objednávek v jiné měně \(EUR\): 3/, /S Pro uvidíte u každé slevy, kolik stála/, /href="\/app\/plan"/] },
+  { path: "analytics", expect: [/Posledních 30 dní/, /Slevy stály/, /Průměrná objednávka/, /Objednávek v jiné měně \(EUR\): 3/, /S Pro uvidíte u každé slevy, kolik stála/, /href="\/app\/plan"/], absent: [/Ukázka, ne vaše čísla/] },
   {
     path: "analytics?plan=pro",
     expect: [/Podzimní sleva 10 %/, /<s-link href="\/app\/discounts\/dev-fixture-1">/, /61 obj\. · stála 7\s420\sKč · tržby 71\s980\sKč/, /Množstevní slevy/, /Dárky zdarma/, /Ostatní slevy v objednávkách/, /Rozdaných dárků: 12/, /<s-link href="\/app\/rewards">/, /Prodaných kusů ve výprodeji: 31/, /<s-link href="\/app\/outlet">/, /Tržby jsou mezisoučet objednávek/],

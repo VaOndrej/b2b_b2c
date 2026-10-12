@@ -12,6 +12,7 @@ import { FIELD } from "../model/rule-form";
 import { boolAttr } from "../shell/attrs";
 import { SegmentedChoice } from "../shell/SegmentedChoice";
 import { WonSection } from "../shell/WonSection";
+import { EDITOR_STEPS } from "./steps";
 import { FieldGrid, FieldMark, Shown, type EditorView } from "./parts";
 
 export function ConditionsSection({ ed }: { ed: EditorView }) {
@@ -24,7 +25,7 @@ export function ConditionsSection({ ed }: { ed: EditorView }) {
   const hasMinimum = draft.minimum !== undefined;
   const noMinimum = missingMinimumCurrencies(draft, codes);
   return (
-    <WonSection title={t("editor.section.conditions")} glyph="cart" summary={[describeMinimum(draft, tr, codes), describeItemMinimums(draft, tr)].filter(Boolean).join(" · ") || t("describe.minimum.none")} anchor="conditions">
+    <WonSection step={{ n: 2, of: EDITOR_STEPS }} title={t("editor.section.conditions")} glyph="cart" summary={[describeMinimum(draft, tr, codes), describeItemMinimums(draft, tr)].filter(Boolean).join(" · ") || t("describe.minimum.none")} anchor="conditions">
       <s-stack direction="block" gap="small-200">
         {codes.length > 1 ? <s-text color="subdued">{t("editor.minimum.details")}</s-text> : null}
         <FieldGrid>

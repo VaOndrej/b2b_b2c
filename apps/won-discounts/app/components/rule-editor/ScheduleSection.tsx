@@ -9,6 +9,7 @@ import { FIELD } from "../model/rule-form";
 import type { RuleStatus } from "../model/rule-status";
 import { boolAttr } from "../shell/attrs";
 import { WonSection } from "../shell/WonSection";
+import { EDITOR_STEPS } from "./steps";
 import { FieldGrid, FieldMark, type EditorView } from "./parts";
 
 export function ScheduleSection({ ed, status }: { ed: EditorView; status: RuleStatus }) {
@@ -17,7 +18,7 @@ export function ScheduleSection({ ed, status }: { ed: EditorView; status: RuleSt
   const off = boolAttr(readOnly);
   const date = status.date ? formatDate(status.date, tr.locale) : "";
   return (
-    <WonSection title={t("editor.schedule.title")} glyph="calendar" summary={describeSchedule(draft, tr, timezone) || t("describe.schedule.always")} anchor="schedule">
+    <WonSection step={{ n: 4, of: EDITOR_STEPS }} title={t("editor.schedule.title")} glyph="calendar" summary={describeSchedule(draft, tr, timezone) || t("describe.schedule.always")} anchor="schedule">
       <s-stack direction="block" gap="small-200">
         <FieldGrid>
           <div>

@@ -15,6 +15,7 @@ import type { CodeRuleLimit, GeneratedBatchView } from "../model/types";
 import { boolAttr } from "../shell/attrs";
 import { SegmentedChoice } from "../shell/SegmentedChoice";
 import { WonSection } from "../shell/WonSection";
+import { EDITOR_STEPS } from "./steps";
 import { CodeGenerator, GeneratedBatches } from "./GeneratedCodes";
 import { FieldMark, Shown, type EditorView } from "./parts";
 
@@ -47,7 +48,7 @@ export function ApplySection({
   const isCode = draft.method === "code";
   const noCode = isCode && !ruleHasCodes(draft) && !pendingBatch;
   return (
-    <WonSection
+    <WonSection step={{ n: 3, of: EDITOR_STEPS }}
       title={t("editor.section.apply")}
       glyph="code"
       summary={[describeMethod(draft, tr), describeLimits(draft, tr)].filter(Boolean).join(" · ")}

@@ -205,3 +205,76 @@ test("nález 16: Časté kombinace — a finding shared by several combinations 
   assert.ok(warnings > 1 && cards > 0 && cards < warnings * 2, `${cards} cards for ${warnings} combinations with a warning`);
   assert.ok(text(html).includes("Ukázalo se v kombinacích:"));
 });
+
+// --- Nálezy 3, 4, 11, 13: cards and steps ---------------------------------------------------------------------
+
+test("nález 3: Slevy a kódy — 'Upravit' is a button and the ready-made discounts are not behind a disclosure", async () => {
+  const html = await render("discounts?sync=ok");
+  assert.ok((html.match(/<s-button variant="secondary" href="\/app\/discounts\/[^"]+">Upravit/g) ?? []).length >= 6, "every row has its button");
+  assert.ok(!/<s-button variant="tertiary" href="\/app\/discounts\//.test(html));
+  const recipes = html.slice(html.indexOf('id="recipes"'));
+  assert.ok(html.includes('id="recipes"') && !/^[^>]*>[\s\S]{0,400}aria-expanded/.test(recipes), "the section of ready-made discounts has no collapse button");
+  assert.ok(text(recipes).includes("Uvítací kód"), "its content is drawn");
+});
+
+test("nález 4: the rule editor's four sections are numbered steps; the optional Pro section is not", async () => {
+  for (const path of ["rule-editor", "rule-editor?rule=new&recipe=code", "rule-editor?plan=pro"]) {
+    const html = await render(path);
+    assert.deepEqual([...html.matchAll(/data-won-section-step="(\d)"[^>]*>([^<]+)</g)].map((m) => m[2]), ["Krok 1 / 4", "Krok 2 / 4", "Krok 3 / 4", "Krok 4 / 4"], path);
+  }
+});
+
+test("nález 11: a campaign is a card like a running sale — the name, its state and its buttons in the header strip", async () => {
+  const html = await render("campaigns?plan=pro");
+  const cards = html.split(/(?=<div data-won-campaign=")/).slice(1);
+  assert.deepEqual(cards.map((c) => c.match(/data-won-campaign="([a-z]+)"/)![1]), ["running", "scheduled", "ended", "killed"]);
+  for (const card of cards) assert.ok(card.includes('data-won-subcard=""'), "drawn by the shared SubCard");
+  const header = (card: string) => text(card.slice(0, card.indexOf("</div></div>") + 1));
+  assert.match(text(cards[0]!), /^\s*Víkend −20.% Aktivní/);
+  assert.ok(text(cards[0]!).indexOf("Ukončit hned") < text(cards[0]!).indexOf("26. 9. 2026"), "the buttons are in the header, above the body");
+  assert.ok(header(cards[1]!).includes("Naplánovaná"));
+  // Free: the same cards, without editing.
+  assert.equal((await render("campaigns")).split('data-won-campaign="').length - 1, 4);
+});
+
+test("nález 13: the last step of a new campaign says where the customer sees it, with the way there; the intro is said once", async () => {
+  const html = await render("campaigns?plan=pro&state=empty");
+  const web = html.slice(html.indexOf("data-won-campaign-web="));
+  assert.match(web, /^data-won-campaign-web="(seen|missing)"/);
+  assert.ok(text(web.slice(0, 1500)).includes("Otevřít Kampaň na webu"));
+  assert.ok(html.indexOf("data-won-campaign-web=") > html.indexOf('data-won-step="3"'), "it stands in the last step, above the button");
+  assert.ok(!text(html).includes("Kampaň na čas změní slevy"), "the second copy of the intro is gone");
+  assert.ok(text(html).includes("Co je kampaň."));
+});
+
+// --- Nálezy 5, 15, 18, 19: single places ----------------------------------------------------------------------
+
+test("nález 5: a batch of codes says how it is made — no grey number posing as a value, the codes come with Save", async () => {
+  const html = await render("rule-editor?rule=dev-fixture-2&batch=20");
+  const count = html.match(/<s-number-field name="[^"]*"[^>]*label="Kolik kódů"[^>]*>/)?.[0] ?? "";
+  assert.ok(count && !count.includes("placeholder="), count);
+  assert.ok(text(html).includes("Napište, kolik kódů chcete, a slevu uložte tlačítkem Uložit dole."));
+});
+
+test("nález 15: Nákupní ceny — the panel says it is an overview, and its list is not a disclosure", async () => {
+  const html = await render("margin?plan=pro");
+  const costs = html.slice(html.indexOf('id="costs"'), html.indexOf('data-won-view-panel="collections"'));
+  assert.ok(text(costs).includes("Jen přehled") && text(costs).includes("Tady nic nezapínáte ani neukládáte."), text(costs).slice(0, 300));
+  assert.ok(text(costs).includes("Produkty bez nákupní ceny") && !costs.includes("aria-expanded"), "the list is always open");
+});
+
+test("nález 18: Přehledy on Free — what Pro shows in one sentence, no invented rows", async () => {
+  const words = text(await render("analytics"));
+  assert.ok(words.includes("Zobrazit tarif Pro") && !words.includes("Ukázka, ne vaše čísla") && !words.includes("113 400"), "no sample table");
+  assert.ok(text(await render("analytics?plan=pro")).includes("Slevy jednotlivě"));
+});
+
+test("nález 19: a block that is on the cart page is opened, never added a second time", async () => {
+  const html = await render("rewards");
+  const cart = html.slice(html.indexOf('data-won-ms-place="cart"'));
+  const row = cart.slice(0, cart.indexOf("data-won-ms-place=", 30) > 0 ? cart.indexOf("data-won-ms-place=", 30) : 3000);
+  assert.ok(row.includes('data-won-placement="in_theme"'), "the fixture's cart block is in the template");
+  const href = row.match(/<s-button[^>]*href="([^"]+)"/)?.[1] ?? "";
+  assert.ok(href.includes("template=cart") || href.includes("/editor"), href);
+  assert.ok(!href.includes("addAppBlockId"), `the link only opens the editor: ${href}`);
+});

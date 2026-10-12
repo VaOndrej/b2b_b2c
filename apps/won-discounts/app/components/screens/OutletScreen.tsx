@@ -40,7 +40,7 @@ import { DiscountsSubNav } from "../shell/SubNav";
 import { editorOnProductOf, editorOpenUrl, placementOf, spotAdvice } from "../model/embed";
 import { outletBadgeText, outletWebLine } from "../model/outlet-web";
 import { StepCard } from "../shell/StepCard";
-import { choiceCardStyle, SubCard } from "../shell/SubCard";
+import { CardPill, choiceCardStyle, SubCard } from "../shell/SubCard";
 import { SpotNote } from "../StorefrontPlacements";
 import { WON_CARD_SHADOW, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SURFACE, WON_WASH } from "../shell/tokens";
 import { PlacementPill, type PlacementState, RowNote, WonRow, WonSection } from "../shell/WonSection";
@@ -274,9 +274,9 @@ function RunCard({
     </s-button>
   ) : null;
   const statusPill = (
-    <span data-won-outlet-status={run.status} style={{ fontSize: 11.5, fontWeight: 700, padding: "2px 9px", borderRadius: 999, border: `1px solid ${active ? "#bfe3cd" : WON_LINE}`, background: active ? "#e6f6ed" : WON_SURFACE, color: active ? "#1a8f4b" : WON_MUTED }}>
+    <CardPill live={active} marker={{ "data-won-outlet-status": run.status }}>
       {t(`outlet.status.${run.status}` as "outlet.status.active")}
-    </span>
+    </CardPill>
   );
   return (
     <div id={runAnchor(run.id)} style={{ scrollMarginTop: 16 }}>

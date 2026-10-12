@@ -9,10 +9,19 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ### Uzavření před review (od 12. 10. 2026) — zadání `won-discounts/prompt-uzavreni-pred-review.md`
 
-> **CHECKPOINT (po kompakci začni tady, potom celé zadání).** Krok 2 (opravy), hotové skupiny (a), (b), (c) a nález 20.
-> Otevřené nálezy: **A 0, B 8** (3, 4, 5, 11, 13, 15, 18, 19), C 13 (neopravují se).
-> Matice: `won-discounts/matice-pred-review.md`. Poslední commit: viz `git log -1`. Rozdělané: nic, další je skupina (d)
-> karty a kroky (3, 4, 11, 13), potom (e) jednotlivosti (5, 15, 18, 19), druhý průchod matice a krok 3.
+> **CHECKPOINT (po kompakci začni tady, potom celé zadání).** Krok 2 hotový, začíná krok 3 (ověření naživo).
+> Otevřené nálezy: **A 0, B 0**, C 15 (neopravují se, jsou v matici k rozhodnutí). Matice nemá žádné `neplatí`.
+> Poslední commit: viz `git log -1`. Rozdělané: krok 3: projít 17 položek „neověřeno naživo“ (seznam řádků:
+> `grep -n -i 'neověřen\|nezkoušeno naživo' docs/won-discounts-build-log.md`), ke každé stav; tabulka B v matici.
+> - **Hotovo (d):** seznam slev („Upravit“ je tlačítko, hotové slevy nejsou rozbalovací; 3), editor slevy má
+>   „Krok n / 4“ v hlavičkách sekcí (`WonSection step`, 4), kampaň je karta `SubCard` se štítkem `CardPill` (11),
+>   poslední krok nové kampaně říká, kde je banner, a vede na „Kampaň na webu“; úvod jen jednou (13).
+> - **Hotovo (e):** dávka kódů říká, že vznikne při Uložit, pole nemá šedé „100“ (5); Nákupní ceny mají pruh „Jen
+>   přehled“ a seznam není rozbalovací (15); Přehledy na Free bez vymyšlených řádků (18); nález 19 nebyl nález
+>   (odkaz u košíkového bloku nic nepřidává, test).
+> - **Druhý průchod:** 236 snímků znovu, bez posuvu a chyb; P10 ověřeno najetím myší na 63 prvků.
+> - **Brána po kroku 2:** node 1 906 (bylo 1 884), cargo 106, vitest 719, core 963 + 53, guard 301, `typecheck`
+>   (všechny appky), `lint`, `build`, `validate:shopify` exit 0; `test:e2e:preview` 38 z 38.
 > - **Hotovo (b):** `shell/PageSave.tsx` (Uložit stránky jen pod pohledem, který má co uložit: Množstevní slevy,
 >   Milníky, Marže; nález 7). `LookSection` na Free ukazuje místo zamčeného formuláře jednu větu a odkaz na tarif (8);
 >   dvě zkoušky v `harness-screens.test.ts` čekaly zadání pro AI na Free, očekávání přesunuto na Pro.

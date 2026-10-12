@@ -51,6 +51,7 @@ import { ProSell } from "../shell/ProSell";
 import { DiscountsSubNav } from "../shell/SubNav";
 import { WON_FONT, WON_INK, WON_LINE, WON_WASH } from "../shell/tokens";
 import { StepCard } from "../shell/StepCard";
+import { CardPill, SubCard } from "../shell/SubCard";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 
 export interface CampaignsScreenProps extends CampaignsScreenData {
@@ -86,13 +87,41 @@ function CampaignCard({ c, pro }: { c: CampaignView; pro: boolean }) {
   const { t } = useT();
   const live = c.status === "running" || c.status === "scheduled";
   const editable = live && pro;
+  // One card per campaign, like a running sale: the name and its state in the header strip with the card's
+  // buttons, what it changes in the body (pravidla vzhledu P4; before the first review, nález 11).
   return (
-    <s-box padding="base" border="base" borderRadius="base">
+    <SubCard
+      marker={{ "data-won-campaign": c.status }}
+      title={<span style={{ fontSize: 15 }}>{c.name}</span>}
+      label={<CardPill live={c.status === "running"}>{t(`campaign.status.${c.status}` as "campaign.status.running")}</CardPill>}
+      tone={c.unusedNames.length > 0 ? "attention" : undefined}
+      action={
+        <>
+          {live ? (
+            <s-button href={c.tryCartUrl} variant="secondary">
+              {t("campaign.action.tryCart")}
+            </s-button>
+          ) : null}
+          {editable ? (
+            <s-button href={editHref(c.id)} variant="secondary">
+              {t("campaign.action.edit")}
+            </s-button>
+          ) : null}
+          {live ? (
+            <s-button variant="secondary" tone="critical" commandFor={dialogId("kill", c.id)} command="--show">
+              {t(c.status === "running" ? "campaign.action.killNow" : "campaign.action.cancel")}
+            </s-button>
+          ) : null}
+          {c.status !== "running" ? (
+            <s-button variant="tertiary" commandFor={dialogId("delete", c.id)} command="--show">
+              {t("campaign.action.delete")}
+            </s-button>
+          ) : null}
+        </>
+      }
+    >
       <s-stack direction="block" gap="small-300">
-        <s-heading>{c.name}</s-heading>
-        <s-text>
-          {t(`campaign.status.${c.status}` as "campaign.status.running")} · {t("campaign.card.window", { start: c.startText, end: c.endText })}
-        </s-text>
+        <s-text>{t("campaign.card.window", { start: c.startText, end: c.endText })}</s-text>
         {c.overrides.length === 0 && c.tiers.length === 0 ? (
           <RowNote>
             {t("campaign.card.noOverrides")} {editable ? <s-link href={editHref(c.id)}>{t("campaign.action.edit")}</s-link> : null}
@@ -117,30 +146,8 @@ function CampaignCard({ c, pro }: { c: CampaignView; pro: boolean }) {
           </RowNote>
         ) : null}
         {c.finishing ? <RowNote>{t("campaign.card.finishing")}</RowNote> : null}
-        <s-stack direction="inline" gap="small-300">
-          {live ? (
-            <s-button href={c.tryCartUrl} variant="secondary">
-              {t("campaign.action.tryCart")}
-            </s-button>
-          ) : null}
-          {editable ? (
-            <s-button href={editHref(c.id)} variant="secondary">
-              {t("campaign.action.edit")}
-            </s-button>
-          ) : null}
-          {live ? (
-            <s-button variant="secondary" tone="critical" commandFor={dialogId("kill", c.id)} command="--show">
-              {t(c.status === "running" ? "campaign.action.killNow" : "campaign.action.cancel")}
-            </s-button>
-          ) : null}
-          {c.status !== "running" ? (
-            <s-button variant="tertiary" commandFor={dialogId("delete", c.id)} command="--show">
-              {t("campaign.action.delete")}
-            </s-button>
-          ) : null}
-        </s-stack>
       </s-stack>
-    </s-box>
+    </SubCard>
   );
 }
 
@@ -377,6 +384,30 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
     );
   };
 
+  const groups = (["running", "scheduled", "ended", "killed"] as const).map((status) => ({ status, items: campaigns.filter((c) => c.status === status) }));
+  const liveCount = campaigns.filter((c) => c.status === "running" || c.status === "scheduled").length;
+  const act = (intent: string, id: string) => submit({ [F.intent]: intent, [F.id]: id }, { method: "post" });
+
+  // Which panel is open: a campaign being edited or a refused save → the form; else the list when there is one.
+  const running = campaigns.find((c) => c.status === "running") ?? null;
+  const next = campaigns.find((c) => c.status === "scheduled") ?? null;
+  const showPlaces = pro && props.placements !== undefined;
+  const [view, setView] = useView<"list" | "form" | "places">({
+    initial: () => (editing || (result && !result.ok) ? "form" : liveCount > 0 || (isCampaignResult(result) && result.ok) || (!pro && campaigns.length > 0) ? "list" : "form"),
+    hash: { list: "list", form: "form", places: "places" },
+    resetKey: `${editing?.id ?? ""}|${result ? JSON.stringify(result).length : 0}`,
+  });
+  const listActive = running ? t("campaign.view.list.running", { name: running.name }) : next ? t("campaign.view.list.next", { name: next.name }) : t("overview.campaigns.none");
+  const placed = props.placed ?? {};
+  const placedCount = PLACE_KEYS.filter((key) => placed[key]).length;
+  // A banner in the wrong spot is on the web and not seen: the tile is green only when a place really shows it (§20i).
+  const misplacedCount = PLACE_KEYS.filter((key) => placed[key] && spotAdvice(placed.spots?.[key])?.move === true).length;
+  const placesActive = placedCount > 0 ? `${tr.tp("placement.count", placedCount)}${misplacedCount > 0 ? ` · ${tr.tp("placement.countMisplaced", misplacedCount)}` : ""}` : t("placement.none");
+  const placesStatus = placedCount === 0 ? undefined : placementStatus("in_theme", placedCount > misplacedCount ? { alsoMissing: misplacedCount } : { misplaced: true, alsoMissing: misplacedCount - 1 });
+  // Where the customer sees the campaign: said in the last step, with the way to the part that sets it (nález 13:
+  // the form said nothing about the banner and its countdown, which live under the third tile).
+  const bannerSeen = placedCount > misplacedCount;
+
   const form = (
     <Form method="post" ref={formRef} data-won-campaign-form>
       <input type="hidden" name={F.intent} value={CAMPAIGN_INTENT.save} />
@@ -543,6 +574,16 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
             </s-stack>
           </s-box>
         ) : null}
+        {showPlaces ? (
+          <div data-won-campaign-web={bannerSeen ? "seen" : "missing"} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "8px 12px", padding: "10px 12px", borderRadius: 10, background: WON_WASH, border: `1px solid ${WON_LINE}`, fontFamily: WON_FONT, fontSize: 13, lineHeight: 1.45, color: WON_INK }}>
+            <span>
+              <strong>{t("campaign.web.title")}</strong> {t(bannerSeen ? "campaign.web.seen" : placedCount > 0 ? "campaign.web.misplaced" : "campaign.web.missing")}
+            </span>
+            <s-button variant="secondary" onClick={() => setView("places")}>
+              {t("campaign.web.open")}
+            </s-button>
+          </div>
+        ) : null}
         <s-stack direction="inline" gap="small-300">
           <s-button type="submit" variant="primary" disabled={boolAttr(!pro)}>
             {t(editing ? "campaign.save.edit" : "campaign.save.new")}
@@ -558,26 +599,6 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
     </Form>
   );
 
-  const groups = (["running", "scheduled", "ended", "killed"] as const).map((status) => ({ status, items: campaigns.filter((c) => c.status === status) }));
-  const liveCount = campaigns.filter((c) => c.status === "running" || c.status === "scheduled").length;
-  const act = (intent: string, id: string) => submit({ [F.intent]: intent, [F.id]: id }, { method: "post" });
-
-  // Which panel is open: a campaign being edited or a refused save → the form; else the list when there is one.
-  const running = campaigns.find((c) => c.status === "running") ?? null;
-  const next = campaigns.find((c) => c.status === "scheduled") ?? null;
-  const showPlaces = pro && props.placements !== undefined;
-  const [view, setView] = useView<"list" | "form" | "places">({
-    initial: () => (editing || (result && !result.ok) ? "form" : liveCount > 0 || (isCampaignResult(result) && result.ok) || (!pro && campaigns.length > 0) ? "list" : "form"),
-    hash: { list: "list", form: "form", places: "places" },
-    resetKey: `${editing?.id ?? ""}|${result ? JSON.stringify(result).length : 0}`,
-  });
-  const listActive = running ? t("campaign.view.list.running", { name: running.name }) : next ? t("campaign.view.list.next", { name: next.name }) : t("overview.campaigns.none");
-  const placed = props.placed ?? {};
-  const placedCount = PLACE_KEYS.filter((key) => placed[key]).length;
-  // A banner in the wrong spot is on the web and not seen: the tile is green only when a place really shows it (§20i).
-  const misplacedCount = PLACE_KEYS.filter((key) => placed[key] && spotAdvice(placed.spots?.[key])?.move === true).length;
-  const placesActive = placedCount > 0 ? `${tr.tp("placement.count", placedCount)}${misplacedCount > 0 ? ` · ${tr.tp("placement.countMisplaced", misplacedCount)}` : ""}` : t("placement.none");
-  const placesStatus = placedCount === 0 ? undefined : placementStatus("in_theme", placedCount > misplacedCount ? { alsoMissing: misplacedCount } : { misplaced: true, alsoMissing: misplacedCount - 1 });
 
   return (
     <s-page heading={t("module.campaigns")}>
@@ -634,7 +655,7 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
         </ViewPanel>
 
         <ViewPanel id="form" view={view}>
-          <RowNote>{t("campaign.hint")}</RowNote>
+          {/* What a campaign is, is said once: in the form's own box "Co je kampaň" (it stood here a second time). */}
         {/* Pro: the tile above is the heading (7th round, bod 4: a second "Nová kampaň" under it said nothing new); the three
             steps stand on the page as cards of their own. The live summary is in the third step. */}
         {pro ? (

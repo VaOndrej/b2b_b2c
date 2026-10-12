@@ -48,6 +48,18 @@ export function SubCard({
   );
 }
 
+/**
+ * The state of a card's thing beside its name (a running sale, a campaign): green while it runs, neutral for every
+ * other state (scheduled, ended). One shape for every list of cards, so "Aktivní" looks the same on all of them.
+ */
+export function CardPill({ live, marker, children }: { live: boolean; marker?: Record<string, string>; children: ReactNode }) {
+  return (
+    <span {...marker} style={{ fontSize: 11.5, fontWeight: 700, padding: "2px 9px", borderRadius: 999, border: `1px solid ${live ? "#bfe3cd" : WON_LINE}`, background: live ? "#e6f6ed" : WON_SURFACE, color: live ? "#1a8f4b" : WON_MUTED }}>
+      {children}
+    </span>
+  );
+}
+
 /** The surface of a choice to click: blue ring and tint when chosen (§11b selectionRing's look, with room for content). */
 export function choiceCardStyle(on: boolean, disabled = false): CSSProperties {
   return {

@@ -10,6 +10,7 @@ import { mirrorCanRefresh, mirrorText, percentText } from "../model/margin";
 import { uiText } from "../model/result-copy";
 import type { CostCoverageView, CostMirrorView } from "../model/types";
 import { RefreshCostsButton } from "../shell/Notice";
+import { InfoStrip } from "../shell/InfoStrip";
 import { RowNote, WonBlock, WonRow, WonSection } from "../shell/WonSection";
 
 /** The section's state line: not read yet (why) / being read / all have a cost / "12 produktů nemá nákupní cenu". */
@@ -56,6 +57,10 @@ export function CostsSection({
   return (
     <WonSection title={t("margin.costs.title")} glyph="receipt" summary={t("margin.view.costs.about")} anchor="costs">
       <div>
+        {/* The tile says "Jen přehled"; the panel says what that means, like "Snížené slevy" (P3; nález 15). */}
+        <div style={{ marginBottom: 12 }}>
+          <InfoStrip label={t("common.infoOnly")}>{t("margin.costs.info")}</InfoStrip>
+        </div>
         {coverage ? (
           <s-stack direction="block" gap="small-200">
             <s-text color="subdued">{t("margin.costs.coverage", { with: coverage.variantsWithCost, total: coverage.variants })}</s-text>
@@ -69,8 +74,8 @@ export function CostsSection({
         ) : null}
         {sample.length > 0 ? (
           <div style={{ marginTop: 12 }}>
-            {/* §3i: the list is capped (20 from the server). Open whenever there is a product to fix (P7): the fix links are the point. */}
-            <WonBlock title={t("margin.costs.sample")} summary={sampleSummary(sample, missing, tr)} collapsible defaultOpen>
+            {/* §3i: the list is capped (20 from the server). Always open: the fix links are the point, there is nothing to pick between. */}
+            <WonBlock title={t("margin.costs.sample")} summary={sampleSummary(sample, missing, tr)}>
               <div>
                 {sample.map((product) => {
                   const href = adminProductHref(product.productId);

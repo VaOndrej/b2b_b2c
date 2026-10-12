@@ -25,19 +25,7 @@ import { needsAttention, statusLabel, type RuleStatus } from "../model/rule-stat
 import { hoverMark } from "./hover";
 import { PlanBadge } from "./PlanBadge";
 import { ProMarked } from "./pro-marked";
-import {
-  WON_AMBER,
-  WON_ATTENTION,
-  WON_CARD_SHADOW,
-  WON_FAINT,
-  WON_FONT,
-  WON_INK,
-  WON_LINE,
-  WON_LIVE,
-  WON_MUTED,
-  WON_SURFACE,
-  WON_WASH,
-} from "./tokens";
+import { WON_AMBER, WON_ATTENTION, WON_CARD_SHADOW, WON_FAINT, WON_FONT, WON_INK, WON_LINE, WON_LIVE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "./tokens";
 
 export type SectionGlyphName =
   | "tag"
@@ -358,6 +346,11 @@ function useHashOpen(anchor: string | undefined, setOpen: (open: boolean) => voi
 
 export interface WonSectionProps {
   title: string;
+  /**
+   * The section is a step of a form filled in order ("Krok 2 / 4" above its title, the words of shell/StepCard):
+   * for a form that is also edited later and keeps the section's state line and its side menu (the rule editor).
+   */
+  step?: { n: number; of: number };
   glyph?: SectionGlyphName;
   /** The state-at-rest line, from model/describe.ts (§17a) — never hand-built at the call site. */
   summary?: string;
@@ -391,6 +384,7 @@ export interface WonSectionProps {
 
 export function WonSection({
   title,
+  step,
   glyph = "tag",
   summary,
   hint,
@@ -414,6 +408,8 @@ export function WonSection({
   const bodyId = useId();
   const expanded = collapsible ? open : true;
   const moduleState = typeof state === "string" ? state : state?.state;
+  const tr = useT();
+  const stepLabel = step ? tr.t("step.of", { n: step.n, of: step.of }) : null;
 
   const header: ReactNode = (
     <>
@@ -435,6 +431,11 @@ export function WonSection({
         <Glyph name={glyph} />
       </span>
       <span style={{ flex: "1 1 auto", minWidth: 0, textAlign: "left" }}>
+        {step ? (
+          <span data-won-section-step={step.n} style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: WON_SELECT }}>
+            {stepLabel}
+          </span>
+        ) : null}
         <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: WON_INK, letterSpacing: "-0.01em" }}>{title}</span>
           {pro ? <PlanBadge tier="pro" locked={locked} /> : null}

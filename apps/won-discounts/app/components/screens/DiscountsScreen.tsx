@@ -230,7 +230,8 @@ export function DiscountsScreen({
                     }
                     action={
                       // P3: a rule that needs attention opens at the field that fixes it.
-                      <s-button variant="tertiary" href={ruleEditHref(rule, statuses[i], codes)}>
+                      // The row's main action looks like a button (it was bare text; before the first review, nález 3).
+                      <s-button variant="secondary" href={ruleEditHref(rule, statuses[i], codes)}>
                         {t("common.edit")}
                       </s-button>
                     }
@@ -242,7 +243,7 @@ export function DiscountsScreen({
         </WonSection>
 
         {rules.length > 0 ? (
-          <WonSection title={t("discounts.recipes.title")} glyph="spark" summary={t("discounts.recipes.summary")} collapsible defaultOpen={false}>
+          <WonSection title={t("discounts.recipes.title")} glyph="spark" summary={t("discounts.recipes.summary")} anchor="recipes">
             <RecipeGrid withBlank />
           </WonSection>
         ) : null}

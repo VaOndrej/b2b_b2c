@@ -239,8 +239,13 @@ export function CodeGenerator({
       ) : (
         <>
           <div style={{ maxWidth: 240 }}>
-            <s-number-field name={FIELD.batchCount} label={t("editor.generate.count")} placeholder="100" min={1} max={max} inputMode="numeric" disabled={off} />
+            <s-number-field name={FIELD.batchCount} label={t("editor.generate.count")} min={1} max={max} inputMode="numeric" disabled={off} />
             <FieldMessage text={errorFor(FIELD.batchCount)} />
+          </div>
+          {/* How a batch is made, said where it is made: there is no button of its own, the codes come with the
+              rule's Save (nález 5: an empty-looking form with a grey "100" left the merchant guessing). */}
+          <div data-won-generate-how={pending ? "ready" : "empty"} style={{ fontSize: 13, fontWeight: 600, color: WON_INK }}>
+            {t(pending ? "editor.generate.howReady" : "editor.generate.howEmpty")}
           </div>
           <RowNote>{t(pro ? "editor.generate.countHintPro" : "editor.generate.countHintFree", { max })}</RowNote>
           {pro ? (

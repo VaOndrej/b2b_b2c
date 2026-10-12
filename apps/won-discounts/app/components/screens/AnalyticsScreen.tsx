@@ -11,7 +11,6 @@
 
 import { useT } from "../../i18n/context";
 import type { AnalyticsScreenData } from "../model/analytics";
-import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 import { WON_AMBER, WON_INK, WON_MUTED } from "../shell/tokens";
@@ -79,7 +78,7 @@ function RuleTable({ rows }: { rows: AnalyticsScreenData["rules"] }) {
 export function AnalyticsScreen(props: AnalyticsScreenProps) {
   const tr = useT();
   const { t } = tr;
-  const { plan, available, days, empty, tiles, series, otherCurrencyOrders, otherCurrencies = [], rules, gifts, outletItems, sample } = props;
+  const { plan, available, days, empty, tiles, series, otherCurrencyOrders, otherCurrencies = [], rules, gifts, outletItems } = props;
   const pro = plan === "pro";
   const noData = !available || empty;
   return (
@@ -138,13 +137,9 @@ export function AnalyticsScreen(props: AnalyticsScreenProps) {
         ) : (
           <WonSection title={t("analytics.pro.title")} glyph="plan" pro locked summary={t("analytics.pro.locked")} anchor="rules">
             <s-stack direction="block" gap="small-300">
+              {/* One sentence of what Pro shows and the link to the plan. Invented rows are not drawn (decided
+                  6 Oct 2026, doctrine §18h; they stood here as "Ukázka, ne vaše čísla" — nález 18). */}
               <ProSell benefit={t("analytics.pro.benefit")} />
-              <ProFrame locked>
-                <s-stack direction="block" gap="small-300">
-                  {sample ? <RowNote>{t("analytics.pro.sample")}</RowNote> : null}
-                  <RuleTable rows={rules} />
-                </s-stack>
-              </ProFrame>
             </s-stack>
           </WonSection>
         )}
