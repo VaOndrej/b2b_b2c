@@ -169,7 +169,8 @@ const pieces = (html: string, marker: string) => html.split(new RegExp(`(?=<div 
 test("nález 2: Přehled — every thing to resolve says what happened, what to do, and has the primary button to the field", async () => {
   const html = await render("overview?state=modules&plan=pro");
   const findings = pieces(html, "data-won-overview-finding");
-  assert.ok(findings.length >= 4, `the fixture has things to resolve (${findings.length})`);
+  // Two at most are drawn as cards (decided 12 Oct 2026, the test "C14" below); the fixture has five.
+  assert.equal(findings.length, 2);
   for (const finding of findings) {
     const words = text(finding);
     assert.ok(words.includes("Co se stalo") && words.includes("Co s tím"), words.slice(0, 200));
@@ -277,4 +278,45 @@ test("nález 19: a block that is on the cart page is opened, never added a secon
   const href = row.match(/<s-button[^>]*href="([^"]+)"/)?.[1] ?? "";
   assert.ok(href.includes("template=cart") || href.includes("/editor"), href);
   assert.ok(!href.includes("addAppBlockId"), `the link only opens the editor: ${href}`);
+});
+
+// --- Decided after the walkthrough (12 Oct 2026): C1, C3, C8, C9, C13, C14 ------------------------------------
+
+test("C14: Přehled draws at most two things to resolve as cards; the rest is one line with how many wait at which module", async () => {
+  const html = await render("overview?state=modules&plan=pro");
+  assert.equal(pieces(html, "data-won-overview-finding").length, 2);
+  const more = text(html.slice(html.indexOf("data-won-overview-more"), html.indexOf("data-won-overview-more") + 1500));
+  assert.match(more, /A ještě 3 věci k vyřešení:/);
+  assert.match(more, /Slevy a kódy\s*\(\s*1\s*\)[\s\S]*Milníky\s*\(\s*1\s*\)[\s\S]*Množstevní slevy\s*\(\s*1\s*\)/);
+  assert.match(html.slice(html.indexOf("data-won-overview-more")), /<s-link href="\/app\/discounts">/);
+  // Two or fewer: no line at all.
+  assert.ok(!(await render("overview?state=empty")).includes("data-won-overview-more"));
+});
+
+test("C1: Přehled promises nothing that is not collected — no 'Připravujeme', and the block is not drawn without a row", async () => {
+  for (const path of ["overview?state=modules&plan=pro", "overview?state=margin&watch=1&plan=pro", "overview?state=conflict", "overview?state=empty"]) {
+    const html = await render(path);
+    assert.ok(!text(html).includes("Připravujeme"), path);
+    if (html.includes('data-won-watch=""')) assert.ok(html.includes("data-won-watch-margin") || html.includes("data-won-watch-orders"), `${path}: the block has a row`);
+  }
+  assert.ok(!(await render("overview?state=conflict")).includes('data-won-watch=""'), "nothing to show: no block");
+});
+
+test("C3: the guide's step 2 — going on without the move is a visible button that says so", async () => {
+  const html = await render("onboarding?step=2");
+  assert.match(html, /<s-button type="submit" variant="secondary"[^>]*>Pokračovat bez přesunu/);
+});
+
+test("C8: the rule editor's Pro section is open for a Pro shop; C13: the sale's returns are saved by a primary button", async () => {
+  const pro = await render("rule-editor?plan=pro");
+  const section = pro.slice(pro.indexOf('id="pro"'));
+  assert.match(section.slice(0, 3000), /aria-expanded="true"/);
+  const outlet = await render("outlet?plan=pro");
+  assert.match(outlet, /<s-button type="submit" variant="primary">Uložit<\/s-button>/);
+});
+
+test("C9: a page with one place to jump to has no side list; with more it has one", async () => {
+  assert.ok(!(await render("try-cart")).includes("data-won-section-nav"), "Free: only the cart");
+  assert.ok(!(await render("try-cart?state=empty&plan=pro")).includes("data-won-section-nav"), "an empty cart, no combinations");
+  assert.ok((await render("try-cart?state=warnings&plan=pro&combos=on")).includes("data-won-section-nav"));
 });

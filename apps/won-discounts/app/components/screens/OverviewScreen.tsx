@@ -142,6 +142,9 @@ function translationsOf(config: WonDiscountsConfig, textCount?: number): NonNull
   return { ...base, progress: textLanguages(config).map((locale) => ({ locale, missing: missingTexts(locale, texts[locale], textCount) })) };
 }
 
+/** How many things to resolve Přehled draws as cards; the rest is one line (decided 12 Oct 2026: the tiles stay on the first screen). */
+const FINDINGS_SHOWN = 2;
+
 function warningText(w: RuleWarning, tr: Translator, currencies: readonly CurrencyView[] = []): string {
   const rule = w.ruleName.trim() || tr.t("common.untitled");
   if (w.kind === "unsupported") return tr.t("overview.warning.unsupported", { rule });
@@ -355,6 +358,15 @@ export function OverviewScreen({
   // Ondřej, 7 Oct 2026: a Pro part says "Pro" on its tile on every plan (on Pro the plain marker, on Free "Pro · odemknout").
   const proMark = true;
   const moduleRows = moduleAttention(status, currencies, tr);
+  // One list of things to resolve, in the order they are said: the discounts' own, then the modules' amounts.
+  const findings = [
+    ...warnings.map((w) => ({ key: `${w.kind}-${w.ruleId}`, kind: w.kind as string, what: warningText(w, tr, currencies), how: t(`overview.warning.${w.kind}.how`), href: `/app/discounts/${encodeURIComponent(w.ruleId)}#${w.field}`, fix: warningFix(w, tr), page: "/app/discounts", pageLabel: t("nav.discounts") })),
+    ...moduleRows.map((row) => {
+      const tiers = row.href.startsWith("/app/tiers");
+      return { key: row.key, kind: "amountMissing", what: row.text, how: t("overview.attention.how"), href: row.href, fix: t("overview.warning.missingCurrency.fix"), page: tiers ? "/app/tiers" : "/app/rewards", pageLabel: t(tiers ? "nav.tiers" : "nav.rewards") };
+    }),
+  ];
+  const moreFindings = [...findings.slice(FINDINGS_SHOWN).reduce((pages, f) => pages.set(f.page, { href: f.page, label: f.pageLabel, count: (pages.get(f.page)?.count ?? 0) + 1 }), new Map<string, { href: string; label: string; count: number }>()).values()];
   // N5: "Aktivní" only when something runs. A new shop with everything connected is ready, not live.
   const somethingRuns = Object.values(states).some((s) => s?.state === "active");
   const marketCount = (enabledMarkets ?? []).length;
@@ -428,28 +440,26 @@ export function OverviewScreen({
         {warnings.length + moduleRows.length > 0 ? (
           <WonSection title={t("overview.warnings.title")} glyph="alert" summary={tr.tp("count.warning", warnings.length + moduleRows.length)}>
             {/* Each thing to resolve is a finding: what happened, what to do, the button to the exact field (P7, §13c).
-                Two beside each other on a wide screen, so the tiles below stay near the first screen (§19d). */}
+                At most two are drawn, beside each other on a wide screen, so the tiles stay on the first screen (§19d);
+                the others are one line that says how many and at which module they wait (its tile counts them too). */}
             <div data-won-overview-findings="" style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 400px), 1fr))", alignItems: "stretch" }}>
-              {warnings.map((w) => (
-                <Finding
-                  key={`${w.kind}-${w.ruleId}`}
-                  marker={{ "data-won-overview-finding": w.kind }}
-                  what={warningText(w, tr, currencies)}
-                  how={t(`overview.warning.${w.kind}.how`)}
-                  primary={{ href: `/app/discounts/${encodeURIComponent(w.ruleId)}#${w.field}`, label: warningFix(w, tr) }}
-                />
-              ))}
-              {/* N2: a reward or a quantity level that some market does not get, with the link to its field. */}
-              {moduleRows.map((row) => (
-                <Finding
-                  key={row.key}
-                  marker={{ "data-won-overview-finding": "amountMissing" }}
-                  what={row.text}
-                  how={t("overview.attention.how")}
-                  primary={{ href: row.href, label: t("overview.warning.missingCurrency.fix") }}
-                />
+              {findings.slice(0, FINDINGS_SHOWN).map((finding) => (
+                <Finding key={finding.key} marker={{ "data-won-overview-finding": finding.kind }} what={finding.what} how={finding.how} primary={{ href: finding.href, label: finding.fix }} />
               ))}
             </div>
+            {moreFindings.length > 0 ? (
+              <div data-won-overview-more="" style={{ marginTop: 10, fontFamily: WON_FONT, fontSize: 13, lineHeight: 1.5, color: WON_INK }}>
+                <strong>{tr.tp("overview.warnings.more", findings.length - FINDINGS_SHOWN)}</strong>{" "}
+                {moreFindings.map((group, i) => (
+                  <span key={group.href}>
+                    {i > 0 ? " · " : ""}
+                    <s-link href={group.href}>
+                      {group.label} ({group.count})
+                    </s-link>
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </WonSection>
         ) : null}
 
@@ -529,8 +539,10 @@ export function OverviewScreen({
 
         {/* Feedback 9 Oct 2026 (2nd round, bod 2): under the tiles, what the app watches and what it brought — the
             first quick look; the detail is Přehledy. WIP: the numbers shown are the ones the app already has
-            (margin protection from the settings and the costs; orders from Přehledy's counts); what is not
-            collected yet is named as coming, never shown as a zero. */}
+            (margin protection from the settings and the costs; orders from Přehledy's counts). What is not
+            collected yet is not shown at all (the row "Připravujeme" went before the first review, 12 Oct 2026:
+            doctrine §18h), and a block with no row is not drawn (§18b). */}
+        {status.margin || status.analytics ? (
         <WonSection title={t("watch.title")} glyph="shield" summary={t("watch.summary")} anchor="watch">
           <div data-won-watch="">
             {status.margin ? (
@@ -576,14 +588,9 @@ export function OverviewScreen({
                 </div>
               </WonRow>
             ) : null}
-            <WonRow>
-              <div data-won-watch-soon="">
-                <span style={{ display: "inline-block", padding: "1px 8px", borderRadius: 999, fontFamily: WON_FONT, fontSize: 11, fontWeight: 700, color: WON_MUTED, background: WON_WASH, border: `1px solid ${WON_LINE}` }}>{t("watch.soon.label")}</span>
-                <RowNote>{t("watch.soon.text")}</RowNote>
-              </div>
-            </WonRow>
           </div>
         </WonSection>
+        ) : null}
 
         {/* Under the signpost: a list as long as the shop's own discounts, with its own actions. `#native` still leads here. */}
         {showNative ? (

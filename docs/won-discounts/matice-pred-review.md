@@ -39,7 +39,7 @@ klikací prvek mimo tlačítka Shopify.
 
 **Druhý průchod po opravách (12. 10.):** všech 236 snímků znovu, žádný vodorovný posuv na 390 px, žádná chyba v konzoli,
 žádná stránka nevrátila chybu. Výška stránek: Vyzkoušet košík 3 943 → 2 629 px, vzhled na Free 2 138 → 1 445 px;
-Přehled s upozorněními je o 190 až 340 px delší (karty „Co se stalo / Co s tím“, viz C14).
+Přehled s upozorněními byl po opravě nálezu 2 o 190 až 340 px delší; po rozhodnutí C14 je kratší než na začátku.
 
 | Obrazovka nebo pohled | Screenshot | P1 | P2 | P3 | P4 | P5 | P6 | P7 | P8 | P9 | P10 | §17 | §18b | §18g | §18h | §18i | §19a | §19b | §19c | §19f |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -160,25 +160,28 @@ U opravených nálezů je screenshot po opravě ve složce `po/` pod stejným n�
 | 19 | Milníky na webu, „Stránka košíku“ | 4 | „Na webu“ a „Otevřít úpravu vzhledu“ | Polohu košíkového bloku aplikace nečte (P9, sloupec „Kde ještě ne“). | `rewards-free--view-web` | nebyl to nález: odkaz u bloku, který v košíku je, jen otevírá editor a nic nepřidává (test). Polohu na stránce košíku aplikace záměrně neposuzuje, blok tam nejde přehlédnout. |
 | 20 | Všechny stránky (nalezeno při screenshotech po opravě) | 4 | Uprostřed českého slova znak „�“ („vět�ší slevu“, „vr�áceno“) | Při odesílání stránky se před písmeno s diakritikou na hranici bloku vložil nulový bajt (React 18.3.1 na Node 26.10; samotný text je v pořádku). Které slovo to postihne, se mění s délkou stránky. | `po/margin-pro--1440` (po opravě) | opravený |
 
-### C, vkus (neopravuje se, k rozhodnutí)
+### C, vkus
 
-| # | Kde | Co |
-|---|---|---|
-| C1 | Přehled, „Co Won hlídá a co přinesl“ | Řádek „Připravujeme“. Odporuje §18h, ale vznikl v kole z 9. 10. jako součást bodu 2. Nechat, nebo schovat? |
-| C2 | Přehled, dlaždice Výprodej na Pro | Štítky „Pro“ a „Vyžaduje pozornost“ se lámou na dva řádky. |
-| C3 | Průvodce, krok 2 | „Pokračovat“ je nevýrazné vedle černého „Přesunout do Won“. |
-| C4 | Pole s datem | Zástupný text „YYYY-MM-DD“ a datum „November 27, 2026“ anglicky; u kampaně čas „2026-09-28 14:00“. V Shopify adminu se může řídit jazykem účtu, v náhledu to nejde poznat. |
-| C5 | Množstevní slevy → Pro celý obchod | Čtyři odstavce vysvětlení vedle náhledu. |
-| C6 | Ochrana marže → Hranice | „Jak to funguje“, příklad, dva odstavce a nápověda pod každým polem. Hodně textu, ale příklad s čísly tam je. |
-| C7 | Přehledy | Stránka je celá přehled a nemá „Jen přehled“ (P3). Neleží na cestě žádného scénáře. |
-| C8 | Editor slevy, „Pro koho platí a kombinace“ | Na Pro je sekce sbalená (§18g) a kombinace nejsou karty volby (P6). Neleží na cestě žádného scénáře. |
-| C9 | Vyzkoušet košík, Free a prázdný | Boční menu s jedinou položkou „Košík“. |
-| C10 | Výprodej → Pravidla výprodeje | Dlouhý výčet „Povolená / Nepovolená“; totéž jde přepnout i v Nastavení. |
-| C11 | Milníky na mobilu | Náhled žebříčku je nad formulářem stupňů. |
-| C12 | Dlaždice pohledů u Pro částí (Marže, Výjimky, Nový výprodej) | Na tarifu Pro nemají štítek „Pro“. Rozhodnutí „štítek Pro vždy vidět“ jsem vyložil jako pravidlo pro dlaždice úvodní stránky a pruh pod nadpisem; tam platí. Má platit i tady? |
-| C13 | Výprodej → Vratky | „Uložit“ je tam světlé, jinde tmavé. |
-| C14 | Přehled, „Vyžaduje pozornost“ | Po opravě nálezu 2 jsou upozornění karty (dvě vedle sebe). Při pěti upozorněních začínají dlaždice modulů až pod první obrazovkou (§19d). |
-| C15 | Výprodej → Výprodeje, Kampaně | Stránka má dlaždice a přes 1,5 obrazovky, boční menu nemá: dlaždice a boční menu se podle §19f neskládají. |
+Rozhodnuto s Ondřejem 12. 10. 2026: C1, C3, C8 (rozbalení sekce), C9, C13 a C14 se udělaly, ostatní zůstávají.
+Sloupec „Stav“ říká, jak to dopadlo. Testy: `tests/ui/pred-review.test.ts`, bloky „C…“.
+
+| # | Kde | Co | Stav |
+|---|---|---|---|
+| C1 | Přehled, „Co Won hlídá a co přinesl“ | Řádek „Připravujeme“. Odporuje §18h, ale vznikl v kole z 9. 10. jako součást bodu 2. Nechat, nebo schovat? | **hotovo:** řádek je pryč, blok se bez řádku nekreslí |
+| C2 | Přehled, dlaždice Výprodej na Pro | Štítky „Pro“ a „Vyžaduje pozornost“ se lámou na dva řádky. | zůstává |
+| C3 | Průvodce, krok 2 | „Pokračovat“ je nevýrazné vedle černého „Přesunout do Won“. | **hotovo:** „Pokračovat bez přesunu“ je viditelné tlačítko |
+| C4 | Pole s datem | Zástupný text „YYYY-MM-DD“ a datum „November 27, 2026“ anglicky; u kampaně čas „2026-09-28 14:00“. V Shopify adminu se může řídit jazykem účtu, v náhledu to nejde poznat. | ověří Ondřej v Shopify adminu; když je datum anglicky i tam, je to nález B |
+| C5 | Množstevní slevy → Pro celý obchod | Čtyři odstavce vysvětlení vedle náhledu. | zůstává |
+| C6 | Ochrana marže → Hranice | „Jak to funguje“, příklad, dva odstavce a nápověda pod každým polem. Hodně textu, ale příklad s čísly tam je. | zůstává |
+| C7 | Přehledy | Stránka je celá přehled a nemá „Jen přehled“ (P3). Neleží na cestě žádného scénáře. | zůstává |
+| C8 | Editor slevy, „Pro koho platí a kombinace“ | Na Pro je sekce sbalená (§18g) a kombinace nejsou karty volby (P6). Neleží na cestě žádného scénáře. | **hotovo zčásti:** sekce je na Pro otevřená; kombinace jako karty volby zůstávají |
+| C9 | Vyzkoušet košík, Free a prázdný | Boční menu s jedinou položkou „Košík“. | **hotovo:** menu s jednou položkou se nekreslí |
+| C10 | Výprodej → Pravidla výprodeje | Dlouhý výčet „Povolená / Nepovolená“; totéž jde přepnout i v Nastavení. | zůstává |
+| C11 | Milníky na mobilu | Náhled žebříčku je nad formulářem stupňů. | zůstává |
+| C12 | Dlaždice pohledů u Pro částí (Marže, Výjimky, Nový výprodej) | Na tarifu Pro nemají štítek „Pro“. Rozhodnutí „štítek Pro vždy vidět“ jsem vyložil jako pravidlo pro dlaždice úvodní stránky a pruh pod nadpisem; tam platí. Má platit i tady? | zůstává tak, jak je (rozhodnuto: štítek jen na úvodní stránce a v pruhu) |
+| C13 | Výprodej → Vratky | „Uložit“ je tam světlé, jinde tmavé. | **hotovo:** tmavé tlačítko |
+| C14 | Přehled, „Vyžaduje pozornost“ | Po opravě nálezu 2 jsou upozornění karty (dvě vedle sebe). Při pěti upozorněních začínají dlaždice modulů až pod první obrazovkou (§19d). | **hotovo:** nejvýš dvě karty, zbytek jeden řádek s počty podle modulu; Přehled s pěti upozorněními má 1 500 px (před prací 1 595) |
+| C15 | Výprodej → Výprodeje, Kampaně | Stránka má dlaždice a přes 1,5 obrazovky, boční menu nemá: dlaždice a boční menu se podle §19f neskládají. | zůstává |
 
 ## Krok 3, ověření naživo (12. 10. 2026)
 
@@ -291,7 +294,7 @@ v levém stromu a žádný druhý blok nepřibyl.
 Věci, které při průchodu chyběly nebo nejsou hotové, a do tohohle zadání nepatří:
 
 - **Výprodej bez přístupu k objednávkám.** Na každém pohledu Výprodeje je žlutý pruh „Prodané kusy se zatím
-  nepočítají“. Je pravdivý (5b je odložené), ale klient uvidí, že hlavní slib modulu zatím neplatí.
+  nepočítají“. Je pravdivý (5b je odložené), ale klient uvidí, že hlavní slib modulu zatím neplatí. Rozhodnuto 12. 10.: zůstává, při review se to řekne.
 - **Ukázkový obchod.** Dev obchod má USD a produkty `won-e2e-*`.
-- **Přehled: čísla „kolik kusů navíc“ a „kolik ochrana marže ušetřila“** se nesbírají (C1).
+- **Přehled: čísla „kolik kusů navíc“ a „kolik ochrana marže ušetřila“** se nesbírají; řádek, který je sliboval, je pryč (C1).
 - **Pruh nahoře pro výprodej a množstevní slevy** neexistuje (rozhodnutí: výprodej do pruhu nepatří).

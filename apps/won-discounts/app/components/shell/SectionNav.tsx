@@ -146,6 +146,8 @@ export function SectionNav({ label, items, children }: SectionNavProps) {
     else scroll();
   };
 
+  // A list of one place leads nowhere (§18b): the page is drawn without the column.
+  if (items.length < 2) return <>{children}</>;
   return (
     <div className="won-jump">
       <style dangerouslySetInnerHTML={{ __html: SECTION_NAV_CSS }} />

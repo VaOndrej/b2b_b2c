@@ -256,7 +256,9 @@ export function OnboardingScreen({ step, rules, liveRules = 0, goals, native, em
             <s-stack direction="block" gap="base">
               <s-text color="subdued">{t("onboarding.native.body")}</s-text>
               <NativeDiscountsPanel native={native} mode="all" readOnly={readOnly} />
-              {stepForm(3, t("common.continue"), native.state === "ok" && native.discounts.some((d) => d.movable) ? "tertiary" : "primary")}
+              {/* With something to move the primary button is the move; going on without it is still a button to see
+                  (it was bare text, and the black button beside it moved discounts for a merchant who did not read). */}
+              {native.state === "ok" && native.discounts.some((d) => d.movable) ? stepForm(3, t("onboarding.native.skip"), "secondary") : stepForm(3, t("common.continue"), "primary")}
             </s-stack>
           </WonSection>
         ) : null}

@@ -100,8 +100,9 @@ export function ProSection({
       locked={!pro}
       summary={describeProSettings(draft, tr, ruleNames, marketNames)}
       collapsible
-      // Open whenever something is set in it (or the plan does not run what is stored).
-      defaultOpen={storedSegments || defaults.markets.length > 0 || defaults.combinesWith.length > 0 || gate.length > 0}
+      // Open for a Pro shop (§18g: a Pro section is open for the shop that has it), and on Free whenever something
+      // is set in it (the plan does not run what is stored).
+      defaultOpen={pro || storedSegments || defaults.markets.length > 0 || defaults.combinesWith.length > 0 || gate.length > 0}
       anchor="pro"
     >
       <s-stack direction="block" gap="base">

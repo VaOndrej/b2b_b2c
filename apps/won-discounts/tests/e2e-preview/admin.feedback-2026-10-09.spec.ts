@@ -171,7 +171,8 @@ test("Přehled: under the tiles, what Won watches and what it brought — Free w
   await expect(block.locator('[data-won-watch-margin="some"]')).toContainText("Hlídá a zkracuje 2 slevy u 14 variant");
   await expect(block.locator("s-button", { hasText: "Zobrazit, kde zasahuje" })).toHaveAttribute("href", "/app/margin#impact");
   await expect(block.locator("[data-won-watch-number]")).toHaveCount(4);
-  await expect(block.locator("[data-won-watch-soon]")).toContainText("Připravujeme");
+  // What is not collected yet is not promised (the row "Připravujeme" went before the first review, 12 Oct 2026).
+  await expect(page.locator("s-page")).not.toContainText("Připravujeme");
   // Free: the same answer, no number (the list of where and by how much is Pro).
   await open(page, "overview?state=margin&watch=some");
   await expect(block.locator('[data-won-watch-margin="some"]')).toContainText("některé slevy zkracuje");

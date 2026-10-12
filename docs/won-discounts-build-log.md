@@ -11,8 +11,13 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 > **CHECKPOINT (po kompakci začni tady, potom celé zadání).** Kroky 0 až 3 hotové (12. 10. 2026), zadání je uzavřené
 > až na to, co bez Ondřeje ověřit nejde.
-> Otevřené nálezy: **A 0, B 0**; 20 nálezů B opravených (19 z průchodu + nulový bajt), C 15 k rozhodnutí.
+> Otevřené nálezy: **A 0, B 0**; 20 nálezů B opravených (19 z průchodu + nulový bajt), C 15 rozhodnutých (6 uděláno).
 > Poslední commit: viz `git log -1`. Rozdělané: nic. Zbývá Ondřejovi: seznam „Ověř sám“ v matici (oddíl Krok 3).
+> - **Po rozhodnutí Ondřeje (12. 10. večer):** C1 („Připravujeme“ pryč), C14 (Přehled: nejvýš dvě karty upozornění,
+>   zbytek řádek s počty podle modulu, `FINDINGS_SHOWN`), C3 („Pokračovat bez přesunu“), C8 (sekce Pro v editoru
+>   otevřená na Pro), C9 (`SectionNav` se s jednou položkou nekreslí), C13. C12 a žlutý pruh Výprodeje zůstávají.
+>   Brána: node 1 911, cargo 106, vitest 719, core 963 + 53, `typecheck`, `lint`, `build`, `validate:shopify` exit 0,
+>   `test:e2e:preview` 38 z 38. Zbývá mimo kód: ukázkový obchod v CZK, C4 ověřit v adminu.
 > - **Krok 3:** živé běhy na dev obchodě přes runbook: `rewards` 8/8 + 8/8, `tiers` 7/8 + 7/8, `outlet` 5/5 + 5/5
 >   (po přepsání zastaralého testu štítku), `rewards-pro` 4/4 + 4/4, `tiers-pro` 6/6 + 6/6, `shapes` 4/4 + 4/4,
 >   `looks.sh rewards-pro` 2/2 + 2/2; každý běh `cleanup` 0 a `verify-clean` 0. `margin-pro` a jeden krok `tiers`

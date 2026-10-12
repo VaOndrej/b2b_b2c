@@ -25,7 +25,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "overview?state=pro-cards&plan=pro", expect: [/Žádná kampaň není naplánovaná/, /Žádný výprodej není aktivní/] },
   {
     path: "overview?state=live",
-    expect: [/Vyžaduje pozornost/, /LETO15/, /Přesunout vše \(2\)/, /Vrátit zpět/, /3 aktivní z 6 · 1 naplánovaná · 1 neaktivní/, /platí jen pro skupiny zákazníků/, /Upravit, pro koho platí/],
+    expect: [/Vyžaduje pozornost/, /LETO15/, /Přesunout vše \(2\)/, /Vrátit zpět/, /3 aktivní z 6 · 1 naplánovaná · 1 neaktivní/, /nemá hodnotu pro Slovensko/, /Doplnit hodnotu/, /A ještě 1 věc k vyřešení:/],
   },
   {
     path: "overview?state=sync-failed",

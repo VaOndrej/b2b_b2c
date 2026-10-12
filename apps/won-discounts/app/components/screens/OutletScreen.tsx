@@ -1087,7 +1087,7 @@ export function OutletScreen(props: OutletScreenProps) {
                   ))}
                 </s-select>
                 <div>
-                  <s-button type="submit" variant="secondary">
+                  <s-button type="submit" variant="primary">
                     {t("outlet.settings.save")}
                   </s-button>
                 </div>

@@ -60,8 +60,11 @@ const MARKETS = [
 
 test("N2 + N4: the home page lists a gift a market does not get, and the tile counts what the list shows", async () => {
   const html = await render("overview?state=modules");
-  assert.match(html, /Dárek Ponožky Won — M nemá částku pro Slovensko\. Zákazníci ho tam nedostanou\./);
-  assert.match(html, /href="\/app\/rewards#amounts"/);
+  // Přehled draws two things to resolve as cards and counts the rest by module (decided 12 Oct 2026): the gift is
+  // the fourth, so the home page says it waits at Milníky; the sentence itself is on the module's page.
+  const more = html.slice(html.indexOf("data-won-overview-more"));
+  assert.match(more.slice(0, 1500), /<s-link href="\/app\/rewards">Milníky<!-- --> \(<!-- -->1<!-- -->\)/);
+  assert.match(await render("rewards"), /Slovensko \(EUR\): částka chybí, v tomto trhu se stupeň nenabízí\./);
   const rewards = tile(html, "rewards");
   assert.match(rewards, /data-won-state="active"/, "it still runs in Czechia");
   assert.match(rewards, /Slovensko: dárek se nenabízí · /);
