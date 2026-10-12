@@ -313,8 +313,9 @@ export function OnboardingScreen({ step, rules, liveRules = 0, goals, native, em
           title={numbered(4, "onboarding.first.title")}
           glyph="tag"
           summary={firstSummary}
-          // Green only when a discount really runs (rule statuses), not when one merely exists.
-          on={first ? running : false}
+          // Green only when a discount really runs (rule statuses), not when one merely exists. A step that is not
+          // done yet has no label: "Vypnuto" is a switch's word, and nothing here is switched off.
+          on={first && running ? true : undefined}
           collapsible
           defaultOpen={step === 4}
           anchor="first"
@@ -343,7 +344,7 @@ export function OnboardingScreen({ step, rules, liveRules = 0, goals, native, em
           glyph="check"
           // "Všechno je aktivní" only when every discount runs; with some stopped the line says what does work (N12).
           summary={t(!allDone ? "onboarding.done.left" : liveRules < rules ? "overview.status.allGood" : "onboarding.done.all")}
-          on={allDone}
+          on={allDone ? true : undefined}
           collapsible
           defaultOpen={step === 5}
         >

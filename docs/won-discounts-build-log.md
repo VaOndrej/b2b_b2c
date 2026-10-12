@@ -9,9 +9,21 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ### Uzavření před review (od 12. 10. 2026) — zadání `won-discounts/prompt-uzavreni-pred-review.md`
 
-> **CHECKPOINT (po kompakci začni tady, potom celé zadání).** Krok 1 hotový, začíná krok 2 (opravy).
-> Otevřené nálezy: **A 0, B 19**, C 13 (neopravují se). Matice: `won-discounts/matice-pred-review.md`.
-> Poslední commit: viz `git log -1`. Rozdělané: nic, další je první skupina oprav.
+> **CHECKPOINT (po kompakci začni tady, potom celé zadání).** Krok 2 (opravy), hotová skupina (a) a nález 20.
+> Otevřené nálezy: **A 0, B 13** (2, 3, 4, 5, 7, 8, 11, 13, 15, 16, 17, 18, 19), C 13 (neopravují se).
+> Matice: `won-discounts/matice-pred-review.md`. Poslední commit: viz `git log -1`. Rozdělané: nic, další je skupina (b).
+> - **Hotovo (a):** `placementStatus(placement, { runs, misplaced, alsoMissing })` v `model/module-status.ts` (nálezy 6,
+>   9, 10, 12), štítek stavu na dlaždicích Marže podle kolekcí a produktů (14), kroky průvodce bez „Vypnuto“ (1).
+>   Testy `tests/ui/pred-review.test.ts` (jeden na nález). Starý test N6+… čekal na prázdných Milnících
+>   „1 věc k vyřešení“; očekávání je obrácené (nález 6).
+> - **Nález 20 (nový, opravený):** ve streamované stránce byl nulový bajt před písmenem s diakritikou na hranici bloku
+>   (React 18.3.1 na Node 26.10, `renderToPipeableStream`; `renderToString` čistý) → v prohlížeči „vět�ší“.
+>   `packages/app-kit/src/entry.server.tsx` `withoutNulBytes()` ho z těla odpovědi vyhazuje (platí pro všechny appky).
+>   Příčinu uvnitř Reactu / Node jsem nedohledal, minimální pokus s `TextEncoder.encodeInto` ji nevyvolal.
+> - **Brána po (a):** node 1 892, cargo 106, vitest 719, core 963 + 53, `typecheck` (všechny appky), `lint`, `build`,
+>   `validate:shopify` exit 0. `test:e2e:preview` se pustí po skupině (b).
+> - **Pozor:** náhled přes `react-router dev` startuje i plánovač a úlohy aplikace nad místní databází (stejně jako
+>   `shopify app dev`); běžel během průchodu.
 > - **Pořadí oprav (skupiny podle sdílené součástky):** (a) stav na dlaždicích: nálezy 1, 6, 9, 10, 12, 14;
 >   (b) Uložit jen tam, kde ukládá, a zamčený vzhled na Free: 7, 8; (c) upozornění „Co se stalo / Co s tím“ jako
 >   sdílená součástka: 2, 17, 16; (d) karty a kroky: 3, 4, 11, 13; (e) jednotlivosti: 5, 15, 18, 19.

@@ -176,7 +176,9 @@ test("N6 + N7 + N10 + N19 + N21: Milníky says where the ladder shows, what to d
   assert.match(html, /<div style="display:block"><s-button type="submit" variant="primary">Uložit/);
   const empty = await render("rewards?state=empty");
   assert.match(tile(empty, "web", "data-won-view-body"), / · v košíku ne/);
-  assert.match(tile(empty, "web", "data-won-view-body"), /data-won-tile-issues[^>]*>1 věc k vyřešení/);
+  // No step yet: Won being off on the web is not a thing to resolve on this tile (before the first review, nález 6;
+  // tests/ui/pred-review.test.ts). The sentence still says where the ladder is not.
+  assert.doesNotMatch(tile(empty, "web", "data-won-view-body"), /data-won-tile-issues/);
 });
 
 test("N18: a tile has ONE border declaration, so a tile that stops being selected never keeps a stray colour", async () => {

@@ -245,6 +245,9 @@ export function MarginScreen(props: MarginScreenProps) {
   const afterSaveCeiling = inForce.maxDiscountPercent !== storedCeiling ? inForce.maxDiscountPercent : null;
   // Přehled zásahů is computed from the saved settings: said while the form differs from them.
   const unsaved = JSON.stringify(marginInForce(draft, plan)) !== JSON.stringify(storedInForce);
+  // A collection's or a product's own limits run when the guard runs, the plan has them and some are STORED (§19a:
+  // an unsaved card never turns the label green). Their tile then says so, like the tile of the shop's limits.
+  const ownStatus = (stored: number) => (pro && stored > 0 && props.status?.state === "active" ? { state: "active" as const, issues: 0 } : undefined);
 
   const submit = useSubmit();
   // I3: "Nahradit neplatnou konfiguraci" re-submits exactly this form, confirmed.
@@ -291,6 +294,7 @@ export function MarginScreen(props: MarginScreenProps) {
               about={t("margin.collections.none")}
               // Pro: the collections by name (P4). Free: how many are stored, none of them applies.
               active={collections.length === 0 ? undefined : pro ? collectionsSummary(collections, tr) : tr.tp("count.collection", collections.length)}
+              status={ownStatus(settings.collections.length)}
               pro={!pro}
               locked={!pro}
               selected={view === "collections"}
@@ -303,6 +307,7 @@ export function MarginScreen(props: MarginScreenProps) {
               about={t("margin.products.none")}
               // Pro: the products by name. Free: how many are stored, none of them applies on its own.
               active={products.length === 0 ? undefined : pro ? productsSummary(products, tr) : tr.tp("count.product", products.length)}
+              status={ownStatus(settings.products.length)}
               pro={!pro}
               locked={!pro}
               selected={view === "products"}

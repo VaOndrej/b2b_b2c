@@ -26,6 +26,7 @@ import { LookSection } from "../looks/LookSection";
 import { hoverMark } from "../shell/hover";
 import { pickProducts } from "../model/app-bridge";
 import { OUTLET_FIELD, OUTLET_INTENT, outletPreviewPrice, readOutletLive, type OutletLiveDraft } from "../model/outlet";
+import { placementStatus } from "../model/module-status";
 import { formatDateTime } from "../model/signals";
 import { useRefusedSeed } from "../model/submitted";
 import type { OutletActionResult, OutletRunView, OutletScreenData, PlacementSpot, UiResult } from "../model/types";
@@ -914,7 +915,7 @@ export function OutletScreen(props: OutletScreenProps) {
             title={t("outlet.view.web.title")}
             glyph="store"
             active={t(badge === "in_theme" ? (badgeMove ? "outlet.view.web.move" : "outlet.view.web.on") : badge === "missing" ? "outlet.view.web.missing" : "outlet.view.web.unknown")}
-            issues={badge === "missing" || badgeMove ? 1 : 0}
+            status={placementStatus(badge, { runs: running.length > 0, misplaced: badgeMove })}
             selected={view === "web"}
             onPick={() => setView("web")}
           />

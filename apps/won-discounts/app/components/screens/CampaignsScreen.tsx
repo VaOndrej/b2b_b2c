@@ -36,6 +36,7 @@ import {
   campaignTimeOptions,
   minorFromInput,
 } from "../model/campaigns";
+import { spotAdvice } from "../model/embed";
 import { placementStatus } from "../model/module-status";
 import { formatDateTime } from "../model/signals";
 import { seedOf, submittedOf, useRefusedSeed, type Seed } from "../model/submitted";
@@ -55,6 +56,9 @@ import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 export interface CampaignsScreenProps extends CampaignsScreenData {
   result?: CampaignsActionResult | UiResult | null;
 }
+
+/** Where a campaign's banner can stand in the theme (the tile "Kampaň na webu" counts them). */
+const PLACE_KEYS = ["campaignHome", "campaignProduct", "topBarCampaign"] as const;
 
 const isCampaignResult = (r: CampaignsActionResult | UiResult | null | undefined): r is CampaignsActionResult =>
   !!r && ((r.ok && "kind" in r) || (!r.ok && r.reason === "invalid" && !("message" in r) && Array.isArray((r as { errors?: unknown }).errors)));
@@ -569,8 +573,11 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
   });
   const listActive = running ? t("campaign.view.list.running", { name: running.name }) : next ? t("campaign.view.list.next", { name: next.name }) : t("overview.campaigns.none");
   const placed = props.placed ?? {};
-  const placedCount = [placed.campaignHome, placed.campaignProduct, placed.topBarCampaign].filter(Boolean).length;
-  const placesActive = placedCount > 0 ? tr.tp("placement.count", placedCount) : t("placement.none");
+  const placedCount = PLACE_KEYS.filter((key) => placed[key]).length;
+  // A banner in the wrong spot is on the web and not seen: the tile is green only when a place really shows it (§20i).
+  const misplacedCount = PLACE_KEYS.filter((key) => placed[key] && spotAdvice(placed.spots?.[key])?.move === true).length;
+  const placesActive = placedCount > 0 ? `${tr.tp("placement.count", placedCount)}${misplacedCount > 0 ? ` · ${tr.tp("placement.countMisplaced", misplacedCount)}` : ""}` : t("placement.none");
+  const placesStatus = placedCount === 0 ? undefined : placementStatus("in_theme", placedCount > misplacedCount ? { alsoMissing: misplacedCount } : { misplaced: true, alsoMissing: misplacedCount - 1 });
 
   return (
     <s-page heading={t("module.campaigns")}>
@@ -583,7 +590,7 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
           <ViewTile id="list" title={t("campaign.list.title")} glyph="calendar" active={listActive} status={running ? props.status : undefined} selected={view === "list"} onPick={() => setView("list")} />
           <ViewTile id="form" action about={t("campaign.view.form.tile")} title={t(editing ? "campaign.edit.title" : "campaign.new.title")} glyph="tag" active={pro ? (view === "form" ? summary : undefined) : t("overview.campaigns.locked")} pro={!pro} locked={!pro} selected={view === "form"} onPick={() => setView("form")} />
           {showPlaces ? (
-            <ViewTile id="places" title={t("campaign.places.title")} glyph="store" active={placesActive} status={placedCount > 0 ? placementStatus("in_theme") : undefined} selected={view === "places"} onPick={() => setView("places")} />
+            <ViewTile id="places" title={t("campaign.places.title")} glyph="store" active={placesActive} status={placesStatus} selected={view === "places"} onPick={() => setView("places")} />
           ) : null}
         </ModuleTiles>
 

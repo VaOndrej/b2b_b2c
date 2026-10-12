@@ -42,7 +42,7 @@ ověří v druhém průchodu po opravách.
 | Přehled, naplněný | `overview-free` | — | platí | — | — | — | — | **neplatí (2)** | — | — | platí | platí | platí | — | platí | — | platí | platí | — | — |
 | Přehled, chyba zápisu | `overview-failed` | — | platí | — | — | — | — | **neplatí (2)** | — | — | platí | platí | — | — | — | — | platí | platí | — | — |
 | Průvodce, kroky 1 až 3 | `onboarding-3` | — | — | — | — | — | — | — | — | — | platí | platí | platí | platí | — | — | platí | — | — | — |
-| Průvodce, kroky 4 a 5 | `onboarding-4` | — | — | — | — | — | — | — | — | — | platí | platí | platí | — | — | — | **neplatí (1)** | — | — | — |
+| Průvodce, kroky 4 a 5 | `onboarding-4` | — | — | — | — | — | — | — | — | — | platí | platí | platí | — | — | — | platí (byl 1) | — | — | — |
 | Slevy a kódy, seznam | `discounts` | — | — | — | **neplatí (3)** | — | — | — | — | — | platí | platí | platí | platí | — | — | platí | — | — | platí |
 | Slevy a kódy, prázdný | `discounts-empty` | — | — | — | — | — | — | — | — | — | platí | platí | platí | — | — | — | platí | — | — | platí |
 | Editor slevy | `rule-editor-new-code` | — | — | — | — | **neplatí (4)** | — | — | platí | — | platí | platí | — | platí | — | platí | platí | platí | — | platí |
@@ -50,23 +50,23 @@ ověří v druhém průchodu po opravách.
 | Množstevní slevy · Pro celý obchod | `tiers-free` | platí | platí | — | — | — | — | — | — | — | platí | platí | — | — | — | platí | platí | — | — | platí |
 | Množstevní slevy · Tabulka na webu | `tiers-free--view-table` | platí | platí | — | — | — | — | — | **neplatí (8)** | platí | platí | platí | — | platí | **neplatí (8)** | **neplatí (7)** | platí | — | platí | platí |
 | Množstevní slevy · Výjimky | `tiers-exceptions--view-exceptions` | platí | platí | — | platí | — | — | — | — | — | platí | platí | — | — | platí | platí | platí | platí | — | platí |
-| Množstevní slevy, prázdný | `tiers-empty` | platí | platí | — | — | — | — | — | — | — | platí | — | platí | — | — | — | **neplatí (6)** | — | — | platí |
+| Množstevní slevy, prázdný | `tiers-empty` | platí | platí | — | — | — | — | — | — | — | platí | — | platí | — | — | — | platí (byl 6) | — | — | platí |
 | Milníky · Stupně | `rewards-pro` | platí | platí | — | platí | — | — | — | — | — | platí | platí | — | — | — | platí | platí | — | — | platí |
-| Milníky · Milníky na webu | `rewards-free--view-web` | platí | platí | — | — | — | — | — | — | **neplatí (19)** | platí | platí | — | — | — | — | **neplatí (9)** | — | platí | platí |
+| Milníky · Milníky na webu | `rewards-free--view-web` | platí | platí | — | — | — | — | — | — | **neplatí (19)** | platí | platí | — | — | — | — | platí (byl 9) | — | platí | platí |
 | Milníky · Vzhled a vlastní CSS | `rewards-pro--view-look` | platí | platí | — | — | — | — | — | platí | — | platí | platí | — | — | **neplatí (8)** | **neplatí (7)** | platí | — | — | platí |
-| Milníky, prázdný | `rewards-empty` | platí | platí | — | — | — | — | — | — | — | platí | — | platí | — | — | — | **neplatí (6)** | — | — | platí |
-| Výprodej · Výprodeje | `outlet-pro` | platí | platí | — | platí | — | platí | platí | — | platí | platí | platí | — | platí | — | — | **neplatí (10)** | — | platí | platí |
+| Milníky, prázdný | `rewards-empty` | platí | platí | — | — | — | — | — | — | — | platí | — | platí | — | — | — | platí (byl 6) | — | — | platí |
+| Výprodej · Výprodeje | `outlet-pro` | platí | platí | — | platí | — | platí | platí | — | platí | platí | platí | — | platí | — | — | platí (byl 10) | — | platí | platí |
 | Výprodej · Nový výprodej | `outlet-pro--view-new` | platí | platí | — | — | platí | platí | — | — | platí | platí | — | — | platí | — | platí | platí | — | platí | platí |
-| Výprodej · Štítek na webu | `outlet-pro--view-web` | platí | platí | — | — | — | — | — | platí | platí | platí | platí | — | — | platí | platí | **neplatí (10)** | — | platí | platí |
+| Výprodej · Štítek na webu | `outlet-pro--view-web` | platí | platí | — | — | — | — | — | platí | platí | platí | platí | — | — | platí | platí | platí (byl 10) | — | platí | platí |
 | Výprodej · Pravidla výprodeje | `outlet-pro--view-info` | platí | platí | — | platí | — | platí | — | — | — | platí | platí | — | — | — | platí | platí | — | — | platí |
 | Výprodej, Free | `outlet-free` | platí | platí | — | — | — | — | — | — | — | platí | — | — | — | platí | — | platí | platí | — | platí |
 | Kampaně · Kampaně | `campaigns-pro` | platí | platí | — | **neplatí (11)** | — | — | — | — | — | platí | platí | platí | — | — | — | platí | — | — | platí |
 | Kampaně · Nová kampaň | `campaigns-pro--view-form` | platí | platí | — | — | **neplatí (13)** | — | — | — | — | platí | — | — | — | — | platí | platí | — | — | platí |
-| Kampaně · Kampaň na webu | `campaigns-pro--view-places` | platí | platí | — | — | — | — | — | — | platí | platí | platí | — | — | — | platí | **neplatí (12)** | — | platí | platí |
+| Kampaně · Kampaň na webu | `campaigns-pro--view-places` | platí | platí | — | — | — | — | — | — | platí | platí | platí | — | — | — | platí | platí (byl 12) | — | platí | platí |
 | Kampaně, Free | `campaigns-free` | platí | platí | — | — | — | — | — | — | — | platí | — | — | — | platí | — | platí | platí | — | platí |
 | Ochrana marže · Hranice | `margin-pro` | platí | platí | — | — | — | — | — | — | — | platí | platí | — | — | — | platí | platí | — | — | platí |
 | Ochrana marže · Nákupní ceny | `margin-pro--view-costs` | platí | platí | **neplatí (15)** | — | — | — | — | — | — | platí | platí | — | platí | — | platí | platí | — | — | platí |
-| Ochrana marže · Podle kolekcí | `margin-pro--view-collections` | platí | platí | — | platí | — | — | — | — | — | platí | platí | — | — | — | platí | **neplatí (14)** | platí | — | platí |
+| Ochrana marže · Podle kolekcí | `margin-pro--view-collections` | platí | platí | — | platí | — | — | — | — | — | platí | platí | — | — | — | platí | platí (byl 14) | platí | — | platí |
 | Ochrana marže · Podle produktů | `margin-pro--view-products` | platí | platí | — | platí | — | — | — | — | — | platí | platí | platí | — | — | platí | platí | platí | — | platí |
 | Ochrana marže · Snížené slevy | `margin-pro--view-impact` | platí | platí | platí | — | — | — | — | — | — | platí | platí | — | — | — | platí | platí | platí | — | platí |
 | Ochrana marže, vypnutá | `margin-off` | platí | platí | — | — | — | — | — | — | — | platí | platí | — | — | platí | — | platí | platí | — | platí |
@@ -92,7 +92,7 @@ naživo se nezkoušelo, je `neověřeno` a patří do kroku 3. `neověřeno` nen
 | `cart_rewards` (Milníky a kód v košíku) | platí (MVP 4) | platí | platí | neověřeno (vzhledy podle místa, kolo 7) | neověřeno (**nález 19**, polohu nečteme) | neověřeno | platí |
 | `card_tiers` (cena na kartě, BETA) | platí | platí | platí | — | platí | — | platí (oprava „BEGIN app snippet“) |
 | `outlet_badge` (štítek výprodeje) | neověřeno od kola 3 | neověřeno | neověřeno | neověřeno | neověřeno | neověřeno (`previewPath`) | neověřeno (`outlet.sample`) |
-| `campaign_banner` | neověřeno na Pro | neověřeno | neověřeno | neověřeno | **neplatí (12)** | neověřeno | neověřeno |
+| `campaign_banner` | neověřeno na Pro | neověřeno | neověřeno | neověřeno | platí v náhledu (byl 12), naživo neověřeno | neověřeno | neověřeno |
 | `top_bar` | neověřeno (Horizon nemá kam) | neověřeno | neověřeno | neověřeno | neověřeno | neověřeno | neověřeno |
 | `announcement_milestones` | neověřeno (nový, kolo 7) | neověřeno | neověřeno | neověřeno | neověřeno | neověřeno | neověřeno |
 | `announcement_campaign` | neověřeno (nový, kolo 7) | neověřeno | neověřeno | neověřeno | neověřeno | neověřeno | neověřeno |
@@ -123,29 +123,32 @@ Značka: **A** brání, **B** mate, **C** vkus.
 
 Nález A není z průchodu adminu žádný. Může přibýt z kroku 3 (web).
 
+U opravených nálezů je screenshot po opravě ve složce `po/` pod stejným názvem.
+
 ### B, mate
 
 | # | Kde | Druh | Co obchodník vidí | Proč je to špatně | Screenshot | Stav |
 |---|---|---|---|---|---|---|
-| 1 | Průvodce, kroky 4 a 5 | 1 | „4. První sleva · Vypnuto“, „5. Hotovo · Vypnuto“ | „Vypnuto“ je slovo pro přepínač. Krok není vypnutý, jen ještě není hotový. | `onboarding-4` | otevřený |
+| 1 | Průvodce, kroky 4 a 5 | 1 | „4. První sleva · Vypnuto“, „5. Hotovo · Vypnuto“ | „Vypnuto“ je slovo pro přepínač. Krok není vypnutý, jen ještě není hotový. | `onboarding-4` | opravený |
 | 2 | Přehled, „Vyžaduje pozornost“ | 5 | Řádek „Pozor · …“ a obyčejné tlačítko | Pravidlo P7 (co se stalo, co s tím, hlavní tlačítko) platí jen ve Vyzkoušet košík. | `overview-free` | otevřený |
 | 3 | Slevy a kódy, seznam | 5 | Řádky se slovem „Upravit“ bez rámečku, „Nová sleva ze vzoru“ rozbalovací | P4: hlavní akce řádku nevypadá jako tlačítko, recepty jsou schované v rozbalení. | `discounts` | otevřený |
 | 4 | Editor slevy | 5 | Pět sekcí pod sebou bez čísel | P5: formulář, který se vyplňuje popořadě, nemá kroky. Výprodej a Kampaň je mají. | `rule-editor-new-code` | otevřený |
 | 5 | Editor slevy, „Vygenerovat kódy“ | 3 | Pole „Kolik kódů“ se šedým „100“, žádné tlačítko | Nejde poznat, že se má napsat počet a uložit slevu. Šedé „100“ vypadá jako vyplněné. | `rule-editor-batch` | otevřený |
-| 6 | Množstevní slevy a Milníky, prázdný obchod | 1 | Dlaždice „… na webu · Vyžaduje pozornost · 1 věc k vyřešení“ | Červená dřív, než je co ukazovat. Obchodník nic nepokazil. | `tiers-empty`, `rewards-empty` | otevřený |
+| 6 | Množstevní slevy a Milníky, prázdný obchod | 1 | Dlaždice „… na webu · Vyžaduje pozornost · 1 věc k vyřešení“ | Červená dřív, než je co ukazovat. Obchodník nic nepokazil. | `tiers-empty`, `rewards-empty` | opravený |
 | 7 | Množstevní slevy → Tabulka na webu, Milníky → Vzhled | 3 | Tlačítko „Uložit“ stránky nad sekcí vzhledu, která má vlastní „Uložit vzhled“ | Dvě Uložit, první neukládá nic z toho, co je v pohledu vidět (P3, §18i). | `tiers-free--view-table`, `rewards-pro--view-look` | otevřený |
 | 8 | Sekce vzhledu na Free (tabulka, milníky, štítek, banner) | 2 | Celý zamčený formulář Pro včetně anglického zadání pro AI | Stránka má 2 100 px, půlka je šedá a nejde použít. §18h: zamčená funkce je jedna věta a odkaz na tarif. | `tiers-free--view-table` | otevřený |
-| 9 | Milníky → Milníky na webu | 1 | Dlaždice zelená „Aktivní“, řádek „Stránka produktu“ červený „Na webu chybí“ s hlavním tlačítkem | Dvě místa si odporují: je to v pořádku, nebo ne? | `rewards-free--view-web` | otevřený |
-| 10 | Výprodej, dlaždice „Štítek na webu“ | 1 | Žádný štítek stavu, jen červené „1 věc k vyřešení“ | Ostatní dlaždice „na webu“ štítek mají. | `outlet-pro` | otevřený |
+| 9 | Milníky → Milníky na webu | 1 | Dlaždice zelená „Aktivní“, řádek „Stránka produktu“ červený „Na webu chybí“ s hlavním tlačítkem | Dvě místa si odporují: je to v pořádku, nebo ne? | `rewards-free--view-web` | opravený |
+| 10 | Výprodej, dlaždice „Štítek na webu“ | 1 | Žádný štítek stavu, jen červené „1 věc k vyřešení“ | Ostatní dlaždice „na webu“ štítek mají. | `outlet-pro` | opravený |
 | 11 | Kampaně, seznam | 5 | Karty bez hlavičky, stav jako text „Aktivní · datum“, tlačítka dole | P4: běžící výprodej má kartu s hlavičkou, štítkem a tlačítkem, kampaň ne. | `campaigns-pro` | otevřený |
-| 12 | Kampaně, dlaždice „Kampaň na webu“ | 1 | „Aktivní · 1 místo je na webu“ | To jedno místo má štítek „Na webu, špatné místo“, zákazník banner nevidí. Zelená nad blokem, který nikdo nevidí (§20i). | `campaigns-pro--view-places` | otevřený |
+| 12 | Kampaně, dlaždice „Kampaň na webu“ | 1 | „Aktivní · 1 místo je na webu“ | To jedno místo má štítek „Na webu, špatné místo“, zákazník banner nevidí. Zelená nad blokem, který nikdo nevidí (§20i). | `campaigns-pro--view-places` | opravený |
 | 13 | Kampaně → Nová kampaň | 3 | Tři kroky bez zmínky o banneru a odpočtu; úvod je tam dvakrát | Kde se zapíná banner, se obchodník nedozví. | `campaigns-pro--view-form` | otevřený |
-| 14 | Ochrana marže, dlaždice „Podle kolekcí“ a „Podle produktů“ | 1 | „Vlastní nastavení: Podzimní kolekce a Doplňky“ bez štítku | Nastavení platí, dlaždice to neříká. | `margin-pro` | otevřený |
+| 14 | Ochrana marže, dlaždice „Podle kolekcí“ a „Podle produktů“ | 1 | „Vlastní nastavení: Podzimní kolekce a Doplňky“ bez štítku | Nastavení platí, dlaždice to neříká. | `margin-pro` | opravený |
 | 15 | Ochrana marže → Nákupní ceny | 5 | Štítek „Jen přehled“ na dlaždici, pod ní ale chybí pruh „tady nic nezapínáte“; seznam je rozbalovací | P3 platí u Snížených slev, tady ne. | `margin-pro--view-costs` | otevřený |
 | 16 | Vyzkoušet košík, Časté kombinace | 2 | Pět karet, v každé tytéž dva nálezy; ke košíku je to 2 500 px | Stejná věta pětkrát, formulář až pod tím. | `try-cart-warnings` | otevřený |
 | 17 | Vyzkoušet košík, „Co se uplatní“ | 5 | Žlutý pruh s odrážkami, „Otevřít slevu“ jako odkaz na konci věty | P7 platí o sekci výš, tady ne. | `try-cart-warnings` | otevřený |
 | 18 | Přehledy na Free | 5 | „Ukázka, ne vaše čísla“ se dvěma vymyšlenými řádky | Rozhodnutí z 6. 10.: vymyšlené ukázky se neukazují (§18h). | `analytics-free` | otevřený |
 | 19 | Milníky na webu, „Stránka košíku“ | 4 | „Na webu“ a „Otevřít úpravu vzhledu“ | Polohu košíkového bloku aplikace nečte (P9, sloupec „Kde ještě ne“). | `rewards-free--view-web` | otevřený |
+| 20 | Všechny stránky (nalezeno při screenshotech po opravě) | 4 | Uprostřed českého slova znak „�“ („vět�ší slevu“, „vr�áceno“) | Při odesílání stránky se před písmeno s diakritikou na hranici bloku vložil nulový bajt (React 18.3.1 na Node 26.10; samotný text je v pořádku). Které slovo to postihne, se mění s délkou stránky. | `po/margin-pro--1440` (po opravě) | opravený |
 
 ### C, vkus (neopravuje se, k rozhodnutí)
 

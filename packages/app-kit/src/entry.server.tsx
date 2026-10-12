@@ -1,4 +1,4 @@
-import { PassThrough } from "stream";
+import { Transform } from "stream";
 import { renderToPipeableStream } from "react-dom/server";
 import { ServerRouter } from "react-router";
 import { createReadableStreamFromReadable } from "@react-router/node";
@@ -6,6 +6,20 @@ import { type EntryContext } from "react-router";
 import { isbot } from "isbot";
 
 export const streamTimeout = 5000;
+
+/**
+ * The document's body stream, minus NUL bytes. React 18.3.1 on Node 26 was seen writing a 0x00 in front of a
+ * non-ASCII letter that fell on the edge of one of its 2 048-byte chunks ("vr\0áceno"; found 12 Oct 2026 in Won
+ * Discounts, reproduced with renderToPipeableStream alone, renderToString is clean). The browser draws the byte as
+ * "\uFFFD" in the middle of a Czech word. A NUL is never part of an HTML document, so dropping it is always safe.
+ */
+export function withoutNulBytes(): Transform {
+  return new Transform({
+    transform(chunk: Buffer, _encoding, done) {
+      done(null, chunk.includes(0) ? Buffer.from(chunk.filter((byte) => byte !== 0)) : chunk);
+    },
+  });
+}
 
 type AddDocumentResponseHeaders = (
   request: Request,
@@ -35,7 +49,7 @@ export function createHandleRequest(
         <ServerRouter context={reactRouterContext} url={request.url} />,
         {
           [callbackName]: () => {
-            const body = new PassThrough();
+            const body = withoutNulBytes();
             const stream = createReadableStreamFromReadable(body);
 
             responseHeaders.set("Content-Type", "text/html");

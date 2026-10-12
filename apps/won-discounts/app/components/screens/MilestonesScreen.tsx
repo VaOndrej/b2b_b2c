@@ -370,6 +370,13 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
     t(embed.state === "on" ? "rewards.web.cart.yes" : embed.state === "off" || embed.state === "draft_only" ? "rewards.web.cart.no" : "rewards.web.cart.unknown"),
   ];
   const webLine = webParts.join(" · ").replace(/^./, (ch) => ch.toLocaleUpperCase(tr.locale));
+  // The tile says what the rows under it say: a place whose row is red is counted, one in the wrong spot too; a
+  // shop with no step yet has nothing to resolve on the web.
+  const productMisplaced = spotAdvice(placed.spots?.rewardsProduct)?.move === true;
+  const webStatus = placementStatus(embedPlacement(embed.state), {
+    runs: storedRows.length > 0,
+    alsoMissing: places.filter((place) => place.key !== "drawer" && place.placement === "missing").length + (productMisplaced ? 1 : 0),
+  });
   const saved = !!result && result.ok;
 
   const [view, setView] = useView<"steps" | "web" | "look">({
@@ -442,7 +449,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
       {/* Two tiles, one panel at a time (doctrine §19e); the panels stay in the one form with its one Save. */}
       <ModuleTiles label={t("milestones.view.label")}>
         <ViewTile id="steps" title={t("milestones.view.steps.title")} glyph="spark" active={stepsTile} status={props.status} selected={view === "steps"} onPick={() => setView("steps")} />
-        <ViewTile id="web" title={t("milestones.view.web.title")} glyph="store" active={webLine} status={placementStatus(embedPlacement(embed.state))} selected={view === "web"} onPick={() => setView("web")} />
+        <ViewTile id="web" title={t("milestones.view.web.title")} glyph="store" active={webLine} status={webStatus} selected={view === "web"} onPick={() => setView("web")} />
         {/* The look and the custom CSS have a tile of their own (feedback 9 Oct 2026, 3rd round, bod 3): at the foot of "Na webu" they were not found. */}
         {props.look ? (
           <ViewTile

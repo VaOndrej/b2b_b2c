@@ -227,8 +227,24 @@ export function storeStatuses(facts: StoreFacts): StoreStatuses {
  * the same labels as every other tile (feedback 9 Oct 2026: "aktivní držíme vždy u dlaždic"): on the site = active,
  * missing = to resolve, not known = no label (never "Neaktivní" for something that could not be checked).
  */
-export function placementStatus(placement: "in_theme" | "missing" | "unknown"): ModuleStatus | undefined {
-  if (placement === "in_theme") return { state: "active", issues: 0 };
-  if (placement === "missing") return { state: "attention", issues: 1 };
+export function placementStatus(placement: "in_theme" | "missing" | "unknown", facts: PlacementFacts = {}): ModuleStatus | undefined {
+  // Nothing to show yet (no level, no step, no sale): a place is neither "active" nor a thing to resolve.
+  if (facts.runs === false) return undefined;
+  const more = facts.alsoMissing ?? 0;
+  if (placement === "in_theme") return facts.misplaced ? { state: "attention", issues: 1 + more } : { state: "active", issues: more };
+  if (placement === "missing") return { state: "attention", issues: 1 + more };
   return undefined;
+}
+
+/**
+ * What a place's tile knows besides "is the piece in the theme" (walkthrough before the first review, 12 Oct 2026):
+ * the three ways a green or a red label lied.
+ */
+export interface PlacementFacts {
+  /** Does the module have anything to show there? `false` = no label at all: red before anything is set up is a false alarm. */
+  runs?: boolean;
+  /** In the theme, but where the customer does not see it (embed.ts spotAdvice): never green (§20i). */
+  misplaced?: boolean;
+  /** Other places of the same tile whose row below says "missing": counted beside the label, as the rows say it (§19a). */
+  alsoMissing?: number;
 }

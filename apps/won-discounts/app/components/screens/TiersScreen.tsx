@@ -277,7 +277,7 @@ export function TiersScreen(props: TiersScreenProps) {
           {/* Three tiles, one panel at a time (doctrine §19e); the panels stay in the one form with its one Save. */}
           <ModuleTiles label={t("tiers.view.label")}>
             <ViewTile id="global" title={t("tiers.view.global.title")} glyph="layers" active={globalSummary} status={globalTileStatus} selected={view === "global"} onPick={() => setView("global")} />
-            <ViewTile id="table" title={t("tiers.view.table.title")} glyph="store" active={blockText(block, tr)} status={placementStatus(blockPlacement(block.state))} selected={view === "table"} onPick={() => setView("table")} />
+            <ViewTile id="table" title={t("tiers.view.table.title")} glyph="store" active={blockText(block, tr)} status={placementStatus(blockPlacement(block.state), { runs: hasTiers || proSets.length > 0 })} selected={view === "table"} onPick={() => setView("table")} />
             <ViewTile
               id="exceptions"
               title={t("tiers.view.exceptions.title")}
