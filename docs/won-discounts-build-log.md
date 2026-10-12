@@ -7,6 +7,32 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
+### Uzavření před review (od 12. 10. 2026) — zadání `won-discounts/prompt-uzavreni-pred-review.md`
+
+> **CHECKPOINT (po kompakci začni tady, potom celé zadání).** Krok 1 hotový, začíná krok 2 (opravy).
+> Otevřené nálezy: **A 0, B 19**, C 13 (neopravují se). Matice: `won-discounts/matice-pred-review.md`.
+> Poslední commit: viz `git log -1`. Rozdělané: nic, další je první skupina oprav.
+> - **Pořadí oprav (skupiny podle sdílené součástky):** (a) stav na dlaždicích: nálezy 1, 6, 9, 10, 12, 14;
+>   (b) Uložit jen tam, kde ukládá, a zamčený vzhled na Free: 7, 8; (c) upozornění „Co se stalo / Co s tím“ jako
+>   sdílená součástka: 2, 17, 16; (d) karty a kroky: 3, 4, 11, 13; (e) jednotlivosti: 5, 15, 18, 19.
+> - **Tabulka A se generuje:** `node docs/won-discounts/evidence/pred-review-2026-10-10/tabulka-a.mjs 1,6,…`
+>   (čísla opravených nálezů) a výstup se vloží do matice místo staré tabulky.
+> - **Rozhodnuto bez Ondřeje (zapsáno i v matici, C12):** štítek „Pro“ na tarifu Pro platí pro dlaždice úvodní
+>   stránky a pruh pod nadpisem; dlaždice pohledů uvnitř stránky ho na Pro nemají (tak to bylo, neměnil jsem).
+> - **Krok 0 hotový.** Kola 4 až 7 commitnul Ondřej sám (`b9a4a9a`, 10. 10.), strom byl čistý, migrace nasazené
+>   („No pending migrations“). Poznámky „necommitnuto“ u kol 4 až 7 níž už neplatí.
+> - **Brána 12. 10. (výchozí):** node 1 884, cargo 106, vitest 719, core 963 + testing 53, guard 301, `typecheck`,
+>   `lint` (0 chyb, 4 varování), `build`, `validate:shopify`, vše exit 0.
+> - **`test:e2e:preview` 30 z 36:** šest testů v `admin.translations-looks.spec.ts` bylo zastaralých po kolech 5 až 7
+>   (vzhled výprodeje je pod dlaždicí „web“, vzhledy milníků mají přepínač míst, „Zkusit v košíku níže“ je tlačítko).
+>   Opraveny testy, aplikace beze změny; těch šest a dva sousední prošly (8 z 8).
+> - **Náhled bez Shopify:** `NODE_ENV=development SHOPIFY_APP_URL=http://localhost:60061 SHOPIFY_API_KEY=dev-preview
+>   SHOPIFY_API_SECRET=dev-preview SCOPES=read_products npx react-router dev --port 60061` v `apps/won-discounts`
+>   (bez `SHOPIFY_APP_URL` vrací každá stránka 500).
+> - **Screenshoty „před“:** `won-discounts/evidence/pred-review-2026-10-10/pred/` (236 kusů, 1 440 a 390 px, Free i Pro,
+>   každá dlaždice zvlášť) + `facts.json` (výška stránky, dlaždice, rozbalovací prvky, tlačítka Uložit).
+>   Skript je mimo repo (scratchpad session); když zmizí, napiš ho znovu podle `facts.json`.
+
 ### Sedmé kolo 10. 10. 2026 (6 bodů) — důkazy `won-discounts/evidence/kolo7-2026-10-10/`
 
 > **CHECKPOINT.** V pracovním stromu na `main`, **necommitnuto** (spolu se čtvrtým až šestým kolem). Commit a push

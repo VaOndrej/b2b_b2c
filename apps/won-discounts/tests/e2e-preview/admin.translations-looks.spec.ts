@@ -19,6 +19,12 @@ async function posted(page: Page, act: () => Promise<void>): Promise<URLSearchPa
   return new URLSearchParams(request.postData() ?? "");
 }
 
+/** Milníky keep one look per place on the web: picks the place whose look is edited (a page with one look has no switch). */
+async function pickPlace(page: Page, element: string): Promise<void> {
+  const place = page.locator(`[data-won-look-place="${element}"]`);
+  if ((await place.count()) > 0) await place.click();
+}
+
 test("Překlady: a language is added from the shop's languages and removed again; Free stops at two", async ({ page }) => {
   await open(page, "translations?plan=pro");
   expect(await tables(page)).toEqual(["cs", "sk"]);
@@ -127,14 +133,16 @@ test("Překlady without the permission: once the merchant grants it, the page te
 for (const [path, tile, element, preset] of [
   ["rewards", "look", "milestones", "checklist"],
   ["rewards?plan=pro", "look", "milestones", "sentence"],
-  ["outlet?plan=pro", "info", "outlet", "countdown"],
-  ["outlet?plan=pro", "info", "outlet", "strip"],
+  ["outlet?plan=pro", "web", "outlet", "countdown"],
+  ["outlet?plan=pro", "web", "outlet", "strip"],
   ["campaigns?plan=pro", "places", "campaign", "strip"],
   ["campaigns?plan=pro", "places", "campaign", "card"],
 ] as const) {
   test(`the look of ${element} on ${path}: "${preset}" is picked, previewed and posted with its colour`, async ({ page }) => {
     await open(page, path);
     await page.locator(`[data-won-view-tile="${tile}"]`).click();
+    // Milníky keep one look per place (7th round, bod 3): the place is picked first.
+    await pickPlace(page, element);
     const form = page.locator(`[data-won-look-form="${element}"]`);
     await expect(form).toBeVisible();
     // Every ready-made look has a live preview with the extension's own markup.
@@ -154,6 +162,7 @@ for (const [path, tile, element, preset] of [
     await expect(form).toContainText(PREVIEW_ONLY);
     await open(page, path, 390);
     await page.locator(`[data-won-view-tile="${tile}"]`).click();
+    await pickPlace(page, element);
     expect(await sideways(page)).toBeLessThanOrEqual(0);
   });
 }
@@ -190,6 +199,7 @@ test("the cart and the top strip have their own look on Milníky (Pro): the CSS 
   await open(page, "rewards?plan=pro");
   // The looks have their own tile (9 Oct 2026, 3rd round, bod 3), and the section is open from the start.
   await page.locator('[data-won-view-tile="look"]').click();
+  await pickPlace(page, "cart");
   const form = page.locator('[data-won-look-form="cart"]');
   await expect(form).toBeVisible();
   await expect(form.locator('input[name="preset"], input[name="accent"]')).toHaveCount(0);
@@ -201,7 +211,8 @@ test("the cart and the top strip have their own look on Milníky (Pro): the CSS 
   await expect.poll(() => form.evaluate((el) => getComputedStyle(el.querySelector(".won-cart__saved") ?? el).letterSpacing)).toBe("2px");
   const sent = await posted(page, () => form.locator("s-button", { hasText: "Uložit vzhled" }).click());
   expect([sent.get("element"), sent.get("look.css")]).toEqual(["cart", ".won-cart__saved { letter-spacing: 2px; }"]);
-  // The ladder's own look is next to it, its own form.
+  // The ladder's own look is one place over, its own form.
+  await pickPlace(page, "milestones");
   await expect(page.locator('[data-won-look-form="milestones"]')).toBeVisible();
 });
 
@@ -217,12 +228,13 @@ test("Časté kombinace: Pro lists every combination with its state and the sett
   // A warning says what happened and links to the setting behind it; a combination in order has no finding.
   for (const row of await page.locator('[data-won-combo-status="warning"]').all()) {
     expect(await row.locator("[data-won-combo-finding]").count()).toBeGreaterThan(0);
-    for (const link of await row.locator("[data-won-combo-finding] s-link").all()) expect(await link.getAttribute("href")).toMatch(/^\/app\//);
+    for (const link of await row.locator("[data-won-combo-finding] s-button").all()) expect(await link.getAttribute("href")).toMatch(/^\/app\//);
   }
   await expect(page.locator('[data-won-combo-status="ok"] [data-won-combo-finding]')).toHaveCount(0);
 
-  // "Otevřít v košíku" carries the combination's id; the harness serves the same page under /dev/preview.
-  const href = await rows.first().locator("s-link", { hasText: "Otevřít v košíku" }).getAttribute("href");
+  // "Zkusit v košíku níže" carries the combination's id (a button in a warning's card, a link in a quiet row); the
+  // harness serves the same page under /dev/preview.
+  const href = await rows.first().locator("s-button, s-link", { hasText: "Zkusit v košíku níže" }).getAttribute("href");
   expect(href).toMatch(/^\/app\/try-cart\?scenario=/);
   const id = new URL(href ?? "", "http://x").searchParams.get("scenario") ?? "";
   await open(page, `try-cart?combos=on&plan=pro&scenario=${encodeURIComponent(id)}`);
