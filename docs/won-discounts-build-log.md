@@ -9,10 +9,18 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ### Uzavření před review (od 12. 10. 2026) — zadání `won-discounts/prompt-uzavreni-pred-review.md`
 
-> **CHECKPOINT (po kompakci začni tady, potom celé zadání).** Krok 2 hotový, začíná krok 3 (ověření naživo).
-> Otevřené nálezy: **A 0, B 0**, C 15 (neopravují se, jsou v matici k rozhodnutí). Matice nemá žádné `neplatí`.
-> Poslední commit: viz `git log -1`. Rozdělané: krok 3: projít 17 položek „neověřeno naživo“ (seznam řádků:
-> `grep -n -i 'neověřen\|nezkoušeno naživo' docs/won-discounts-build-log.md`), ke každé stav; tabulka B v matici.
+> **CHECKPOINT (po kompakci začni tady, potom celé zadání).** Kroky 0 až 3 hotové (12. 10. 2026), zadání je uzavřené
+> až na to, co bez Ondřeje ověřit nejde.
+> Otevřené nálezy: **A 0, B 0**; 20 nálezů B opravených (19 z průchodu + nulový bajt), C 15 k rozhodnutí.
+> Poslední commit: viz `git log -1`. Rozdělané: nic. Zbývá Ondřejovi: seznam „Ověř sám“ v matici (oddíl Krok 3).
+> - **Krok 3:** živé běhy na dev obchodě přes runbook: `rewards` 8/8 + 8/8, `tiers` 7/8 + 7/8, `outlet` 5/5 + 5/5
+>   (po přepsání zastaralého testu štítku), `rewards-pro` 4/4 + 4/4, `tiers-pro` 6/6 + 6/6, `shapes` 4/4 + 4/4,
+>   `looks.sh rewards-pro` 2/2 + 2/2; každý běh `cleanup` 0 a `verify-clean` 0. `margin-pro` a jeden krok `tiers`
+>   neprošly: potřebují záznamy běhu funkce a dev relace puštěná z Claude session je nestahuje („Error while polling
+>   app logs“). Ze 17 položek „neověřeno naživo“: 6 ověřeno celé nebo zčásti, 11 nejde bez Ondřeje (editor šablon,
+>   Shopify admin, záznamy funkce); tabulka a kroky jsou v matici.
+> - **Dev obchod po bězích:** nastavení obnovené ze zálohy seedu (stav před během: 1 sleva, ochrana marže zapnutá).
+>   `shopify app dev` je zastavený.
 > - **Hotovo (d):** seznam slev („Upravit“ je tlačítko, hotové slevy nejsou rozbalovací; 3), editor slevy má
 >   „Krok n / 4“ v hlavičkách sekcí (`WonSection step`, 4), kampaň je karta `SubCard` se štítkem `CardPill` (11),
 >   poslední krok nové kampaně říká, kde je banner, a vede na „Kampaň na webu“; úvod jen jednou (13).

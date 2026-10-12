@@ -1,0 +1,93 @@
+{
+  "theme": "Horizon",
+  "large": {
+    "id": 48468679000305,
+    "title": "Large",
+    "option1": "Large",
+    "option2": null,
+    "option3": null,
+    "sku": null,
+    "requires_shipping": true,
+    "taxable": true,
+    "featured_image": null,
+    "available": true,
+    "name": "Won E2E — Two Variants - Large",
+    "public_title": "Large",
+    "options": [
+      "Large"
+    ],
+    "price": 1350,
+    "weight": 0,
+    "compare_at_price": null,
+    "inventory_management": null,
+    "barcode": null,
+    "quantity_rule": {
+      "min": 1,
+      "max": null,
+      "increment": 1
+    },
+    "quantity_price_breaks": [],
+    "requires_selling_plan": false,
+    "selling_plan_allocations": []
+  },
+  "small": {
+    "id": 48468678967537,
+    "title": "Small",
+    "option1": "Small",
+    "option2": null,
+    "option3": null,
+    "sku": null,
+    "requires_shipping": true,
+    "taxable": true,
+    "featured_image": null,
+    "available": true,
+    "name": "Won E2E — Two Variants - Small",
+    "public_title": "Small",
+    "options": [
+      "Small"
+    ],
+    "price": 1500,
+    "weight": 0,
+    "compare_at_price": null,
+    "inventory_management": null,
+    "barcode": null,
+    "quantity_rule": {
+      "min": 1,
+      "max": null,
+      "increment": 1
+    },
+    "quantity_price_breaks": [],
+    "requires_selling_plan": false,
+    "selling_plan_allocations": []
+  },
+  "spare": {
+    "id": 48468679164145,
+    "title": "Default Title",
+    "option1": "Default Title",
+    "option2": null,
+    "option3": null,
+    "sku": null,
+    "requires_shipping": true,
+    "taxable": true,
+    "featured_image": null,
+    "available": true,
+    "name": "Won E2E — Spare",
+    "public_title": null,
+    "options": [
+      "Default Title"
+    ],
+    "price": 9950,
+    "weight": 0,
+    "compare_at_price": 19900,
+    "inventory_management": null,
+    "barcode": null,
+    "quantity_rule": {
+      "min": 1,
+      "max": null,
+      "increment": 1
+    },
+    "quantity_price_breaks": [],
+    "requires_selling_plan": false,
+    "selling_plan_allocations": []
+  }
+}

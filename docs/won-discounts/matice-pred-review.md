@@ -86,21 +86,23 @@ Přehled s upozorněními je o 190 až 340 px delší (karty „Co se stalo / Co
 
 ## Tabulka B, web
 
-Stav sloupců je z dosavadních živých běhů zapsaných v build logu. Co se od posledního běhu změnilo (kola 3 až 7) a
-naživo se nezkoušelo, je `neověřeno` a patří do kroku 3. `neověřeno` není `platí`.
+Stav po kroku 3. Datum v poli říká, kdy pole prošlo živým během na dev obchodě. `neověřeno` není `platí`.
 
 | Blok | Horizon | Dawn | Mobil 390 px | Náhled = web | Stav v aplikaci = skutečnost | „Otevřít v editoru“ | Prázdný stav |
 |---|---|---|---|---|---|---|---|
-| `won_discounts_embed` (vložení, košík, pruh) | platí (dotažení 8–9) | platí | platí | platí (vzhledy Milníků) | platí | neověřeno | platí |
-| `quantity_tiers` (tabulka) | platí (dotažení 8–9) | platí | platí | platí (převod vzhledu, stejné pixely) | platí | neověřeno (výběr bloku) | platí |
-| `rewards_progress` (Milníky na stránce) | platí | platí | platí | platí | neověřeno (**nález 9**) | neověřeno | platí |
-| `cart_rewards` (Milníky a kód v košíku) | platí (MVP 4) | platí | platí | neověřeno (vzhledy podle místa, kolo 7) | neověřeno (**nález 19**, polohu nečteme) | neověřeno | platí |
-| `card_tiers` (cena na kartě, BETA) | platí | platí | platí | — | platí | — | platí (oprava „BEGIN app snippet“) |
-| `outlet_badge` (štítek výprodeje) | neověřeno od kola 3 | neověřeno | neověřeno | neověřeno | neověřeno | neověřeno (`previewPath`) | neověřeno (`outlet.sample`) |
-| `campaign_banner` | neověřeno na Pro | neověřeno | neověřeno | neověřeno | platí v náhledu (byl 12), naživo neověřeno | neověřeno | neověřeno |
-| `top_bar` | neověřeno (Horizon nemá kam) | neověřeno | neověřeno | neověřeno | neověřeno | neověřeno | neověřeno |
-| `announcement_milestones` | neověřeno (nový, kolo 7) | neověřeno | neověřeno | neověřeno | neověřeno | neověřeno | neověřeno |
-| `announcement_campaign` | neověřeno (nový, kolo 7) | neověřeno | neověřeno | neověřeno | neověřeno | neověřeno | neověřeno |
+| `won_discounts_embed` (vložení, košík, pruh nahoře přepínačem) | platí (12. 10.) | platí (12. 10.) | platí (12. 10.) | platí (vzhledy Milníků, 9. 10. a Pro 12. 10.) | platí | neověřeno, editor | platí |
+| `quantity_tiers` (tabulka) | platí (12. 10.) | platí (12. 10.) | platí (12. 10.) | platí (převod vzhledu, stejné pixely, 9. 10.) | platí | neověřeno, editor | platí |
+| `rewards_progress` (Milníky na stránce) | platí (12. 10.) | platí (12. 10.) | platí | platí | platí v náhledu (byl 9), naživo neověřeno | neověřeno, editor | platí |
+| `cart_rewards` (Milníky a kód v košíku) | platí (12. 10.) | platí (12. 10.) | platí | neověřeno (vzhledy podle místa, kolo 7) | platí (byl 19: odkaz nic nepřidává) | neověřeno, editor | platí |
+| `card_tiers` (cena na kartě, BETA) | platí (9. 10.) | platí (9. 10.) | platí | — | platí | — | platí |
+| `outlet_badge` (štítek výprodeje) | platí (12. 10., jen u vybrané varianty) | platí (12. 10.) | platí (12. 10.) | neověřeno | platí v náhledu (byl 10), naživo neověřeno | neověřeno, editor (`previewPath`) | neověřeno (`outlet.sample` je vidět jen v editoru) |
+| `campaign_banner` | neověřeno od MVP 6 | neověřeno | neověřeno | neověřeno | platí v náhledu (byl 12), naživo neověřeno | neověřeno, editor | neověřeno |
+| `top_bar` | neověřeno (Horizon nemá kam) | neověřeno | neověřeno | neověřeno | neověřeno | neověřeno, editor | neověřeno |
+| `announcement_milestones` | neověřeno (nový, kolo 7) | neověřeno | neověřeno | neověřeno | neověřeno | neověřeno, editor | neověřeno |
+| `announcement_campaign` | neověřeno (nový, kolo 7) | neověřeno | neověřeno | neověřeno | neověřeno | neověřeno, editor | neověřeno |
+
+Co je v tabulce B `neověřeno`, jde ověřit jen v editoru šablon, nebo na to není živý test. Všechno je v seznamu
+„Ověř sám“ v oddílu Krok 3.
 
 ## Tabulka C, scénáře obchodníka
 
@@ -188,10 +190,12 @@ jen přes runbook: seed nanečisto → naostro → Horizon + Dawn → úklid →
 |---|---|---|---|
 | `rewards` (Free): pruh, košík, dárek, slovenské částky, pokladna Bogus | 8 z 8 | 8 z 8 | `cleanup` 0, `verify-clean` 0 |
 | `tiers` (Free): tabulka, přepnutí varianty, košík, pokladna Bogus, 390 px | 7 z 8 | 7 z 8 | `cleanup` 0, `verify-clean` 0 |
-| `outlet` (Pro): cena výprodeje, košík, pokladna Bogus | 4 z 5 | 4 z 5 | ceny vrácené a ověřené, `cleanup` 0, `verify-clean` 0 |
+| `outlet` (Pro), první běh: cena výprodeje, košík, pokladna Bogus | 4 z 5 | 4 z 5 | ceny vrácené a ověřené, `cleanup` 0, `verify-clean` 0 |
+| `outlet` (Pro), opakování s přepsaným testem: navíc štítek jen u vybrané varianty, bez názvu varianty | 5 z 5 | 5 z 5 | ceny vrácené a ověřené, `cleanup` 0, `verify-clean` 0 |
 | `rewards-pro`: žebříček, výběr ze tří dárků | 4 z 4 | 4 z 4 | `cleanup` 0, `verify-clean` 0 |
 | `tiers-pro`: výjimky pro produkty a kolekce | 6 z 6 | 6 z 6 | `cleanup` 0, `verify-clean` 0 |
-| `margin-pro`: hranice obchodu, kolekce a produktu v košíku a pokladně | 0 z 3 | viz níž | viz níž |
+| `margin-pro`: hranice obchodu, kolekce a produktu v košíku a pokladně | 0 z 6 | 2 z 6 | `cleanup` 0, `verify-clean` 0 |
+| `shapes` (Pro): tvary slev v pokladně | 4 z 4 | 4 z 4 | `cleanup` 0, `verify-clean` 0 |
 
 Co neprošlo a proč:
 
@@ -202,7 +206,8 @@ Co neprošlo a proč:
   vstup pro test. Ověří se z Ondřejova terminálu, kroky jsou v seznamu níž.
 - **`outlet`, test stránky produktu:** test byl zastaralý. Čekal štítek u varianty hned po otevření a s názvem
   varianty; od 9. 10. se štítek ukazuje jen u vybrané varianty a bez názvu. Test je přepsaný
-  (`tests/e2e/storefront.outlet.spec.ts`), opakování viz stav níž.
+  (`tests/e2e/storefront.outlet.spec.ts`) a opakovaný běh prošel 5 z 5 na obou šablonách.
+- **`margin-pro` na Dawnu** navíc čtyřikrát dostal od obchodu HTTP 401 (obchod po sérii běhů odmítal stránky).
 - **`costs-clear` skončil 1** u `tiers` a `tiers-pro`: úklid obnovil ze zálohy nastavení, které v obchodě bylo před
   během (1 sleva, ochrana marže zapnutá, množstevní slevy). S ochranou zapnutou skript nákupní ceny záměrně nemaže.
   Obchod je ve stavu před během.
@@ -219,7 +224,7 @@ Co neprošlo a proč:
 | 6 | Dotažení, body 5 a 6: klikání v aplikaci uvnitř Shopify adminu | nejde ověřit bez Ondřeje | do `admin.shopify.com` se Playwrightem nepřihlašuje (B4); v náhledu 38 z 38 |
 | 7 | Dotažení, bod 4: „Povolit čtení jazyků“ v Shopify adminu | nejde ověřit bez Ondřeje | dialog oprávnění je jen v adminu |
 | 8 | Dotažení, část B: kontrola kombinací v běžící aplikaci (uložení → dlaždice, denní úloha) | nejde ověřit bez Ondřeje | admin |
-| 9 | Dotažení, část C: vlastní CSS košíku a pruhu na webu (Pro), blok kampaně bez zaškrtávátka v editoru | viz stav běhu `looks` níž | |
+| 9 | Dotažení, část C: vlastní CSS košíku a pruhu na webu (Pro), blok kampaně bez zaškrtávátka v editoru | **ověřeno** (texty a vzhled Milníků na Pro), zbytek bez Ondřeje nejde | `looks.sh rewards-pro … --texts --looks milestones=checklist+blink`: 2 z 2 na Horizonu i Dawnu, úklid 0; vlastní CSS košíku živý test nemá, blok kampaně je editor |
 | 10 | Úkol 8 A: čtení `tx_<jazyk>` na webu, `read_locales`, klikání na stránce Překlady | **ověřeno** (texty), zbytek bez Ondřeje nejde | texty podle jazyka naživo na Horizonu i Dawnu 9. 10. (`evidence/dotazeni-8-9/`); oprávnění a klikání jsou admin |
 | 11 | Úkol 8 B: nové vzhledy na webu, odpočet u výprodeje, bliknutí | **ověřeno** (Milníky), zbytek neověřeno | vzhledy Milníků a bliknutí naživo 9. 10.; vzhledy Výprodeje a Kampaně živý test nemají |
 | 12 | Úkol 9: kontrola kombinací v běžící aplikaci | nejde ověřit bez Ondřeje | admin (totéž co 8) |
@@ -231,7 +236,55 @@ Co neprošlo a proč:
 
 ### Ověř sám (Ondřej), přesné kroky
 
-Stav běhu `looks` a opakovaného `outlet` a seznam kroků doplním po doběhnutí (viz CHECKPOINT v build logu).
+**1. Marže a slovenský kurz proti záznamům pokladní funkce (terminál, asi 40 minut).** Dvě okna terminálu.
+
+```
+cd ~/Development/WonCommerce/Apps/b2b_b2c
+NODE_ENV=development WON_DEV_PLAN=pro npm run dev -w won-discounts
+```
+
+Ve výstupu se nesmí opakovat „Error while polling app logs“. Ve druhém okně:
+
+```
+cd ~/Development/WonCommerce/Apps/b2b_b2c
+node apps/won-discounts/scripts/e2e/margin-collection.mjs --fixture margin --live
+bash apps/won-discounts/scripts/e2e/runbook/profile.sh margin-pro overeni pro
+node apps/won-discounts/scripts/e2e/margin-collection.mjs --fixture margin --delete --live
+cat "${TMPDIR:-/tmp}/won-discounts-runs/overeni/progress.txt"
+```
+
+Má tam být `margin-pro e2e exit=0` a `margin-pro verify-clean exit=0`. Potom první okno zastav, pusť
+`npm run dev -w won-discounts` (bez `WON_DEV_PLAN`) a ve druhém
+`bash apps/won-discounts/scripts/e2e/runbook/profile.sh tiers overeni free`; čekáš `tiers e2e exit=0`.
+
+**2. Editor šablon (Shopify admin → Won Discounts, tarif Pro).** U každého kroku: editor se otevře, blok je vybraný
+v levém stromu a žádný druhý blok nepřibyl.
+
+1. Výprodej → Štítek na webu → tlačítko v hlavičce. Otevře se produkt, který je ve výprodeji (ne výchozí produkt
+   šablony), s blokem „Sale badge“. Když žádný výprodej neběží, blok v editoru ukáže označenou ukázku.
+2. Množstevní slevy → Tabulka na webu → odkaz do editoru. Vybraný blok „Quantity tiers“.
+3. Milníky → Milníky na webu → řádek „Pruh nahoře“. V editoru jde do záhlaví přidat blok „Announcement: Milestones“
+   (Dawn). Na Horizonu záhlaví bloky aplikací nebere; má tam zůstat funkční přepínač ve vložení aplikace.
+4. Kampaně → Kampaň na webu → „Přidat pruh do záhlaví“. Blok „Announcement: Campaign“; v nastavení bloku
+   „Campaign banner“ není zaškrtávátko odpočtu.
+5. Kampaně → Kampaň na webu: po přetažení banneru na úvodní stránce nahoru a „Zkontrolovat znovu“ zmizí štítek
+   „Na webu, špatné místo“ a dlaždice zezelená.
+
+**3. Aplikace v Shopify adminu.**
+
+1. Překlady → „Povolit čtení jazyků“ → potvrdit. Seznam jazyků se objeví bez načtení stránky.
+2. Uložit libovolnou slevu → Přehled. Dlaždice „Vyzkoušet košík“ ukáže nové počty „v pořádku / upozornění“.
+3. Milníky → Vzhled a vlastní CSS → Pruh nahoře → „Jen věta“ → Uložit vzhled. Na webu je pruh bez ukazatele, košík
+   a blok na stránce se nezměnily.
+4. Milníky → Vzhled a vlastní CSS → Rámeček košíku a pruhu → vlastní CSS `.won-cart__saved { letter-spacing: 2px; }`
+   → Uložit vzhled. V košíku na webu je řádek „Ušetříte“ roztažený.
+
+**4. Pokladna.**
+
+1. Výprodej s volbou „I s vybranými slevami → Množstevní sleva“, tři kusy v košíku: pokladna ukáže výprodejovou
+   cenu a k ní množstevní slevu; kód na objednávku se na ten řádek nepřičte.
+2. Dárková karta (produkt typu dárková karta) v košíku se slevou z objednávky a s množstevní slevou: na řádku karty
+   není žádná sleva. Příznak zapisuje hodinová úloha, po založení karty počkej hodinu.
 
 ## Po review
 
