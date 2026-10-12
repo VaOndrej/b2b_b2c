@@ -67,7 +67,7 @@ test.describe(`Won Discounts Výprodej: PDP, cart and checkout (MVP 5)${PRO ? " 
     if (page.url().startsWith(new URL(baseURL!).origin)) await clearCartQuietly(page);
   });
 
-  test("PDP: the sale price on the storefront, the struck price where the market's price list carries it (the fixed price), and the badge naming the sale variant", async ({ page }, testInfo) => {
+  test("PDP: the sale price on the storefront, the struck price where the market's price list carries it (the fixed price), and the badge with the sale variant picked", async ({ page }, testInfo) => {
     test.setTimeout(180_000);
     await gotoStorefront(page, `/products/${LARGE.handle}`);
     await setStorefrontCountry(page, "CZ");
@@ -82,9 +82,14 @@ test.describe(`Won Discounts Výprodej: PDP, cart and checkout (MVP 5)${PRO ? " 
       expect(large.price, "the sale price").toBe(sale(LARGE.before, LARGE.percent));
       expect(small.compare_at_price, "the other variant is untouched").toBeNull();
       const row = page.locator(`[data-won-discounts-outlet-variant="${large.id}"]`);
+      // 9 Oct 2026 (3rd round, bod 6): the badge shows only with the variant that is picked, and without its name
+      // (the customer sees which one is picked). With the other variant picked there is no badge at all.
+      await gotoStorefront(page, `/products/${LARGE.handle}?variant=${small.id}`);
+      await expect(row, "the variant that is not on sale is picked: the badge is not shown").toBeHidden();
+      await gotoStorefront(page, `/products/${LARGE.handle}?variant=${large.id}`);
       await expect(row).toBeVisible();
       await expect(row.locator("[data-won-discounts-outlet-badge]")).toHaveText(BADGE);
-      await expect(row, "a product with several variants names the sale one").toContainText(LARGE.variant!);
+      await expect(row.locator(".won-outlet__variant"), "the badge does not repeat the variant's name").toHaveCount(0);
       await expect(page.locator(`[data-won-discounts-outlet-variant="${small.id}"]`)).toHaveCount(0);
       await expect(page.locator("[data-won-discounts-outlet-left]"), "the default display: no 'X left'").toHaveCount(0);
       await assertResponsiveSane(page, { root: "[data-won-discounts-outlet]" });

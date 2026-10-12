@@ -178,6 +178,61 @@ U opravených nálezů je screenshot po opravě ve složce `po/` pod stejným n�
 | C14 | Přehled, „Vyžaduje pozornost“ | Po opravě nálezu 2 jsou upozornění karty (dvě vedle sebe). Při pěti upozorněních začínají dlaždice modulů až pod první obrazovkou (§19d). |
 | C15 | Výprodej → Výprodeje, Kampaně | Stránka má dlaždice a přes 1,5 obrazovky, boční menu nemá: dlaždice a boční menu se podle §19f neskládají. |
 
+## Krok 3, ověření naživo (12. 10. 2026)
+
+Dev obchod `b2b-b2c-store-development`, `shopify app dev` puštěný touhle session (Free, potom `WON_DEV_PLAN=pro`),
+jen přes runbook: seed nanečisto → naostro → Horizon + Dawn → úklid → kontrola čistoty. Screenshoty a data z běhů:
+[`evidence/pred-review-2026-10-10/nazivo/`](evidence/pred-review-2026-10-10/nazivo/).
+
+| Běh | Horizon | Dawn | Úklid |
+|---|---|---|---|
+| `rewards` (Free): pruh, košík, dárek, slovenské částky, pokladna Bogus | 8 z 8 | 8 z 8 | `cleanup` 0, `verify-clean` 0 |
+| `tiers` (Free): tabulka, přepnutí varianty, košík, pokladna Bogus, 390 px | 7 z 8 | 7 z 8 | `cleanup` 0, `verify-clean` 0 |
+| `outlet` (Pro): cena výprodeje, košík, pokladna Bogus | 4 z 5 | 4 z 5 | ceny vrácené a ověřené, `cleanup` 0, `verify-clean` 0 |
+| `rewards-pro`: žebříček, výběr ze tří dárků | 4 z 4 | 4 z 4 | `cleanup` 0, `verify-clean` 0 |
+| `tiers-pro`: výjimky pro produkty a kolekce | 6 z 6 | 6 z 6 | `cleanup` 0, `verify-clean` 0 |
+| `margin-pro`: hranice obchodu, kolekce a produktu v košíku a pokladně | 0 z 3 | viz níž | viz níž |
+
+Co neprošlo a proč:
+
+- **`tiers`, krok „slovensko (EUR)“ a celý `margin-pro`:** testy porovnávají košík se záznamem běhu pokladní funkce
+  v `apps/won-discounts/.shopify/logs`. Dev relace puštěná z téhle session ty záznamy nestahuje (v jejím výstupu se
+  opakuje „Error while polling app logs“; poslední soubory ve složce jsou ze 7. 10.). Části testu před tím krokem
+  prošly (tabulka v eurech, cena na stránce nikdy neslibuje víc než košík). Není to chyba aplikace, je to chybějící
+  vstup pro test. Ověří se z Ondřejova terminálu, kroky jsou v seznamu níž.
+- **`outlet`, test stránky produktu:** test byl zastaralý. Čekal štítek u varianty hned po otevření a s názvem
+  varianty; od 9. 10. se štítek ukazuje jen u vybrané varianty a bez názvu. Test je přepsaný
+  (`tests/e2e/storefront.outlet.spec.ts`), opakování viz stav níž.
+- **`costs-clear` skončil 1** u `tiers` a `tiers-pro`: úklid obnovil ze zálohy nastavení, které v obchodě bylo před
+  během (1 sleva, ochrana marže zapnutá, množstevní slevy). S ochranou zapnutou skript nákupní ceny záměrně nemaže.
+  Obchod je ve stavu před během.
+
+### 17 položek „neověřeno naživo“ z build logu
+
+| # | Položka (kde v build logu) | Stav | Důkaz nebo důvod |
+|---|---|---|---|
+| 1 | Kolo 7: `previewPath` v editoru, nové bloky v editoru, vzhledy podle místa na webu | nejde ověřit bez Ondřeje | editor šablon; pro vzhledy podle místa není živý test |
+| 2 | Dárkové karty: hodinová úloha proti obchodu, pokladna s dárkovou kartou | nejde ověřit bez Ondřeje | dev obchod nemá dárkovou kartu jako produkt, test neexistuje |
+| 3 | Kolo 6: výběr bloku v editoru, pokladna s částečně kombinovaným výprodejem | nejde ověřit bez Ondřeje | editor; výprodej „bez dalších slev“ v košíku a pokladně prošel (`outlet`), částečná kombinace živý test nemá |
+| 4 | Kolo 3, bod 4: blok „Top bar“ v editoru (Horizon nemá kam) | nejde ověřit bez Ondřeje | editor šablon |
+| 5 | Kolo 3: pokladna s hranicí marže podle produktu, blok v editoru | nejde ověřit bez Ondřeje | `margin-pro` potřebuje záznamy funkce (viz výš); editor |
+| 6 | Dotažení, body 5 a 6: klikání v aplikaci uvnitř Shopify adminu | nejde ověřit bez Ondřeje | do `admin.shopify.com` se Playwrightem nepřihlašuje (B4); v náhledu 38 z 38 |
+| 7 | Dotažení, bod 4: „Povolit čtení jazyků“ v Shopify adminu | nejde ověřit bez Ondřeje | dialog oprávnění je jen v adminu |
+| 8 | Dotažení, část B: kontrola kombinací v běžící aplikaci (uložení → dlaždice, denní úloha) | nejde ověřit bez Ondřeje | admin |
+| 9 | Dotažení, část C: vlastní CSS košíku a pruhu na webu (Pro), blok kampaně bez zaškrtávátka v editoru | viz stav běhu `looks` níž | |
+| 10 | Úkol 8 A: čtení `tx_<jazyk>` na webu, `read_locales`, klikání na stránce Překlady | **ověřeno** (texty), zbytek bez Ondřeje nejde | texty podle jazyka naživo na Horizonu i Dawnu 9. 10. (`evidence/dotazeni-8-9/`); oprávnění a klikání jsou admin |
+| 11 | Úkol 8 B: nové vzhledy na webu, odpočet u výprodeje, bliknutí | **ověřeno** (Milníky), zbytek neověřeno | vzhledy Milníků a bliknutí naživo 9. 10.; vzhledy Výprodeje a Kampaně živý test nemají |
+| 12 | Úkol 9: kontrola kombinací v běžící aplikaci | nejde ověřit bez Ondřeje | admin (totéž co 8) |
+| 13 | Navigace a stav: Horizon a Dawn, screenshot věty v aplikaci | **ověřeno** | tabulka a žebříček na obou šablonách dnes (`tiers`, `rewards`); věta je na screenshotech náhledu |
+| 14 | Kolo 3 (6. 10.): klikání u výjimek v běžící aplikaci | nejde ověřit bez Ondřeje | admin; v náhledu kryto testem prohlížeče |
+| 15 | Úkol 7: pokladna Bogus na Dawnu v profilu `rewards`; boční košík na Dawnu; limit po trzích na Free | **ověřeno** (pokladna, limit), boční košík ne | Dawn 8 z 8 včetně pokladny a slovenských částek; zkušební kopie Dawnu boční košík nemá |
+| 16 | Barva zvýraznění tabulky na webu | **ověřeno** | převod vzhledu a barvy naživo 9. 10., tabulka dnes na obou šablonách |
+| 17 | Čtení trhů v dev obchodě po změně oprávnění; čtení skutečného tématu (úvodní stránka, košík, pruh) | **ověřeno** (trhy), čtení tématu neověřeno | seed dnes četl trhy Česko a Slovensko a testy prošly se slovenskými částkami; polohu bloků v živém tématu ukazuje jen admin |
+
+### Ověř sám (Ondřej), přesné kroky
+
+Stav běhu `looks` a opakovaného `outlet` a seznam kroků doplním po doběhnutí (viz CHECKPOINT v build logu).
+
 ## Po review
 
 Věci, které při průchodu chyběly nebo nejsou hotové, a do tohohle zadání nepatří:

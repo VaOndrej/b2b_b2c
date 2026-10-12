@@ -1,0 +1,56 @@
+[
+  {
+    "tag": "BUTTON",
+    "text": "Odmítnout",
+    "w": 68,
+    "h": 44,
+    "minHeight": "44px",
+    "display": "inline-flex",
+    "padding": "0px"
+  },
+  {
+    "tag": "BUTTON",
+    "text": "Won E2E — Simple B",
+    "w": 358,
+    "h": 44,
+    "minHeight": "44px",
+    "display": "flex",
+    "padding": "3.75px 7.5px"
+  },
+  {
+    "tag": "BUTTON",
+    "text": "Won E2E — Two Variants — Small",
+    "w": 358,
+    "h": 44,
+    "minHeight": "44px",
+    "display": "flex",
+    "padding": "3.75px 7.5px"
+  },
+  {
+    "tag": "BUTTON",
+    "text": "Won E2E — Multi Axis — S / Red",
+    "w": 358,
+    "h": 44,
+    "minHeight": "44px",
+    "display": "flex",
+    "padding": "3.75px 7.5px"
+  },
+  {
+    "tag": "INPUT",
+    "text": "won-code",
+    "w": 294,
+    "h": 44,
+    "minHeight": "44px",
+    "display": "block",
+    "padding": "5px"
+  },
+  {
+    "tag": "BUTTON",
+    "text": "Použít",
+    "w": 61,
+    "h": 44,
+    "minHeight": "44px",
+    "display": "flex",
+    "padding": "5px 10px"
+  }
+]
