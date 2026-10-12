@@ -36,7 +36,7 @@ import type { WonDiscountsConfig } from "@won/core/discounts/config";
 import { unsupportedInFunction } from "@won/core/discounts/plan";
 
 import { useT } from "../../i18n/context";
-import type { Translator } from "../../i18n";
+import type { MessageKey, Translator } from "../../i18n";
 import { pickProducts } from "../model/app-bridge";
 import { formatDate, formatMoney } from "@won/core/discounts/describe";
 
@@ -47,6 +47,7 @@ import { shopToday } from "../model/rule-form";
 import { uiText } from "../model/result-copy";
 import type { CartPlanView, CombinationCheckView, CurrencyView, ExplainView, FieldError, TryCartLineView, UiResult } from "../model/types";
 import { boolAttr } from "../shell/attrs";
+import { Finding } from "../shell/Finding";
 import { Notice, ResyncButton } from "../shell/Notice";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
@@ -554,7 +555,6 @@ export function TryCartScreen(props: TryCartScreenProps) {
   );
 
   const showResult = !locked && (plan !== null || (result !== null && !(result.ok === false && result.reason === "invalid")));
-  const needsResync = (plan?.warnings ?? []).some((w) => RESYNC_WARNINGS.includes(w.key));
 
   // The page is long (the combinations, the cart, the result): the same side menu with anchors as Nastavení.
   const navItems: SectionNavItem[] = [
@@ -594,15 +594,20 @@ export function TryCartScreen(props: TryCartScreenProps) {
               ) : null}
               {result && !(result.ok === false && result.reason === "invalid") ? <Notice result={result} /> : null}
               {plan?.warnings && plan.warnings.length > 0 ? (
-                // Item 8: where checkout gives (or may give) something else than the plan, before the numbers.
-                <s-banner tone="warning" heading={t("tryCart.warning.heading")}>
-                  <s-unordered-list>
-                    {plan.warnings.map((w, i) => (
-                      <s-list-item key={`${i}-${w.key}`}>{uiText(w, tr)}</s-list-item>
-                    ))}
-                  </s-unordered-list>
-                  {needsResync ? <ResyncButton slot="secondary-actions" /> : null}
-                </s-banner>
+                // Item 8: where checkout gives (or may give) something else than the plan, before the numbers. Each one
+                // is a finding: what happened, what to do about it, and the retry where a retry helps (P7, nález 17).
+                <div data-won-try-cart-warnings="" style={{ display: "grid", gap: 10 }}>
+                  <div style={{ fontFamily: WON_FONT, fontSize: 13.5, fontWeight: 700, color: WON_INK }}>{t("tryCart.warning.heading")}</div>
+                  {plan.warnings.map((w, i) => (
+                    <Finding
+                      key={`${i}-${w.key}`}
+                      marker={{ "data-won-try-cart-warning": w.key }}
+                      what={uiText(w, tr)}
+                      how={t(`${w.key}.how` as MessageKey)}
+                      actions={RESYNC_WARNINGS.includes(w.key) ? <ResyncButton variant="primary" /> : undefined}
+                    />
+                  ))}
+                </div>
               ) : null}
               {plan ? (
                 <div style={stale ? { opacity: 0.6 } : undefined}>

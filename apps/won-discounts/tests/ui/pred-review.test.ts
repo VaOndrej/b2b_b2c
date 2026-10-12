@@ -64,8 +64,9 @@ test("nález 6: an empty shop has no red tile on Množstevní slevy and Milníky
   const rewards = tile(await render("rewards?state=empty"), "web");
   assert.equal(stateOf(rewards), null, "no step yet: the tile of the web has no label");
   assert.ok(!text(rewards).includes("k vyřešení"), text(rewards));
-  // With levels the tile is labelled again (the fixture's table is in the template).
+  // With levels the tile is labelled again: green with the table in the template, red without it.
   assert.equal(stateOf(tile(await render("tiers"), "table")), "active");
+  assert.equal(stateOf(tile(await render("tiers?state=block-off"), "table")), "attention");
 });
 
 test("nález 9: Milníky na webu — the tile counts the place whose row is red", async () => {
@@ -130,4 +131,77 @@ test("the document stream never carries a NUL byte: a chunk with one comes out w
   stream.end(Buffer.from(" 0 ks", "utf8"));
   await done;
   assert.equal(Buffer.concat(out).toString("utf8"), "nepustí větší slevu, vráceno 0 ks");
+});
+
+// --- Nález 8: on Free the custom look is one sentence, not a locked form --------------------------------------
+
+test("nález 8: Free sees what Pro gives in one sentence — no locked fields, no brief for an AI; Pro has the form", async () => {
+  for (const path of ["tiers", "rewards", "tiers?state=empty"]) {
+    const free = await render(path);
+    assert.ok(free.includes("data-won-look-custom"), `${path}: the custom look is still offered`);
+    assert.ok(!free.includes('name="look.css"') && !text(free).includes("Zadání pro AI"), `${path}: the locked form is not drawn`);
+    assert.ok(text(free).includes("Zobrazit tarif Pro"), `${path}: the link to the plan`);
+  }
+  const pro = await render("tiers?plan=pro");
+  assert.ok(pro.includes('name="look.css"') && text(pro).includes("Zadání pro AI"));
+});
+
+// --- Nález 7: the page's Save is one shared piece, shown only where the page's form has something to save ------
+
+test("nález 7: PageSave is hidden, never unmounted, and every page with views uses it", async () => {
+  const { createElement } = await import("react");
+  const { renderToString } = await import("react-dom/server");
+  const { PageSave } = await import("../../app/components/shell/PageSave.tsx");
+  const { LocaleProvider } = await import("../../app/i18n/context.tsx");
+  const draw = (shown: boolean) => renderToString(createElement(LocaleProvider, { locale: "cs", children: createElement(PageSave, { shown }) }));
+  assert.match(draw(true), /data-won-page-save="shown" style="display:block"><s-button type="submit"/);
+  assert.match(draw(false), /data-won-page-save="hidden" style="display:none"><s-button type="submit"/);
+  // The pages whose form spans several views draw their Save through it (the view is picked in the browser:
+  // tests/e2e-preview/admin.pred-review.spec.ts clicks through them).
+  for (const path of ["tiers", "rewards", "margin"]) assert.equal((await render(path)).split("data-won-page-save=").length - 1, 1, path);
+});
+
+// --- Nálezy 2, 16, 17: one card for every warning — what happened, what to do, the button ----------------------
+
+/** The pieces of a page marked with `marker`, one piece of HTML each (up to the next one). */
+const pieces = (html: string, marker: string) => html.split(new RegExp(`(?=<div data-won-finding="" ${marker}=)`)).slice(1);
+
+test("nález 2: Přehled — every thing to resolve says what happened, what to do, and has the primary button to the field", async () => {
+  const html = await render("overview?state=modules&plan=pro");
+  const findings = pieces(html, "data-won-overview-finding");
+  assert.ok(findings.length >= 4, `the fixture has things to resolve (${findings.length})`);
+  for (const finding of findings) {
+    const words = text(finding);
+    assert.ok(words.includes("Co se stalo") && words.includes("Co s tím"), words.slice(0, 200));
+    assert.match(finding, /<s-button href="\/app\/[^"]+" variant="primary">/);
+  }
+  assert.ok(!text(html).includes("Pozor ·"), "the old one-line rows are gone");
+});
+
+test("nález 17: the cart's result — each difference from checkout is a finding with its 'Co s tím'; a retry where it helps", async () => {
+  const html = await render("try-cart?state=warnings&plan=pro");
+  const findings = pieces(html, "data-won-try-cart-warning");
+  assert.deepEqual(findings.map((f) => f.match(/data-won-try-cart-warning="([^"]+)"/)![1]), ["tryCart.warning.tie", "tryCart.warning.targeting", "tryCart.warning.notApplied"]);
+  for (const finding of findings) assert.ok(text(finding).includes("Co se stalo") && text(finding).includes("Co s tím"));
+  assert.ok(text(findings[0]!).includes("Nemusíte dělat nic"), "a rounding difference needs no action, and says so");
+  assert.ok(!findings[0]!.includes("<s-button") && findings[2]!.includes("<s-button"), "only the write that did not go through has the retry");
+  assert.ok(!html.includes("<s-banner tone=\"warning\" heading=\"Pokladna se může lišit\""), "not a banner with a list any more");
+});
+
+test("nález 16: Časté kombinace — a finding shared by several combinations is shown once, with their names", async () => {
+  const { distinctFindings } = await import("../../app/components/try-cart/CombinationsSection.tsx");
+  const finding = (kind: string, href: string, textOf: string) => ({ kind, href, text: textOf, label: "Otevřít" });
+  const scenario = (title: string, findings: ReturnType<typeof finding>[], market?: string) => ({ title, market, findings }) as never;
+  const margin = finding("margin", "/app/tiers#global", "Ochrana marže slevu snížila.");
+  const out = distinctFindings([scenario("A", [margin]), scenario("B", [margin, finding("max", "/app/settings", "Překročeno.")]), scenario("C", [finding("margin", "/app/discounts/x", "Ochrana marže slevu snížila.")], "Slovensko")]);
+  assert.deepEqual(out.map((o) => [o.finding.kind, o.finding.href, o.titles]), [
+    ["margin", "/app/tiers#global", ["A", "B"]],
+    ["max", "/app/settings", ["B"]],
+    ["margin", "/app/discounts/x", ["C · Slovensko"]],
+  ]);
+  const html = await render("try-cart?combos=on&plan=pro");
+  const warnings = html.split('data-won-combo-status="warning"').length - 1;
+  const cards = html.split("data-won-combo-finding=").length - 1;
+  assert.ok(warnings > 1 && cards > 0 && cards < warnings * 2, `${cards} cards for ${warnings} combinations with a warning`);
+  assert.ok(text(html).includes("Ukázalo se v kombinacích:"));
 });

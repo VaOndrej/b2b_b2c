@@ -50,6 +50,7 @@ import { ProSell } from "../shell/ProSell";
 import { SegmentedChoice } from "../shell/SegmentedChoice";
 import { DiscountsSubNav } from "../shell/SubNav";
 import { WON_ATTENTION, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "../shell/tokens";
+import { PageSave } from "../shell/PageSave";
 import { useView, ViewPanel } from "../shell/views";
 import { PlacementPill, RowNote, WonRow, WonSection, type PlacementState } from "../shell/WonSection";
 
@@ -727,12 +728,8 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
             </WonSection>
           </ViewPanel>
 
-          {/* "Na webu" has nothing to save — every button there leads to the store's design. */}
-          <div style={{ display: view === "web" ? "none" : "block" }}>
-            <s-button type="submit" variant="primary">
-              {t("common.save")}
-            </s-button>
-          </div>
+          {/* "Na webu" has nothing to save (every button there leads to the store's design) and a look saves itself. */}
+          <PageSave shown={view === "steps"} />
         </s-stack>
       </Form>
       {/* The preview is a tool, not a setting (feedback 9 Oct 2026, 2nd round, bod 4): OUTSIDE the form, so walking

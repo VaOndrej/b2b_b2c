@@ -225,12 +225,13 @@ test("Časté kombinace: Pro lists every combination with its state and the sett
   const summary = await page.locator("section#combos").innerText();
   const warnings = await page.locator('[data-won-combo-status="warning"]').count();
   expect(summary).toContain(`${count - warnings} v pořádku, ${warnings} upozornění`);
-  // A warning says what happened and links to the setting behind it; a combination in order has no finding.
-  for (const row of await page.locator('[data-won-combo-status="warning"]').all()) {
-    expect(await row.locator("[data-won-combo-finding]").count()).toBeGreaterThan(0);
-    for (const link of await row.locator("[data-won-combo-finding] s-button").all()) expect(await link.getAttribute("href")).toMatch(/^\/app\//);
-  }
-  await expect(page.locator('[data-won-combo-status="ok"] [data-won-combo-finding]')).toHaveCount(0);
+  // A warning says what happened and what to do, with the button to the setting behind it. A finding shared by
+  // several combinations is shown once, above the list (before the first review, nález 16); the rows stay quiet.
+  const findings = page.locator("section#combos [data-won-combo-finding]");
+  expect(await findings.count()).toBeGreaterThan(0);
+  expect(await findings.count()).toBeLessThan(warnings * 2);
+  for (const link of await findings.locator("s-button").all()) expect(await link.getAttribute("href")).toMatch(/^\/app\//);
+  await expect(page.locator("[data-won-combo] [data-won-combo-finding]")).toHaveCount(0);
 
   // "Zkusit v košíku níže" carries the combination's id (a button in a warning's card, a link in a quiet row); the
   // harness serves the same page under /dev/preview.

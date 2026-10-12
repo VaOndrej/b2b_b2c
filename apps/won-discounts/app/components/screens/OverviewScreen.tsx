@@ -47,8 +47,9 @@ import type { AdminSignals, CurrencyView, GateNoteView, RuleSyncMap, UiResult } 
 import { GateNotes } from "../shell/GateNotes";
 import { ModuleTile, ModuleTiles } from "../shell/ModuleTile";
 import { RefreshTargetingButton, ResyncButton } from "../shell/Notice";
+import { Finding } from "../shell/Finding";
 import { PlacementPill, RowNote, StatusPill, WonRow, WonSection } from "../shell/WonSection";
-import { WON_ATTENTION, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
+import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
 import { onboardingHasNative, onboardingProgress } from "./OnboardingScreen";
 
 export interface OverviewScreenProps {
@@ -426,36 +427,27 @@ export function OverviewScreen({
 
         {warnings.length + moduleRows.length > 0 ? (
           <WonSection title={t("overview.warnings.title")} glyph="alert" summary={tr.tp("count.warning", warnings.length + moduleRows.length)}>
-            <div>
+            {/* Each thing to resolve is a finding: what happened, what to do, the button to the exact field (P7, §13c).
+                Two beside each other on a wide screen, so the tiles below stay near the first screen (§19d). */}
+            <div data-won-overview-findings="" style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 400px), 1fr))", alignItems: "stretch" }}>
               {warnings.map((w) => (
-                <WonRow
+                <Finding
                   key={`${w.kind}-${w.ruleId}`}
-                  tone="attention"
-                  action={
-                    // §13a: the diagnosis ships its own fix link, to the exact field (§13c).
-                    <s-button href={`/app/discounts/${encodeURIComponent(w.ruleId)}#${w.field}`} variant="secondary">
-                      {warningFix(w, tr)}
-                    </s-button>
-                  }
-                >
-                  <span style={{ color: WON_ATTENTION, fontWeight: 600, fontSize: 12.5 }}>{t("common.attention")} · </span>
-                  <s-text>{warningText(w, tr, currencies)}</s-text>
-                </WonRow>
+                  marker={{ "data-won-overview-finding": w.kind }}
+                  what={warningText(w, tr, currencies)}
+                  how={t(`overview.warning.${w.kind}.how`)}
+                  primary={{ href: `/app/discounts/${encodeURIComponent(w.ruleId)}#${w.field}`, label: warningFix(w, tr) }}
+                />
               ))}
               {/* N2: a reward or a quantity level that some market does not get, with the link to its field. */}
               {moduleRows.map((row) => (
-                <WonRow
+                <Finding
                   key={row.key}
-                  tone="attention"
-                  action={
-                    <s-button href={row.href} variant="secondary">
-                      {t("overview.warning.missingCurrency.fix")}
-                    </s-button>
-                  }
-                >
-                  <span style={{ color: WON_ATTENTION, fontWeight: 600, fontSize: 12.5 }}>{t("common.attention")} · </span>
-                  <s-text>{row.text}</s-text>
-                </WonRow>
+                  marker={{ "data-won-overview-finding": "amountMissing" }}
+                  what={row.text}
+                  how={t("overview.attention.how")}
+                  primary={{ href: row.href, label: t("overview.warning.missingCurrency.fix") }}
+                />
               ))}
             </div>
           </WonSection>

@@ -33,6 +33,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
+import { PageSave } from "../shell/PageSave";
 import { useView, ViewPanel } from "../shell/views";
 import { Form, useSubmit } from "react-router";
 
@@ -421,11 +422,7 @@ export function MarginScreen(props: MarginScreenProps) {
           </ViewPanel>
           {/* One save for the whole form, last on the page like the rule editor (plus the App Bridge save bar). */}
           {/* Not under a panel that only shows something: a Save there reads as "this is a setting" (6th round). */}
-          <div data-won-margin-save="" style={{ display: view === "impact" || view === "costs" ? "none" : "block" }}>
-            <s-button type="submit" variant="primary">
-              {t("common.save")}
-            </s-button>
-          </div>
+          <PageSave shown={view !== "impact" && view !== "costs"} marker={{ "data-won-margin-save": "" }} />
         </s-stack>
       </Form>
     </s-page>

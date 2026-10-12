@@ -42,6 +42,7 @@ import { snapshotOf } from "../shell/form-snapshot";
 import { GateNotes } from "../shell/GateNotes";
 import { Notice } from "../shell/Notice";
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
+import { PageSave } from "../shell/PageSave";
 import { useView, ViewPanel } from "../shell/views";
 import { DiscountsSubNav } from "../shell/SubNav";
 import { RowNote, StatusPill, WonRow, WonSection } from "../shell/WonSection";
@@ -385,12 +386,9 @@ export function TiersScreen(props: TiersScreenProps) {
             capacityError={capacityError}
           />
           </ViewPanel>
-          {/* One save for the whole form, last on the page (plus the App Bridge save bar). */}
-          <div>
-            <s-button type="submit" variant="primary">
-              {t("common.save")}
-            </s-button>
-          </div>
+          {/* One save for the whole form, last on the page (plus the App Bridge save bar). "Tabulka na webu" holds
+              nothing of this form: the block is added in the theme and the look saves itself. */}
+          <PageSave shown={view !== "table"} />
         </s-stack>
       </Form>
       {/* The table's look: its own form, so outside the page's (the same view as "Tabulka na webu"). */}

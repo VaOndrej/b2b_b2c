@@ -11,9 +11,9 @@ import type { MessageKey } from "../../i18n";
 import type { CombinationCheckView, CombinationScenarioView } from "../model/types";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
-import { SubCard } from "../shell/SubCard";
+import { Finding } from "../shell/Finding";
 import { RowNote, WonSection } from "../shell/WonSection";
-import { WON_ATTENTION, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
+import { WON_ATTENTION, WON_FONT, WON_INK, WON_LINE, WON_MUTED } from "../shell/tokens";
 
 const PILL = { display: "inline-flex", alignItems: "center", gap: 6, padding: "2px 9px", borderRadius: 999, fontSize: 12, fontWeight: 700, flex: "0 0 auto" } as const;
 
@@ -31,66 +31,43 @@ const TODO: Readonly<Record<string, { text: MessageKey; alt?: { href: string; la
   checkout_cut: { text: "combos.todo.checkout_cut", alt: { href: "/app/discounts", label: "combos.alt.discounts" } },
 };
 
+/** One combination: a quiet row — its name, its state, the totals and the way into the cart below. */
 function Scenario({ s }: { s: CombinationScenarioView }) {
   const tr = useT();
   const { t } = tr;
   const title = s.market ? `${s.title} · ${s.market}` : s.title;
   const totals = `${t("combos.totals", { subtotal: formatMoney(s.subtotal, s.currency, tr.locale), discount: formatMoney(s.discount, s.currency, tr.locale) })}${s.estimate ? ` ${t("combos.estimate")}` : ""}`;
   const pill = <span style={{ ...PILL, color: s.status === "ok" ? "#0f6b3f" : WON_ATTENTION, background: s.status === "ok" ? "#e6f6ed" : "#fdeeee" }}>{t(`combos.status.${s.status}`)}</span>;
-  if (s.status === "ok") {
-    // Nothing to do: one quiet row, the cart one click away.
-    return (
-      <li data-won-combo={s.id} data-won-combo-status={s.status} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "6px 12px", padding: "9px 0", borderTop: `1px solid ${WON_LINE}` }}>
-        <span style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 10px", minWidth: 0 }}>
-          <span style={{ fontSize: 13.5, fontWeight: 700, color: WON_INK, overflowWrap: "anywhere" }}>{title}</span>
-          {pill}
-          <span style={{ fontSize: 12.5, color: WON_MUTED }}>{totals}</span>
-        </span>
-        {s.open ? <s-link href={s.open}>{t("combos.open")}</s-link> : null}
-      </li>
-    );
-  }
   return (
-    <li data-won-combo={s.id} data-won-combo-status={s.status} style={{ listStyle: "none" }}>
-      <SubCard title={title} label={pill} tone="attention">
-        <div style={{ fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED }}>{totals}</div>
-        {s.findings.map((f) => {
-          const todo = TODO[f.kind];
-          return (
-            <div key={f.kind} data-won-combo-finding={f.kind} style={{ display: "grid", gap: 8, padding: 12, borderRadius: 10, background: WON_WASH, border: `1px solid ${WON_LINE}` }}>
-              <div>
-                <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: WON_MUTED }}>{t("combos.what")}</div>
-                <div style={{ fontSize: 13.5, lineHeight: 1.45, fontWeight: 600, color: WON_INK }}>{f.text}</div>
-              </div>
-              {todo ? (
-                <div>
-                  <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: WON_MUTED }}>{t("combos.how")}</div>
-                  <div style={{ fontSize: 13.5, lineHeight: 1.45, color: WON_INK }}>{t(todo.text)}</div>
-                </div>
-              ) : null}
-              <s-stack direction="inline" gap="small-300">
-                <s-button href={f.href} variant="primary">
-                  {f.label}
-                </s-button>
-                {todo?.alt ? (
-                  <s-button href={todo.alt.href} variant="secondary">
-                    {t(todo.alt.label)}
-                  </s-button>
-                ) : null}
-              </s-stack>
-            </div>
-          );
-        })}
-        {s.open ? (
-          <div>
-            <s-button href={s.open} variant="tertiary">
-              {t("combos.open")}
-            </s-button>
-          </div>
-        ) : null}
-      </SubCard>
+    <li data-won-combo={s.id} data-won-combo-status={s.status} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "6px 12px", padding: "9px 0", borderTop: `1px solid ${WON_LINE}` }}>
+      <span style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 10px", minWidth: 0 }}>
+        <span style={{ fontSize: 13.5, fontWeight: 700, color: WON_INK, overflowWrap: "anywhere" }}>{title}</span>
+        {pill}
+        <span style={{ fontSize: 12.5, color: WON_MUTED }}>{totals}</span>
+      </span>
+      {s.open ? <s-link href={s.open}>{t("combos.open")}</s-link> : null}
     </li>
   );
+}
+
+type ScenarioFinding = CombinationScenarioView["findings"][number];
+
+/**
+ * The same finding in five combinations is ONE thing to decide (nález 16: the page repeated two cards five times,
+ * 2 500 px above the cart). A finding is the same when it says the same and leads to the same place.
+ */
+export function distinctFindings(scenarios: readonly CombinationScenarioView[]): { finding: ScenarioFinding; titles: string[] }[] {
+  const seen = new Map<string, { finding: ScenarioFinding; titles: string[] }>();
+  for (const s of scenarios) {
+    const title = s.market ? `${s.title} · ${s.market}` : s.title;
+    for (const finding of s.findings) {
+      const key = `${finding.kind}|${finding.href}|${finding.text}`;
+      const entry = seen.get(key) ?? { finding, titles: [] };
+      entry.titles.push(title);
+      seen.set(key, entry);
+    }
+  }
+  return [...seen.values()];
 }
 
 export function CombinationsSection({ check, pro }: { check: CombinationCheckView; pro: boolean }) {
@@ -107,12 +84,31 @@ export function CombinationsSection({ check, pro }: { check: CombinationCheckVie
         {check.sample ? <RowNote>{t("combos.sample")}</RowNote> : null}
         {pro ? (
           <div data-won-combos="" style={{ display: "grid", gap: 14, fontFamily: WON_FONT }}>
+            {/* What needs a decision, each thing once, with the combinations it shows in. */}
+            {distinctFindings(warnings).map(({ finding, titles }) => {
+              const todo = TODO[finding.kind];
+              return (
+                <div key={`${finding.kind}|${finding.href}`} style={{ display: "grid", gap: 4 }}>
+                  <Finding
+                    marker={{ "data-won-combo-finding": finding.kind }}
+                    what={finding.text}
+                    how={todo ? t(todo.text) : undefined}
+                    primary={{ href: finding.href, label: finding.label }}
+                    alt={todo?.alt ? { href: todo.alt.href, label: t(todo.alt.label) } : undefined}
+                  />
+                  <RowNote>{t("combos.where", { titles: tr.list(titles) })}</RowNote>
+                </div>
+              );
+            })}
             {warnings.length > 0 ? (
-              <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 12 }}>
-                {warnings.map((s) => (
-                  <Scenario key={s.id} s={s} />
-                ))}
-              </ul>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: WON_MUTED, marginBottom: 2 }}>{t("combos.withWarning", { n: warnings.length })}</div>
+                <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                  {warnings.map((s) => (
+                    <Scenario key={s.id} s={s} />
+                  ))}
+                </ul>
+              </div>
             ) : null}
             {fine.length > 0 ? (
               <div>

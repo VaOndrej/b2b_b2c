@@ -21,7 +21,6 @@ import { useFormActions } from "../shell/form-actions";
 import { hoverMark } from "../shell/hover";
 import { snapshotOf } from "../shell/form-snapshot";
 import { Notice } from "../shell/Notice";
-import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
 import { RowNote, WonSection } from "../shell/WonSection";
 import { selectionRing, WON_FONT, WON_INK, WON_MUTED } from "../shell/tokens";
@@ -216,20 +215,18 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
           )}
           <div data-won-look-custom={element}>
             <div style={{ fontSize: 13, fontWeight: 700, color: WON_INK, marginBottom: 8 }}>{t("looks.custom.title")}</div>
-            {pro ? (
-              customFields
-            ) : (
-              <s-stack direction="block" gap="base">
-                <ProSell benefit={t(`looks.benefit.${element}`)} />
-                <ProFrame locked>{customFields}</ProFrame>
-              </s-stack>
-            )}
+            {/* Free: one sentence of what Pro gives and the link to the plan (§18h). The locked form itself — four
+                fields, the CSS box and the brief for an AI — doubled the page and could not be used (nález 8). */}
+            {pro ? customFields : <ProSell benefit={t(`looks.benefit.${element}`)} />}
           </div>
-          <div>
-            <s-button type="submit" variant="primary" disabled={boolAttr(fetcher.state !== "idle")}>
-              {t("looks.save")}
-            </s-button>
-          </div>
+          {/* A place with nothing but the custom look (the cart's frame) has nothing to save on Free. */}
+          {pro || picks ? (
+            <div>
+              <s-button type="submit" variant="primary" disabled={boolAttr(fetcher.state !== "idle")}>
+                {t("looks.save")}
+              </s-button>
+            </div>
+          ) : null}
         </s-stack>
         {/* Beside the settings, the element as a customer will see it with what is picked and typed now — the look, the
             colour, the custom look (7th round: the small previews in the cards did not say what the page will show).

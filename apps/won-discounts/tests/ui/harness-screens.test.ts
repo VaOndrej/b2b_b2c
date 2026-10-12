@@ -118,7 +118,8 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
     ],
   },
   // The table's look (MVP 7): the custom look (locked amber on Free), card prices BETA, the AI brief.
-  { path: "tiers", expect: [/Vzhled tabulky na webu/, /Vzhled na webu: Zvýrazněná úroveň/, /V Pro sladíte tabulku s webem: vlastní barvy, zaoblení rohů a vlastní CSS/, /href="\/app\/plan"/, /Ceny podle množství na kartách produktů · BETA/, /Zkopírovat zadání pro AI/, /data-won-ai-prompt="tiers"/] },
+  { path: "tiers", expect: [/Vzhled tabulky na webu/, /Vzhled na webu: Zvýrazněná úroveň/, /V Pro sladíte tabulku s webem: vlastní barvy, zaoblení rohů a vlastní CSS/, /href="\/app\/plan"/, /Ceny podle množství na kartách produktů · BETA/], absent: [/Zkopírovat zadání pro AI/, /data-won-ai-prompt="tiers"/] },
+  { path: "tiers?plan=pro&state=custom", expect: [/Zkopírovat zadání pro AI/, /data-won-ai-prompt="tiers"/] },
   { path: "tiers?plan=pro&state=custom", expect: [/data-won-look-form="tiers"/, /Uložit vzhled/, /Zapnuto: karty ukazují první úroveň/, /Přidat prvek do karty produktu/, /--won-tiers-accent/, /data-won-custom-look=""/, /Platí jen uvnitř tabulky/] },
   { path: "tiers?plan=pro&state=issue", expect: [/Uložené vlastní CSS nejde použít/] },
   // Překlady: a table per language with human names, the default text and the merchant's own; Free's limit and the Pro CSV in amber.
@@ -199,12 +200,12 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /class="won-ms won-ms--compact"/,
       /Krátce bliknout, když zákazník dosáhne stupně/,
       /V Pro sladíte žebříček s webem/,
-      /data-won-ai-prompt="milestones"/,
-      /Platí jen uvnitř žebříčku/,
       /data-won-look-form="milestones"/,
     ],
+    // Free: the custom look is one sentence (before the first review, nález 8); the fields and the brief are Pro's.
+    absent: [/data-won-ai-prompt="milestones"/, /Platí jen uvnitř žebříčku/],
   },
-  { path: "rewards?plan=pro&look=custom", expect: [/data-won-look-css=""/, /Uložit vzhled/], absent: [/V Pro sladíte žebříček s webem/] },
+  { path: "rewards?plan=pro&look=custom", expect: [/data-won-look-css=""/, /Uložit vzhled/, /data-won-ai-prompt="milestones"/, /Platí jen uvnitř žebříčku/], absent: [/V Pro sladíte žebříček s webem/] },
   { path: "rewards?plan=pro&look=issue", expect: [/Uložené vlastní CSS nejde použít/] },
   { path: "outlet?plan=pro&look=strip", expect: [/Vzhled štítku výprodeje/, /Vzhled na webu: Pruh/, /Štítek s odpočtem/, /data-won-look-preview="outlet"/, /class="won-outlet__badge"/, /data-won-ai-prompt="outlet"/] },
   { path: "campaigns?plan=pro&look=card", expect: [/Vzhled banneru kampaně/, /Vzhled na webu: Karta/, /Banner s odpočtem/, /data-won-look-preview="campaign"/, /class="won-campaign__title"/, /data-won-ai-prompt="campaign"/] },

@@ -46,7 +46,9 @@ test("Množstevní slevy: the tile \"Tabulka na webu\" carries the state of the 
   const tile = page.locator('[data-won-view-tile="table"]');
   for (const [path, placement, label] of [
     ["tiers", "in_theme", "Aktivní"],
-    ["tiers?state=empty", "missing", "Vyžaduje pozornost"],
+    ["tiers?state=block-off", "missing", "Vyžaduje pozornost"],
+    // No level yet: a table that is not in the template is not a thing to resolve (before the first review, nález 6).
+    ["tiers?state=empty", "missing", null],
     ["tiers?state=block-unknown", "unknown", null],
   ] as const) {
     await open(page, path);
