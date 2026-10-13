@@ -122,7 +122,6 @@ type Area = "discounts" | AdminModule;
 const CAPABILITY_META: { readonly [K in ProCapability]: { label: string; area: Area } } = {
   market_targeting: { label: "Show a discount only in chosen markets", area: "discounts" },
   segment_targeting: { label: "Show a discount only to chosen customer segments", area: "discounts" },
-  rule_combinations: { label: "Choose per discount which other discounts it stacks with", area: "discounts" },
   campaigns: { label: "Campaigns: start and end many discounts at once", area: "campaigns" },
   tier_set_scope: { label: "Quantity discount sets for chosen products or collections", area: "tiers" },
   tier_sets_extra: { label: "More than one quantity discount set", area: "tiers" },

@@ -35,8 +35,10 @@ import { pickCollections, pickProducts } from "../model/app-bridge";
 import { EDITOR_SECTIONS, ruleName, type EditorSection } from "../model/describe";
 import { marketView } from "../model/markets";
 import { type AmountSuggestView, currencyCodes, currencyViews, marketViews, type MarketNames } from "../model/markets";
+import { WON_FONT, WON_INK, WON_LINE, WON_WASH } from "../shell/tokens";
 import {
   FIELD,
+  FOR_CAMPAIGN_FIELD,
   fieldSection,
   readRuleForm,
   recipeRule,
@@ -108,6 +110,8 @@ export interface RuleEditorScreenProps {
    * one wins, never both); the editor says so. Additive (T5).
    */
   tiersActive?: boolean;
+  /** Opened from a campaign's form ("new" or the campaign's id): the discount runs only in the campaign (13 Oct 2026). */
+  forCampaign?: string | null;
 }
 
 /** A tier set with tiers runs on the plan (the gated config, BILL-1). */
@@ -404,6 +408,7 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
 
       <Form method="post" ref={formRef} data-save-bar>
         <input type="hidden" name="intent" value="save" />
+        {props.forCampaign ? <input type="hidden" name={FOR_CAMPAIGN_FIELD} value={props.forCampaign} /> : null}
         {ruleVersion ? <input type="hidden" name={FIELD.ruleVersion} value={ruleVersion} /> : null}
         <SectionNav label={t("common.onThisPage")} items={sections}>
         <s-stack key={formKey} direction="block" gap="base">
@@ -413,7 +418,14 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
             </s-banner>
           ) : null}
           <Notice result={result} onReplace={replaceUnreadable} />
+          {props.forCampaign ? (
+            <div data-won-for-campaign="" style={{ padding: "10px 12px", borderRadius: 11, background: WON_WASH, border: `1px solid ${WON_LINE}`, fontFamily: WON_FONT, fontSize: 13, lineHeight: 1.5, color: WON_INK }}>
+              <strong>{t("editor.forCampaign.title")}</strong> {t("editor.forCampaign.body")}{" "}
+              <s-link href={`/app/campaigns?draft=1${props.forCampaign === "new" ? "" : `&edit=${encodeURIComponent(props.forCampaign)}`}#form`}>{t("editor.forCampaign.back")}</s-link>
+            </div>
+          ) : null}
           <DiscountSection
+            forCampaign={!!props.forCampaign}
             ed={ed}
             status={status}
             names={names}

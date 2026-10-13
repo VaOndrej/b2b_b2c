@@ -108,16 +108,17 @@ test("BILL-1: on Free, Přehled / Slevy a kódy / the editor say which Pro setti
   const store = new FakeStore();
   const ctx = testCtx(db.prisma, shop, store);
   const overview = await overviewPage(ctx, PAGE);
-  assert.ok(overview.gate && overview.gate.length === 2, JSON.stringify(overview.gate));
+  // 13 Oct 2026: which discounts add up is on every plan — only the market rule is a Pro setting the plan does not run.
+  assert.ok(overview.gate && overview.gate.length === 1, JSON.stringify(overview.gate));
   assert.deepEqual(overview.gateOff, ["sk-only"]);
   const html = text(await renderPage(createElement(OverviewScreen, overview)));
   assert.match(html, /Tohle je v tarifu Pro, zákazník to nedostane/);
   assert.match(html, /Sleva „Jen Slovensko“ cílí na vybrané trhy/);
   // The home tile counts the discount among what needs attention; the list of discounts says why.
   assert.match(html, /1 neaktivní/);
-  // The shop config Shopify runs has the market rule off and no per-rule combination.
+  // The shop config Shopify runs has the market rule off; the per-rule combination runs on Free too.
   const shipped = JSON.parse(store.sync.shopMetafieldValue("function_config")!);
-  assert.doesNotMatch(JSON.stringify(shipped), /combinesWith/);
+  assert.match(JSON.stringify(shipped), /combinesWith/);
 
   const discounts = await discountsPage(ctx, { ...PAGE, deleted: false });
   assert.match(text(await renderPage(createElement(DiscountsScreen, discounts))), /Tohle je v tarifu Pro, zákazník to nedostane/);
@@ -490,4 +491,37 @@ test("F12: an onboarding step saved while another instance writes the config is 
   const stored = (await loadConfig(db.prisma, shop)).config;
   assert.deepEqual(stored.modules.codes.rules.map((r) => r.id), ["a1", "b1"], "the other write is kept");
   assert.deepEqual(stored.onboarding, { goals: ["rewards"], step: 2 }, "and the step is saved on top of it");
+});
+
+test("13 Oct 2026: a discount created from a campaign's form is stored switched off and the save leads back to the campaign with it ticked and switched on", async () => {
+  const { loadCampaignsScreen } = await import("../../app/lib/integration/campaigns-admin.server.ts");
+  const { campaignFormValues, CAMPAIGN_FIELD } = await import("../../app/components/model/campaigns.ts");
+  const ctx = testCtx(db.prisma, shop, new FakeStore());
+  await seed({ modules: { codes: { rules: [] } } });
+  const fields: [string, string][] = [
+    ["intent", "save"],
+    [FIELD.name, "Black Friday kód"],
+    [FIELD.enabled, "on"],
+    [FIELD.valueKind, "percentage"],
+    [FIELD.percent, "30"],
+    [FIELD.target, "order"],
+    [FIELD.method, "code"],
+    [FIELD.codes, "BF30"],
+  ];
+  const outcome = await ruleEditorAction(ctx, formOf([...fields, ["forCampaign", "new"]]), "new");
+  assert.ok("redirect" in outcome, JSON.stringify(outcome));
+  const rule = (await loadConfig(db.prisma, shop)).config.modules.codes.rules[0]!;
+  assert.deepEqual([rule.enabled, rule.method, rule.codes], [false, "code", ["BF30"]], "any discount the editor makes — here a code — switched off until the campaign");
+  assert.equal(outcome.redirect, `/app/campaigns?add=${rule.id}`);
+  // An edited campaign is returned to by its id; a value that is no id is an ordinary save.
+  const edited = await ruleEditorAction(ctx, formOf([...fields.map(([k, v]): [string, string] => (k === FIELD.codes ? [k, "BF31"] : k === FIELD.name ? [k, "Druhá"] : [k, v])), ["forCampaign", "c_abc123"]]), "new");
+  assert.ok("redirect" in edited && /^\/app\/campaigns\?add=[^&]+&edit=c_abc123$/.test(edited.redirect), JSON.stringify(edited));
+  const plain = await ruleEditorAction(ctx, formOf([...fields.map(([k, v]): [string, string] => (k === FIELD.codes ? [k, "BF32"] : k === FIELD.name ? [k, "Třetí"] : [k, v])), ["forCampaign", "../x"]]), "new");
+  assert.ok("redirect" in plain && plain.redirect.startsWith("/app/discounts/"), JSON.stringify(plain));
+  assert.equal((await loadConfig(db.prisma, shop)).config.modules.codes.rules[2]!.enabled, true);
+  // The campaign page knows the discount it comes back with (and nothing for an id that is not a discount).
+  const screen = await loadCampaignsScreen(ctx, { add: rule.id });
+  assert.equal(screen.added, rule.id);
+  assert.equal((await loadCampaignsScreen(ctx, { add: "nope" })).added, undefined);
+  assert.deepEqual(campaignFormValues(null, screen.rules, screen.tierSets)[CAMPAIGN_FIELD.use], undefined, "the tick is the screen's, from `added`");
 });

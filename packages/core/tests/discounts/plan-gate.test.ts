@@ -94,8 +94,8 @@ test("Free: every Pro capability is out of the gated config; the stored config i
   assert.equal(JSON.stringify(config), before, "the input is never mutated (§14a)");
 
   const rule = (id: string) => free.modules.codes.rules.find((r) => r.id === id)!;
-  // Per-rule combinations are gone; the category switches stay.
-  assert.equal(rule("stack-a").combinesWith, undefined);
+  // Per-rule combinations run on every plan (13 Oct 2026), as do the category switches.
+  assert.deepEqual(rule("stack-a").combinesWith, { ruleIds: ["stack-b"] });
   assert.deepEqual(free.engine, config.engine);
   // Market / segment targeting would WIDEN the rule if simply removed: the rule is off instead.
   assert.equal(rule("sk-only").enabled, false);
@@ -104,7 +104,7 @@ test("Free: every Pro capability is out of the gated config; the stored config i
   assert.equal(rule("vip").targeting, undefined);
   assert.equal(rule("plain").enabled, true);
   assert.equal(rule("off").targeting, undefined);
-  assert.equal(rule("off").combinesWith, undefined);
+  assert.deepEqual(rule("off").combinesWith, { ruleIds: ["plain"] });
   // Campaigns are Pro.
   assert.deepEqual(free.campaigns, []);
   // Exactly one global tier set, counting per product (never across the cart); a scoped set stays
@@ -127,7 +127,6 @@ test("Free: every Pro capability is out of the gated config; the stored config i
   assert.deepEqual(
     stripped.map((s) => [s.capability, s.reason, s.ruleId ?? s.entityId ?? null, s.count ?? null, s.removedIds ?? null]),
     [
-      ["rule_combinations", "removed", "stack-a", null, null],
       ["market_targeting", "rule_off", "sk-only", null, null],
       ["segment_targeting", "rule_off", "vip", null, null],
       ["campaigns", "removed", "bf", null, null],
@@ -158,12 +157,12 @@ test("Free payload: no Pro data reaches the function, and the checkout plans wit
   assert.equal(payload.campaignId, null);
   assert.deepEqual(payload.campaigns, []);
   assert.deepEqual(payload.marketCountries, {}, "no market targeting → no market countries");
-  assert.ok(!json.includes("combinesWith"), json);
+  assert.ok(json.includes("combinesWith"), "which discounts add up is not Pro data");
   assert.ok(!json.includes("targeting"), json);
 
-  // The stack 10 % + 5 % the audit saw at checkout (P1-1) is now the better single one.
+  // The stack 10 % + 5 % applies on Free too (13 Oct 2026: which discounts add up is every plan's).
   const plan = planCart(cartOf([line("L1", 100_00, 1, ["stack-a", "stack-b", "sk-only"])], { countryCode: "SK", currency: "CZK" }), payload);
-  assert.equal(plan.lines[0].product?.amount, 10_00);
+  assert.equal(plan.lines[0].product?.amount, 15_00);
   assert.equal(outcome(plan, "sk-only").state, "disabled");
 });
 
@@ -177,7 +176,7 @@ test("Free: a config without Pro data strips nothing", () => {
   });
   const gated = gateConfigForPlan(config, "free");
   assert.deepEqual(gated.stripped, []);
-  assert.equal(gated.config.modules.codes.rules[0].combinesWith, undefined, "an empty list is simply dropped");
+  assert.deepEqual(gated.config.modules.codes.rules[0].combinesWith, { ruleIds: [] }, "the gate leaves combinations as stored");
 });
 
 test("explainGate: one human sentence per stripped capability, Czech and English, never an enum key", () => {

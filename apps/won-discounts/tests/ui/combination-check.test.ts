@@ -128,7 +128,7 @@ test("one computation: every scenario's result is planCart's own, on the payload
     assert.deepEqual(detail.plan.totals, plan.totals, scenario.id);
     assert.deepEqual(detail.plan.rules.map((r) => [r.ruleId, r.state, r.amount]), plan.rules.map((r) => [r.ruleId, r.state, r.amount]), scenario.id);
     assert.deepEqual(detail.plan.lines.map((l) => l.marginCapped), plan.lines.map((l) => l.marginCapped), scenario.id);
-    assert.deepEqual(findings, findingsOf(plan, checkoutPreview(plan, { lineCount: plan.lines.length })), scenario.id);
+    assert.deepEqual(findings, findingsOf(plan, checkoutPreview(plan, { lineCount: plan.lines.length }), { codes: scenario.codes.length > 0 }), scenario.id);
     // The view the page shows carries the same money.
     assert.equal(detail.view.totals.subtotal, plan.totals.subtotal);
   }

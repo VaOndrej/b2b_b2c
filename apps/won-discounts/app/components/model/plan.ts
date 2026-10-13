@@ -39,7 +39,6 @@ export const PLAN_ACTION = "/app/plan";
 /** What Pro adds, each with the page where it is set up (the plan section lists them as links). */
 export const PRO_FEATURES: readonly { label: MessageKey; href: string }[] = [
   { label: "plan.pro.feature.markets", href: "/app/discounts" },
-  { label: "plan.pro.feature.combinations", href: "/app/discounts" },
   { label: "plan.pro.feature.tiers", href: "/app/tiers" },
   { label: "plan.pro.feature.gifts", href: "/app/rewards" },
   { label: "plan.pro.feature.outlet", href: "/app/outlet" },

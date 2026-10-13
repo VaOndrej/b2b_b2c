@@ -35,6 +35,11 @@ import { COLLECTION_GID, PRODUCT_GID, VARIANT_GID, splitCodes } from "./ids";
 import type { FieldError } from "./types";
 
 export const NAME_MAX = 200;
+/**
+ * The editor was opened from a campaign's form ("new", or the id of the campaign being edited): the discount is
+ * stored switched off and the save returns to that campaign (13 Oct 2026). Also the `?campaign=` of the editor's URL.
+ */
+export const FOR_CAMPAIGN_FIELD = "forCampaign";
 
 /** Form field names. Per-currency fields carry the ISO code: `amount_CZK`, `min_EUR`. */
 export const FIELD = {
@@ -88,9 +93,8 @@ export const FIELD = {
   combinesWith: "combinesWith",
   /** Explicit removal of stored segment targeting (checkout cannot evaluate it, B9). Any plan. */
   dropSegments: "dropSegments",
-  /** Free only: remove the stored market targeting / combinations the plan does not run. */
+  /** Free only: remove the stored market targeting the plan does not run. */
   dropMarkets: "dropMarkets",
-  dropCombines: "dropCombines",
   /** A stored value in a currency whose market is off: kept unless listed here (§14a). */
   dropCurrency: "dropCurrency",
 } as const;
@@ -98,7 +102,8 @@ export const FIELD = {
 const CONDITION_FIELDS: readonly string[] = [FIELD.minQty, FIELD.minScope];
 const APPLY_FIELDS: readonly string[] = [FIELD.method, FIELD.codes, FIELD.usageLimit, FIELD.oncePerCustomer, FIELD.dropBatch, FIELD.dropBatchCode];
 const SCHEDULE_FIELDS: readonly string[] = [FIELD.startDate, FIELD.endDate];
-const PRO_FIELDS: readonly string[] = [FIELD.markets, FIELD.combinesWith, FIELD.dropSegments, FIELD.dropMarkets, FIELD.dropCombines];
+/** The fields of the last section ("Kombinace a trhy"); of them only the markets are Pro. */
+const PRO_FIELDS: readonly string[] = [FIELD.markets, FIELD.combinesWith, FIELD.dropSegments, FIELD.dropMarkets];
 
 /**
  * The editor section a form field sits in (a refused save marks the section of each field it complains about).
@@ -500,13 +505,13 @@ export function readRuleForm(form: FormDataLike, ctx: RuleFormContext): RuleForm
     // (checked, with a note); it stays until the merchant unchecks it.
     const known = new Set([...(ctx.marketHandles ?? []), ...storedMarkets]);
     markets = [...new Set(all(FIELD.markets).filter((h) => known.has(h)))];
-    const others = new Set((ctx.otherRules ?? []).map((r) => r.id).filter((id) => id !== ctx.id));
-    const ruleIds = [...new Set(all(FIELD.combinesWith).filter((id) => others.has(id)))];
-    if (ruleIds.length > 0) rule.combinesWith = { ruleIds };
   } else {
     markets = checked(FIELD.dropMarkets) ? [] : [...storedMarkets];
-    if (existing?.combinesWith && !checked(FIELD.dropCombines)) rule.combinesWith = structuredCloneJson(existing.combinesWith);
   }
+  // Which discounts this one adds up with: every plan (13 Oct 2026 — only market targeting stays Pro).
+  const others = new Set((ctx.otherRules ?? []).map((r) => r.id).filter((id) => id !== ctx.id));
+  const combineIds = [...new Set(all(FIELD.combinesWith).filter((id) => others.has(id)))];
+  if (combineIds.length > 0) rule.combinesWith = { ruleIds: combineIds };
   if (markets.length > 0 || segments.length > 0) {
     rule.targeting = {};
     if (segments.length > 0) rule.targeting.segments = segments;

@@ -243,10 +243,15 @@ test("I-1: while syncs keep failing, Přehled loads every 31 s run no full resyn
 
 // --- I-2: the plan the live config was built for -----------------------------------------------------
 
+// 13 Oct 2026: which discounts add up runs on every plan, so the Pro setting of this fixture is market targeting.
 const proSetup = {
+  markets: [
+    { handle: "cz", currency: "CZK", enabled: true },
+    { handle: "sk", currency: "EUR", enabled: true },
+  ],
   modules: {
     codes: {
-      rules: [auto("base"), auto("stack", { name: "Sčítaná", combinesWith: { ruleIds: ["base"] } })],
+      rules: [auto("base"), auto("stack", { name: "Jen Slovensko", targeting: { markets: ["sk"] } })],
     },
   },
 };
@@ -265,7 +270,7 @@ async function preF2ProShop() {
   const run = await db.prisma.syncRun.findFirst({ where: { shop }, orderBy: { startedAt: "desc" } });
   const steps = (JSON.parse(run!.steps) as { step: string }[]).filter((s) => s.step !== "plan");
   await db.prisma.syncRun.update({ where: { id: run!.id }, data: { steps: JSON.stringify(steps) } });
-  assert.match(store.sync.shopMetafieldValue("function_config")!, /combinesWith/, "Pro is live in checkout");
+  assert.match(store.sync.shopMetafieldValue("function_config")!, /"targeting"/, "Pro is live in checkout");
   return store;
 }
 
@@ -296,7 +301,7 @@ test("I-2: a pre-F2 Pro config on a Free shop — the admin and Try Cart say che
   // Přehled: the plan mismatch is a reason to resync (not "up to date").
   const overview = await overviewPage(ctx, PAGE);
   await settle();
-  assert.doesNotMatch(store.sync.shopMetafieldValue("function_config")!, /combinesWith/, "the Free config is live now");
+  assert.doesNotMatch(store.sync.shopMetafieldValue("function_config")!, /"targeting"/, "the Free config is live now");
   assert.equal(await appliedPlanOf(db.prisma, shop), "free");
   void overview;
   const after = await discountsPage(ctx, { ...PAGE, deleted: false });
@@ -317,7 +322,7 @@ test("I-2: a downgrade (config applied for Pro, the shop is Free now) → resync
   plan = "free";
   const result = await resyncIfPending(common);
   assert.equal(result.resynced && result.why, "plan");
-  assert.doesNotMatch(store.sync.shopMetafieldValue("function_config")!, /combinesWith/);
+  assert.doesNotMatch(store.sync.shopMetafieldValue("function_config")!, /"targeting"/);
   assert.deepEqual(await resyncIfPending(common), { resynced: false, reason: "up_to_date" });
 });
 

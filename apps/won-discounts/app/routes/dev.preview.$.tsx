@@ -248,14 +248,14 @@ export const loader = (args: LoaderFunctionArgs) => {
 function withCombinations<T>(screen: T, url: URL): T {
   const mode = url.searchParams.get("combos");
   const which = harnessScreen(url.pathname);
-  if ((mode !== "on" && mode !== "sample") || (which !== "overview" && which !== "try-cart")) return screen;
+  if ((mode !== "on" && mode !== "sample" && mode !== "baskets") || (which !== "overview" && which !== "try-cart")) return screen;
   const plan = url.searchParams.get("plan") === "pro" ? ("pro" as const) : ("free" as const);
-  const combos = devCombinations({ plan, locale: resolveLocale(url.searchParams.get("locale")), sample: mode === "sample" });
+  const combos = devCombinations({ plan, locale: resolveLocale(url.searchParams.get("locale")), sample: mode === "sample", baskets: mode === "baskets" });
   if (!combos) return screen;
   if (which === "overview") return { ...screen, combos: { ok: combos.ok, warnings: combos.warnings } };
   // ?scenario=<id> (Pro): the manual cart prepared from that combination, as the page's loader does it.
   const scenario = url.searchParams.get("scenario");
-  const opened = plan === "pro" && scenario ? devScenarioCart({ locale: resolveLocale(url.searchParams.get("locale")), sample: mode === "sample", id: scenario }) : null;
+  const opened = plan === "pro" && scenario ? devScenarioCart({ locale: resolveLocale(url.searchParams.get("locale")), sample: mode === "sample", baskets: mode === "baskets", id: scenario }) : null;
   // (no result yet: the cart is prepared, not calculated)
   return { ...screen, combos, ...(opened ? { ...opened, plan: null } : {}) };
 }
@@ -437,6 +437,8 @@ const screenProps = ({ request }: LoaderFunctionArgs) => {
       return {
         ...props,
         suggest: devSuggest(q),
+        // ?campaign=new with ?rule=new: the editor as a campaign's form opens it.
+        ...(q.get("campaign") && ruleParam === "new" ? { forCampaign: q.get("campaign") } : {}),
         ...(productCount > 0 && props.rule
           ? { rule: { ...props.rule, target: { kind: "products" as const, productIds: picked, variantIds: [], ...(q.get("mins") === "1" ? { itemMinimums: [{ id: picked[0]!, quantity: 3 }, { id: picked[1] ?? picked[0]!, quantity: 4 }] } : {}) } }, labels: pickedLabels }
           : { labels: { "gid://shopify/Collection/7": { title: "Doplňky" } } }),
@@ -544,6 +546,8 @@ const screenProps = ({ request }: LoaderFunctionArgs) => {
         ...devCampaignsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, edit: q.get("edit"), look: q.get("look") }),
         result: devCampaignsResult(q.get("result")),
         suggest: devSuggest(q),
+        // ?add=<rule id>: back from the discount editor with a discount created for the campaign.
+        ...(q.get("add") ? { added: q.get("add")! } : {}),
       };
     case "analytics":
       // Přehledy (MVP 7): Free by default (?plan=pro), ?state=empty (no order yet), ?state=unavailable (no access to orders).

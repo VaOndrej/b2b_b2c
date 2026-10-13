@@ -6,7 +6,7 @@ import db from "../db.server";
 import { shopCtx } from "../lib/integration/context.server";
 import { adminLocale } from "../lib/integration/locale.server";
 import { ruleMarginImpact } from "../lib/integration/margin.server";
-import { ruleEditorAction, ruleEditorPage } from "../lib/integration/pages.server";
+import { campaignOfForm, ruleEditorAction, ruleEditorPage } from "../lib/integration/pages.server";
 import { RuleEditorScreen } from "../components/screens/RuleEditorScreen";
 
 // Rule editor: /app/discounts/new(?recipe=…) or /app/discounts/<rule id>.
@@ -33,7 +33,8 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     ruleId === "new" ? Promise.resolve(null) : ruleMarginImpact(ctx, ruleId).catch(() => null),
   ]);
   if (!props) throw new Response("Not Found", { status: 404 });
-  return { ...props, marginImpact };
+  const forCampaign = ruleId === "new" ? campaignOfForm({ get: () => url.searchParams.get("campaign") }) : null;
+  return { ...props, marginImpact, forCampaign };
 };
 
 export const action = async ({ request, params }: ActionFunctionArgs) => {

@@ -33,6 +33,21 @@ summary: Name the campaign, set its start and end in the store's time, tick the 
 7. In the campaign's card click **Try a cart during the campaign** and run a cart:
    the result is what checkout gives at the campaign's start.
 
+## A discount only for the campaign
+
+Under **A new discount only for this campaign** in the same step:
+
+- tick **Add a discount off the whole order that runs only during the campaign** and
+  enter the percent (for example 30 % off everything on Black Friday), or
+- click **Create another discount for the campaign** for a code, an amount or a
+  discount on some products only. The discount editor opens; after saving you are
+  back in the campaign, what you typed is kept and the new discount is ticked.
+
+Either way the discount is saved in Discounts and codes switched off. The campaign
+switches it on at its start and off again at its end.
+
+## Timing
+
 The table on the product page shows the campaign's breaks from a minute after the
 start until 7 minutes before the end; checkout gives them the whole time.
 

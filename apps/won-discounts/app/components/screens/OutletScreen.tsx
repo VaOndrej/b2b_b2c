@@ -101,16 +101,6 @@ function OutletBanner({ result }: { result: OutletActionResult }) {
 /** The anchor of a sale's card ("K vyřešení" links to it). */
 const runAnchor = (id: string) => `run-${id.replace(/[^A-Za-z0-9_-]/g, "")}`;
 
-/** One fact of a running sale: a small labelled box (the four of them sit side by side). */
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div style={{ border: `1px solid ${WON_LINE}`, borderRadius: 10, padding: "10px 12px", background: WON_WASH, fontFamily: WON_FONT, fontSize: 14, color: WON_INK, minWidth: 0 }}>
-      <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: WON_MUTED, marginBottom: 4 }}>{label}</div>
-      {children}
-    </div>
-  );
-}
-
 type Combine = (typeof COMBINE_CLASSES)[number];
 
 /**
@@ -265,6 +255,13 @@ function RunCard({
   useEffect(() => {
     if (result?.ok) setEdit(null);
   }, [result]);
+  // The row's details: open by themselves when the sale needs a decision, a save was refused, or a link leads here.
+  const refused = !!result && !result.ok;
+  const [open, setOpen] = useState(run.oversold > 0 || (!!run.problem && run.retry) || refused);
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === `#${runAnchor(run.id)}`) setOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a deep link is read once
+  }, []);
   const takes: readonly Combine[] = withOthers ? COMBINE_CLASSES : run.combineWith;
   const combineError = result && !result.ok && result.reason === "invalid" && "errors" in result ? result.errors?.find((e) => e.field === F.combineWith) : undefined;
   const badgeMove = badge === "in_theme" && spotAdvice(badgeSpot)?.move === true;
@@ -278,55 +275,8 @@ function RunCard({
       {t(`outlet.status.${run.status}` as "outlet.status.active")}
     </CardPill>
   );
-  return (
-    <div id={runAnchor(run.id)} style={{ scrollMarginTop: 16 }}>
-      <SubCard
-        title={<span style={{ fontSize: 16 }}>{run.title || t("outlet.run.unknown")}</span>}
-        label={statusPill}
-        tone={run.oversold > 0 || (run.problem && run.retry) || (ended && run.returnPending > 0) ? "attention" : undefined}
-        action={
-          active ? (
-            <>
-              {run.webUrl ? (
-                <s-button href={run.webUrl} target="_blank" variant="secondary">
-                  {t("outlet.web.open")}
-                </s-button>
-              ) : null}
-              {end}
-            </>
-          ) : undefined
-        }
-      >
-        {ended ? (
-          <RowNote>
-            {run.price ? `${t("outlet.run.price", { before: money(run.price.before, run.price.currency), after: money(run.price.sale, run.price.currency), percent: run.percent })} · ` : ""}
-            {t("outlet.run.ledger", { sold: run.sold, quota: run.quota, returned: run.returned, left: run.left })}
-          </RowNote>
-        ) : (
-          <div data-won-outlet-facts="" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
-            <Fact label={t("outlet.fact.price")}>
-              {run.price ? (
-                <>
-                  <span style={{ fontWeight: 700 }}>{money(run.price.sale, run.price.currency)}</span> <s style={{ opacity: 0.55, fontSize: 13 }}>{money(run.price.before, run.price.currency)}</s>
-                  <div style={{ fontSize: 12.5, color: WON_MUTED }}>−{run.percent} %</div>
-                </>
-              ) : (
-                <span>−{run.percent} %</span>
-              )}
-            </Fact>
-            <Fact label={t("outlet.fact.left")}>
-              <span style={{ fontWeight: 700 }}>{t("outlet.fact.leftOf", { left: run.left, quota: run.quota })}</span>
-              <div aria-hidden="true" style={{ height: 6, borderRadius: 6, background: WON_LINE, marginTop: 6, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${Math.max(0, Math.min(100, run.quota > 0 ? ((run.quota - run.left) / run.quota) * 100 : 0))}%`, background: WON_INK }} />
-              </div>
-              <div style={{ fontSize: 12.5, color: WON_MUTED, marginTop: 4 }}>{t("outlet.fact.sold", { sold: run.sold, returned: run.returned })}</div>
-            </Fact>
-            <Fact label={t("outlet.fact.end")}>
-              <span style={{ fontWeight: 700 }}>{run.endsAt ?? t("outlet.fact.noEnd")}</span>
-              {run.endsAt ? null : <div style={{ fontSize: 12.5, color: WON_MUTED }}>{t("outlet.fact.noEndHint")}</div>}
-            </Fact>
-          </div>
-        )}
+  const body = (
+    <>
         {run.oversold > 0 ? (
           // Red only where there is something to do about it: a running sale can be ended right here.
           active ? (
@@ -523,7 +473,86 @@ function RunCard({
             </s-unordered-list>
           </details>
         ) : null}
-      </SubCard>
+    </>
+  );
+  if (!active) {
+    return (
+      <div id={runAnchor(run.id)} style={{ scrollMarginTop: 16 }}>
+        <SubCard title={<span style={{ fontSize: 16 }}>{run.title || t("outlet.run.unknown")}</span>} label={statusPill} tone={run.oversold > 0 || (run.problem && run.retry) || (ended && run.returnPending > 0) ? "attention" : undefined}>
+          <RowNote>
+            {run.price ? `${t("outlet.run.price", { before: money(run.price.before, run.price.currency), after: money(run.price.sale, run.price.currency), percent: run.percent })} · ` : ""}
+            {t("outlet.run.ledger", { sold: run.sold, quota: run.quota, returned: run.returned, left: run.left })}
+          </RowNote>
+          {body}
+        </SubCard>
+      </div>
+    );
+  }
+  // 13 Oct 2026: a running sale is ONE ROW with columns (the product, the price, what is left, the end, the web),
+  // so several sales read as a table. What is set up under it — the badge, the other discounts, the history — opens
+  // with "Podrobnosti"; it is open by itself only when the sale needs a decision.
+  const cell = { display: "grid", gap: 2, alignContent: "start", minWidth: 0, flex: "1 1 120px" } as const;
+  const cellLabel = { fontSize: 11, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: WON_MUTED } as const;
+  const attention = run.oversold > 0 || (!!run.problem && run.retry);
+  return (
+    <div id={runAnchor(run.id)} data-won-outlet-run={run.id} style={{ scrollMarginTop: 16, border: `1px solid ${attention ? "#eab5b5" : WON_LINE}`, borderRadius: 12, background: "#ffffff", fontFamily: WON_FONT, overflow: "hidden" }}>
+      <div data-won-outlet-facts="" style={{ display: "flex", flexWrap: "wrap", gap: "10px 16px", alignItems: "flex-start", padding: "12px 14px" }}>
+        <div style={{ ...cell, flex: "1.6 1 170px" }}>
+          <span style={cellLabel}>{t("outlet.fact.product")}</span>
+          <span style={{ fontSize: 14.5, fontWeight: 700, color: WON_INK, overflowWrap: "anywhere" }}>{run.title || t("outlet.run.unknown")}</span>
+          <span>{statusPill}</span>
+        </div>
+        <div style={cell}>
+          <span style={cellLabel}>{t("outlet.fact.price")}</span>
+          {run.price ? (
+            <span style={{ fontSize: 14, color: WON_INK }}>
+              <span style={{ fontWeight: 700 }}>{money(run.price.sale, run.price.currency)}</span> <s style={{ opacity: 0.55, fontSize: 13 }}>{money(run.price.before, run.price.currency)}</s>
+            </span>
+          ) : null}
+          <span style={{ fontSize: 12.5, color: WON_MUTED }}>−{run.percent} %</span>
+        </div>
+        <div style={cell}>
+          <span style={cellLabel}>{t("outlet.fact.left")}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: WON_INK }}>{t("outlet.fact.leftOf", { left: run.left, quota: run.quota })}</span>
+          <div aria-hidden="true" style={{ height: 6, borderRadius: 6, background: WON_LINE, overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${Math.max(0, Math.min(100, run.quota > 0 ? ((run.quota - run.left) / run.quota) * 100 : 0))}%`, background: WON_INK }} />
+          </div>
+          <span style={{ fontSize: 12.5, color: WON_MUTED }}>{t("outlet.fact.sold", { sold: run.sold, returned: run.returned })}</span>
+        </div>
+        <div style={cell}>
+          <span style={cellLabel}>{t("outlet.fact.end")}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: WON_INK }}>{run.endsAt ?? t("outlet.fact.noEnd")}</span>
+          {run.endsAt ? null : <span style={{ fontSize: 12.5, color: WON_MUTED }}>{t("outlet.fact.noEndHint")}</span>}
+        </div>
+        <div style={cell}>
+          <span style={cellLabel}>{t("outlet.web.card")}</span>
+          {run.display.startsWith("strike_badge") && run.showBadge ? (
+            <span>
+              <PlacementPill placement={badge} move={badgeMove} />
+            </span>
+          ) : (
+            <span style={{ fontSize: 13, color: WON_INK }}>{web?.text ?? ""}</span>
+          )}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "stretch", flex: "0 0 auto", marginLeft: "auto" }}>
+          <s-button variant="secondary" onClick={() => setOpen(!open)} data-won-outlet-details={open ? "open" : "closed"}>
+            {t(open ? "outlet.run.detailsHide" : "outlet.run.details")}
+          </s-button>
+          {end}
+        </div>
+      </div>
+      <div data-won-outlet-run-body="" style={{ display: open ? "block" : "none", padding: "12px 14px", borderTop: `1px solid ${WON_LINE}`, background: WON_WASH }}>
+        <s-stack direction="block" gap="base">
+          {run.webUrl ? (
+            <div>
+              <s-button href={run.webUrl} target="_blank" variant="secondary">
+                {t("outlet.web.open")}
+              </s-button>
+            </div>
+          ) : null}
+          {body}
+        </s-stack>
+      </div>
     </div>
   );
 }

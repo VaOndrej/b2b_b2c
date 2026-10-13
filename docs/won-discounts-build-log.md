@@ -7,6 +7,65 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
+### Feedback 12. 10. 2026 večer (čtyři body z dev obchodu) — bez zadání v souboru, z chatu
+
+> **CHECKPOINT 4 (kódy, tarif, výprodeje; 12. 10. noc).** V pracovním stromu na `main`, **necommitnuto**.
+> `test:unit:node` 1 905 z 1 905, jádro (`packages/core`) 963 z 963, `test:e2e:preview` 38 z 38 (jeden test upraven a
+> puštěn zvlášť, 11 z 11), `typecheck`, `lint` 0 chyb. Snímky `v4-*.png`. Cargo a vitest jsem v tomhle kole nepouštěl
+> (Rust funkce ani storefront se neměnily).
+> - **Změna tarifu (rozhodl Ondřej 12. 10.):** kombinace u jednotlivých slev (`combinesWith`) jsou ve **Free**; Pro
+>   zůstává jen omezení na trhy. `plan-gate.ts` už `combinesWith` neodebírá (schopnost `rule_combinations` zrušena),
+>   `readRuleForm` je čte na každém tarifu, pole `dropCombines` je pryč. Sekce editoru se jmenuje „Kombinace a trhy“,
+>   není celá Pro: kombinace nahoře, trhy v jantarovém rámečku se štítkem Pro. Zapsáno v `rozhodnuti.md`, nápověda
+>   (`pro-combinations.md` = min_plan free, `plans-free-vs-pro.md`), seznam výhod Pro na stránce tarifu.
+> - **Kódy:** v editoru tři dlaždice (`CodeModeTiles`): Vlastní kódy / Vygenerovat víc kódů / Jeden náhodný kód
+>   (ten posílá `batchCount=1`). Vlastní kódy zůstávají ve formuláři i při jiné dlaždici (věta „platí dál“).
+> - **Výprodej:** běžící výprodej je jeden řádek se sloupci (Produkt, Cena, Zbývá, Konec, Na webu, tlačítka);
+>   štítek, ostatní slevy a historie jsou pod „Podrobnosti“ (otevřené samy jen při přeprodání, chybě nebo odkazu).
+
+> **CHECKPOINT 3 (vzhled Vyzkoušet košík, 12. 10. pozdě večer).** V pracovním stromu na `main`, **necommitnuto**.
+> `test:unit:node` 1 905 z 1 905, `test:e2e:preview` 38 z 38 (náhled teď na portu procesu `react-router dev`, naposledy 62040),
+> `typecheck`, `lint` 0 chyb. Snímky `v3-*.png` v `won-discounts/evidence/feedback-2026-10-12/`.
+> - Nahoře dvě dlaždice (`useView`): „Automatická kontrola“ (Časté kombinace) a „Vlastní košík“ (tři kroky). Boční
+>   seznam `SectionNav` je na téhle stránce pryč; kotvy `#combos`, `#cart`, `#result` otevírají správnou dlaždici.
+> - Nová sdílená součástka `shell/CartCard.tsx` (štítek, řádky, souhrn na podkladu): ruční výsledek i každý
+>   automatický košík. Automatické košíky jsou po kombinacích, v řadě Nejlevnější / Střední / Nejdražší / Mix
+>   (`CombinationScenarioView.lines`); tiché řádky „S upozorněním / V pořádku“ jsou pryč.
+> - Dev obchod: uložený výsledek kombinací jsem přepočítal jednorázově nad místní databází (21 košíků, všechny v pořádku).
+
+> **CHECKPOINT 2 (navazující dvě připomínky, 12. 10. pozdě večer).** V pracovním stromu na `main`, **necommitnuto**.
+> Brána: `test:unit:node` 1 905 z 1 905, `tests/docs` 291 z 291 (po `docs:gen`), cargo 106, vitest 719, `typecheck`, `lint` 0 chyb, `build`, `test:e2e:preview` 38 z 38.
+> - **Kampaň zakládá jakoukoli slevu:** tlačítko „Vytvořit jinou slevu pro kampaň“ v kroku 2 otevře editor slev
+>   (`/app/discounts/new?campaign=new|<id kampaně>`, pole `forCampaign`). Editor slevu uloží **vypnutou** (bez přepínače)
+>   a vrátí na `/app/campaigns?add=<id>`; rozepsaný formulář kampaně čeká v `sessionStorage`
+>   (`won-discounts.campaign-draft`) a po návratu je zpět s novou slevou zaškrtnutou na „Zapnout“. Rychlé pole
+>   „procenta z celé objednávky“ zůstalo. Množstevní sadu pro celý obchod kampaň dál nezakládá (**otevřené**).
+> - **Časté kombinace po produktech:** `loadScenarioProducts` pojmenuje nejlevnější, střední a nejdražší variantu
+>   (role `cheap` / `mid` / `expensive`, ze zrcadla cen), `buildScenarios` každou kombinaci spočítá na každém z nich
+>   a na mixu (`Basket`, id `tiers@cheap`, …). Košík, který by potřeboval přes 30 kusů (`BASKET_MAX_QTY`), se
+>   nepočítá a řádek to říká. Stránka kreslí kombinace × produkt (`BasketMatrix`). Obchod s jedním známým produktem
+>   (bez zrcadla cen = bez Ochrany marže) má dál jeden košík na kombinaci. Filtr `CHEAP_SHARE` z prvního kola je pryč.
+>   Náhled: `/dev/preview/try-cart?plan=pro&combos=baskets`.
+> - Nápověda: `docs/tasks/create-a-campaign.md`, `try-a-cart.md`, korpus přegenerovaný (`npm run docs:gen`).
+
+> **CHECKPOINT.** Všechny čtyři body v pracovním stromu na `main`, **necommitnuto**. Brána: node 1 915, cargo 106,
+> vitest 719, `typecheck`, `lint` (0 chyb), `build` exit 0; `test:e2e:preview` 38 z 38. Snímky:
+> `won-discounts/evidence/feedback-2026-10-12/`. Testy: `tests/ui/feedback-2026-10-12.test.ts` a doplněné
+> `tests/integration/campaigns-admin.test.ts`, `tests/integration/combination-check.test.ts`.
+> - **1 Výjimky „Neaktivní“:** výjimka „Bez slevy“ je sada bez úrovní a `tiersOverviewOf` počítal jen sady s úrovněmi.
+>   Nové `TiersOverviewView.excluded`, `tiersSetsStatus` je bere jako běžící.
+> - **2 Kampaň zakládá slevu:** krok 2 má blok „Nová sleva jen pro tuhle kampaň“ (`cp.new`, `cp.new.percent`):
+>   automatická sleva v procentech z celé objednávky, uloží se **vypnutá** a kampaň ji zapne; vzniká ve stejném zápisu
+>   jako kampaň (`campaignsAction`). Jiné typy: odkaz do Slev a kódů. Množstevní slevu pro celý obchod kampaň dál
+>   jen mění (nezakládá sadu, která neexistuje) — **otevřené**.
+> - **3 Vyzkoušet košík:** tři kroky `StepCard` (Košík → Trh, čas a kódy → Co se uplatní), počítá se sám 600 ms po
+>   poslední změně (`AUTO_RUN_MS`), tlačítko jen „Spočítat znovu“ ve výsledku. Krok 3 je vidět od začátku
+>   (mění starší pravidlo P2 „před výsledkem žádná sekce“; test upraven).
+> - **4 Časté kombinace:** (a) košíky se stavěly na variantě s nejnižší marží = na dev obchodě „Won E2E — Simple A“ za
+>   10 Kč (150 až 999 kusů v košíku); nově jen mezi produkty od čtvrtiny mediánu ceny (`CHEAP_SHARE`); (b) nález
+>   „přijde o dárek“ vzniká jen se zadaným kódem (dřív u každého košíku postaveného přesně na hranici); (c) u nálezu
+>   je vypsaný košík (co, kolik, za kolik) s odkazem. Uložený výsledek se přepočítá až po příštím uložení nebo denní úlohou.
+
 ### Uzavření před review (od 12. 10. 2026) — zadání `won-discounts/prompt-uzavreni-pred-review.md`
 
 > **CHECKPOINT (po kompakci začni tady, potom celé zadání).** Kroky 0 až 3 hotové (12. 10. 2026), zadání je uzavřené

@@ -81,8 +81,11 @@ test("rule editor: the list of sections follows the live form, opens a collapsed
   await typeInto(page, "codes", "PATEK");
   await expect.poll(() => dotted(page, nav)).toEqual([]);
 
-  // The Pro section is collapsed: the list opens it and scrolls to it.
+  // The last section (open by itself since 13 Oct 2026: which discounts add up is every plan's) is collapsed by
+  // hand: the list opens it again and scrolls to it.
   const header = page.locator("section#pro > button");
+  await expect(header).toHaveAttribute("aria-expanded", "true");
+  await header.click();
   await expect(header).toHaveAttribute("aria-expanded", "false");
   await page.locator(`${nav} a[href="#pro"]`).click();
   await expect(header).toHaveAttribute("aria-expanded", "true");

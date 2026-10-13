@@ -38,6 +38,19 @@ import { planTryCartDetail, type PricedLine, type ProductRefs, type TryCartPlanD
 /** Most scenarios a check runs (the page lists them all; each is one planCart). */
 export const SCENARIO_LIMIT = 12;
 
+/** Scenarios of a shop whose carts are built per kind of product (each combination × each basket, plus the single ones). */
+export const SCENARIO_LIMIT_BASKETS = 60;
+
+/**
+ * Which product the cart of a combination is built on (13 Oct 2026): the shop's cheapest, a middle one, the most
+ * expensive, and a mix of them. A discount that is fine on a 1 000 Kč product can eat the margin of a 10 Kč one —
+ * the same combination is therefore planned once per basket and the page shows them side by side.
+ */
+export type Basket = "cheap" | "mid" | "expensive" | "mix";
+export const BASKETS: readonly Basket[] = ["cheap", "mid", "expensive", "mix"];
+/** Most pieces of one product a cart holds: a combination that would need more with that product is not planned for it. */
+export const BASKET_MAX_QTY = 30;
+
 export type ScenarioPart = "tiers" | "code" | "order" | "shipping" | "gift" | "steps" | "product" | "exception" | "outlet" | "campaign" | "market";
 
 export type FindingKind =
@@ -92,7 +105,7 @@ export interface ScenarioProduct {
   /** The refs checkout reads for the product (the sync's index); absent = the product has none. */
   refs?: ProductRefs;
   /** Why it was picked (`targeted`: a product / collection discount aims at it). `sample` = not a product of the shop (it has none stored). */
-  role: "lowMargin" | "targeted" | "exception" | "outlet" | "any" | "sample";
+  role: "lowMargin" | "targeted" | "exception" | "outlet" | "any" | "sample" | "cheap" | "mid" | "expensive";
 }
 
 export interface ScenarioFacts {
@@ -121,6 +134,9 @@ export interface Scenario {
   campaign?: string;
   /** Shop currency → the market's currency, when they differ: implied by the merchant's own amounts. */
   rate?: number;
+  /** The product the cart is built on and the combination it is one cart of; absent = the shop has one cart per combination. */
+  basket?: Basket;
+  combo?: string;
 }
 
 export interface ScenarioResult {
@@ -170,7 +186,14 @@ export function buildScenarios(config: WonDiscountsConfig, facts: ScenarioFacts)
   const hasTiers = tiers !== undefined && tiers !== null && tiers.breaks.length > 0;
   const rewards = config.modules.rewards;
 
-  const main = facts.products.find((p) => p.role === "lowMargin") ?? facts.products.find((p) => p.role === "any") ?? facts.products[0] ?? sampleProduct(facts.shopCurrency);
+  // The shop's cheapest, middle and most expensive product (the loader names them when it knows more than one).
+  const reps = (["cheap", "mid", "expensive"] as const).flatMap((basket) => {
+    const product = facts.products.find((p) => p.role === basket);
+    return product ? [{ basket, product }] : [];
+  });
+  const perBasket = reps.length > 1;
+  const main =
+    reps.find((r) => r.basket === "mid")?.product ?? reps[0]?.product ?? facts.products.find((p) => p.role === "lowMargin") ?? facts.products.find((p) => p.role === "any") ?? facts.products[0] ?? sampleProduct(facts.shopCurrency);
   const targeted = facts.products.find((p) => p.role === "targeted");
   const exception = facts.products.find((p) => p.role === "exception");
   const outlet = facts.products.find((p) => p.role === "outlet");
@@ -181,26 +204,44 @@ export function buildScenarios(config: WonDiscountsConfig, facts: ScenarioFacts)
   const add = (id: string, parts: ScenarioPart[], lines: Scenario["lines"], extra: Partial<Scenario> = {}) => {
     const next: Scenario = { id, parts, market: home, lines, codes: [], ruleIds: [], date: facts.date, time: facts.time, ...extra };
     const same = out.find((s) => cartKey(s) === cartKey(next));
-    if (same) same.parts = [...same.parts, ...parts.filter((part) => !same.parts.includes(part))];
-    else if (out.length < SCENARIO_LIMIT) out.push(next);
+    // Per basket every combination keeps its own cart (the page shows combination × basket); else the same cart is one scenario.
+    if (same && (!perBasket || (same.combo === undefined && next.combo === undefined))) same.parts = [...same.parts, ...parts.filter((part) => !same.parts.includes(part))];
+    else if (out.length < (perBasket ? SCENARIO_LIMIT_BASKETS : SCENARIO_LIMIT)) out.push(next);
   };
   /** The main product, as many items as reach `amount` in the home market (and the first tier). */
   const cartOf = (amount: number | null) => [{ product: main, quantity: quantityFor(amount ?? 0, main.unitPrice, tierQty) }];
+  /** The cart of one basket that reaches `amount`; null = it would take more pieces of the product than anybody buys. */
+  const basketCart = (basket: Basket, amount: number | null): Scenario["lines"] | null => {
+    const carrier = basket === "mix" ? main : reps.find((r) => r.basket === basket)!.product;
+    // The mix: one piece of each other product, the middle one carries the quantity (and the first tier).
+    const others = basket === "mix" ? reps.map((r) => r.product).filter((p) => p.variantId !== carrier.variantId) : [];
+    const rest = others.reduce((sum, p) => sum + p.unitPrice, 0);
+    const quantity = quantityFor(Math.max(0, (amount ?? 0) - rest), carrier.unitPrice, tierQty);
+    return quantity > BASKET_MAX_QTY ? null : [{ product: carrier, quantity }, ...others.map((product) => ({ product, quantity: 1 }))];
+  };
+  /** A combination on the main product: one cart, or (a shop with more products known) one per basket. */
+  const each = (combo: string, parts: ScenarioPart[], amount: number | null, extra: Partial<Scenario> = {}) => {
+    if (!perBasket) return add(combo, parts, cartOf(amount), extra);
+    for (const basket of BASKETS) {
+      const lines = basketCart(basket, amount);
+      if (lines) add(`${combo}@${basket}`, parts, lines, { ...extra, basket, combo });
+    }
+  };
   const withCode = codeRule ? { codes: [codeOf(codeRule)!], ruleIds: [codeRule.id], code: codeOf(codeRule)! } : null;
   const base: ScenarioPart[] = hasTiers ? ["tiers"] : [];
 
-  if (hasTiers) add("tiers", ["tiers"], cartOf(null));
-  if (withCode) add("code", [...base, "code"], cartOf(amountIn(codeRule!.minimum?.subtotal, home.key)), withCode);
-  if (orderRule) add("order", [...base, "order"], cartOf(amountIn(orderRule.minimum?.subtotal, home.key)));
+  if (hasTiers) each("tiers", ["tiers"], null);
+  if (withCode) each("code", [...base, "code"], amountIn(codeRule!.minimum?.subtotal, home.key), withCode);
+  if (orderRule) each("order", [...base, "order"], amountIn(orderRule.minimum?.subtotal, home.key));
   const shippingAt = amountIn(rewards.freeShipping?.threshold, home.key) ?? (shippingRule ? (amountIn(shippingRule.minimum?.subtotal, home.key) ?? 0) : null);
-  if (shippingAt !== null) add("shipping", [...base, "shipping"], cartOf(shippingAt));
+  if (shippingAt !== null) each("shipping", [...base, "shipping"], shippingAt);
   const giftAt = rewards.gifts.map((gift) => amountIn(gift.threshold, home.key)).filter((v): v is number => v !== null).sort((a, b) => a - b)[0] ?? null;
-  if (giftAt !== null) add("gift", [...base, "gift"], cartOf(giftAt));
-  if (giftAt !== null && withCode) add("gift-code", ["gift", "code"], cartOf(giftAt), withCode);
+  if (giftAt !== null) each("gift", [...base, "gift"], giftAt);
+  if (giftAt !== null && withCode) each("gift-code", ["gift", "code"], giftAt, withCode);
   const stepAmounts = steps.map((rule) => amountIn(rule.minimum?.subtotal, home.key)).filter((v): v is number => v !== null);
   const stepsAt = stepAmounts.length > 0 ? Math.max(...stepAmounts) : null;
-  if (stepsAt !== null) add("steps", [...base, "steps"], cartOf(stepsAt));
-  if (stepsAt !== null && withCode) add("steps-code", ["steps", "code"], cartOf(stepsAt), withCode);
+  if (stepsAt !== null) each("steps", [...base, "steps"], stepsAt);
+  if (stepsAt !== null && withCode) each("steps-code", ["steps", "code"], stepsAt, withCode);
   // A product an automatic product / collection discount aims at (the refs the sync wrote say which): enough of it
   // for the discount's own minimum and the first tier — the tier and the discount then meet on one line.
   const aimed = targeted ? new Set([...(targeted.refs?.ruleIds ?? []), ...Object.values(targeted.refs?.variantRuleIds ?? {}).flat()].map((ref) => parseRuleRef(ref).ruleId)) : new Set<string>();
@@ -223,7 +264,7 @@ export function buildScenarios(config: WonDiscountsConfig, facts: ScenarioFacts)
     .sort((a, b) => (a.window.start < b.window.start ? -1 : 1))[0];
   if (campaign) {
     const [day, clock = "00:00"] = campaign.window.start.split("T");
-    add(`campaign-${campaign.id}`, ["campaign", ...base], cartOf(stepsAt ?? giftAt ?? shippingAt), { date: day!, time: `${clock.slice(0, 5)}:00`, campaign: campaign.name });
+    each(`campaign-${campaign.id}`, ["campaign", ...base], stepsAt ?? giftAt ?? shippingAt, { date: day!, time: `${clock.slice(0, 5)}:00`, campaign: campaign.name });
   }
   // Every other market where an amount is the market's own: the ladder there, and an order or a code discount at
   // its minimum spend there. Prices are converted with the rate the merchant's own amounts imply.
@@ -280,7 +321,7 @@ function causeOf(ruleId: string | undefined): FindingCause | undefined {
  * What the plan says went otherwise than set up — read off the plan, never computed again — each with the
  * discount the plan itself names for it (the one margin protection lowered, the one that does not combine, …).
  */
-export function findingsOf(plan: CartPlan, preview: CheckoutPreview): Finding[] {
+export function findingsOf(plan: CartPlan, preview: CheckoutPreview, opts: { codes: boolean } = { codes: true }): Finding[] {
   const found = new Map<FindingKind, FindingCause | undefined>();
   const say = (kind: FindingKind, ruleId?: string) => {
     if (!found.has(kind) || found.get(kind) === undefined) found.set(kind, causeOf(ruleId));
@@ -296,7 +337,10 @@ export function findingsOf(plan: CartPlan, preview: CheckoutPreview): Finding[] 
   for (const tier of plan.tiers) if (tier.state === "not_combinable") say("not_combinable", tier.ruleId);
   for (const warning of plan.warnings) {
     if (warning.code === "reward_not_combinable") say("not_combinable", warning.ruleId);
-    if (warning.code === "code_loses_gift") say("code_loses_gift", warning.ruleId);
+    // Only a CODE takes a gift away: the customer saw the gift, typed the code and lost it. A cart an automatic
+    // discount keeps under the step never had the gift (12 Oct 2026, bod 4: the check built every gift cart right
+    // at the step, so any quantity discount made it a warning).
+    if (warning.code === "code_loses_gift" && opts.codes) say("code_loses_gift", warning.ruleId);
   }
   // A discount step of Milníky that had something to give and lost: to the higher step, or to a code.
   for (const rule of plan.rules) if (isMilestoneRuleId(rule.ruleId) && rule.state === "outranked") say("step_superseded", rule.ruleId);
@@ -322,7 +366,7 @@ export function runScenario(config: WonDiscountsConfig, scenario: Scenario, fact
     ...(scenario.rate !== undefined ? { rateEstimated: true } : {}),
     productRefs: refs,
   });
-  return { scenario, findings: findingsOf(detail.plan, detail.preview), detail };
+  return { scenario, findings: findingsOf(detail.plan, detail.preview, { codes: scenario.codes.length > 0 }), detail };
 }
 
 /** Every scenario of the config, planned. */

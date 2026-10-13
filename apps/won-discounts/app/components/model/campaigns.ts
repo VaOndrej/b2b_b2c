@@ -32,6 +32,12 @@ export const CAMPAIGN_FIELD = {
   percent: "cp.percent.",
   /** `cp.amount.<ruleId>.<CUR>`: an amount in major units ("" = value unchanged). */
   amount: "cp.amount.",
+  /**
+   * 12 Oct 2026, bod 2: "1" = the campaign also CREATES a discount off the whole order that runs only during it
+   * (stored switched off; the campaign switches it on), with `cp.new.percent` whole percent.
+   */
+  newUse: "cp.new",
+  newPercent: "cp.new.percent",
   /** MVP 6.1: one value per tier set the campaign changes (its id). */
   tierUse: "cp.tierUse",
   /** `cp.tq.<setId>.<row>`: the row's quantity ("" = the row is not used). */
@@ -41,6 +47,17 @@ export const CAMPAIGN_FIELD = {
   /** `cp.ta.<setId>.<row>.<CUR>`: an amount set's value per item in major units. */
   tierAmount: "cp.ta.",
 } as const;
+
+/**
+ * The discount the form asks the campaign to create: null = not asked; `percent` null = asked with an unreadable
+ * value (the server refuses it on the field).
+ */
+export function readCampaignNewDiscount(form: FormDataLike): { percent: number | null } | null {
+  if (String(form.get(CAMPAIGN_FIELD.newUse) ?? "") !== "1") return null;
+  const raw = String(form.get(CAMPAIGN_FIELD.newPercent) ?? "").trim();
+  const percent = /^\d{1,3}$/.test(raw) ? Number(raw) : Number.NaN;
+  return { percent: percent >= 1 && percent <= 100 ? percent : null };
+}
 
 /** Rows a set's breaks take in the form (core CONFIG_LIMITS.breaksPerTierSet). */
 export const CAMPAIGN_TIER_ROWS = 10;
@@ -174,7 +191,7 @@ type SetShape = Pick<CampaignTierChoice, "id" | "kind" | "currencies">;
 /** Every field name the form can post for these rules and sets (the server echoes them to a refused form). */
 export function campaignFieldNames(rules: readonly RuleShape[], sets: readonly SetShape[]): string[] {
   const F = CAMPAIGN_FIELD;
-  const names: string[] = [F.id, F.name, F.startDate, F.startTime, F.endDate, F.endTime, F.use, F.tierUse];
+  const names: string[] = [F.id, F.name, F.startDate, F.startTime, F.endDate, F.endTime, F.use, F.tierUse, F.newUse, F.newPercent];
   for (const r of rules) {
     names.push(`${F.enabled}${r.id}`);
     if (r.kind === "percentage") names.push(`${F.percent}${r.id}`);

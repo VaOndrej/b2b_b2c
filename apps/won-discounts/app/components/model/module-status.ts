@@ -93,9 +93,12 @@ export function tiersGlobalStatus(tiers: TiersOverviewView, sync: SyncView): Mod
   return moduleState({ on: tiers.global !== null && tiers.global.breaks.length > 0, written: writtenOf(sync), issues: (tiers.missing?.global ?? []).length > 0 ? 1 : 0 });
 }
 
-/** The section "Výjimky pro produkty a kolekce" (Pro; `tiers.sets` is what the plan runs). */
+/**
+ * The section "Výjimky pro produkty a kolekce" (Pro; `tiers.sets` is what the plan runs). An exception that takes
+ * its products out of the discount (`tiers.excluded`) runs as much as one with its own levels.
+ */
 export function tiersSetsStatus(tiers: TiersOverviewView, sync: SyncView, plan: "free" | "pro"): ModuleStatus {
-  return moduleState({ on: tiers.sets > 0, planRuns: plan === "pro", written: writtenOf(sync), issues: (tiers.missing?.sets ?? []).length });
+  return moduleState({ on: tiers.sets + (tiers.excluded ?? 0) > 0, planRuns: plan === "pro", written: writtenOf(sync), issues: (tiers.missing?.sets ?? []).length });
 }
 
 export function tiersStatus(tiers: TiersOverviewView, sync: SyncView): ModuleStatus {

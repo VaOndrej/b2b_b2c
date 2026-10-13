@@ -1905,22 +1905,30 @@ const DEV_COMBO_PRODUCTS: ScenarioProduct[] = [
   { variantId: "gid://shopify/ProductVariant/101", productId: "gid://shopify/Product/1", title: "Mikina Won — M / černá", unitPrice: 1290_00, unitCost: 980, unitCostCurrency: "CZK", role: "lowMargin" },
 ];
 
+/** `?combos=baskets`: a shop with more products known — its cheapest, a middle and its most expensive one. */
+const DEV_COMBO_BASKETS: ScenarioProduct[] = [
+  ...DEV_COMBO_PRODUCTS,
+  { variantId: "gid://shopify/ProductVariant/201", productId: "gid://shopify/Product/2", title: "Vzorek proteinu 30 g", unitPrice: 39_00, unitCost: 31, unitCostCurrency: "CZK", role: "cheap" },
+  { variantId: "gid://shopify/ProductVariant/202", productId: "gid://shopify/Product/3", title: "BCAA Aminokyseliny — 400 g", unitPrice: 567_00, unitCost: 300, unitCostCurrency: "CZK", role: "mid" },
+  { variantId: "gid://shopify/ProductVariant/101", productId: "gid://shopify/Product/1", title: "Mikina Won — M / černá", unitPrice: 1290_00, unitCost: 980, unitCostCurrency: "CZK", role: "expensive" },
+];
+
 /**
  * Kontrola kombinací as combinationCheck hands it over, on fixtures: the REAL scenarios and the real planCart.
  * `sample` = a shop with no stored product. Free gets the counts only, as from the server.
  */
-export function devCombinations(opts: { plan: "free" | "pro"; locale: "cs" | "en"; sample?: boolean }): CombinationCheckView | null {
+export function devCombinations(opts: { plan: "free" | "pro"; locale: "cs" | "en"; sample?: boolean; baskets?: boolean }): CombinationCheckView | null {
   return combinationView(devStoredCheck(opts), { plan: opts.plan, locale: opts.locale, marketNames: DEV_MARKET_NAMES, config: DEV_COMBOS_FIXTURE });
 }
 
 /** The check as the app stores it after a sync (storedCheck), on the fixture. */
-function devStoredCheck(opts: { plan: "free" | "pro"; locale: "cs" | "en"; sample?: boolean }): StoredCheck {
+function devStoredCheck(opts: { plan: "free" | "pro"; locale: "cs" | "en"; sample?: boolean; baskets?: boolean }): StoredCheck {
   const gated = gateConfigForPlan(DEV_COMBOS_FIXTURE, opts.plan, { now: "2026-09-28T14:00:00" }).config;
-  const facts = { products: opts.sample ? [] : DEV_COMBO_PRODUCTS, shopCurrency: "CZK", shopTimezone: DEV_TIMEZONE, date: "2026-09-28", time: "14:00:00", locale: opts.locale };
+  const facts = { products: opts.sample ? [] : opts.baskets ? DEV_COMBO_BASKETS : DEV_COMBO_PRODUCTS, shopCurrency: "CZK", shopTimezone: DEV_TIMEZONE, date: "2026-09-28", time: "14:00:00", locale: opts.locale };
   return storedCheck(runScenarios(gated, facts), facts);
 }
 
 /** `?scenario=<id>` on Vyzkoušet košík (Pro), as scenarioCart prepares the manual cart. */
-export function devScenarioCart(opts: { locale: "cs" | "en"; sample?: boolean; id: string }) {
+export function devScenarioCart(opts: { locale: "cs" | "en"; sample?: boolean; baskets?: boolean; id: string }) {
   return scenarioCartOf(devStoredCheck({ ...opts, plan: "pro" }), opts.id, opts.locale);
 }

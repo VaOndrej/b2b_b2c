@@ -62,13 +62,15 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   // B11: read-only disables the fields, not just Save.
   { path: "rule-editor?rule=dev-fixture-2&readOnly=1", expect: [/Nastavení jen pro čtení/, /<s-text-area[^>]*disabled/, /<s-switch[^>]*disabled/] },
   // P3 on Free: the Pro setting the plan does not run is marked where it is set, with a way to remove it.
-  { path: "rule-editor?rule=dev-f2-market", expect: [/Sleva jen pro vybrané trhy je v tarifu Pro\. Váš tarif ji nespouští, proto sleva není aktivní\./, /Odebrat omezení na trhy/, /Odebrat sčítání s dalšími slevami/, /href="#markets"/, /jen trhy Slovensko · sčítá se s Podzimní sleva 10.%/] },
-  { path: "rule-editor?rule=dev-fixture-2&plan=pro", expect: [/Pro koho platí a kombinace/, /Česko/, /Slovensko/, /Sčítá se s/, /Kombinování slev v Nastavení/, /\/app\/settings#combination/] },
+  { path: "rule-editor?rule=dev-f2-market", expect: [/Sleva jen pro vybrané trhy je v tarifu Pro\. Váš tarif ji nespouští, proto sleva není aktivní\./, /Odebrat omezení na trhy/, /href="#markets"/, /jen trhy Slovensko · sčítá se s Podzimní sleva 10.%/] },
+  { path: "rule-editor?rule=dev-fixture-2&plan=pro", expect: [/Kombinace a trhy/, /Česko/, /Slovensko/, /Sčítá se s/, /Kombinování slev v Nastavení/, /\/app\/settings#combination/] },
   // Vyzkoušet košík is Pro: Free sees the locked frame with what the tool is for; ?plan=pro the tool with the shop's discounts to tick.
-  { path: "try-cart", expect: [/S Pro si košík vyzkoušíte předem/, /href="\/app\/plan"/, /Košík je prázdný\. Přidejte produkty\./, /<s-button type="submit" variant="primary" disabled="[^"]*">Spočítat/] },
+  { path: "try-cart", expect: [/S Pro si košík vyzkoušíte předem/, /href="\/app\/plan"/, /Košík je prázdný\. Přidejte produkty\./, /Krok 1 \/ 2/, /Trh, čas a kódy/] },
   {
     path: "try-cart?plan=pro",
-    expect: [/Mikina Won \(M \/ černá\) × 2/, /Kód VIP10/, /Celkem/, /CZK · Česko/, /Ceny a země z trhu Česko/, /Podzimní sleva 10/, /Uplatní se samy: /, /<input type="checkbox" name="ruleId"[^>]*checked=""[^>]*value="dev-fixture-2"/, /kód VIP10/, /Teď/, /Vlastní datum a čas/, /data-won-try-cart-lines/],
+    expect: [/Mikina Won \(M \/ černá\) × 2/, /Kód VIP10/, /Celkem/, /CZK · Česko/, /Ceny a země z trhu Česko/, /Podzimní sleva 10/, /Uplatní se samy: /, /<input type="checkbox" name="ruleId"[^>]*checked=""[^>]*value="dev-fixture-2"/, /kód VIP10/, /Teď/, /Vlastní datum a čas/, /data-won-try-cart-lines/, /Krok 3 \/ 3/, /Spočítáno pro: /],
+    // 12 Oct 2026, bod 3: the cart counts itself — no primary "Spočítat" between the steps.
+    absent: [/<s-button type="submit"/],
   },
   { path: "try-cart?plan=pro&date=2026-11-27&time=00:00", expect: [/Začátek kampaně \(27\. 11\. 2026 00:00\)/, /<input type="hidden" name="date" value="2026-11-27"\/>/, /<input type="hidden" name="time" value="00:00"\/>/] },
   { path: "try-cart?state=margin", expect: [/href="\/app\/margin#costs"/] },
@@ -161,8 +163,11 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       // A finding is a card: what happened, what to do, and the buttons that go there (6th round).
       /data-won-combo-finding="margin"[\s\S]*?Co se stalo[\s\S]*?Ochrana marže slevu snížila nebo zrušila[\s\S]*?Co s tím[\s\S]*?<s-button href="\/app\/tiers#global" variant="primary">Otevřít množstevní slevy<\/s-button><s-button href="\/app\/margin#settings" variant="secondary">Upravit ochranu marže/,
       /data-won-combo-finding="step_superseded"[\s\S]*?<s-button href="\/app\/rewards#step-3" variant="primary">Otevřít 3\. stupeň Milníků/,
-      /data-won-section-nav/,
-      /<s-(link|button) href="\/app\/try-cart\?scenario=tiers"[^>]*>Zkusit v košíku níže/,
+      // 13 Oct 2026: two tiles on top (the automatic check, your own cart), and every planned cart is a cart card.
+      /data-won-view-tile="auto"[\s\S]*?Automatická kontrola/,
+      /data-won-view-tile="manual"[\s\S]*?Vlastní košík/,
+      /data-won-cart-card=""[^>]*data-won-combo="tiers"[\s\S]*?Zákazník zaplatí/,
+      /<s-(link|button) href="\/app\/try-cart\?scenario=tiers"[^>]*>Otevřít ve vlastním košíku/,
     ],
     absent: [/data-won-combos-locked/],
   },
@@ -380,7 +385,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /Máte tarif Free\./,
       /Vyzkoušet Pro na 14 dní zdarma/,
       /Připravit na odinstalaci/,
-      /Kombinace u jednotlivých slev nastavíte v editoru slevy v tarifu Pro\./,
+      /Kombinace u jednotlivých slev nastavíte v editoru slevy\./,
       /<s-link href="\/app\/discounts">Otevřít slevy<\/s-link>/,
     ],
     // … and the sections that have no state have no dot (P2).
@@ -490,8 +495,8 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "rewards?result=invalid", expect: [/Vyberte dárek\./] },
   { path: "rewards?plan=pro&result=too-many", expect: [/V jednom trhu může platit nejvýš 6 stupňů\./] },
   { path: "rewards?result=limit-free", expect: [/Free má v každém trhu 2 stupně\. Odeberte stupeň, nechte u něj pole trhu prázdné, nebo přejděte na Pro, kde jich je 6\./] },
-  // Review fix 3: plan-aware — on Pro a rule may stack with the ones its editor combines.
-  { path: "settings?plan=pro", expect: [/V Pro se sečtou jen ty, které v editoru slevy spojíte\. Množstevní sleva se s jinou slevou na stejný produkt nesčítá nikdy/] },
+  // 13 Oct 2026: on every plan a rule may stack with the ones its editor combines.
+  { path: "settings?plan=pro", expect: [/Sečtou se jen ty, které v editoru slevy spojíte\. Množstevní sleva se s jinou slevou na stejný produkt nesčítá nikdy/] },
   { path: "tiers?state=dawn", expect: [/--won-tiers-accent:#c0392b/, /--inputs-radius:0px/] },
   // Without access to the theme the check says nothing (no sentence without an action); the rest of the section stays.
   { path: "tiers?state=no-scope", expect: [/Tabulka na stránce produktu/, /Zobrazit na mém webu/] },
@@ -505,7 +510,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
     expect: [
       /Kombinování slev/,
       /Sčítá se: produkty s objednávkou, produkty s dopravou a objednávka s dopravou/,
-      /Dvě slevy na stejný produkt se nesčítají, platí výhodnější\. Množstevní sleva se s jinou slevou na stejný produkt nesčítá nikdy\./,
+      /Dvě slevy na stejný produkt se nesčítají, platí výhodnější\. Sečtou se jen ty, které v editoru slevy spojíte\. Množstevní sleva se s jinou slevou na stejný produkt nesčítá nikdy\./,
       /Zboží ve výprodeji další slevy nedostane/,
       /Platí pro zboží ve výprodeji \(modul Výprodej, Pro\)/,
       /Obě se sčítají\. Sleva z objednávky se počítá z ceny po slevách na produkty/,
@@ -761,9 +766,11 @@ test("P2 (plan 6 Oct 2026): what has neither content nor an action is not render
   assert.doesNotMatch((await render("analytics?plan=pro&state=empty")).html, /data-won-analytics-rules|Ukázka/);
   assert.doesNotMatch((await render("analytics?plan=pro")).html, /Ukázka/);
 
-  // Vyzkoušet košík: no result section before a result, no free-text codes field, no "next version" promise.
+  // Vyzkoušet košík: no free-text codes field, no "next version" promise. Since 12 Oct 2026 (bod 3) the result is
+  // the LAST STEP of one flow and is there from the start: it says the cart counts itself (it has no button to find).
   const tool = (await render("try-cart?state=empty")).html;
-  assert.doesNotMatch(tool, /Co se uplatní|Zatím nespočítáno|name="codes"|přijde v další verzi/);
+  assert.doesNotMatch(tool, /Zatím nespočítáno|name="codes"|přijde v další verzi|Celkem/);
+  assert.match((await render("try-cart?state=empty&plan=pro")).html, /Krok 3 \/ 3[\s\S]*Přidejte do košíku aspoň jeden produkt\. Výsledek se tu ukáže sám\./);
   assert.doesNotMatch((await render("try-cart")).html, /Co se uplatní|Celkem/, "Free: the locked frame, never a result");
   // Onboarding: one count for the guide and Přehled's card.
   assert.match((await render("overview?state=empty")).html, /Krok 1 z/);
@@ -871,7 +878,7 @@ test("navigace a stav, bod 5: the rule editor has the list of its sections; a re
   assert.match(html, /<nav class="won-jump__nav" aria-label="Na této stránce"/);
   assert.deepEqual(dotted(html), ["discount:attention", "conditions", "codes", "schedule", "pro"]);
   assert.match(nav(html), />Vyžaduje pozornost: <\/span><\/span><\/span><\/span>Sleva<\/a>/);
-  for (const label of ["Podmínky", "Jak se uplatní", "Kdy platí", "Pro koho platí a kombinace"]) assert.match(nav(html), new RegExp(`<a class="won-jump__link" href="#\\w+">${label}</a>`), label);
+  for (const label of ["Podmínky", "Jak se uplatní", "Kdy platí", "Kombinace a trhy"]) assert.match(nav(html), new RegExp(`<a class="won-jump__link" href="#\\w+">${label}</a>`), label);
   // Every link has its section on the page (the first section got its anchor; the old ones are where they were).
   for (const anchor of ["discount", "conditions", "codes", "schedule", "pro"]) assert.match(html, new RegExp(`<section id="${anchor}"`), anchor);
   for (const anchor of ["value", "target", "markets", "combines"]) assert.match(html, new RegExp(`<div id="${anchor}"`), `deep link #${anchor}`);

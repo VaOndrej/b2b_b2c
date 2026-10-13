@@ -20,7 +20,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
 import { useView, ViewPanel } from "../shell/views";
-import { Form, useSubmit } from "react-router";
+import { Form, useNavigate, useSubmit } from "react-router";
 
 import { formatMoney, formatPercent } from "@won/core/discounts/describe";
 import { amountKeyCurrency, currencyExponent } from "@won/core/discounts/money";
@@ -49,13 +49,42 @@ import { Notice, ResyncButton } from "../shell/Notice";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
 import { DiscountsSubNav } from "../shell/SubNav";
-import { WON_FONT, WON_INK, WON_LINE, WON_WASH } from "../shell/tokens";
+import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
 import { StepCard } from "../shell/StepCard";
 import { CardPill, SubCard } from "../shell/SubCard";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 
 export interface CampaignsScreenProps extends CampaignsScreenData {
   result?: CampaignsActionResult | UiResult | null;
+}
+
+const DRAFT_KEY = "won-discounts.campaign-draft";
+
+/** Keeps the typed campaign form in the browser while the merchant creates a discount for it (never sent anywhere). */
+function keepCampaignDraft(campaignId: string | null, values: SubmittedValues): void {
+  try {
+    window.sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ campaignId, values }));
+  } catch {
+    // No storage (blocked by the browser): the form comes back with the new discount ticked, the rest is typed again.
+  }
+}
+
+/** The kept form of this campaign, once (it is removed when read); null = none, or another campaign's. */
+function takeCampaignDraft(campaignId: string | null): SubmittedValues | null {
+  try {
+    const raw = window.sessionStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    window.sessionStorage.removeItem(DRAFT_KEY);
+    const draft = JSON.parse(raw) as { campaignId?: unknown; values?: unknown };
+    if (draft.campaignId !== campaignId || !draft.values || typeof draft.values !== "object") return null;
+    const out: SubmittedValues = {};
+    for (const [name, list] of Object.entries(draft.values as Record<string, unknown>)) {
+      if (Array.isArray(list)) out[name] = list.filter((v): v is string => typeof v === "string");
+    }
+    return out;
+  } catch {
+    return null;
+  }
 }
 
 /** Where a campaign's banner can stand in the theme (the tile "Kampaň na webu" counts them). */
@@ -263,8 +292,30 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
   };
 
   // B14: what a refused save posted comes back with the result; else the edited campaign or a new one's defaults.
-  const { values: refused, key: seedKey } = useRefusedSeed(result);
-  const initial: SubmittedValues = useMemo(() => refused ?? campaignFormValues(editing, rules, tierSets), [refused, editing, rules, tierSets]);
+  const { values: refused, key: refusedKey } = useRefusedSeed(result);
+  // 13 Oct 2026: "Vytvořit slevu pro kampaň" opens the discount editor and comes back (`added`). What was typed here
+  // waits in the browser meanwhile (`restored`), and the new discount is ticked and switched on.
+  const [restored, setRestored] = useState<SubmittedValues | null>(null);
+  useEffect(() => {
+    const draft = takeCampaignDraft(editing?.id ?? null);
+    // Back with a new discount, or back without one ("Zpět do kampaně bez slevy", `?draft=1`): the typed form returns.
+    if (draft && (props.added || new URLSearchParams(window.location.search).get("draft") === "1")) setRestored(draft);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, for the form the page opened with
+  }, []);
+  const seedKey = `${refusedKey}-${restored ? 1 : 0}`;
+  const initial: SubmittedValues = useMemo(() => {
+    if (refused) return refused;
+    const base = restored ?? campaignFormValues(editing, rules, tierSets);
+    if (!props.added || !rules.some((r) => r.id === props.added)) return base;
+    return { ...base, [F.use]: [...new Set([...(base[F.use] ?? []), props.added])], [`${F.enabled}${props.added}`]: ["on"] };
+  }, [refused, restored, props.added, editing, rules, tierSets]);
+  const navigate = useNavigate();
+  /** To the discount editor and back: the typed form is kept in the browser until the return. */
+  const createDiscount = () => {
+    const el = formRef.current;
+    if (el) keepCampaignDraft(editing?.id ?? null, submittedOf(new FormData(el), latest.current.names));
+    navigate(`/app/discounts/new?campaign=${encodeURIComponent(editing?.id ?? "new")}`);
+  };
   const init = seedOf(initial);
   const names = useMemo(() => campaignFieldNames(rules, tierSets), [rules, tierSets]);
 
@@ -293,8 +344,11 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
   const now = seedOf(live);
   const usedRules = now.all(F.use, []);
   const usedSets = now.all(F.tierUse, []);
+  /** Bod 2 (12 Oct 2026): the campaign brings its own discount off the whole order. */
+  const addsNew = now.one(F.newUse, "") === "1";
+  const newPercent = now.one(F.newPercent, "").trim();
   // A row ticked just now mounts its fields after the event that ticked it: read them once they exist.
-  const tickedKey = `${usedRules.join("|")}#${usedSets.join("|")}`;
+  const tickedKey = `${usedRules.join("|")}#${usedSets.join("|")}#${addsNew ? 1 : 0}`;
   useEffect(() => {
     if (pro) read();
   }, [tickedKey, pro]);
@@ -358,7 +412,8 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
   const when = (date: string, time: string) => (/^\d{4}-\d{2}-\d{2}$/.test(date) ? formatDateTime(`${date}T${time || "00:00"}`, tr.locale) : null);
   const startText = when(now.one(F.startDate, ""), now.one(F.startTime, ""));
   const endText = when(now.one(F.endDate, ""), now.one(F.endTime, ""));
-  const counts = [ruleLines.length > 0 ? tr.tp("campaign.summary.rules", ruleLines.length) : null, setLines.length > 0 ? tr.tp("campaign.summary.sets", setLines.length) : null].filter(
+  const newLine = addsNew ? (/^\d{1,3}$/.test(newPercent) ? t("campaign.add.summary", { value: formatPercent(Number(newPercent), tr.locale) }) : t("campaign.add.summaryNoValue")) : null;
+  const counts = [newLine ? t("campaign.add.count") : null, ruleLines.length > 0 ? tr.tp("campaign.summary.rules", ruleLines.length) : null, setLines.length > 0 ? tr.tp("campaign.summary.sets", setLines.length) : null].filter(
     (x): x is string => x !== null,
   );
   const summaryParts = [
@@ -393,7 +448,7 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
   const next = campaigns.find((c) => c.status === "scheduled") ?? null;
   const showPlaces = pro && props.placements !== undefined;
   const [view, setView] = useView<"list" | "form" | "places">({
-    initial: () => (editing || (result && !result.ok) ? "form" : liveCount > 0 || (isCampaignResult(result) && result.ok) || (!pro && campaigns.length > 0) ? "list" : "form"),
+    initial: () => (editing || props.added || (result && !result.ok) ? "form" : liveCount > 0 || (isCampaignResult(result) && result.ok) || (!pro && campaigns.length > 0) ? "list" : "form"),
     hash: { list: "list", form: "form", places: "places" },
     resetKey: `${editing?.id ?? ""}|${result ? JSON.stringify(result).length : 0}`,
   });
@@ -447,7 +502,33 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
         {editing?.status === "running" ? <RowNote tone="attention">{t("campaign.edit.running")}</RowNote> : null}
         </StepCard>
         <StepCard n={2} of={3} title={t("campaign.rules.title")}>
+        {/* Bod 2 (12 Oct 2026): "−30 % na všechno na Black Friday" is set HERE — the campaign creates the discount. */}
+        <s-stack direction="block" gap="small-300" data-won-campaign-new>
+          <s-text>{t("campaign.add.title")}</s-text>
+          <s-box padding="small-300" border="base" borderRadius="base">
+            <s-stack direction="block" gap="small-300">
+              <s-checkbox name={F.newUse} value="1" label={t("campaign.add.use")} checked={boolAttr(init.one(F.newUse, "") === "1")} disabled={boolAttr(!pro)} />
+              {addsNew ? (
+                <>
+                  <div style={{ maxWidth: 240 }}>
+                    <s-number-field name={F.newPercent} label={t("campaign.add.percent")} value={init.one(F.newPercent, "")} min={1} max={100} step={1} suffix="%" inputMode="numeric" />
+                  </div>
+                  <RowNote>{t("campaign.add.note")}</RowNote>
+                </>
+              ) : null}
+              <FieldMessage text={err(F.newPercent)} />
+            </s-stack>
+          </s-box>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 12px" }}>
+            <s-button variant="secondary" disabled={boolAttr(!pro)} onClick={createDiscount}>
+              {t("campaign.add.otherLink")}
+            </s-button>
+            <span style={{ fontFamily: WON_FONT, fontSize: 12.5, color: WON_MUTED, flex: "1 1 260px" }}>{t("campaign.add.other")}</span>
+          </div>
+          {props.added ? <RowNote>{t("campaign.add.created", { name: rules.find((r) => r.id === props.added)?.name ?? "" })}</RowNote> : null}
+        </s-stack>
         <s-stack direction="block" gap="small-300">
+          <s-text>{t("campaign.rules.existing")}</s-text>
           {rules.length === 0 ? (
             <RowNote>
               {t("campaign.rules.none")} <s-link href="/app/discounts">{t("campaign.rules.create")}</s-link>
@@ -564,7 +645,8 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
             <s-stack direction="block" gap="small-300">
               <s-text type="strong">{t("campaign.summary.title")}</s-text>
               <RowNote>{startText && endText ? t("campaign.summary.window", { start: startText, end: endText }) : t("campaign.summary.windowMissing")}</RowNote>
-              {ruleLines.length === 0 && setLines.length === 0 ? <RowNote>{t("campaign.summary.nothingLong")}</RowNote> : null}
+              {ruleLines.length === 0 && setLines.length === 0 && !newLine ? <RowNote>{t("campaign.summary.nothingLong")}</RowNote> : null}
+              {newLine ? <RowNote>{newLine}</RowNote> : null}
               {ruleLines.map((line) => (
                 <RowNote key={line.id}>{line.text}</RowNote>
               ))}

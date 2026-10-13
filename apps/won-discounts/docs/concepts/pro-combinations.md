@@ -1,24 +1,25 @@
 ---
-title: Combinations per discount (Pro)
+title: Combinations per discount
 slug: pro-combinations
 layer: concept
 feature: engine
-min_plan: pro
+min_plan: free
 status: stable
 app_version: MVP2
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-09-30
+updated: 2026-10-13
 keywords: [stacks with, combine, stack, per discount, pro, combinations, two codes, 6 discounts, kombinace per sleva]
-summary: With Pro a discount can stack with chosen other discounts of the same kind. How the stack is chosen, the cap of 6 per line, and how it shows at checkout.
+summary: A discount can stack with chosen other discounts of the same kind. How the stack is chosen, the cap of 6 per line, and how it shows at checkout.
 ---
 
-# Combinations per discount (Pro)
+# Combinations per discount
 
 By default two product discounts on the same item compete and the better one wins
-([combining-discounts](combining-discounts)). With Pro, **Stacks with** in a
-discount's targeting and combinations lets it add up with the discounts you pick.
+([combining-discounts](combining-discounts)). **Stacks with** in a discount's
+**Combinations & markets** lets it add up with the discounts you pick. It is
+available on every plan; only showing a discount in chosen markets is Pro.
 
 ## How a stack is formed
 

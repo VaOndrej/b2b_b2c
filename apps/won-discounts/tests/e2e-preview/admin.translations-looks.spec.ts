@@ -233,9 +233,9 @@ test("Časté kombinace: Pro lists every combination with its state and the sett
   for (const link of await findings.locator("s-button").all()) expect(await link.getAttribute("href")).toMatch(/^\/app\//);
   await expect(page.locator("[data-won-combo] [data-won-combo-finding]")).toHaveCount(0);
 
-  // "Zkusit v košíku níže" carries the combination's id (a button in a warning's card, a link in a quiet row); the
+  // "Otevřít ve vlastním košíku" carries the combination's id (a button in a warning's card, a link in a quiet row); the
   // harness serves the same page under /dev/preview.
-  const href = await rows.first().locator("s-button, s-link", { hasText: "Zkusit v košíku níže" }).getAttribute("href");
+  const href = await rows.first().locator("s-button, s-link", { hasText: "Otevřít ve vlastním košíku" }).getAttribute("href");
   expect(href).toMatch(/^\/app\/try-cart\?scenario=/);
   const id = new URL(href ?? "", "http://x").searchParams.get("scenario") ?? "";
   await open(page, `try-cart?combos=on&plan=pro&scenario=${encodeURIComponent(id)}`);

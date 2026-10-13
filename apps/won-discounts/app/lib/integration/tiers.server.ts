@@ -348,8 +348,11 @@ export function tiersOverviewOf(config: WonDiscountsConfig, plan: "free" | "pro"
     global: global ? missingOf(global) : [],
     sets: withTiers.filter((s) => s.scope !== "global").map(missingOf).filter((codes) => codes.length > 0),
   };
+  // An own set without levels is an exception too: its products get no quantity discount (12 Oct 2026, bod 1).
+  const excluded = gated.modules.tiers.sets.filter((s) => s.scope !== "global" && s.breaks.length === 0).length;
   return {
     sets: withTiers.filter((s) => s.scope !== "global").length,
+    ...(excluded > 0 ? { excluded } : {}),
     global: global ? tierSetView(global, new Map()) : null,
     block,
     ...(missing.global.length > 0 || missing.sets.length > 0 ? { missing } : {}),

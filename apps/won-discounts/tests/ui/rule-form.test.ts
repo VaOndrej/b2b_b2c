@@ -429,8 +429,10 @@ test("B9 + P3: stored segments, and on Free stored markets / combinations, are r
   assert.deepEqual(readRuleForm(form([...base, [FIELD.dropSegments, "on"]]), free).rule.targeting, { markets: ["cz"] });
   assert.deepEqual(readRuleForm(form([...base, [FIELD.dropMarkets, "on"]]), free).rule.targeting, { segments: ["gid://shopify/Segment/1"] });
   assert.equal(readRuleForm(form([...base, [FIELD.dropSegments, "on"], [FIELD.dropMarkets, "on"]]), free).rule.targeting, undefined);
-  assert.deepEqual(readRuleForm(form(base), free).rule.combinesWith, { ruleIds: ["r_other"] });
-  assert.equal(readRuleForm(form([...base, [FIELD.dropCombines, "on"]]), free).rule.combinesWith, undefined);
+  // 13 Oct 2026: which discounts it adds up with is the form's on every plan (ticked = kept, unticked = removed).
+  const withOther = { ...free, otherRules: [{ id: "r_other", name: "Jiná" }] };
+  assert.deepEqual(readRuleForm(form([...base, [FIELD.combinesWith, "r_other"]]), withOther).rule.combinesWith, { ruleIds: ["r_other"] });
+  assert.equal(readRuleForm(form(base), withOther).rule.combinesWith, undefined);
   // Pro: segments stay next to the form's markets until removed; the Free-only drop fields mean nothing.
   const pro = { ...free, pro: true };
   assert.deepEqual(readRuleForm(form([...base, [FIELD.markets, "sk"], [FIELD.dropMarkets, "on"]]), pro).rule.targeting, { segments: ["gid://shopify/Segment/1"], markets: ["sk"] });
@@ -516,6 +518,10 @@ test("bod 6: a count in the generator makes a batch on the server (core createCo
   assert.equal(codes.length, 25);
   assert.equal(new Set(codes).size, 25);
   assert.ok(codes.every((c) => /^[A-Z]{4}-[A-Z0-9]{10}$/.test(c) && !/[01OIL]/.test(c.slice(5))), codes.slice(0, 3).join(" "));
+  // 13 Oct 2026, the tile "Jeden náhodný kód": the form sends a count of 1 — one code, nothing typed by hand.
+  const one = readRuleForm(form([...code, [FIELD.batchCount, "1"]]), server);
+  assert.deepEqual(one.errors, []);
+  assert.equal(listBatchCodes(one.rule.codeBatches![0]!).length, 1);
   // Free: at most 100, and the pattern fields are never read, whatever the form sends (BILL-1).
   assert.deepEqual(readRuleForm(form([...code, [FIELD.batchCount, "101"]]), server).errors.map((e) => `${e.field}:${e.key}`), ["batchCount:editor.error.batchCount"]);
   const sneaky = readRuleForm(form([...code, [FIELD.batchCount, "5"], [FIELD.batchPrefix, "VIP-"], [FIELD.batchAlphabet, "digits"]]), server);

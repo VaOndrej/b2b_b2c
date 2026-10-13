@@ -17,7 +17,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const locale = await adminLocale(request, session, db);
   // eslint-disable-next-line no-undef
   const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "", scopes: session.scope });
-  return loadCampaignsScreen(ctx, { edit: new URL(request.url).searchParams.get("edit") });
+  const q = new URL(request.url).searchParams;
+  return loadCampaignsScreen(ctx, { edit: q.get("edit"), add: q.get("add") });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -31,5 +32,5 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function Campaigns() {
   const loaded = useLoaderData<typeof loader>();
   const submitted = useActionData<typeof action>();
-  return <CampaignsScreen key={`${loaded.configVersion ?? "none"}-${loaded.editing?.id ?? "new"}`} {...loaded} result={submitted ?? null} />;
+  return <CampaignsScreen key={`${loaded.configVersion ?? "none"}-${loaded.editing?.id ?? "new"}-${loaded.added ?? ""}`} {...loaded} result={submitted ?? null} />;
 }

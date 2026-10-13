@@ -64,7 +64,10 @@ export function DiscountSection({
   pickUnavailable,
   marginImpact,
   tiersActive = false,
+  forCampaign = false,
 }: {
+  /** Created from a campaign: no switch — the campaign switches the discount on (the server stores it off). */
+  forCampaign?: boolean;
   ed: EditorView;
   status: RuleStatus;
   /** Market and rule names for the one-line state. */
@@ -143,7 +146,7 @@ export function DiscountSection({
       aside={<CustomerPreview draft={draft} currencyViews={ed.currencyViews} tr={tr} status={status} />}
     >
       <s-stack direction="block" gap="base">
-        <s-switch name={FIELD.enabled} value="on" label={t("editor.enabled")} checked={boolAttr(defaults.enabled)} disabled={off} />
+        {forCampaign ? null : <s-switch name={FIELD.enabled} value="on" label={t("editor.enabled")} checked={boolAttr(defaults.enabled)} disabled={off} />}
         <div>
           <s-text-field
             ref={(el) => {

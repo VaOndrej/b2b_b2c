@@ -15,7 +15,7 @@
 //                                               minimum quantity per product / collection
 //   Generované kódy Free: ≤ 100 a batch,   Pro: ≤ 1 000 a batch, pattern options
 //                  random behind a prefix       (middle, suffix, length, alphabet)
-//   Engine         Free: category switches Pro: + per-rule combinations (combinesWith)
+//   Engine         Free: category switches and per-rule combinations (combinesWith; Free since 13 Oct 2026)
 //   Kampaně        Free: —                 Pro: ✓
 //   Množstevní     Free: 1 global set      Pro: sets per product / collection, counting across the cart
 //   Milníky        Free: 2 steps a market, 1 gift   Pro: 6 steps a market, choice of up to 3 gifts
@@ -99,7 +99,6 @@ export type ShopPlan = "free" | "pro";
 export const PRO_CAPABILITIES = [
   "market_targeting",
   "segment_targeting",
-  "rule_combinations",
   "item_minimum_quantity",
   "code_batch_pattern",
   "code_batch_size",
@@ -180,15 +179,11 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
   const stripped: StrippedCapability[] = [];
   if (plan === "pro") return { config: out, stripped };
 
-  // Discount rules: targeting and per-rule combinations.
+  // Discount rules: targeting (per-rule combinations run on every plan since 13 Oct 2026).
   const itemRulesOff = new Set<string>();
   for (const rule of out.modules.codes.rules) {
     const who = { ruleId: rule.id, name: rule.name };
     const report = rule.enabled;
-    if (rule.combinesWith) {
-      if (report && rule.combinesWith.ruleIds.length > 0) stripped.push({ capability: "rule_combinations", reason: "removed", ...who });
-      delete rule.combinesWith;
-    }
     // Per-item minimum quantities: the rule is off (see the header); the minimums themselves go too, so the
     // product refs the sync writes for a Free shop carry none.
     if (hasItemMinimums(rule.target)) {
@@ -435,10 +430,6 @@ function sentence(s: StrippedCapability, locale: UiLocale): string {
       return cs
         ? `${ruleName}: ve Free platí z jedné dávky nejvýš ${CONFIG_LIMITS.codeBatchSizeFree} vygenerovaných kódů, ${csOthers(n, ["kód", "kódy", "kódů"])} neplatí.`
         : `${ruleName}: on Free at most ${CONFIG_LIMITS.codeBatchSizeFree} generated codes of a batch work; the other ${n === 1 ? "one does" : `${n} do`} not.`;
-    case "rule_combinations":
-      return cs
-        ? `${ruleName} se ve Free nesčítá se slevami, které máte u ní vybrané (kombinace u jednotlivých slev jsou funkce Pro). Platí kombinování po kategoriích.`
-        : `${ruleName} does not add up with the discounts you picked for it on Free (per-discount combinations are a Pro feature). The category switches apply.`;
     case "campaigns": {
       const name = s.name ? (cs ? `„${s.name}“` : `“${s.name}”`) : cs ? "bez názvu" : "without a name";
       return cs

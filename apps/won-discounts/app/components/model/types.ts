@@ -716,6 +716,8 @@ export interface TiersScreenData {
 /** Přehled card. */
 export interface TiersOverviewView {
   sets: number;
+  /** Exceptions the plan runs that take their products OUT of the quantity discount (a set without levels). Absent = none. */
+  excluded?: number;
   /** What the own sets are for, by name (product / collection titles), when the loader read them (P4). */
   setNames?: string[];
   /** The global set's breaks, for one sentence ("Od 3 ks −10 %, od 5 ks −15 %"); null = no global set. */
@@ -744,6 +746,14 @@ export interface CombinationScenarioView {
   /** Minor units of `currency`. */
   subtotal: number;
   discount: number;
+  /** What is in the cart ("3× Tričko, 1× Bunda"); null = it uses a sample product. */
+  basket: string | null;
+  /** The cart's lines with their price before discounts (minor units of `currency`); [] = it uses a sample product. */
+  lines: { title: string; quantity: number; total: number }[];
+  /** The product the cart is built on (the shop's cheapest / a middle / the most expensive / a mix); null = the shop has one cart per combination. */
+  kind: "cheap" | "mid" | "expensive" | "mix" | null;
+  /** The combination the scenario is one cart of (the scenarios of one combination share it). */
+  combo: string;
   /** Opens the scenario in the manual cart; null = it uses a sample product. */
   open: string | null;
 }
@@ -1096,6 +1106,8 @@ export interface CampaignView {
 }
 
 export interface CampaignsScreenData {
+  /** A discount just created from this form in the discount editor (`?add=`): the form comes back with it ticked and switched on. */
+  added?: string;
   /** The module's state from what is stored (model/module-status.ts, the same as its home tile; absent = not known). */
   status?: ModuleStatus;
   plan: "free" | "pro";

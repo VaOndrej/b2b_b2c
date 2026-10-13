@@ -76,7 +76,7 @@ test("BILL-1: on Free the payload, the nodes and the product index are built fro
   assert.equal(result.ok, true, JSON.stringify(result.errors));
 
   const shipped = deps.log.shopConfigs.at(-1)!;
-  assert.equal(shipped.modules.codes.rules.find((r) => r.id === "a")!.combinesWith, undefined, "no per-rule combinations");
+  assert.deepEqual(shipped.modules.codes.rules.find((r) => r.id === "a")!.combinesWith, { ruleIds: ["b"] }, "per-rule combinations run on Free too (13 Oct 2026)");
   assert.equal(shipped.modules.codes.rules.find((r) => r.id === "m")!.enabled, false, "a market-targeted rule is off (never widened)");
   assert.equal(shipped.modules.codes.rules.find((r) => r.id === "m")!.targeting, undefined);
   assert.deepEqual(shipped.campaigns, [], "no campaigns");
@@ -100,13 +100,13 @@ test("BILL-1: on Pro the config ships as stored (nothing gated; the plan step re
   assert.equal((await loadShopSyncFacts(db.prisma, shop)).appliedPlan, "pro", "the plan the live config was built for (I-2)");
 });
 
-test("BILL-1 with the REAL builders: a Free shop's function config carries no combinations, no market rule, no campaign", async () => {
+test("BILL-1 with the REAL builders: a Free shop's function config carries no market rule and no campaign (combinations are Free)", async () => {
   const fake = new FakeShopify();
   const sync = createSync({ ...productionSyncDeps(fake, db.prisma, quiet), now: () => NOW, sleep: async () => {}, plan: async () => "free" });
   const result = await sync.syncShop(shop, proConfig());
   assert.equal(result.ok, true, JSON.stringify(result.errors));
   const json = fake.shopMetafieldValue("function_config")!;
-  assert.doesNotMatch(json, /combinesWith/);
+  assert.match(json, /combinesWith/);
   assert.doesNotMatch(json, /"bf"/);
   const rules = JSON.parse(json).modules.codes.rules as { id: string; enabled?: boolean }[];
   assert.ok(!rules.some((r) => r.id === "m" && r.enabled !== false), JSON.stringify(rules));

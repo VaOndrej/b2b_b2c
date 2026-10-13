@@ -38,7 +38,6 @@ margin protection and moving Shopify discounts work in full on Free.
 | Pro capability | Area | On Free |
 |---|---|---|
 | Show a discount only in chosen markets | Discounts & codes | The whole discount is off on Free: without this setting it would give more than you set up. |
-| Choose per discount which other discounts it stacks with | Discounts & codes | The Pro setting is left out; the rest keeps working. |
 | A minimum quantity per product or collection | Discounts & codes | The whole discount is off on Free: without this setting it would give more than you set up. |
 | Generated codes with your own pattern | Discounts & codes | The Pro setting is left out; the rest keeps working. |
 | More than 100 generated codes in a batch | Discounts & codes | Kept within the Free limit. |

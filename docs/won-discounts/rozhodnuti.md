@@ -92,7 +92,7 @@ Free omezuje rozsah, ne kvalitu. Konzistence košík ↔ pokladna, ochrana marž
 | Odměny | Doprava zdarma + 1 dárkový práh, práh zadaný per trh / měna | Žebřík prahů, výběr ze 3 dárků |
 | Výprodej | — | **Celý modul** |
 | Ochrana marže | Globální minimum | Per kolekce + přehled zásahů |
-| Engine | Kombinace (přepínání po kategoriích), náhled, kód v košíku | + kombinace per sleva |
+| Engine | Kombinace (přepínání po kategoriích **i per sleva**, změna 2026-10-13), náhled, kód v košíku | — |
 | Kampaně | — | ✓ |
 | Přehledy | Základní čísla | Kolik slevy stály vs. kolik přinesly |
 

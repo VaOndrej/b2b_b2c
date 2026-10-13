@@ -19,14 +19,13 @@ summary: Free limits scope, never quality. What Pro adds today, and what happens
 > **Free limits scope, never quality.**
 
 The same engine, the match between the admin and checkout, margin protection,
-Try a cart and moving Shopify discounts work in full on Free. Free is not a demo.
+Try a cart, moving Shopify discounts and choosing per discount which discounts stack
+([pro-combinations](pro-combinations)) work in full on Free. Free is not a demo.
 
 ## What Pro adds today
 
 - **Market targeting**: a discount only in chosen markets
   ([markets-and-currencies](markets-and-currencies)).
-- **Combinations per discount**: choose which discounts stack
-  ([pro-combinations](pro-combinations)).
 - **Margin settings per collection** and the overview of where protection steps in
   ([margin-per-collection](margin-per-collection)).
 - **Quantity discount sets per product or collection** and counting across the

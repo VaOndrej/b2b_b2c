@@ -67,7 +67,8 @@ order.
 5. Optional: **When**. "Now", or "Custom date and time" in the shop's time zone, to
    check a scheduled discount or a campaign at an exact minute; a campaign's
    **Try a cart during the campaign** fills both in.
-6. **Calculate**.
+6. The result under **What applies** is calculated by itself a moment after every
+   change. **Calculate again** repeats it, for example after a failed read from Shopify.
 
 ## Reading the result
 

@@ -19,9 +19,9 @@ import { currencyExponent, fromMinorUnits } from "@won/core/discounts/money";
 import { reachableTierSets } from "@won/core/discounts/tiers";
 
 import { t, type Locale } from "../../i18n";
-import { CAMPAIGN_ERROR_FIELD, CAMPAIGN_FIELD, CAMPAIGN_INTENT, campaignFieldNames, readCampaignForm } from "../../components/model/campaigns";
+import { CAMPAIGN_ERROR_FIELD, CAMPAIGN_FIELD, CAMPAIGN_INTENT, campaignFieldNames, readCampaignForm, readCampaignNewDiscount } from "../../components/model/campaigns";
 import { submittedOf, withValues } from "../../components/model/submitted";
-import type { FormDataLike } from "../../components/model/rule-form";
+import { NAME_MAX, newRuleId, type FormDataLike } from "../../components/model/rule-form";
 import type {
   CampaignRuleChoice,
   CampaignsActionResult,
@@ -219,7 +219,7 @@ export async function finishingOf(ctx: Pick<ShopCtx, "db" | "shop">): Promise<Se
   }
 }
 
-export async function loadCampaignsScreen(ctx: ShopCtx, opts: { edit?: string | null } = {}): Promise<CampaignsScreenData> {
+export async function loadCampaignsScreen(ctx: ShopCtx, opts: { edit?: string | null; add?: string | null } = {}): Promise<CampaignsScreenData> {
   const [loaded, plan, { now, timezone, currencyCode }, finishing] = await Promise.all([loadConfig(ctx.db, ctx.shop), ctxPlan(ctx), shopNow(ctx), finishingOf(ctx)]);
   const config = loaded.config;
   const rules = new Map(config.modules.codes.rules.map((r) => [r.id, r]));
@@ -249,6 +249,7 @@ export async function loadCampaignsScreen(ctx: ShopCtx, opts: { edit?: string | 
     currencies: currencyViews(config.markets as WonDiscountsConfig["markets"], { marketNames }),
     ...(suggest ? { suggest } : {}),
     editing,
+    ...(opts.add && rules.has(opts.add) ? { added: opts.add } : {}),
     limits: { campaigns: CONFIG_LIMITS.campaigns, maxDays: CAMPAIGN_LIMITS.maxDays, minLeadMinutes: CAMPAIGN_LIMITS.minLeadMinutes },
     placements: placementLinks(ctx.shop, ctx.apiKey, CAMPAIGN_BLOCK_HANDLE),
     placed: look.placements,
@@ -328,10 +329,25 @@ export async function campaignsAction(ctx: ShopCtx, form: FormDataLike): Promise
       // BILL-1 / A6: on Free nothing is created, edited or revived (a finishing campaign runs as it was).
       if ((await ctxPlan(ctx)) !== "pro") return { ok: false, reason: "invalid", errors: [{ field: CAMPAIGN_FIELD.name, key: "campaign.error.pro" }], values: posted() };
       const { now } = await shopNow(ctx);
-      const r = validateCampaignDraft(draft, loaded.config, { now, maxCampaigns: CONFIG_LIMITS.campaigns });
+      // 12 Oct 2026, bod 2: a campaign can bring its own discount. It is an ordinary discount off the whole order,
+      // stored SWITCHED OFF, and the campaign switches it on — so it runs only in the campaign's window, ends with it
+      // and can be edited afterwards like any other. Created in the same write as the campaign, or not at all.
+      const asked = readCampaignNewDiscount(form);
+      let created: DiscountRule | null = null;
+      if (asked) {
+        if (asked.percent === null) return { ok: false, reason: "invalid", errors: [{ field: CAMPAIGN_FIELD.newPercent, key: "campaign.error.newPercent" }], values: posted() };
+        if (loaded.config.modules.codes.rules.length >= CONFIG_LIMITS.rules) {
+          return { ok: false, reason: "invalid", errors: [{ field: CAMPAIGN_FIELD.newPercent, key: "editor.error.tooManyRules", params: { max: CONFIG_LIMITS.rules } }], values: posted() };
+        }
+        const name = draft.name.trim() || t(ctx.locale, "campaign.add.fallbackName");
+        created = { id: newRuleId(), enabled: false, name: name.slice(0, NAME_MAX), method: "automatic", value: { kind: "percentage", percent: asked.percent }, target: { kind: "order" } };
+        draft.overrides.push({ ruleId: created.id, enabled: true });
+      }
+      const base = created ? { ...loaded.config, modules: { ...loaded.config.modules, codes: { rules: [...loaded.config.modules.codes.rules, created] } } } : loaded.config;
+      const r = validateCampaignDraft(draft, base, { now, maxCampaigns: CONFIG_LIMITS.campaigns });
       if (!r.ok) {
         const dates = { startDate: String(form.get(CAMPAIGN_FIELD.startDate) ?? ""), endDate: String(form.get(CAMPAIGN_FIELD.endDate) ?? "") };
-        return { ok: false, reason: "invalid", errors: fieldErrors(r.errors, loaded.config, ctx.locale, { draft, ...dates }), values: posted() };
+        return { ok: false, reason: "invalid", errors: fieldErrors(r.errors, base, ctx.locale, { draft, ...dates }), values: posted() };
       }
       const campaign = r.campaign;
       const result = await saveConfigSection(ctx, {
@@ -345,7 +361,8 @@ export async function campaignsAction(ctx: ShopCtx, form: FormDataLike): Promise
           const owned = new Set([...config.modules.codes.rules.map((rule) => rule.id), ...config.modules.tiers.sets.map((set) => set.id)]);
           const kept = existing ? existing.overrides.filter((o) => !owned.has(o.ruleId)) : [];
           const next = { ...campaign, overrides: [...campaign.overrides, ...kept] };
-          return { ...config, campaigns: existing ? config.campaigns.map((c) => (c.id === campaign.id ? next : c)) : [...config.campaigns, next] };
+          const rules = created && !config.modules.codes.rules.some((rule) => rule.id === created.id) ? [...config.modules.codes.rules, created] : config.modules.codes.rules;
+          return { ...config, modules: { ...config.modules, codes: { rules } }, campaigns: existing ? config.campaigns.map((c) => (c.id === campaign.id ? next : c)) : [...config.campaigns, next] };
         },
       });
       // Any other refusal (changed meanwhile, busy, …) keeps the typed values too.

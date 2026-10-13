@@ -182,8 +182,6 @@ test("bod 6: Pro is marked once per section — nothing amber and no second Pro 
     ["tiers", "pro"],
     ["margin?plan=pro", "collections"],
     ["margin", "collections"],
-    ["rule-editor?rule=dev-fixture-2&plan=pro", "pro"],
-    ["rule-editor?rule=dev-fixture-2", "pro"],
     ["outlet", "new"],
     ["campaigns", "form"],
     ["analytics", "rules"],
@@ -195,6 +193,16 @@ test("bod 6: Pro is marked once per section — nothing amber and no second Pro 
     assert.doesNotMatch(markup, /data-won-pro-frame="amber"/, `${path} #${id}: no amber frame inside a Pro section`);
     assert.doesNotMatch(markup, /data-won-block="pro"/, `${path} #${id}: nested blocks are neutral`);
   }
+  // 13 Oct 2026: the editor's last section is every plan's (which discounts add up); only its markets are Pro —
+  // a Pro piece inside a section that is not Pro, with its one marker.
+  for (const path of ["rule-editor?rule=dev-fixture-2&plan=pro", "rule-editor?rule=dev-fixture-2"]) {
+    const markup = section(await render(path), "pro");
+    assert.equal(count(markup, PRO_BADGE), 1, `${path}: the markets carry the one Pro marker`);
+    assert.ok(markup.indexOf('id="combines"') < markup.indexOf('id="markets"'), `${path}: the combinations come first, outside the Pro frame`);
+  }
+  const freeSection = section(await render("rule-editor?rule=dev-fixture-2"), "pro");
+  assert.ok(freeSection.indexOf('id="combines"') < freeSection.indexOf("data-won-pro-frame"), "Free: the combinations are outside the locked frame");
+  assert.doesNotMatch(freeSection.slice(freeSection.indexOf('id="combines"'), freeSection.indexOf("data-won-pro-frame")), /<s-checkbox[^>]*name="combinesWith"[^>]*disabled="[^"]/, "and can be ticked");
   // On the Pro plan the choice "Celý košík" inside an exception has no marker of its own (the shop has it).
   assert.doesNotMatch(section(await render("tiers?plan=pro"), "global"), PRO_BADGE);
   // A Pro piece inside a section that is not Pro keeps its one marker (Free: "Celý košík").

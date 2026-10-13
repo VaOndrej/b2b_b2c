@@ -204,7 +204,7 @@ test("nález 16: Časté kombinace — a finding shared by several combinations 
   const warnings = html.split('data-won-combo-status="warning"').length - 1;
   const cards = html.split("data-won-combo-finding=").length - 1;
   assert.ok(warnings > 1 && cards > 0 && cards < warnings * 2, `${cards} cards for ${warnings} combinations with a warning`);
-  assert.ok(text(html).includes("Ukázalo se v kombinacích:"));
+  assert.ok(text(html).includes("Košíky, ve kterých se to ukázalo:"), "each with its cart (12 Oct 2026, bod 4)");
 });
 
 // --- Nálezy 3, 4, 11, 13: cards and steps ---------------------------------------------------------------------
@@ -318,5 +318,7 @@ test("C8: the rule editor's Pro section is open for a Pro shop; C13: the sale's 
 test("C9: a page with one place to jump to has no side list; with more it has one", async () => {
   assert.ok(!(await render("try-cart")).includes("data-won-section-nav"), "Free: only the cart");
   assert.ok(!(await render("try-cart?state=empty&plan=pro")).includes("data-won-section-nav"), "an empty cart, no combinations");
-  assert.ok((await render("try-cart?state=warnings&plan=pro&combos=on")).includes("data-won-section-nav"));
+  // 13 Oct 2026: Vyzkoušet košík has two tiles instead of the side list (the automatic check, your own cart).
+  const both = await render("try-cart?state=warnings&plan=pro&combos=on");
+  assert.ok(!both.includes("data-won-section-nav") && both.includes('data-won-view-tile="auto"') && both.includes('data-won-view-tile="manual"'));
 });

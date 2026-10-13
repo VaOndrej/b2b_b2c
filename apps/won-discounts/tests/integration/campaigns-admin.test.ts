@@ -257,3 +257,38 @@ test("form model: an unticked discount's fields are never read (B7); the times a
   const names = campaignFieldNames(rules, sets);
   assert.ok(names.includes(`${F.percent}auto`) && names.includes(`${F.tierQty}g.9`) && names.includes(F.endTime));
 });
+
+test("12 Oct 2026, bod 2: a campaign creates its own discount off the whole order — stored switched off, switched on by the campaign, in one write", async () => {
+  const { ctx } = await setup("pro");
+  const fields = async (extra: [string, string][]): Promise<[string, string][]> => [
+    ["configVersion", await version()],
+    [F.name, "Black Friday"],
+    [F.startDate, "2026-11-27"],
+    [F.startTime, "00:00"],
+    [F.endDate, "2026-11-30"],
+    [F.endTime, "23:59"],
+    [F.intent, CAMPAIGN_INTENT.save],
+    [F.newUse, "1"],
+    ...extra,
+  ];
+  const before = (await loadConfig(db.prisma, shop)).config.modules.codes.rules.length;
+  // A value that is no percent: refused on its field, the typed form comes back, nothing is created.
+  const bad = await campaignsAction(ctx, formOf(await fields([[F.newPercent, "130"]])));
+  assert.ok(!bad.ok && bad.reason === "invalid" && "errors" in bad && bad.errors?.[0]?.field === F.newPercent, JSON.stringify(bad));
+  assert.equal((await loadConfig(db.prisma, shop)).config.modules.codes.rules.length, before);
+  // A refused campaign (its end before its start) creates no discount either.
+  const refused = await campaignsAction(ctx, formOf((await fields([[F.newPercent, "30"]])).map(([k, v]): [string, string] => (k === F.endDate ? [k, "2026-11-01"] : [k, v]))));
+  assert.ok(!refused.ok);
+  assert.equal((await loadConfig(db.prisma, shop)).config.modules.codes.rules.length, before);
+
+  const r = await campaignsAction(ctx, formOf(await fields([[F.newPercent, "30"]])));
+  assert.ok(r.ok && "kind" in r && r.kind === "saved", JSON.stringify(r));
+  const { config } = await loadConfig(db.prisma, shop);
+  assert.equal(config.modules.codes.rules.length, before + 1);
+  const rule = config.modules.codes.rules.at(-1)!;
+  assert.deepEqual(
+    { enabled: rule.enabled, name: rule.name, method: rule.method, value: rule.value, target: rule.target },
+    { enabled: false, name: "Black Friday", method: "automatic", value: { kind: "percentage", percent: 30 }, target: { kind: "order" } },
+  );
+  assert.deepEqual(config.campaigns[0]!.overrides, [{ ruleId: rule.id, patch: { enabled: true } }]);
+});

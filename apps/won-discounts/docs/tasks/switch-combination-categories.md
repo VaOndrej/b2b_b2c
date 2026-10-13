@@ -36,7 +36,7 @@ have several discounts. Before relying on a new setting, check it in
 [try-a-cart](try-a-cart) with a cart that has more than one discount.
 
 This setting is store-wide and available on Free. Choosing combinations **per
-discount** (so discount A stacks with C but not B) is Pro; see
+discount** (so discount A stacks with C but not B) is on Free too; see
 [pro-combinations](../concepts/pro-combinations.md).
 
 Exact default table: [../reference/combination-defaults.generated.md](../reference/combination-defaults.generated.md).

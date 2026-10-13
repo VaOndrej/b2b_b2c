@@ -18,7 +18,7 @@ import { syncProgress } from "../sync/progress";
 import { isSyncRunning, shopLocalDateTime } from "../sync/sync.server";
 import { resolveLocale } from "../../i18n";
 import { currencyCodes, currencyViews } from "../../components/model/markets";
-import { isRecipeKey, shopToday } from "../../components/model/rule-form";
+import { FIELD, FOR_CAMPAIGN_FIELD, isRecipeKey, shopToday } from "../../components/model/rule-form";
 import { ruleStatus } from "../../components/model/rule-status";
 import { resolveRuleCodes } from "../../components/model/try-cart-form";
 import type { GateNoteView, NativeView, UiResult } from "../../components/model/types";
@@ -322,6 +322,10 @@ export type RuleEditorOutcome = { redirect: string } | { result: UiResult };
 
 /** Save (`intent=save`, optionally `replaceUnreadable=1`) or delete (`intent=delete`) the rule of the URL. */
 export async function ruleEditorAction(ctx: ShopCtx, form: FormData, ruleId: string): Promise<RuleEditorOutcome> {
+  // 13 Oct 2026: a discount created FROM a campaign form (`forCampaign` = "new" or the edited campaign's id) is
+  // stored switched off — the campaign switches it on — and the save leads back to that campaign with it ticked.
+  const forCampaign = ruleId === "new" ? campaignOfForm(form) : null;
+  if (forCampaign) form.delete(FIELD.enabled);
   const intent = form.get("intent");
   if (intent === "delete") {
     const version = form.get("ruleVersion");
@@ -338,8 +342,17 @@ export async function ruleEditorAction(ctx: ShopCtx, form: FormData, ruleId: str
     shopCurrency: shopContext.currencyCode,
     pro: plan.pro,
   });
+  if (result.ok && forCampaign && savedId) {
+    return { redirect: `/app/campaigns?add=${encodeURIComponent(savedId)}${forCampaign === "new" ? "" : `&edit=${encodeURIComponent(forCampaign)}`}` };
+  }
   if (result.ok && ruleId === "new" && savedId) return { redirect: `/app/discounts/${encodeURIComponent(savedId)}?saved=1` };
   return { result };
+}
+
+/** The campaign a new discount is created for: "new", a campaign id, or null (an ordinary save). */
+export function campaignOfForm(form: { get(name: string): unknown }): string | null {
+  const value = form.get(FOR_CAMPAIGN_FIELD);
+  return typeof value === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : null;
 }
 
 // --- Vyzkoušet košík --------------------------------------------------------------------------

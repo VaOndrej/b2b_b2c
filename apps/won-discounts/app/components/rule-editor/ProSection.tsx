@@ -28,6 +28,7 @@ import type { RuleStatus } from "../model/rule-status";
 import type { GateNoteView, MarketView } from "../model/types";
 import { boolAttr } from "../shell/attrs";
 import { GateNotes } from "../shell/GateNotes";
+import { PlanBadge } from "../shell/PlanBadge";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
 import { RowNote, WonSection } from "../shell/WonSection";
@@ -92,28 +93,62 @@ export function ProSection({
   const anyMarket = markets.length + offMarkets.length > 0;
   // The stack is searched among the MAX_STACK_CANDIDATES best discounts, this one included.
   const atCap = liveCombines.length + 1 >= MAX_STACK_CANDIDATES;
+  const combines = (
+            <Anchor id="combines">
+              <s-stack direction="block" gap="small-200">
+                <s-text type="strong">{t("editor.pro.combines")}</s-text>
+                {otherRules.length === 0 ? (
+                  <s-stack direction="inline" gap="small-200" alignItems="center">
+                    <s-text color="subdued">{t("editor.pro.combinesNone")}</s-text>
+                    <s-link href="/app/discounts/new">{t("editor.pro.combinesCreate")}</s-link>
+                  </s-stack>
+                ) : (
+                  <>
+                    <s-text color="subdued">{t("editor.pro.combinesIntro")}</s-text>
+                    {otherRules.map((other) => (
+                      <s-checkbox
+                        key={other.id}
+                        name={FIELD.combinesWith}
+                        value={other.id}
+                        label={other.name || t("common.untitled")}
+                        checked={boolAttr(defaults.combinesWith.includes(other.id))}
+                        disabled={off}
+                      />
+                    ))}
+                    {atCap ? <RowNote>{t("editor.pro.combinesCap", { n: MAX_STACK_CANDIDATES })}</RowNote> : null}
+                    <RowNote>
+                      {t("editor.pro.combinesDefault")} <s-link href="/app/settings#combination">{t("editor.pro.combinesSettings")}</s-link>
+                    </RowNote>
+                  </>
+                )}
+              </s-stack>
+            </Anchor>
+  );
   return (
     <WonSection
       title={t("editor.pro.title")}
       glyph="target"
-      pro
-      locked={!pro}
       summary={describeProSettings(draft, tr, ruleNames, marketNames)}
       collapsible
       // Open for a Pro shop (§18g: a Pro section is open for the shop that has it), and on Free whenever something
       // is set in it (the plan does not run what is stored).
-      defaultOpen={pro || storedSegments || defaults.markets.length > 0 || defaults.combinesWith.length > 0 || gate.length > 0}
+      defaultOpen={pro || otherRules.length > 0 || storedSegments || defaults.markets.length > 0 || defaults.combinesWith.length > 0 || gate.length > 0}
       anchor="pro"
     >
       <s-stack direction="block" gap="base">
         {gate.length > 0 ? <GateNotes notes={gate} compact pending={gatePending} /> : null}
+        {/* 13 Oct 2026: which discounts it adds up with is on every plan and comes first; only the markets are Pro. */}
+        {combines}
         {!pro ? <ProSell benefit={t("editor.pro.benefit")} /> : null}
         <ProFrame locked={!pro}>
           <s-stack direction="block" gap="base">
             <Anchor id="markets">
               <div ref={marketsRef}>
                 <s-stack direction="block" gap="small-200">
-                  <s-text type="strong">{t("editor.pro.markets")}</s-text>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <s-text type="strong">{t("editor.pro.markets")}</s-text>
+                    <PlanBadge tier="pro" locked={!pro} href={pro ? undefined : "/app/plan"} />
+                  </span>
                   <s-text color="subdued">{t("editor.pro.marketsIntro")}</s-text>
                   {scope !== "granted" && anyMarket ? (
                     <RowNote tone={scope === "declined" ? "attention" : undefined}>
@@ -155,42 +190,6 @@ export function ProSection({
                 <s-checkbox name={FIELD.dropSegments} value="on" label={t("editor.pro.dropSegments")} disabled={off} />
               </Anchor>
             ) : null}
-            <Anchor id="combines">
-              <s-stack direction="block" gap="small-200">
-                <s-text type="strong">{t("editor.pro.combines")}</s-text>
-                {otherRules.length === 0 ? (
-                  <s-stack direction="inline" gap="small-200" alignItems="center">
-                    <s-text color="subdued">{t("editor.pro.combinesNone")}</s-text>
-                    <s-link href="/app/discounts/new">{t("editor.pro.combinesCreate")}</s-link>
-                  </s-stack>
-                ) : (
-                  <>
-                    <s-text color="subdued">{t("editor.pro.combinesIntro")}</s-text>
-                    {otherRules.map((other) => (
-                      <s-checkbox
-                        key={other.id}
-                        name={FIELD.combinesWith}
-                        value={other.id}
-                        label={other.name || t("common.untitled")}
-                        checked={boolAttr(defaults.combinesWith.includes(other.id))}
-                        disabled={fieldsOff}
-                      />
-                    ))}
-                    {atCap ? <RowNote>{t("editor.pro.combinesCap", { n: MAX_STACK_CANDIDATES })}</RowNote> : null}
-                    <RowNote>
-                      {t("editor.pro.combinesDefault")} <s-link href="/app/settings#combination">{t("editor.pro.combinesSettings")}</s-link>
-                    </RowNote>
-                  </>
-                )}
-                {!pro && defaults.combinesWith.length > 0 ? (
-                  // Stored, not used on this plan (the rule itself still runs): said, with an explicit way to remove it.
-                  <div>
-                    {liveCombines.length > 0 ? <FieldMark tone="info" text={t("editor.mark.proCombines")} /> : null}
-                    <s-checkbox name={FIELD.dropCombines} value="on" label={t("editor.pro.dropCombines")} disabled={off} />
-                  </div>
-                ) : null}
-              </s-stack>
-            </Anchor>
           </s-stack>
         </ProFrame>
       </s-stack>

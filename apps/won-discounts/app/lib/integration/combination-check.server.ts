@@ -21,7 +21,7 @@ import { errorText } from "../sync/transport";
 import type { SyncLogger } from "../sync/types";
 import { shopLocalDateTime } from "../sync/sync.server";
 import type { TryCartScreenProps } from "../../components/screens/TryCartScreen";
-import { FINDING_HREF, runScenarios, scenarioLines, type Finding, type Scenario, type ScenarioFacts, type ScenarioProduct, type ScenarioResult } from "./combination-check";
+import { FINDING_HREF, runScenarios, scenarioLines, type Basket, type Finding, type Scenario, type ScenarioFacts, type ScenarioProduct, type ScenarioResult } from "./combination-check";
 import type { AdminClient } from "../admin-client.server";
 import { loadConfig } from "../config.server";
 import type { ShopCtx } from "./context.server";
@@ -29,6 +29,7 @@ import { parseProductRefs } from "./try-cart-plan";
 
 /** Variants with a purchase cost the lowest margin is looked for among (the mirror can hold a whole catalogue). */
 export const SCENARIO_COST_ROWS = 300;
+
 /** Products listed from Shopify (margin protection off) are read again after this long. */
 export const LISTED_PRODUCTS_MAX_AGE_MS = 24 * 3_600_000;
 
@@ -65,11 +66,22 @@ async function neededProducts(db: ShopCtx["db"], shop: string) {
  */
 export async function loadScenarioProducts(db: ShopCtx["db"], shop: string, shopCurrency: string, listed: readonly ListedVariant[] = []): Promise<ScenarioProduct[]> {
   const select = { variantId: true, productId: true, title: true, variantTitle: true, price: true, cost: true, currency: true } as const;
-  const [costed, anyRow, needed] = await Promise.all([
+  const [costed, prices, needed] = await Promise.all([
     db.variantCost.findMany({ where: { shop, cost: { not: null } }, select, take: SCENARIO_COST_ROWS, orderBy: { variantId: "asc" } }),
-    db.variantCost.findFirst({ where: { shop }, select, orderBy: { variantId: "asc" } }),
+    db.variantCost.findMany({ where: { shop }, select, take: SCENARIO_COST_ROWS, orderBy: { variantId: "asc" } }),
     neededProducts(db, shop),
   ]);
+  const anyRow = prices[0] ?? null;
+  // 13 Oct 2026: the shop's cheapest, middle and most expensive variant — every common combination is planned on
+  // each of them (and on a mix), because the same discount does something else to a 10 Kč product than to a
+  // 1 000 Kč one. With one product known there is nothing to compare; with two, the cheaper and the dearer.
+  const byPrice = prices.filter((row) => Number(row.price) > 0).sort((a, b) => Number(a.price) - Number(b.price) || (a.variantId < b.variantId ? -1 : 1));
+  const classes: [CostRow, ScenarioProduct["role"]][] =
+    byPrice.length < 2
+      ? []
+      : byPrice.length === 2
+        ? [[byPrice[0]!, "cheap"], [byPrice[1]!, "expensive"]]
+        : [[byPrice[0]!, "cheap"], [byPrice[Math.floor(byPrice.length / 2)]!, "mid"], [byPrice[byPrice.length - 1]!, "expensive"]];
   const margin = (row: CostRow) => {
     const price = Number(row.price);
     const cost = Number(row.cost);
@@ -96,6 +108,7 @@ export async function loadScenarioProducts(db: ShopCtx["db"], shop: string, shop
     [aimedRow, "targeted"],
     [ownRow, "exception"],
     [saleRow, "outlet"],
+    ...classes,
   ];
   const rows = picked.filter((entry): entry is [CostRow, ScenarioProduct["role"]] => !!entry[0]);
   const index = await db.productTargetIndex.findMany({ where: { shop, productId: { in: [...new Set(rows.map(([row]) => row.productId))] } }, select: { productId: true, value: true } });
@@ -221,6 +234,9 @@ export interface StoredScenario {
   discount: number;
   /** null = it uses a sample product: nothing of the shop's to open. */
   cart: ScenarioCart | null;
+  /** The product the cart is built on and the combination it is one cart of (13 Oct 2026); absent = one cart per combination. */
+  basket?: Basket;
+  combo?: string;
 }
 
 export interface StoredCheck {
@@ -238,6 +254,7 @@ export function storedCheck(results: readonly ScenarioResult[], facts: Pick<Scen
       const priced = scenarioLines(scenario, facts);
       const sample = scenario.lines.some((line) => line.product.role === "sample");
       return {
+        ...(scenario.basket && scenario.combo ? { basket: scenario.basket, combo: scenario.combo } : {}),
         id: scenario.id,
         parts: scenario.parts,
         ...(scenario.code ? { code: scenario.code } : {}),
@@ -286,6 +303,10 @@ export function combinationView(check: StoredCheck, opts: { plan: ShopPlan; loca
         currency: s.currency,
         subtotal: s.subtotal,
         discount: s.discount,
+        basket: s.cart ? s.cart.lines.map((line) => `${line.quantity}× ${line.title}`).join(", ") : null,
+        lines: (s.cart?.lines ?? []).map((line) => ({ title: line.title, quantity: line.quantity, total: (line.unitPrice[s.currency] ?? 0) * line.quantity })),
+        kind: s.basket ?? null,
+        combo: s.combo ?? s.id,
         // A sample product is not the shop's: there is nothing to open in the manual cart.
         open: s.cart ? `/app/try-cart?scenario=${encodeURIComponent(s.id)}` : null,
       }),

@@ -30,7 +30,7 @@
 // website adds (tagged "Dárek", free at checkout), planned by the server too.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Form } from "react-router";
+import { Form, useNavigation, useSubmit } from "react-router";
 
 import type { WonDiscountsConfig } from "@won/core/discounts/config";
 import { unsupportedInFunction } from "@won/core/discounts/plan";
@@ -47,13 +47,16 @@ import { shopToday } from "../model/rule-form";
 import { uiText } from "../model/result-copy";
 import type { CartPlanView, CombinationCheckView, CurrencyView, ExplainView, FieldError, TryCartLineView, UiResult } from "../model/types";
 import { boolAttr } from "../shell/attrs";
+import { CartCard } from "../shell/CartCard";
+import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
+import { useView, ViewPanel } from "../shell/views";
 import { Finding } from "../shell/Finding";
 import { Notice, ResyncButton } from "../shell/Notice";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
-import { SectionNav, type SectionNavItem } from "../shell/SectionNav";
 import { SegmentedChoice } from "../shell/SegmentedChoice";
-import { RowNote, WonRow, WonSection } from "../shell/WonSection";
+import { StepCard } from "../shell/StepCard";
+import { RowNote, WonRow } from "../shell/WonSection";
 import { WON_ATTENTION, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
 import { CombinationsSection } from "../try-cart/CombinationsSection";
 
@@ -278,6 +281,8 @@ function resultSummary(plan: CartPlanView | null, tr: Translator): string {
 const RESYNC_WARNINGS: readonly string[] = ["tryCart.warning.syncFailed", "tryCart.warning.notApplied"];
 
 const signature = (snap: CartSnapshot) => JSON.stringify(snap);
+/** How long after the last change the cart counts itself (typing a quantity is several changes). */
+const AUTO_RUN_MS = 600;
 
 export function TryCartScreen(props: TryCartScreenProps) {
   const { pro, currencies, timezone, today, plan, result, rules } = props;
@@ -311,8 +316,11 @@ export function TryCartScreen(props: TryCartScreenProps) {
     [],
   );
   const [snap, setSnap] = useState<CartSnapshot>(initial);
-  /** The merchant changed the cart or a choice after the shown result arrived (a real edit, never a re-render). */
-  const [edited, setEdited] = useState(false);
+  /** The merchant changed the cart or a choice (a real edit, never a re-render): from then on the cart counts itself. */
+  const [touched, setTouched] = useState(false);
+  const submit = useSubmit();
+  const navigation = useNavigation();
+  const running = navigation.state !== "idle" && navigation.formData?.get("intent") === "run";
 
   // §2 / P5: every summary follows what is in the form (native events, one FormData read).
   const recompute = useCallback(() => {
@@ -326,7 +334,7 @@ export function TryCartScreen(props: TryCartScreenProps) {
     if (!el) return;
     const onEdit = () => {
       recompute();
-      setEdited(true);
+      setTouched(true);
     };
     el.addEventListener("input", onEdit);
     el.addEventListener("change", onEdit);
@@ -339,14 +347,36 @@ export function TryCartScreen(props: TryCartScreenProps) {
   useEffect(() => {
     recompute();
   }, [lines, snap.when, recompute]);
-  // A new result belongs to the cart as it is now; any later edit makes it the previous cart's.
+  // 12 Oct 2026, bod 3: the cart counts ITSELF a moment after the last change — no "Spočítat" to click between the
+  // steps. `ranKey` = the cart the last run was sent for; `shownKey` = the cart the shown result belongs to.
+  const cartKey = `${signature(snap)}|${lines.map((l) => l.variantId).join(",")}`;
+  const ranKey = useRef<string | null>(null);
+  const [shownKey, setShownKey] = useState<string | null>(null);
+  const run = useCallback(() => {
+    const form = formRef.current;
+    if (!form) return;
+    ranKey.current = `${signature(cartSnapshot(new FormData(form)))}|${new FormData(form).getAll("variantId").join(",")}`;
+    submit(form, { method: "post", preventScrollReset: true });
+  }, [submit]);
   useEffect(() => {
-    setEdited(false);
+    if (locked || !touched || lines.length === 0 || cartKey === ranKey.current) return;
+    const timer = window.setTimeout(run, AUTO_RUN_MS);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the key holds the lines and the choices
+  }, [cartKey, touched, locked, run]);
+  // A new result belongs to the cart it was sent for; any later edit makes it the previous cart's.
+  useEffect(() => {
+    setShownKey(ranKey.current);
   }, [plan, result]);
-  const stale = edited && (plan !== null || result !== null);
+  // A cart opened from a combination is ready: count it right away, with the shop's current prices.
+  useEffect(() => {
+    if (!locked && props.opened && !plan && props.lines.length > 0) setTouched(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, for the cart the page opened with
+  }, []);
+  const stale = touched && (plan !== null || result !== null) && cartKey !== shownKey;
   const changeLines = (next: TryCartLineView[]) => {
     setLines(next);
-    setEdited(true);
+    setTouched(true);
   };
 
   const addProducts = async () => {
@@ -397,12 +427,13 @@ export function TryCartScreen(props: TryCartScreenProps) {
     { value: "custom", label: t("tryCart.when.custom") },
   ];
 
+  const steps = locked ? 2 : 3;
   const cart = (
     <Form method="post" ref={formRef}>
       <input type="hidden" name="intent" value="run" />
       <input type="hidden" name="locale" value={tr.locale} />
-      <WonSection title={t("tryCart.cart.title")} glyph="cart" summary={cartSummary} anchor="cart">
-        <s-stack direction="block" gap="base">
+      <div id="cart" style={{ scrollMarginTop: 16 }}>
+        <StepCard n={1} of={steps} title={t("tryCart.cart.title")} hint={t(lines.length === 0 ? "tryCart.cart.empty" : "tryCart.step.cart.hint")}>
           {/* P7: the lines are the cart — always visible. An empty cart is one sentence (the summary) and the button. */}
           {lines.length > 0 ? (
             <div data-won-try-cart-lines>
@@ -462,7 +493,9 @@ export function TryCartScreen(props: TryCartScreenProps) {
             ) : null}
           </div>
           {errorFor("lines") ? <RowNote tone="attention">{errorFor("lines")}</RowNote> : null}
-
+        </StepCard>
+      </div>
+      <StepCard n={2} of={steps} last={locked} title={t("tryCart.step.context.title")} hint={t("tryCart.step.context.hint")}>
           <div style={{ maxWidth: 320 }}>
             {/* Uncontrolled (B13): the initial option is marked once; the choice is only read from the form. */}
             <s-select name="currency" label={t("tryCart.market")} disabled={boolAttr(locked)}>
@@ -544,35 +577,48 @@ export function TryCartScreen(props: TryCartScreenProps) {
             </div>
           )}
           {errorFor("plan") ? <RowNote tone="attention">{errorFor("plan")}</RowNote> : null}
-          <div>
-            <s-button type="submit" variant="primary" disabled={boolAttr(locked)}>
-              {t("tryCart.run")}
-            </s-button>
-          </div>
-        </s-stack>
-      </WonSection>
+      </StepCard>
     </Form>
   );
 
-  const showResult = !locked && (plan !== null || (result !== null && !(result.ok === false && result.reason === "invalid")));
+  const counted = lines.length > 0 && (plan !== null || (result !== null && !(result.ok === false && result.reason === "invalid")));
+  const resultHint = running ? t("tryCart.result.running") : !counted ? t("tryCart.step.result.hint") : stale ? t("tryCart.result.stale") : resultSummary(plan, tr);
 
-  // The page is long (the combinations, the cart, the result): the same side menu with anchors as Nastavení.
-  const navItems: SectionNavItem[] = [
-    ...(props.combos ? [{ anchor: "combos", label: t("combos.title"), ...(props.combos.warnings > 0 ? { state: "attention" as const } : {}) }] : []),
-    { anchor: "cart", label: t("tryCart.cart.title") },
-    ...(showResult ? [{ anchor: "result", label: t("tryCart.result.title") }] : []),
-  ];
+  // 13 Oct 2026: two ways in, two tiles — the carts the app checked itself, and the cart built by hand. A cart
+  // opened from a combination, or a result, belongs to the manual one.
+  const [view, setView] = useView<"auto" | "manual">({
+    initial: () => (!props.combos || props.opened || plan !== null || result !== null ? "manual" : "auto"),
+    hash: { combos: "auto", cart: "manual", result: "manual" },
+    resetKey: props.opened ?? "",
+  });
+  const manualActive = lines.length === 0 ? undefined : counted && !stale ? resultSummary(plan, tr) : tr.tp("count.item", totalQuantity);
 
   return (
     <s-page heading={t("tryCart.title")}>
       <s-stack direction="block" gap="base">
         <s-paragraph color="subdued">{t("tryCart.intro")}</s-paragraph>
-        <SectionNav label={t("tryCart.nav")} items={navItems}>
-          <s-stack direction="block" gap="base">
-
-        {/* The main way in: the common combinations, already calculated. The manual cart below is the second. */}
-        {props.combos ? <CombinationsSection check={props.combos} pro={pro} /> : null}
-        {props.opened && !plan ? <RowNote>{t("combos.opened", { title: props.opened })}</RowNote> : null}
+        {props.combos ? (
+          <ModuleTiles label={t("tryCart.view.label")} columns={3}>
+            <ViewTile
+              id="auto"
+              title={t("tryCart.view.auto.title")}
+              glyph="check"
+              about={t("tryCart.view.auto.about")}
+              active={t("combos.summary", { ok: props.combos.ok, warnings: props.combos.warnings })}
+              status={props.combos.warnings > 0 ? { state: "attention", issues: 0 } : undefined}
+              selected={view === "auto"}
+              onPick={() => setView("auto")}
+            />
+            <ViewTile id="manual" title={t("tryCart.view.manual.title")} glyph="cart" about={t("tryCart.view.manual.about")} active={manualActive} pro={!pro} locked={!pro} selected={view === "manual"} onPick={() => setView("manual")} />
+          </ModuleTiles>
+        ) : null}
+        {props.combos ? (
+          <ViewPanel id="auto" view={view}>
+            <CombinationsSection check={props.combos} pro={pro} />
+          </ViewPanel>
+        ) : null}
+        <ViewPanel id="manual" view={props.combos ? view : "manual"}>
+        {props.opened ? <RowNote>{t("combos.opened", { title: props.opened })}</RowNote> : null}
 
         {locked ? (
           // Free: what the tool is for + the plan link, above the amber locked form (nothing runs; the server refuses too).
@@ -581,12 +627,19 @@ export function TryCartScreen(props: TryCartScreenProps) {
             <ProFrame locked>{cart}</ProFrame>
           </>
         ) : (
-          cart
-        )}
-
-        {showResult ? (
-          <WonSection title={t("tryCart.result.title")} glyph="receipt" summary={stale ? t("tryCart.result.stale") : resultSummary(plan, tr)} anchor="result">
-            <s-stack direction="block" gap="base">
+          // One flow of three steps (as a new campaign): the cart, where and when, what applies. No gap between
+          // the form and the last step — the line under the step numbers runs through.
+          <div>
+          {cart}
+          <div id="result" style={{ scrollMarginTop: 16 }}>
+          <StepCard n={3} of={steps} last title={t("tryCart.result.title")} hint={resultHint}>
+              {!counted ? (
+                <div data-won-try-cart-empty="" style={{ padding: "14px 16px", borderRadius: 12, border: "1px dashed #b9c2cc", background: WON_WASH, fontFamily: WON_FONT, fontSize: 13, color: WON_MUTED }}>
+                  {t(lines.length === 0 ? "tryCart.result.empty" : running || touched ? "tryCart.result.running" : "tryCart.result.waiting")}
+                </div>
+              ) : (
+              <>
+              <RowNote>{t("tryCart.result.for", { cart: cartSummary })}</RowNote>
               {stale ? (
                 <div data-won-try-cart-stale style={{ fontFamily: WON_FONT, fontSize: 12.5, color: WON_ATTENTION }}>
                   {t("tryCart.result.staleBody")}
@@ -610,60 +663,72 @@ export function TryCartScreen(props: TryCartScreenProps) {
                 </div>
               ) : null}
               {plan ? (
-                <div style={stale ? { opacity: 0.6 } : undefined}>
-                  {plan.market ? <s-text color="subdued">{t("tryCart.result.market", { market: plan.market })}</s-text> : null}
-                  {plan.lines.map((line) => (
-                    <WonRow key={line.lineId}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                          <s-text type="strong">
-                            {line.title} × {line.quantity}
-                          </s-text>
-                          {line.tier ? <LineChip label={t("tryCart.tier")} /> : null}
-                          {line.marginCapped ? <LineChip label={t("tryCart.margin.capped")} /> : null}
-                          {line.gift ? <LineChip label={t("tryCart.gift")} /> : null}
+                <CartCard
+                  marker={{ "data-won-try-cart-result": "" }}
+                  eyebrow={t("tryCart.card.yours")}
+                  title={resultSummary(plan, tr)}
+                  faded={stale}
+                  note={plan.market ? t("tryCart.result.market", { market: plan.market }) : undefined}
+                  lines={plan.lines.map((line) => ({
+                    key: line.lineId,
+                    name: (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span>
+                          {line.title} × {line.quantity}
                         </span>
-                        <span style={{ fontFamily: WON_FONT, fontSize: 13 }}>
-                          {line.discount > 0 ? (
-                            <>
-                              <s-text type="redundant">{formatMoney(line.subtotal, plan.currency, tr.locale)}</s-text>{" "}
-                              <strong>{formatMoney(line.total, plan.currency, tr.locale)}</strong>
-                            </>
-                          ) : (
-                            formatMoney(line.total, plan.currency, tr.locale)
-                          )}
-                        </span>
-                      </div>
-                      {line.gift ? (
-                        <RowNote>{(line.giftChoices ?? 1) > 1 ? t("tryCart.giftChoice", { count: line.giftChoices ?? 1 }) : t("tryCart.giftAdded")}</RowNote>
-                      ) : null}
-                      <ExplainList items={explainFor(plan.explain, line.lineId)} />
-                    </WonRow>
-                  ))}
-                  {explainFor(plan.explain, null).length > 0 ? (
-                    <WonRow>
-                      <s-text type="strong">{t("tryCart.order")}</s-text>
-                      <ExplainList items={explainFor(plan.explain, null)} />
-                    </WonRow>
-                  ) : null}
-                  {plan.margin ? <MarginNotes margin={plan.margin} currency={plan.currency} /> : null}
-                  <div style={{ borderTop: `1px solid ${WON_LINE}`, paddingTop: 10, fontFamily: WON_FONT, fontSize: 13 }}>
-                    <TotalRow label={t("tryCart.totals.subtotal")} value={formatMoney(plan.totals.subtotal, plan.currency, tr.locale)} />
-                    {plan.totals.productDiscount > 0 ? (
-                      <TotalRow label={t("tryCart.totals.products")} value={`−${formatMoney(plan.totals.productDiscount, plan.currency, tr.locale)}`} />
-                    ) : null}
-                    {plan.totals.orderDiscount > 0 ? (
-                      <TotalRow label={t("tryCart.totals.order")} value={`−${formatMoney(plan.totals.orderDiscount, plan.currency, tr.locale)}`} />
-                    ) : null}
-                    <TotalRow strong label={t("tryCart.totals.total")} value={formatMoney(plan.totals.total, plan.currency, tr.locale)} />
-                  </div>
-                </div>
+                        {line.tier ? <LineChip label={t("tryCart.tier")} /> : null}
+                        {line.marginCapped ? <LineChip label={t("tryCart.margin.capped")} /> : null}
+                        {line.gift ? <LineChip label={t("tryCart.gift")} /> : null}
+                      </span>
+                    ),
+                    price:
+                      line.discount > 0 ? (
+                        <>
+                          <s-text type="redundant">{formatMoney(line.subtotal, plan.currency, tr.locale)}</s-text> <strong>{formatMoney(line.total, plan.currency, tr.locale)}</strong>
+                        </>
+                      ) : (
+                        formatMoney(line.total, plan.currency, tr.locale)
+                      ),
+                    extra: (
+                      <>
+                        {line.gift ? <RowNote>{(line.giftChoices ?? 1) > 1 ? t("tryCart.giftChoice", { count: line.giftChoices ?? 1 }) : t("tryCart.giftAdded")}</RowNote> : null}
+                        <ExplainList items={explainFor(plan.explain, line.lineId)} />
+                      </>
+                    ),
+                  }))}
+                  after={
+                    explainFor(plan.explain, null).length > 0 || plan.margin ? (
+                      <>
+                        {explainFor(plan.explain, null).length > 0 ? (
+                          <div>
+                            <s-text type="strong">{t("tryCart.order")}</s-text>
+                            <ExplainList items={explainFor(plan.explain, null)} />
+                          </div>
+                        ) : null}
+                        {plan.margin ? <MarginNotes margin={plan.margin} currency={plan.currency} /> : null}
+                      </>
+                    ) : undefined
+                  }
+                  totals={[
+                    { label: t("tryCart.totals.subtotal"), value: formatMoney(plan.totals.subtotal, plan.currency, tr.locale) },
+                    ...(plan.totals.productDiscount > 0 ? [{ label: t("tryCart.totals.products"), value: `−${formatMoney(plan.totals.productDiscount, plan.currency, tr.locale)}` }] : []),
+                    ...(plan.totals.orderDiscount > 0 ? [{ label: t("tryCart.totals.order"), value: `−${formatMoney(plan.totals.orderDiscount, plan.currency, tr.locale)}` }] : []),
+                    { label: t("tryCart.totals.total"), value: formatMoney(plan.totals.total, plan.currency, tr.locale), strong: true },
+                  ]}
+                />
               ) : null}
-            </s-stack>
-          </WonSection>
-        ) : null}
-          </s-stack>
-        </SectionNav>
+              <div>
+                <s-button variant="secondary" disabled={boolAttr(running)} onClick={run}>
+                  {t("tryCart.run")}
+                </s-button>
+              </div>
+              </>
+              )}
+          </StepCard>
+          </div>
+          </div>
+        )}
+        </ViewPanel>
       </s-stack>
     </s-page>
   );
@@ -718,11 +783,3 @@ function MarginNotes({ margin, currency }: { margin: NonNullable<CartPlanView["m
   );
 }
 
-function TotalRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "3px 0", fontWeight: strong ? 700 : 400, color: WON_INK }}>
-      <span>{label}</span>
-      <span>{value}</span>
-    </div>
-  );
-}

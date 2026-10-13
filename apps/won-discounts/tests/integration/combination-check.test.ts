@@ -93,6 +93,10 @@ test("the products come from what the app has stored: the lowest margin, a produ
       { title: "Tričko", role: "targeted", unitPrice: 400_00, unitCost: 350, refs: { ruleIds: ["r:code"], variantRuleIds: {} } },
       { title: "Bunda", role: "exception", unitPrice: 2000_00, unitCost: 900, refs: { ruleIds: [], variantRuleIds: {}, tierRef: "vip" } },
       { title: "Šála", role: "outlet", unitPrice: 250_00, unitCost: 100, refs: undefined },
+      // 13 Oct 2026: the cheapest, a middle and the most expensive one — the baskets of every combination.
+      { title: "Šála", role: "cheap", unitPrice: 250_00, unitCost: 100, refs: undefined },
+      { title: "Tričko", role: "mid", unitPrice: 400_00, unitCost: 350, refs: { ruleIds: ["r:code"], variantRuleIds: {} } },
+      { title: "Bunda", role: "expensive", unitPrice: 2000_00, unitCost: 900, refs: { ruleIds: [], variantRuleIds: {}, tierRef: "vip" } },
     ],
   );
   // Another shop's rows are never read (SEC-2).
@@ -113,11 +117,19 @@ test("Free gets the number of warnings and nothing else; Pro gets which scenario
   assert.equal(pro.sample, false);
   assert.ok(pro.warnings >= 2, JSON.stringify(pro.scenarios?.map((s) => [s.id, s.status])));
   const byId = new Map(pro.scenarios!.map((s) => [s.id, s]));
-  // The product with the lowest margin (350 of 400 Kč): the tier's 10 % would go under the 20 % margin — the link names the tier.
-  assert.deepEqual(byId.get("tiers")!.findings.map((f) => [f.kind, f.href, f.label]), [["margin", "/app/tiers#global", "Otevřít množstevní slevy"]]);
+  // 13 Oct 2026: three products are known, so every combination has a cart per basket (the cheapest, a middle, the
+  // most expensive product, and a mix) and the scenarios of one combination share `combo`.
+  assert.deepEqual(pro.scenarios!.filter((s) => s.combo === "tiers").map((s) => [s.id, s.kind, s.basket]), [
+    ["tiers@cheap", "cheap", "3× Šála"],
+    ["tiers@mid", "mid", "3× Tričko"],
+    ["tiers@expensive", "expensive", "3× Bunda"],
+    ["tiers@mix", "mix", "3× Tričko, 1× Šála, 1× Bunda"],
+  ]);
+  // The middle product (350 of 400 Kč): the tier's 10 % would go under the 20 % margin — the link names the tier.
+  assert.deepEqual(byId.get("tiers@mid")!.findings.map((f) => [f.kind, f.href, f.label]), [["margin", "/app/tiers#global", "Otevřít množstevní slevy"]]);
   // The lower step lost to the higher one: the link opens that very step on Milníky.
-  assert.ok(byId.get("steps")!.findings.some((f) => f.kind === "step_superseded" && f.href === "/app/rewards#step-1" && f.label === "Otevřít 1. stupeň Milníků"));
-  assert.equal(byId.get("tiers")!.open, "/app/try-cart?scenario=tiers");
+  assert.ok(byId.get("steps@mid")!.findings.some((f) => f.kind === "step_superseded" && f.href === "/app/rewards#step-1" && f.label === "Otevřít 1. stupeň Milníků"));
+  assert.equal(byId.get("tiers@mid")!.open, "/app/try-cart?scenario=tiers%40mid");
 
   await refresh("free");
   const free = (await viewOf("free"))!;
@@ -281,7 +293,7 @@ test("a scenario opens in the manual cart (Pro) from the stored check — its pr
   await storeProducts();
   await refresh("pro");
   const before = await db.prisma.combinationCheck.findUnique({ where: { shop } });
-  const pro = await tryCartPage(ctxFor(new FakeStore(), "pro"), { ...PAGE, scenario: "steps-code" });
+  const pro = await tryCartPage(ctxFor(new FakeStore(), "pro"), { ...PAGE, scenario: "steps-code@mid" });
   // 4 000 Kč of the 400 Kč product reach the higher step; the code is the rule's.
   assert.deepEqual(pro.lines, [{ variantId: V(2), productId: P(2), title: "Tričko", quantity: 10, unitPrice: { CZK: 400_00 } }]);
   assert.deepEqual([pro.ruleIds, pro.currency, pro.date, pro.time, pro.opened], [["code"], "CZK:cz", "2026-10-08", "12:00", "Stupeň se slevou + kód LETO10"]);
@@ -291,6 +303,23 @@ test("a scenario opens in the manual cart (Pro) from the stored check — its pr
   const unknown = await tryCartPage(ctxFor(new FakeStore(), "pro"), { ...PAGE, scenario: "nope" });
   assert.deepEqual([unknown.lines, unknown.opened], [[], undefined]);
   clearSignalCache();
-  const free = await tryCartPage(ctxFor(new FakeStore(), "free"), { ...PAGE, scenario: "steps-code" });
+  const free = await tryCartPage(ctxFor(new FakeStore(), "free"), { ...PAGE, scenario: "steps-code@mid" });
   assert.deepEqual([free.lines, free.opened], [[], undefined]);
+});
+
+test("13 Oct 2026: the shop's cheapest, middle and most expensive product are named, and every combination is planned on each of them and on a mix", async () => {
+  const many = "many-shop.myshopify.com";
+  const row = (n: number, title: string, price: string, cost: string | null) => ({ shop: many, variantId: V(n), productId: P(n), inventoryItemId: `gid://shopify/InventoryItem/${n}`, title, price, cost, currency: cost === null ? null : "CZK" });
+  await db.prisma.variantCost.createMany({
+    data: [row(1, "Vzorek", "10.00", "9.00"), row(2, "Protein", "600.00", "300.00"), row(3, "BCAA", "550.00", null), row(4, "Kreatin", "1100.00", null), row(5, "Gel", "650.00", "200.00")],
+  });
+  const products = await loadScenarioProducts(db.prisma, many, "CZK");
+  assert.deepEqual(
+    products.filter((p) => ["cheap", "mid", "expensive"].includes(p.role)).map((p) => [p.role, p.title]),
+    [["cheap", "Vzorek"], ["mid", "Protein"], ["expensive", "Kreatin"]],
+  );
+  // One product known: nothing to compare, no baskets.
+  const one = "one-shop.myshopify.com";
+  await db.prisma.variantCost.create({ data: { ...row(9, "Jediný", "100.00", null), shop: one } });
+  assert.deepEqual((await loadScenarioProducts(db.prisma, one, "CZK")).map((p) => p.role), ["any"]);
 });
