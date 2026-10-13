@@ -25,6 +25,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Form, useSubmit } from "react-router";
 
+import { combineTypeOfRule, type CombineType } from "@won/core/discounts/combine";
+import { defaultCombineFor } from "@won/core/discounts/combine-config";
 import { ruleHasCodes, type CodeBatchSpec } from "@won/core/discounts/code-batch";
 import type { DiscountRule, WonDiscountsConfig } from "@won/core/discounts/config";
 import { isMilestoneRule } from "@won/core/discounts/milestones";
@@ -83,7 +85,10 @@ export interface RuleEditorScreenProps {
   markets: MarketView[];
   /** Markets this rule targets that are switched off (B3): shown as ticked rows with a note, kept until unticked. */
   offMarkets?: MarketView[];
-  otherRules: { id: string; name: string; codes?: string[] }[];
+  /** Every other discount; `type` = its type for "Sčítá se s". */
+  otherRules: { id: string; name: string; codes?: string[]; type?: CombineType }[];
+  /** What a new discount of each type starts with (Nastavení → Kombinování slev). */
+  combineDefaults?: Record<"automatic" | "code" | "shipping", CombineType[]>;
   /** Names and images of the products, variants and collections this rule targets (P4), by id. */
   labels?: Record<string, { title: string; image?: string }>;
   codeRules: CodeRuleLimit;
@@ -159,7 +164,8 @@ export function buildRuleEditorProps(
     ...(rule ? offMarketsOf(rule, config, opts.marketNames) : {}),
     otherRules: rules
       .filter((r) => r.id !== opts.ruleId)
-      .map((r) => ({ id: r.id, name: r.name, ...(r.codes ? { codes: r.codes } : {}) })),
+      .map((r) => ({ id: r.id, name: r.name, ...(r.codes ? { codes: r.codes } : {}), type: combineTypeOfRule(r) })),
+    combineDefaults: { automatic: defaultCombineFor(config, "automatic"), code: defaultCombineFor(config, "code"), shipping: defaultCombineFor(config, "shipping") },
     codeRules: opts.codeRules,
     ...(rule && opts.gate ? { gate: opts.gate.filter((g) => g.ruleId === rule.id).map((g) => ({ ...g })) } : {}),
     ...(rule && opts.gateOff?.includes(rule.id) ? { gateOff: true } : {}),
@@ -453,6 +459,8 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
             markets={markets}
             offMarkets={offMarkets}
             otherRules={otherRules}
+            isNew={mode === "new"}
+            combineDefaults={props.combineDefaults}
             gate={gate}
             gatePending={props.gatePending ?? false}
             marketsScope={props.marketsScope ?? true}

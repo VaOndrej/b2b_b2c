@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { sanitizeConfig, type TierSet, type WonDiscountsConfig } from "../../src/discounts/config.ts";
+import { readStoredConfig, sanitizeConfig, type TierSet, type WonDiscountsConfig } from "../../src/discounts/config.ts";
 import type { CartLineInput } from "../../src/discounts/cart.ts";
 import { buildShopFunctionConfig } from "../../src/discounts/function-payload.ts";
 import { planCart } from "../../src/discounts/plan.ts";
@@ -251,12 +251,14 @@ function randomProConfig(r: ReturnType<typeof rng>): WonDiscountsConfig {
         perCollection: r.subset(COLLECTION_POOL, 0.4).map((collectionId) => ({ collectionId, maxDiscountPercent: r.pick([10, 50, 90]) })),
       }
     : { enabled: false, global: { maxDiscountPercent: 50 }, perCollection: [] };
-  const { config } = sanitizeConfig({
+  // Stored the way shops were before 13 Oct 2026 and converted (config/combine-migrate.ts): the links become
+  // exceptions (Pro), the switch a list of types.
+  return readStoredConfig({
+    schemaVersion: 1,
     markets: MARKETS,
     engine: { combination: { productWithOrder: r.chance(0.8) } },
     modules: { codes: { rules }, tiers: { sets: randomSets(r) }, margin },
   });
-  return config;
 }
 
 /** The cart lines as the function reads them for `config` (the sync writes each plan's own product metafields). */
@@ -307,8 +309,13 @@ test("property: the Free-gated plan never gives more than the Pro plan (random c
     const onFree = plan(free);
     const where = `round ${round}`;
     const total = (p: typeof onPro) => p.totals.productDiscount + p.totals.orderDiscount;
+    if (total(onFree) > total(onPro) && process.env.DEBUG_GATE) {
+      const brief = (p: typeof onPro) => ({ lines: p.lines.map((l) => [l.lineId.slice(-6), l.subtotal, l.product?.components.map((c) => `${c.ruleId}:${c.amount}`).join("+") ?? "-", l.marginCapped ? "capped" : ""]), order: p.order && [p.order.components.map((c) => `${c.ruleId}:${c.amount}`).join("+"), p.order.base], rules: p.rules.map((o) => `${o.ruleId}:${o.discountClass}:${o.state}`) });
+      console.log(JSON.stringify({ rules: config.modules.codes.rules.map((x) => [x.id, x.target.kind, JSON.stringify(x.value), JSON.stringify(x.combine), x.targeting ? "T" : ""]), tiers: config.modules.tiers.combine, margin: config.modules.margin.enabled, pro: brief(onPro), free: brief(onFree) }, null, 1));
+    }
     assert.ok(total(onFree) <= total(onPro), `${where}: free ${total(onFree)} > pro ${total(onPro)}`);
-    if (config.engine.combination.productWithOrder) {
+    // Line by line only while neither plan gave its product discounts up for the order discount alone.
+    if (!onPro.rules.some((o) => o.state === "not_combinable") && !onFree.rules.some((o) => o.state === "not_combinable") && !onPro.tiers.some((t) => t.state === "not_combinable") && !onFree.tiers.some((t) => t.state === "not_combinable")) {
       onPro.lines.forEach((l, i) => {
         assert.ok((onFree.lines[i].product?.amount ?? 0) <= (l.product?.amount ?? 0), `${where}: line ${l.lineId}`);
       });

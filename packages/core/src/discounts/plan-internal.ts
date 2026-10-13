@@ -4,6 +4,7 @@
 // → plan-internal.ts, with only type imports pointing back at plan.ts.
 
 import type { NormalizedLine, PlanLocale } from "./cart.ts";
+import type { CombineSide } from "./combine.ts";
 import type { DiscountMethod } from "./config.ts";
 import { type DescribableRule, describeRule } from "./describe.ts";
 import type { MarginBasis, MarginSettings } from "./margin.ts";
@@ -41,8 +42,12 @@ export interface Rule {
   endsOn: string | null;
   markets: string[] | null;
   segmentTargeted: boolean;
-  /** Pro combinesWith as written on this rule (the relation is made symmetric in partnersOf). */
-  combines: string[];
+  /** Combining (combine.ts CombineSide): the bit of its type, its list as a mask, the rules it names as exceptions. */
+  bit: number;
+  mask: number;
+  except: string[];
+  /** An order discount of Milníky (its list is the Milníky list). */
+  reward?: "discount";
   describable: DescribableRule;
   // evaluation
   state: RuleState | null; // null = eligible so far
@@ -79,6 +84,11 @@ export interface WorkLine {
   excluded: "outlet" | "gift" | null;
   /** A sale line that takes only some discounts: the classes it stays out of (cart.ts OUTLET_ALLOW bits); 0 = none. */
   no: number;
+  /**
+   * A line on sale under the shop's rule (the variant flag `true`) whose sale adds up with something: each
+   * product rule and order discount is asked on its own (combine.ts addUp with the sale). false for every other line.
+   */
+  sale: boolean;
   ruleSet: Set<string>;
   /** Rules the line lists by a plain ref (targeting.ts lineTargeting): their common minimum decides for it. */
   plain: Set<string>;
@@ -102,7 +112,10 @@ export interface LineFloor {
 
 export interface StackContext {
   byId: Map<string, Rule>;
-  partners: Map<string, Set<string>>;
+  /** false = no discount of the shop adds up with another one: every stack is its single best candidate. */
+  stacking: boolean;
+  /** A line on sale, as one side of the rule (the sale module's list). */
+  outlet: CombineSide;
   locale: PlanLocale;
   currency: string;
 }

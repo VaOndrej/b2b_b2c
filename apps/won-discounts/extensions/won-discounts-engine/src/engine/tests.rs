@@ -27,6 +27,10 @@ fn rules(rules: &str, extra: &str) -> Config {
     config(&format!(r#"{{"modules": {{"codes": {{"rules": [{rules}]}}}}{extra}}}"#))
 }
 
+/// `more` for a rule that adds up with automatic discounts (combine.ts: its list `c` has the type's bit 1).
+/// Two rules that both have it add up, e.g. a product discount and an automatic order discount.
+const ADDS: &str = r#", "c": 1"#;
+
 fn pct(id: &str, percent: f64, more: &str) -> String {
     format!(
         r#"{{"id": "{id}", "enabled": true, "name": "{id}", "method": "automatic",
@@ -185,8 +189,8 @@ fn a_shared_code_hash_belongs_to_the_first_rule_listing_it() {
 #[test]
 fn outlet_lines_are_out_of_product_and_order_discounts() {
     let order = r#"{"id": "o", "enabled": true, "name": "o", "method": "automatic",
-        "value": {"kind": "percentage", "percent": 10}, "target": {"kind": "order"}}"#;
-    let c = rules(&[pct("a", 10.0, ""), order.to_string()].join(","), "");
+        "value": {"kind": "percentage", "percent": 10}, "target": {"kind": "order"}, "c": 1}"#;
+    let c = rules(&[pct("a", 10.0, ADDS), order.to_string()].join(","), "");
     let mut lines = vec![line("l1", 1, 10000, &["a"]), line("l2", 1, 5000, &["a"])];
     lines[1].outlet = true;
     let plan = plan_cart(cart(&lines, &[]), Some(&c));
@@ -201,8 +205,8 @@ fn outlet_lines_are_out_of_product_and_order_discounts() {
     let only = [Line { outlet: true, ..line("l1", 1, 10000, &["a"]) }];
     assert_eq!(state(&plan_cart(cart(&only, &[]), Some(&c)), "a"), Some(RuleState::OutletOnly));
 
-    // engine.combination.outletWithAnything: outlet lines are ordinary lines.
-    let c = rules(&pct("a", 10.0, ""), r#""engine": {"combination": {"outletWithAnything": true}}"#);
+    // The sale's list has automatic discounts (`engine.mc[2]`) and the rule's list has sales (32): the line takes it.
+    let c = rules(&pct("a", 10.0, r#", "c": 32"#), r#""engine": {"mc": [0, 0, 1]}"#);
     let plan = plan_cart(cart(&only, &[]), Some(&c));
     assert_eq!(plan.lines[0].excluded, None);
     assert_eq!(product_of(&plan, "l1").unwrap().2, 1000);
@@ -212,8 +216,8 @@ fn outlet_lines_are_out_of_product_and_order_discounts() {
 #[test]
 fn a_partly_combining_sale_line_takes_only_what_it_allows() {
     let order = r#"{"id": "o", "enabled": true, "name": "o", "method": "automatic",
-        "value": {"kind": "percentage", "percent": 10}, "target": {"kind": "order"}}"#;
-    let c = rules(&[pct("a", 20.0, ""), order.to_string()].join(","), "");
+        "value": {"kind": "percentage", "percent": 10}, "target": {"kind": "order"}, "c": 33}"#;
+    let c = rules(&[pct("a", 20.0, r#", "c": 33"#), order.to_string()].join(","), "");
     // Tiers only (allow 1 → no 6): no product discount, out of the order base; the other line is ordinary.
     let lines = [Line { outlet_no: 6, ..line("s", 3, 10000, &["a"]) }, line("n", 1, 10000, &["a"])];
     let plan = plan_cart(cart(&lines, &[]), Some(&c));
@@ -236,21 +240,21 @@ fn a_partly_combining_sale_line_takes_only_what_it_allows() {
     let o = plan.order.as_ref().unwrap();
     assert_eq!((o.base, o.stack.amount), (30000, 3000));
     assert!(o.excluded_line_ids.is_empty());
-    // outletWithAnything lifts the limits; a gift line ignores them.
-    let c = rules(&[pct("a", 20.0, ""), order.to_string()].join(","), r#""engine": {"combination": {"outletWithAnything": true}}"#);
+    // A sale with its own list follows that list alone, whatever the shop's list for sales says (13 Oct 2026).
+    let c = rules(&[pct("a", 20.0, r#", "c": 33"#), order.to_string()].join(","), r#""engine": {"mc": [0, 0, 27]}"#);
     let only = [Line { outlet_no: 6, ..line("s", 3, 10000, &["a"]) }];
     let plan = plan_cart(cart(&only, &[]), Some(&c));
-    assert_eq!(product_of(&plan, "s").unwrap().2, 6000);
-    assert!(plan.order.as_ref().unwrap().excluded_line_ids.is_empty());
+    assert!(plan.lines[0].product.is_none());
+    assert!(plan.order.is_none());
 }
 
 /// Gift cards (10 Oct 2026): `outlet_no` 7 = out of every class, and "sales combine with anything" does not lift it.
 #[test]
 fn a_gift_card_line_takes_no_discount_whatever_the_combination_says() {
     let order = r#"{"id": "o", "enabled": true, "name": "o", "method": "automatic",
-        "value": {"kind": "percentage", "percent": 10}, "target": {"kind": "order"}}"#;
-    for extra in ["", r#""engine": {"combination": {"outletWithAnything": true}}"#] {
-        let c = rules(&[pct("a", 20.0, ""), order.to_string()].join(","), extra);
+        "value": {"kind": "percentage", "percent": 10}, "target": {"kind": "order"}, "c": 33}"#;
+    for extra in ["", r#""engine": {"mc": [0, 0, 27]}"#] {
+        let c = rules(&[pct("a", 20.0, r#", "c": 33"#), order.to_string()].join(","), extra);
         let lines = [Line { outlet_no: 7, ..line("g", 3, 10000, &["a"]) }, line("n", 1, 10000, &["a"])];
         let plan = plan_cart(cart(&lines, &[]), Some(&c));
         assert!(plan.lines[0].product.is_none());
@@ -317,9 +321,9 @@ fn a_currency_without_a_value_takes_the_rule_out_of_play() {
 #[test]
 fn fixed_amounts_are_capped_per_item_and_at_the_order_base() {
     let per_item = r#"{"id": "f", "enabled": true, "name": "f", "method": "automatic",
-        "value": {"kind": "fixed", "amount": {"CZK": 5000}}, "target": {"kind": "products"}}"#;
+        "value": {"kind": "fixed", "amount": {"CZK": 5000}}, "target": {"kind": "products"}, "c": 1}"#;
     let order = r#"{"id": "o", "enabled": true, "name": "o", "method": "automatic",
-        "value": {"kind": "fixed", "amount": {"CZK": 1000000}}, "target": {"kind": "order"}}"#;
+        "value": {"kind": "fixed", "amount": {"CZK": 1000000}}, "target": {"kind": "order"}, "c": 1}"#;
     let c = rules(&[per_item.to_string(), order.to_string()].join(","), "");
     let lines = [line("l1", 2, 3000, &["f"]), line("l2", 1, 8000, &["f"])];
     let plan = plan_cart(cart(&lines, &[]), Some(&c));
@@ -353,7 +357,8 @@ fn exclusive_order_vs_products_better_scenario_wins_tie_keeps_products() {
             "value": {{"kind": "percentage", "percent": {p}}}, "target": {{"kind": "order"}}}}"#
         )
     };
-    let off = r#""engine": {"combination": {"productWithOrder": false}}"#;
+    // (The rules have no list: a product discount and the order discount do not add up.)
+    let off = "";
     let lines = [line("l1", 1, 10000, &["a"]), line("l2", 1, 10000, &[])];
     // Products 10 % of 100 = 10 Kč; order 20 % of 200 = 40 Kč: the order wins, products are dropped.
     let c = rules(&[pct("a", 10.0, ""), order(20.0)].join(","), off);
@@ -372,22 +377,24 @@ fn shipping_percent_beats_fixed_and_the_switches_can_block_it() {
     let ship = |id: &str, value: &str| {
         format!(
             r#"{{"id": "{id}", "enabled": true, "name": "{id}", "method": "automatic",
-            "value": {value}, "target": {{"kind": "shipping"}}}}"#
+            "value": {value}, "target": {{"kind": "shipping"}}, "c": 1}}"#
         )
     };
     let free = ship("free", r#"{"kind": "freeShipping"}"#);
     let fixed = ship("fixed", r#"{"kind": "fixed", "amount": {"CZK": 999900}}"#);
     let half = ship("half", r#"{"kind": "percentage", "percent": 50}"#);
-    let c = rules(&[fixed.clone(), half.clone(), free.clone(), pct("a", 10.0, "")].join(","), "");
+    // The shipping rules add up with automatic discounts (1), the product discount with shipping (4).
+    let adds_shipping = r#", "c": 4"#;
+    let c = rules(&[fixed.clone(), half.clone(), free.clone(), pct("a", 10.0, adds_shipping)].join(","), "");
     let lines = [line("l1", 1, 10000, &["a"])];
     let plan = plan_cart(cart(&lines, &[]), Some(&c));
     let shipping = plan.shipping.as_ref().unwrap();
     assert_eq!((plan.rules[shipping.rule].id, &shipping.value), ("free", &ShippingValue::Percent(100.0)));
-    let c = rules(&[fixed.clone(), pct("a", 10.0, "")].join(","), "");
+    let c = rules(&[fixed.clone(), pct("a", 10.0, adds_shipping)].join(","), "");
     let shipping = plan_cart(cart(&lines, &[]), Some(&c)).shipping.unwrap();
     assert_eq!(shipping.value, ShippingValue::FixedTotal(999900));
-    // productWithShipping off: a product discount applies, so no shipping discount.
-    let c = rules(&[free, pct("a", 10.0, "")].join(","), r#""engine": {"combination": {"productWithShipping": false}}"#);
+    // The product discount's list has no shipping: it applies, so no shipping discount does.
+    let c = rules(&[free, pct("a", 10.0, "")].join(","), "");
     assert!(plan_cart(cart(&lines, &[]), Some(&c)).shipping.is_none());
 }
 
@@ -598,9 +605,9 @@ fn an_entered_code_padded_or_upper_cased_past_the_bound_is_never_matched_but_cou
 fn a_pro_stack_sums_capped_and_is_owned_by_its_code_rule() {
     let c = rules(
         &[
-            pct("p7", 15.0, r#", "combinesWith": {"ruleIds": ["p8"]}"#),
-            pct("p8", 17.0, ""),
-            code("c", 12.0, WELCOME15, r#", "combinesWith": {"ruleIds": ["p8"]}"#),
+            pct("p7", 15.0, r#", "x": ["p8"]"#),
+            pct("p8", 17.0, r#", "x": ["p7", "c"]"#),
+            code("c", 12.0, WELCOME15, r#", "x": ["p8"]"#),
         ]
         .join(","),
         "",
@@ -618,17 +625,17 @@ fn a_pro_stack_sums_capped_and_is_owned_by_its_code_rule() {
     assert!(emit_for_node(&plan, &NodeRole::Automatic, None).product.is_empty());
     assert_eq!(emit_for_node(&plan, &NodeRole::Code("c".into()), Some("welcome15")).product.len(), 1);
     // Capped at the line subtotal.
-    let c = rules(&[pct("x", 60.0, r#", "combinesWith": {"ruleIds": ["y"]}"#), pct("y", 70.0, "")].join(","), "");
+    let c = rules(&[pct("x", 60.0, r#", "x": ["y"]"#), pct("y", 70.0, r#", "x": ["x"]"#)].join(","), "");
     let lines = [line("l1", 1, 10000, &["x", "y"])];
     let stack = plan_cart(cart(&lines, &[]), Some(&c)).lines[0].product.clone().unwrap();
     assert_eq!(stack.amount, 10000);
     assert_eq!(stack.components.iter().map(|c| c.amount).collect::<Vec<_>>(), vec![7000, 3000]);
 }
 
-/// `"combinesWith": {"ruleIds": [the ids after k]}`: with every rule, a full Pro mesh.
+/// `"x": [every other id]`: with every rule, a full mesh (each names every other as an exception).
 fn mesh_link(ids: &[&str], k: usize) -> String {
-    let later: Vec<String> = ids[k + 1..].iter().map(|id| format!(r#""{id}""#)).collect();
-    format!(r#", "combinesWith": {{"ruleIds": [{}]}}"#, later.join(", "))
+    let others: Vec<String> = ids.iter().enumerate().filter(|&(i, _)| i != k).map(|(_, id)| format!(r#""{id}""#)).collect();
+    format!(r#", "x": [{}]"#, others.join(", "))
 }
 
 #[test]
@@ -649,13 +656,13 @@ fn a_pro_stack_is_searched_among_the_six_best_ranked_candidates_only() {
     // A partner ranked 7th cannot join: a (10 %) lists only g (4 %), the rest combine with nothing.
     let c = rules(
         &[
-            pct("a", 10.0, r#", "combinesWith": {"ruleIds": ["g"]}"#),
+            pct("a", 10.0, r#", "x": ["g"]"#),
             pct("b", 9.0, ""),
             pct("c", 8.0, ""),
             pct("d", 7.0, ""),
             pct("e", 6.0, ""),
             pct("f", 5.0, ""),
-            pct("g", 4.0, ""),
+            pct("g", 4.0, r#", "x": ["a"]"#),
         ]
         .join(","),
         "",
@@ -791,10 +798,11 @@ fn a_rounding_tie_is_emitted_as_its_exact_amount() {
     assert!(!tie_possible(50_000_000, 10.0) && !tie_possible(10_000_000, 50.0) && !tie_possible(123_456_789, 10.0));
     assert!(tie_possible(123_456_785, 10.0) && tie_possible(5_000_000_005, 10.0));
     assert!(!tie_possible(3990, 10.0) && !tie_possible(1995, 20.0));
+    // a and b add up with each other, the order discount with every product discount (exceptions on both sides).
     let order = r#"{"id": "o", "enabled": true, "name": "o", "method": "automatic",
-        "value": {"kind": "percentage", "percent": 10}, "target": {"kind": "order"}}"#;
+        "value": {"kind": "percentage", "percent": 10}, "target": {"kind": "order"}, "x": ["t", "a", "b"]}"#;
     let c = rules(
-        &[pct("t", 10.0, ""), pct("a", 10.0, r#", "combinesWith": {"ruleIds": ["b"]}"#), pct("b", 5.0, ""), order.to_string()].join(","),
+        &[pct("t", 10.0, r#", "x": ["o"]"#), pct("a", 10.0, r#", "x": ["b", "o"]"#), pct("b", 5.0, r#", "x": ["a", "o"]"#), order.to_string()].join(","),
         "",
     );
     let lines = [line("l1", 1, 1005, &["t"]), line("l2", 1, 1004, &["t"]), line("l3", 3, 3330, &["a", "b"]), line("l4", 1, 106, &[])];
@@ -1014,7 +1022,7 @@ fn a_product_takes_the_strictest_of_its_collections_settings() {
 
 #[test]
 fn margin_off_plans_exactly_like_mvp1() {
-    let rules_json = [pct("a", 60.0, ""), order_rule("o", r#"{"kind": "percentage", "percent": 30}"#, "")].join(",");
+    let rules_json = [pct("a", 60.0, ADDS), order_rule("o", r#"{"kind": "percentage", "percent": 30}"#, ADDS)].join(",");
     let mut with_costs = vec![line("l1", 2, 100_000, &["a"]), line("l2", 1, 30_000, &[])];
     for l in &mut with_costs {
         l.cost = Some(900.0);
@@ -1135,7 +1143,7 @@ fn a_product_line_is_cut_to_its_headroom_and_emitted_as_that_exact_amount() {
         )
     );
     // A capped stack whose total equals its summed percent stays an exact amount: 10,05 Kč, 10 % + 10 %, 20 % ceiling.
-    let c = margin_rules(&[pct("x", 10.0, r#", "combinesWith": {"ruleIds": ["y"]}"#), pct("y", 10.0, "")].join(","), r#"{"enabled": true, "max": 20}"#, "");
+    let c = margin_rules(&[pct("x", 10.0, r#", "x": ["y"]"#), pct("y", 10.0, r#", "x": ["x"]"#)].join(","), r#"{"enabled": true, "max": 20}"#, "");
     let lines = [line("l1", 1, 1005, &["x", "y"])];
     let plan = plan_cart(cart(&lines, &[]), Some(&c));
     assert_eq!(plan.lines[0].product.as_ref().unwrap().amount, 201);
@@ -1161,7 +1169,7 @@ fn a_cost_in_another_cart_currency_converts_with_the_rate_else_the_ceiling_appli
 
 #[test]
 fn a_pro_stack_is_cut_in_rank_order_and_its_owner_recomputed() {
-    let rules_json = [pct("a", 20.0, r#", "combinesWith": {"ruleIds": ["b"]}"#), code("b", 10.0, WELCOME15, "")].join(",");
+    let rules_json = [pct("a", 20.0, r#", "x": ["b"]"#), code("b", 10.0, WELCOME15, r#", "x": ["a"]"#)].join(",");
     let lines = [line("l1", 1, 100_000, &["a", "b"])];
     let c = margin_rules(&rules_json, r#"{"enabled": true, "max": 25}"#, "");
     let wide = plan_cart(cart(&lines, &["WELCOME15"]), Some(&c));
@@ -1184,7 +1192,7 @@ fn the_order_discount_is_safe_on_both_allocation_bases_with_a_reserve() {
     let percent = |p: f64| format!(r#"{{"kind": "percentage", "percent": {p}}}"#);
     // After the 50 % product discount line 1 is 500 Kč, floor 400 Kč: 199,98 on the after-product
     // base, but only 149,98 on the before-product base (line 1 is 1 000 of 1 500).
-    let c = margin_rules(&[pct("a", 50.0, ""), order_rule("o", &percent(20.0), "")].join(","), r#"{"enabled": true, "max": 60}"#, "");
+    let c = margin_rules(&[pct("a", 50.0, ADDS), order_rule("o", &percent(20.0), ADDS)].join(","), r#"{"enabled": true, "max": 60}"#, "");
     let lines = [line("l1", 1, 100_000, &["a"]), line("l2", 1, 50_000, &[])];
     let plan = plan_cart(cart(&lines, &[]), Some(&c));
     assert_eq!(product_of(&plan, "l1").unwrap().2, 50_000);
@@ -1199,7 +1207,7 @@ fn the_order_discount_is_safe_on_both_allocation_bases_with_a_reserve() {
     // Two orderings: A (1 000 Kč, 90 % off → 100 Kč, floor 49,99) and B (100 Kč, floor 94,99) share
     // k = h/s = 0,05, so by h/s {A, B} is the only candidate (B's share limits D to 10 Kč); by h/a
     // (A 0,5, B 0,05) {A} alone carries the whole 50 % of 100 Kč, which is more: B is left out.
-    let c = margin_rules(&[pct("p", 90.0, ""), order_rule("o", &percent(50.0), "")].join(","), r#"{"enabled": true, "max": 100, "cur": "CZK"}"#, "");
+    let c = margin_rules(&[pct("p", 90.0, ADDS), order_rule("o", &percent(50.0), ADDS)].join(","), r#"{"enabled": true, "max": 100, "cur": "CZK"}"#, "");
     let same_k = [cost_line("a", 1, 100_000, 49.99, &["p"]), cost_line("b", 1, 10_000, 94.99, &[])];
     let plan = plan_cart(cart(&same_k, &[]), Some(&c));
     let order = plan.order.as_ref().unwrap();
@@ -1238,7 +1246,8 @@ fn lines_at_their_floor_are_left_out_of_the_order_discount() {
 
 #[test]
 fn exclusive_mode_protects_the_order_only_scenario_too() {
-    let off = r#""engine": {"combination": {"productWithOrder": false}}"#;
+    // (The rules have no list: a product discount and the order discount do not add up.)
+    let off = "";
     let order = order_rule("o", r#"{"kind": "percentage", "percent": 30}"#, "");
     let lines = [line("l1", 1, 100_000, &["a"]), cost_line("l2", 1, 100_000, 1000.0, &[])];
     // Order only: line 2 left out, line 1 gives 99,99 Kč > the 50 Kč product scenario.
@@ -1275,9 +1284,9 @@ fn a_capped_line_is_never_relaxed_over_the_output_budget() {
     let c = margin_rules(
         &[
             r#"{"id": "fix", "enabled": true, "name": "9,99 Kč z kusu", "method": "automatic", "value": {"kind": "fixed", "amount": {"CZK": 999}},
-                "target": {"kind": "products"}, "combinesWith": {"ruleIds": ["ten"]}}"#
+                "target": {"kind": "products"}, "x": ["ten"]}"#
                 .to_string(),
-            pct("ten", 10.0, ""),
+            pct("ten", 10.0, r#", "x": ["fix"]"#),
         ]
         .join(","),
         r#"{"enabled": true, "max": 20}"#,
@@ -1737,8 +1746,8 @@ fn a_lines_set_is_its_tier_ref_else_the_global_one_and_gifts_and_outlets_count_n
     assert_eq!(product_of(&plan, "l3"), None);
     assert_eq!(product_of(&plan, "l4"), None);
     assert_eq!(product_of(&plan, "l5"), None);
-    // With outlet lines combinable, the outlet line counts and gets the tier too.
-    let c = tier_rules("", tiers, r#""engine": {"combination": {"outletWithAnything": true}}"#);
+    // The sale's list has tiers (8) and the tiers' list has sales (32): the outlet line counts and gets the tier too.
+    let c = tier_rules("", tiers, r#""engine": {"mc": [32, 0, 8]}"#);
     let plan = plan_cart(tcart(&lines, &[], &c), Some(&c));
     for id in ["l1", "l6", "l7"] {
         assert_eq!(product_of(&plan, id), Some(("tier:g", &EmittedValue::Percent(10.0), 1000)), "{id}");
@@ -1788,7 +1797,7 @@ fn a_tier_competes_with_rules_never_stacks_and_takes_no_place_in_the_stack_pool(
     let c = tier_rules(&[pct("a", 10.0, ""), pct("z", 10.0, r#", "priority": 1"#)].join(","), &tiers(10.0), "");
     assert_eq!(product_of(&plan_cart(tcart(&lines, &[], &c), Some(&c)), "l2").unwrap().0, "z");
     // A Pro stack (15 % + 10 %) beats the tier only with a larger total; a tie keeps the tier.
-    let stack = [pct("p", 15.0, r#", "combinesWith": {"ruleIds": ["q"]}"#), pct("q", 10.0, "")].join(",");
+    let stack = [pct("p", 15.0, r#", "x": ["q"]"#), pct("q", 10.0, r#", "x": ["p"]"#)].join(",");
     let lines = [tier_line("l1", 1, 10000, "P1", None, &["p", "q"])];
     for (tier, owner, amount) in [(20.0, "p", 2500), (25.0, "tier:g", 2500), (30.0, "tier:g", 3000)] {
         let c = tier_rules(&stack, &tiers(tier), "");
@@ -1805,8 +1814,8 @@ fn a_tier_competes_with_rules_never_stacks_and_takes_no_place_in_the_stack_pool(
     let stack = plan.lines[0].product.as_ref().unwrap();
     assert_eq!(stack.components.iter().map(|c| plan.rules[c.rule].id).collect::<Vec<_>>(), vec!["a", "b", "c", "d", "e", "f"]);
     assert_eq!((stack.amount, stack.message.as_ref()), (45000, "a + b + c + d + e + f"));
-    // No rule can list a tier in combinesWith.
-    let c = tier_rules(&pct("x", 5.0, r#", "combinesWith": {"ruleIds": ["tier:g", "g"]}"#), &tiers(10.0), "");
+    // An exception names rules only: a tier's id in it is nothing.
+    let c = tier_rules(&pct("x", 5.0, r#", "x": ["tier:g", "g"]"#), &tiers(10.0), "");
     let lines = [tier_line("l1", 1, 10000, "P1", None, &["x"])];
     assert_eq!(product_of(&plan_cart(tcart(&lines, &[], &c), Some(&c)), "l1"), Some(("tier:g", &EmittedValue::Percent(10.0), 1000)));
 }
@@ -1873,7 +1882,8 @@ fn a_rule_whose_id_is_a_tier_candidates_id_is_read_as_the_tier_like_plan_ts() {
 fn the_exclusive_switch_drops_a_tier_like_a_product_discount() {
     let order = |p: f64| order_rule("o", &format!(r#"{{"kind": "percentage", "percent": {p}}}"#), "");
     let tiers = r#"{"global": "g", "sets": [["g", "cart", [], [[2, 10]]]]}"#;
-    let off = r#""engine": {"combination": {"productWithOrder": false}}"#;
+    // (The rules have no list: a product discount and the order discount do not add up.)
+    let off = "";
     let lines = [tier_line("l1", 1, 10000, "P1", None, &[]), tier_line("l2", 1, 10000, "P2", None, &[])];
     // Tier 2 × 10 Kč = 20 Kč; order 20 % of 200 = 40 Kč: the order wins, the tier is dropped.
     let c = tier_rules(&order(20.0), tiers, off);

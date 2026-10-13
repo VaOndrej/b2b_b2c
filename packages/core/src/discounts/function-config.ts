@@ -111,7 +111,7 @@ export function buildFunctionPayload(c: ConfigInput, opts: EncodeFunctionConfigO
           ...(r.minimum ? { minimum: r.minimum } : {}),
           ...(r.schedule ? { schedule: r.schedule } : {}),
           ...(r.targeting ? { targeting: r.targeting } : {}),
-          ...(r.combinesWith ? { combinesWith: r.combinesWith } : {}),
+          ...(r.combine ? { combine: r.combine } : {}),
         })),
       },
       tiers: { sets: tiers.sets },

@@ -27,6 +27,8 @@ const EXT_DIR = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 // --- Scenario helpers (the TS counterparts of the helpers in src/engine/tests.rs) --------------
 
 const W = [codeHash("WELCOME15")];
+/** `more` for a rule that adds up with automatic discounts (`ADDS` in tests.rs: its list `c` has the type's bit 1). */
+const ADDS = { c: 1 };
 const pct = (id, percent, more = {}) => ({ id, enabled: true, name: id, method: "automatic", value: { kind: "percentage", percent }, target: { kind: "products" }, ...more });
 const code = (id, percent, hashes, more = {}) => pct(id, percent, { method: "code", codeHashes: hashes, ...more });
 const cfg = (rules, extra = {}) => ({ modules: { codes: { rules } }, ...extra });
@@ -156,7 +158,7 @@ const TWINS = {
   },
 
   outlet_lines_are_out_of_product_and_order_discounts() {
-    const c = cfg([pct("a", 10), order("o", { kind: "percentage", percent: 10 })]);
+    const c = cfg([pct("a", 10, ADDS), order("o", { kind: "percentage", percent: 10 }, ADDS)]);
     const plan = planCart(cart([line("l1", 1, 10000, ["a"]), line("l2", 1, 5000, ["a"], { outlet: true })]), c);
     expect(plan.lines[1].excluded).toBe("outlet");
     expect(plan.lines[1].product).toBeNull();
@@ -164,13 +166,13 @@ const TWINS = {
     expect(plan.order.excludedLineIds).toEqual(["l2"]);
     const only = [line("l1", 1, 10000, ["a"], { outlet: true })];
     expect(gated(planCart(cart(only), c), "a")).toBe("outlet_only");
-    const anything = planCart(cart(only), cfg([pct("a", 10)], { engine: { combination: { outletWithAnything: true } } }));
+    const anything = planCart(cart(only), cfg([pct("a", 10, { c: 32 })], { engine: { mc: [0, 0, 1] } }));
     expect(anything.lines[0].excluded).toBeNull();
     expect(productOf(anything, "l1")[2]).toBe(1000);
   },
 
   a_partly_combining_sale_line_takes_only_what_it_allows() {
-    const c = cfg([pct("a", 20), order("o", { kind: "percentage", percent: 10 })]);
+    const c = cfg([pct("a", 20, { c: 33 }), order("o", { kind: "percentage", percent: 10 }, { c: 33 })]);
     // Rust `outlet_no` 6 / 5 / 3 = the flag 1 / 2 / 4 (what the sale takes).
     const plan = planCart(cart([line("s", 3, 10000, ["a"], { outlet: 1 }), line("n", 1, 10000, ["a"])]), c);
     expect(plan.lines[0].excluded).toBeNull();
@@ -186,15 +188,15 @@ const TWINS = {
     expect(gated(orderOnly, "a")).toBe("outlet_only");
     expect([orderOnly.order.base, orderOnly.order.amount]).toEqual([30000, 3000]);
     expect(orderOnly.order.excludedLineIds).toEqual([]);
-    const anything = planCart(cart([line("s", 3, 10000, ["a"], { outlet: 1 })]), cfg([pct("a", 20), order("o", { kind: "percentage", percent: 10 })], { engine: { combination: { outletWithAnything: true } } }));
-    expect(productOf(anything, "s")[2]).toBe(6000);
-    expect(anything.order.excludedLineIds).toEqual([]);
+    const anything = planCart(cart([line("s", 3, 10000, ["a"], { outlet: 1 })]), cfg([pct("a", 20, { c: 33 }), order("o", { kind: "percentage", percent: 10 }, { c: 33 })], { engine: { mc: [0, 0, 27] } }));
+    expect(anything.lines[0].product).toBeNull();
+    expect(anything.order).toBeNull();
   },
 
   a_gift_card_line_takes_no_discount_whatever_the_combination_says() {
     // Rust `outlet_no` 7 = the flag 0 (a gift card: takes none of the classes, ever).
-    for (const extra of [{}, { engine: { combination: { outletWithAnything: true } } }]) {
-      const c = cfg([pct("a", 20), order("o", { kind: "percentage", percent: 10 })], extra);
+    for (const extra of [{}, { engine: { mc: [0, 0, 27] } }]) {
+      const c = cfg([pct("a", 20, { c: 33 }), order("o", { kind: "percentage", percent: 10 }, { c: 33 })], extra);
       const plan = planCart(cart([line("g", 3, 10000, ["a"], { outlet: 0 }), line("n", 1, 10000, ["a"])]), c);
       expect(plan.lines[0].product).toBeNull();
       expect(productOf(plan, "n")[2]).toBe(2000);
@@ -235,8 +237,8 @@ const TWINS = {
   },
 
   fixed_amounts_are_capped_per_item_and_at_the_order_base() {
-    const f = { id: "f", enabled: true, name: "f", method: "automatic", value: { kind: "fixed", amount: { CZK: 5000 } }, target: { kind: "products" } };
-    const o = order("o", { kind: "fixed", amount: { CZK: 1000000 } });
+    const f = { id: "f", enabled: true, name: "f", method: "automatic", value: { kind: "fixed", amount: { CZK: 5000 } }, target: { kind: "products" }, ...ADDS };
+    const o = order("o", { kind: "fixed", amount: { CZK: 1000000 } }, ADDS);
     const plan = planCart(cart([line("l1", 2, 3000, ["f"]), line("l2", 1, 8000, ["f"])]), cfg([f, o]));
     expect(productOf(plan, "l1")).toEqual(["f", { fixedPerItem: 3000 }, 6000]);
     expect(productOf(plan, "l2")).toEqual(["f", { fixedPerItem: 5000 }, 5000]);
@@ -252,7 +254,8 @@ const TWINS = {
   },
 
   exclusive_order_vs_products_better_scenario_wins_tie_keeps_products() {
-    const off = { engine: { combination: { productWithOrder: false } } };
+    // (The rules have no list: a product discount and the order discount do not add up.)
+    const off = {};
     const lines = [line("l1", 1, 10000, ["a"]), line("l2", 1, 10000, [])];
     const wins = planCart(cart(lines), cfg([pct("a", 10), order("o", { kind: "percentage", percent: 20 })], off));
     expect(wins.lines.every((l) => l.product === null)).toBe(true);
@@ -263,15 +266,16 @@ const TWINS = {
   },
 
   shipping_percent_beats_fixed_and_the_switches_can_block_it() {
-    const ship = (id, value) => ({ id, enabled: true, name: id, method: "automatic", value, target: { kind: "shipping" } });
+    const ship = (id, value) => ({ id, enabled: true, name: id, method: "automatic", value, target: { kind: "shipping" }, c: 1 });
+    const addsShipping = { c: 4 };
     const free = ship("free", { kind: "freeShipping" });
     const fixed = ship("fixed", { kind: "fixed", amount: { CZK: 999900 } });
     const half = ship("half", { kind: "percentage", percent: 50 });
     const lines = [line("l1", 1, 10000, ["a"])];
-    const plan = planCart(cart(lines), cfg([fixed, half, free, pct("a", 10)]));
+    const plan = planCart(cart(lines), cfg([fixed, half, free, pct("a", 10, addsShipping)]));
     expect([plan.shipping.ruleId, plan.shipping.value]).toEqual(["free", { percent: 100 }]);
-    expect(planCart(cart(lines), cfg([fixed, pct("a", 10)])).shipping.value).toEqual({ fixedTotal: 999900 });
-    const blocked = planCart(cart(lines), cfg([free, pct("a", 10)], { engine: { combination: { productWithShipping: false } } }));
+    expect(planCart(cart(lines), cfg([fixed, pct("a", 10, addsShipping)])).shipping.value).toEqual({ fixedTotal: 999900 });
+    const blocked = planCart(cart(lines), cfg([free, pct("a", 10)]));
     expect(blocked.shipping).toBeNull();
   },
 
@@ -401,7 +405,7 @@ const TWINS = {
   },
 
   a_pro_stack_sums_capped_and_is_owned_by_its_code_rule() {
-    const c = cfg([pct("p7", 15, { combinesWith: { ruleIds: ["p8"] } }), pct("p8", 17), code("c", 12, W, { combinesWith: { ruleIds: ["p8"] } })]);
+    const c = cfg([pct("p7", 15, { x: ["p8"] }), pct("p8", 17, { x: ["p7", "c"] }), code("c", 12, W, { x: ["p8"] })]);
     const stack = planCart(cart([line("l1", 1, 10000, ["p7", "p8"])]), c).lines[0].product;
     expect([stack.amount, stack.value, stack.message]).toEqual([3200, { fixedTotal: 3200 }, "p8 + p7"]);
     const plan = planCart(cart([line("l1", 1, 10000, ["p8", "c"])], ["WELCOME15"]), c);
@@ -409,21 +413,21 @@ const TWINS = {
     expect(plan.lines[0].product.ownerRuleId).toBe("c");
     expect(emitForNode(plan, { kind: "automatic" }, null).productCandidates).toEqual([]);
     expect(emitForNode(plan, { kind: "code", ruleId: "c" }, "welcome15").productCandidates).toHaveLength(1);
-    const capped = planCart(cart([line("l1", 1, 10000, ["x", "y"])]), cfg([pct("x", 60, { combinesWith: { ruleIds: ["y"] } }), pct("y", 70)]));
+    const capped = planCart(cart([line("l1", 1, 10000, ["x", "y"])]), cfg([pct("x", 60, { x: ["y"] }), pct("y", 70, { x: ["x"] })]));
     expect(capped.lines[0].product.amount).toBe(10000);
     expect(capped.lines[0].product.components.map((c2) => c2.amount)).toEqual([7000, 3000]);
   },
 
   a_pro_stack_is_searched_among_the_six_best_ranked_candidates_only() {
     const ids = ["a", "b", "c", "d", "e", "f", "g", "h"];
-    const meshLink = (list, k) => ({ combinesWith: { ruleIds: list.slice(k + 1) } });
+    const meshLink = (list, k) => ({ x: list.filter((_, i) => i !== k) });
     const c = cfg(ids.map((id, k) => pct(id, 10 - k, meshLink(ids, k))));
     const plan = planCart(cart([line("l1", 1, 100000, ids)]), c);
     const stack = plan.lines[0].product;
     expect(stack.components.map((c2) => [c2.ruleId, c2.amount])).toEqual([["a", 10000], ["b", 9000], ["c", 8000], ["d", 7000], ["e", 6000], ["f", 5000]]);
     expect([stack.amount, stack.value, stack.message]).toEqual([45000, { fixedTotal: 45000 }, "a + b + c + d + e + f"]);
     expect(planCart(cart([line("l1", 1, 100000, ids.slice(0, 6))]), c).lines[0].product.components).toHaveLength(6);
-    const partner = cfg([pct("a", 10, { combinesWith: { ruleIds: ["g"] } }), pct("b", 9), pct("c", 8), pct("d", 7), pct("e", 6), pct("f", 5), pct("g", 4)]);
+    const partner = cfg([pct("a", 10, { x: ["g"] }), pct("b", 9), pct("c", 8), pct("d", 7), pct("e", 6), pct("f", 5), pct("g", 4, { x: ["a"] })]);
     const capped = planCart(cart([line("l1", 1, 100000, ids.slice(0, 7)), line("l2", 1, 100000, ["a", "b", "g"])]), partner);
     expect(productOf(capped, "l1")).toEqual(["a", { percent: 10 }, 10000]);
     expect(productOf(capped, "l2")).toEqual(["a", { fixedTotal: 14000 }, 14000]);
@@ -517,7 +521,7 @@ const TWINS = {
     expect(roundingTiePossible(50_000_000, 10) || roundingTiePossible(10_000_000, 50) || roundingTiePossible(123_456_789, 10)).toBe(false);
     expect(roundingTiePossible(123_456_785, 10) && roundingTiePossible(5_000_000_005, 10)).toBe(true);
     expect(roundingTiePossible(3990, 10) || roundingTiePossible(1995, 20)).toBe(false);
-    const c = cfg([pct("t", 10), pct("a", 10, { combinesWith: { ruleIds: ["b"] } }), pct("b", 5), order("o", { kind: "percentage", percent: 10 })]);
+    const c = cfg([pct("t", 10, { x: ["o"] }), pct("a", 10, { x: ["b", "o"] }), pct("b", 5, { x: ["a", "o"] }), order("o", { kind: "percentage", percent: 10 }, { x: ["t", "a", "b"] })]);
     const lines = [line("l1", 1, 1005, ["t"]), line("l2", 1, 1004, ["t"]), line("l3", 3, 3330, ["a", "b"]), line("l4", 1, 106, [])];
     const plan = planCart(cart(lines), c);
     const out = mapToFunctionOutput(emitForNode(plan, { kind: "automatic" }, null), { plan, classes: ["PRODUCT", "ORDER"], lineCount: lines.length });
@@ -691,7 +695,7 @@ const TWINS = {
   },
 
   margin_off_plans_exactly_like_mvp1() {
-    const rules = [pct("a", 60), order("o", { kind: "percentage", percent: 30 })];
+    const rules = [pct("a", 60, ADDS), order("o", { kind: "percentage", percent: 30 }, ADDS)];
     const bare = [line("l1", 2, 100_000, ["a"]), line("l2", 1, 30_000, [])];
     const withCosts = bare.map((l) => ({ ...l, unitCost: 900, unitCostCurrency: "CZK", marginRefs: ["1"] }));
     const mvp1 = planCart(cart(bare), cfg(rules)).lines;
@@ -724,7 +728,7 @@ const TWINS = {
         '],"selectionStrategy":"ALL"}}]}',
       ].join(""),
     );
-    const stack = planCart(cart([line("l1", 1, 1005, ["x", "y"])]), mcfg([pct("x", 10, { combinesWith: { ruleIds: ["y"] } }), pct("y", 10)], { enabled: true, max: 20 }));
+    const stack = planCart(cart([line("l1", 1, 1005, ["x", "y"])]), mcfg([pct("x", 10, { x: ["y"] }), pct("y", 10, { x: ["x"] })], { enabled: true, max: 20 }));
     expect(stack.lines[0].product.amount).toBe(201);
     expect(JSON.stringify(autoLines(stack, 1).lines)).toContain('"value":{"fixedAmount":{"amount":"2.01","appliesToEachItem":true}}');
   },
@@ -738,7 +742,7 @@ const TWINS = {
   },
 
   a_pro_stack_is_cut_in_rank_order_and_its_owner_recomputed() {
-    const rules = [pct("a", 20, { combinesWith: { ruleIds: ["b"] } }), code("b", 10, W)];
+    const rules = [pct("a", 20, { x: ["b"] }), code("b", 10, W, { x: ["a"] })];
     const lines = [line("l1", 1, 100_000, ["a", "b"])];
     const wide = planCart(cart(lines, ["WELCOME15"]), mcfg(rules, { enabled: true, max: 25 }));
     const stack = wide.lines[0].product;
@@ -754,7 +758,7 @@ const TWINS = {
 
   the_order_discount_is_safe_on_both_allocation_bases_with_a_reserve() {
     const percent = (p) => ({ kind: "percentage", percent: p });
-    const plan = planCart(cart([line("l1", 1, 100_000, ["a"]), line("l2", 1, 50_000, [])]), mcfg([pct("a", 50), order("o", percent(20))], { enabled: true, max: 60 }));
+    const plan = planCart(cart([line("l1", 1, 100_000, ["a"]), line("l2", 1, 50_000, [])]), mcfg([pct("a", 50, ADDS), order("o", percent(20), ADDS)], { enabled: true, max: 60 }));
     expect(productOf(plan, "l1")[2]).toBe(50_000);
     expect([plan.order.amount, plan.order.value, plan.order.base]).toEqual([14_998, { fixedTotal: 14_998 }, 100_000]);
     expect(plan.order.excludedLineIds).toEqual([]);
@@ -762,7 +766,7 @@ const TWINS = {
     expect(one.order.value).toEqual({ fixedTotal: 19_999 });
     const same = planCart(
       cart([costLine("a", 1, 100_000, 49.99, ["p"]), costLine("b", 1, 10_000, 94.99, [])]),
-      mcfg([pct("p", 90), order("o", percent(50))], { enabled: true, max: 100, cur: "CZK" }),
+      mcfg([pct("p", 90, ADDS), order("o", percent(50), ADDS)], { enabled: true, max: 100, cur: "CZK" }),
     );
     expect([same.order.amount, same.order.value, same.order.base]).toEqual([5000, { percent: 50 }, 10_000]);
     expect(same.order.excludedLineIds).toEqual(["b"]);
@@ -787,7 +791,8 @@ const TWINS = {
   },
 
   exclusive_mode_protects_the_order_only_scenario_too() {
-    const off = { engine: { combination: { productWithOrder: false } } };
+    // (The rules have no list: a product discount and the order discount do not add up.)
+    const off = {};
     const o = order("o", { kind: "percentage", percent: 30 });
     const lines = [line("l1", 1, 100_000, ["a"]), costLine("l2", 1, 100_000, 1000, [])];
     const plan = planCart(cart(lines), mcfg([pct("a", 5), o], { enabled: true, max: 10, cur: "CZK" }, off));
@@ -810,9 +815,9 @@ const TWINS = {
   },
 
   a_capped_line_is_never_relaxed_over_the_output_budget() {
-    const fix = { id: "fix", enabled: true, name: "9,99 Kč z kusu", method: "automatic", value: { kind: "fixed", amount: { CZK: 999 } }, target: { kind: "products" }, combinesWith: { ruleIds: ["ten"] } };
+    const fix = { id: "fix", enabled: true, name: "9,99 Kč z kusu", method: "automatic", value: { kind: "fixed", amount: { CZK: 999 } }, target: { kind: "products" }, x: ["ten"] };
     const lines = Array.from({ length: 200 }, (_, i) => line(`L${i + 1}`, 1, 5000 + (i + 1) * 101, ["fix", "ten"]));
-    const plan = planCart(cart(lines), mcfg([fix, pct("ten", 10)], { enabled: true, max: 20 }));
+    const plan = planCart(cart(lines), mcfg([fix, pct("ten", 10, { x: ["fix"] })], { enabled: true, max: 20 }));
     const capped = new Set(plan.lines.filter((l) => l.marginCapped).map((l) => l.lineId));
     expect(capped.size > 20 && capped.size < 200).toBe(true);
     const out = autoLines(plan, lines.length);
@@ -1164,7 +1169,7 @@ const TWINS = {
     expect(productOf(plan, "l3")).toBeNull();
     expect(productOf(plan, "l4")).toBeNull();
     expect(productOf(plan, "l5")).toBeNull();
-    const outlets = planCart(cart(lines), tcfg([], tiers, { engine: { combination: { outletWithAnything: true } } }));
+    const outlets = planCart(cart(lines), tcfg([], tiers, { engine: { mc: [32, 0, 8] } }));
     for (const id of ["l1", "l6", "l7"]) expect(productOf(outlets, id)).toEqual(["tier:g", { percent: 10 }, 1000]);
     expect(productOf(outlets, "l5")).toBeNull();
   },
@@ -1196,18 +1201,18 @@ const TWINS = {
     expect(productOf(plan, "l1")[0]).toBe("a");
     expect(productOf(plan, "l2")[0]).toBe("tier:g");
     expect(productOf(planCart(cart(lines), tcfg([pct("a", 10), pct("z", 10, { priority: 1 })], tiers(10))), "l2")[0]).toBe("z");
-    const stack = [pct("p", 15, { combinesWith: { ruleIds: ["q"] } }), pct("q", 10)];
+    const stack = [pct("p", 15, { x: ["q"] }), pct("q", 10, { x: ["p"] })];
     for (const [tier, owner, amount] of [[20, "p", 2500], [25, "tier:g", 2500], [30, "tier:g", 3000]]) {
       const got = productOf(planCart(cart([tline("l1", 1, 10000, "P1", undefined, { ruleIds: ["p", "q"] })]), tcfg(stack, tiers(tier))), "l1");
       expect([got[0], got[2]]).toEqual([owner, amount]);
     }
     const ids = ["a", "b", "c", "d", "e", "f", "g", "h"];
-    const meshLink = (list, k) => ({ combinesWith: { ruleIds: list.slice(k + 1) } });
+    const meshLink = (list, k) => ({ x: list.filter((_, i) => i !== k) });
     const mesh = planCart(cart([tline("l1", 1, 100000, "P1", undefined, { ruleIds: ids })]), tcfg(ids.map((id, k) => pct(id, 10 - k, meshLink(ids, k))), tiers(11)));
     const s = mesh.lines[0].product;
     expect(s.components.map((c2) => c2.ruleId)).toEqual(["a", "b", "c", "d", "e", "f"]);
     expect([s.amount, s.message]).toEqual([45000, "a + b + c + d + e + f"]);
-    const listed = planCart(cart([tline("l1", 1, 10000, "P1", undefined, { ruleIds: ["x"] })]), tcfg([pct("x", 5, { combinesWith: { ruleIds: ["tier:g", "g"] } })], tiers(10)));
+    const listed = planCart(cart([tline("l1", 1, 10000, "P1", undefined, { ruleIds: ["x"] })]), tcfg([pct("x", 5, { x: ["tier:g", "g"] })], tiers(10)));
     expect(productOf(listed, "l1")).toEqual(["tier:g", { percent: 10 }, 1000]);
   },
 
@@ -1248,7 +1253,8 @@ const TWINS = {
 
   the_exclusive_switch_drops_a_tier_like_a_product_discount() {
     const tiers = { global: "g", sets: [["g", "cart", [], [[2, 10]]]] };
-    const off = { engine: { combination: { productWithOrder: false } } };
+    // (The rules have no list: a product discount and the order discount do not add up.)
+    const off = {};
     const lines = [tline("l1", 1, 10000, "P1"), tline("l2", 1, 10000, "P2")];
     const orderWins = planCart(cart(lines), tcfg([order("o", { kind: "percentage", percent: 20 })], tiers, off));
     expect(orderWins.lines.every((l) => l.product === null)).toBe(true);

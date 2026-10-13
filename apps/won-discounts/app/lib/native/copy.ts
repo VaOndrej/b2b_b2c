@@ -320,8 +320,8 @@ export function warningText(item: WarningItem, locale: NativeLocale): string {
     case "combination_differs": {
       const category = pick(CATEGORY_WITH[item.category], locale);
       return locale === "en"
-        ? `In Shopify it ${item.native ? "combined" : "did not combine"} ${category}. In Won it ${item.won ? "combines" : "does not combine"}, by the Won combination settings.`
-        : `V Shopify se ${item.native ? "kombinovala" : "nekombinovala"} ${category}. Ve Won se podle nastavení kombinování ${item.won ? "kombinuje" : "nekombinuje"}.`;
+        ? `In Shopify it ${item.native ? "added up" : "did not add up"} ${category}. In Won it starts with your default “Adds up with” list, so it ${item.won ? "does" : "does not"}; you can change that in its editor.`
+        : `V Shopify se ${item.native ? "sčítala" : "nesčítala"} ${category}. Ve Won dostane váš výchozí seznam „Sčítá se s“, takže se ${item.won ? "sčítá" : "nesčítá"}. Změníte to v editoru slevy.`;
     }
     case "starts_by_day":
       return pick(

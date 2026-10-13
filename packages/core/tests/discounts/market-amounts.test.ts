@@ -267,8 +267,9 @@ test("with the setting on, a market the merchant left without an amount still ge
     markets: MARKETS,
     engine: { unknownMarketLowest: true },
     modules: {
-      codes: { rules: [orderFixed("r", { CZK: 40000, "EUR@sk": 1600 })] },
-      tiers: { sets: [{ id: "g", scope: "global", countAcross: "product", breaks: [{ minQty: 3, amountOff: { CZK: 3000, "EUR@sk": 120 } }] }] },
+      // (The order discount and the tiers add up: each names the other's type.)
+      codes: { rules: [orderFixed("r", { CZK: 40000, "EUR@sk": 1600 }, { combine: { types: ["tiers"] } })] },
+      tiers: { sets: [{ id: "g", scope: "global", countAcross: "product", breaks: [{ minQty: 3, amountOff: { CZK: 3000, "EUR@sk": 120 } }] }], combine: { types: ["automatic"] } },
       rewards: { freeShipping: { threshold: { CZK: 150000, "EUR@sk": 6000 } }, gifts: [] },
     },
   }).config;

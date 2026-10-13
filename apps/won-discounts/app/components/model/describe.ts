@@ -19,6 +19,7 @@ import { shopLocalDates } from "@won/core/discounts/function-payload";
 import { unsupportedInFunction } from "@won/core/discounts/plan";
 
 import type { Translator } from "../../i18n";
+import { combineSummary } from "./combine";
 import type { MarketNames } from "./markets";
 import { amountLabelsOf, marketView } from "./markets";
 
@@ -126,18 +127,32 @@ export function describeMarkets(rule: DiscountRule, tr: Translator, marketNames:
   return markets.length > 0 ? tr.t("describe.line.markets", { markets: tr.list(markets) }) : "";
 }
 
-/** "sčítá se s Podzimní sleva a VIP10" (or with a count when the names are not known), "" with no combination. */
+/**
+ * "sčítá se s automatickými slevami a dopravou zdarma · výjimka: NEWSLETTER" — the types in words, then the
+ * rules named as exceptions, by name (one whose name is not known here is not said). A rule that adds up with
+ * nothing says so.
+ */
 export function describeCombines(rule: DiscountRule, tr: Translator, ruleNames?: ReadonlyMap<string, string>): string {
-  const ids = rule.combinesWith?.ruleIds ?? [];
-  if (ids.length === 0) return "";
-  if (!ruleNames) return tr.t("describe.line.combinesCount", { n: ids.length });
-  const names = ids.map((id) => ruleNames.get(id)).filter((n): n is string => n !== undefined).map((n) => n.trim() || tr.t("common.untitled"));
-  return names.length > 0 ? tr.t("describe.line.combines", { names: tr.list(names) }) : "";
+  return combineSummary(rule.combine?.types ?? [], tr, exceptionNames(rule, tr, ruleNames));
+}
+
+/** The names of the rules named as exceptions (a rule whose name is not known here is left out). */
+function exceptionNames(rule: DiscountRule, tr: Translator, ruleNames?: ReadonlyMap<string, string>): string[] {
+  return (rule.combine?.rules ?? []).map((id) => ruleNames?.get(id)).filter((n): n is string => n !== undefined).map((n) => n.trim() || tr.t("common.untitled"));
+}
+
+/**
+ * "výjimka: NEWSLETTER" for the rule's one line in a list: only the exceptions (the list of types is every
+ * discount's and is read in its editor), and only by name — "" without any.
+ */
+export function describeExceptions(rule: DiscountRule, tr: Translator, ruleNames?: ReadonlyMap<string, string>): string {
+  const names = exceptionNames(rule, tr, ruleNames);
+  return names.length === 0 ? "" : tr.t(names.length === 1 ? "combine.summary.exception" : "combine.summary.exceptions", { names: tr.list(names) });
 }
 
 /**
  * The rule's one-line state (§17 slot 2): value · method · minimum · schedule ·
- * usage limits · market targeting · combinations · not offered in. The first
+ * usage limits · market targeting · exceptions · not offered in. The first
  * four and the last are the core formatter's; the rest is set only when the
  * rule has it (P5).
  */
@@ -164,7 +179,7 @@ export function describeRuleLine(
     describeSchedule(rule, tr, timezone),
     describeLimits(rule, tr),
     describeMarkets(rule, tr, names.marketNames),
-    describeCombines(rule, tr, names.ruleNames),
+    describeExceptions(rule, tr, names.ruleNames),
     p.notOffered ?? "",
   ]
     .filter(Boolean)
@@ -186,7 +201,7 @@ export function describeProSettings(
   const markets = (rule.targeting?.markets ?? []).map((h) => marketView(h, marketNames).name);
   const out = [markets.length > 0 ? tr.t("describe.targeting.markets", { markets: tr.list(markets) }) : tr.t("describe.targeting.all")];
   if (unsupportedInFunction(rule).length > 0) out.push(tr.t("describe.targeting.segments"));
-  out.push(describeCombines(rule, tr, ruleNames) || tr.t("describe.combines.default"));
+  out.push(describeCombines(rule, tr, ruleNames));
   return out.join(SEP);
 }
 
@@ -198,7 +213,7 @@ export function describeProSettings(
  * `combines` inside it. `more` is the retired "Další možnosti": old links land
  * on `conditions`.
  */
-export type EditorAnchor = "discount" | "value" | "target" | "conditions" | "codes" | "schedule" | "pro" | "markets" | "segments" | "combines";
+export type EditorAnchor = "discount" | "value" | "target" | "conditions" | "codes" | "schedule" | "pro" | "markets" | "segments" | "combines" | "exceptions";
 export const EDITOR_ANCHOR_ALIASES: Readonly<Record<string, EditorAnchor>> = { more: "conditions" };
 
 /** The editor's five sections, in the page's order, by the anchor of each (the list "Na této stránce" links to them). */
@@ -217,6 +232,7 @@ export const EDITOR_SECTION_OF: Readonly<Record<EditorAnchor, EditorSection>> = 
   markets: "pro",
   segments: "pro",
   combines: "pro",
+  exceptions: "pro",
 };
 
 function isEditorAnchor(name: string): name is EditorAnchor {

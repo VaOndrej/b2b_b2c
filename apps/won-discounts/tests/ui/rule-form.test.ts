@@ -177,7 +177,7 @@ test("limits for a code rule", () => {
   assert.deepEqual(errorsOf(bad), ["usageLimit:editor.error.usage"]);
 });
 
-test("BILL-1: without Pro the form cannot set targeting or combinations; stored values are kept (§14a)", () => {
+test("BILL-1: without Pro the form cannot set targeting or exceptions; stored values are kept (§14a). The list of types is every plan's", () => {
   const existing: DiscountRule = {
     id: "r_new",
     enabled: true,
@@ -186,26 +186,45 @@ test("BILL-1: without Pro the form cannot set targeting or combinations; stored 
     value: { kind: "percentage", percent: 5 },
     target: { kind: "order" },
     targeting: { markets: ["cz"] },
-    combinesWith: { ruleIds: ["r_other"] },
+    combine: { types: ["shipping"], rules: ["r_other"] },
     priority: 7,
     origin: { nativeId: "gid://shopify/DiscountCodeNode/1" },
   };
+  // "Sčítá se s" as the editor posts it: the marker, the ticked types, and (Pro) the ticked exceptions.
+  const others = [
+    { id: "r_other", name: "Jiná", type: "code" as const },
+    { id: "r_third", name: "Třetí", type: "code" as const },
+    { id: "r_auto", name: "Automatická", type: "automatic" as const },
+  ];
   const proFields: [string, string][] = [
     [FIELD.markets, "sk"],
-    [FIELD.combinesWith, "r_other"],
+    [FIELD.combinePosted, "1"],
+    [FIELD.combineTypes, "automatic"],
+    [FIELD.combineTypes, "outlet"],
+    [FIELD.combineTypes, "bogus"],
+    [FIELD.combineRules, "r_third"],
   ];
-  const free = readRuleForm(form([...base, ...proFields]), { ...CTX, existing });
+  const free = readRuleForm(form([...base, ...proFields]), { ...CTX, existing, otherRules: others });
   assert.deepEqual(free.rule.targeting, { markets: ["cz"] });
-  assert.deepEqual(free.rule.combinesWith, { ruleIds: ["r_other"] });
+  // Free: the types are the form's (in the checkboxes' order, only known ones); the stored exception stays, the posted one is not taken.
+  assert.deepEqual(free.rule.combine, { types: ["automatic", "outlet"], rules: ["r_other"] });
   assert.equal(free.rule.priority, 7);
   assert.deepEqual(free.rule.origin, { nativeId: "gid://shopify/DiscountCodeNode/1" });
 
   const pro = readRuleForm(
-    form([...base, ...proFields, [FIELD.markets, "unknown-market"], [FIELD.combinesWith, "r_new"], [FIELD.combinesWith, "ghost"]]),
-    { ...CTX, existing, pro: true },
+    form([...base, ...proFields, [FIELD.markets, "unknown-market"], [FIELD.combineRules, "r_new"], [FIELD.combineRules, "ghost"], [FIELD.combineRules, "r_auto"]]),
+    { ...CTX, existing, pro: true, otherRules: others },
   );
   assert.deepEqual(pro.rule.targeting, { markets: ["sk"] });
-  assert.deepEqual(pro.rule.combinesWith, { ruleIds: ["r_other"] });
+  // Pro: the exceptions are the form's — an existing other rule only, never itself, and not one whose type is ticked anyway.
+  assert.deepEqual(pro.rule.combine, { types: ["automatic", "outlet"], rules: ["r_third"] });
+  // A shipping discount is offered only what it can meet: no "shipping", no "outlet".
+  const shipping = base.map(([k, v]) => [k, k === FIELD.valueKind ? "freeShipping" : v] as [string, string]);
+  const ship = readRuleForm(form([...shipping, [FIELD.combinePosted, "1"], [FIELD.combineTypes, "shipping"], [FIELD.combineTypes, "outlet"], [FIELD.combineTypes, "code"]]), { ...CTX, existing: null });
+  assert.deepEqual(ship.rule.combine, { types: ["code"] });
+  // A form without the list (no marker) leaves the stored one alone; with the marker and nothing ticked the list is empty.
+  assert.deepEqual(readRuleForm(form(base), { ...CTX, existing }).rule.combine, { types: ["shipping"], rules: ["r_other"] });
+  assert.deepEqual(readRuleForm(form([...base, [FIELD.combinePosted, "1"]]), { ...CTX, existing: null }).rule.combine, { types: [] });
 });
 
 test("a name is required and bounded", () => {
@@ -413,7 +432,7 @@ test("B8: the minimum's scope is read only for a product / collection rule that 
   assert.equal(readRuleForm(form([...collections, [FIELD.minQty, "3"]]), CTX).rule.minimum?.scope, "entitled");
 });
 
-test("B9 + P3: stored segments, and on Free stored markets / combinations, are removed only by their explicit controls", () => {
+test("B9 + P3: stored segments, and on Free stored markets, are removed only by their explicit controls", () => {
   const existing: DiscountRule = {
     id: "r_new",
     enabled: true,
@@ -422,17 +441,12 @@ test("B9 + P3: stored segments, and on Free stored markets / combinations, are r
     value: { kind: "percentage", percent: 5 },
     target: { kind: "order" },
     targeting: { segments: ["gid://shopify/Segment/1"], markets: ["cz"] },
-    combinesWith: { ruleIds: ["r_other"] },
   };
   const free = { ...CTX, existing };
   assert.deepEqual(readRuleForm(form(base), free).rule.targeting, { segments: ["gid://shopify/Segment/1"], markets: ["cz"] }, "kept");
   assert.deepEqual(readRuleForm(form([...base, [FIELD.dropSegments, "on"]]), free).rule.targeting, { markets: ["cz"] });
   assert.deepEqual(readRuleForm(form([...base, [FIELD.dropMarkets, "on"]]), free).rule.targeting, { segments: ["gid://shopify/Segment/1"] });
   assert.equal(readRuleForm(form([...base, [FIELD.dropSegments, "on"], [FIELD.dropMarkets, "on"]]), free).rule.targeting, undefined);
-  // 13 Oct 2026: which discounts it adds up with is the form's on every plan (ticked = kept, unticked = removed).
-  const withOther = { ...free, otherRules: [{ id: "r_other", name: "Jiná" }] };
-  assert.deepEqual(readRuleForm(form([...base, [FIELD.combinesWith, "r_other"]]), withOther).rule.combinesWith, { ruleIds: ["r_other"] });
-  assert.equal(readRuleForm(form(base), withOther).rule.combinesWith, undefined);
   // Pro: segments stay next to the form's markets until removed; the Free-only drop fields mean nothing.
   const pro = { ...free, pro: true };
   assert.deepEqual(readRuleForm(form([...base, [FIELD.markets, "sk"], [FIELD.dropMarkets, "on"]]), pro).rule.targeting, { segments: ["gid://shopify/Segment/1"], markets: ["sk"] });
@@ -571,7 +585,7 @@ test("fieldSection: every field of the form sits in one of the editor's five sec
   for (const field of [FIELD.minimum("CZK"), FIELD.minQty, FIELD.minScope]) assert.equal(fieldSection(field), "conditions", field);
   for (const field of [FIELD.method, FIELD.codes, FIELD.usageLimit, FIELD.batchCount, FIELD.batchPrefix, FIELD.batchLength]) assert.equal(fieldSection(field), "codes", field);
   for (const field of [FIELD.startDate, FIELD.endDate]) assert.equal(fieldSection(field), "schedule", field);
-  for (const field of [FIELD.markets, FIELD.combinesWith, FIELD.dropMarkets]) assert.equal(fieldSection(field), "pro", field);
+  for (const field of [FIELD.markets, FIELD.combineTypes, FIELD.combineRules, FIELD.dropMarkets]) assert.equal(fieldSection(field), "pro", field);
   // The version token belongs to the form as a whole: the refusal is said at the top, no section is marked.
   assert.equal(fieldSection(FIELD.ruleVersion), null);
   // Every error the parser can report lands in a section.

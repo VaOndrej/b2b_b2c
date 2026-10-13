@@ -79,6 +79,8 @@ const COPY: Readonly<Record<string, IssueCopy | ((issue: ConfigIssue) => IssueCo
   missing_handle: { key: "fix.missing_handle" },
   missing_id: { key: "fix.missing_id" },
   orphan_combines_with: { key: "fix.orphan_combines_with" },
+  unknown_combine_type: { key: "fix.unknown_combine_type" },
+  invalid_combine_types: { key: "fix.invalid_combine_types" },
   orphan_override: { key: "fix.orphan_override" },
   overlapping_campaign: { key: "fix.overlapping_campaign" },
   override_field_not_allowed: { key: "fix.override_field_not_allowed" },

@@ -280,7 +280,12 @@ test("last resort: the candidates that save the least are dropped until the outp
 });
 
 test("checkoutPreview: per line what the checkout applies, every node included, and the shortfall when degraded", () => {
-  const rules = [pct("A", 10, { name: "A" }), pct("C", 20, { ...code(["KOD"]), name: "Kód" }), orderPct("O", 5, { name: "O" })];
+  // The order discount adds up with both product discounts (each names the other's type); the two product discounts do not.
+  const rules = [
+    pct("A", 10, { name: "A", combine: { types: ["automatic"] } }),
+    pct("C", 20, { ...code(["KOD"]), name: "Kód", combine: { types: ["automatic"] } }),
+    orderPct("O", 5, { name: "O", combine: { types: ["automatic", "code"] } }),
+  ];
   const plan = planCart(
     cartOf([line("L1", 100_00, 1, ["A", "C"]), line("L2", 10_05, 1, ["A"])], { enteredCodes: ["kod"] }),
     payloadOf(rules),
@@ -315,9 +320,9 @@ test("checkoutPreview: a degraded product output leaves a larger order base, and
   const plan = planCart(
     cartOf(lines),
     payloadOf([
-      fixed("fix", { CZK: 9_99 }, { name: "9,99 Kč z kusu", combinesWith: { ruleIds: ["ten"] } }),
-      pct("ten", 10, { name: "Deset procent" }),
-      orderPct("O", 10, { name: "Objednávka" }),
+      fixed("fix", { CZK: 9_99 }, { name: "9,99 Kč z kusu", combine: { types: ["automatic"] } }),
+      pct("ten", 10, { name: "Deset procent", combine: { types: ["automatic"] } }),
+      orderPct("O", 10, { name: "Objednávka", combine: { types: ["automatic"] } }),
     ]),
   );
   const preview = checkoutPreview(plan);

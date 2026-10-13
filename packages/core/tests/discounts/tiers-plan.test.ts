@@ -150,7 +150,7 @@ test("fix round 2: only an absent or null tierRef means the global set; any othe
   assert.equal(at("g"), 60_00, "a ref naming the global set's id reads that set");
 });
 
-test("fix round 2: a tier never takes a slot of the Pro stack pool (the MAX_STACK_CANDIDATES best RULE candidates)", () => {
+test("fix round 2: a tier that adds up with no rule never takes a slot of the stack pool (the MAX_STACK_CANDIDATES best RULE candidates)", () => {
   // Six 5 % rules that all combine, and a 10 % tier ranked above them: the stack is all six rules (30 %),
   // not the five that would fit next to the tier in a pool of six.
   const ids = ["r0", "r1", "r2", "r3", "r4", "r5"];
@@ -409,8 +409,8 @@ test("explain: the tier's other states in words — not combinable, at the margi
   );
   const said = (plan: CartPlan, locale: "cs" | "en") => explainPlan(plan, locale).filter((i) => i.tierSetId === "g").map((i) => i.text);
   // No "add 1 more" hint for a set the order discount beat under the exclusive switch: more items would not change that.
-  assert.deepEqual(said(exclusive, "cs"), ["Množstevní sleva se nekombinuje s ostatními slevami v košíku."]);
-  assert.deepEqual(said(exclusive, "en"), ["The quantity discount does not combine with the other discounts in the cart."]);
+  assert.deepEqual(said(exclusive, "cs"), ["Množstevní sleva se nesčítá s ostatními slevami v košíku."]);
+  assert.deepEqual(said(exclusive, "en"), ["The quantity discount does not add up with the other discounts in the cart."]);
   assert.equal(exclusive.progress.tierHint, undefined);
   const margin = { enabled: true, global: { maxDiscountPercent: 50 }, perCollection: [] };
   const floored = planCart(

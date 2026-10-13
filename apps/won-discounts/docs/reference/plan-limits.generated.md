@@ -5,7 +5,7 @@ layer: reference
 feature: plans
 min_plan: free
 status: stable
-config_version: 1
+config_version: 2
 source: generated
 generated_from: '@won/core/discounts'
 lang: en
@@ -39,6 +39,7 @@ margin protection and moving Shopify discounts work in full on Free.
 |---|---|---|
 | Show a discount only in chosen markets | Discounts & codes | The whole discount is off on Free: without this setting it would give more than you set up. |
 | A minimum quantity per product or collection | Discounts & codes | The whole discount is off on Free: without this setting it would give more than you set up. |
+| Exceptions: let a discount add up with one chosen discount | Discounts & codes | The Pro setting is left out; the rest keeps working. |
 | Generated codes with your own pattern | Discounts & codes | The Pro setting is left out; the rest keeps working. |
 | More than 100 generated codes in a batch | Discounts & codes | Kept within the Free limit. |
 | Campaigns: start and end many discounts at once | Campaigns | The Pro setting is left out; the rest keeps working. |

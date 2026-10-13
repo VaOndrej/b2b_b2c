@@ -50,6 +50,7 @@ import { costMinorUnits, MAX_MARGIN_REFS, marginFloorUnit, readMarginPayload, re
 import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
 import { buildTiersPayload, readTiersPayload } from "@won/core/discounts/tiers";
 import { ENTERED_CODE_PADDING, readMaxCodeLength } from "@won/core/discounts/plan";
+import { sealLists, withLists, withRandomLists } from "./legacy-lists.js";
 import { orderSetLimit, searchOrderSets } from "@won/core/discounts/plan-margin";
 
 import {
@@ -69,6 +70,7 @@ const FIXTURES_DIR = path.join(testsDir, "fixtures");
 const LINES = "cart-lines-discounts-generate-run";
 const DELIVERY = "cart-delivery-options-discounts-generate-run";
 const CASES = Number(process.env.PARITY_CASES ?? 400);
+const isRecord = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 const SEEDS = (process.env.PARITY_SEEDS ?? "20260928,1,2,3,5,8").split(",").map(Number);
 /** Every branch below must be hit at least this often over the whole random run. */
 const MIN_HITS = 20;
@@ -196,7 +198,22 @@ const vid = (n) => `gid://shopify/ProductVariant/${n}`;
  * @param {number} seed
  * @param {boolean | "mesh" | "tied" | "many" | "long" | "tiers" | "campaign-tiers"} [onlySearch] true: only margin order-search carts (searchCase); "mesh": only Pro mesh carts (meshCase); "tied": only order-search carts with many tied lines (tiedCase); "many": many markets and entered codes (manyCase); "long": entered codes of any length against the longest Won code (longCase); "tiers": quantity tiers (tierCase); "campaign-tiers": a campaign's own tier sets (campaignTierCase)
  */
+/** A generator's cases with the lists of combine.ts in their payloads (tests/legacy-lists.js says why and how). */
+function listed(next) {
+  return () => {
+    const c = next();
+    withLists(c.input?.shop?.config?.jsonValue);
+    // … said the way the app ships them, in one text (`engine.cx`): the only form the function reads.
+    sealLists(c.input?.shop?.config?.jsonValue);
+    return c;
+  };
+}
+
 function generator(seed, onlySearch = false) {
+  return listed(legacyGenerator(seed, onlySearch));
+}
+
+function legacyGenerator(seed, onlySearch = false) {
   const rnd = prng(seed);
   const int = (n) => Math.floor(rnd() * n);
   const chance = (p) => rnd() < p;
@@ -1685,6 +1702,10 @@ function rawOutputText(stdout) {
  * batch codes (any case, padded), made-up ones of the batch's shape, look-alikes with ſ / ı / fullwidth letters.
  */
 function itemBatchGenerator(seed) {
+  return listed(legacyItemBatchGenerator(seed));
+}
+
+function legacyItemBatchGenerator(seed) {
   const rand = prng(seed);
   const int = (n) => Math.floor(rand() * n);
   const pick = (list) => list[int(list.length)];
@@ -2208,6 +2229,109 @@ describe("Wasm (function-runner)", () => {
       "stack cap: a partner of the whole stack left out",
       "stack cap: margin cuts a capped stack",
       "stack cap: an order stack of the 6 best",
+    ];
+    const thin = BRANCHES.filter((b) => (hits.get(b) ?? 0) < MIN_HITS);
+    expect(thin, `branches hit fewer than ${MIN_HITS} times:\n${table}`).toEqual([]);
+    expect(maxMemory).toBeLessThanOrEqual(MEMORY_BOUND_KB);
+  }, 900_000);
+
+  // Combining by type (13 Oct 2026, @won/core combine.ts): the carts of the generators above with RANDOM lists
+  // (tests/legacy-lists.js withRandomLists) — what the switches of before could never say: a quantity tier in a
+  // stack with a rule, an order discount that adds up with only some of the cart's product discounts (the
+  // "order first" plan), a sale that takes some types, a shipping discount or a gift that does not add up.
+  const COMBINE_CASES = Number(process.env.PARITY_COMBINE_CASES ?? 3600);
+  test(`combining by type, seeds 20261013 × ${COMBINE_CASES}: Wasm = TS reference, every way discounts add up or do not hit`, async () => {
+    const rnd = prng(20261013);
+    const sources = [generator(20261013), generator(20261014, "rewards"), generator(20261015, "tiers"), generator(20261016, "mesh")];
+    const cases = Array.from({ length: COMBINE_CASES }, (_, i) => {
+      const c = sources[i % sources.length]();
+      // (The sources come with `engine.cx`: the random lists replace it and go into one text again — or, where
+      // they hold junk, a junk text stands in for them: both engines must read that the same too.)
+      if (isRecord(c.input?.shop?.config?.jsonValue?.engine)) delete c.input.shop.config.jsonValue.engine.cx;
+      withRandomLists(c.input?.shop?.config?.jsonValue, rnd);
+      const JUNK = ["", "63.63.63", "x.-1. 3|+1;1 ;001:1;", "7.7.7|63:0,1,2;63:0,1,2;63:0,1,2", "1.1.1|64;1:x,,123456;:0", "|;;:", "9|9", "63.63.63|63;63;63;63;63;63;63;63"];
+      sealLists(c.input?.shop?.config?.jsonValue, () => JUNK[Math.floor(rnd() * JUNK.length)]);
+      return c;
+    });
+    const failures = [];
+    /** @type {Map<string, number>} */
+    const hits = new Map();
+    const hit = (/** @type {string} */ b) => hits.set(b, (hits.get(b) ?? 0) + 1);
+    let maxMemory = 0;
+    for (let i = 0; i < cases.length; i += 8) {
+      const batch = cases.slice(i, i + 8);
+      const results = await Promise.all(batch.map((c) => runWasm(runnerPath, wasmPath, c.exportName, c.input)));
+      results.forEach((result, j) => {
+        const c = batch[j];
+        const expected = referenceOutput(c.exportName, c.input);
+        if (!result.success || !isDeepStrictEqual(result.output, expected)) failures.push({ index: i + j, exportName: c.exportName, got: result.output, logs: result.logs, expected, input: c.input });
+        maxMemory = Math.max(maxMemory, result.memory_usage ?? Number.POSITIVE_INFINITY);
+        const adapted = adaptInput(c.input);
+        const { plan } = emissionFor(adapted);
+        if (!plan || plan.reason) return;
+        const goods = plan.lines.filter((l) => l.excluded !== "gift");
+        const stacks = goods.filter((l) => (l.product?.components.length ?? 0) > 1);
+        if (stacks.some((l) => l.product.components.some((k) => k.module === "tiers"))) hit("a quantity tier in a stack with a rule");
+        if (stacks.some((l) => l.product.components.some((k) => k.module === "tiers") && l.product.ownerMethod === "code")) hit("a stack with a tier owned by a code rule");
+        if (stacks.length > 0) hit("a stack on a line");
+        if ((plan.order?.components.length ?? 0) > 1) hit("an order stack");
+        const dropped = (/** @type {string} */ cls) => plan.rules.some((r) => r.state === "not_combinable" && r.discountClass === cls);
+        const tierDropped = plan.tiers.some((t) => t.state === "not_combinable");
+        const products = goods.some((l) => l.product);
+        if (plan.order && products && (dropped("product") || tierDropped)) hit("order first: some product discounts kept, some given up");
+        if (plan.order && !products && (dropped("product") || tierDropped)) hit("order first: every product discount given up");
+        if (products && dropped("order")) hit("products first: an order rule left out");
+        if (plan.order && products && !dropped("product") && !tierDropped && !dropped("order")) hit("an order discount next to product discounts, nothing left out");
+        if (dropped("shipping") && plan.shipping) hit("a shipping discount left out, another applies");
+        if (dropped("shipping") && !plan.shipping) hit("no shipping discount adds up");
+        if (plan.warnings.some((w) => w.code === "reward_not_combinable")) hit("the milestone shipping does not add up");
+        if (plan.gifts.some((g) => g.state === "not_combinable")) hit("the gift does not add up");
+        if (plan.gifts.some((g) => g.state === "earned") && (products || plan.order || plan.shipping)) hit("the gift next to another discount");
+        adapted.cart.lines.forEach((line, k) => {
+          if (line.outlet !== true || line.giftTierId) return;
+          const pl = plan.lines[k];
+          if (pl?.excluded === "outlet") hit("a sale line that takes nothing");
+          if (pl?.excluded === null && pl.product) hit("a sale line takes a product discount or a tier");
+          if (pl?.excluded === null && plan.order && !plan.order.excludedLineIds.includes(pl.lineId)) hit("a sale line in the order discount's base");
+          if (pl?.excluded === null && plan.order && plan.order.excludedLineIds.includes(pl.lineId) && !plan.order.marginExcludedLineIds.includes(pl.lineId)) hit("a sale line out of the order discount's base");
+        });
+        if (plan.order?.marginProtected && (dropped("product") || dropped("order"))) hit("margin protection with a discount left out");
+        const rules = Array.isArray(adapted.config?.modules?.codes?.rules) ? adapted.config.modules.codes.rules : [];
+        const cx = adapted.config?.engine?.cx;
+        const entries = typeof cx === "string" && cx.includes("|") ? cx.slice(cx.indexOf("|") + 1).split(";") : [];
+        if (entries.some((e) => e.includes(":") && e.slice(e.indexOf(":") + 1).split(",").some((part) => !/^[0-9]{1,5}$/.test(part) || Number(part) >= rules.length || !rules[Number(part)]))) hit("an exception that names no rule");
+        if (typeof cx !== "string" || !/^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}\|/.test(cx)) hit("junk module lists");
+      });
+    }
+    if (failures.length > 0) {
+      const first = failures[0];
+      throw new Error(
+        `${failures.length}/${COMBINE_CASES} combine cases differ; first #${first.index} ${first.exportName}\ngot      ${JSON.stringify(first.got)}\nexpected ${JSON.stringify(first.expected)}\nlogs ${first.logs}\ninput    ${JSON.stringify(first.input)}`,
+      );
+    }
+    const table = [...hits].sort((a, b) => a[1] - b[1]).map(([b, n]) => `${n}\t${b}`).join("\n");
+    console.info(`combine parity: ${COMBINE_CASES} cases, 0 differ, largest memory ${maxMemory} KB\n${table}`);
+    const BRANCHES = [
+      "a quantity tier in a stack with a rule",
+      "a stack with a tier owned by a code rule",
+      "a stack on a line",
+      "an order stack",
+      "order first: some product discounts kept, some given up",
+      "order first: every product discount given up",
+      "products first: an order rule left out",
+      "an order discount next to product discounts, nothing left out",
+      "a shipping discount left out, another applies",
+      "no shipping discount adds up",
+      "the milestone shipping does not add up",
+      "the gift does not add up",
+      "the gift next to another discount",
+      "a sale line that takes nothing",
+      "a sale line takes a product discount or a tier",
+      "a sale line in the order discount's base",
+      "a sale line out of the order discount's base",
+      "margin protection with a discount left out",
+      "an exception that names no rule",
+      "junk module lists",
     ];
     const thin = BRANCHES.filter((b) => (hits.get(b) ?? 0) < MIN_HITS);
     expect(thin, `branches hit fewer than ${MIN_HITS} times:\n${table}`).toEqual([]);

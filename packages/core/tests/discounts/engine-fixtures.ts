@@ -2,7 +2,7 @@
 // Rules go through the real sanitizer and the real shop payload builder, so the
 // engine is always tested on exactly what the function will read.
 
-import { sanitizeConfig, type WonDiscountsConfig } from "../../src/discounts/config.ts";
+import { readStoredConfig, sanitizeConfig, type WonDiscountsConfig } from "../../src/discounts/config.ts";
 import type { CartLineInput, CartPlanInput } from "../../src/discounts/cart.ts";
 import type { CartPlan, RuleOutcome } from "../../src/discounts/plan.ts";
 import { buildShopFunctionConfig, type FunctionConfigPayload } from "../../src/discounts/function-payload.ts";
@@ -37,9 +37,23 @@ export function code(codes: string[], extra: RawRule = {}): RawRule {
   return { method: "code", codes, ...extra };
 }
 
+/**
+ * A fixture written the way shops were stored before 13 Oct 2026 — the category switches in
+ * `engine.combination` (product with order, with shipping… all on by default), `combinesWith` on a rule — is
+ * read like such a stored shop: converted to lists of types (config/combine-migrate.ts), which for these small
+ * shops gives exactly what the switches gave. A fixture that says how it combines the new way (`combine` on a
+ * rule or a module, `engine.combineDefault`, or `schemaVersion: 2`) is sanitized as it is.
+ */
 export function configOf(rules: RawRule[], extra: Record<string, unknown> = {}): WonDiscountsConfig {
   const modules = typeof extra.modules === "object" && extra.modules !== null ? (extra.modules as Record<string, unknown>) : {};
-  return sanitizeConfig({ ...extra, modules: { ...modules, codes: { rules } } }).config;
+  const raw = { ...extra, modules: { ...modules, codes: { rules } } };
+  const engine = typeof extra.engine === "object" && extra.engine !== null ? (extra.engine as Record<string, unknown>) : {};
+  const newShape =
+    extra.schemaVersion !== undefined ||
+    "combineDefault" in engine ||
+    rules.some((rule) => "combine" in rule) ||
+    Object.values(modules).some((module) => typeof module === "object" && module !== null && "combine" in module);
+  return newShape ? sanitizeConfig(raw).config : readStoredConfig({ ...raw, schemaVersion: 1 });
 }
 
 /** Shop time used by the fixtures: Prague, early October (before every fixture campaign). */

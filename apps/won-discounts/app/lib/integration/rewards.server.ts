@@ -85,7 +85,8 @@ export function rewardsScreenFacts(
     limit: MILESTONE_LIMITS[opts.plan],
     limitPro: MILESTONE_LIMITS.pro,
     countOther: stored.modules.rewards.countOtherDiscounts,
-    productWithOrder: stored.engine.combination.productWithOrder,
+    // (A discount step adds up with product discounts when the Milníky list names their types; the page's own list says which.)
+    productWithOrder: stored.modules.rewards.combine.types.some((type) => type === "automatic" || type === "code"),
     marginOn: stored.modules.margin.enabled,
     gateNotes: gateNotesOf(stored, opts.plan, opts.locale),
   };

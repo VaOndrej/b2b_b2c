@@ -21,7 +21,7 @@ const WINDOW = (day: number) => ({
 
 /** Inputs, each sanitized on its own (one config would hit CONFIG_LIMITS.maxIssues). */
 const BATTERY: unknown[] = [
-  // Rules: values, targets, priority, codes, schedule, ids, origin, combinesWith, booleans, enums.
+  // Rules: values, targets, priority, codes, schedule, ids, origin, combine, booleans, enums.
   {
     modules: {
       codes: {
@@ -37,7 +37,7 @@ const BATTERY: unknown[] = [
           rule("sched2", { schedule: { startsAt: "2026-12-01T00:00:00Z", endsAt: "2026-11-01T00:00:00Z" } }),
           rule("bad id 42!"),
           rule("orig", { origin: { nativeId: "gid://shopify/Product/12" } }),
-          rule("comb", { combinesWith: { ruleIds: ["ghost-7", "pct"] } }),
+          rule("comb", { combine: { types: ["code", "type9"], rules: ["ghost-7", "pct"] } }),
           rule("bool", { enabled: 1 }),
           rule("enum", { method: "sometimes2" }),
           rule("pct", {}),
@@ -188,6 +188,7 @@ test("the battery reaches every code whose message names a value (the check abov
     "too_many_rules",
     "too_many_tier_breaks",
     "too_many_tier_sets",
+    "unknown_combine_type",
     "unknown_onboarding_goal",
     "value_target_mismatch",
   ];
@@ -215,7 +216,7 @@ test("a list in params is its first five values plus how many more — never the
         rules: [
           rule("first", { method: "code", codes }),
           rule("second", { method: "code", codes }),
-          rule("comb", { combinesWith: { ruleIds: ["g1", "g2", "g3", "g4", "g5", "g6", "g7"] } }),
+          rule("comb", { combine: { types: [], rules: ["g1", "g2", "g3", "g4", "g5", "g6", "g7"] } }),
           rule("money", { value: { kind: "fixed", amount: Object.fromEntries(["CZK", "EUR", "USD", "GBP", "PLN", "HUF"].map((c) => [c, 5e12])) } }),
         ],
       },

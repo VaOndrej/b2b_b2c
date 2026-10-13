@@ -112,13 +112,30 @@ const named = (name: string) => (E2E_PLAN === "free" ? name.replace(/shapes/u, "
  * get if the Pro stack were applied (the counterfactual the observed values are
  * compared against), for the evidence.
  */
-function freeGateEvidence(rules: readonly LiveRule[], stackedLine: LineShape, planTotal: number) {
+/**
+ * The rules rule `id` names as exceptions in the live shop config (`engine.cx`: after the "|" one entry per
+ * rule, by position — its mask, then after ":" the positions it names; @won/core function-payload.ts).
+ */
+function liveExceptions(config: PlanConfig, id: string): string[] {
+  const rules = config.modules.codes.rules;
+  const cx = (config.engine as { cx?: string }).cx ?? "";
+  const entry = (cx.includes("|") ? cx.slice(cx.indexOf("|") + 1).split(";") : [])[rules.findIndex((r) => r.id === id)] ?? "";
+  if (!entry.includes(":")) return [];
+  return entry
+    .slice(entry.indexOf(":") + 1)
+    .split(",")
+    .map((at) => rules[Number(at)]?.id)
+    .filter((other): other is string => other !== undefined);
+}
+
+function freeGateEvidence(config: PlanConfig, stackedLine: LineShape, planTotal: number) {
+  const rules: readonly LiveRule[] = config.modules.codes.rules;
   if (E2E_PLAN !== "free") return null;
   const simpleA = simpleARules(rules);
   const proStackAmount = Math.round((stackedLine.planLine.subtotal * simpleA.summed) / 100);
   const freeAmount = stackedLine.planLine.product?.amount ?? 0;
   return {
-    liveCombinesWith: Object.fromEntries(simpleA.ids.map((id) => [id, rules.find((r) => r.id === id)?.combinesWith ?? null])),
+    liveExceptions: Object.fromEntries(simpleA.ids.map((id) => [id, liveExceptions(config, id)])),
     appliedRule: simpleA.best,
     appliedPercent: simpleA.bestPercent,
     appliedAmount: freeAmount,
@@ -266,14 +283,14 @@ test.describe(`Won Discounts output shapes in cart and checkout (MVP 1 gate)${E2
     const cap = rules.find((r) => r.id === SHAPES_CAP_RULE_ID)!;
     expect(cap.value, "rule A: fixed amount per item, CZK").toEqual({ kind: "fixed", amount: { CZK: SHAPES_CAP_AMOUNT_CZK } });
     if (E2E_PLAN === "pro") {
-      expect(rules.find((r) => r.id === SHAPES_PRO_B_RULE_ID)?.combinesWith?.ruleIds, "rule B combines with C (Pro)").toContain(SHAPES_PRO_C_RULE_ID);
-      expect(rules.find((r) => r.id === SHAPES_PRO_C_RULE_ID)?.combinesWith?.ruleIds, "rule C combines with B (Pro)").toContain(SHAPES_PRO_B_RULE_ID);
+      expect(liveExceptions(inputs.config, SHAPES_PRO_B_RULE_ID), "rule B names C as an exception (Pro)").toContain(SHAPES_PRO_C_RULE_ID);
+      expect(liveExceptions(inputs.config, SHAPES_PRO_C_RULE_ID), "rule C names B as an exception (Pro)").toContain(SHAPES_PRO_B_RULE_ID);
     } else {
-      // BILL-1: the stored config still has combinesWith (the seed writes it), the gated live payload must not.
+      // BILL-1: the stored config still has the exceptions (the seed writes them), the gated live payload must not.
       for (const id of [SHAPES_PRO_B_RULE_ID, SHAPES_PRO_C_RULE_ID]) {
         const rule = rules.find((r) => r.id === id);
-        expect(rule?.enabled, `Free: rule ${id} stays on (the gate never switches off a rule for combinesWith)`).toBe(true);
-        expect(rule?.combinesWith, `Free: the plan gate removed ${id}'s combinesWith from the live payload`).toBeUndefined();
+        expect(rule?.enabled, `Free: rule ${id} stays on (the gate never switches off a rule for its exceptions)`).toBe(true);
+        expect(liveExceptions(inputs.config, id), `Free: the plan gate removed ${id}'s exceptions from the live payload`).toEqual([]);
       }
     }
 
@@ -363,7 +380,7 @@ test.describe(`Won Discounts output shapes in cart and checkout (MVP 1 gate)${E2
       at: new Date().toISOString(),
       theme: THEME_LABEL || null,
       planMode: E2E_PLAN,
-      ...(E2E_PLAN === "free" ? { freeGate: freeGateEvidence(rules, stacked, expected.total) } : {}),
+      ...(E2E_PLAN === "free" ? { freeGate: freeGateEvidence(inputs.config, stacked, expected.total) } : {}),
       currency: cart.currency,
       lines: shapes.map((s) => ({
         handle: s.handle,
@@ -501,7 +518,7 @@ test.describe(`Won Discounts output shapes in cart and checkout (MVP 1 gate)${E2
       theme: THEME_LABEL || null,
       planMode: E2E_PLAN,
       ...(E2E_PLAN === "free"
-        ? { freeGate: freeGateEvidence(inputs.config.modules.codes.rules, byHandle(shapes, SHAPES_PRODUCT_A_HANDLE), expected.total) }
+        ? { freeGate: freeGateEvidence(inputs.config, byHandle(shapes, SHAPES_PRODUCT_A_HANDLE), expected.total) }
         : {}),
       checkoutPath: new URL(page.url()).pathname.replace(/\/cn\/[^/]+/u, "/cn/<token>"),
       cart: {

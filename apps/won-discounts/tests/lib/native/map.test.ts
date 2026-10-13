@@ -58,12 +58,17 @@ test("code discount, % on products: every field maps, codes upper-case, origin l
     // Shop-local dates: the engine reads the day from the string (Prague midnight stays that day).
     schedule: { startsAt: "2026-10-01T00:00:00+02:00", endsAt: "2026-11-01T00:00:00+01:00" },
     origin: { nativeId: "gid://shopify/DiscountCodeNode/123" },
+    // A moved discount starts with the shop's default list for its type, like one made in Won (13 Oct 2026).
+    combine: { types: ["shipping", "rewards"] },
   });
   // Nothing used, nothing lost (F11: "Nic." is reachable; the history never "stays in Shopify").
   assert.deepEqual(losses, []);
-  // Native combining equals the A1 defaults for a product discount → nothing to say about it;
-  // Won does not tell subscriptions apart (review Minor 3) → that is said.
-  assert.deepEqual(warnings, ["Prodáváte-li předplatné: v Shopify na něj sleva neplatila. Won předplatné nerozlišuje, bude platit i na něj."]);
+  // Won does not tell subscriptions apart (review Minor 3) → that is said. And combining: in Shopify it added up
+  // with order discounts; a new shop's default list in Won has free shipping and Milníky only → that is said too.
+  assert.deepEqual(warnings, [
+    "Prodáváte-li předplatné: v Shopify na něj sleva neplatila. Won předplatné nerozlišuje, bude platit i na něj.",
+    "V Shopify se sčítala se slevami na objednávku. Ve Won dostane váš výchozí seznam „Sčítá se s“, takže se nesčítá. Změníte to v editoru slevy.",
+  ]);
   // The config sanitizer accepts it unchanged (no issues, nothing dropped).
   const config = createDefaultConfig();
   config.modules.codes.rules.push(rule);
@@ -108,8 +113,8 @@ test("free shipping (code) maps to a shipping rule; combining differences are sp
   assert.deepEqual(rule.target, { kind: "shipping" });
   assert.deepEqual(warnings, [
     "Prodáváte-li předplatné: v Shopify na něj sleva neplatila. Won předplatné nerozlišuje, bude platit i na něj.",
-    "V Shopify se nekombinovala s produktovými slevami. Ve Won se podle nastavení kombinování kombinuje.",
-    "V Shopify se nekombinovala se slevami na objednávku. Ve Won se podle nastavení kombinování kombinuje.",
+    "V Shopify se nesčítala s produktovými slevami. Ve Won dostane váš výchozí seznam „Sčítá se s“, takže se sčítá. Změníte to v editoru slevy.",
+    "V Shopify se nesčítala se slevami na objednávku. Ve Won dostane váš výchozí seznam „Sčítá se s“, takže se sčítá. Změníte to v editoru slevy.",
   ]);
 });
 

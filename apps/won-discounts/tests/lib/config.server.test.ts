@@ -56,7 +56,8 @@ test("SEC-2 / audit P1-1: mutating shop A's default config never leaks into shop
     value: { kind: "percentage", percent: 50 },
     target: { kind: "order" },
   });
-  a.config.engine.combination.outletWithAnything = true;
+  a.config.engine.combineDefault.push("outlet");
+  a.config.modules.outlet.combine.types.push("code");
   Object.assign(a.config.locales, { cs: { banner: "Shop A text" } });
 
   const b = await loadConfig(db.prisma, "fresh-b.myshopify.com");

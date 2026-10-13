@@ -361,23 +361,24 @@ test("the payload built from a config without `enabled` (MVP 1 stored config) pl
 
 // --- fix round 1: rule-state precedence, order-stage candidate sets ----------------------------------
 
-test("precedence: a rule dropped by a category switch is not_combinable even if margin also zeroed it", () => {
+test("precedence: a product discount margin zeroed is not in the order discount's way — margin is why each gives nothing", () => {
+  // A and O do not add up (the old product-with-order switch off, converted).
   const exclusive = { engine: { combination: { productWithOrder: false } } };
-  // Product A is zeroed on its only line; the order-only scenario wins → A is not combinable (the switch decided).
+  // Product A is zeroed on its only line, so the cart got no product discount: O applies (nothing to add up
+  // with), and A gives nothing because of margin protection — not because of O.
   const orderWins = planCart(
     cartOf([costLine("L1", 1000_00, 1000, 1, ["A"]), line("L2", 1000_00)]),
     marginPayloadOf([pct("A", 30), orderPct("O", 10)], { global: { maxDiscountPercent: 50 } }, exclusive),
   );
   assert.equal(orderWins.order?.amount, 100_00);
-  assert.equal(outcome(orderWins, "A").state, "not_combinable");
-  // Every line at its floor: the order-only scenario gives 0 (O zeroed) and products win the tie → O is
-  // not combinable; A, zeroed on the winning (product) side, is margin_floor.
+  assert.equal(outcome(orderWins, "A").state, "margin_floor");
+  // Every line at its floor: A is zeroed, and O, alone, is zeroed too — both by margin protection.
   const productsWin = planCart(
     cartOf([costLine("L1", 1000_00, 1000, 1, ["A"])]),
     marginPayloadOf([pct("A", 30), orderPct("O", 10)], { global: { maxDiscountPercent: 50 } }, exclusive),
   );
   assert.equal(productsWin.order, null);
-  assert.equal(outcome(productsWin, "O").state, "not_combinable");
+  assert.equal(outcome(productsWin, "O").state, "margin_floor");
   assert.equal(outcome(productsWin, "A").state, "margin_floor");
 });
 

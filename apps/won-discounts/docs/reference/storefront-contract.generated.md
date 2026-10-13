@@ -5,7 +5,7 @@ layer: reference
 feature: appearance
 min_plan: pro
 status: stable
-config_version: 1
+config_version: 2
 source: generated
 generated_from: '@won/core/discounts'
 lang: en

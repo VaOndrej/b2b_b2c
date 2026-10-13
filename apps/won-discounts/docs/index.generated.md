@@ -82,7 +82,7 @@ Exact values, generated from code. Never hand-edited.
 
 | Document | Slug | Feature | Plan | Status | Summary |
 |---|---|---|---|---|---|
-| [Default combination rules](reference/combination-defaults.generated.md) | `combination-defaults` | engine | free | stable | Which kinds of Won discounts add up by default and which compete, plus the Pro stacking cap. |
+| [Default combination rules](reference/combination-defaults.generated.md) | `combination-defaults` | engine | free | stable | Which types of Won discounts add up in a new store, how the rule works, plus the stacking cap. |
 | [Discount options](reference/discount-options.generated.md) | `discount-options` | discounts | free | stable | Every discount type, target, way of applying and minimum option in Discounts & codes, plus what each recipe pre-fills. |
 | [Discount statuses](reference/discount-statuses.generated.md) | `discount-statuses` | discounts | free | stable | Every status a Won discount can show in the admin (English and Czech label) and what it means. |
 | [Limits](reference/limits.generated.md) | `limits` | core | free | stable | Exact limits of Won Discounts — discounts per shop, active code discounts, codes, stacking, margin collections and settings size. |

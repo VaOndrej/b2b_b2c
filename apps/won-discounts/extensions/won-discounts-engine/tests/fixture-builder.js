@@ -13,6 +13,8 @@ import { sanitizeConfig } from "@won/core/discounts/config";
 import { buildNodeVars, buildShopFunctionConfig } from "@won/core/discounts/function-payload";
 import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
 
+import { configWithLists } from "./legacy-lists.js";
+
 export const TARGETS = {
   lines: { export: "cart-lines-discounts-generate-run", target: "cart.lines.discounts.generate.run" },
   delivery: {
@@ -147,7 +149,7 @@ export function appRuleId(logical) {
 /**
  * A scenario with the ids the checkout really sends (the budget carts, which
  * measure instructions): rule ids in the app's format everywhere they appear
- * (config, combinesWith, the product metafields' refs); cart line and delivery
+ * (config, combinesWith and exceptions, the product metafields' refs); cart line and delivery
  * group ids as Shopify numbers them in a function input — `gid://shopify/CartLine/0`,
  * `/1`, … (every line of the 640 dev-store runs logged in apps/won-discounts/
  * .shopify/logs, 2026-09-29) — 14-digit variant ids and 13-digit product ids. The hand-written
@@ -179,6 +181,7 @@ export function withRealisticIds(s) {
     ...r,
     id: rid(r.id),
     ...(r.combinesWith ? { combinesWith: { ...r.combinesWith, ruleIds: /** @type {string[]} */ (r.combinesWith.ruleIds).map(rid) } } : {}),
+    ...(r.combine?.rules ? { combine: { ...r.combine, rules: /** @type {string[]} */ (r.combine.rules).map(rid) } } : {}),
   }));
   if (new Set(ids.values()).size !== ids.size) throw new Error(`${s.name}: app rule ids collide`);
   const lines = s.lines.map((l) => ({
@@ -227,7 +230,15 @@ export function merchantConfig(s) {
     ...(s.tiers ? { tiers: s.tiers } : {}),
     ...(s.rewards ? { rewards: s.rewards } : {}),
   };
-  const { config, issues } = sanitizeConfig({ ...(s.configExtra ?? {}), modules });
+  // A scenario written the way configs were before 13 Oct 2026 — the category switches in
+  // `engine.combination` (all on by default), `combinesWith` on a rule — is given the lists that say exactly
+  // the same pairs (tests/legacy-lists.js configWithLists): its hand-written expected output is the spec. A
+  // scenario that says how it combines the new way (`combine` on a rule or a module, `engine.combineDefault`)
+  // is taken as it is.
+  const raw = { ...(s.configExtra ?? {}), modules };
+  const engine = /** @type {Record<string, unknown>} */ (raw.engine ?? {});
+  const newShape = "combineDefault" in engine || s.rules.some((r) => "combine" in r) || Object.values(modules).some((m) => typeof m === "object" && m !== null && "combine" in m);
+  const { config, issues } = sanitizeConfig(newShape ? raw : configWithLists(raw));
   if (issues.length > 0) {
     throw new Error(`${s.name}: sanitizer issues ${JSON.stringify(issues.map((i) => `${i.path} ${i.code}`))}`);
   }

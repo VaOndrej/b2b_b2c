@@ -61,22 +61,34 @@
 //   - Pro market targeting as `marketCountries` (the function's
 //     `localization.market` is deprecated; the engine matches the cart country);
 //   - a minimum's `scope` only when it is "entitled" (absent = the whole cart);
-//   - margin protection (MVP 2) in its compact form (margin.ts
-//     FunctionMarginPayload): `{enabled: false}` while it is off, else
-//     `min`/`max`, the shop currency `cur` and per-collection `[m, p]` tuples
-//     keyed by numeric collection id (50 collections ≈ 1.4 kB);
-//   - quantity tiers (MVP 3) in their compact form (tiers.ts
-//     FunctionTiersPayload, the exact shape and reading rules are in its
-//     header): only the sets a line can reach, each as `[id, count,
-//     currencies, breaks]`, never a scope id list (a product's set is its
-//     metafield `tierRef`, else `global`).
+//   - how discounts add up (13 Oct 2026, combine.ts) as ONE text, `engine.cx`:
+//       "<tiers>.<rewards>.<outlet>|<rule 0>;<rule 1>;…"
+//     the three modules' lists as masks of types (COMBINE_BIT), then one entry
+//     per rule of `modules.codes.rules`, by position: "<mask>" or
+//     "<mask>:<position>,<position>…" — its list, and after the colon the
+//     rules it names as exceptions (Pro), by their positions. "" = it adds up
+//     with nothing; an order discount of Milníky always has "" (the engine
+//     gives it the Milníky list); empty entries at the end are left out, and
+//     the whole key when nothing adds up with anything.
+//     Why one text: the function pays for every READ of the config, not for
+//     its bytes — MEASURED on `lines-200-lines-budget` (37 rules): a list and
+//     its exceptions as two keys of each rule cost +0.33 M instructions of the
+//     11 M limit (the two keys, and the rule's optional keys the reader can no
+//     longer skip), one text costs two reads whatever the shop has. And a
+//     position takes 2–4 B where a rule id takes 25–67 B (an exception is on
+//     both rules).
+//     A campaign's patched list ships in its patch as `c` (the mask) and `x`
+//     (the positions, one text "0,3,17"), both always. The engine also reads
+//     `c` / `x` on a rule and `engine.mc` = [tiers, rewards, outlet] — a
+//     payload made by hand (tests) — but only when there is no `engine.cx`;
 // The sync must build a Free shop's payload from plan-gate.ts
 // gateConfigForPlan(config, plan), never from the stored config: only then does
-// none of its Pro data (targeting, combinesWith, campaigns) ship.
+// none of its Pro data (targeting, exceptions, campaigns) ship.
 
 import { collapseConfigAmounts, marketsWithOwnAmounts, withUnknownMarketFallback } from "./market-amounts.ts";
 import { codeBatchCodeLength, codeBatchPayload, type FunctionCodeBatch, listBatchCodes, matchesCodeBatch, readCodeBatch } from "./code-batch.ts";
 import { codeHash } from "./code-hash.ts";
+import { combineMask } from "./combine.ts";
 import { normalizeCode, type CartCampaignInput } from "./cart.ts";
 import {
   CONFIG_LIMITS,
@@ -85,7 +97,6 @@ import {
   type DiscountRule,
   type DiscountRuleValue,
   type DiscountTargetKind,
-  type EngineSettings,
   type ReadonlyDeep,
   type WonDiscountsConfig,
 } from "./config.ts";
@@ -95,6 +106,7 @@ import { campaignTiersPayload } from "./campaign-tiers.ts";
 import { FUNCTION_CONFIG_BUDGET_BYTES, liveCampaigns, NO_CAMPAIGN_DATETIME, selectCampaign } from "./function-config.ts";
 import { gateConfigForPlan } from "./plan-gate.ts";
 import { buildMarginPayload, type FunctionMarginPayload, type MarginCollectionTuple } from "./margin.ts";
+import { isMilestoneRule } from "./milestones.ts";
 import type { MoneyByCurrency } from "./money.ts";
 import { isFunctionConfigPayload } from "./plan.ts";
 import { buildRewardsPayload, type FunctionRewardsPayload } from "./rewards.ts";
@@ -130,7 +142,26 @@ export interface FunctionRule {
    */
   schedule?: { startsOn?: string; endsOn?: string; invalid?: true };
   targeting?: { segments?: string[]; markets?: string[] };
-  combinesWith?: { ruleIds: string[] };
+  /**
+   * Never shipped by the app (the lists are in `engine.cx`): a payload made by hand without `engine.cx` may say
+   * a rule's list here, as a mask (combine.ts COMBINE_BIT) …
+   */
+  c?: number;
+  /** … and its exceptions: one text of positions in `modules.codes.rules` ("0,3,17"), or a list of positions or rule ids. */
+  x?: string | (number | string)[];
+}
+
+/** The engine settings as the function reads them. */
+export interface FunctionEngine {
+  /** config `engine.unknownMarketLowest` (market-amounts.ts). */
+  unknownMarketLowest?: true;
+  /**
+   * How discounts add up, as one text (the header says the format and why): the modules' lists, then every
+   * rule's list and exceptions by its position. Absent = nothing adds up with anything.
+   */
+  cx?: string;
+  /** Never shipped by the app: a payload made by hand without `cx` may say the modules' lists here, [tiers, rewards, outlet]. */
+  mc?: [number, number, number];
 }
 
 export interface FunctionCampaign {
@@ -153,7 +184,7 @@ export interface FunctionConfigPayload {
   campaignId: string | null;
   /** Must equal a node's `varsVersion` for that node to apply the campaign. */
   campaignVarsVersion: string | null;
-  engine: EngineSettings;
+  engine: FunctionEngine;
   /** Market handle → upper-case countries, for enabled markets some rule or the selected campaign targets, or that have an amount of their own. */
   marketCountries: Record<string, string[]>;
   /** True when some amount is one market's own ("EUR@sk", market-amounts.ts): a cart reads its market's amount before its currency's. Absent = none. */
@@ -440,8 +471,31 @@ function shipRule(r: ReadonlyDeep<DiscountRule>, shopTimezone: string): Function
     if (nonEmpty(segments)) out.targeting.segments = [...segments];
     if (nonEmpty(markets)) out.targeting.markets = [...markets];
   }
-  if (r.combinesWith && r.combinesWith.ruleIds.length > 0) out.combinesWith = { ruleIds: [...r.combinesWith.ruleIds] };
   return out;
+}
+
+/** `engine.cx` (the header says the format); undefined when nothing adds up with anything. */
+function shipCombine(config: ConfigInput, positions: ReadonlyMap<string, number>): string | undefined {
+  const { codes, tiers, rewards, outlet } = config.modules;
+  const head = [tiers, rewards, outlet].map((module) => combineMask(module.combine.types)).join(".");
+  const entries = codes.rules.map((r) => {
+    if (isMilestoneRule(r)) return "";
+    const mask = combineMask(r.combine?.types);
+    const named = shipExceptions(r.combine?.rules, positions);
+    return named !== "" ? `${mask}:${named}` : mask !== 0 ? String(mask) : "";
+  });
+  while (entries.length > 0 && entries[entries.length - 1] === "") entries.pop();
+  return head === "0.0.0" && entries.length === 0 ? undefined : `${head}|${entries.join(";")}`;
+}
+
+/** Exceptions as one text of positions in the shipped rules, ascending ("0,3,17"; "" = none); an id no shipped rule has is left out. */
+function shipExceptions(ids: readonly string[] | undefined, positions: ReadonlyMap<string, number>): string {
+  const out: number[] = [];
+  for (const id of ids ?? []) {
+    const at = positions.get(id);
+    if (at !== undefined && !out.includes(at)) out.push(at);
+  }
+  return out.sort((a, b) => a - b).join(",");
 }
 
 /** The codes module: the rules, and the longest Won code when any code ships. */
@@ -456,21 +510,33 @@ function shipCodes(rules: ConfigInput["modules"]["codes"]["rules"], shopTimezone
   return longest < 0 ? { rules: shipped } : { rules: shipped, maxCodeLength: longest };
 }
 
-/** The engine settings as shipped: `unknownMarketHighest` is already in the amounts (market-amounts.ts) and the
- * function never reads it, so it does not take the payload's bytes. */
-function shipEngine(engine: ReadonlyDeep<EngineSettings>): EngineSettings {
-  const out = copy<EngineSettings>(engine);
-  delete out.unknownMarketHighest;
-  return out;
+/** The engine settings as shipped: `unknownMarketHighest` is already in the amounts (market-amounts.ts), and
+ * `combineDefault` only prefills the admin's editor — the function reads neither, so they take no bytes. */
+function shipEngine(config: ConfigInput, positions: ReadonlyMap<string, number>): FunctionEngine {
+  const cx = shipCombine(config, positions);
+  return {
+    ...(config.engine.unknownMarketLowest ? { unknownMarketLowest: true as const } : {}),
+    ...(cx !== undefined ? { cx } : {}),
+  };
 }
 
 /** A campaign patch as the engine reads it: a re-targeting patch keeps only `{kind}`
- * (the lines carry campaign-scoped refs instead, see targeting.ts). */
-function shipPatch(patch: ReadonlyDeep<Record<string, unknown>>): Record<string, unknown> {
+ * (the lines carry campaign-scoped refs instead, see targeting.ts); a patched list (`combine`) ships as the
+ * rule's `c` and `x`, BOTH always, so the patch replaces the rule's own whatever it had. An order discount of
+ * Milníky has no list of its own (`milestone`): a patch cannot give it one. */
+function shipPatch(patch: ReadonlyDeep<Record<string, unknown>>, milestone: boolean, positions: ReadonlyMap<string, number>): Record<string, unknown> {
   const out = copy<Record<string, unknown>>(patch);
   const target = out.target;
   if (typeof target === "object" && target !== null && "kind" in target) {
     out.target = { kind: (target as { kind: unknown }).kind };
+  }
+  if ("combine" in out) {
+    const combine = out.combine as { types?: string[]; rules?: string[] } | null;
+    delete out.combine;
+    if (!milestone) {
+      out.c = combineMask(combine?.types);
+      out.x = shipExceptions(Array.isArray(combine?.rules) ? combine.rules : [], positions);
+    }
   }
   return out;
 }
@@ -517,6 +583,9 @@ function build(given: ConfigInput, picked: CampaignInput | null, shopTimezone: s
   const selected = picked ? (config.campaigns.find((c) => c.id === picked.id) ?? picked) : null;
   const { codes, tiers, rewards, margin } = config.modules;
   const ruleIds = new Set(codes.rules.map((r) => r.id));
+  const milestoneIds = new Set(codes.rules.filter((r) => isMilestoneRule(r)).map((r) => r.id));
+  // Where each rule is in the shipped list: an exception names a rule by it.
+  const positions = new Map(codes.rules.map((r, i) => [r.id, i]));
   const campaignTiers = selected ? campaignTiersPayload(tiers, selected) : null;
   const modules = {
     codes: shipCodes(codes.rules, shopTimezone),
@@ -524,7 +593,7 @@ function build(given: ConfigInput, picked: CampaignInput | null, shopTimezone: s
     rewards: buildRewardsPayload(rewards),
     margin: buildMarginPayload(margin, shopCurrency),
   };
-  const overrides = selected ? selected.overrides.filter((o) => ruleIds.has(o.ruleId)).map((o) => ({ ruleId: o.ruleId, patch: shipPatch(o.patch) })) : [];
+  const overrides = selected ? selected.overrides.filter((o) => ruleIds.has(o.ruleId)).map((o) => ({ ruleId: o.ruleId, patch: shipPatch(o.patch, milestoneIds.has(o.ruleId), positions) })) : [];
   // 7 Oct 2026: markets with an amount of their own ("EUR@sk") ship their countries too — the function finds the
   // cart's market by its country — and `am` tells it to look. A config without such an amount ships as before.
   const ownMarkets = marketsWithOwnAmounts([modules.codes, modules.tiers, modules.rewards, overrides, campaignTiers]);
@@ -533,7 +602,7 @@ function build(given: ConfigInput, picked: CampaignInput | null, shopTimezone: s
     schemaVersion: config.schemaVersion,
     campaignId: selected ? selected.id : null,
     campaignVarsVersion: campaignVarsVersion(selected),
-    engine: shipEngine(config.engine),
+    engine: shipEngine(config, positions),
     marketCountries,
     ...(ownMarkets.size > 0 ? { am: true as const } : {}),
     modules,

@@ -4,20 +4,15 @@ import { test } from "node:test";
 import { APPEARANCE_PRESETS, DEFAULT_CONFIG } from "@won/core/discounts/config";
 
 import { LOOK_FIELD, customLookSet, liveCustomLookCss, presetLabel, readLookForm } from "../../app/components/model/looks.ts";
-import {
-  COMBINATION_FIELD,
-  COMBINATION_KEYS,
-  combinationSentence,
-  combinationSummary,
-  readCombinationForm,
-} from "../../app/components/model/combination.ts";
+import { COMBINATION_FIELD, combineDefaultSummary, readCombineDefaultForm } from "../../app/components/model/combination.ts";
+import { COMBINE_FIELD, COMBINE_OFFERED, COMBINE_TYPES, combineSummary, combineTypeLabel, readCombineTypes } from "../../app/components/model/combine.ts";
 import { embedActivationUrl, tiersBlockAddUrl, TIERS_BLOCK_HANDLE } from "../../app/components/model/embed.ts";
 import { translator } from "../../app/i18n/index.ts";
 
-// Nastavení: the Free per-category combination switches (A1, engine.combination —
-// the MVP 1 debt) and Vzhled: the 4 presets (K7). Each switch has one sentence per
-// position saying what it does (§4c: no enum on screen), the server parses the
-// same fields the screen posts (SEC-1).
+// "Sčítá se s" (13 Oct 2026, model/combine.ts): the list of types a discount adds up with — the same labels,
+// form fields and state sentence in the rule editor, on the module pages and in Nastavení (the list a new
+// discount starts with; the four category switches of before are gone) — and Vzhled: the 4 presets (K7). The
+// server parses the same fields the screen posts (SEC-1); no type key ever reaches the screen (§4c).
 
 const cs = translator("cs");
 const en = translator("en");
@@ -28,39 +23,37 @@ function form(entries: [string, string][]): FormData {
   return fd;
 }
 
-test("combination: the four Free switches, in the engine's own names; unchecked = off", () => {
-  assert.deepEqual([...COMBINATION_KEYS], ["outletWithAnything", "productWithOrder", "productWithShipping", "orderWithShipping"]);
-  assert.equal(COMBINATION_FIELD.productWithOrder, "productWithOrder");
-  assert.deepEqual(readCombinationForm(form([["productWithOrder", "on"], ["orderWithShipping", "on"]])), {
-    outletWithAnything: false,
-    productWithOrder: true,
-    productWithShipping: false,
-    orderWithShipping: true,
-  });
-  // The defaults (DEFAULT_CONFIG.engine.combination) read back as they are.
-  const d = DEFAULT_CONFIG.engine.combination;
-  assert.deepEqual(
-    readCombinationForm(form(COMBINATION_KEYS.filter((k) => d[k]).map((k) => [k, "on"]))),
-    { outletWithAnything: d.outletWithAnything, productWithOrder: d.productWithOrder, productWithShipping: d.productWithShipping, orderWithShipping: d.orderWithShipping },
-  );
+test("Sčítá se s: six types, each with its label; an owner is offered only the types it can meet", () => {
+  assert.deepEqual([...COMBINE_TYPES], ["automatic", "code", "shipping", "tiers", "rewards", "outlet"]);
+  assert.deepEqual(COMBINE_TYPES.map((type) => combineTypeLabel(type, cs)), ["Automatické slevy", "Slevové kódy", "Doprava zdarma", "Množstevní slevy", "Milníky", "Výprodej"]);
+  for (const type of COMBINE_TYPES) assert.doesNotMatch(combineTypeLabel(type, en), /combine\./);
+  assert.deepEqual([...COMBINE_OFFERED.automatic], [...COMBINE_TYPES]);
+  assert.deepEqual([...COMBINE_OFFERED.shipping], ["automatic", "code", "tiers", "rewards"]);
+  assert.deepEqual([...COMBINE_OFFERED.tiers], ["automatic", "code", "shipping", "rewards", "outlet"]);
+  assert.deepEqual([...COMBINE_OFFERED.outlet], ["automatic", "code", "tiers", "rewards"]);
 });
 
-test("combination: a sentence per switch and position, and a state line of what adds up (§17)", () => {
-  assert.equal(combinationSentence("productWithOrder", false, cs), "Platí buď slevy na produkty, nebo sleva z objednávky: podle toho, co dá zákazníkovi víc.");
-  assert.equal(combinationSentence("productWithShipping", false, en), "When the cart has a product discount (a quantity discount included), no shipping discount applies.");
-  for (const key of COMBINATION_KEYS) {
-    for (const on of [true, false]) {
-      assert.notEqual(combinationSentence(key, on, cs), combinationSentence(key, !on, cs), `${key}: on and off differ`);
-    }
-  }
-  assert.equal(
-    combinationSummary({ outletWithAnything: false, productWithOrder: true, productWithShipping: true, orderWithShipping: true }, cs),
-    "Sčítá se: produkty s objednávkou, produkty s dopravou a objednávka s dopravou",
-  );
-  assert.equal(
-    combinationSummary({ outletWithAnything: false, productWithOrder: false, productWithShipping: false, orderWithShipping: false }, cs),
-    "Nic se nesčítá, platí vždy jen jedna kategorie slev",
-  );
+test("Sčítá se s: the form posts the ticked types and a marker; none ticked is an empty list, no marker is no list", () => {
+  assert.equal(COMBINE_FIELD.types, "combineTypes");
+  const posted = (types: string[]) => form([[COMBINE_FIELD.posted, "1"], ...types.map((type): [string, string] => [COMBINE_FIELD.types, type])]);
+  // In the checkboxes' order, known types only, each once.
+  assert.deepEqual(readCombineTypes(posted(["rewards", "automatic", "rewards", "bogus"]), "automatic"), ["automatic", "rewards"]);
+  // Only what the owner is offered: a sale cannot name shipping.
+  assert.deepEqual(readCombineTypes(posted(["shipping", "code", "outlet"]), "outlet"), ["code"]);
+  assert.deepEqual(readCombineTypes(posted([]), "tiers"), []);
+  assert.equal(readCombineTypes(form([[COMBINE_FIELD.types, "code"]]), "automatic"), null);
+  // Nastavení reads the default list the same way; its other fields are untouched by it.
+  assert.deepEqual(readCombineDefaultForm(posted(["shipping", "rewards"])), [...DEFAULT_CONFIG.engine.combineDefault]);
+  assert.equal(readCombineDefaultForm(form([[COMBINATION_FIELD.unknownMarketLowest, "on"]])), null);
+});
+
+test("Sčítá se s: one state sentence — the types in words, then the exceptions by name (§17)", () => {
+  assert.equal(combineSummary(["shipping", "automatic"], cs), "sčítá se s automatickými slevami a dopravou zdarma");
+  assert.equal(combineSummary([], cs), "s jinou slevou se nesčítá");
+  assert.equal(combineSummary(["code"], cs, ["NEWSLETTER"]), "sčítá se s slevovými kódy · výjimka: NEWSLETTER");
+  assert.equal(combineSummary([], en, ["A", "B"]), "adds up with no other discount · exceptions: A and B");
+  assert.equal(combineSummary(["tiers", "rewards", "outlet"], en), "adds up with quantity discounts, Milestones and sale items");
+  assert.equal(combineDefaultSummary([...DEFAULT_CONFIG.engine.combineDefault], cs), "Nová sleva: sčítá se s dopravou zdarma a Milníky");
 });
 
 test("the table's looks: exactly the core presets (K7), each with a label; the look form takes only one of them", () => {

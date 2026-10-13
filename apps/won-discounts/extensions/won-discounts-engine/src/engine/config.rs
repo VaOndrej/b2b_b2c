@@ -105,8 +105,20 @@ pub struct RuleFields {
     pub target: Option<TargetKind>,
     pub minimum: Minimum,
     pub targeting: Targeting,
-    /// `combinesWith.ruleIds` (Pro).
-    pub combines: Vec<String>,
+    /// `c`: the types the rule adds up with, as a mask (combine.ts COMBINE_BIT); 0 for anything not a whole number.
+    pub mask: u8,
+    /// `x`: the rules it names as exceptions (Pro), each by its position in the payload's rules or by its id.
+    pub except: Vec<Named>,
+}
+
+/// A rule named as an exception: its position in `modules.codes.rules` (what the app ships, in `engine.cx` and
+/// in a campaign's patch). The TS reference also takes a rule id in a list made by hand; this function reads
+/// that only in its unit tests (README, "Accepted edge differences"): every byte counts toward the size limit.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Named {
+    At(usize),
+    #[cfg(test)]
+    Id(String),
 }
 
 /// One campaign override's patch: `Some` for every key the patch object has.
@@ -118,7 +130,8 @@ pub struct RulePatch {
     pub target: Option<Option<TargetKind>>,
     pub minimum: Option<Minimum>,
     pub targeting: Option<Targeting>,
-    pub combines: Option<Vec<String>>,
+    pub mask: Option<u8>,
+    pub except: Option<Vec<Named>>,
 }
 
 /// The patchable keys of one rule as readRule sees them, borrowed from the
@@ -131,7 +144,8 @@ pub struct FieldsRef<'a> {
     pub target: Option<TargetKind>,
     pub minimum: &'a Minimum,
     pub targeting: &'a Targeting,
-    pub combines: &'a [String],
+    pub mask: u8,
+    pub except: &'a [Named],
 }
 
 impl RuleFields {
@@ -143,7 +157,8 @@ impl RuleFields {
             target: self.target,
             minimum: &self.minimum,
             targeting: &self.targeting,
-            combines: &self.combines,
+            mask: self.mask,
+            except: &self.except,
         }
     }
 }
@@ -165,7 +180,8 @@ impl RulePatch {
             target: self.target.unwrap_or(base.target),
             minimum: self.minimum.as_ref().unwrap_or(base.minimum),
             targeting: self.targeting.as_ref().unwrap_or(base.targeting),
-            combines: self.combines.as_deref().unwrap_or(base.combines),
+            mask: self.mask.unwrap_or(base.mask),
+            except: self.except.as_deref().unwrap_or(base.except),
         }
     }
 }
@@ -175,6 +191,8 @@ impl RulePatch {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct RawRule {
     pub id: String,
+    /// Its position in the payload's `modules.codes.rules` (an exception names a rule by it).
+    pub at: usize,
     /// `raw.method === "code"`.
     pub method_code: bool,
     /// Code rules: `stringList(raw.codeHashes) ?? []` — the hashes of its hand-typed
@@ -201,18 +219,28 @@ pub struct RawCampaign {
     pub overrides: Vec<(String, RulePatch)>,
 }
 
-/// engine.combination: the Free per-category switches (DEFAULT_CONFIG for anything not a boolean).
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct EngineFlags {
-    pub outlet_with_anything: bool,
-    pub product_with_order: bool,
-    pub product_with_shipping: bool,
-    pub order_with_shipping: bool,
+/// The modules' lists of types as masks (combine.ts; plan.ts `readCombine`): from `engine.cx`, else from
+/// `engine.mc` = [tiers, rewards, outlet]. Anything else — absent, another shape, a payload written before
+/// 13 Oct 2026 — is 0: that module adds up with nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct ModuleMasks {
+    pub tiers: u8,
+    pub rewards: u8,
+    pub outlet: u8,
 }
 
-impl Default for EngineFlags {
-    fn default() -> Self {
-        Self { outlet_with_anything: false, product_with_order: true, product_with_shipping: true, order_with_shipping: true }
+/// The six types of combine.ts (COMBINE_BIT) and every one of them (COMBINE_ALL).
+pub const BIT_AUTOMATIC: u8 = 1;
+pub const BIT_CODE: u8 = 2;
+pub const BIT_SHIPPING: u8 = 4;
+pub const BIT_TIERS: u8 = 8;
+pub const BIT_REWARDS: u8 = 16;
+pub const BIT_OUTLET: u8 = 32;
+/// A mask given as a number (plan.ts `maskOf`): a whole number 0–63, anything else is 0.
+fn read_mask(value: &Value) -> u8 {
+    match number(value) {
+        Some(n) if (0.0..=63.0).contains(&n) && n.fract() == 0.0 => n as u8,
+        _ => 0,
     }
 }
 
@@ -297,7 +325,7 @@ pub struct Config {
     /// `config.campaignId` when a string (compared with `===` to the node's campaign).
     pub campaign_id: Option<String>,
     pub campaign_vars_version: Option<String>,
-    pub engine: EngineFlags,
+    pub masks: ModuleMasks,
     /// Market handle → upper-case countries.
     pub market_countries: Vec<(String, Vec<String>)>,
     pub rules: Vec<RawRule>,
@@ -530,11 +558,109 @@ fn read_targeting(value: &Value, read: HandleRead) -> Targeting {
     }
 }
 
-fn read_combines(value: &Value) -> Vec<String> {
-    if !value.is_obj() {
-        return Vec::new();
+/// A part of a text that is 1 to `max` ASCII digits, as its number; any other part is none.
+fn digits(part: &[u8], max: usize) -> Option<usize> {
+    if part.is_empty() || part.len() > max {
+        return None;
     }
-    string_list(&prop(value, Key::RuleIds)).unwrap_or_default()
+    let mut n = 0usize;
+    for &b in part {
+        if !b.is_ascii_digit() {
+            return None;
+        }
+        n = n * 10 + (b - b'0') as usize;
+    }
+    Some(n)
+}
+
+/// The part of `bytes` from `from` up to the next `stop` byte (or the end), and where it ends.
+fn part_until(bytes: &[u8], from: usize, stop: u8) -> (&[u8], usize) {
+    let mut end = from;
+    while end < bytes.len() && bytes[end] != stop {
+        end += 1;
+    }
+    (&bytes[from..end], end)
+}
+
+/// Positions joined by commas: a part of 1 to 5 ASCII digits counts, any other names nothing.
+fn positions(text: &[u8]) -> Vec<Named> {
+    let mut out = Vec::new();
+    let mut at = 0;
+    loop {
+        let (part, end) = part_until(text, at, b',');
+        if let Some(n) = digits(part, 5) {
+            out.push(Named::At(n));
+        }
+        if end >= text.len() {
+            return out;
+        }
+        at = end + 1;
+    }
+}
+
+/// A mask in a text: 1 or 2 digits up to 63; any other part is 0.
+fn text_mask(part: &[u8]) -> u8 {
+    digits(part, 2).filter(|&n| n <= 63).map_or(0, |n| n as u8)
+}
+
+/// What `engine.cx` says: each rule's list and exceptions, by its position in the payload's rules.
+pub type RuleLists = Vec<(u8, Vec<Named>)>;
+
+/// `engine.cx`, a text (plan.ts `readCombine` is the port spec): "<tiers>.<rewards>.<outlet>|<rule 0>;<rule 1>;…".
+/// Before the first `|` the modules' masks, split at `.` (a part of 1 or 2 digits up to 63 is that number, any
+/// other 0); after it one entry per rule, split at `;`: its mask, then after its first `:` its exceptions
+/// (`positions`). Read byte by byte (no string search of the standard library: the Wasm size limit).
+fn read_combine_text(text: &str) -> (ModuleMasks, RuleLists) {
+    let bytes = text.as_bytes();
+    let (head, bar) = part_until(bytes, 0, b'|');
+    let mut masks = [0u8; 3];
+    let mut at = 0;
+    for mask in &mut masks {
+        let (part, end) = part_until(head, at, b'.');
+        *mask = text_mask(part);
+        if end >= head.len() {
+            break;
+        }
+        at = end + 1;
+    }
+    let mut rules = RuleLists::new();
+    let mut at = bar + 1;
+    while bar < bytes.len() {
+        let (entry, end) = part_until(bytes, at, b';');
+        let (mask, colon) = part_until(entry, 0, b':');
+        rules.push((text_mask(mask), if colon < entry.len() { positions(&entry[colon + 1..]) } else { Vec::new() }));
+        if end >= bytes.len() {
+            break;
+        }
+        at = end + 1;
+    }
+    (ModuleMasks { tiers: masks[0], rewards: masks[1], outlet: masks[2] }, rules)
+}
+
+/// `x` of a campaign's patch (plan.ts `readExceptions`): a text of positions joined by commas. (In the unit
+/// tests also a list of positions and rule ids, as the TS reference reads a payload made by hand.)
+fn read_except(value: &Value) -> Vec<Named> {
+    if let Some(text) = value.as_string() {
+        return positions(text.as_bytes());
+    }
+    #[cfg(not(test))]
+    return Vec::new();
+    #[cfg(test)]
+    read_except_list(value)
+}
+
+#[cfg(test)]
+fn read_except_list(value: &Value) -> Vec<Named> {
+    let mut out = Vec::new();
+    for i in 0..value.array_len().unwrap_or(0) {
+        let entry = value.get_at_index(i);
+        if let Some(id) = entry.as_string() {
+            out.push(Named::Id(id));
+        } else if let Some(n) = number(&entry).filter(|n| *n >= 0.0 && n.fract() == 0.0 && *n < 65536.0) {
+            out.push(Named::At(n as usize));
+        }
+    }
+    out
 }
 
 
@@ -548,7 +674,8 @@ fn read_patch(patch: &Value, cur: Option<&str>, markets: HandleRead) -> RulePatc
             "target" => out.target = Some(read_target(&value)),
             "minimum" => out.minimum = Some(read_minimum(&value, cur)),
             "targeting" => out.targeting = Some(read_targeting(&value, markets)),
-            "combinesWith" => out.combines = Some(read_combines(&value)),
+            "c" => out.mask = Some(read_mask(&value)),
+            "x" => out.except = Some(read_except(&value)),
             _ => {}
         }
     }
@@ -562,7 +689,9 @@ fn read_local_date(value: &Value) -> Option<String> {
 /// `readRule` (plan.ts): the keys a stored rule usually has first, the optional
 /// ones after them — once every key of the rule was found, the rest are known to
 /// be absent without reading them (json.rs `Fields`).
-fn read_rule(raw: &Value, cur: Option<&str>, markets: HandleRead) -> Option<RawRule> {
+/// `lists`: the rules' lists of `engine.cx` when the payload has it — the rule's own `c` / `x` are then not
+/// read at all (the function pays for every key it asks the input for).
+fn read_rule(raw: &Value, at: usize, cur: Option<&str>, markets: HandleRead, lists: Option<&mut RuleLists>) -> Option<RawRule> {
     if !raw.is_obj() {
         return None;
     }
@@ -573,7 +702,14 @@ fn read_rule(raw: &Value, cur: Option<&str>, markets: HandleRead) -> Option<RawR
     let name = f.get(Key::Name).and_then(|v| string(&v)).unwrap_or_default();
     let value = f.get(Key::Value).map_or(ValueSpec::Invalid, |v| read_value(&v, cur));
     let target = f.get(Key::Target).and_then(|v| read_target(&v));
-    let combines = f.get(Key::CombinesWith).map_or_else(Vec::new, |v| read_combines(&v));
+    let (mask, except) = match lists {
+        Some(lists) => lists.get_mut(at).map(std::mem::take).unwrap_or_default(),
+        // (The unit tests' payloads say a rule's list on the rule, as the TS reference reads one made by hand.)
+        #[cfg(test)]
+        None => (f.get(Key::C).map_or(0, |v| read_mask(&v)), f.get(Key::X).map_or_else(Vec::new, |v| read_except(&v))),
+        #[cfg(not(test))]
+        None => (0, Vec::new()),
+    };
     let code_hashes = if method_code { f.get(Key::CodeHashes).and_then(|v| string_list(&v)).unwrap_or_default() } else { Vec::new() };
     let priority = f.get(Key::Priority).and_then(|v| number(&v)).map_or(0, js::floor_to_i64);
     let minimum = f.get(Key::Minimum).map_or_else(Minimum::default, |v| read_minimum(&v, cur));
@@ -594,6 +730,7 @@ fn read_rule(raw: &Value, cur: Option<&str>, markets: HandleRead) -> Option<RawR
     }
     Some(RawRule {
         id,
+        at,
         method_code,
         code_hashes,
         priority,
@@ -601,7 +738,7 @@ fn read_rule(raw: &Value, cur: Option<&str>, markets: HandleRead) -> Option<RawR
         schedule_invalid,
         starts_on,
         ends_on,
-        fields: RuleFields { enabled, name, value, target, minimum, targeting, combines },
+        fields: RuleFields { enabled, name, value, target, minimum, targeting, mask, except },
     })
 }
 
@@ -624,16 +761,12 @@ fn read_campaign(value: &Value, cur: Option<&str>, markets: HandleRead) -> Optio
     Some(RawCampaign { id: string(&prop(value, Key::Id)), killed: is_true(&prop(value, Key::Killed)), overrides })
 }
 
-fn read_engine(config: &Value) -> EngineFlags {
-    let defaults = EngineFlags::default();
-    let combination = prop(&prop(config, Key::Engine), Key::Combination);
-    let flag = |key: Key, default: bool| prop(&combination, key).as_bool().unwrap_or(default);
-    EngineFlags {
-        outlet_with_anything: flag(Key::OutletWithAnything, defaults.outlet_with_anything),
-        product_with_order: flag(Key::ProductWithOrder, defaults.product_with_order),
-        product_with_shipping: flag(Key::ProductWithShipping, defaults.product_with_shipping),
-        order_with_shipping: flag(Key::OrderWithShipping, defaults.order_with_shipping),
-    }
+#[cfg(test)]
+fn read_module_masks(config: &Value) -> ModuleMasks {
+    let mc = prop(&prop(config, Key::Engine), Key::Mc);
+    let len = mc.array_len().unwrap_or(0);
+    let at = |i: usize| if i < len { read_mask(&mc.get_at_index(i)) } else { 0 };
+    ModuleMasks { tiers: at(0), rewards: at(1), outlet: at(2) }
 }
 
 /// `value[i]` of an array of `len` elements; none past its end (`undefined`).
@@ -875,12 +1008,23 @@ impl Config {
             campaigns.push(campaign);
         }
 
+        // How discounts add up: one text for the whole shop when the payload has it (`engine.cx`).
+        let (masks, mut lists) = match string(&prop(&prop(value, Key::Engine), Key::Cx)) {
+            Some(text) => {
+                let (masks, lists) = read_combine_text(&text);
+                (masks, Some(lists))
+            }
+            #[cfg(test)]
+            None => (read_module_masks(value), None),
+            #[cfg(not(test))]
+            None => (ModuleMasks::default(), None),
+        };
         Some(Config {
             campaign_id,
             campaign_vars_version,
-            engine: read_engine(value),
+            masks,
             market_countries,
-            rules: (0..rule_count).filter_map(|i| read_rule(&rules.get_at_index(i), cur, markets)).collect(),
+            rules: (0..rule_count).filter_map(|i| read_rule(&rules.get_at_index(i), i, cur, markets, lists.as_mut())).collect(),
             campaigns,
             margin: read_margin_payload(&prop(&modules, Key::Margin)),
             max_code_length: read_max_code_length(&prop(&codes, Key::MaxCodeLength)),
@@ -958,7 +1102,7 @@ mod tests {
         assert!(read(r#"{"modules": [], "x": 1}"#).is_none());
         assert!(read(r#"[{"modules": {"codes": {"rules": []}}}]"#).is_none());
         let config = read(r#"{"modules": {"codes": {"rules": []}}}"#).unwrap();
-        assert_eq!(config.engine, EngineFlags::default());
+        assert_eq!(config.masks, ModuleMasks::default());
         assert!(config.rules.is_empty());
     }
 
@@ -983,11 +1127,11 @@ mod tests {
                 {"id": "a", "enabled": true, "name": 5, "method": "code", "codeHashes": ["00000001", 7],
                  "value": {"kind": "percentage", "percent": 140}, "target": {"kind": "products"}, "priority": 2.7,
                  "minimum": {"subtotal": {"CZK": 1000.9, "EUR": "5"}, "quantity": 2.5},
-                 "targeting": {"markets": ["cz", 1], "segments": []}, "combinesWith": {"ruleIds": ["b"]}},
+                 "targeting": {"markets": ["cz", 1], "segments": []}, "c": 34, "x": ["b", 7, -1, 1.5, null], "combinesWith": {"ruleIds": ["z"]}},
                 {"id": "b", "method": "automatic", "codeHashes": ["00000002"], "value": {"kind": "fixed", "amount": [1]},
-                 "target": {"kind": "everything"}, "schedule": {"startsOn": "2026-10-01", "at": "x"}}
+                 "target": {"kind": "everything"}, "schedule": {"startsOn": "2026-10-01", "at": "x"}, "c": "63", "x": "0, 3,x,,17,+1,123456,01"}
             ]}},
-            "engine": {"combination": {"productWithOrder": false, "orderWithShipping": "no"}},
+            "engine": {"combination": {"productWithOrder": true, "outletWithAnything": true}, "mc": [8, 31, "1", 4]},
             "marketCountries": {"eu": ["cz", "sk", 3], "none": []}}"#,
         )
         .unwrap();
@@ -1003,7 +1147,10 @@ mod tests {
         assert_eq!(a.fields.minimum.quantity, 2);
         assert_eq!(a.fields.targeting.markets, Some(vec!["cz".to_string()]));
         assert!(!a.fields.targeting.segment_targeted);
-        assert_eq!(a.fields.combines, vec!["b"]);
+        // The lists as masks, the exceptions as ids; the keys of before 13 Oct 2026 are not read at all.
+        assert_eq!((a.fields.mask, &a.fields.except), (34, &vec![Named::Id("b".to_string()), Named::At(7)]));
+        // Its position in the payload's list, the entries that are no rule counted.
+        assert_eq!((a.at, config.rules[1].at), (3, 4));
         assert!(!a.scheduled);
         let b = &config.rules[1];
         assert!(!b.method_code && b.code_hashes.is_empty());
@@ -1011,8 +1158,32 @@ mod tests {
         assert_eq!(b.fields.target, None);
         assert!(b.scheduled && b.schedule_invalid);
         assert_eq!(b.starts_on.as_deref(), Some("2026-10-01"));
-        assert!(!config.engine.product_with_order && config.engine.order_with_shipping);
+        // A text of positions: a part of 1 to 5 digits counts ("0", "17", "01"), any other names nothing.
+        assert_eq!((b.fields.mask, &b.fields.except), (0, &vec![Named::At(0), Named::At(17), Named::At(1)]));
+        // A text is no mask (nor is a number above 63, a fraction or a negative one).
+        assert_eq!(config.masks, ModuleMasks { tiers: 8, rewards: 31, outlet: 0 });
         assert_eq!(config.market_countries, vec![("eu".to_string(), vec!["CZ".to_string(), "SK".to_string()])]);
+    }
+
+    #[test]
+    fn engine_cx_is_one_text_for_every_list_and_with_it_a_rules_own_keys_are_not_read() {
+        let rules = r#"{"id": "a", "enabled": true, "c": 9, "x": ["b"]}, 7, {"id": "b", "enabled": true}, {"id": "c", "enabled": true}"#;
+        let read_cx = |cx: &str| read(&format!(r#"{{"modules": {{"codes": {{"rules": [{rules}]}}}}, "engine": {{"cx": {cx}, "mc": [1, 2, 3]}}}}"#)).unwrap();
+        // Entries by position in the payload's list (the junk entry at 1 has one too); a rule past the last has none.
+        let config = read_cx(r#""8.63.5|34:2,3;7;:0;""#);
+        assert_eq!(config.masks, ModuleMasks { tiers: 8, rewards: 63, outlet: 5 });
+        let lists: Vec<(u8, &Vec<Named>)> = config.rules.iter().map(|r| (r.fields.mask, &r.fields.except)).collect();
+        assert_eq!(lists, vec![(34, &vec![Named::At(2), Named::At(3)]), (0, &vec![Named::At(0)]), (0, &vec![])]);
+        // Junk parts: 0, or they name nothing (a mask above 63 is 0 too).
+        let config = read_cx(r#""x.-1. 3.9|+1: 1,2,x,,123456,01;95:""#);
+        assert_eq!(config.masks, ModuleMasks::default());
+        assert_eq!((config.rules[0].fields.mask, &config.rules[0].fields.except), (0, &vec![Named::At(2), Named::At(1)]));
+        // No "|": no rule has a list. Not a text: `engine.mc` and the rules' own keys.
+        let config = read_cx(r#""1.2.3""#);
+        assert_eq!((config.masks, config.rules[0].fields.mask), (ModuleMasks { tiers: 1, rewards: 2, outlet: 3 }, 0));
+        let config = read_cx("7");
+        assert_eq!(config.masks, ModuleMasks { tiers: 1, rewards: 2, outlet: 3 });
+        assert_eq!((config.rules[0].fields.mask, &config.rules[0].fields.except), (9, &vec![Named::Id("b".to_string())]));
     }
 
     #[test]

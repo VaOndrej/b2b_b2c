@@ -207,7 +207,7 @@ test("a free-shipping code dropped by a Free switch is 'does not combine', never
     }),
   );
   const cs = texts(plan, "cs").join("\n");
-  assert.match(cs, /Kód DOPRAVA se nekombinuje/);
+  assert.match(cs, /Kód DOPRAVA se nesčítá/);
   assert.doesNotMatch(cs, /výhodnější/);
 });
 

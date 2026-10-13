@@ -212,6 +212,7 @@ test("Free with Pro sets stored: titles from Shopify, the global set first, the 
     modules: {
       ...c.modules,
       tiers: {
+        ...c.modules.tiers,
         sets: [
           { id: "t_scoped", scope: { productIds: [P1], collectionIds: [C5] }, countAcross: "line", breaks: [{ minQty: 2, percent: 5 }] },
           { id: "global", scope: "global", countAcross: "cart", breaks: [{ minQty: 3, percent: 10 }] },
@@ -273,7 +274,7 @@ test("an empty whole-store set is not stored; a value kept for a market that is 
       { handle: "cz", currency: "CZK", enabled: true },
       { handle: "hu", currency: "HUF", enabled: false },
     ],
-    modules: { ...c.modules, tiers: { sets: [{ id: "global", scope: "global", countAcross: "line", breaks: [{ minQty: 3, amountOff: { CZK: 1000, HUF: 30000 } }] }] } },
+    modules: { ...c.modules, tiers: { ...c.modules.tiers, sets: [{ id: "global", scope: "global", countAcross: "line", breaks: [{ minQty: 3, amountOff: { CZK: 1000, HUF: 30000 } }] }] } },
   }));
   const version = (await loadConfig(db.prisma, shop)).version!;
   // The page posts the kept HUF value as a hidden field; the server reads it because the config holds it.
@@ -298,7 +299,7 @@ test("an empty whole-store set is not stored; a value kept for a market that is 
 
   // Another tab changed the tiers → base_changed; the rules → applied on top.
   const v2 = (await loadConfig(db.prisma, shop)).version;
-  await store((c) => ({ ...c, modules: { ...c.modules, tiers: { sets: [{ ...c.modules.tiers.sets[0]!, countAcross: "product" }] } } }));
+  await store((c) => ({ ...c, modules: { ...c.modules, tiers: { ...c.modules.tiers, sets: [{ ...c.modules.tiers.sets[0]!, countAcross: "product" }] } } }));
   assert.deepEqual(await saveTiers(ctx, [GLOBAL], { configVersion: v2 }), { ok: false, reason: "base_changed" });
   const v3 = (await loadConfig(db.prisma, shop)).version;
   await store((c) => ({ ...c, onboarding: { goals: ["tiers"], step: 2 } }));
@@ -317,6 +318,7 @@ test("Přehled card: the whole-store set and the Pro sets IN FORCE on the plan (
     modules: {
       ...c.modules,
       tiers: {
+        ...c.modules.tiers,
         sets: [
           { id: "global", scope: "global", countAcross: "line", breaks: [{ minQty: 3, percent: 10 }] },
           { id: "t_scoped", scope: { collectionIds: [C5] }, countAcross: "line", breaks: [{ minQty: 2, percent: 5 }] },
@@ -433,7 +435,7 @@ test("Pro (review fix 18): how many products each Pro set reaches, from the inde
   const st = storeFor();
   await store((c) => ({
     ...c,
-    modules: { ...c.modules, tiers: { sets: [{ id: "t_scoped", scope: { collectionIds: [C5] }, countAcross: "line", breaks: [{ minQty: 2, percent: 5 }] }] } },
+    modules: { ...c.modules, tiers: { ...c.modules.tiers, sets: [{ id: "t_scoped", scope: { collectionIds: [C5] }, countAcross: "line", breaks: [{ minQty: 2, percent: 5 }] }] } },
   }));
   for (const [i, value] of [
     '{"ruleIds":[],"tierRef":"t_scoped"}',
@@ -482,7 +484,7 @@ test("P3-4: on Free a stored Pro set outside the form's grammar (0 %, 3 decimals
   };
   await store((c) => ({
     ...c,
-    modules: { ...c.modules, tiers: { sets: [{ id: "global", scope: "global", countAcross: "product", breaks: [{ minQty: 3, percent: 10 }] }, odd] } },
+    modules: { ...c.modules, tiers: { ...c.modules.tiers, sets: [{ id: "global", scope: "global", countAcross: "product", breaks: [{ minQty: 3, percent: 10 }] }, odd] } },
   }));
   const before = (await loadConfig(db.prisma, shop)).config.modules.tiers.sets[1]!;
   const version = (await loadConfig(db.prisma, shop)).version!;
@@ -520,6 +522,7 @@ test("P3-2: emptying the first whole-store set keeps it as a set WITHOUT tiers w
     modules: {
       ...c.modules,
       tiers: {
+        ...c.modules.tiers,
         sets: [
           { id: "global", scope: "global", countAcross: "line", breaks: [{ minQty: 3, percent: 10 }] },
           { id: "t_dormant", scope: "global", countAcross: "line", breaks: [{ minQty: 2, percent: 50 }] },

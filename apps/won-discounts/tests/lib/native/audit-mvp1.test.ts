@@ -419,7 +419,7 @@ test("F12: saveConfig with an expected version refuses a base that changed meanw
   const base = await loadConfig(db.prisma, shop);
   assert.equal(base.version, null);
   const a = createDefaultConfig();
-  a.engine.combination.productWithOrder = !a.engine.combination.productWithOrder;
+  a.engine.combineDefault = ["code"];
   assert.ok((await saveConfig(db.prisma, shop, a)).ok);
   const stale = await saveConfig(db.prisma, shop, createDefaultConfig(), { expectedVersion: base.version });
   assert.ok(!stale.ok);

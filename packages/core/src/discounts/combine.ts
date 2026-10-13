@@ -54,6 +54,9 @@ export interface RuleCombine extends CombineSetting {
 export const COMBINE_MODULES = ["tiers", "rewards", "outlet"] as const;
 export type CombineModule = (typeof COMBINE_MODULES)[number];
 
+/** Ids of the discounts that are not rules, where a pair is named (the admin's checks, the conversion's report). */
+export const COMBINE_ENTITY = { tiers: "tiers", gift: "rewards:gift", shipping: "reward:shipping", outlet: "outlet" } as const;
+
 export const COMBINE_BIT: Readonly<Record<CombineType, number>> = { automatic: 1, code: 2, shipping: 4, tiers: 8, rewards: 16, outlet: 32 };
 export const COMBINE_ALL = 63;
 

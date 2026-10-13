@@ -16,9 +16,11 @@ const TIERS = { modules: { tiers: { sets: [{ id: "g", scope: "global", countAcro
 const pline = (id: string, quantity: number, extra: Partial<CartLineInput> = {}): CartLineInput => ({ id, variantId: `gid://shopify/ProductVariant/${id}`, productId: P(1), quantity, unitPrice: 100_00, ruleIds: [], ...extra });
 
 test("tiers only (1): the sale line gets its quantity tier, no product discount, and stays out of the order discount", () => {
+  // The order discount adds up with the product discount and with the tiers (each names the other's type).
+  const adding = { modules: { tiers: { ...TIERS.modules.tiers, combine: { types: ["automatic"] } } } };
   const plan = planCart(
     cartOf([pline("S", 3, { ruleIds: ["A"], outlet: OUTLET_ALLOW.tiers }), pline("N", 1, { ruleIds: ["A"] })]),
-    payloadOf([pct("A", 20), orderPct("O", 10)], TIERS),
+    payloadOf([pct("A", 20, { combine: { types: ["automatic"] } }), orderPct("O", 10, { combine: { types: ["automatic", "tiers"] } })], adding),
   );
   const sale = lineOf(plan, "S");
   assert.equal(sale.excluded, null);
@@ -64,13 +66,14 @@ test("`true` is unchanged, 7 and junk are ordinary lines, and a gift line ignore
   assert.equal(lineOf(planCart(cartOf([line("G", 300_00, 1, [], { giftTierId: "g", outlet: 1 })]), rules), "G").excluded, "gift");
 });
 
-test("outletWithAnything lifts the limits of a partly combining sale too", () => {
+test("a sale with its own list follows that list alone, whatever the shop's list for sales says (13 Oct 2026)", () => {
+  // The shop's sales take everything; this sale's own list says tiers only.
   const plan = planCart(
     cartOf([pline("S", 3, { ruleIds: ["A"], outlet: OUTLET_ALLOW.tiers })]),
     payloadOf([pct("A", 20), orderPct("O", 10)], { ...TIERS, engine: { combination: { outletWithAnything: true } } }),
   );
-  assert.deepEqual(winners(plan, "S"), ["A"]);
-  assert.deepEqual(plan.order?.excludedLineIds, []);
+  assert.deepEqual(winners(plan, "S"), ["tier:g"]);
+  assert.equal(plan.order, null);
 });
 
 // --- Gift cards (decided 10 Oct 2026): a 1 000 Kč card bought for 700 Kč and spent as 1 000 Kč is money given away.

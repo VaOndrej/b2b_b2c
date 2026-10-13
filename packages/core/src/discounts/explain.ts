@@ -221,7 +221,7 @@ function tierSentences(tier: TierOutcome, plan: CartPlan, locale: UiLocale): Exp
           : `${subject} has no amount for ${plan.currency}, so it is not offered here.`,
       );
     case "not_combinable":
-      return info(cs ? `${subject} se nekombinuje s ostatními slevami v košíku.` : `${subject} does not combine with the other discounts in the cart.`);
+      return info(cs ? `${subject} se nesčítá s ostatními slevami v košíku.` : `${subject} does not add up with the other discounts in the cart.`);
     case "margin_floor":
       return info(cs ? `${subject} se neuplatní: ${AT_MINIMUM.cs}.` : `${subject} is not applied: ${AT_MINIMUM.en}.`);
     case "zero_value":
@@ -267,8 +267,8 @@ function rewardSentences(plan: CartPlan, locale: UiLocale): ExplainItem[] {
       item(
         "info",
         cs
-          ? "Doprava zdarma se tu nesčítá s ostatními slevami (přepínače kombinování v Nastavení)."
-          : "Free shipping does not combine with the other discounts here (the combination switches in Settings).",
+          ? "Doprava zdarma se nesčítá se slevou v košíku (seznam „Sčítá se s“ v Milnících a u té slevy)."
+          : "Free shipping does not add up with a discount in the cart (the “Adds up with” list in Milestones and on that discount).",
         { ruleId: SHIPPING_REWARD_ID },
       ),
     );
@@ -287,6 +287,16 @@ function rewardSentences(plan: CartPlan, locale: UiLocale): ExplainItem[] {
       out.push(item("info", cs ? "Nákup má nárok na dárek zdarma, v košíku ale dárek není." : "The order qualifies for a free gift, but the gift is not in the cart.", { ruleId: id }));
     } else if (gift.state === "below" && p) {
       out.push(item("info", cs ? `Do dárku zdarma zbývá ${money(p.remaining)}.` : `${money(p.remaining)} more for the free gift.`, { ruleId: id }));
+    } else if (gift.state === "not_combinable") {
+      out.push(
+        item(
+          "warning",
+          cs
+            ? "Dárek v košíku se zaplatí: nesčítá se se slevou v košíku (seznam „Sčítá se s“ v Milnících a u té slevy)."
+            : "The gift in the cart will be paid: it does not add up with a discount in the cart (the “Adds up with” list in Milestones and on that discount).",
+          { ruleId: id, lineIds },
+        ),
+      );
     } else if (gift.state === "not_offered") {
       out.push(item("info", cs ? `Dárek nemá práh v ${plan.currency}, v tomto trhu se nenabízí.` : `The gift has no threshold in ${plan.currency}; it is not offered in this market.`, { ruleId: id }));
     }
@@ -413,7 +423,7 @@ function codeSentences(code: CodeOutcome, plan: CartPlan, locale: UiLocale): Exp
     case "disabled":
       return warn(cs ? `Kód ${c} je vypnutý.` : `Code ${c} is turned off.`);
     case "not_combinable":
-      return warn(cs ? `Kód ${c} se nekombinuje s ostatními slevami v košíku.` : `Code ${c} does not combine with the other discounts in the cart.`);
+      return warn(cs ? `Kód ${c} se nesčítá s ostatními slevami v košíku.` : `Code ${c} does not add up with the other discounts in the cart.`);
     case "margin_floor":
       return warn(cs ? `Kód ${c} tu nic neušetří: ${AT_MINIMUM.cs}.` : `Code ${c} saves nothing here: ${AT_MINIMUM.en}.`);
     case "zero_value":
@@ -485,7 +495,7 @@ function automaticSentences(rule: RuleOutcome, plan: CartPlan, locale: UiLocale)
           : `${name} has no amount for ${plan.currency}, so it is not offered here.`,
       );
     case "not_combinable":
-      return info(cs ? `Sleva ${name} se nekombinuje s ostatními slevami v košíku.` : `${name} does not combine with the other discounts in the cart.`);
+      return info(cs ? `Sleva ${name} se nesčítá s ostatními slevami v košíku.` : `${name} does not add up with the other discounts in the cart.`);
     case "margin_floor":
       return info(cs ? `Sleva ${name} se neuplatní: ${AT_MINIMUM.cs}.` : `${name} is not applied: ${AT_MINIMUM.en}.`);
     case "not_started":

@@ -81,7 +81,7 @@ function* everyRule(): Generator<DiscountRule> {
             schedule: { startsAt: "2026-11-01T00:00:00+01:00", endsAt: "2026-12-01T00:00:00+01:00" },
             limits: { usageLimit: 100, oncePerCustomer: true },
             targeting: { markets: ["sk"], segments: ["gid://shopify/Segment/1"] },
-            combinesWith: { ruleIds: ["r2"] },
+            combine: { types: ["code"], rules: ["r2"] },
           });
         }
       }
@@ -128,11 +128,11 @@ test("describe* state lines never contain raw enum keys, i18n keys or placeholde
   assert.ok(count > 300, `exercised ${count} combinations`);
 });
 
-test("§17a: the admin line IS the core formatter's line (+ the schedule, limits, markets, combinations when set); no second wording", () => {
+test("§17a: the admin line IS the core formatter's line (+ the schedule, limits, markets, exceptions when set); no second wording", () => {
   for (const r of everyRule()) {
     for (const tr of [cs, en]) {
       const core = coreDescribeRule(r, tr.locale, undefined, { currencies: CURRENCIES, codesKnown: true });
-      const line = describeRuleLine({ ...r, schedule: undefined, limits: undefined, targeting: undefined, combinesWith: undefined }, tr, CURRENCIES, TZ);
+      const line = describeRuleLine({ ...r, schedule: undefined, limits: undefined, targeting: undefined, combine: undefined }, tr, CURRENCIES, TZ);
       assert.equal(line, core);
     }
   }
@@ -206,13 +206,14 @@ test("collectWarnings: segment targeting (never sold as working), missing curren
   assert.match(describeProSettings(rule({ targeting: { segments: ["x"] } }), cs, new Map()), /v pokladně se zatím neuplatní/);
   assert.equal(
     describeProSettings(rule({ targeting: { markets: ["cz", "sk"] } }), cs, new Map(), { cz: "Česko" }),
-    "Jen trhy Česko a sk · se slevou stejného druhu se nesčítá, platí výhodnější",
+    "Jen trhy Česko a sk · s jinou slevou se nesčítá",
   );
-  // One verb everywhere: "sčítá se s".
+  // One verb everywhere: "sčítá se s" — the types in words, then the exceptions by name.
   assert.equal(
-    describeProSettings(rule({ combinesWith: { ruleIds: ["r2"] } }), cs, new Map([["r2", "Druhá sleva"]])),
-    "Všichni zákazníci a trhy · sčítá se s Druhá sleva",
+    describeProSettings(rule({ combine: { types: ["shipping", "automatic"], rules: ["r2"] } }), cs, new Map([["r2", "Druhá sleva"]])),
+    "Všichni zákazníci a trhy · sčítá se s automatickými slevami a dopravou zdarma · výjimka: Druhá sleva",
   );
+  assert.equal(describeProSettings(rule({ combine: { types: ["rewards"], rules: ["r2", "r3"] } }), en, new Map([["r2", "Second"], ["r3", ""]])).split(" · ").slice(1).join(" · "), "adds up with Milestones · exceptions: Second and Untitled discount");
 });
 
 test("collectWarnings: a missing minimum points at the conditions; a rule limited to switched-off markets is reported only when the enabled markets are given (B3)", () => {
@@ -234,22 +235,22 @@ test("collectWarnings: a missing minimum points at the conditions; a rule limite
   );
 });
 
-test("P5: the one-line state adds usage limits, market targeting and combinations when they are set", () => {
+test("P5: the one-line state adds usage limits, market targeting and exceptions when they are set", () => {
   const r = rule({
     method: "code",
     codes: ["VIP10"],
     limits: { usageLimit: 100, oncePerCustomer: true },
     targeting: { markets: ["cz", "sk"] },
-    combinesWith: { ruleIds: ["r2", "r3"] },
+    combine: { types: ["automatic"], rules: ["r2", "r3"] },
   });
   assert.equal(
     describeRuleLine(r, cs, ["CZK"], TZ, { marketNames: { cz: "Česko", sk: "Slovensko" }, ruleNames: new Map([["r2", "Druhá"], ["r3", ""]]) }),
-    `10${NBSP}% z objednávky · kód VIP10 · 1× na zákazníka · nejvýš 100× celkem · jen trhy Česko a Slovensko · sčítá se s Druhá a Sleva bez názvu`,
+    `10${NBSP}% z objednávky · kód VIP10 · 1× na zákazníka · nejvýš 100× celkem · jen trhy Česko a Slovensko · výjimky: Druhá a Sleva bez názvu`,
   );
-  // Without the names (a caller that does not know them): handles and a count, never an id.
-  assert.equal(describeRuleLine(r, cs, ["CZK"], TZ), `10${NBSP}% z objednávky · kód VIP10 · 1× na zákazníka · nejvýš 100× celkem · jen trhy cz a sk · sčítá se s dalšími slevami (2)`);
+  // Without the names (a caller that does not know them): handles, and no exception is said — never an id.
+  assert.equal(describeRuleLine(r, cs, ["CZK"], TZ), `10${NBSP}% z objednávky · kód VIP10 · 1× na zákazníka · nejvýš 100× celkem · jen trhy cz a sk`);
   // Limits belong to code rules only (Shopify): an automatic rule never shows them.
-  assert.equal(describeRuleLine({ ...r, method: "automatic", codes: undefined, targeting: undefined, combinesWith: undefined }, cs, ["CZK"], TZ), `10${NBSP}% z objednávky · automaticky`);
+  assert.equal(describeRuleLine({ ...r, method: "automatic", codes: undefined, targeting: undefined, combine: undefined }, cs, ["CZK"], TZ), `10${NBSP}% z objednávky · automaticky`);
 });
 
 test("P5: the generated name is the value + target phrase with the minimum", () => {

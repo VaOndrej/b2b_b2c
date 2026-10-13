@@ -113,9 +113,9 @@ test("over the budget with margin on: the degraded node emits its order discount
   // degradedPlan-style product output (over the budget) + a 10 % order discount on the same automatic node.
   const lines = Array.from({ length: 200 }, (_, i) => line(`L${i + 1}`, 50_00 + (i + 1) * 101, 1, ["fix", "ten"]));
   const rules = [
-    fixed("fix", { CZK: 9_99 }, { name: "9,99 Kč z kusu", combinesWith: { ruleIds: ["ten"] } }),
-    pct("ten", 10, { name: "Deset procent" }),
-    orderPct("O", 10),
+    fixed("fix", { CZK: 9_99 }, { name: "9,99 Kč z kusu", combine: { types: ["automatic"] } }),
+    pct("ten", 10, { name: "Deset procent", combine: { types: ["automatic"] } }),
+    orderPct("O", 10, { combine: { types: ["automatic"] } }),
   ];
   const plan = planCart(cartOf(lines), marginPayloadOf(rules, { global: { maxDiscountPercent: 80 } }));
   assert.equal(plan.order?.marginProtected, true);

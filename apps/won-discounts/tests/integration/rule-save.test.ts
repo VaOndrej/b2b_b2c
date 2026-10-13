@@ -258,8 +258,9 @@ test("'Běží' compares the whole config version: an engine setting change leav
   assert.deepEqual(await loadRuleSync(ctx, (await loadConfig(db.prisma, shop)).config), { [idA]: "synced", [idB]: "synced" });
 
   const { config } = await loadConfig(db.prisma, shop);
-  const engine = { ...config.engine, combination: { ...config.engine.combination, productWithOrder: !config.engine.combination.productWithOrder } };
-  assert.equal((await saveConfig(db.prisma, shop, { ...config, engine })).ok, true);
+  // A setting the checkout reads that is no rule's own: what the quantity tiers add up with (it ships in `engine.cx`).
+  const modules = { ...config.modules, tiers: { ...config.modules.tiers, combine: { types: ["automatic" as const] } } };
+  assert.equal((await saveConfig(db.prisma, shop, { ...config, modules })).ok, true);
   assert.deepEqual(await loadRuleSync(ctx, (await loadConfig(db.prisma, shop)).config), { [idA]: "pending", [idB]: "pending" });
 
   // An onboarding-only save does not touch what runs.

@@ -356,7 +356,8 @@ export interface TierPayloadUse {
  */
 export function tierPayloadUse(sets: readonly TierSet[]): TierPayloadUse {
   const bytesOf = (tiers: TiersModule) => new TextEncoder().encode(JSON.stringify(buildTiersPayload(tiers))).length;
-  const stored: TiersModule = { sets: sets.map((s) => JSON.parse(JSON.stringify(s)) as TierSet) };
+  // (The tiers' list of types is not part of the tier payload: `engine.cx` carries it.)
+  const stored: TiersModule = { sets: sets.map((s) => JSON.parse(JSON.stringify(s)) as TierSet), combine: { types: [] } };
   const base = createDefaultConfig();
   const free = gateConfigForPlan({ ...base, modules: { ...base.modules, tiers: stored } }, "free").config.modules.tiers;
   const bytes = Math.max(bytesOf(stored), bytesOf(free));

@@ -25,12 +25,12 @@ function proConfig(): WonDiscountsConfig {
     modules: {
       codes: {
         rules: [
-          pct("stack-a", 10, { name: "Letní", combinesWith: { ruleIds: ["stack-b"] } }),
-          pct("stack-b", 5, { name: "Věrnost" }),
+          pct("stack-a", 10, { name: "Letní", combine: { types: ["shipping"], rules: ["stack-b"] } }),
+          pct("stack-b", 5, { name: "Věrnost", combine: { types: ["shipping"], rules: ["stack-a"] } }),
           pct("sk-only", 20, { name: "Jen Slovensko", targeting: { markets: ["sk"] } }),
           pct("vip", 30, { name: "VIP", targeting: { segments: ["gid://shopify/Segment/1"] } }),
           // Already off: its Pro data is stripped, but "not in force" is nothing new to report.
-          pct("off", 40, { name: "Vypnutá", enabled: false, targeting: { markets: ["sk"] }, combinesWith: { ruleIds: ["plain"] } }),
+          pct("off", 40, { name: "Vypnutá", enabled: false, targeting: { markets: ["sk"] }, combine: { types: [], rules: ["plain"] } }),
           orderPct("plain", 5, { name: "Objednávka" }),
           freeShip("ship", { name: "Doprava" }),
         ],
@@ -94,9 +94,11 @@ test("Free: every Pro capability is out of the gated config; the stored config i
   assert.equal(JSON.stringify(config), before, "the input is never mutated (§14a)");
 
   const rule = (id: string) => free.modules.codes.rules.find((r) => r.id === id)!;
-  // Per-rule combinations run on every plan (13 Oct 2026), as do the category switches.
-  assert.deepEqual(rule("stack-a").combinesWith, { ruleIds: ["stack-b"] });
+  // The lists of types run on every plan; exceptions for single discounts are Pro (13 Oct 2026).
+  assert.deepEqual(rule("stack-a").combine, { types: ["shipping"] });
+  assert.deepEqual(rule("stack-b").combine, { types: ["shipping"] });
   assert.deepEqual(free.engine, config.engine);
+  assert.deepEqual(free.modules.tiers.combine, config.modules.tiers.combine);
   // Market / segment targeting would WIDEN the rule if simply removed: the rule is off instead.
   assert.equal(rule("sk-only").enabled, false);
   assert.equal(rule("sk-only").targeting, undefined);
@@ -104,7 +106,7 @@ test("Free: every Pro capability is out of the gated config; the stored config i
   assert.equal(rule("vip").targeting, undefined);
   assert.equal(rule("plain").enabled, true);
   assert.equal(rule("off").targeting, undefined);
-  assert.deepEqual(rule("off").combinesWith, { ruleIds: ["plain"] });
+  assert.deepEqual(rule("off").combine, { types: [] });
   // Campaigns are Pro.
   assert.deepEqual(free.campaigns, []);
   // Exactly one global tier set, counting per product (never across the cart); a scoped set stays
@@ -127,6 +129,8 @@ test("Free: every Pro capability is out of the gated config; the stored config i
   assert.deepEqual(
     stripped.map((s) => [s.capability, s.reason, s.ruleId ?? s.entityId ?? null, s.count ?? null, s.removedIds ?? null]),
     [
+      ["combine_exceptions", "removed", "stack-a", 1, ["stack-b"]],
+      ["combine_exceptions", "removed", "stack-b", 1, ["stack-a"]],
       ["market_targeting", "rule_off", "sk-only", null, null],
       ["segment_targeting", "rule_off", "vip", null, null],
       ["campaigns", "removed", "bf", null, null],
@@ -157,26 +161,31 @@ test("Free payload: no Pro data reaches the function, and the checkout plans wit
   assert.equal(payload.campaignId, null);
   assert.deepEqual(payload.campaigns, []);
   assert.deepEqual(payload.marketCountries, {}, "no market targeting → no market countries");
-  assert.ok(json.includes("combinesWith"), "which discounts add up is not Pro data");
+  // (`engine.cx`: the modules' lists, then a rule's list as its mask, and after a colon its exceptions.)
+  assert.ok(!/[|;][0-9]*:/.test(payload.engine.cx ?? ""), `no exception ships below Pro: ${payload.engine.cx}`);
+  assert.ok(payload.engine.cx?.includes("|4;4"), "the lists of types are every plan's");
   assert.ok(!json.includes("targeting"), json);
 
-  // The stack 10 % + 5 % applies on Free too (13 Oct 2026: which discounts add up is every plan's).
+  // Without the exception the two do not add up: the better one wins (10 %), never the stack 10 % + 5 %.
   const plan = planCart(cartOf([line("L1", 100_00, 1, ["stack-a", "stack-b", "sk-only"])], { countryCode: "SK", currency: "CZK" }), payload);
-  assert.equal(plan.lines[0].product?.amount, 15_00);
+  assert.equal(plan.lines[0].product?.amount, 10_00);
+  // On Pro the same cart gets the stack.
+  const pro = buildShopFunctionConfig(gateConfigForPlan(proConfig(), "pro", { now: NOW }).config, { now: NOW, shopTimezone: TZ }).payload;
+  assert.equal(planCart(cartOf([line("L1", 100_00, 1, ["stack-a", "stack-b"])], { countryCode: "CZ", currency: "CZK" }), pro).lines[0].product?.amount, 15_00);
   assert.equal(outcome(plan, "sk-only").state, "disabled");
 });
 
 test("Free: a config without Pro data strips nothing", () => {
   const { config } = sanitizeConfig({
     modules: {
-      codes: { rules: [pct("a", 10, { combinesWith: { ruleIds: [] } }), orderPct("o", 5)] },
+      codes: { rules: [pct("a", 10, { combine: { types: ["automatic", "shipping"] } }), orderPct("o", 5)] },
       tiers: { sets: [{ id: "t", scope: "global", countAcross: "line", breaks: [{ minQty: 2, percent: 5 }] }] },
       rewards: { gifts: [{ id: "g", threshold: { CZK: 500_00 }, choices: ["gid://shopify/ProductVariant/1"] }], countOtherDiscounts: false },
     },
   });
   const gated = gateConfigForPlan(config, "free");
   assert.deepEqual(gated.stripped, []);
-  assert.deepEqual(gated.config.modules.codes.rules[0].combinesWith, { ruleIds: [] }, "the gate leaves combinations as stored");
+  assert.deepEqual(gated.config.modules.codes.rules[0].combine, { types: ["automatic", "shipping"] }, "the gate leaves the lists of types as stored");
 });
 
 test("explainGate: one human sentence per stripped capability, Czech and English, never an enum key", () => {
@@ -193,6 +202,7 @@ test("explainGate: one human sentence per stripped capability, Czech and English
   const cs = explainGate(stripped, "cs").map((i) => i.text);
   assert.ok(cs.includes("Sleva „Jen Slovensko“ cílí na vybrané trhy. To je funkce Pro, ve Free se proto neuplatní vůbec."), cs.join("\n"));
   assert.ok(cs.includes("Kampaň „Black Friday“ ve Free neběží, kampaně jsou funkce Pro. Platí běžné nastavení slev."), cs.join("\n"));
+  assert.ok(cs.includes("Sleva „Letní“ má 1 výjimku ze sčítání slev. Výjimky jsou funkce Pro, ve Free se s tou slevou nesčítá."), cs.join("\n"));
   const en = explainGate(stripped, "en").map((i) => i.text);
   assert.ok(en.includes("“Jen Slovensko” targets selected markets. That is a Pro feature, so on Free it does not apply at all."), en.join("\n"));
   assert.deepEqual(explainGate([], "cs"), []);

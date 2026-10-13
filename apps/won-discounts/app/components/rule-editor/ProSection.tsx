@@ -6,11 +6,12 @@
 //   Markets      — the enabled markets; a stored market that is switched off
 //                  stays a checked row with a note until the merchant unticks
 //                  it (B3). No market at all: where to set them up.
-//   Combinations — hidden until a second discount exists; the sentence about
-//                  the stack cap only once the ticked rules reach it; what
-//                  happens by default is said as it is (core plan.ts: discounts
-//                  of the same kind never add up, the better one applies;
-//                  across products / order / shipping the Nastavení switches decide).
+//   Sčítá se s   — every plan (13 Oct 2026, @won/core combine.ts): one checkbox per
+//                  TYPE of discount this one can meet; a new discount starts with
+//                  the shop's default list for its type. Below it, Pro: the
+//                  exceptions — the other discounts whose type is NOT ticked, one
+//                  checkbox each (an exception only allows). On a lower plan the
+//                  block is shown locked and what is stored stays.
 // P3: a Pro setting the plan does not run is marked at that setting, with an
 // explicit, submitted way to remove it (works on Free). Market targeting needs
 // read_markets, an OPTIONAL scope (item 9): picking a market asks for it
@@ -18,15 +19,18 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { combineTypeOfRule } from "@won/core/discounts/combine";
 import { MAX_STACK_CANDIDATES, unsupportedInFunction } from "@won/core/discounts/plan";
 
 import { requestScopes } from "../model/app-bridge";
+import { COMBINE_OFFERED, combineTypeLabel, type CombineType } from "../model/combine";
 import { describeProSettings } from "../model/describe";
 import type { MarketNames } from "../model/markets";
 import { FIELD } from "../model/rule-form";
 import type { RuleStatus } from "../model/rule-status";
 import type { GateNoteView, MarketView } from "../model/types";
 import { boolAttr } from "../shell/attrs";
+import { CombineTypes } from "../shell/CombineTypes";
 import { GateNotes } from "../shell/GateNotes";
 import { PlanBadge } from "../shell/PlanBadge";
 import { ProFrame } from "../shell/ProFrame";
@@ -47,6 +51,8 @@ export function ProSection({
   gate = [],
   gatePending = false,
   marketsScope = true,
+  isNew = false,
+  combineDefaults,
 }: {
   ed: EditorView;
   pro: boolean;
@@ -56,7 +62,12 @@ export function ProSection({
   markets: MarketView[];
   /** Markets this rule has stored that are switched off (B3). */
   offMarkets?: MarketView[];
-  otherRules: { id: string; name: string }[];
+  /** Every other discount; `type` = its type for "Sčítá se s" (an order discount of Milníky: "rewards"). */
+  otherRules: { id: string; name: string; type?: CombineType }[];
+  /** A discount that is not stored yet: its list starts from the shop's default for its type. */
+  isNew?: boolean;
+  /** What a new discount of each type starts with (Nastavení → Kombinování slev; core defaultCombineFor). */
+  combineDefaults?: Record<"automatic" | "code" | "shipping", CombineType[]>;
   /** This rule's Pro settings the plan does not run. */
   gate?: readonly GateNoteView[];
   /** Checkout still runs these Pro settings until the resync under way (I-2). */
@@ -71,7 +82,14 @@ export function ProSection({
   const storedSegments = defaults.segments > 0;
   const liveSegments = unsupportedInFunction(draft).length > 0;
   const liveMarkets = draft.targeting?.markets ?? [];
-  const liveCombines = draft.combinesWith?.ruleIds ?? [];
+  // "Sčítá se s": the draft's type decides which types it can meet; a NEW discount shows the shop's default for
+  // that type (re-mounted when the type changes, so the default follows it until the form is saved).
+  const owner = combineTypeOfRule(draft) as "automatic" | "code" | "shipping";
+  const offered = COMBINE_OFFERED[owner];
+  const startTypes = isNew ? (combineDefaults?.[owner] ?? []) : defaults.combineTypes;
+  const liveTypes = draft.combine?.types ?? startTypes;
+  // Exceptions: the other discounts this one can meet whose type is not ticked right now.
+  const candidates = otherRules.filter((other) => other.type !== undefined && offered.includes(other.type) && !liveTypes.includes(other.type));
   const fieldsOff = boolAttr(!pro || readOnly);
   const off = boolAttr(readOnly);
   const [scope, setScope] = useState<"granted" | "missing" | "declined">(marketsScope ? "granted" : "missing");
@@ -91,38 +109,38 @@ export function ProSection({
     return () => el.removeEventListener("change", onChange);
   }, [scope]);
   const anyMarket = markets.length + offMarkets.length > 0;
-  // The stack is searched among the MAX_STACK_CANDIDATES best discounts, this one included.
-  const atCap = liveCombines.length + 1 >= MAX_STACK_CANDIDATES;
   const combines = (
-            <Anchor id="combines">
-              <s-stack direction="block" gap="small-200">
-                <s-text type="strong">{t("editor.pro.combines")}</s-text>
-                {otherRules.length === 0 ? (
-                  <s-stack direction="inline" gap="small-200" alignItems="center">
-                    <s-text color="subdued">{t("editor.pro.combinesNone")}</s-text>
-                    <s-link href="/app/discounts/new">{t("editor.pro.combinesCreate")}</s-link>
-                  </s-stack>
-                ) : (
-                  <>
-                    <s-text color="subdued">{t("editor.pro.combinesIntro")}</s-text>
-                    {otherRules.map((other) => (
-                      <s-checkbox
-                        key={other.id}
-                        name={FIELD.combinesWith}
-                        value={other.id}
-                        label={other.name || t("common.untitled")}
-                        checked={boolAttr(defaults.combinesWith.includes(other.id))}
-                        disabled={off}
-                      />
-                    ))}
-                    {atCap ? <RowNote>{t("editor.pro.combinesCap", { n: MAX_STACK_CANDIDATES })}</RowNote> : null}
-                    <RowNote>
-                      {t("editor.pro.combinesDefault")} <s-link href="/app/settings#combination">{t("editor.pro.combinesSettings")}</s-link>
-                    </RowNote>
-                  </>
-                )}
-              </s-stack>
-            </Anchor>
+    <Anchor id="combines">
+      <s-stack direction="block" gap="small-200">
+        <s-text type="strong">{t("combine.title")}</s-text>
+        <s-text color="subdued">{t("combine.intro")}</s-text>
+        <div key={isNew ? owner : "stored"}>
+          <CombineTypes owner={owner} checked={startTypes} disabled={readOnly} />
+        </div>
+        <RowNote>{t("combine.cap", { n: MAX_STACK_CANDIDATES })}</RowNote>
+      </s-stack>
+    </Anchor>
+  );
+  const exceptions = (
+    <Anchor id="exceptions">
+      <s-stack direction="block" gap="small-200">
+        {/* (No Pro badge of its own: the frame is the section's one Pro marker, on the markets — bod 6.) */}
+        <s-text type="strong">{t("combine.exceptions.title")}</s-text>
+        <s-text color="subdued">{t("combine.exceptions.intro")}</s-text>
+        {candidates.length === 0 ? <s-text color="subdued">{t("combine.exceptions.none")}</s-text> : null}
+        {candidates.map((other) => (
+          <s-checkbox
+            key={other.id}
+            name={FIELD.combineRules}
+            value={other.id}
+            label={`${other.name || t("common.untitled")} (${combineTypeLabel(other.type as CombineType, tr)})`}
+            checked={boolAttr(defaults.combineRules.includes(other.id))}
+            disabled={fieldsOff}
+          />
+        ))}
+        {!pro && defaults.combineRules.length > 0 ? <FieldMark text={t("combine.exceptions.locked")} /> : null}
+      </s-stack>
+    </Anchor>
   );
   return (
     <WonSection
@@ -132,16 +150,18 @@ export function ProSection({
       collapsible
       // Open for a Pro shop (§18g: a Pro section is open for the shop that has it), and on Free whenever something
       // is set in it (the plan does not run what is stored).
-      defaultOpen={pro || otherRules.length > 0 || storedSegments || defaults.markets.length > 0 || defaults.combinesWith.length > 0 || gate.length > 0}
+      // Open always: "Sčítá se s" is every plan's and every discount has it.
+      defaultOpen
       anchor="pro"
     >
       <s-stack direction="block" gap="base">
         {gate.length > 0 ? <GateNotes notes={gate} compact pending={gatePending} /> : null}
-        {/* 13 Oct 2026: which discounts it adds up with is on every plan and comes first; only the markets are Pro. */}
+        {/* The types it adds up with are every plan's and come first; the exceptions and the markets are Pro. */}
         {combines}
-        {!pro ? <ProSell benefit={t("editor.pro.benefit")} /> : null}
+        {!pro ? <ProSell benefit={`${t("combine.exceptions.benefit")} ${t("editor.pro.benefit")}`} /> : null}
         <ProFrame locked={!pro}>
           <s-stack direction="block" gap="base">
+            {exceptions}
             <Anchor id="markets">
               <div ref={marketsRef}>
                 <s-stack direction="block" gap="small-200">

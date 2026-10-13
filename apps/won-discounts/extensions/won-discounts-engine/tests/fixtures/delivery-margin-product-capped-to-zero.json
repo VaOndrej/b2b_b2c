@@ -20,17 +20,11 @@
       "shop": {
         "config": {
           "jsonValue": {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "campaignId": null,
             "campaignVarsVersion": null,
             "engine": {
-              "combination": {
-                "outletWithAnything": false,
-                "productWithProduct": "best",
-                "productWithOrder": true,
-                "productWithShipping": false,
-                "orderWithShipping": true
-              }
+              "cx": "19.63.0|16;16"
             },
             "marketCountries": {},
             "modules": {

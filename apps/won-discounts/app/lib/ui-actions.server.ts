@@ -44,6 +44,7 @@ import {
   type OnboardingGoal,
   type WonDiscountsConfig,
 } from "@won/core/discounts/config";
+import { combineTypeOfRule } from "@won/core/discounts/combine";
 import { createCodeBatch } from "@won/core/discounts/code-batch";
 import { isMilestoneRule } from "@won/core/discounts/milestones";
 import { parseEmbedStatus } from "@won/core/toasts/embed-status";
@@ -406,7 +407,7 @@ export async function saveRule(
         existing,
         // Enabled markets only; a stored market that is off stays while the form still sends it (B3, readRuleForm).
         marketHandles: config.markets.filter((m) => m.enabled).map((m) => m.handle),
-        otherRules: rules.filter((r) => r.id !== id).map((r) => ({ id: r.id, name: r.name, codes: r.codes })),
+        otherRules: rules.filter((r) => r.id !== id).map((r) => ({ id: r.id, name: r.name, codes: r.codes, type: combineTypeOfRule(r) })),
         // P5: the language of a generated name (FIELD.nameAuto) — the admin's, as the editor showed it.
         locale: ctx.locale,
       });

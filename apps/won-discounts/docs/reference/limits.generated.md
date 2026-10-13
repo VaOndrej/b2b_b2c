@@ -5,7 +5,7 @@ layer: reference
 feature: core
 min_plan: free
 status: stable
-config_version: 1
+config_version: 2
 source: generated
 generated_from: '@won/core/discounts'
 lang: en

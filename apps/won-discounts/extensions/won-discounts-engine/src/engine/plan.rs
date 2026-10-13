@@ -6,10 +6,13 @@
 //   quantities: plan.ts "Per-item minimum" is the port spec; here ONE cold
 //   function after the unchanged gate, `apply_item_minimums`) → prepareTiers
 //   (MVP 3, engine/tiers.rs: each line's quantity-tier candidate) →
-//   planProducts (a tier competes like a rule, never in a Pro stack) → margin
-//   protection (MVP 2, only while `modules.margin` is on: computeFloors +
-//   applyMarginProtection) → planOrderStage (margin on: protectOrder) →
-//   planShipping.
+//   planProducts (a tier competes like a rule) → margin protection (MVP 2,
+//   only while `modules.margin` is on: computeFloors + applyMarginProtection)
+//   → planOrderStage (margin on: protectOrder) → planShipping → the gifts.
+// Which discounts add up (13 Oct 2026): combine.ts is the rule (`add_up`,
+// `module_adds` here), plan.ts `prepareLines`, `pick`, `planOrderStage` and
+// `planShipping` say where it is asked; the lists arrive as masks (`c`, `x`,
+// `engine.mc`).
 // A tier set is a pseudo-rule of the plan (`tier:<setId>`, automatic, priority
 // 0), after the rules in `CartPlan::rules`: it ranks, owns and is emitted like
 // an automatic rule; its value and message are its line's own.
@@ -29,7 +32,7 @@ use std::cell::RefCell;
 
 use super::batch::{is_batch_code, PREFIX};
 use super::cart::{normalize_cart, CartInput, NormalizedCart, NormalizedLine};
-use super::config::{threshold_in, Config, EngineFlags, FieldsRef, RawCampaign, RawRule, TargetKind, TierSet, ValueSpec};
+use super::config::{threshold_in, Config, FieldsRef, ModuleMasks, Named, RawCampaign, RawRule, TargetKind, TierSet, ValueSpec, BIT_AUTOMATIC, BIT_CODE, BIT_OUTLET, BIT_REWARDS, BIT_SHIPPING, BIT_TIERS};
 use super::describe::{describe_short, DescribedValue};
 use super::table::{bytes_eq, Message, Table, Text};
 use super::hash::{hash_value, normalized_hash_within, parse_hash, MAX_ENTERED_CODES};
@@ -123,7 +126,14 @@ pub struct Rule<'a> {
     pub ends_on: Option<&'a str>,
     pub markets: Option<&'a [String]>,
     pub segment_targeted: bool,
-    pub combines: &'a [String],
+    /// Combining (combine.ts CombineSide): the bit of its type, its list as a mask, the rules it names as exceptions.
+    pub bit: u8,
+    pub mask: u8,
+    pub except: &'a [Named],
+    /// Its position in the payload's rules (`RawRule::at`); a tier's or a reward's pseudo-rule has none.
+    pub at: Option<usize>,
+    /// An order discount of Milníky (plan.ts readRule): its list is the Milníky list, two of them never add up.
+    pub milestone: bool,
     /// None = eligible.
     pub state: Option<RuleState>,
     /// The rule's position in (priority desc, id asc in JS string order) order,
@@ -236,7 +246,7 @@ type IdMap<'a> = Table<Text<'a>, usize>;
 
 // --- Stage: rules as they are right now ------------------------------------------------------
 
-fn read_rule<'a>(raw: &'a RawRule, fields: FieldsRef<'a>, cart: &NormalizedCart) -> Option<Rule<'a>> {
+fn read_rule<'a>(raw: &'a RawRule, fields: FieldsRef<'a>, cart: &NormalizedCart, masks: ModuleMasks) -> Option<Rule<'a>> {
     let currency = cart.currency.as_str();
     let (value_kind, percent, fixed, described) = match fields.value {
         ValueSpec::Percentage(p) => (ValueKind::Percentage, *p, None, DescribedValue::Percentage(*p)),
@@ -256,6 +266,18 @@ fn read_rule<'a>(raw: &'a RawRule, fields: FieldsRef<'a>, cart: &NormalizedCart)
     };
     let has_subtotal = fields.minimum.subtotal.is_non_empty_record();
     let min_subtotal = if has_subtotal { fields.minimum.subtotal.amount_in(currency) } else { None };
+    // An order discount of Milníky: the id prefix and the shape Milníky writes (automatic, the whole order, a
+    // percentage or a fixed amount). Type "rewards", the Milníky list; any other rule its own `c` and `x`.
+    let milestone = !raw.method_code && target == TargetKind::Order && value_kind != ValueKind::FreeShipping && raw.id.starts_with("ms-");
+    let bit = if milestone {
+        BIT_REWARDS
+    } else if cls == DiscountClass::Shipping {
+        BIT_SHIPPING
+    } else if raw.method_code {
+        BIT_CODE
+    } else {
+        BIT_AUTOMATIC
+    };
     // `rule.name || describeRule(rule.describable, locale, currency, { short: true })`
     let label = if fields.name.is_empty() {
         Cow::Owned(describe_short(&described, target, !cart.locale_en, currency))
@@ -283,7 +305,11 @@ fn read_rule<'a>(raw: &'a RawRule, fields: FieldsRef<'a>, cart: &NormalizedCart)
         ends_on: raw.ends_on.as_deref(),
         markets: fields.targeting.markets.as_deref(),
         segment_targeted: fields.targeting.segment_targeted,
-        combines: fields.combines,
+        bit,
+        mask: if milestone { masks.rewards } else { fields.mask },
+        except: if milestone { &[] } else { fields.except },
+        at: Some(raw.at),
+        milestone,
         state: None,
         order: 0,
     })
@@ -325,7 +351,7 @@ fn resolve_rules<'a>(config: &'a Config, cart: &NormalizedCart) -> Resolved<'a> 
                 retargets |= patch.retargets();
             }
         }
-        let Some(rule) = read_rule(raw, fields, cart) else { continue };
+        let Some(rule) = read_rule(raw, fields, cart, config.masks) else { continue };
         retargeted.push(retargets);
         rules.push(rule);
     }
@@ -413,6 +439,9 @@ struct WorkLine<'a> {
     excluded: Option<Excluded>,
     /// A sale line that takes only some discounts: the classes it stays out of (`NormalizedLine::outlet_no`).
     no: u8,
+    /// A line on sale under the shop's rule whose sale adds up with something (plan.ts prepareLines `sale`):
+    /// each product rule and order discount is asked on its own (`StackContext::sale_ok`).
+    sale: bool,
     /// The rules that target this line (`lineRuleIds`), as rule indices, deduplicated.
     rule_set: Vec<usize>,
     product: Option<PlanStack<'a>>,
@@ -846,31 +875,61 @@ fn owner_of(rules: &[Rule], components: &[Component]) -> usize {
     owner
 }
 
-/// Symmetric Pro combinesWith relation: A stacks with B if either lists the
-/// other. Kept as lists and as a bit matrix (a pair is tested in O(1) when a
-/// line's candidates are searched for a stack).
+/// combine.ts `allows`: A's list has B's type, or A names B as an exception.
+#[inline]
+fn allows(rules: &[Rule], except: &[Vec<usize>], a: usize, b: usize) -> bool {
+    rules[a].mask & rules[b].bit != 0 || except.get(a).is_some_and(|list| list.contains(&b))
+}
+
+/// combine.ts `addUp` for two rules or tiers of the plan that can be in one stack
+/// or next to each other (never two shipping discounts: no stage asks about them):
+/// both allow the other; two order discounts of Milníky never do.
+fn add_up(rules: &[Rule], except: &[Vec<usize>], a: usize, b: usize) -> bool {
+    a != b && !(rules[a].milestone && rules[b].milestone) && allows(rules, except, a, b) && allows(rules, except, b, a)
+}
+
+/// combine.ts `addUp` of a module's discount — the free shipping of Milníky
+/// (`bit` = shipping) or the gift (`bit` = rewards), both with the Milníky list
+/// `mask` — and rule or tier `g`: with another reward of Milníky (an order
+/// discount of a step) the list's own type decides; else both must allow.
+fn module_adds(rules: &[Rule], g: usize, bit: u8, mask: u8) -> bool {
+    if rules[g].milestone {
+        mask & BIT_REWARDS != 0
+    } else {
+        mask & rules[g].bit != 0 && rules[g].mask & bit != 0
+    }
+}
+
+/// Which rules and tiers add up, for the stack searches (plan.ts `pick`): the
+/// exceptions as rule indices, who can be in a stack at all, and — for a plan of
+/// up to 64 rules — the pairs as a bit matrix (a pair is then tested in O(1)).
 struct Partners {
-    lists: Vec<Vec<usize>>,
-    /// Row `a` (`words` u64s): bit `b` set when a and b stack.
+    /// `except[a]`: the rules `a` names (`x`), as indices; empty when no rule names any.
+    except: Vec<Vec<usize>>,
+    /// `can[a]`: rule or tier `a` may add up with another one of ITS stage — a product rule with a product
+    /// rule or a tier, an order rule with an order rule: only those are ever in one stack. Exact for a plan
+    /// of up to 64 rules (from the bit matrix); else never false for one that does (its list has the type of
+    /// some discount of its stage, or it names one). One that cannot is in no stack: `pick` then takes the
+    /// single best candidate without sorting or searching.
+    can: Vec<bool>,
+    /// More than one can: only then is any stack searched.
+    any: bool,
+    /// Up to 64 rules, some stack possible: row `a` (one u64) has bit `b` set when rules a and b are of one
+    /// stage and add up (the rules only, `rules[..first_tier]`). Empty otherwise.
     bits: Vec<u64>,
-    words: usize,
 }
 
 impl Partners {
     fn has_any(&self, a: usize) -> bool {
-        !self.lists[a].is_empty()
+        self.can[a]
     }
 
-    fn stack(&self, a: usize, b: usize) -> bool {
-        (self.bits[a * self.words + b / 64] >> (b % 64)) & 1 == 1
-    }
-
-    /// `adjacent[i]`: the candidates (bit j = `positive[j]`) that candidate i stacks with.
-    fn adjacency(&self, positive: &[Component], adjacent: &mut [u64]) {
+    /// `adjacent[i]`: the candidates (bit j = `positive[j]`) that candidate i adds up with.
+    fn adjacency(&self, rules: &[Rule], positive: &[Component], adjacent: &mut [u64]) {
         for (i, a) in positive.iter().enumerate() {
             let mut mask = 0u64;
             for (j, b) in positive.iter().enumerate() {
-                if self.stack(a.rule, b.rule) {
+                if add_up(rules, &self.except, a.rule, b.rule) {
                     mask |= 1 << j;
                 }
             }
@@ -879,31 +938,70 @@ impl Partners {
     }
 }
 
-fn partners_of(rules: &[Rule], by_id: &IdMap) -> Partners {
-    let words = rules.len().div_ceil(64);
-    let mut out = Partners { lists: vec![Vec::new(); rules.len()], bits: Vec::new(), words };
-    let mut link = |a: usize, b: usize| {
-        if a != b && !out.lists[a].contains(&b) {
-            out.lists[a].push(b);
-        }
-    };
-    for (i, rule) in rules.iter().enumerate() {
-        for other in rule.combines {
-            if let Some(&j) = by_id.get(&Text(other.as_str())) {
-                link(i, j);
-                link(j, i);
+/// `rules` = the rules, then the tier sets' pseudo-rules (`first_tier`).
+#[cfg_attr(not(test), allow(unused_variables))]
+fn partners_of(rules: &[Rule], first_tier: usize, by_id: &IdMap) -> Partners {
+    let mut except: Vec<Vec<usize>> = Vec::new();
+    if rules[..first_tier].iter().any(|r| !r.except.is_empty()) {
+        except = vec![Vec::new(); rules.len()];
+        for (i, rule) in rules[..first_tier].iter().enumerate() {
+            for named in rule.except {
+                // By its id, or by its position in the payload's list (the rule read there; a position that
+                // holds no rule — junk, a repeated id — names nothing).
+                let j = match named {
+                    #[cfg(test)]
+                    Named::Id(id) => by_id.get(&Text(id.as_str())).copied(),
+                    Named::At(at) => rules[..first_tier].iter().position(|r| r.at == Some(*at)),
+                };
+                if let Some(j) = j.filter(|&j| j != i && !except[i].contains(&j)) {
+                    except[i].push(j);
+                }
             }
         }
     }
-    if out.lists.iter().any(|l| !l.is_empty()) {
-        out.bits = vec![0; rules.len() * words];
-        for (a, list) in out.lists.iter().enumerate() {
-            for &b in list {
-                out.bits[a * words + b / 64] |= 1 << (b % 64);
+    // The types each stage's stack can hold: a line's (product rules and tiers) and the order's (order rules).
+    let stage_types = |cls: DiscountClass| rules.iter().filter(|r| r.cls == cls).fold(0u8, |m, r| m | r.bit);
+    let (product_types, order_types) = (stage_types(DiscountClass::Product), stage_types(DiscountClass::Order));
+    let mut can: Vec<bool> = rules
+        .iter()
+        .enumerate()
+        .map(|(i, r)| {
+            let types = match r.cls {
+                DiscountClass::Product => product_types,
+                DiscountClass::Order => order_types,
+                DiscountClass::Shipping => return false,
+            };
+            r.mask & types != 0 || except.get(i).is_some_and(|list| list.iter().any(|&j| rules[j].cls == r.cls))
+        })
+        .collect();
+    let mut any = can.iter().filter(|&&c| c).count() > 1;
+    let mut bits = Vec::new();
+    if any && first_tier > 0 && first_tier <= 64 {
+        bits = vec![0u64; first_tier];
+        for a in (0..first_tier).filter(|&a| can[a]) {
+            for b in (a + 1..first_tier).filter(|&b| can[b] && rules[b].cls == rules[a].cls) {
+                if add_up(rules, &except, a, b) {
+                    bits[a] |= 1 << b;
+                    bits[b] |= 1 << a;
+                }
             }
         }
+        // Exactly who can: a rule with a partner among the rules, or a product rule and the tiers (every
+        // tier set has the same list, so one stands for all).
+        let with_tier = |a: usize| first_tier < rules.len() && rules[a].cls == DiscountClass::Product && add_up(rules, &except, a, first_tier);
+        for a in 0..first_tier {
+            can[a] = bits[a] != 0 || (can[a] && with_tier(a));
+        }
+        let tiers_can = (0..first_tier).any(|a| can[a] && with_tier(a));
+        for t in first_tier..rules.len() {
+            can[t] = tiers_can;
+        }
+        any = can.iter().any(|&c| c);
+        if !any {
+            bits = Vec::new();
+        }
     }
-    out
+    Partners { except, can, any, bits }
 }
 
 struct Picked {
@@ -911,7 +1009,7 @@ struct Picked {
     total: i64,
 }
 
-/// plan.ts `MAX_STACK_CANDIDATES` ([spec], MVP 2 audit round 3): a Pro stack is
+/// plan.ts `MAX_STACK_CANDIDATES` ([spec], MVP 2 audit round 3): a stack is
 /// searched only among the best-ranked candidates of its target (a line, or the
 /// order), at most this many. A candidate ranked below them is never part of a
 /// stack. This bounds the search per target: a mesh of Pro rules with a dozen
@@ -977,22 +1075,31 @@ fn single(best: Component, cap: i64) -> Picked {
 }
 
 /// The best stack for one target (a line, or the order): the single best
-/// candidate, or — when Pro combinesWith links candidates — the combinable set
-/// that saves the customer the most (greedy from every linked seed not already
-/// covered; ties keep the earlier-ranked seed), searched among the
+/// candidate, or — when candidates add up (`add_up`) — the set in which every
+/// two add up that saves the customer the most (greedy from every seed not
+/// already covered; ties keep the earlier-ranked seed), searched among the
 /// `MAX_STACK_CANDIDATES` best-ranked candidates only. Amounts are then capped
-/// at `cap` in rank order. `tier`: the line's quantity tier (MVP 3), a single
-/// candidate only — it takes no place in the stack pool (`positive` are the
-/// rule candidates), and a stack beats it only with a larger total.
-fn pick(ctx: &StackContext, positive: &mut [Component], tier: Option<Component>, cap: i64) -> Picked {
+/// at `cap` in rank order. `tier`: the line's quantity tier (MVP 3). When it
+/// adds up with some rule candidate of the line it is one more candidate of the
+/// pool; otherwise it can stack with no rule there and takes no place in it — a
+/// single candidate only, which a stack beats only with a larger total.
+fn pick(ctx: &StackContext, positive: &mut Vec<Component>, tier: Option<Component>, cap: i64) -> Picked {
     let (rules, partners) = (ctx.rules, ctx.partners);
-    // No candidate here has a Pro partner: the search below would keep the single
-    // best candidate too.
-    let stackable = ctx.any_partners && positive.len() > 1 && positive.iter().any(|c| partners.has_any(c.rule));
+    let mut tier = tier;
+    if let Some(t) = tier {
+        // (Its list first: without a rule type in it, no candidate has to be looked at.)
+        if partners.any && rules[t.rule].mask & (BIT_AUTOMATIC | BIT_CODE) != 0 && positive.iter().any(|c| add_up(rules, &partners.except, t.rule, c.rule)) {
+            positive.push(t);
+            tier = None;
+        }
+    }
+    // No candidate here can add up with another: the search below would keep the
+    // single best candidate too.
+    let stackable = partners.any && positive.len() > 1 && positive.iter().any(|c| partners.has_any(c.rule));
     if !stackable {
-        // The single best candidate (no Pro stacking possible), capped at `cap`:
-        // the first in rank order, found without sorting (ranks never tie: a
-        // line lists a rule once and rule orders are unique).
+        // The single best candidate, capped at `cap`: the first in rank order,
+        // found without sorting (ranks never tie: a line lists a rule once and
+        // rule orders are unique).
         let mut candidates = positive.iter().copied().chain(tier);
         let Some(mut best) = candidates.next() else { return Picked { components: Vec::new(), total: 0 } };
         for c in candidates {
@@ -1002,15 +1109,17 @@ fn pick(ctx: &StackContext, positive: &mut [Component], tier: Option<Component>,
         }
         return single(best, cap);
     }
-    // The stack cap: only the best-ranked rule candidates can be part of a stack.
+    // The stack cap: only the best-ranked candidates can be part of a stack.
     let pool = best_ranked(rules, positive, MAX_STACK_CANDIDATES);
-    // The search starts from the line's best single candidate, the tier included.
+    // The search starts from the best single candidate, a tier outside the pool included.
     let best = match tier {
         Some(t) if ranks_after(rules, &pool[0], &t) => t,
         _ => pool[0],
     };
     let best_total = cap.min(best.amount);
-    let found = if partners.words == 1 { stack_search_rules(pool, best_total, cap, &partners.bits) } else { stack_search(pool, best_total, cap, partners) };
+    // (The one-word search reads the rules' own bits: not for a pool that holds a tier.)
+    let one_word = !partners.bits.is_empty() && pool.iter().all(|c| c.rule < ctx.first_tier);
+    let found = if one_word { stack_search_rules(pool, best_total, cap, &partners.bits) } else { stack_search(rules, pool, best_total, cap, partners) };
     let Some(mut chosen) = found else { return single(best, cap) };
     // The chosen candidates in rank order, each capped at what is left of `cap`.
     let mut remaining = cap;
@@ -1027,7 +1136,7 @@ fn pick(ctx: &StackContext, positive: &mut [Component], tier: Option<Component>,
     Picked { components, total: cap - remaining }
 }
 
-/// The Pro stack search (see `pick`) over a target's best-ranked candidates
+/// The stack search (see `pick`) over a target's best-ranked candidates
 /// (`pool`, rank order, at most `MAX_STACK_CANDIDATES`), with bit sets (bit i =
 /// `pool[i]`): the candidates each one stacks with are found once
 /// (`adjacency`). From every seed in rank order that has a partner here and is
@@ -1036,10 +1145,10 @@ fn pick(ctx: &StackContext, positive: &mut [Component], tier: Option<Component>,
 /// most (its amounts summed, then capped at `cap`) wins when it saves more than
 /// `best_total` (the best single candidate's), a tie keeping the earlier
 /// seed's. The chosen set; none = the single best candidate.
-fn stack_search(pool: &[Component], mut best_total: i64, cap: i64, partners: &Partners) -> Option<u64> {
+fn stack_search(rules: &[Rule], pool: &[Component], mut best_total: i64, cap: i64, partners: &Partners) -> Option<u64> {
     let n = pool.len();
     let mut adjacent = [0u64; MAX_STACK_CANDIDATES];
-    partners.adjacency(pool, &mut adjacent[..n]);
+    partners.adjacency(rules, pool, &mut adjacent[..n]);
     let mut chosen: Option<u64> = None;
     let mut covered: u64 = 0;
     for si in 0..n {
@@ -1259,7 +1368,9 @@ struct StackContext<'c, 'a> {
     /// `tier:<setId>` (`tier_shadows`; none the sanitizer lets through).
     shadows: &'c [(usize, usize)],
     partners: &'c Partners,
-    any_partners: bool,
+    /// `sale_ok[i]`: rule `i` adds up with a line on sale (combine.ts addUp with the sale's list); empty when
+    /// no line of the cart is such a sale line.
+    sale_ok: &'c [bool],
     cart: &'c NormalizedCart<'a>,
     labels: RefCell<StackLabels>,
 }
@@ -1298,7 +1409,8 @@ impl StackContext<'_, '_> {
 // --- Stage: product discounts --------------------------------------------------------------------
 
 /// `tiers`: each line's quantity-tier candidate (`w.tier`, engine/tiers.rs), empty without tier sets.
-fn plan_products<'a>(work: &mut [WorkLine<'a>], tiers: &[Option<TierCandidate>], ctx: &StackContext<'_, 'a>) {
+/// `fits` (the order stage's "order first" plan): only the rules and tiers it says yes to are candidates.
+fn plan_products<'a>(work: &mut [WorkLine<'a>], tiers: &[Option<TierCandidate>], ctx: &StackContext<'_, 'a>, fits: Option<&[bool]>) {
     let rules = ctx.rules;
     let mut values: Vec<ProductValue> = rules[..ctx.first_tier].iter().map(ProductValue::of).collect();
     // A rule plan.ts finds as a tier's pseudo-rule is never a product candidate (`tier_shadows`).
@@ -1307,7 +1419,7 @@ fn plan_products<'a>(work: &mut [WorkLine<'a>], tiers: &[Option<TierCandidate>],
     }
     let mut positive: Vec<Component> = Vec::new();
     for (at, (w, line)) in work.iter_mut().zip(&ctx.cart.lines).enumerate() {
-        let tier = tiers.get(at).and_then(Option::as_ref);
+        let tier = tiers.get(at).and_then(Option::as_ref).filter(|t| fits.is_none_or(|f| f[ctx.first_tier + t.set]));
         if w.excluded.is_some() || (w.rule_set.is_empty() && tier.is_none()) {
             continue;
         }
@@ -1315,6 +1427,10 @@ fn plan_products<'a>(work: &mut [WorkLine<'a>], tiers: &[Option<TierCandidate>],
         // (A sale line that takes no product discounts keeps only its tier.)
         if w.no & 2 == 0 {
             for &i in &w.rule_set {
+                // A line on sale under the shop's rule takes only a rule that adds up with the sale.
+                if (w.sale && !ctx.sale_ok[i]) || fits.is_some_and(|f| !f[i]) {
+                    continue;
+                }
                 if let Some(amount) = values[i].amount(line) {
                     if amount > 0 {
                         positive.push(Component { rule: i, amount });
@@ -1628,83 +1744,181 @@ fn mark_tight_lines(work: &mut [WorkLine], cart: &NormalizedCart, has_order: boo
     }
 }
 
-fn plan_order_stage<'a>(
-    work: &mut [WorkLine<'a>],
-    engine: &EngineFlags,
-    ctx: &StackContext<'_, 'a>,
-    margin_on: bool,
-) -> Option<PlanOrder<'a>> {
-    let rules = ctx.rules;
-    let order_rules: Vec<usize> =
-        (0..rules.len()).filter(|&i| rules[i].cls == DiscountClass::Order && rules[i].state.is_none()).collect();
-    if order_rules.is_empty() && engine.product_with_order {
-        return None;
-    }
-    let excluded_line_ids: Vec<&'a str> =
-        work.iter().zip(&ctx.cart.lines).filter(|(w, _)| w.excluded.is_some() || w.no & 4 != 0).map(|(_, line)| line.id).collect();
-    let plan_at = |base: i64| -> Option<PlanOrder<'a>> {
-        let mut positive: Vec<Component> = order_rules
-            .iter()
-            .map(|&i| Component { rule: i, amount: order_amount(&rules[i], base) })
-            .filter(|c| c.amount > 0)
-            .collect();
-        if positive.is_empty() {
-            return None;
+/// The rules and tiers whose product discount some line has, each once (plan.ts `appliedProducts`).
+fn applied_products(work: &[WorkLine], ctx: &StackContext) -> Vec<usize> {
+    let mut out: Vec<usize> = Vec::new();
+    let mut seen = vec![false; ctx.rules.len()];
+    for w in work {
+        for c in w.product.as_ref().map_or(&[][..], |p| p.components.as_slice()) {
+            let rule = if ctx.shadows.is_empty() { c.rule } else { ctx.in_rule_map(c.rule) };
+            if !seen[rule] {
+                seen[rule] = true;
+                out.push(rule);
+            }
         }
-        let picked = pick(ctx, &mut positive, None, base);
-        let stack = build_stack(
-            rules,
-            &ctx.labels,
-            picked,
-            |single| {
-                if rules[single.rule].value_kind == ValueKind::Percentage {
-                    EmittedValue::Percent(rules[single.rule].percent)
-                } else {
-                    EmittedValue::FixedTotal(single.amount)
-                }
-            },
-        )?;
-        Some(PlanOrder { stack, base, excluded_line_ids: excluded_line_ids.clone(), margin_protected: false })
-    };
-    let product_total = work.iter().map(|w| w.product.as_ref().map_or(0, |p| p.amount)).fold(0i64, i64::saturating_add);
+    }
+    out
+}
+
+/// plan.ts `orderOf`: the best order stack of `pool` on the lines after their
+/// product discounts (`alone`: on their full subtotals), the sale lines in its
+/// base or out of it, lowered by margin protection when that is on.
+/// (One copy: called once on nearly every cart, up to six times by `order_scenarios`.)
+#[inline(never)]
+fn order_of<'a>(work: &mut [WorkLine<'a>], sale_lines: &[usize], pool: &[usize], sale_in: bool, alone: bool, ctx: &StackContext<'_, 'a>, margin_on: bool) -> Option<PlanOrder<'a>> {
+    let rules = ctx.rules;
+    for &at in sale_lines {
+        work[at].no = if sale_in { work[at].no & !4 } else { work[at].no | 4 };
+    }
+    for w in work.iter_mut() {
+        w.order_left = false;
+    }
     // A sale line that takes no order discount is out of its base, with whatever product discount it got.
     let in_base = |w: &WorkLine| w.excluded.is_none() && w.no & 4 == 0;
-    let base_product_total =
-        work.iter().filter(|w| in_base(w)).map(|w| w.product.as_ref().map_or(0, |p| p.amount)).fold(0i64, i64::saturating_add);
-    let discountable_subtotal =
-        work.iter().zip(&ctx.cart.lines).filter(|(w, _)| in_base(w)).map(|(_, l)| l.subtotal).fold(0i64, i64::saturating_add);
-    // [spec] The order discount is taken from the subtotal AFTER product discounts.
-    if engine.product_with_order {
-        let order = plan_at(discountable_subtotal - base_product_total);
-        if !margin_on {
-            return order;
-        }
-        return protect_order(order, work, true, ctx);
+    let mut base = 0i64;
+    for (w, line) in work.iter().zip(&ctx.cart.lines).filter(|(w, _)| in_base(w)) {
+        // [spec] The order discount is taken from the subtotal AFTER product discounts.
+        let after = if alone { line.subtotal } else { line.subtotal - w.product.as_ref().map_or(0, |p| p.amount) };
+        base = base.saturating_add(after);
     }
-    // Exclusive (Free switch off): the better scenario for the customer wins, a tie
-    // keeps products. Margin on: the order-only scenario is protected too, on the
-    // lines' full subtotals.
-    let mut order_only = plan_at(discountable_subtotal);
+    let mut positive: Vec<Component> =
+        pool.iter().map(|&i| Component { rule: i, amount: order_amount(&rules[i], base) }).filter(|c| c.amount > 0).collect();
+    if positive.is_empty() {
+        return None;
+    }
+    let picked = pick(ctx, &mut positive, None, base);
+    let stack = build_stack(
+        rules,
+        &ctx.labels,
+        picked,
+        |single| {
+            if rules[single.rule].value_kind == ValueKind::Percentage {
+                EmittedValue::Percent(rules[single.rule].percent)
+            } else {
+                EmittedValue::FixedTotal(single.amount)
+            }
+        },
+    )?;
+    let excluded_line_ids: Vec<&'a str> = work.iter().zip(&ctx.cart.lines).filter(|(w, _)| !in_base(w)).map(|(_, line)| line.id).collect();
+    let order = Some(PlanOrder { stack, base, excluded_line_ids, margin_protected: false });
     if margin_on {
-        order_only = protect_order(order_only, work, false, ctx);
+        protect_order(order, work, !alone, ctx)
+    } else {
+        order
     }
-    let order_wins = order_only.as_ref().is_some_and(|o| o.stack.amount > product_total);
-    if order_wins {
-        for w in work.iter_mut() {
-            w.product = None;
-            w.margin_capped = false;
+}
+
+/// plan.ts `planOrderStage` (its header is the port spec): when every eligible
+/// order rule adds up with every product discount the cart got and no line is on
+/// sale under the shop's rule, the order discount simply goes next to them. Else
+/// up to four scenarios — products first / order first, each with the sale lines
+/// out of the base and in it — and the one that saves the most wins, a tie
+/// keeping the earlier one. Each scenario is played once: the winner's lines and
+/// order are kept as they were made (plan.ts plays the winner again; the same).
+fn plan_order_stage<'a>(work: &mut [WorkLine<'a>], tiers: &[Option<TierCandidate>], ctx: &StackContext<'_, 'a>, margin_on: bool) -> Option<PlanOrder<'a>> {
+    let rules = ctx.rules;
+    let eligible: Vec<usize> =
+        (0..ctx.first_tier).filter(|&i| rules[i].cls == DiscountClass::Order && rules[i].state.is_none()).collect();
+    if eligible.is_empty() {
+        return None;
+    }
+    let except = &ctx.partners.except;
+    let applied = applied_products(work, ctx);
+    let fitting: Vec<usize> = eligible.iter().copied().filter(|&i| applied.iter().all(|&p| add_up(rules, except, i, p))).collect();
+    let sale_lines: Vec<usize> = (0..work.len()).filter(|&at| work[at].sale && work[at].excluded.is_none() && work[at].no & 4 == 0).collect();
+    // One scenario, on nearly every cart: every eligible order rule fits, and no sale line could come into the base.
+    if fitting.len() == eligible.len() && (sale_lines.is_empty() || !fitting.iter().any(|&i| ctx.sale_ok[i])) {
+        return order_of(work, &sale_lines, &fitting, false, false, ctx, margin_on);
+    }
+    order_scenarios(work, tiers, ctx, margin_on, &eligible, &fitting, &sale_lines)
+}
+
+/// `plan_order_stage` when there is more than one scenario (its doc; plan.ts `planOrderStage`). Out of line and
+/// cold: a cart with an order discount that does not add up with something it got, or with a line on sale
+/// that takes order discounts.
+#[cold]
+#[inline(never)]
+fn order_scenarios<'a>(
+    work: &mut [WorkLine<'a>],
+    tiers: &[Option<TierCandidate>],
+    ctx: &StackContext<'_, 'a>,
+    margin_on: bool,
+    eligible: &[usize],
+    fitting: &[usize],
+    sale_lines: &[usize],
+) -> Option<PlanOrder<'a>> {
+    let rules = ctx.rules;
+    let except = &ctx.partners.except;
+    let with_sale = |pool: &[usize]| -> Vec<usize> { if sale_lines.is_empty() { Vec::new() } else { pool.iter().copied().filter(|&i| ctx.sale_ok[i]).collect() } };
+    let fitting_sale = with_sale(fitting);
+    let order_first = fitting.len() < eligible.len();
+
+    let product_total = |work: &[WorkLine]| work.iter().map(|w| w.product.as_ref().map_or(0, |p| p.amount)).fold(0i64, i64::saturating_add);
+    // What a scenario leaves on the lines besides their product discounts.
+    let flags_of = |work: &[WorkLine]| -> Vec<(bool, u8)> { work.iter().map(|w| (w.order_left, w.no)).collect() };
+    let mut best_saved = -1i64;
+    let mut best_order: Option<PlanOrder<'a>> = None;
+    let mut best_flags: Vec<(bool, u8)> = Vec::new();
+    // None = the product discounts as the product stage left them.
+    let mut best_products: Option<Vec<(Option<PlanStack<'a>>, bool)>> = None;
+
+    // 1 and 2, products first: the product discounts stay as they are.
+    for (pool, sale_in) in [(fitting, false), (fitting_sale.as_slice(), true)] {
+        if sale_in && pool.is_empty() {
+            continue;
         }
-        return order_only;
+        let order = order_of(work, sale_lines, pool, sale_in, false, ctx, margin_on);
+        let saved = order.as_ref().map_or(0, |o| o.stack.amount).saturating_add(product_total(work));
+        if saved > best_saved {
+            (best_saved, best_order, best_flags) = (saved, order, flags_of(work));
+        }
     }
-    None
+    // 3 and 4, order first: the best stack of all eligible order rules, and with it the product discounts
+    // that add up with every rule of that stack.
+    if order_first {
+        let baseline: Vec<(Option<PlanStack<'a>>, bool)> = work.iter_mut().map(|w| (w.product.take(), std::mem::take(&mut w.margin_capped))).collect();
+        let eligible_sale = with_sale(eligible);
+        for (pool, sale_in) in [(eligible, false), (eligible_sale.as_slice(), true)] {
+            if sale_in && pool.is_empty() {
+                continue;
+            }
+            for w in work.iter_mut() {
+                w.product = None;
+                w.margin_capped = false;
+            }
+            let lead = order_of(work, sale_lines, pool, sale_in, true, ctx, margin_on);
+            let members: Vec<usize> = lead.map_or_else(Vec::new, |o| o.stack.components.iter().map(|c| c.rule).collect());
+            let fits: Vec<bool> = (0..rules.len()).map(|i| !members.is_empty() && members.iter().all(|&m| add_up(rules, except, i, m))).collect();
+            plan_products(work, tiers, ctx, Some(&fits));
+            if margin_on {
+                apply_margin_protection(work, tiers, ctx);
+            }
+            let order = if members.is_empty() { None } else { order_of(work, sale_lines, &members, sale_in, false, ctx, margin_on) };
+            let saved = order.as_ref().map_or(0, |o| o.stack.amount).saturating_add(product_total(work));
+            if saved > best_saved {
+                (best_saved, best_order, best_flags) = (saved, order, flags_of(work));
+                best_products = Some(work.iter_mut().map(|w| (w.product.take(), w.margin_capped)).collect());
+            }
+        }
+        for (w, (product, capped)) in work.iter_mut().zip(best_products.unwrap_or(baseline)) {
+            w.product = product;
+            w.margin_capped = capped;
+        }
+    }
+    for (w, (order_left, no)) in work.iter_mut().zip(best_flags) {
+        w.order_left = order_left;
+        w.no = no;
+    }
+    best_order
 }
 
 // --- Stage: shipping -----------------------------------------------------------------------------
 
-/// One shipping winner. The function never knows the delivery cost, so [spec]
-/// percent (free = 100 %) ranks above a fixed amount, larger first. When a Free
-/// switch forbids shipping next to the product/order discounts that apply,
-/// there is no winner.
+/// One shipping winner (plan.ts `planShipping`). The function never knows the
+/// delivery cost, so [spec] percent (free = 100 %) ranks above a fixed amount,
+/// larger first. A candidate takes part only when it adds up with every product
+/// discount and tier some line got and with every order discount of the plan
+/// (`given`); none that does → no winner.
 /// The shipping winner: a rule, or the free-shipping reward (MVP 4, R2) —
 /// whose pseudo-rule build_plan adds once the stacks are done.
 enum ShipWinner {
@@ -1715,8 +1929,22 @@ enum ShipWinner {
 /// `reward:shipping` as it ranks among the shipping rules: priority 0, its id.
 const SHIPPING_REWARD_ID: &str = "reward:shipping";
 
-fn plan_shipping(work: &[WorkLine<'_>], order: Option<&PlanOrder<'_>>, engine: &EngineFlags, ctx: &StackContext<'_, '_>, reward: bool) -> Option<ShipWinner> {
+/// The rules and tiers of every discount the cart got so far: the lines' product
+/// discounts, then the order discount's.
+fn given_discounts(work: &[WorkLine<'_>], order: Option<&PlanOrder<'_>>, ctx: &StackContext<'_, '_>) -> Vec<usize> {
+    let mut given = applied_products(work, ctx);
+    for c in order.map_or(&[][..], |o| o.stack.components.as_slice()) {
+        if !given.contains(&c.rule) {
+            given.push(c.rule);
+        }
+    }
+    given
+}
+
+/// `reward`: the Milníky list when the cart reached the free-shipping threshold.
+fn plan_shipping(given: &[usize], ctx: &StackContext<'_, '_>, reward: Option<u8>) -> Option<ShipWinner> {
     let rules = ctx.rules;
+    let except = &ctx.partners.except;
     struct Candidate {
         /// None = the reward (100 %).
         rule: Option<usize>,
@@ -1738,11 +1966,12 @@ fn plan_shipping(work: &[WorkLine<'_>], order: Option<&PlanOrder<'_>>, engine: &
             Some(p) => (ShippingValue::Percent(p), p > 0.0, (1.0, p)),
             None => (ShippingValue::FixedTotal(fixed), fixed > 0, (0.0, fixed as f64)),
         };
-        if worth {
+        // (A shipping rule and what the cart got: both must allow the other, `add_up`.)
+        if worth && given.iter().all(|&g| add_up(rules, except, i, g)) {
             candidates.push(Candidate { rule: Some(i), value, key });
         }
     }
-    if reward {
+    if reward.is_some_and(|mask| given.iter().all(|&g| module_adds(rules, g, BIT_SHIPPING, mask))) {
         candidates.push(Candidate { rule: None, value: ShippingValue::Percent(100.0), key: (1.0, 100.0) });
     }
     // The first in (key desc, priority desc, id asc) order: keys are finite (a
@@ -1762,11 +1991,6 @@ fn plan_shipping(work: &[WorkLine<'_>], order: Option<&PlanOrder<'_>>, engine: &
             .is_lt()
     };
     let winner = candidates.into_iter().reduce(|best, c| if before(&c, &best) { c } else { best })?;
-    let blocked = (!engine.product_with_shipping && work.iter().any(|w| w.product.is_some()))
-        || (!engine.order_with_shipping && order.is_some());
-    if blocked {
-        return None;
-    }
     Some(match winner.rule {
         Some(i) => ShipWinner::Rule(i, winner.value),
         None => ShipWinner::Reward,
@@ -1808,10 +2032,11 @@ fn failed_plan<'a>(cart: &NormalizedCart<'a>, reason: PlanFailure) -> CartPlan<'
 }
 
 /// A tier set's pseudo-rule (plan-tiers.ts `tierRule`): `tier:<setId>`,
-/// automatic, priority 0, never in a Pro stack; named as a rule would be where
-/// a stack lists its rules (a tier's own message is its break's).
-fn tier_rule<'a>(set: &'a TierSet, en: bool) -> Rule<'a> {
-    pseudo_rule(&set.rule_id, if en { "Quantity discount" } else { "Množstevní sleva" }, DiscountClass::Product)
+/// automatic, priority 0, of the type "tiers" with the tiers' list `mask`;
+/// named as a rule would be where a stack lists its rules (a tier's own message
+/// is its break's).
+fn tier_rule<'a>(set: &'a TierSet, en: bool, mask: u8) -> Rule<'a> {
+    Rule { bit: BIT_TIERS, mask, ..pseudo_rule(&set.rule_id, if en { "Quantity discount" } else { "Množstevní sleva" }, DiscountClass::Product) }
 }
 
 /// An automatic, priority-0 rule no customer or merchant wrote: a tier set's
@@ -1838,23 +2063,27 @@ fn pseudo_rule<'a>(id: &'a str, label: &'static str, cls: DiscountClass) -> Rule
         ends_on: None,
         markets: None,
         segment_targeted: false,
-        combines: &[],
+        bit: 0,
+        mask: 0,
+        except: &[],
+        at: None,
+        milestone: false,
         state: None,
         order: 0,
     }
 }
 
 fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> {
-    let engine = config.engine;
+    let masks = config.masks;
     let Resolved { campaign_id, mut rules, retargeted } = resolve_rules(config, &cart);
     // The tier sets' pseudo-rules after the rules (campaign overrides never reach
     // them): they rank with the rules (priority desc, id asc).
     let first_tier = rules.len();
-    rules.extend(config.tiers.sets.iter().map(|set| tier_rule(set, cart.locale_en)));
+    rules.extend(config.tiers.sets.iter().map(|set| tier_rule(set, cart.locale_en, masks.tiers)));
     rank_ids(&mut rules);
     let entered_by_rule = match_codes(&rules, &cart, config.max_code_length);
 
-    // Refs and combinesWith name rules only (plan.ts `rulesById`, `partnersOf`).
+    // Refs and exceptions name rules only (plan.ts `rulesById`).
     let mut by_id: IdMap = Table::with_capacity(first_tier);
     for (i, r) in rules[..first_tier].iter().enumerate() {
         by_id.insert(Text(r.id), i);
@@ -1874,14 +2103,24 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
     let mut work: Vec<WorkLine> = Vec::with_capacity(cart.lines.len());
     let mut cart_scope = Scope::default();
     let mut rule_scopes = vec![Scope::default(); rules.len()];
+    // A line on sale under the shop's rule (plan.ts prepareLines): out of everything when the sale's list has no
+    // discount of a line's price; else each rule is asked on its own (`sale_ok`), the tiers once (`no` bit 1).
+    let sale_takes_some = masks.outlet & (BIT_AUTOMATIC | BIT_CODE | BIT_TIERS | BIT_REWARDS) != 0;
+    let sale_takes_tiers = masks.outlet & BIT_TIERS != 0 && masks.tiers & BIT_OUTLET != 0;
+    let sale_ok: Vec<bool> = if sale_takes_some && cart.lines.iter().any(|l| l.outlet && !l.gift) {
+        rules.iter().map(|r| masks.outlet & r.bit != 0 && r.mask & BIT_OUTLET != 0).collect()
+    } else {
+        Vec::new()
+    };
     for line in &cart.lines {
         let excluded = if line.gift {
             Some(Excluded::Gift)
-        } else if line.outlet && !engine.outlet_with_anything {
+        } else if line.outlet && !sale_takes_some {
             Some(Excluded::Outlet)
         } else {
             None
         };
+        let sale = !line.gift && line.outlet && sale_takes_some;
         // The lines of one product list the same refs: refs equal to the previous
         // line's (compared text by text, a word at a time) are not looked up again.
         let at = work.len();
@@ -1898,19 +2137,28 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
                 rule_set
             }
         };
-        // A line out of every class (7: a gift card) stays out even when sales combine with anything.
-        let no = if line.gift || (engine.outlet_with_anything && line.outlet_no != 7) { 0 } else { line.outlet_no };
+        // A sale with its own list (a numeric flag) and a gift card follow that flag, whatever the shop's list says.
+        let no = if line.gift {
+            0
+        } else if sale && !sale_takes_tiers {
+            1
+        } else {
+            line.outlet_no
+        };
         if excluded != Some(Excluded::Gift) {
             let discountable = excluded.is_none();
             cart_scope.add(line, discountable);
             for &i in &rule_set {
-                // A sale line that takes no product discounts gives a product rule nothing to discount.
-                rule_scopes[i].add(line, discountable && !(no & 2 != 0 && rules[i].cls == DiscountClass::Product));
+                // A sale line that does not take a product rule gives it nothing to discount.
+                // (The line's own flags first: on nearly every line they say no, and the rule is not looked at.)
+                let out = (no & 2 != 0 || (sale && !sale_ok[i])) && rules[i].cls == DiscountClass::Product;
+                rule_scopes[i].add(line, discountable && !out);
             }
         }
         work.push(WorkLine {
             excluded,
             no,
+            sale,
             rule_set,
             product: None,
             floor: None,
@@ -1926,9 +2174,9 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
     } else {
         collect_item_refs(&rules[..first_tier], retargeted.as_slice(), campaign_id, cart.lines.as_slice(), work.as_mut_slice(), looks.as_slice(), rule_scopes.as_mut_slice())
     };
-    // The rules only: a tier never stacks (no rule can list it), and sizing the
-    // partner bits by the rules keeps the one-word stack search up to 64 rules.
-    let partners = partners_of(&rules[..first_tier], &by_id);
+    // Who adds up with whom (the bit matrix is sized by the rules only: it keeps
+    // the one-word stack search up to 64 rules; a tier in a pool is asked directly).
+    let partners = partners_of(&rules, first_tier, &by_id);
     drop(by_id);
 
     let markets_here = markets_here(&cart, &config.market_countries);
@@ -1945,16 +2193,15 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
     // Quantity tiers (MVP 3): each line's candidate, from the sets as shipped.
     let tiers = prepare_tiers(&config.tiers, &cart.lines, &cart.tiers, |i| work[i].excluded.is_none() && work[i].no & 1 == 0, &cart.currency, !cart.locale_en);
 
-    let any_partners = !partners.bits.is_empty();
     let shadows = tier_shadows(&rules, first_tier, &config.tiers.sets);
-    let ctx = StackContext { rules: &rules, first_tier, shadows: &shadows, partners: &partners, any_partners, cart: &cart, labels: RefCell::default() };
-    plan_products(&mut work, &tiers, &ctx);
+    let ctx = StackContext { rules: &rules, first_tier, shadows: &shadows, partners: &partners, sale_ok: &sale_ok, cart: &cart, labels: RefCell::default() };
+    plan_products(&mut work, &tiers, &ctx, None);
     // Margin protection (MVP 2, A1.7): off by default, then the plan is MVP 1's.
     if let Some(margin) = config.margin.as_ref() {
         compute_floors(&mut work, margin, &cart);
         apply_margin_protection(&mut work, &tiers, &ctx);
     }
-    let mut order = plan_order_stage(&mut work, &engine, &ctx, config.margin.is_some());
+    let mut order = plan_order_stage(&mut work, &tiers, &ctx, config.margin.is_some());
     if config.margin.is_some() {
         if let Some(order) = order.as_mut() {
             order.margin_protected = true;
@@ -1966,7 +2213,16 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
     let currency = cart.currency.as_str();
     let rewards = &config.rewards;
     let reward = threshold_in(&rewards.shipping, currency).is_some_and(|t| base >= t);
-    let winner = plan_shipping(&work, order.as_ref(), &engine, &ctx, reward);
+    let given = given_discounts(&work, order.as_ref(), &ctx);
+    let winner = plan_shipping(&given, &ctx, reward.then_some(masks.rewards));
+    // The gift is free only when it adds up with every discount the cart got: the product discounts and tiers,
+    // the order discount, the shipping discount (plan-rewards.ts planGifts `combines`).
+    let gift_combines = given.iter().all(|&g| module_adds(&rules, g, BIT_REWARDS, masks.rewards))
+        && match winner {
+            Some(ShipWinner::Rule(i, _)) => module_adds(&rules, i, BIT_REWARDS, masks.rewards),
+            Some(ShipWinner::Reward) => masks.rewards & BIT_REWARDS != 0,
+            None => true,
+        };
     drop(ctx);
     let en = cart.locale_en;
     let shipping = winner.map(|w| match w {
@@ -1978,7 +2234,7 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
         }
     });
     // R3: one item of the first valid gift line of each reached tier is free.
-    if !rewards.tiers.is_empty() {
+    if gift_combines && !rewards.tiers.is_empty() {
         let label = if en { "Free gift" } else { "Dárek zdarma" };
         let mut given = vec![false; rewards.tiers.len()];
         for (w, line) in work.iter_mut().zip(&cart.lines) {
@@ -2047,18 +2303,28 @@ mod search_tests {
         }
     }
 
+    /// `links` as exceptions on both rules (the rules' lists are empty), as `partners_of` would read them;
+    /// one more row for a tier after the rules.
     fn partners(rules: usize, links: &[(usize, usize)]) -> Partners {
-        let words = rules.div_ceil(64);
-        let mut out = Partners { lists: vec![Vec::new(); rules], bits: vec![0; rules * words], words };
+        let mut except = vec![Vec::new(); rules + 1];
         for &(a, b) in links {
-            if a != b && !out.lists[a].contains(&b) {
-                out.lists[a].push(b);
-                out.lists[b].push(a);
-                out.bits[a * words + b / 64] |= 1 << (b % 64);
-                out.bits[b * words + a / 64] |= 1 << (a % 64);
+            if a != b && !except[a].contains(&b) {
+                except[a].push(b);
+                except[b].push(a);
             }
         }
-        out
+        let can: Vec<bool> = except.iter().map(|list| !list.is_empty()).collect();
+        let any = can.iter().filter(|&&c| c).count() > 1;
+        let mut bits = Vec::new();
+        if any && rules <= 64 {
+            bits = vec![0u64; rules];
+            for (a, list) in except.iter().enumerate().take(rules) {
+                for &b in list {
+                    bits[a] |= 1 << b;
+                }
+            }
+        }
+        Partners { except, can, any, bits }
     }
 
     /// plan.ts `pick` as written there: sort every candidate by `by_rank`, keep
@@ -2066,9 +2332,10 @@ mod search_tests {
     /// (a seed already in a set is skipped, a set of one is no set), the largest
     /// capped sum wins (a tie keeps the earlier seed's), then each chosen amount
     /// capped at what is left of `cap`.
-    /// With a quantity tier (MVP 3, fix round 2 of plan.ts): the tier takes no
-    /// place in the pool — the MAX_STACK_CANDIDATES best-ranked RULE candidates —
-    /// and the search starts from the best single candidate, the tier included.
+    /// With a quantity tier whose list names no rule type (as here: every list is
+    /// empty): the tier takes no place in the pool — the MAX_STACK_CANDIDATES
+    /// best-ranked RULE candidates — and the search starts from the best single
+    /// candidate, the tier included.
     fn reference_pick(rules: &[Rule], positive: &[Component], tier: Option<Component>, cap: i64, p: &Partners) -> (Vec<Component>, i64) {
         let mut sorted: Vec<Component> = positive.iter().copied().chain(tier).collect();
         sorted.sort_by(|a, b| by_rank(rules, a, b));
@@ -2083,7 +2350,7 @@ mod search_tests {
             }
             let mut set = vec![*seed];
             for c in pool {
-                if c.rule != seed.rule && p.stack(seed.rule, c.rule) && set.iter().all(|s| s.rule == seed.rule || p.stack(s.rule, c.rule)) {
+                if c.rule != seed.rule && add_up(rules, &p.except, seed.rule, c.rule) && set.iter().all(|s| s.rule == seed.rule || add_up(rules, &p.except, s.rule, c.rule)) {
                     set.push(*c);
                 }
             }
@@ -2171,7 +2438,7 @@ mod search_tests {
                 first_tier: count,
                 shadows: &[],
                 partners: &p,
-                any_partners: !links.is_empty(),
+                sale_ok: &[],
                 cart: &cart,
                 labels: RefCell::default(),
             };
@@ -2199,7 +2466,7 @@ mod search_tests {
             sorted.sort_by(|a, b| by_rank(&rules, a, b));
             left_out += usize::from(
                 expected.len() > 1
-                    && sorted[MAX_STACK_CANDIDATES.min(n)..].iter().any(|c| expected.iter().all(|m| p.stack(m.rule, c.rule))),
+                    && sorted[MAX_STACK_CANDIDATES.min(n)..].iter().any(|c| expected.iter().all(|m| add_up(&rules, &p.except, m.rule, c.rule))),
             );
             // best_ranked: the sorted prefix, and a permutation of the list.
             let mut list = positive.clone();
@@ -2238,7 +2505,11 @@ mod search_tests {
             ends_on: None,
             markets: None,
             segment_targeted: false,
-            combines: &[],
+            bit: BIT_AUTOMATIC,
+            mask: 0,
+            except: &[],
+            at: None,
+            milestone: false,
             state: None,
             order: 0,
         }

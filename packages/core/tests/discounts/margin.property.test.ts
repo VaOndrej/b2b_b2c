@@ -253,9 +253,11 @@ test("property: DEGRADED outputs never take a line below its floor — any tie r
   for (let n = 0; n < 16; n++) {
     const orderCode = r.chance(0.3);
     const rules: RawRule[] = [
-      pctRule("A", r.pick([1.4, 10, 12.5]), { name: longName("A"), combinesWith: { ruleIds: ["B"] } }),
-      { id: "B", name: longName("B"), method: "automatic", value: { kind: "fixed", amount: { CZK: r.int(1, 30) * 33 } }, target: { kind: "collections", ids: [] } },
-      pctRule("C", r.pick([1.4, 15, 20]), { name: longName("C") }),
+      // A and B add up with each other; the order discount adds up with each product discount; C with no product
+      // discount. Said by exceptions, so that it is the same whether the order discount has a code or not.
+      pctRule("A", r.pick([1.4, 10, 12.5]), { name: longName("A"), combine: { types: [], rules: ["B", "O"] } }),
+      { id: "B", name: longName("B"), method: "automatic", value: { kind: "fixed", amount: { CZK: r.int(1, 30) * 33 } }, target: { kind: "collections", ids: [] }, combine: { types: [], rules: ["A", "O"] } },
+      pctRule("C", r.pick([1.4, 15, 20]), { name: longName("C"), combine: { types: [], rules: ["O"] } }),
       {
         id: "O",
         name: "Objednávka",
@@ -263,6 +265,7 @@ test("property: DEGRADED outputs never take a line below its floor — any tie r
         ...(orderCode ? { codes: ["OBJ"] } : {}),
         value: { kind: "percentage", percent: r.pick([5, 10]) },
         target: { kind: "order" },
+        combine: { types: [], rules: ["A", "B", "C"] },
       },
     ];
     const baseLines: CartLineInput[] = Array.from({ length: 200 }, (_, i) => ({
@@ -355,6 +358,18 @@ test("property: DEGRADED outputs never take a line below its floor — any tie r
 // --- performance -------------------------------------------------------------------------------
 
 test("performance: 200 lines × 50 rules with margin protection and an order discount plans in well under 50 ms", () => {
+  // Every 4th rule adds up with three others (both sides name the other, as exceptions); the five order
+  // discounts add up with every product discount.
+  const links = new Map<number, Set<number>>();
+  const link = (a: number, b: number) => links.set(a, (links.get(a) ?? new Set()).add(b));
+  for (let i = 0; i < 50; i += 4) {
+    for (const j of [(i + 1) % 50, (i + 7) % 50, (i + 9) % 50]) {
+      link(i, j);
+      link(j, i);
+    }
+  }
+  const isOrder = (i: number) => i % 10 === 9;
+  const partners = (i: number) => [...(links.get(i) ?? []), ...Array.from({ length: 50 }, (_, j) => j).filter((j) => isOrder(i) !== isOrder(j) && !links.get(i)?.has(j))];
   const rules: RawRule[] = Array.from({ length: 50 }, (_, i) => ({
     id: `r${i}`,
     name: `Rule ${i}`,
@@ -362,7 +377,7 @@ test("performance: 200 lines × 50 rules with margin protection and an order dis
     ...(i % 5 === 0 ? { codes: [`CODE${i}`] } : {}),
     value: i % 3 === 0 ? { kind: "fixed", amount: { CZK: (i + 1) * 100 } } : { kind: "percentage", percent: (i % 40) + 1 },
     target: i % 10 === 9 ? { kind: "order" } : { kind: "collections", ids: [] },
-    ...(i % 4 === 0 ? { combinesWith: { ruleIds: [`r${(i + 1) % 50}`, `r${(i + 7) % 50}`, `r${(i + 9) % 50}`] } } : {}),
+    combine: { types: [], rules: partners(i).map((j) => `r${j}`) },
     priority: i % 3,
   }));
   const margin = {

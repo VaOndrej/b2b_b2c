@@ -115,9 +115,9 @@ export interface StorefrontConfigV1 {
   /** MVP 4 (contract R7): the cart rewards; absent when nothing is offered (the embed shows no panel). */
   rewards?: StorefrontRewards;
   /**
-   * MVP 5 (contract O9): 1 when outlet combines with anything (`engine.combination.outletWithAnything`); absent =
-   * the default A1, a sale variant gets no other discount, so the PDP shows it no tier table (the product
-   * metafield's `outlet` list names the sale variants).
+   * MVP 5 (contract O9): 1 when a line on sale takes the quantity tiers — the sale's list and the tiers' list
+   * name each other (combine.ts, since 13 Oct 2026); absent = the default, a sale variant gets no tier, so the
+   * PDP shows it no tier table (the product metafield's `outlet` list names the sale variants).
    */
   ow?: 1;
   /** MVP 7 BETA (contract M8): 1 when product cards show the first quantity break (`storefront.cardPricesEnabled`). */
@@ -306,7 +306,7 @@ export function buildStorefrontConfig(given: ReadonlyDeep<WonDiscountsConfig>, o
     margin: storefrontMargin(gated.modules.margin, opts.shopCurrency),
     appearance: { preset: APPEARANCE_PRESETS.find((p) => p === preset) ?? "default", ...(customCss ? { css: customCss } : {}), ...(outletCountdown(gated.storefront.looks) ? { oc: 1 as const } : {}) },
     ...rewardsPart(gated.modules.rewards, opts.variantHandles ?? {}, gated.modules.codes.rules),
-    ...(gated.engine.combination.outletWithAnything ? { ow: 1 as const } : {}),
+    ...(gated.modules.outlet.combine.types.includes("tiers") && gated.modules.tiers.combine.types.includes("outlet") ? { ow: 1 as const } : {}),
     ...(gated.storefront.cardPricesEnabled ? { cards: 1 as const } : {}),
     ...campaignsPart(gated.campaigns, opts.shopTimezone),
   };

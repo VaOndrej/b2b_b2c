@@ -127,7 +127,23 @@ export function devSharedMarket<T extends WonDiscountsConfig>(config: T, shared:
  * free-shipping rule and a segment-targeted rule checkout cannot evaluate yet —
  * run through the real reader.
  */
-export const DEV_OVERVIEW_FIXTURE: WonDiscountsConfig = readStoredConfig({
+/**
+ * A fixture shop, written the way shops were stored before 13 Oct 2026 — which discounts add up said by the
+ * category switches (all on by default) and by `combinesWith` on a rule — and read like such a stored shop:
+ * converted to lists of types and exceptions (@won/core config/combine-migrate.ts), so the previews show a shop
+ * that came through the conversion, discounts adding up as they did. A fixture built on another one gets that
+ * one's exceptions back as links first (the conversion reads links, not exceptions).
+ */
+function devShop(raw: Record<string, unknown>): WonDiscountsConfig {
+  const modules = (raw.modules ?? {}) as { codes?: { rules?: unknown[] } };
+  const rules = (modules.codes?.rules ?? []).map((rule) => {
+    const r = rule as { combine?: { rules?: string[] }; combinesWith?: unknown };
+    return r.combine?.rules && r.combinesWith === undefined ? { ...r, combinesWith: { ruleIds: [...r.combine.rules] } } : r;
+  });
+  return readStoredConfig({ ...raw, modules: { ...modules, codes: { ...modules.codes, rules } }, schemaVersion: 1 });
+}
+
+export const DEV_OVERVIEW_FIXTURE: WonDiscountsConfig = devShop({
   ...DEFAULT_CONFIG,
   markets: DEV_MARKETS,
   modules: {
@@ -195,10 +211,10 @@ export const DEV_OVERVIEW_FIXTURE: WonDiscountsConfig = readStoredConfig({
 });
 
 /** A brand-new shop: markets known, no rules yet, onboarding at step 1. */
-export const DEV_EMPTY_FIXTURE: WonDiscountsConfig = readStoredConfig({ ...DEFAULT_CONFIG, markets: DEV_MARKETS });
+export const DEV_EMPTY_FIXTURE: WonDiscountsConfig = devShop({ ...DEFAULT_CONFIG, markets: DEV_MARKETS });
 
 /** Onboarding in progress: goals picked. */
-export const DEV_ONBOARDING_FIXTURE: WonDiscountsConfig = readStoredConfig({
+export const DEV_ONBOARDING_FIXTURE: WonDiscountsConfig = devShop({
   ...DEFAULT_CONFIG,
   markets: DEV_MARKETS,
   onboarding: { goals: ["rewards", "migrate"], step: 2 },
@@ -428,7 +444,7 @@ export function devTryCartPlan(locale: "cs" | "en"): CartPlanView {
  * rule — so the harness shows the targeting line, "Propisuje se", the minimum
  * scope choice and what the Free plan does not run.
  */
-export const DEV_F2_FIXTURE: WonDiscountsConfig = readStoredConfig({
+export const DEV_F2_FIXTURE: WonDiscountsConfig = devShop({
   ...DEV_OVERVIEW_FIXTURE,
   modules: {
     ...DEV_OVERVIEW_FIXTURE.modules,
@@ -512,7 +528,7 @@ export const DEV_MARGIN_COLLECTION_TITLES: Readonly<Record<string, string>> = {
  * (Podzimní kolekce: minimum margin 30 %; Doplňky: at most 10 % without a cost)
  * — run through the real reader.
  */
-export const DEV_MARGIN_FIXTURE: WonDiscountsConfig = readStoredConfig({
+export const DEV_MARGIN_FIXTURE: WonDiscountsConfig = devShop({
   ...DEV_F2_FIXTURE,
   modules: {
     ...DEV_F2_FIXTURE.modules,
@@ -943,7 +959,20 @@ const DEV_P1 = "gid://shopify/Product/1";
  * cart; its top tier has no EUR value — MKT-1), margin protection on and the
  * "highlight" look — run through the real reader.
  */
-export const DEV_TIERS_FIXTURE: WonDiscountsConfig = readStoredConfig({
+/**
+ * After the conversion the merchant ticked what it could not keep: the quantity tiers add up with the order
+ * discounts again — the tiers name their types, each order discount names "tiers". (The shop also has automatic
+ * discounts on products, which never added up with a tier: the conversion had to leave the type out.)
+ */
+function tiersWithOrderDiscounts(config: WonDiscountsConfig): WonDiscountsConfig {
+  const rules = config.modules.codes.rules.map((rule) =>
+    rule.target.kind === "order" && rule.combine && !rule.combine.types.includes("tiers") ? { ...rule, combine: { ...rule.combine, types: [...rule.combine.types, "tiers" as const] } } : rule,
+  );
+  const tiers = { ...config.modules.tiers, combine: { types: ["automatic" as const, "code" as const, ...config.modules.tiers.combine.types.filter((type) => type !== "automatic" && type !== "code")] } };
+  return readStoredConfig({ ...config, modules: { ...config.modules, codes: { rules }, tiers } });
+}
+
+export const DEV_TIERS_FIXTURE: WonDiscountsConfig = tiersWithOrderDiscounts(devShop({
   ...DEV_F2_FIXTURE,
   modules: {
     ...DEV_F2_FIXTURE.modules,
@@ -973,7 +1002,7 @@ export const DEV_TIERS_FIXTURE: WonDiscountsConfig = readStoredConfig({
     },
   },
   storefront: { cardPricesEnabled: false, looks: { tiers: { preset: "highlight" } } },
-});
+}));
 
 /** Shopify titles of the fixture's scoped products / collections. */
 const DEV_TIER_TITLES: ReadonlyMap<string, string> = new Map([
@@ -1146,7 +1175,7 @@ function withTableLook(config: WonDiscountsConfig, more: ElementLook): WonDiscou
 }
 
 /** DEV_TIERS_FIXTURE with a Pro custom look and one changed storefront text (the previews of ?state=custom). */
-const DEV_CUSTOM_LOOK_FIXTURE: WonDiscountsConfig = readStoredConfig({
+const DEV_CUSTOM_LOOK_FIXTURE: WonDiscountsConfig = devShop({
   ...DEV_TIERS_FIXTURE,
   storefront: withTableLook(DEV_TIERS_FIXTURE, { custom: { vars: { accent: "#0a7d4f", tint: "#f2fbf6", radius: 4 }, css: ".won-tiers__heading { text-transform: uppercase; }" } }).storefront,
   locales: { ...DEV_TIERS_FIXTURE.locales, cs: { "tiers.heading": "Kup víc, plať míň" } },
@@ -1171,7 +1200,7 @@ export function devLook(config: WonDiscountsConfig, element: "milestones" | "msB
  * `downgraded` = three languages stored (on Free the third is not on the storefront); `import` = a planned import.
  */
 /** Přehled ?state=languages: Czech and Slovak (the extension's own languages) and German with one text of its own. */
-export const DEV_LANGUAGES_FIXTURE: WonDiscountsConfig = readStoredConfig({
+export const DEV_LANGUAGES_FIXTURE: WonDiscountsConfig = devShop({
   ...DEV_OVERVIEW_FIXTURE,
   storefront: { ...DEV_OVERVIEW_FIXTURE.storefront, languages: ["cs", "sk", "de"] },
   locales: { cs: { "tiers.heading": "Kup víc, plať míň" }, sk: {}, de: { "tiers.heading": "Mehr kaufen, weniger zahlen" } },
@@ -1213,20 +1242,14 @@ export function devTranslationsCsv(form: FormData, opts: { plan: "free" | "pro";
   return { ok: true, message: "import-preview", plan: planImport(csv, data.rows, data.languages, data.values), csv };
 }
 
-/** Nastavení: the switches as stored (`changed` = two switched off, as a shop may have them). */
+/** Nastavení: the default list as stored (`changed` = a shop that lets new discounts add up with codes too). */
 export function devSettingsScreen(opts: { plan: "free" | "pro"; state: string | null; shared?: boolean; fallback?: boolean; highest?: boolean }): SettingsScreenData {
-  const c = DEFAULT_CONFIG.engine.combination;
-  const combination = {
-    outletWithAnything: c.outletWithAnything,
-    productWithOrder: c.productWithOrder,
-    productWithShipping: c.productWithShipping,
-    orderWithShipping: c.orderWithShipping,
-  };
+  const combineDefault = [...DEFAULT_CONFIG.engine.combineDefault];
   return {
     plan: opts.plan,
     configVersion: "dev-config-version",
     currencies: currencyViews(devSharedMarket(DEV_OVERVIEW_FIXTURE, opts.shared === true).markets, { marketNames: DEV_MARKET_NAMES }),
-    combination: opts.state === "changed" ? { ...combination, productWithOrder: false, productWithShipping: false } : combination,
+    combineDefault: opts.state === "changed" ? ["code", ...combineDefault] : combineDefault,
     // ?fallback=1: "a customer from a country in no market gets the lowest amount" is on.
     unknownMarketLowest: opts.fallback === true,
     // ?highest=1: minimum spend and free shipping take the highest amount, the rest the lowest.
@@ -1300,7 +1323,7 @@ const DEV_GIFT_TITLES: ReadonlyMap<string, string> = new Map([
  * from 1 500 Kč (EUR missing: MKT-1 note), and on Pro a choice of 3 from
  * 3 000 Kč with a fallback — run through the real reader.
  */
-export const DEV_REWARDS_FIXTURE: WonDiscountsConfig = readStoredConfig({
+export const DEV_REWARDS_FIXTURE: WonDiscountsConfig = devShop({
   ...DEV_F2_FIXTURE,
   modules: {
     ...DEV_F2_FIXTURE.modules,
@@ -1319,7 +1342,7 @@ export const DEV_REWARDS_FIXTURE: WonDiscountsConfig = readStoredConfig({
  * The same shop with discount steps (Milníky): 5 % off the order from 2 000 Kč / 80 €, and 500 Kč / 20 € off
  * from 5 000 Kč / 200 € — the order rules with the "ms-" prefix that core milestones.ts reads as steps.
  */
-export const DEV_MILESTONES_FIXTURE: WonDiscountsConfig = readStoredConfig({
+export const DEV_MILESTONES_FIXTURE: WonDiscountsConfig = devShop({
   ...DEV_REWARDS_FIXTURE,
   modules: {
     ...DEV_REWARDS_FIXTURE.modules,
@@ -1886,7 +1909,7 @@ export function devModuleSignals(opts: { mode: "on" | "off" | "failed"; plan: "f
  * discount steps, margin protection and a code — and the products the app would have stored for it (the first has
  * a purchase cost close to its price, so margin protection lowers what the tiers and the steps give).
  */
-const DEV_COMBOS_FIXTURE: WonDiscountsConfig = readStoredConfig({
+const DEV_COMBOS_FIXTURE: WonDiscountsConfig = devShop({
   ...DEV_MILESTONES_FIXTURE,
   modules: {
     ...DEV_MILESTONES_FIXTURE.modules,

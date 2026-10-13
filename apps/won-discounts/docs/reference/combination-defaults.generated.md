@@ -5,30 +5,37 @@ layer: reference
 feature: engine
 min_plan: free
 status: stable
-config_version: 1
+config_version: 2
 source: generated
 generated_from: '@won/core/discounts'
 lang: en
-keywords: [combine, combination, stack, add up, better wins, kombinace, sčítání]
-summary: Which kinds of Won discounts add up by default and which compete, plus the Pro stacking cap.
+keywords: [combine, combination, stack, add up, better wins, adds up with, kombinace, sčítání, sčítá se s]
+summary: Which types of Won discounts add up in a new store, how the rule works, plus the stacking cap.
 ---
 
 <!-- AUTO-GENERATED from @won/core/discounts and the won-discounts admin copy — DO NOT EDIT. Run `npm run docs:gen -w won-discounts` to refresh. -->
 
 # Default combination rules
 
-What happens when two Won discounts of these kinds could apply to the same cart:
+Every discount has a list, **Adds up with**: the types of discounts it adds up with. There are six types:
+**Automatic discounts**, **Discount codes**, **Free shipping**, **Quantity discounts**, **Milestones**, **Sale**.
 
-| Discounts | Combine by default? |
+Two discounts add up only when **each** one's list has the other's type. When they do not, the customer
+gets the better of the two.
+
+In a new store:
+
+| Whose list | Adds up with |
 |---|---|
-| Clearance item + any other discount | No |
-| Product discount + another product discount on the same item | No: the better one for the customer wins |
-| Product discount + order discount | Yes, they add up |
-| Product discount + shipping discount | Yes, they add up |
-| Order discount + shipping discount | Yes, they add up |
+| A new discount (automatic or with a code) | Free shipping, Milestones |
+| Quantity discounts | Free shipping, Milestones |
+| Milestones | Automatic discounts, Discount codes, Free shipping, Quantity discounts, Milestones |
+| Sale | nothing |
 
-- Two **order** discounts do not add up either: the better one for the customer wins.
+- A new **free shipping** discount starts with the mirror of the first row, so that the two sides agree.
 - Of several **shipping** discounts one applies: a percentage (free shipping = 100 %)
   ranks above a fixed amount, the larger first.
-- **Pro:** a discount can be set to stack with chosen other discounts of the same
-  kind. At most **6** discounts stack on one line (or on the order).
+- Two discount steps of **Milestones** never add up: the higher step replaces the lower one.
+- **Pro:** an exception lets a discount add up with one chosen discount whose type is not in its list.
+  The other discount must allow it too.
+- At most **6** discounts add up on one line (or on the order).

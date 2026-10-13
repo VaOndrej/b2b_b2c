@@ -96,6 +96,27 @@ V kódu jsou dnes dva tarify: Free (zdarma) a Pro za 29 USD měsíčně (`app/li
 
 Uzavřeno 13. 10.: dnešní „Sčítá se s“ konkrétními slevami se stane výjimkami jen v Pro; v nižším tarifu se ty dvojice přestanou sčítat (Ondřej: ano).
 
+## Upřesnění při stavbě (13. 10., Ondřej ještě neviděl)
+
+Návrh říká pravidlo jednou větou. Tohle jsem musel při stavbě doplnit, aby šlo spočítat každý košík. Každý bod jde změnit.
+
+1. **Sleva na dopravu je typ „Doprava zdarma“ vždy**, i když je to třeba 50 % z dopravy, ne jen hodnota „doprava zdarma“.
+2. **Sleva za milník je typ Milníky a řídí se seznamem Milníků**, vlastní seznam nemá. Doprava zdarma z Milníků je typ Doprava zdarma, ale taky se řídí seznamem Milníků.
+3. **Odměny Milníků mezi sebou** (dárek, doprava, sleva) se sčítají, když má seznam Milníků zaškrtnuté „Milníky“. Dvě slevy za milník se nesčítají nikdy (vyšší krok nahrazuje nižší).
+4. **Dvě slevy na dopravu se nesčítají nikdy**, vyhrává jedna.
+5. **Sleva na objednávku vedle slev na položkách.** Vedle nich jde jen sleva na objednávku, která se sčítá se všemi slevami, co košík na položkách dostal. Když taková není, porovná se „slevy na položkách“ proti „jen sleva na objednávku“ a zákazník dostane to výhodnější. Je to dnešní chování přepínače, jen po dvojicích.
+6. **Doprava a dárek se neporovnávají, jen přidávají.** Hodnotu dopravy funkce nezná. Doprava (i dárek) platí, jen když se sčítá se vším, co košík už dostal. Jinak neplatí a v adminu je vidět proč.
+7. **Výprodej.** Seznam Výprodeje se týká slev z ceny položky: automatické, kódy, množstevní, sleva za milník. Doprava zdarma a dárek platí u zboží ve výprodeji vždy, jako dnes. Výprodej s vlastním seznamem (ten u jednoho výprodeje) se řídí dál jen tím svým.
+8. **Zaškrtávátka, která nic neznamenají, se neukazují:** vlastní typ u dopravy, množstevních slev a výprodeje; výprodej u slevy na dopravu.
+9. **Výchozí stav nového obchodu:** slevy z ceny (automatické, kódy, množstevní) se mezi sebou nesčítají, doprava zdarma a Milníky se přičítají ke všemu, výprodej nebere nic. Nová sleva na dopravu dostane zrcadlový seznam, aby hned nevznikla neshoda.
+10. **Převod.** Každý typ slev dostane jeden seznam. Typ je zaškrtnutý, jen když se dnes sčítají všechny dvojice slev, kterých se to týká. Dvojice, které se tím přestanou sčítat, appka vypíše. Dnešní „Sčítá se s“ se stane výjimkou na obou slevách.
+11. **Co převod stojí:** když má obchod slevu za milník a zároveň automatickou slevu na objednávku, vypadne ze seznamu Milníků „Automatické slevy“ a s nimi i dárek. Jinak by se sleva za milník začala sčítat s jinou slevou na objednávku, což dnes nedělá.
+12. **Sleva za milník ve výchozím stavu.** Seznam Milníků má ve výchozím stavu zaškrtnuté automatické slevy i kódy (kvůli dárku a dopravě zdarma). Sleva za milník má tentýž seznam, takže se v novém obchodě sčítá s jinou slevou na objednávku. Dnes vyhrává lepší z nich. Kdo to nechce, odškrtne typ u Milníků, ale pak se s ním nesčítá ani dárek.
+13. **Množstevní sleva a sleva na objednávku po převodu.** Když má obchod množstevní slevy, automatickou slevu na produkt a automatickou slevu na objednávku, převod u množstevních slev „Automatické slevy“ nezaškrtne (se slevou na produkt se nesčítaly). Množstevní sleva se pak přestane sčítat i se slevou na objednávku. Appka tu dvojici vypíše.
+14. **Výjimky v řádku slevy.** Řádek slevy v seznamu ukazuje jen výjimky („výjimka: NEWSLETTER“). Seznam typů je vidět v editoru, jinak by byl řádek u každé slevy dvakrát delší.
+15. **Funkce v pokladně čte seznamy z jednoho textu** (`engine.cx`). Je to kvůli limitu instrukcí: každé čtení klíče z konfigurace stojí asi 1 000 instrukcí.
+16. **Ochrana marže:** v jednom z 1 200 zkušebních košíků dostane zákazník o pár korun víc než dřív. Samotná sleva na objednávku tam využije prostor nad podlahou líp než dřívější součet. Pod podlahu se nedostane.
+
 ## Pořadí stavby
 
 1. Jádro: typy, pravidlo, převod, brána, payload funkce (`packages/core`), s testem „před a po“.

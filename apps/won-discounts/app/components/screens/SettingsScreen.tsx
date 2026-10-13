@@ -25,16 +25,15 @@ import { useT } from "../../i18n/context";
 import {
   COMBINATION_FIELD,
   COMBINATION_INTENT,
-  COMBINATION_KEYS,
-  combinationLabel,
-  combinationSentence,
-  combinationSummary,
-  readCombinationForm,
+  combineDefaultSummary,
+  readCombineDefaultForm,
   UNKNOWN_MARKET_KINDS,
   UNKNOWN_MARKET_PICKS,
 } from "../model/combination";
 import { PLAN_ACTION, type PlanActionResult, type PlanScreenData } from "../model/plan";
-import type { CombinationView, SettingsScreenData, UiResult } from "../model/types";
+import type { CombineType } from "../model/combine";
+import type { SettingsScreenData, UiResult } from "../model/types";
+import { CombineTypes } from "../shell/CombineTypes";
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
 import { PlanBadge } from "../shell/PlanBadge";
@@ -88,7 +87,7 @@ function MarketCellView({ cell, label, off }: { cell: MarketCell; label: string;
   );
 }
 
-export function SettingsScreen({ currencies, combination: stored, configVersion, plan, result, planScreen, planAction = PLAN_ACTION, markets = [], unknownMarketLowest = false, unknownMarketHighest = [] }: SettingsScreenProps) {
+export function SettingsScreen({ currencies, combineDefault: stored, configVersion, result, planScreen, planAction = PLAN_ACTION, markets = [], unknownMarketLowest = false, unknownMarketHighest = [] }: SettingsScreenProps) {
   const tr = useT();
   const { t } = tr;
   // Two enabled markets of one currency, by name: only there can their amounts differ (the switch below).
@@ -103,13 +102,13 @@ export function SettingsScreen({ currencies, combination: stored, configVersion,
     ["tiers", t("settings.markets.col.tiers")],
   ] as const;
 
-  // §2/§17b: the live switches, re-read from the form on native events.
+  // §2/§17b: the live list, re-read from the form on native events.
   const formRef = useRef<HTMLFormElement>(null);
-  const [draft, setDraft] = useState<CombinationView>(stored);
+  const [draft, setDraft] = useState<CombineType[]>(stored);
   const recompute = useCallback(() => {
     const form = formRef.current;
-    if (form) setDraft(readCombinationForm(new FormData(form)));
-  }, []);
+    if (form) setDraft(readCombineDefaultForm(new FormData(form)) ?? stored);
+  }, [stored]);
   useEffect(() => {
     const el = formRef.current;
     if (!el) return;
@@ -133,8 +132,8 @@ export function SettingsScreen({ currencies, combination: stored, configVersion,
     submit(data, { method: "post" });
   };
 
-  // The cart reads the STORED switches: with unsaved ones it would show the old behaviour.
-  const dirty = COMBINATION_KEYS.some((key) => draft[key] !== stored[key]);
+  // The cart reads what is STORED: with an unsaved list it would show the old behaviour.
+  const dirty = draft.join(",") !== stored.join(",");
 
   const sections = [
     { anchor: "combination", label: t("settings.combination.title") },
@@ -157,28 +156,21 @@ export function SettingsScreen({ currencies, combination: stored, configVersion,
             <WonSection
               title={t("settings.combination.title")}
               glyph="sliders"
-              summary={combinationSummary(draft, tr)}
+              summary={combineDefaultSummary(draft, tr)}
               hint={t("settings.combination.hint")}
               anchor="combination"
             >
               <s-stack direction="block" gap="base">
-                {/* Plan-aware (review fix 3): on Pro a rule may stack with the ones picked in its editor (combinesWith). */}
-                <s-text color="subdued">{t(plan === "pro" ? "settings.combination.fixedPro" : "settings.combination.fixed")}</s-text>
-                <div>
-                  {COMBINATION_KEYS.map((key) => {
-                    const on = draft[key];
-                    const changed = on !== stored[key];
-                    return (
-                      <WonRow key={key}>
-                        <s-switch name={COMBINATION_FIELD[key]} value="on" label={combinationLabel(key, tr)} checked={boolAttr(stored[key])} />
-                        <RowNote>{changed ? `${t("settings.combination.changed")} ${combinationSentence(key, on, tr)}` : combinationSentence(key, on, tr)}</RowNote>
-                        {key === "outletWithAnything" ? <RowNote>{t("combination.outletWithAnything.note")}</RowNote> : null}
-                      </WonRow>
-                    );
-                  })}
-                </div>
-                <WonRow action={<s-link href="/app/discounts">{t("settings.combination.perDiscount.link")}</s-link>}>
-                  <RowNote>{t("settings.combination.perDiscount")}</RowNote>
+                <s-text color="subdued">{t("settings.combination.intro")}</s-text>
+                <WonRow>
+                  <s-stack direction="block" gap="small-200">
+                    <s-text type="strong">{t("combine.title")}</s-text>
+                    <CombineTypes owner="automatic" checked={stored} />
+                    <RowNote>{t("settings.combination.note")}</RowNote>
+                  </s-stack>
+                </WonRow>
+                <WonRow>
+                  <RowNote>{t("settings.combination.modules")}</RowNote>
                 </WonRow>
                 {dirty ? (
                   <WonRow>

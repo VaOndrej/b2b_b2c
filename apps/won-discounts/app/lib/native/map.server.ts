@@ -26,11 +26,12 @@
 //             a warning, a subscription cycle limit is a stated loss
 //   origin    { nativeId } links the rule to its backup
 
+import { combineTypeOfRule, type CombineType } from "@won/core/discounts/combine";
+import { defaultCombineFor } from "@won/core/discounts/combine-config";
 import {
   CONFIG_LIMITS,
   type DiscountRule,
   type DiscountRuleValueFixed,
-  type EngineSettings,
   type WonDiscountsConfig,
 } from "@won/core/discounts/config";
 
@@ -109,14 +110,13 @@ function categoryOf(target: NonNullable<NativeDiscount["target"]>): CombinationC
   return classOfTarget(target);
 }
 
-/** Does a Won rule of category `a` add up with one of category `b`? (A1, engine.combination) */
-export function wonCombines(a: CombinationCategory, b: CombinationCategory, engine: EngineSettings): boolean {
-  if (a === b) return false; // product vs product / order vs order / shipping: the better one wins
-  const pair = [a, b].sort().join("+");
-  const c = engine.combination;
-  if (pair === "order+product") return c.productWithOrder;
-  if (pair === "product+shipping") return c.productWithShipping;
-  return c.orderWithShipping; // order+shipping
+/**
+ * Would a moved discount whose list is `types` add up with Won discounts of category `other`? (13 Oct 2026,
+ * @won/core combine.ts: by TYPE — a product or an order discount is "automatic" or "with a code", a shipping
+ * discount "shipping".) Said for the list the moved discount starts with; the other discount must allow it too.
+ */
+export function wonCombines(types: readonly CombineType[], other: CombinationCategory): boolean {
+  return other === "shipping" ? types.includes("shipping") : types.includes("automatic") || types.includes("code");
 }
 
 export const NATIVE_FLAG: Record<CombinationCategory, keyof NativeDiscount["combinesWith"]> = {
@@ -291,11 +291,13 @@ export function planMove(native: NativeDiscount, config: WonDiscountsConfig, opt
     else if (others.length > 0) warnings.push({ code: "other_currencies", shopCurrency, missing: others });
   }
 
-  // Combining: Won's settings apply; say where they differ from Shopify's.
-  const own = categoryOf(native.target);
+  // Combining: the moved discount starts with the shop's default list for its type (Nastavení → Kombinování
+  // slev), like a discount made in Won; say where that differs from what Shopify did.
+  const moved = combineTypeOfRule(rule);
+  if (moved !== "rewards" && moved !== "tiers" && moved !== "outlet") rule.combine = { types: defaultCombineFor(config, moved) };
   for (const other of ["product", "order", "shipping"] as const) {
     const nativeCombines = native.combinesWith[NATIVE_FLAG[other]];
-    const won = wonCombines(own, other, config.engine);
+    const won = wonCombines(rule.combine?.types ?? [], other);
     if (nativeCombines !== won) warnings.push({ code: "combination_differs", category: other, native: nativeCombines, won });
   }
 

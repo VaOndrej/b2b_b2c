@@ -22,7 +22,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   APPEARANCE_PRESETS,
-  COMBINATION_CATEGORIES,
+  COMBINE_TYPES,
   CONFIG_LIMITS,
   createDefaultConfig,
   DEFAULT_CONFIG,
@@ -32,7 +32,7 @@ import {
   MINIMUM_SCOPES,
   SCHEMA_VERSION,
   TIER_COUNT_ACROSS_MODES,
-  type CombinationCategory,
+  type CombineType,
   type DiscountRule,
   type WonDiscountsConfig,
 } from "@won/core/discounts/config";
@@ -122,6 +122,7 @@ type Area = "discounts" | AdminModule;
 const CAPABILITY_META: { readonly [K in ProCapability]: { label: string; area: Area } } = {
   market_targeting: { label: "Show a discount only in chosen markets", area: "discounts" },
   segment_targeting: { label: "Show a discount only to chosen customer segments", area: "discounts" },
+  combine_exceptions: { label: "Exceptions: let a discount add up with one chosen discount", area: "discounts" },
   campaigns: { label: "Campaigns: start and end many discounts at once", area: "campaigns" },
   tier_set_scope: { label: "Quantity discount sets for chosen products or collections", area: "tiers" },
   tier_sets_extra: { label: "More than one quantity discount set", area: "tiers" },
@@ -170,7 +171,7 @@ function freeGateReasons(): Map<ProCapability, StrippedCapability["reason"]> {
     ...extra,
   });
   probe.modules.codes.rules = [
-    rule("a", { targeting: { markets: ["m"] }, combinesWith: { ruleIds: ["b"] } }),
+    rule("a", { targeting: { markets: ["m"] }, combine: { types: [], rules: ["b"] } }),
     rule("b", { targeting: { segments: ["s"] } }),
     // A minimum of its own for one product; a generated batch larger than Free allows and one with a Pro pattern.
     rule("c", { target: { kind: "products", productIds: ["gid://shopify/Product/1"], variantIds: [], itemMinimums: [{ id: "gid://shopify/Product/1", quantity: 3 }] } }),
@@ -364,46 +365,59 @@ ${APPEARANCE_PRESETS.length} presets for the quantity-tiers product-page block:
   );
 }
 
-const COMBINATION_LABELS: { readonly [K in CombinationCategory]: string } = {
-  outletWithAnything: "Clearance item + any other discount",
-  productWithProduct: "Product discount + another product discount on the same item",
-  productWithOrder: "Product discount + order discount",
-  productWithShipping: "Product discount + shipping discount",
-  orderWithShipping: "Order discount + shipping discount",
+const COMBINE_TYPE_LABELS: { readonly [K in CombineType]: string } = {
+  automatic: "Automatic discounts",
+  code: "Discount codes",
+  shipping: "Free shipping",
+  tiers: "Quantity discounts",
+  rewards: "Milestones",
+  outlet: "Sale",
 };
 
-function combinationValue(category: CombinationCategory): string {
-  const value: unknown = DEFAULT_CONFIG.engine.combination[category];
-  if (value === "best") return "No: the better one for the customer wins";
-  if (value === true) return "Yes, they add up";
-  if (value === false) return "No";
-  throw new Error(`gen-docs: no wording for combination value ${String(value)} (${category}).`);
+/** "Free shipping, Milestones" — a list of types by their names on screen; "nothing" for an empty one. */
+function combineTypesText(types: readonly CombineType[]): string {
+  const names = COMBINE_TYPES.filter((type) => types.includes(type)).map((type) => COMBINE_TYPE_LABELS[type]);
+  return names.length > 0 ? names.join(", ") : "nothing";
 }
 
 function combinationDoc(): string {
-  const rows = COMBINATION_CATEGORIES.map((c) => `| ${COMBINATION_LABELS[c]} | ${combinationValue(c)} |`);
+  const { engine, modules } = DEFAULT_CONFIG;
+  const rows = [
+    ["A new discount (automatic or with a code)", combineTypesText(engine.combineDefault)],
+    ["Quantity discounts", combineTypesText(modules.tiers.combine.types)],
+    ["Milestones", combineTypesText(modules.rewards.combine.types)],
+    ["Sale", combineTypesText(modules.outlet.combine.types)],
+  ].map(([who, list]) => `| ${who} | ${list} |`);
   return doc(
     {
       title: "Default combination rules",
       slug: "combination-defaults",
       feature: "engine",
       min_plan: "free",
-      summary: "Which kinds of Won discounts add up by default and which compete, plus the Pro stacking cap.",
-      keywords: ["combine", "combination", "stack", "add up", "better wins", "kombinace", "sčítání"],
+      summary: "Which types of Won discounts add up in a new store, how the rule works, plus the stacking cap.",
+      keywords: ["combine", "combination", "stack", "add up", "better wins", "adds up with", "kombinace", "sčítání", "sčítá se s"],
     },
     `# Default combination rules
 
-What happens when two Won discounts of these kinds could apply to the same cart:
+Every discount has a list, **Adds up with**: the types of discounts it adds up with. There are six types:
+${COMBINE_TYPES.map((type) => `**${COMBINE_TYPE_LABELS[type]}**`).join(", ")}.
 
-| Discounts | Combine by default? |
+Two discounts add up only when **each** one's list has the other's type. When they do not, the customer
+gets the better of the two.
+
+In a new store:
+
+| Whose list | Adds up with |
 |---|---|
 ${rows.join("\n")}
 
-- Two **order** discounts do not add up either: the better one for the customer wins.
+- A new **free shipping** discount starts with the mirror of the first row, so that the two sides agree.
 - Of several **shipping** discounts one applies: a percentage (free shipping = 100 %)
   ranks above a fixed amount, the larger first.
-- **Pro:** a discount can be set to stack with chosen other discounts of the same
-  kind. At most **${MAX_STACK_CANDIDATES}** discounts stack on one line (or on the order).`,
+- Two discount steps of **Milestones** never add up: the higher step replaces the lower one.
+- **Pro:** an exception lets a discount add up with one chosen discount whose type is not in its list.
+  The other discount must allow it too.
+- At most **${MAX_STACK_CANDIDATES}** discounts add up on one line (or on the order).`,
   );
 }
 

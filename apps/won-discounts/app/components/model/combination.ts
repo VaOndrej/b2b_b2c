@@ -1,29 +1,19 @@
-// Nastavení → Kombinování slev (MVP 3, the MVP 1 debt; decision A1): the Free
-// per-category switches of engine.combination, one sentence per switch and
-// position saying what it does at checkout (§4c: never an engine key on screen),
-// read from the form the same way on the server (SEC-1) and for the live state
-// line (§17b). Product-with-product is fixed ("the better one wins", A1) and is
-// said, not switched. Pure; tests/ui/combination-switches.test.ts.
+// Nastavení → Kombinování slev (13 Oct 2026): the list of types a NEW discount starts with
+// (`engine.combineDefault`; the four category switches of before are gone — every discount and module has its
+// own list now, model/combine.ts), and "a customer from a country in no market". Read from the form the same way
+// on the server (SEC-1) and for the live state line (§17b). Pure; tests/ui/combination-switches.test.ts.
 
 import { UNKNOWN_MARKET_KINDS, type UnknownMarketKind } from "@won/core/discounts/config";
 
-import type { MessageKey, Translator } from "../../i18n";
+import type { Translator } from "../../i18n";
 import type { FormDataLike } from "./rule-form";
-import type { CombinationView } from "./types";
-
-/** The four switches, in the engine's own names (engine.combination). */
-export const COMBINATION_KEYS = ["outletWithAnything", "productWithOrder", "productWithShipping", "orderWithShipping"] as const;
-export type CombinationKey = (typeof COMBINATION_KEYS)[number];
+import { combineSummary, readCombineTypes, type CombineType } from "./combine";
 
 /** Form fields the Nastavení action posts (app/lib/integration/settings.server.ts). */
 export const COMBINATION_FIELD = {
   intent: "intent",
   configVersion: "configVersion",
   replaceUnreadable: "replaceUnreadable",
-  outletWithAnything: "outletWithAnything",
-  productWithOrder: "productWithOrder",
-  productWithShipping: "productWithShipping",
-  orderWithShipping: "orderWithShipping",
   /** Nastavení → "Zákazník ze země mimo vaše trhy" (engine.unknownMarketLowest): the lowest amount of the currency's markets. */
   unknownMarketLowest: "unknownMarketLowest",
   /** + a kind of amount (UNKNOWN_MARKET_KINDS): "lowest" or "highest" of the markets' amounts for that kind (engine.unknownMarketHighest). */
@@ -43,14 +33,9 @@ function checked(raw: FormDataEntryValue | null): boolean {
   return typeof raw === "string" && ["on", "true", "1"].includes(raw.trim().toLowerCase());
 }
 
-/** The switches as posted: a switch that is not checked is not in the form = off. */
-export function readCombinationForm(form: FormDataLike): CombinationView {
-  return {
-    outletWithAnything: checked(form.get(COMBINATION_FIELD.outletWithAnything)),
-    productWithOrder: checked(form.get(COMBINATION_FIELD.productWithOrder)),
-    productWithShipping: checked(form.get(COMBINATION_FIELD.productWithShipping)),
-    orderWithShipping: checked(form.get(COMBINATION_FIELD.orderWithShipping)),
-  };
+/** The default list as posted (the checkboxes a discount without a code is offered); null when the form has none. */
+export function readCombineDefaultForm(form: FormDataLike): CombineType[] | null {
+  return readCombineTypes(form, "automatic");
 }
 
 /** The "customer from a country in no market" switch as posted (not checked = not in the form = off). */
@@ -65,17 +50,7 @@ export function readUnknownMarketHighestForm(form: FormDataLike): UnknownMarketK
   return posted.filter(([, raw]) => raw === "highest").map(([kind]) => kind);
 }
 
-export function combinationLabel(key: CombinationKey, tr: Translator): string {
-  return tr.t(`combination.${key}.label` as MessageKey);
-}
-
-/** What checkout does with the switch in this position. */
-export function combinationSentence(key: CombinationKey, on: boolean, tr: Translator): string {
-  return tr.t(`combination.${key}.${on ? "on" : "off"}` as MessageKey);
-}
-
-/** The section's state line: which categories add up ("Sčítá se: produkty s objednávkou, …"). */
-export function combinationSummary(view: CombinationView, tr: Translator): string {
-  const on = COMBINATION_KEYS.filter((key) => view[key]).map((key) => tr.t(`combination.${key}.short` as MessageKey));
-  return on.length === 0 ? tr.t("settings.combination.summary.none") : tr.t("settings.combination.summary", { list: tr.list(on) });
+/** The section's state line: "Nová sleva: sčítá se s dopravou zdarma a Milníky". */
+export function combineDefaultSummary(types: readonly CombineType[], tr: Translator): string {
+  return tr.t("settings.combination.summary", { summary: combineSummary(types, tr) });
 }

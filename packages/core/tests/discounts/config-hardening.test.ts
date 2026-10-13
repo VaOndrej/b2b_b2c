@@ -37,7 +37,8 @@ function hasIssue(issues: ConfigIssue[], code: string, pathPrefix?: string): boo
 
 test("DEFAULT_CONFIG is deep-frozen, so no caller can mutate the shared default", () => {
   assert.ok(Object.isFrozen(DEFAULT_CONFIG));
-  assert.ok(Object.isFrozen(DEFAULT_CONFIG.engine.combination));
+  assert.ok(Object.isFrozen(DEFAULT_CONFIG.engine.combineDefault));
+  assert.ok(Object.isFrozen(DEFAULT_CONFIG.modules.rewards.combine.types));
   assert.ok(Object.isFrozen(DEFAULT_CONFIG.modules.codes.rules));
   assert.ok(Object.isFrozen(DEFAULT_CONFIG.modules.margin.global));
   assert.ok(Object.isFrozen(DEFAULT_CONFIG.locales.cs));
@@ -45,7 +46,7 @@ test("DEFAULT_CONFIG is deep-frozen, so no caller can mutate the shared default"
     (DEFAULT_CONFIG.modules.codes.rules as unknown as unknown[]).push(rule("leak"));
   }, TypeError);
   assert.throws(() => {
-    (DEFAULT_CONFIG.engine.combination as { outletWithAnything: boolean }).outletWithAnything = true;
+    (DEFAULT_CONFIG.engine.combineDefault as unknown as string[]).push("outlet");
   }, TypeError);
   assert.equal(DEFAULT_CONFIG.modules.codes.rules.length, 0);
 });
@@ -64,7 +65,8 @@ test("readStoredConfig/sanitizeConfig/createDefaultConfig hand out fresh mutable
 
   // Mutating one handed-out copy (shop A) never changes what the next caller (shop B) gets.
   a.modules.codes.rules.push(readStoredConfig({ modules: { codes: { rules: [rule("a")] } } }).modules.codes.rules[0]);
-  a.engine.combination.outletWithAnything = true;
+  a.engine.combineDefault.push("outlet");
+  a.modules.tiers.combine.types.push("code");
   c.locales.cs = { leaked: "shop A text" };
   assert.deepEqual(readStoredConfig({}), DEFAULT_CONFIG);
   assert.deepEqual(createDefaultConfig(), DEFAULT_CONFIG);

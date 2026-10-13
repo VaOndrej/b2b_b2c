@@ -9,7 +9,7 @@
 //                         price (fixedPerItem = unit price) and the function sends
 //                         it as 100 %: the line becomes 0.
 //   "E2E Pro 10 %"        automatic, 10 % on won-e2e-simple-a  ┐ Pro per-rule
-//   "E2E Pro 5 %"         automatic,  5 % on won-e2e-simple-a  ┘ combinesWith: both stack;
+//   "E2E Pro 5 %"         automatic,  5 % on won-e2e-simple-a  ┘ each names the other as an exception: both stack;
 //                         planCart plans one stack (fixedTotal T), the function sends
 //                         the summed whole percent (15 %) because Math.round(S·15/100) = T.
 //
@@ -61,7 +61,7 @@ export function shapesRules(productIds) {
       enabled: true,
       value: { kind: "percentage", percent: SHAPES_PRO_B_PERCENT },
       target: { kind: "products", productIds: [a], variantIds: [] },
-      combinesWith: { ruleIds: [SHAPES_PRO_C_RULE_ID] },
+      combine: { types: [], rules: [SHAPES_PRO_C_RULE_ID] },
     },
     {
       id: SHAPES_PRO_C_RULE_ID,
@@ -70,7 +70,7 @@ export function shapesRules(productIds) {
       enabled: true,
       value: { kind: "percentage", percent: SHAPES_PRO_C_PERCENT },
       target: { kind: "products", productIds: [a], variantIds: [] },
-      combinesWith: { ruleIds: [SHAPES_PRO_B_RULE_ID] },
+      combine: { types: [], rules: [SHAPES_PRO_B_RULE_ID] },
     },
   ];
 }

@@ -43,32 +43,60 @@ const MB = 1024 * 1024;
 
 // --- combinesWith: orphaned references ---------------------------------------------------
 
-test("combinesWith keeps existing rule ids, drops orphans with an issue and merges duplicates", () => {
+test("exceptions (combine.rules) keep existing rule ids, drop orphans with an issue, merge duplicates and never name the rule itself", () => {
   const { config, issues } = sanitizeConfig({
     modules: {
       codes: {
         rules: [
-          rule("a", { combinesWith: { ruleIds: ["b", "missing", "b", "ghost"] } }),
-          rule("b", { combinesWith: { ruleIds: ["a"] } }),
+          rule("a", { combine: { types: ["code"], rules: ["b", "missing", "b", "ghost", "a"] } }),
+          rule("b", { combine: { types: [], rules: ["a"] } }),
         ],
       },
     },
   });
-  assert.deepEqual(config.modules.codes.rules[0].combinesWith, { ruleIds: ["b"] });
-  assert.deepEqual(config.modules.codes.rules[1].combinesWith, { ruleIds: ["a"] });
-  assert.ok(hasIssue(issues, "orphan_combines_with", "modules.codes.rules[0].combinesWith.ruleIds"));
+  assert.deepEqual(config.modules.codes.rules[0].combine, { types: ["code"], rules: ["b"] });
+  assert.deepEqual(config.modules.codes.rules[1].combine, { types: [], rules: ["a"] });
+  assert.ok(hasIssue(issues, "orphan_combines_with", "modules.codes.rules[0].combine.rules"));
   assert.ok(!hasIssue(issues, "orphan_combines_with", "modules.codes.rules[1]"));
 });
 
-test("combinesWith pointing at a rule that was dropped (no id / over the cap) is an orphan too", () => {
+test("an exception pointing at a rule that was dropped (no id / over the cap) is an orphan too", () => {
   const { config, issues } = sanitizeConfig({
-    modules: { codes: { rules: [rule("a", { combinesWith: { ruleIds: [""] } }), { name: "no id" }] } },
+    modules: { codes: { rules: [rule("a", { combine: { types: ["automatic"], rules: [""] } }), { name: "no id" }] } },
   });
-  assert.deepEqual(config.modules.codes.rules[0].combinesWith, { ruleIds: [] });
+  assert.deepEqual(config.modules.codes.rules[0].combine, { types: ["automatic"] });
   assert.ok(hasIssue(issues, "orphan_combines_with"));
 });
 
-test("a campaign override patching combinesWith is pruned against the real rule ids", () => {
+test("a list of types keeps known types once, in the checkboxes' order; an unknown one is an issue; a rule without a list has none", () => {
+  const { config, issues } = sanitizeConfig({
+    engine: { combineDefault: ["rewards", "automatic", "rewards"] },
+    modules: {
+      codes: { rules: [rule("a", { combine: { types: ["outlet", "code", "bogus", "code"] } }), rule("b"), rule("c", { combine: { types: "all" } })] },
+      tiers: { sets: [], combine: { types: ["shipping"] } },
+      outlet: { combine: {} },
+    },
+  });
+  assert.deepEqual(config.engine.combineDefault, ["automatic", "rewards"]);
+  assert.deepEqual(config.modules.codes.rules[0].combine, { types: ["code", "outlet"] });
+  assert.equal(config.modules.codes.rules[1].combine, undefined);
+  assert.deepEqual(config.modules.codes.rules[2].combine, { types: [] });
+  assert.deepEqual(config.modules.tiers.combine, { types: ["shipping"] });
+  // A module stored without a list gets its default.
+  assert.deepEqual(config.modules.outlet.combine, { types: [] });
+  assert.deepEqual(config.modules.rewards.combine, { types: ["automatic", "code", "shipping", "tiers", "rewards"] });
+  assert.ok(hasIssue(issues, "unknown_combine_type", "modules.codes.rules[0].combine.types"));
+  assert.ok(hasIssue(issues, "invalid_combine_types", "modules.codes.rules[2].combine.types"));
+});
+
+test("an order discount of Milníky has no list of its own (the Milníky list is its list)", () => {
+  const { config } = sanitizeConfig({
+    modules: { codes: { rules: [rule("ms-1", { minimum: { subtotal: { CZK: 1000_00 } }, combine: { types: ["code"], rules: ["a"] } }), rule("a")] } },
+  });
+  assert.equal(config.modules.codes.rules[0].combine, undefined);
+});
+
+test("a campaign override patching the exceptions is pruned against the real rule ids", () => {
   const { config, issues } = sanitizeConfig({
     modules: { codes: { rules: [rule("a"), rule("b")] } },
     campaigns: [
@@ -76,13 +104,13 @@ test("a campaign override patching combinesWith is pruned against the real rule 
         id: "bf",
         name: "BF",
         window: WINDOW,
-        overrides: [{ ruleId: "a", patch: { combinesWith: { ruleIds: ["b", "nope"] } } }],
+        overrides: [{ ruleId: "a", patch: { combine: { types: ["automatic"], rules: ["b", "nope"] } } }],
         killed: false,
       },
     ],
   });
-  assert.deepEqual(config.campaigns[0].overrides[0].patch.combinesWith, { ruleIds: ["b"] });
-  assert.ok(hasIssue(issues, "orphan_combines_with", "campaigns[0].overrides[0].patch.combinesWith"));
+  assert.deepEqual(config.campaigns[0].overrides[0].patch.combine, { types: ["automatic"], rules: ["b"] });
+  assert.ok(hasIssue(issues, "orphan_combines_with", "campaigns[0].overrides[0].patch.combine"));
 });
 
 // --- rule.schedule ------------------------------------------------------------------------
@@ -160,8 +188,8 @@ test("an invalid id is regenerated deterministically (issue), and references fol
     modules: {
       codes: {
         rules: [
-          rule("rule one", { combinesWith: { ruleIds: ["x".repeat(65)] } }),
-          rule("x".repeat(65), { combinesWith: { ruleIds: ["rule one"] } }),
+          rule("rule one", { combine: { types: [], rules: ["x".repeat(65)] } }),
+          rule("x".repeat(65), { combine: { types: [], rules: ["rule one"] } }),
         ],
       },
       tiers: { sets: [{ id: "tier/1", scope: "global", countAcross: "line", breaks: [{ minQty: 2, percent: 5 }] }] },
@@ -192,8 +220,8 @@ test("an invalid id is regenerated deterministically (issue), and references fol
   assert.match(gift.id, /^gift-[0-9a-z]+$/);
   assert.match(campaign.id, /^campaign-[0-9a-z]+$/);
   assert.notEqual(r1.id, r2.id);
-  assert.deepEqual(r1.combinesWith, { ruleIds: [r2.id] });
-  assert.deepEqual(r2.combinesWith, { ruleIds: [r1.id] });
+  assert.deepEqual(r1.combine, { types: [], rules: [r2.id] });
+  assert.deepEqual(r2.combine, { types: [], rules: [r1.id] });
   assert.deepEqual(
     campaign.overrides.map((o) => o.ruleId),
     [r1.id, set.id, gift.id],

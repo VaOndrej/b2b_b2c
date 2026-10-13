@@ -25,18 +25,12 @@
       "shop": {
         "config": {
           "jsonValue": {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "campaignId": null,
             "campaignVarsVersion": null,
             "engine": {
               "unknownMarketLowest": true,
-              "combination": {
-                "outletWithAnything": false,
-                "productWithProduct": "best",
-                "productWithOrder": true,
-                "productWithShipping": true,
-                "orderWithShipping": true
-              }
+              "cx": "23.63.0|28"
             },
             "marketCountries": {
               "sk": [

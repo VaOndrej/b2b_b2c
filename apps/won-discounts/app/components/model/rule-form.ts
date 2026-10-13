@@ -25,11 +25,13 @@ import {
   type MinimumScope,
 } from "@won/core/discounts/config";
 import { listBatchCodes, removeBatchCodes, type CodeBatchError, type CodeBatchSpec, type CreateCodeBatchResult } from "@won/core/discounts/code-batch";
+import { combineTypeOfRule, type CombineType } from "@won/core/discounts/combine";
 import { shopDayStart } from "@won/core/discounts/function-payload";
 
 import { fromMinorUnits, toMinorUnits } from "@won/core/discounts/money";
 
 import { translator, type Locale } from "../../i18n";
+import { COMBINE_FIELD, readCombineTypes } from "./combine";
 import { autoRuleName, ruleDays, writtenDays, type EditorSection } from "./describe";
 import { COLLECTION_GID, PRODUCT_GID, VARIANT_GID, splitCodes } from "./ids";
 import type { FieldError } from "./types";
@@ -90,7 +92,10 @@ export const FIELD = {
   usageLimit: "usageLimit",
   oncePerCustomer: "oncePerCustomer",
   markets: "markets",
-  combinesWith: "combinesWith",
+  /** "Sčítá se s" (model/combine.ts COMBINE_FIELD): the types, the marker that the list was posted, the exceptions (Pro). */
+  combineTypes: COMBINE_FIELD.types,
+  combinePosted: COMBINE_FIELD.posted,
+  combineRules: COMBINE_FIELD.rules,
   /** Explicit removal of stored segment targeting (checkout cannot evaluate it, B9). Any plan. */
   dropSegments: "dropSegments",
   /** Free only: remove the stored market targeting the plan does not run. */
@@ -103,7 +108,7 @@ const CONDITION_FIELDS: readonly string[] = [FIELD.minQty, FIELD.minScope];
 const APPLY_FIELDS: readonly string[] = [FIELD.method, FIELD.codes, FIELD.usageLimit, FIELD.oncePerCustomer, FIELD.dropBatch, FIELD.dropBatchCode];
 const SCHEDULE_FIELDS: readonly string[] = [FIELD.startDate, FIELD.endDate];
 /** The fields of the last section ("Kombinace a trhy"); of them only the markets are Pro. */
-const PRO_FIELDS: readonly string[] = [FIELD.markets, FIELD.combinesWith, FIELD.dropSegments, FIELD.dropMarkets];
+const PRO_FIELDS: readonly string[] = [FIELD.markets, FIELD.combineTypes, FIELD.combinePosted, FIELD.combineRules, FIELD.dropSegments, FIELD.dropMarkets];
 
 /**
  * The editor section a form field sits in (a refused save marks the section of each field it complains about).
@@ -161,8 +166,8 @@ export interface RuleFormContext {
    * Absent (the editor's live draft): the spec is validated and returned as `pendingBatch`.
    */
   createBatch?: (spec: CodeBatchSpec, existingIds: readonly string[]) => CreateCodeBatchResult;
-  /** Every OTHER rule: code uniqueness and Pro combinations. */
-  otherRules?: readonly { id: string; name: string; codes?: readonly string[] }[];
+  /** Every OTHER rule: code uniqueness, and (`type`) the exceptions it can be named in. */
+  otherRules?: readonly { id: string; name: string; codes?: readonly string[]; type?: CombineType }[];
 }
 
 export interface RuleFormResult {
@@ -508,10 +513,20 @@ export function readRuleForm(form: FormDataLike, ctx: RuleFormContext): RuleForm
   } else {
     markets = checked(FIELD.dropMarkets) ? [] : [...storedMarkets];
   }
-  // Which discounts this one adds up with: every plan (13 Oct 2026 — only market targeting stays Pro).
-  const others = new Set((ctx.otherRules ?? []).map((r) => r.id).filter((id) => id !== ctx.id));
-  const combineIds = [...new Set(all(FIELD.combinesWith).filter((id) => others.has(id)))];
-  if (combineIds.length > 0) rule.combinesWith = { ruleIds: combineIds };
+  // "Sčítá se s" (13 Oct 2026, @won/core combine.ts): the types on every plan, the exceptions on Pro — on a
+  // lower plan the stored ones stay as they are (§14a; the plan gate does not run them). A form without the
+  // list (the marker is not posted) leaves the stored list alone. An exception for a rule whose type is ticked
+  // says nothing more than the type does: it is not kept.
+  const owner = combineTypeOfRule(rule) as "automatic" | "code" | "shipping";
+  const types = readCombineTypes(form, owner);
+  if (types === null) {
+    if (existing?.combine) rule.combine = { types: [...existing.combine.types], ...(existing.combine.rules ? { rules: [...existing.combine.rules] } : {}) };
+  } else {
+    const others = new Map((ctx.otherRules ?? []).filter((r) => r.id !== ctx.id).map((r) => [r.id, r.type]));
+    const named = ctx.pro ? [...new Set(all(FIELD.combineRules))] : [...(existing?.combine?.rules ?? [])];
+    const exceptions = named.filter((id) => others.has(id) && !(others.get(id) !== undefined && types.includes(others.get(id) as CombineType)));
+    rule.combine = { types, ...(exceptions.length > 0 ? { rules: exceptions } : {}) };
+  }
   if (markets.length > 0 || segments.length > 0) {
     rule.targeting = {};
     if (segments.length > 0) rule.targeting.segments = segments;
@@ -571,7 +586,9 @@ export interface RuleFormDefaults {
   markets: string[];
   /** How many customer segments the rule has stored (checkout cannot evaluate them; the editor offers to remove them, B9). */
   segments: number;
-  combinesWith: string[];
+  /** "Sčítá se s": the stored types and exceptions (a new rule: none yet — the editor prefills by its type). */
+  combineTypes: CombineType[];
+  combineRules: string[];
   /** Stored values in currencies whose market is off: shown read-only, kept on save (§14a). */
   outside: OutsideCurrencyValue[];
   /** The same values keyed by form field name (what a submit of the untouched form sends). */
@@ -632,7 +649,8 @@ export function ruleFormDefaults(rule: DiscountRule, currencies: readonly string
     oncePerCustomer: rule.limits?.oncePerCustomer === true,
     markets: [...(rule.targeting?.markets ?? [])],
     segments: rule.targeting?.segments?.length ?? 0,
-    combinesWith: [...(rule.combinesWith?.ruleIds ?? [])],
+    combineTypes: [...(rule.combine?.types ?? [])],
+    combineRules: [...(rule.combine?.rules ?? [])],
     outside,
   };
   const fields: RuleFormDefaults["fields"] = {
@@ -654,7 +672,8 @@ export function ruleFormDefaults(rule: DiscountRule, currencies: readonly string
     [FIELD.usageLimit]: d.usageLimit,
     [FIELD.oncePerCustomer]: d.oncePerCustomer,
     [FIELD.markets]: d.markets,
-    [FIELD.combinesWith]: d.combinesWith,
+    [FIELD.combineTypes]: d.combineTypes,
+    [FIELD.combineRules]: d.combineRules,
   };
   for (const c of currencies) {
     fields[FIELD.amount(c)] = amounts[c];

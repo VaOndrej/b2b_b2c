@@ -24,16 +24,13 @@
 // What it returns besides the config: every pair that added up before and does not now (`lost`), so the admin
 // can say it once.
 
-import { COMBINE_TYPES, type CombineType, combineTypeOfRule, isShippingRule } from "../combine.ts";
+import { COMBINE_ENTITY, COMBINE_TYPES, type CombineType, combineTypeOfRule, isShippingRule } from "../combine.ts";
 import { isMilestoneRule } from "../milestones.ts";
 import { sanitizeDiscountRule, sanitizeRules } from "./codes.ts";
 import { sanitizeRewards } from "./rewards.ts";
 import { isRecord } from "./sanitize-helpers.ts";
 import { sanitizeTierSets } from "./tiers.ts";
 import type { DiscountRule } from "./types.ts";
-
-/** Ids of the entities that are not rules, as `lost` names them. */
-export const COMBINE_ENTITY = { tiers: "tiers", gift: "rewards:gift", shipping: "reward:shipping", outlet: "outlet" } as const;
 
 export interface CombineLostPair {
   /** A rule id, or one of COMBINE_ENTITY. */

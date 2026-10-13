@@ -49,9 +49,11 @@ export interface GiftsStage {
 /**
  * R3: sets `product` on the gift lines that are free and returns one PlanGift
  * per tier (config order) and the warnings, in the order the tiers and lines
- * come. Never touches a non-gift line.
+ * come. Never touches a non-gift line. `combines` false (13 Oct 2026): the gift
+ * does not add up with a discount the cart got — no gift line is free, a
+ * reached tier with a valid line is `not_combinable`.
  */
-export function planGifts(work: WorkLine[], read: RewardsRead, base: number, currency: string, locale: PlanLocale): GiftsStage {
+export function planGifts(work: WorkLine[], read: RewardsRead, base: number, currency: string, locale: PlanLocale, combines = true): GiftsStage {
   const gifts: PlanGift[] = [];
   const warnings: PlanWarning[] = [];
   const known = new Set<string>();
@@ -68,7 +70,11 @@ export function planGifts(work: WorkLine[], read: RewardsRead, base: number, cur
     const valid = lines.filter((w) => variants.has(variantNumber(w.line.variantId) ?? -1));
     const first = valid[0];
     if (!offered) warnings.push({ code: "market_missing_threshold", ruleId: id });
-    if (reached && first) {
+    if (reached && first && !combines) {
+      // The gift does not add up with a discount the cart got (combine.ts): the line stays paid.
+      gifts.push({ tierId: tier.id, lineId: first.line.id, state: "not_combinable" });
+      warnings.push({ code: "gift_not_combinable", ruleId: id });
+    } else if (reached && first) {
       const amount = first.line.unitPrice;
       const stack: PlanStack = {
         components: [{ ruleId: id, method: "automatic", module: "rewards", amount }],

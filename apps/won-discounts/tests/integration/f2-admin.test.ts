@@ -98,7 +98,7 @@ const proSetup = {
   ],
   modules: {
     codes: {
-      rules: [auto("base"), auto("sk-only", { name: "Jen Slovensko", targeting: { markets: ["sk"] } }), auto("stack", { name: "Sčítaná", combinesWith: { ruleIds: ["base"] } })],
+      rules: [auto("base"), auto("sk-only", { name: "Jen Slovensko", targeting: { markets: ["sk"] } }), auto("stack", { name: "Sčítaná", combine: { types: ["automatic"] } })],
     },
   },
 };
@@ -116,9 +116,9 @@ test("BILL-1: on Free, Přehled / Slevy a kódy / the editor say which Pro setti
   assert.match(html, /Sleva „Jen Slovensko“ cílí na vybrané trhy/);
   // The home tile counts the discount among what needs attention; the list of discounts says why.
   assert.match(html, /1 neaktivní/);
-  // The shop config Shopify runs has the market rule off; the per-rule combination runs on Free too.
+  // The shop config Shopify runs has the market rule off; the lists of types run on Free too.
   const shipped = JSON.parse(store.sync.shopMetafieldValue("function_config")!);
-  assert.match(JSON.stringify(shipped), /combinesWith/);
+  assert.match(JSON.stringify(shipped), /"cx":"/);
 
   const discounts = await discountsPage(ctx, { ...PAGE, deleted: false });
   assert.match(text(await renderPage(createElement(DiscountsScreen, discounts))), /Tohle je v tarifu Pro, zákazník to nedostane/);
@@ -141,7 +141,7 @@ test("BILL-1: the dev-only override WON_DEV_PLAN=pro (NODE_ENV test) runs Pro: n
     const store = new FakeStore();
     const overview = await overviewPage(testCtx(db.prisma, shop, store), PAGE);
     assert.equal(overview.gate, undefined);
-    assert.match(store.sync.shopMetafieldValue("function_config")!, /combinesWith/);
+    assert.match(store.sync.shopMetafieldValue("function_config")!, /"cx":"/);
   } finally {
     for (const [k, v] of Object.entries(env)) {
       if (v === undefined) delete process.env[k];

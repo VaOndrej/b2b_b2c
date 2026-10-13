@@ -107,6 +107,8 @@ test("save: all three kinds of step (major units typed → minor units), countOt
     gifts: [{ id: "gift-gift0001", threshold: { CZK: 1500_00 }, choices: [gift.variantIds[0]] }],
     countOtherDiscounts: true,
     giftDeclinable: true,
+    // The Milníky list is not this form's: it stays as stored (a new shop's default).
+    combine: { types: ["automatic", "code", "shipping", "tiers", "rewards"] },
   });
   // A discount step is an automatic order rule with the "ms-" prefix and a minimum subtotal of the whole cart.
   assert.deepEqual(config.modules.codes.rules, [
@@ -170,6 +172,7 @@ test("rewards stored BEFORE Milníky load as steps and save back unchanged; the 
   const ctx = ctxFor(new FakeStore(), "pro");
   const own = { id: "r_summer", enabled: true, name: "Léto", method: "automatic" as const, value: { kind: "percentage" as const, percent: 15 }, target: { kind: "order" as const }, minimum: { subtotal: { CZK: 3000_00 }, scope: "cart" as const } };
   const rewards: WonDiscountsConfig["modules"]["rewards"] = {
+    combine: { types: ["automatic", "code", "shipping", "tiers", "rewards"] },
     freeShipping: { threshold: { CZK: 1500_00, EUR: 60_00 } },
     gifts: [
       { id: "gift-a", threshold: { CZK: 1000_00, EUR: 40_00 }, choices: ["gid://shopify/ProductVariant/1"], fallbackVariantId: "gid://shopify/ProductVariant/2" },

@@ -189,11 +189,13 @@ test("K4 property: pdp.max never lets a percent below the checkout floor (same m
   }
 });
 
-test("MVP 5 (contract O9): `ow: 1` only when outlet combines with anything — the PDP then keeps the tier table for a sale variant", () => {
+test("MVP 5 (contract O9): `ow: 1` only when a sale takes the quantity tiers (both lists name the other) — the PDP then keeps the tier table for a sale variant", () => {
   const off = buildStorefrontConfig(gateConfigForPlan(configOf({}), "pro").config, { configVersion: "v1" });
-  assert.equal(off.ow, undefined, "default A1: outlet with nothing");
-  const on = buildStorefrontConfig(gateConfigForPlan(configOf({ engine: { combination: { outletWithAnything: true } } }), "free").config, { configVersion: "v1" });
-  assert.equal(on.ow, 1);
+  assert.equal(off.ow, undefined, "default: a sale takes nothing else");
+  const lists = (outlet: string[], tiers: string[]) => configOf({ modules: { outlet: { combine: { types: outlet } }, tiers: { sets: [], combine: { types: tiers } } } });
+  assert.equal(buildStorefrontConfig(gateConfigForPlan(lists(["tiers"], ["outlet"]), "free").config, { configVersion: "v1" }).ow, 1);
+  assert.equal(buildStorefrontConfig(gateConfigForPlan(lists(["tiers"], []), "free").config, { configVersion: "v1" }).ow, undefined, "one side only: they do not add up");
+  assert.equal(buildStorefrontConfig(gateConfigForPlan(lists(["automatic", "code"], ["outlet"]), "free").config, { configVersion: "v1" }).ow, undefined);
 });
 
 test("feedback 2, bod 7: `camps` lists the campaigns that are not killed as UTC instants of their shop-local window; none without the shop's time zone; on Free only what the gate leaves", () => {

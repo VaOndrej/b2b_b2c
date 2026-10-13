@@ -7,6 +7,82 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
+### Kombinování slev podle typů a výjimek (13. 10. 2026) — návrh `won-discounts/navrh-kombinace-2026-10-13.md`, SB `won-discounts-kombinace-typy-vyjimky`
+
+> **CHECKPOINT K4 (kroky 1–3 hotové, kroky 4–6 nezačaté; 13. 10.).** V pracovním stromu na `main`, **necommitnuto**; inline bez subagentů.
+> Pořadí stavby je v návrhu (6 kroků). Upřesnění, která návrh neříkal a která jsem při stavbě zvolil, jsou v návrhu
+> v oddílu „Upřesnění při stavbě“ — **Ondřej je ještě neviděl**.
+> - **Krok 1 (`packages/core`), brána: `npm test` 1 005 z 1 005** (bylo 963; ruční `tsc --strict` nad `src` čistý):
+>   `combine.ts` (typy, pravidlo `addUp`), `combine-config.ts` (entity, neshody `combineMismatches`,
+>   `defaultCombineFor`, `COMBINE_OFFERED`), `config/combine.ts` (sanitizer), `config/combine-migrate.ts` (převod
+>   schématu 1 → 2, `lost` = ztracené dvojice), schéma 2 (`rule.combine`, `modules.*.combine`,
+>   `engine.combineDefault`), brána tarifu (`combine_exceptions`), payload funkce (`c`, `x`, `engine.mc`),
+>   plánovač `plan.ts`: zásobník na položce i s množstevní slevou, objednávka „slevy na položkách napřed“ proti
+>   „sleva na objednávku napřed“ (až 4 scénáře s výprodejem), doprava a dárek podle toho, co košík dostal,
+>   výprodej po typech. Stav dárku `not_combinable`, varování `gift_not_combinable`.
+> - **Testy:** `combine.test.ts` (pravidlo, entity, neshody, převod na malých obchodech), `plan-combine.test.ts`
+>   (každá fáze plánovače), `combine-migration.test.ts` („před a po“ nad 1 200 zmrazenými košíky starého engine:
+>   `fixtures/combine-before.json` + `combine-migration-cases.ts`; **neměnit**, starý engine už není).
+>   Výsledek „před a po“: nikdo nedostane víc, kromě 1 košíku s ochranou marže (č. 825); 322 dostane míň
+>   (náhodné obchody s mnoha kolidujícími slevami), 4 vymění slevu z ceny za dopravu.
+> - **Staré testy:** fixtury ve starém tvaru (`engine.combination`, `combinesWith`) čte `engine-fixtures.ts
+>   configOf` jako uložený obchod schématu 1 a převede je; co stálo na „sčítá se samo“, má výslovné `combine`.
+> - **Krok 2 HOTOVÝ až na bránu instrukcí (funkce v Rustu, `apps/won-discounts/extensions/won-discounts-engine`):**
+>   - **Formát payloadu (rozhodnuto měřením):** všechny seznamy jsou v JEDNOM textu `engine.cx` =
+>     `"<tiers>.<rewards>.<outlet>|<pravidlo 0>;<pravidlo 1>;…"`, položka pravidla `maska` nebo `maska:pozice,pozice`
+>     (výjimky jako POZICE v `modules.codes.rules`, ne id). Důvod: funkce platí za každé ČTENÍ klíče (~1 000
+>     instrukcí), ne za bajty. Popis: hlavička `packages/core/src/discounts/function-payload.ts`, čtení
+>     `plan.ts readCombine` (port spec) a `config.rs read_combine_text`. Patch kampaně nese `c` (maska 0–63) a `x`
+>     (text pozic). TS umí číst i `c`/`x` na pravidle a `engine.mc` (ručně psaný payload v testech), když
+>     `engine.cx` chybí; Rust tu druhou formu čte jen v jednotkových testech (`#[cfg(test)]`, kvůli velikosti).
+>   - **Brána:** `cargo test` 107 z 107 (156 fixtur, očekávané výstupy beze změny), `npx vitest run` 720 z 720
+>     (včetně nového „combining by type“: 3 600 náhodných seznamů, Wasm = TS, 20 větví ≥ 20×), `packages/core`
+>     `npm test` 1 007 z 1 007. **Wasm 252 842 B z 256 000 B** (během práce až 259 221 B; pomohlo čtení textu po
+>     bajtech a masky bez zbytku po dělení). Staré scénáře a náhodné payloady dostávají přesné seznamy přes
+>     `tests/legacy-lists.js` (`configWithLists`, `withLists`, `withOneText`, `sealLists`, `withRandomLists`).
+>   - **OTEVŘENÉ, čeká na rozhodnutí Ondřeje:** `tests/contracts/function.contract.test.ts` 202 z 205. Tři
+>     nejtěžší Pro košíky jsou nad bránou projektu 9,9 M instrukcí (90 % limitu), pod limitem Shopify 11 M:
+>     `lines-margin-pro-bridge-200` 10,00 M, `…-bridge-won-codes-200` 10,07 M, `…-bridge-codes-200` 10,12 M
+>     (před změnou nejtěžší 9,72 M); `lines-200-lines-budget` 5,47 M (bylo 5,23 M). Co už pomohlo: jeden text
+>     místo klíčů na pravidle (−0,16 M), přesné „může se sčítat“ po fázích (−0,15 M). Samotné seznamy stojí
+>     ~0,11 M, zbytek (~0,2 M) nenalezen: nejspíš účetnictví fáze objednávky a dopravy (`applied_products`,
+>     `given_discounts`, `order_of`). Bránu jsem NEPOVOLOVAL. README funkce: oddíl „Combining by type“.
+> - **POZOR, `origin/main` je v rozbitém mezistavu:** commit `7c341ef` (13. 10. 10:15, „Push latest fixes and
+>   validation done“) vzal pracovní strom uprostřed kroku 1: nový tvar konfigurace (schéma 2, převod, brána) se
+>   STARÝM `plan.ts` a `function-payload.ts`. Na tom commitu jádro neprojde testy a appka se nesestaví. Vše
+>   potřebné k opravě je v pracovním stromu (necommitnuto); commit a push čeká na Ondřeje.
+> - **Krok 3 HOTOVÝ (appka: editor slevy + Nastavení).** Brána: `typecheck` čistý, `lint` 0 chyb, `build` projde,
+>   `test:unit:node` 1 903 z 1 906 (3 červené = brána instrukcí výš), `test:e2e:preview` 40 z 40 proti dev serveru,
+>   snímky `docs/won-discounts/evidence/kombinace-2026-10-13/` (editor Pro / Free s výjimkou / nová sleva,
+>   Nastavení; 390 a 1440 px, bez vodorovného posuvu).
+>   Co je kde: `app/components/model/combine.ts` (sdílený model „Sčítá se s“: `COMBINE_FIELD`, `readCombineTypes`,
+>   `combineSummary`), `shell/CombineTypes.tsx` (zaškrtávátka typů; použít i na stránkách modulů v kroku 4),
+>   `model/rule-form.ts` (pole `combineTypes` / `combinePosted` / `combineRules`; výjimky zapisuje jen Pro, jinde
+>   zůstávají uložené), `model/describe.ts` (`describeCombines` pro sekci, `describeExceptions` pro řádek slevy),
+>   `rule-editor/ProSection.tsx` (typy pro každý tarif, „Výjimky“ v rámečku Pro, nová sleva má výchozí seznam podle
+>   typu), `RuleEditorScreen` (`otherRules[].type`, `combineDefaults`), Nastavení (`model/combination.ts`,
+>   `integration/settings.server.ts`, `SettingsScreen.tsx`: výchozí seznam místo čtyř přepínačů), přesun nativních
+>   slev (`native/map.server.ts`: přesunutá sleva dostane výchozí seznam, věta o rozdílu v `native/copy.ts`),
+>   `scripts/gen-docs.ts` + `npm run docs:gen`, texty `combine.*` v `i18n/cs.ts` a `en.ts`, věty hlášek
+>   `fix.unknown_combine_type` / `fix.invalid_combine_types`, ukázkové obchody náhledů přes `devShop` (čtou se jako
+>   převedené staré obchody; `tiersWithOrderDiscounts` u `DEV_TIERS_FIXTURE`), živý E2E `checkout.shapes.spec.ts`
+>   a jeho seed (`scripts/e2e/shapes-fixture.mjs`) na výjimky v `engine.cx` (nepuštěno naživo).
+>   **Dev obchod:** Ondřejův `shopify app dev` běžel během práce, takže rozpracovaná funkce se mohla dostat do
+>   dev obchodu; dokud appka nepřepíše konfiguraci funkce (uložení čehokoli), nová funkce tam nic nesčítá.
+> - **Známé dluhy z kroku 3 (do kroku 4):** věta v editoru „Na produktech s množstevní slevou platí výhodnější…
+>   Nesčítají se.“ (`tiersActive`) a věty na stránkách modulů o výprodeji / milnících dál mluví po staru;
+>   `withOthers`, `productWithOrder`, `outletWithAnything` v `integration/{outlet-admin,rewards,tiers}.server.ts`
+>   jsou jen přemapované na nové seznamy.
+> - **Kroky 4–6 nezačaté:** stránky modulů (Množstevní slevy, Milníky, Výprodej: sekce „Sčítá se s“ přes
+>   `CombineTypes`, uložit `modules.<modul>.combine`; dnešní `withOthers` / `productWithOrder` /
+>   `outletWithAnything` v `integration/{outlet-admin,rewards,tiers}.server.ts` jsou jen dočasně přemapované),
+>   neshody v Kontrole kombinací (`combineMismatches` z jádra, tečky, tlačítka), jednorázové hlášení ztracených
+>   dvojic po převodu (`migrateCombineV1(...).lost`; kde se uložený config čte: `app/lib/config.server.ts`),
+>   Shopify uzly slev (`app/lib/sync/node-sync.ts` nastavoval `combinesWith` uzlů podle přepínačů — ověřit),
+>   živé E2E na Horizonu a Dawnu v obou tarifech.
+> - **Z předchozí session zůstává necommitnutá** oprava lišty neuložených změn (9 souborů v `apps/won-discounts`,
+>   `useJumpLink`, `usePolarisJump`) — nesahat, nemíchat do commitu kombinací bez Ondřeje.
+
 ### Feedback 12. 10. 2026 večer (čtyři body z dev obchodu) — bez zadání v souboru, z chatu
 
 > **CHECKPOINT 4 (kódy, tarif, výprodeje; 12. 10. noc).** V pracovním stromu na `main`, **necommitnuto**.

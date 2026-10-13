@@ -62,8 +62,8 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   // B11: read-only disables the fields, not just Save.
   { path: "rule-editor?rule=dev-fixture-2&readOnly=1", expect: [/Nastavení jen pro čtení/, /<s-text-area[^>]*disabled/, /<s-switch[^>]*disabled/] },
   // P3 on Free: the Pro setting the plan does not run is marked where it is set, with a way to remove it.
-  { path: "rule-editor?rule=dev-f2-market", expect: [/Sleva jen pro vybrané trhy je v tarifu Pro\. Váš tarif ji nespouští, proto sleva není aktivní\./, /Odebrat omezení na trhy/, /href="#markets"/, /jen trhy Slovensko · sčítá se s Podzimní sleva 10.%/] },
-  { path: "rule-editor?rule=dev-fixture-2&plan=pro", expect: [/Kombinace a trhy/, /Česko/, /Slovensko/, /Sčítá se s/, /Kombinování slev v Nastavení/, /\/app\/settings#combination/] },
+  { path: "rule-editor?rule=dev-f2-market", expect: [/Sleva jen pro vybrané trhy je v tarifu Pro\. Váš tarif ji nespouští, proto sleva není aktivní\./, /Odebrat omezení na trhy/, /href="#markets"/, /výjimka: Podzimní sleva 10.%/, /Výjimky jsou v tarifu Pro\. Váš tarif je nespouští/] },
+  { path: "rule-editor?rule=dev-fixture-2&plan=pro", expect: [/Kombinace a trhy/, /Česko/, /Slovensko/, /Sčítá se s/, /name="combineTypes"[^>]*value="automatic"|value="automatic"[^>]*name="combineTypes"/, /Automatické slevy/, /Výjimky/, /Na položce i u slevy na objednávku se sečte nejvýš 6 nejvýhodnějších slev\./] },
   // Vyzkoušet košík is Pro: Free sees the locked frame with what the tool is for; ?plan=pro the tool with the shop's discounts to tick.
   { path: "try-cart", expect: [/S Pro si košík vyzkoušíte předem/, /href="\/app\/plan"/, /Košík je prázdný\. Přidejte produkty\./, /Krok 1 \/ 2/, /Trh, čas a kódy/] },
   {
@@ -385,8 +385,10 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /Máte tarif Free\./,
       /Vyzkoušet Pro na 14 dní zdarma/,
       /Připravit na odinstalaci/,
-      /Kombinace u jednotlivých slev nastavíte v editoru slevy\./,
-      /<s-link href="\/app\/discounts">Otevřít slevy<\/s-link>/,
+      // 13 Oct 2026: the list a new discount starts with, in place of the four switches.
+      /Nová sleva: sčítá se s dopravou zdarma a Milníky/,
+      /Výchozí seznam pro nové slevy\. Stávající slevy se tím nemění/,
+      /Množstevní slevy, Milníky a Výprodej mají vlastní seznam na své stránce\./,
     ],
     // … and the sections that have no state have no dot (P2).
     absent: [/href="#(combination|unknown-market|tools|plan)"[^>]*><span class="won-jump__dot"/],
@@ -495,8 +497,8 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "rewards?result=invalid", expect: [/Vyberte dárek\./] },
   { path: "rewards?plan=pro&result=too-many", expect: [/V jednom trhu může platit nejvýš 6 stupňů\./] },
   { path: "rewards?result=limit-free", expect: [/Free má v každém trhu 2 stupně\. Odeberte stupeň, nechte u něj pole trhu prázdné, nebo přejděte na Pro, kde jich je 6\./] },
-  // 13 Oct 2026: on every plan a rule may stack with the ones its editor combines.
-  { path: "settings?plan=pro", expect: [/Sečtou se jen ty, které v editoru slevy spojíte\. Množstevní sleva se s jinou slevou na stejný produkt nesčítá nikdy/] },
+  // 13 Oct 2026: the same list on every plan (the exceptions for single discounts are in the rule editor, Pro).
+  { path: "settings?plan=pro", expect: [/Nová sleva se se zaškrtnutými typy sečte, když to dovolí i druhá sleva/] },
   { path: "tiers?state=dawn", expect: [/--won-tiers-accent:#c0392b/, /--inputs-radius:0px/] },
   // Without access to the theme the check says nothing (no sentence without an action); the rest of the section stays.
   { path: "tiers?state=no-scope", expect: [/Tabulka na stránce produktu/, /Zobrazit na mém webu/] },
@@ -509,16 +511,21 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
     path: "settings",
     expect: [
       /Kombinování slev/,
-      /Sčítá se: produkty s objednávkou, produkty s dopravou a objednávka s dopravou/,
-      /Dvě slevy na stejný produkt se nesčítají, platí výhodnější\. Sečtou se jen ty, které v editoru slevy spojíte\. Množstevní sleva se s jinou slevou na stejný produkt nesčítá nikdy\./,
-      /Zboží ve výprodeji další slevy nedostane/,
-      /Platí pro zboží ve výprodeji \(modul Výprodej, Pro\)/,
-      /Obě se sčítají\. Sleva z objednávky se počítá z ceny po slevách na produkty/,
+      /Nová sleva: sčítá se s dopravou zdarma a Milníky/,
+      /Nová sleva se se zaškrtnutými typy sečte, když to dovolí i druhá sleva\. Jinak zákazník dostane tu výhodnější\./,
+      // One checkbox per type, the stored ones ticked; the marker says the list was in the form.
+      /name="combinePosted" value="1"/,
+      /Automatické slevy/,
+      /Slevové kódy/,
+      /Doprava zdarma/,
+      /Množstevní slevy/,
+      /Milníky/,
+      /Výprodej/,
       /href="\/app\/try-cart"/,
     ],
   },
-  { path: "settings?state=changed", expect: [/Sčítá se: objednávka s dopravou/, /Platí buď slevy na produkty, nebo sleva z objednávky/, /Když má košík slevu na produkt \(i množstevní\), sleva na dopravu se neuplatní/] },
-  { path: "settings?locale=en", expect: [/Combining discounts/, /Adds up: products with order, products with shipping and order with shipping/] },
+  { path: "settings?state=changed", expect: [/Nová sleva: sčítá se s slevovými kódy, dopravou zdarma a Milníky/] },
+  { path: "settings?locale=en", expect: [/Combining discounts/, /A new discount: adds up with free shipping and Milestones/, /Automatic discounts/, /Discount codes/, /Sale/] },
   { path: "overview?state=tiers", expect: [/Množstevní slevy/, /Od 3 ks −10\u00a0%, od 5 ks −15\u00a0%, od 10 ks −20\u00a0%/, /1 věc k vyřešení/, /<s-clickable href="\/app\/tiers"/] },
   { path: "overview?state=tiers-empty", expect: [/Zatím žádná úroveň\. Kupte víc, zaplaťte míň/, /data-won-state="inactive"/] },
   {

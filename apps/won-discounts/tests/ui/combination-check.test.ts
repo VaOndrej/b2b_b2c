@@ -26,9 +26,10 @@ const MARKETS = [
   { handle: "cz", currency: "CZK", enabled: true, countries: ["CZ"] },
   { handle: "sk", currency: "EUR", enabled: true, countries: ["SK"] },
 ];
-const TIERS = { sets: [{ id: "g", scope: "global", countAcross: "product", breaks: [{ minQty: 3, percent: 10 }, { minQty: 5, percent: 20 }] }] };
-const CODE = { id: "code", enabled: true, name: "LETO10", method: "code", codes: ["LETO10"], value: { kind: "percentage", percent: 10 }, target: { kind: "order" } };
-const ORDER = { id: "order", enabled: true, name: "Sleva 5 %", method: "automatic", value: { kind: "percentage", percent: 5 }, target: { kind: "order" }, minimum: { subtotal: { CZK: 3000_00 } } };
+// The quantity tiers add up with the order discounts of these shops, and each of those with the tiers (and with the gift).
+const TIERS = { sets: [{ id: "g", scope: "global", countAcross: "product", breaks: [{ minQty: 3, percent: 10 }, { minQty: 5, percent: 20 }] }], combine: { types: ["automatic", "code", "shipping", "rewards"] } };
+const CODE = { id: "code", enabled: true, name: "LETO10", method: "code", codes: ["LETO10"], value: { kind: "percentage", percent: 10 }, target: { kind: "order" }, combine: { types: ["shipping", "tiers", "rewards"] } };
+const ORDER = { id: "order", enabled: true, name: "Sleva 5 %", method: "automatic", value: { kind: "percentage", percent: 5 }, target: { kind: "order" }, minimum: { subtotal: { CZK: 3000_00 } }, combine: { types: ["shipping", "tiers", "rewards"] } };
 const STEP5 = milestoneRule({ id: "ms-a", threshold: { CZK: 2000_00, EUR: 80_00 }, value: { kind: "percentage", percent: 5 } });
 const STEP10 = milestoneRule({ id: "ms-b", threshold: { CZK: 4000_00, EUR: 160_00 }, value: { kind: "percentage", percent: 10 } });
 const STEP15 = milestoneRule({ id: "ms-c", threshold: { CZK: 6000_00, EUR: 240_00 }, value: { kind: "percentage", percent: 15 } });
@@ -155,8 +156,8 @@ test("what it reports: margin protection lowered a discount; the discounts passe
 });
 
 test("what it reports: a discount that does not combine with another; a code that costs the gift; a discount step that lost", () => {
-  // Product discounts and order discounts switched not to combine: the order discount does not apply next to the tier.
-  const apart = configOf({ markets: MARKETS, engine: { combination: { productWithOrder: false } }, modules: { tiers: TIERS, codes: { rules: [ORDER] } } });
+  // The order discount's list has no quantity tiers: it does not apply next to the tier.
+  const apart = configOf({ markets: MARKETS, modules: { tiers: TIERS, codes: { rules: [{ ...ORDER, combine: { types: ["shipping", "rewards"] } }] } } });
   assert.deepEqual(only(apart, "order").findings, [{ kind: "not_combinable", cause: { type: "rule", id: "order" } }]);
   // The gift's amount is measured after discounts: with the code the cart falls under it.
   const gift = configOf({ markets: MARKETS, modules: { codes: { rules: [CODE] }, rewards: { gifts: [GIFT], countOtherDiscounts: true } } });
@@ -167,8 +168,8 @@ test("what it reports: a discount that does not combine with another; a code tha
   const ladder = only(steps, "steps");
   assert.deepEqual(ladder.findings, [{ kind: "step_superseded", cause: { type: "step", id: "ms-a" } }], "the step that lost");
   assert.deepEqual(ladder.detail.plan.rules.map((r) => [r.ruleId, r.state]), [["ms-a", "outranked"], ["ms-b", "applied"]]);
-  // …and a better code beats the step.
-  const beaten = configOf({ markets: MARKETS, modules: { codes: { rules: [{ ...CODE, value: { kind: "percentage", percent: 30 } }, STEP5] } } });
+  // …and a better code beats the step (a code that does not add up with Milníky: its list has no "rewards").
+  const beaten = configOf({ markets: MARKETS, modules: { codes: { rules: [{ ...CODE, value: { kind: "percentage", percent: 30 }, combine: { types: ["shipping", "tiers"] } }, STEP5] } } });
   assert.deepEqual(only(beaten, "steps-code").findings, [{ kind: "step_superseded", cause: { type: "step", id: "ms-a" } }]);
 });
 

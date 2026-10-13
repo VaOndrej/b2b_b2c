@@ -20,9 +20,11 @@
 //    Never the global set for a ref that is there but unusable. A line's set
 //    is looked up by id in a map built once from the payload's sets (never a
 //    scan over the sets per line).
-// 2. Eligible lines = lines of a set that can take a product discount: not a
-//    gift, and not outlet unless `engine.combination.outletWithAnything`
-//    (plan.ts `excluded === null`). Only they count, and only they get a tier.
+// 2. Eligible lines = lines of a set that can take a quantity tier: not a
+//    gift, not a sale line that takes nothing (plan.ts `excluded === null`),
+//    and not a sale line that does not take tiers (`no` bit 1: its own list
+//    says so, or — a sale under the shop's rule — the sale and the tiers do
+//    not add up, plan.ts prepareLines). Only they count, and only they get a tier.
 // 3. Counting groups of a set (its eligible lines, cart order; a group is
 //    ordered by its first line):
 //      "line"     one group per line;
@@ -48,16 +50,18 @@
 // 6. The product stage takes the tier candidate as one more candidate of the
 //    line, next to its product rules: rank amount desc, priority desc, id asc
 //    (plain string order of the ids: "a" < "tier:g" < "z"); the best one wins.
-//    A tier is never part of a Pro stack (no rule can list it in
-//    `combinesWith`) and takes NO place in the stack pool (fix round 2): the
-//    pool is the MAX_STACK_CANDIDATES best-ranked RULE candidates of the line,
-//    as without tiers; the search's starting total is the best single
-//    candidate of the line, the tier included, so a Pro stack of rules beats
-//    the tier only with a larger total (plan.ts pick). Then, unchanged from
-//    any product stack: margin protection, the Free product/order switch (the
-//    losing category's candidates are dropped) and the output
-//    (function-output.ts). Its owner is the tier itself, method automatic:
-//    ONLY the automatic node emits it.
+//    Since 13 Oct 2026 a tier adds up with a rule like any two discounts do
+//    (combine.ts addUp: the tiers' list `engine.mc[0]` has the rule's type and
+//    the rule's list has "tiers"). It takes a place in the stack pool like a
+//    rule — unless it adds up with no rule candidate of the line (its list
+//    names neither "automatic" nor "code", or no such rule on the line names
+//    "tiers" back): such a tier takes no place (plan.ts pick), so a line whose
+//    tier adds up with none of its rules stacks them exactly as before.
+//    Then, unchanged from any product stack: margin protection, the order
+//    stage and the output (function-output.ts). A stack's owner is found as
+//    always (plan-internal.ts ownerOf): a tier alone is its own owner, method
+//    automatic — the automatic node emits it; in a stack with a code rule the
+//    code rule's node emits the sum.
 // 7. Margin protection lowering a tier (MVP 3 audit, E2E: a checkout message
 //    never names more than the line gets): the stack becomes {fixedTotal:
 //    headroom} as any capped stack, and its message is the reached break
@@ -77,6 +81,7 @@
 // ===========================================================================================
 
 import type { NormalizedLine, PlanLocale } from "./cart.ts";
+import { COMBINE_BIT } from "./combine.ts";
 import { type DescribableTierBreak, describeCappedTierBreak, describeTierBreak } from "./describe.ts";
 import type { EmittedValue, TierHint, TierOutcome, TierState, TierStep } from "./plan.ts";
 import type { Candidate, Rule, WorkLine } from "./plan-internal.ts";
@@ -115,7 +120,7 @@ export interface TierStage {
   rules: Rule[];
 }
 
-function tierRule(set: TierSetRead, locale: PlanLocale): Rule {
+function tierRule(set: TierSetRead, locale: PlanLocale, mask: number): Rule {
   return {
     id: tierCandidateId(set.id),
     name: TIER_LABEL[locale],
@@ -139,7 +144,9 @@ function tierRule(set: TierSetRead, locale: PlanLocale): Rule {
     endsOn: null,
     markets: null,
     segmentTargeted: false,
-    combines: [],
+    bit: COMBINE_BIT.tiers,
+    mask,
+    except: [],
     describable: { method: "automatic", value: { kind: "percentage", percent: 0 }, target: { kind: "products" } },
     state: null,
     hadCandidate: false,
@@ -188,12 +195,12 @@ function amountOn(b: TierBreakRead, line: NormalizedLine): { amount: number; val
  * Steps 1–5 of the port spec: every line's tier candidate (`w.tier`), and per
  * set its lines and counting groups for the outcomes. Before planProducts.
  */
-export function prepareTiers(work: WorkLine[], raw: unknown, locale: PlanLocale, currency: string): TierStage {
+export function prepareTiers(work: WorkLine[], raw: unknown, locale: PlanLocale, currency: string, mask: number): TierStage {
   const tiers = readTiersPayload(raw, currency);
   const sets: SetWork[] = [];
   const bySetId = new Map<string, SetWork>();
   for (const set of tiers.sets.values()) {
-    const sw: SetWork = { set, rule: tierRule(set, locale), lines: [], eligible: 0, groups: [], reachedAny: false };
+    const sw: SetWork = { set, rule: tierRule(set, locale, mask), lines: [], eligible: 0, groups: [], reachedAny: false };
     sets.push(sw);
     bySetId.set(set.id, sw);
   }

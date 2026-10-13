@@ -26,14 +26,14 @@ test("sanitizeConfig drops unknown top-level keys", () => {
   assert.ok(!("thisKeyDoesNotExist" in config));
 });
 
-test("engine.combination.outletWithAnything falls back to false on bad input, with an issue", () => {
+test("engine.combineDefault falls back to the default list on bad input, with an issue", () => {
   const { config, issues } = sanitizeConfig({
-    engine: { combination: { outletWithAnything: "yes" } },
+    engine: { combineDefault: "everything" },
   });
-  assert.equal(config.engine.combination.outletWithAnything, false);
+  assert.deepEqual(config.engine.combineDefault, ["shipping", "rewards"]);
   assert.ok(
-    issues.some((i) => i.path === "engine.combination.outletWithAnything"),
-    "expected an issue for the invalid boolean",
+    issues.some((i) => i.path === "engine.combineDefault"),
+    "expected an issue for the invalid list",
   );
 });
 
@@ -152,6 +152,10 @@ function randomValue(rng: () => number, depth: number): unknown {
     "combination",
     "outletWithAnything",
     "productWithProduct",
+    "productWithOrder",
+    "combineDefault",
+    "combine",
+    "types",
     "modules",
     "codes",
     "rules",

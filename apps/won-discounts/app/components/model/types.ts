@@ -800,19 +800,13 @@ export interface TranslationsScreenData {
   values: Record<string, Record<string, string>>;
 }
 
-/** Free per-category combination switches (A1, engine.combination). */
-export interface CombinationView {
-  outletWithAnything: boolean;
-  productWithOrder: boolean;
-  productWithShipping: boolean;
-  orderWithShipping: boolean;
-}
 
 export interface SettingsScreenData {
   plan: "free" | "pro";
   configVersion: string | null;
   currencies: CurrencyView[];
-  combination: CombinationView;
+  /** engine.combineDefault: the types a new discount adds up with (model/combine.ts). */
+  combineDefault: import("@won/core/discounts/combine").CombineType[];
   /** engine.unknownMarketLowest: a customer from a country in no market gets the lowest amount of the markets of their currency (off = nothing). */
   unknownMarketLowest?: boolean;
   /** engine.unknownMarketHighest: the kinds of amount where that customer gets the highest amount instead of the lowest. */
