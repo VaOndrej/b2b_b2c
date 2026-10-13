@@ -12,20 +12,15 @@ import type { ReadonlyDeep, WonDiscountsConfig } from "./types.ts";
 export const DEFAULT_CONFIG: ReadonlyDeep<WonDiscountsConfig> = deepFreeze<WonDiscountsConfig>({
   schemaVersion: SCHEMA_VERSION,
   markets: [],
-  engine: {
-    combination: {
-      outletWithAnything: false,
-      productWithProduct: "best",
-      productWithOrder: true,
-      productWithShipping: true,
-      orderWithShipping: true,
-    },
-  },
+  // Combining (combine.ts), a new shop: price discounts — automatic, with a code, quantity tiers — never add up
+  // with each other (the better one wins); free shipping and the rewards of Milníky add to any of them; a line
+  // on sale takes nothing else.
+  engine: { combineDefault: ["shipping", "rewards"] },
   modules: {
     codes: { rules: [] },
-    tiers: { sets: [] },
-    rewards: { gifts: [], countOtherDiscounts: false, giftDeclinable: true },
-    outlet: { display: "strike_badge", reopenOnReturnAfterEnd: "ask" },
+    tiers: { sets: [], combine: { types: ["shipping", "rewards"] } },
+    rewards: { gifts: [], countOtherDiscounts: false, giftDeclinable: true, combine: { types: ["automatic", "code", "shipping", "tiers", "rewards"] } },
+    outlet: { display: "strike_badge", reopenOnReturnAfterEnd: "ask", combine: { types: [] } },
     margin: { enabled: false, global: { maxDiscountPercent: 50 }, perCollection: [], perProduct: [] },
   },
   campaigns: [],

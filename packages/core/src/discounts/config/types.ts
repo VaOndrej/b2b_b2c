@@ -1,6 +1,7 @@
 // Won Discounts config types (spec §2 catalog). Shapes only; sanitize.ts owns
 // how an arbitrary stored value becomes one of these.
 
+import type { CombineSetting, CombineType, RuleCombine } from "../combine.ts";
 import type { CustomLook } from "../custom-look.ts";
 import type { ElementLooks } from "../looks.ts";
 import type { CurrencyCode, MoneyByCurrency } from "../money.ts";
@@ -12,7 +13,6 @@ import type {
   MinimumScope,
   OnboardingGoal,
   OutletDisplay,
-  ProductWithProductMode,
   UnknownMarketKind,
   ReopenOnReturnMode,
   TierCountAcross,
@@ -31,13 +31,12 @@ export interface MarketSetting {
 }
 
 export interface EngineSettings {
-  combination: {
-    outletWithAnything: boolean; // default false (A1): outlet combines with nothing
-    productWithProduct: ProductWithProductMode; // default "best"
-    productWithOrder: boolean; // default true
-    productWithShipping: boolean; // default true
-    orderWithShipping: boolean; // default true
-  };
+  /**
+   * The list a NEW discount from the editor starts with (combine.ts): the types it adds up with. Changing it
+   * never changes a stored discount. A new shipping discount starts with its mirror (combine-config.ts
+   * defaultCombineFor), so that the two sides agree from the start.
+   */
+  combineDefault: CombineType[];
   /**
    * Amounts per market (7 Oct 2026): what a cart from a country in NO market gets where the markets of its currency
    * have different amounts. true = the lowest of those amounts; absent = nothing (never another market's amount).
@@ -157,7 +156,11 @@ export interface DiscountRule {
   /** Tie-break (A1: `priority desc, id asc`) and owner of a Pro stack; absent = 0. */
   priority?: number;
   targeting?: { segments?: string[]; markets?: string[] }; // Pro
-  combinesWith?: { ruleIds: string[] }; // Pro (per-rule combination override)
+  /**
+   * What the discount adds up with (combine.ts): `types` on every plan, `rules` (exceptions, they only allow) on
+   * Pro. Absent = nothing. Never on an order discount of Milníky: the Milníky list is its list.
+   */
+  combine?: RuleCombine;
   origin?: { nativeId: string }; // set when migrated from a native Shopify discount
 }
 
@@ -183,6 +186,8 @@ export interface TierSet {
 
 export interface TiersModule {
   sets: TierSet[];
+  /** What every quantity tier adds up with (combine.ts). */
+  combine: CombineSetting;
 }
 
 export interface GiftTier {
@@ -199,11 +204,15 @@ export interface RewardsModule {
    * subtotal, so a gift already earned in the cart never disappears at checkout. */
   countOtherDiscounts: boolean;
   giftDeclinable: true;
+  /** What the rewards of Milníky add up with — the gift, the free shipping and the order discounts ("ms-" rules) alike (combine.ts). */
+  combine: CombineSetting;
 }
 
 export interface OutletModule {
   display: OutletDisplay; // default "strike_badge" — no "X left" by default
   reopenOnReturnAfterEnd: ReopenOnReturnMode; // default "ask"
+  /** What a line on sale takes next to its sale price (combine.ts); a sale with its own list follows that one. */
+  combine: CombineSetting;
 }
 
 /** One product's own margin setting (Pro): the most specific, it wins over its collections and the global values. */
@@ -272,7 +281,7 @@ export interface OnboardingState {
 }
 
 export interface WonDiscountsConfig {
-  schemaVersion: 1;
+  schemaVersion: 2;
   markets: MarketSetting[];
   engine: EngineSettings;
   modules: {

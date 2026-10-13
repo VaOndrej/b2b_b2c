@@ -1,4 +1,5 @@
-import { pruneCombinesWith, sanitizeDiscountRule } from "./codes.ts";
+import { sanitizeDiscountRule } from "./codes.ts";
+import { pruneCombineRules } from "./combine.ts";
 import { CONFIG_LIMITS } from "./limits.ts";
 import { sanitizeGiftTier } from "./rewards.ts";
 import {
@@ -23,7 +24,7 @@ import { isShopLocalDateTime } from "./validators.ts";
 // `method`/`codes`/`limits`/`origin` are excluded on purpose: they define the
 // Shopify discount node, which a time window must not rewrite.
 const OVERRIDE_FIELDS = {
-  rule: ["enabled", "name", "value", "target", "minimum", "targeting", "combinesWith"],
+  rule: ["enabled", "name", "value", "target", "minimum", "targeting", "combine"],
   tierSet: ["countAcross", "breaks"],
   giftTier: ["threshold", "choices", "fallbackVariantId"],
 } as const;
@@ -44,7 +45,7 @@ const OVERRIDE_TARGET_LABELS: Record<OverrideTarget["kind"], string> = {
  * its final id AND by the original id it had before sanitizeEntityId replaced
  * it (aliases), so an override written against the old id follows the entity.
  * An invalid original id can never equal a valid final id, so the two key
- * spaces never collide. `ruleIds`/`ruleAliases` prune `combinesWith` in patches.
+ * spaces never collide. `ruleIds`/`ruleAliases` prune the exceptions (`combine.rules`) in patches.
  */
 export interface OverrideContext {
   targets: Map<string, OverrideTarget[]>;
@@ -122,16 +123,12 @@ function sanitizeOverridePatch(
         ? sanitizeTierSet(merged, issues, path)
         : sanitizeGiftTier(merged, issues, path);
   if (!isRecord(sanitized)) return {};
-  if (target.kind === "rule" && patched.includes("combinesWith")) {
-    const combinesWith = (sanitized as unknown as DiscountRule).combinesWith;
-    if (combinesWith) {
-      combinesWith.ruleIds = pruneCombinesWith(
-        combinesWith.ruleIds,
-        ctx.ruleIds,
-        ctx.ruleAliases,
-        issues,
-        `${path}.combinesWith.ruleIds`,
-      );
+  if (target.kind === "rule" && patched.includes("combine")) {
+    const combine = (sanitized as unknown as DiscountRule).combine;
+    if (combine?.rules) {
+      const kept = pruneCombineRules(combine.rules, target.value.id, ctx.ruleIds, ctx.ruleAliases, issues, `${path}.combine.rules`);
+      if (kept.length > 0) combine.rules = kept;
+      else delete combine.rules;
     }
   }
 

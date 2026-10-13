@@ -35,6 +35,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
 import { PageSave } from "../shell/PageSave";
 import { useView, ViewPanel } from "../shell/views";
+import { usePolarisJump } from "../shell/scroll";
 import { Form, useSubmit } from "react-router";
 
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
@@ -266,6 +267,7 @@ export function MarginScreen(props: MarginScreenProps) {
     hash: { settings: "settings", costs: "costs", collections: "collections", products: "products", impact: "impact" },
     resetKey: result,
   });
+  const toCosts = usePolarisJump("costs", () => setView("costs"));
 
   return (
     <s-page heading={t("module.margin")}>
@@ -348,7 +350,7 @@ export function MarginScreen(props: MarginScreenProps) {
                 {ceilingOnly ? (
                   <s-text color="subdued">
                     {ceilingOnly}
-                    {afterSaveCeiling !== null ? ` ${t("margin.afterSave", { percent: percentText(afterSaveCeiling, tr) })}` : ""} <s-link href="#costs">{t("margin.costs.link")}</s-link>
+                    {afterSaveCeiling !== null ? ` ${t("margin.afterSave", { percent: percentText(afterSaveCeiling, tr) })}` : ""} <s-link {...toCosts}>{t("margin.costs.link")}</s-link>
                   </s-text>
                 ) : null}
               </s-stack>

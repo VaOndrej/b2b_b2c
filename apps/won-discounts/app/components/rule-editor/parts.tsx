@@ -11,7 +11,7 @@ import type { RuleFormDefaults } from "../model/rule-form";
 import type { CurrencyView } from "../model/types";
 import type { AmountSuggestView } from "../model/markets";
 import { boolAttr } from "../shell/attrs";
-import { jumpBehavior } from "../shell/scroll";
+import { jumpBehavior, useJumpLink } from "../shell/scroll";
 import { openSectionsAround } from "../shell/WonSection";
 import { WON_ATTENTION, WON_FAINT, WON_FONT, WON_MUTED } from "../shell/tokens";
 
@@ -114,13 +114,17 @@ export function jumpToAnchor(raw: string): boolean {
 
 /** An in-page link to an editor anchor: the status sentence, a marker's "go to the field". */
 export function AnchorLink({ to, children, tone }: { to: EditorAnchor; children: ReactNode; tone?: "attention" }) {
+  const link = useJumpLink(to);
   return (
     <a
-      href={`#${to}`}
+      href={link.href}
+      role={link.role}
+      tabIndex={link.tabIndex}
+      onKeyDown={link.onKeyDown}
       onClick={(event) => {
         if (jumpToAnchor(to)) event.preventDefault();
       }}
-      style={{ color: tone === "attention" ? WON_ATTENTION : "inherit", textDecoration: "underline", textUnderlineOffset: 2, fontWeight: 600 }}
+      style={{ color: tone === "attention" ? WON_ATTENTION : "inherit", textDecoration: "underline", textUnderlineOffset: 2, fontWeight: 600, cursor: "pointer" }}
     >
       {children}
     </a>

@@ -1,3 +1,4 @@
+import { sanitizeCombineSetting } from "./combine.ts";
 import { DEFAULT_CONFIG } from "./defaults.ts";
 import { CONFIG_LIMITS } from "./limits.ts";
 import {
@@ -91,6 +92,7 @@ export function sanitizeRewards(v: unknown, issues: ConfigIssue[]): { rewards: R
       issues,
     ),
     giftDeclinable: true,
+    combine: sanitizeCombineSetting(rec.combine, def.combine, "modules.rewards.combine", issues),
   };
   if (isRecord(rec.freeShipping)) {
     out.freeShipping = {

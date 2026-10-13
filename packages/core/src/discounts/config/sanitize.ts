@@ -1,5 +1,8 @@
 import { collectOverrideTargets, sanitizeCampaigns } from "./campaigns.ts";
 import { sanitizeRules } from "./codes.ts";
+import { sanitizeCombineSetting } from "./combine.ts";
+import { migrateCombineV1 } from "./combine-migrate.ts";
+import { DEFAULT_CONFIG } from "./defaults.ts";
 import { sanitizeEngine } from "./engine.ts";
 import { SCHEMA_VERSION } from "./enums.ts";
 import { CONFIG_LIMITS } from "./limits.ts";
@@ -39,7 +42,7 @@ export function sanitizeConfig(input: unknown): { config: WonDiscountsConfig; is
     engine,
     modules: {
       codes: { rules },
-      tiers: { sets },
+      tiers: { sets, combine: sanitizeCombineSetting(tiersRaw.combine, DEFAULT_CONFIG.modules.tiers.combine, "modules.tiers.combine", issues) },
       rewards,
       outlet: sanitizeOutlet(modules.outlet, issues),
       margin: sanitizeMargin(modules.margin, issues),
@@ -86,17 +89,18 @@ export function isNewerSchema(stored: unknown): boolean {
 }
 
 /**
- * Tolerant migration, vN -> current (DATA-3). MVP0 has no prior real schema, so a
- * v0/no-version fixture only needs its schemaVersion stamped forward — sanitizeConfig
- * fills any structural gaps. Future breaking shape changes branch on `version` here,
- * each with its own fixture test, before the shape reaches sanitizeConfig.
+ * Tolerant migration, vN -> current (DATA-3); each breaking shape change branches on `version` here, with its
+ * own fixture test, before the shape reaches sanitizeConfig (which fills any structural gaps).
+ *   below 2 → 2 (13 Oct 2026): the four category switches and `combinesWith` become lists of types and
+ *   exceptions (config/combine-migrate.ts; no cart gets more than it did).
  * A newer-schema config passes through unchanged (see isNewerSchema).
  */
 export function migrateConfig(stored: unknown): unknown {
   if (!isRecord(stored)) return stored;
   const version = typeof stored.schemaVersion === "number" ? stored.schemaVersion : 0;
   if (version >= SCHEMA_VERSION) return stored;
-  return { ...stored, schemaVersion: SCHEMA_VERSION };
+  const migrated = version < 2 ? migrateCombineV1(stored).config : stored;
+  return { ...migrated, schemaVersion: SCHEMA_VERSION };
 }
 
 /**

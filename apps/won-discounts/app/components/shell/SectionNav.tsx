@@ -7,6 +7,7 @@
 //   - the links are real `#anchor` links (WonSection anchors, or any element id), so
 //     they work before hydration; with JS the jump is smooth and lands under the row,
 //     and a collapsed section opens first (a jump to a closed header would be a dead end);
+//     in the embedded admin they carry no `href` (useJumpLink: the save bar would stop them);
 //   - no URL hash is written (SubNav: the hash belongs to deep links from other pages);
 //   - a section that has a state may show it as a dot before its name (StatusDot: the
 //     pill's colours and words) — a section without a state has none (P2).
@@ -15,7 +16,7 @@
 
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
-import { jumpBehavior } from "./scroll";
+import { jumpBehavior, useJumpLink } from "./scroll";
 import { openSectionsAround, StatusDot, type DotState } from "./WonSection";
 import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE } from "./tokens";
 
@@ -38,7 +39,7 @@ const SECTION_NAV_CSS = `
 .won-jump__nav{position:sticky;top:0;z-index:2;font-family:${WON_FONT};margin:0 -4px;padding:8px 4px;background:rgba(241,241,241,.92);backdrop-filter:blur(6px)}
 .won-jump__title{display:none;margin:0 0 8px 14px;font-size:12px;font-weight:600;color:${WON_MUTED}}
 .won-jump__list{display:flex;flex-wrap:nowrap;gap:4px;margin:0;padding:0;list-style:none;overflow-x:auto;scrollbar-width:none}
-.won-jump__link{display:flex;align-items:flex-start;gap:6px;padding:6px 10px;border-radius:8px;font-size:13px;line-height:1.3;color:${WON_MUTED};text-decoration:none;white-space:nowrap}
+.won-jump__link{display:flex;align-items:flex-start;gap:6px;padding:6px 10px;border-radius:8px;font-size:13px;line-height:1.3;color:${WON_MUTED};text-decoration:none;white-space:nowrap;cursor:pointer}
 .won-jump__dot{display:inline-flex;align-items:center;height:1.3em;flex:0 0 auto}
 .won-jump__link:hover{color:${WON_INK};background:rgba(17,20,24,.05)}
 .won-jump__link:focus-visible{outline:2px solid ${WON_SELECT};outline-offset:1px}
@@ -158,19 +159,26 @@ export function SectionNav({ label, items, children }: SectionNavProps) {
         <ul ref={listRef} className="won-jump__list">
           {items.map((item) => (
             <li key={item.anchor} style={{ flex: "0 0 auto" }}>
-              <a className="won-jump__link" href={`#${item.anchor}`} aria-current={item.anchor === active ? "location" : undefined} onClick={(event) => go(event, item.anchor)}>
-                {item.state ? (
-                  <span className="won-jump__dot">
-                    <StatusDot state={item.state} />
-                  </span>
-                ) : null}
-                {item.label}
-              </a>
+              <SectionLink item={item} current={item.anchor === active} onClick={(event) => go(event, item.anchor)} />
             </li>
           ))}
         </ul>
       </nav>
       <div className="won-jump__body">{children}</div>
     </div>
+  );
+}
+
+function SectionLink({ item, current, onClick }: { item: SectionNavItem; current: boolean; onClick: (event: MouseEvent<HTMLAnchorElement>) => void }) {
+  const link = useJumpLink(item.anchor);
+  return (
+    <a className="won-jump__link" href={link.href} role={link.role} tabIndex={link.tabIndex} onKeyDown={link.onKeyDown} aria-current={current ? "location" : undefined} onClick={onClick}>
+      {item.state ? (
+        <span className="won-jump__dot">
+          <StatusDot state={item.state} />
+        </span>
+      ) : null}
+      {item.label}
+    </a>
   );
 }

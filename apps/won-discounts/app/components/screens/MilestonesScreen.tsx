@@ -52,6 +52,7 @@ import { DiscountsSubNav } from "../shell/SubNav";
 import { WON_ATTENTION, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "../shell/tokens";
 import { PageSave } from "../shell/PageSave";
 import { useView, ViewPanel } from "../shell/views";
+import { usePolarisJump } from "../shell/scroll";
 import { PlacementPill, RowNote, WonRow, WonSection, type PlacementState } from "../shell/WonSection";
 
 const F = MS_FIELD;
@@ -386,6 +387,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
     hash: { steps: "steps", preview: "steps", amounts: "steps", count: "steps", shipping: "steps", gift: "steps", web: "web", places: "web", cart: "web", look: "look", "look-milestones": "look", "look-msBar": "look", "look-msCart": "look", "look-msDrawer": "look", "look-cart": "look", ...Object.fromEntries(rows.map((_, i) => [stepAnchor(i), "steps" as const])) },
     resetKey: result,
   });
+  const toSteps = usePolarisJump("steps", () => setView("steps"));
 
   useEffect(() => {
     const at = /^#step-(\d+)$/.exec(window.location.hash);
@@ -412,7 +414,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
               <WonRow
                 tone="attention"
                 action={
-                  <s-button href="#steps" variant="secondary">
+                  <s-button {...toSteps} variant="secondary">
                     {t("milestones.next.fillAmounts")}
                   </s-button>
                 }

@@ -10,7 +10,7 @@
 
 import type { MouseEvent } from "react";
 
-import { jumpBehavior } from "./scroll";
+import { jumpBehavior, useJumpLink } from "./scroll";
 import { ReaderOnly, StatusDot, type DotState } from "./WonSection";
 import { WON_ATTENTION, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE } from "./tokens";
 
@@ -29,7 +29,7 @@ const JUMP_ROW_CSS = `
 .won-jumps{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-family:${WON_FONT}}
 .won-jumps__label{font-size:12.5px;color:${WON_MUTED}}
 .won-jumps__list{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
-.won-jumps__link{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:28px;height:28px;box-sizing:border-box;padding:0 8px;border-radius:999px;border:1px solid ${WON_LINE};background:${WON_SURFACE};font-size:12.5px;font-weight:650;line-height:1;color:${WON_INK};text-decoration:none}
+.won-jumps__link{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:28px;height:28px;box-sizing:border-box;padding:0 8px;border-radius:999px;border:1px solid ${WON_LINE};background:${WON_SURFACE};font-size:12.5px;font-weight:650;line-height:1;color:${WON_INK};text-decoration:none;cursor:pointer}
 .won-jumps__link:hover{border-color:${WON_MUTED}}
 .won-jumps__link:focus-visible{outline:2px solid ${WON_SELECT};outline-offset:1px}
 .won-jumps__link[data-won-jump-state="attention"]{color:${WON_ATTENTION};border-color:${WON_ATTENTION}}
@@ -53,14 +53,21 @@ export function JumpRow({ label, items }: { label: string; items: readonly JumpR
       <ol className="won-jumps__list">
         {items.map((item) => (
           <li key={item.target}>
-            <a className="won-jumps__link" href={`#${item.target}`} title={item.name} {...(item.state ? { "data-won-jump-state": item.state } : {})} onClick={(event) => go(event, item.target)}>
-              {item.state ? <StatusDot state={item.state} /> : null}
-              <span aria-hidden="true">{item.mark}</span>
-              <ReaderOnly>{item.name}</ReaderOnly>
-            </a>
+            <JumpLink item={item} onClick={(event) => go(event, item.target)} />
           </li>
         ))}
       </ol>
     </nav>
+  );
+}
+
+function JumpLink({ item, onClick }: { item: JumpRowItem; onClick: (event: MouseEvent<HTMLAnchorElement>) => void }) {
+  const link = useJumpLink(item.target);
+  return (
+    <a className="won-jumps__link" href={link.href} role={link.role} tabIndex={link.tabIndex} onKeyDown={link.onKeyDown} title={item.name} {...(item.state ? { "data-won-jump-state": item.state } : {})} onClick={onClick}>
+      {item.state ? <StatusDot state={item.state} /> : null}
+      <span aria-hidden="true">{item.mark}</span>
+      <ReaderOnly>{item.name}</ReaderOnly>
+    </a>
   );
 }

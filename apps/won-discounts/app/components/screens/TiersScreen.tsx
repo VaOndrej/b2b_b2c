@@ -44,6 +44,7 @@ import { Notice } from "../shell/Notice";
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
 import { PageSave } from "../shell/PageSave";
 import { useView, ViewPanel } from "../shell/views";
+import { usePolarisJump } from "../shell/scroll";
 import { DiscountsSubNav } from "../shell/SubNav";
 import { RowNote, StatusPill, WonRow, WonSection } from "../shell/WonSection";
 import { WON_LINE } from "../shell/tokens";
@@ -254,6 +255,7 @@ export function TiersScreen(props: TiersScreenProps) {
     hash: { global: "global", block: "table", cards: "table", pro: "exceptions", [TIERS_CAPACITY_ANCHOR]: "exceptions" },
     resetKey: result,
   });
+  const toLook = usePolarisJump("look-tiers", () => setView("table"));
   useEffect(() => {
     if (!capacityError) return;
     setView("exceptions");
@@ -314,7 +316,7 @@ export function TiersScreen(props: TiersScreenProps) {
                 />
                 {/* The table's look, colour and (Pro) own CSS are picked in "Tabulka na webu"; the preview above shows what is stored. */}
                 <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-                  <s-link href="#look-tiers" onClick={() => setView("table")}>
+                  <s-link {...toLook}>
                     {t("tiers.preview.customLink")}
                   </s-link>
                 </div>

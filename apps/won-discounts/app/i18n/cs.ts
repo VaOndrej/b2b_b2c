@@ -730,7 +730,7 @@ export const cs = {
   "editor.minimum.labelSingle": "Minimální částka objednávky",
   "editor.minimum.details":
     "Když vyplníte minimum pro jednu měnu, vyplňte ho i pro ostatní. Měna bez minima se pak nenabízí.",
-  "editor.minQty.label": "Minimální počet kusů",
+  "editor.minQty.label": "Minimální počet kusů v košíku",
   "editor.minimum.scope": "Minimum se počítá",
   "editor.minimum.scope.cart": "z celého košíku",
   "editor.minimum.scope.entitled": "z vybraných produktů",
@@ -759,7 +759,7 @@ export const cs = {
   "editor.pro.marketsOpen": "Nastavit trhy v Shopify",
   "editor.pro.dropMarkets": "Odebrat omezení na trhy",
   "editor.pro.dropSegments": "Odebrat omezení na skupiny zákazníků",
-  "editor.pro.combinesIntro": "Zaškrtnuté slevy se s touhle sečtou. Ostatní se nesčítají, zákazník dostane tu výhodnější.",
+  "editor.pro.combinesIntro": "Zaškrtnuté slevy se s touhle sečtou. Ostatní se nesčítají, v takovém případě zákazník dostane tu výhodnější slevu.",
   "editor.pro.combinesDefault": "Slevy na produkty, na objednávku a na dopravu se mezi sebou sčítají podle Nastavení.",
   "editor.pro.combinesSettings": "Kombinování slev v Nastavení",
   "editor.pro.combinesCreate": "Vytvořit další slevu",

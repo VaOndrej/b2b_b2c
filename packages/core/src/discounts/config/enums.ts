@@ -1,24 +1,10 @@
 // Won Discounts config enums (spec §2). Runtime `as const` arrays, so a docs
 // generator — and the sanitizer — read the SAME list the types are derived from.
 
-export const SCHEMA_VERSION = 1;
+/** 2 (13 Oct 2026): discounts combine by type (`combine`), not by the four category switches (config/combine-migrate.ts). */
+export const SCHEMA_VERSION = 2;
 
 // --- Enums (runtime `as const` arrays so a docs generator can read them later) -----
-
-export const COMBINATION_CATEGORIES = [
-  "outletWithAnything",
-  "productWithProduct",
-  "productWithOrder",
-  "productWithShipping",
-  "orderWithShipping",
-] as const;
-export type CombinationCategory = (typeof COMBINATION_CATEGORIES)[number];
-
-/** MVP0: engine-level product-vs-product combination is always "best wins" (A1).
- * Pro's per-rule combination is expressed on the rule itself (`combinesWith`), not
- * as another engine-level mode here. */
-export const PRODUCT_WITH_PRODUCT_MODES = ["best"] as const;
-export type ProductWithProductMode = (typeof PRODUCT_WITH_PRODUCT_MODES)[number];
 
 /** The kinds of amount a cart from a country in no market reads through the fallback (engine.unknownMarketLowest),
  * each with its own choice of the lowest or the highest of the currency's markets (engine.unknownMarketHighest). */

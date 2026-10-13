@@ -15,7 +15,7 @@
 //                                               minimum quantity per product / collection
 //   Generované kódy Free: ≤ 100 a batch,   Pro: ≤ 1 000 a batch, pattern options
 //                  random behind a prefix       (middle, suffix, length, alphabet)
-//   Engine         Free: category switches and per-rule combinations (combinesWith; Free since 13 Oct 2026)
+//   Kombinování    Free: the list of types a discount adds up with (combine.ts)   Pro: + exceptions for single discounts
 //   Kampaně        Free: —                 Pro: ✓
 //   Množstevní     Free: 1 global set      Pro: sets per product / collection, counting across the cart
 //   Milníky        Free: 2 steps a market, 1 gift   Pro: 6 steps a market, choice of up to 3 gifts
@@ -40,7 +40,9 @@
 //     discount, never more); a batch above the Free size keeps its first 100
 //     codes. Both come back untouched with Pro (the codes are rebuilt from the
 //     stored batch, §14a);
-//   - combinesWith: removed (the rule competes like any other: better one wins);
+//   - exceptions (`combine.rules`, decided 13 Oct 2026): removed — an exception only ever allows two discounts to
+//     add up, so without it the two stop adding up (the better one wins: never more); a finishing campaign's
+//     patch loses its exceptions likewise;
 //   - campaigns: removed (the base rules apply); one finishing after a downgrade
 //     keeps its rule overrides and the kept global tier set's, not those of the
 //     tier sets narrowed below (MVP 6.1);
@@ -100,6 +102,7 @@ export const PRO_CAPABILITIES = [
   "market_targeting",
   "segment_targeting",
   "item_minimum_quantity",
+  "combine_exceptions",
   "code_batch_pattern",
   "code_batch_size",
   "campaigns",
@@ -179,7 +182,7 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
   const stripped: StrippedCapability[] = [];
   if (plan === "pro") return { config: out, stripped };
 
-  // Discount rules: targeting (per-rule combinations run on every plan since 13 Oct 2026).
+  // Discount rules: targeting, exceptions to the lists of types (the lists themselves run on every plan).
   const itemRulesOff = new Set<string>();
   for (const rule of out.modules.codes.rules) {
     const who = { ruleId: rule.id, name: rule.name };
@@ -191,6 +194,11 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
       rule.enabled = false;
       delete (rule.target as { itemMinimums?: unknown }).itemMinimums;
       itemRulesOff.add(rule.id);
+    }
+    // Exceptions: gone, so the pairs they allowed stop adding up. Reported once per rule that names some.
+    if (rule.combine?.rules) {
+      if (report && rule.combine.rules.length > 0) stripped.push({ capability: "combine_exceptions", reason: "removed", ...who, count: rule.combine.rules.length, removedIds: [...rule.combine.rules] });
+      delete rule.combine.rules;
     }
     // Generated code batches: Pro patterns out, a batch above the Free size cut to it.
     if (rule.codeBatches) {
@@ -240,6 +248,9 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
   // switches its rule off instead (the same neutralisation as on the rule itself).
   for (const campaign of out.campaigns) {
     for (const override of campaign.overrides) {
+      // Nor may it bring an exception back.
+      const combine = override.patch.combine as { rules?: unknown } | undefined;
+      if (typeof combine === "object" && combine !== null) delete combine.rules;
       // (Nor may it switch a rule the gate turned off for its minimums back on, without them.)
       if (itemRulesOff.has(override.ruleId) && override.patch.enabled === true && !("target" in override.patch)) delete override.patch.enabled;
       if (!hasItemMinimums(override.patch.target)) continue;
@@ -422,6 +433,10 @@ function sentence(s: StrippedCapability, locale: UiLocale): string {
       return cs
         ? `${ruleName} má minimum kusů u jednotlivých produktů nebo kolekcí. To je funkce Pro, ve Free se proto neuplatní vůbec.`
         : `${ruleName} has a minimum quantity for individual products or collections. That is a Pro feature, so on Free it does not apply at all.`;
+    case "combine_exceptions":
+      return cs
+        ? `${ruleName} má ${csCount(n, ["výjimku", "výjimky", "výjimek"])} ze sčítání slev. Výjimky jsou funkce Pro, ve Free se s ${n === 1 ? "tou slevou" : "těmi slevami"} nesčítá.`
+        : `${ruleName} has ${n} ${n === 1 ? "exception" : "exceptions"} to how discounts add up. Exceptions are a Pro feature, so on Free it does not add up with ${n === 1 ? "that discount" : "those discounts"}.`;
     case "code_batch_pattern":
       return cs
         ? `${ruleName}: ${csCount(n, ["vygenerovaný kód", "vygenerované kódy", "vygenerovaných kódů"])} s vlastním vzorem ve Free neplatí, vzor kódů je funkce Pro.`

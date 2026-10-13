@@ -235,3 +235,109 @@ test("keyboard: Tab walks the strip, the tiles and the list in the page's order,
   await page.keyboard.press("Enter");
   await expect(page.locator('[data-won-view-tile="exceptions"]')).toHaveAttribute("aria-pressed", "true");
 });
+
+test("embedded admin: a jump inside the page is not a navigation for App Bridge, a real link still is", async ({ page }) => {
+  // App Bridge in the admin, with a save bar showing: a capturing listener on window stops every click on an
+  // element with `href` before React sees it and asks about the unsaved changes (app-bridge.js, 13 Oct 2026).
+  await page.addInitScript(() => {
+    const w = window as unknown as { shopify: object; wonAsked: string[] };
+    w.shopify = {};
+    w.wonAsked = [];
+    window.addEventListener(
+      "click",
+      (event) => {
+        let node = event.target as Node | null;
+        while (node && !(node instanceof Element && node.getAttribute("href") !== null)) node = node.parentNode;
+        if (!node) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        w.wonAsked.push((node as Element).getAttribute("href") ?? "");
+      },
+      true,
+    );
+  });
+  const asked = () => page.evaluate(() => (window as unknown as { wonAsked: string[] }).wonAsked);
+  const top = (id: string) => page.evaluate((target) => Math.round(document.getElementById(target)?.getBoundingClientRect().top ?? 9999), id);
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await open(page, "rule-editor");
+  const nav = page.locator("[data-won-section-nav]");
+  const link = nav.locator("a", { hasText: "Kdy platí" });
+  // Hydrated in the admin: still a link for the keyboard and screen readers, with nothing App Bridge reads.
+  await expect(link).toHaveAttribute("role", "link");
+  await expect(link).toHaveAttribute("tabindex", "0");
+  expect(await link.getAttribute("href")).toBeNull();
+  await link.click();
+  await expect.poll(() => top("schedule")).toBeLessThan(40);
+  await expect(link).toHaveAttribute("aria-current", "location");
+  // Enter does what a click does.
+  const first = nav.locator("a").first();
+  await first.focus();
+  await page.keyboard.press("Enter");
+  await expect(first).toHaveAttribute("aria-current", "location");
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(200);
+  // The status sentence's link to a field (AnchorLink) jumps too.
+  const field = page.locator(".won-jump__body a[role=link]").first();
+  expect(await field.getAttribute("href")).toBeNull();
+  await field.click();
+  expect(await asked(), "no jump asked about the unsaved changes").toEqual([]);
+
+  // Leaving the page is still App Bridge's to guard: the strip under "Slevy" keeps its `href`.
+  await open(page, "rewards");
+  await page.locator('[data-won-subnav-item="tiers"]').click();
+  expect(await asked()).toEqual(["/app/tiers"]);
+});
+
+test("embedded admin: the Polaris links that jump inside a page open the view and scroll, with nothing for App Bridge to stop", async ({ page }) => {
+  // The same App Bridge as above: `s-link` and `s-button` with `href` are navigations for it too.
+  await page.addInitScript(() => {
+    const w = window as unknown as { shopify: object; wonAsked: string[] };
+    w.shopify = {};
+    w.wonAsked = [];
+    window.addEventListener(
+      "click",
+      (event) => {
+        let node = event.target as Node | null;
+        while (node && !(node instanceof Element && node.getAttribute("href") !== null)) node = node.parentNode;
+        if (!node) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        w.wonAsked.push((node as Element).getAttribute("href") ?? "");
+      },
+      true,
+    );
+  });
+  const asked = () => page.evaluate(() => (window as unknown as { wonAsked: string[] }).wonAsked);
+  const inView = (id: string) => page.evaluate((target) => { const el = document.getElementById(target); const top = el?.getBoundingClientRect().top; return !!el && el.offsetParent !== null && top !== undefined && top >= 0 && top < window.innerHeight; }, id);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+
+  // Hladiny: "vlastní vzhled" opens "Tabulka na webu" and lands on the look.
+  await open(page, "tiers");
+  const look = page.locator("s-link", { hasText: "vzhled" }).first();
+  expect(await look.getAttribute("href")).toBeNull();
+  await look.click();
+  await expect(page.locator('[data-won-view-panel="table"]').first()).toBeVisible();
+  await expect.poll(() => inView("look-tiers")).toBe(true);
+
+  // Ochrana marže: the sentence about unread costs opens "Nákupní ceny".
+  await open(page, "margin?state=running");
+  await expect(page.locator('[data-won-view-panel="costs"]')).toBeHidden();
+  const costs = page.locator('[data-won-view-panel="settings"] s-link:not([href])').first();
+  await costs.click();
+  await expect(page.locator('[data-won-view-panel="costs"]')).toBeVisible();
+  await expect.poll(() => inView("costs")).toBe(true);
+
+  // Milníky after a save, with an amount missing: "doplnit částky" opens the steps from another view.
+  await open(page, "rewards?result=saved");
+  await typeInto(page, "ms.gift-socks.amount.EUR", "");
+  const fill = page.locator("[data-won-rewards-next] s-button:not([href])").first();
+  await expect(fill).toBeVisible();
+  await page.locator('[data-won-view-tile="web"]').click();
+  await expect(page.locator('[data-won-view-panel="steps"]')).toBeHidden();
+  await fill.click();
+  await expect(page.locator('[data-won-view-panel="steps"]')).toBeVisible();
+  await expect.poll(() => inView("steps")).toBe(true);
+
+  expect(await asked(), "no jump asked about the unsaved changes").toEqual([]);
+  expect(new URL(page.url()).hash).toBe("");
+});

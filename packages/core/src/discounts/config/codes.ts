@@ -8,6 +8,8 @@ import {
   type DiscountTargetKind,
   type DiscountValueKind,
 } from "./enums.ts";
+import { isMilestoneRule } from "../milestones.ts";
+import { pruneCombineRules, sanitizeRuleCombine } from "./combine.ts";
 import { CONFIG_LIMITS } from "./limits.ts";
 import {
   type IdAliases,
@@ -459,12 +461,9 @@ export function sanitizeDiscountRule(v: unknown, issues: ConfigIssue[], path: st
     rule.targeting = targeting;
   }
 
-  // Orphaned rule ids are pruned later (pruneCombinesWith), once every rule id is known.
-  if (isRecord(v.combinesWith) && Array.isArray(v.combinesWith.ruleIds)) {
-    rule.combinesWith = {
-      ruleIds: sanitizeStringArray(v.combinesWith.ruleIds, issues, `${path}.combinesWith.ruleIds`),
-    };
-  }
+  // What it adds up with (combine.ts). An order discount of Milníky has no list of its own: the Milníky list is its list.
+  const combine = isMilestoneRule(rule) ? undefined : sanitizeRuleCombine(v.combine, `${path}.combine`, issues);
+  if (combine) rule.combine = combine;
 
   if (isRecord(v.origin)) {
     if (typeof v.origin.nativeId === "string" && NATIVE_DISCOUNT_GID_RE.test(v.origin.nativeId)) {
@@ -481,40 +480,6 @@ export function sanitizeDiscountRule(v: unknown, issues: ConfigIssue[], path: st
   }
 
   return rule;
-}
-
-/**
- * `combinesWith.ruleIds` may only name rules that exist (audit P2-2): ids of
- * rules whose id was regenerated are remapped, unknown ids are removed with an
- * issue, duplicates are merged.
- */
-export function pruneCombinesWith(
-  ruleIds: string[],
-  known: ReadonlySet<string>,
-  aliases: ReadonlyMap<string, string>,
-  issues: ConfigIssue[],
-  path: string,
-): string[] {
-  const out: string[] = [];
-  const orphans: string[] = [];
-  for (const raw of ruleIds) {
-    const id = known.has(raw) ? raw : aliases.get(raw);
-    if (id === undefined) {
-      orphans.push(raw);
-      continue;
-    }
-    if (!out.includes(id)) out.push(id);
-  }
-  if (orphans.length > 0) {
-    pushIssue(
-      issues,
-      path,
-      "orphan_combines_with",
-      `Combines-with points to rule(s) that do not exist (${listPreview(orphans.map((o) => preview(o, 40)))}); they were removed.`,
-      { ...listParams("ids", orphans.map((o) => preview(o, 40))), count: orphans.length },
-    );
-  }
-  return out;
 }
 
 /**
@@ -598,15 +563,10 @@ export function sanitizeRules(v: unknown, issues: ConfigIssue[]): { rules: Disco
     );
   }
   out.forEach((rule, i) => {
-    if (rule.combinesWith) {
-      rule.combinesWith.ruleIds = pruneCombinesWith(
-        rule.combinesWith.ruleIds,
-        ids,
-        aliases,
-        issues,
-        `${paths[i]}.combinesWith.ruleIds`,
-      );
-    }
+    if (!rule.combine?.rules) return;
+    const kept = pruneCombineRules(rule.combine.rules, rule.id, ids, aliases, issues, `${paths[i]}.combine.rules`);
+    if (kept.length > 0) rule.combine.rules = kept;
+    else delete rule.combine.rules;
   });
   return { rules: out, aliases };
 }

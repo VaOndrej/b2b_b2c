@@ -1,3 +1,4 @@
+import { sanitizeCombineSetting } from "./combine.ts";
 import { DEFAULT_CONFIG } from "./defaults.ts";
 import { OUTLET_DISPLAY_MODES, REOPEN_ON_RETURN_MODES } from "./enums.ts";
 import { isRecord, sanitizeEnum } from "./sanitize-helpers.ts";
@@ -15,5 +16,6 @@ export function sanitizeOutlet(v: unknown, issues: ConfigIssue[]): OutletModule 
       "modules.outlet.reopenOnReturnAfterEnd",
       issues,
     ),
+    combine: sanitizeCombineSetting(rec.combine, def.combine, "modules.outlet.combine", issues),
   };
 }

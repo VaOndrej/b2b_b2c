@@ -1,4 +1,4 @@
-// Won Discounts config v1 (doctrine DATA-2/DATA-3, spec §2). This is the single
+// Won Discounts config (schema 2; doctrine DATA-2/DATA-3, spec §2). This is the single
 // source of truth's *shape*: sanitize + migrate + read all live here so admin,
 // storefront and the discount function agree on exactly one interpretation of a
 // stored config (DATA-4 — "one brain").
@@ -15,14 +15,12 @@ export {
   ACCENT_PRESETS,
   APPEARANCE_PRESETS,
   CODE_BATCH_ALPHABETS,
-  COMBINATION_CATEGORIES,
   DISCOUNT_METHODS,
   DISCOUNT_TARGET_KINDS,
   DISCOUNT_VALUE_KINDS,
   MINIMUM_SCOPES,
   ONBOARDING_GOALS,
   OUTLET_DISPLAY_MODES,
-  PRODUCT_WITH_PRODUCT_MODES,
   REOPEN_ON_RETURN_MODES,
   SCHEMA_VERSION,
   TIER_COUNT_ACROSS_MODES,
@@ -32,14 +30,12 @@ export type {
   AccentPreset,
   AppearancePreset,
   CodeBatchAlphabet,
-  CombinationCategory,
   DiscountMethod,
   DiscountTargetKind,
   DiscountValueKind,
   MinimumScope,
   OnboardingGoal,
   OutletDisplay,
-  ProductWithProductMode,
   ReopenOnReturnMode,
   TierCountAcross,
   UnknownMarketKind,
@@ -82,3 +78,5 @@ export { CONFIG_LIMITS } from "./config/limits.ts";
 export { createDefaultConfig, DEFAULT_CONFIG } from "./config/defaults.ts";
 export { isIsoDateTime, isShopLocalDateTime, isValidEntityId } from "./config/validators.ts";
 export { isNewerSchema, migrateConfig, readStoredConfig, sanitizeConfig } from "./config/sanitize.ts";
+export { COMBINE_MODULES, COMBINE_TYPES } from "./combine.ts";
+export type { CombineModule, CombineSetting, CombineType, RuleCombine } from "./combine.ts";
