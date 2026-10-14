@@ -132,3 +132,12 @@ export function discountSubNavItems(locale: Locale, goals: readonly OnboardingGo
     return state && state !== "locked" ? { ...item, state } : item;
   });
 }
+
+/** The strip's last item (umístění na webu, balík E): where every discount module shows on the storefront. No dot. */
+export const PLACEMENTS_PAGE = "placements";
+export type DiscountStripKey = DiscountPage | typeof PLACEMENTS_PAGE;
+
+/** The strip under "Slevy": its pages, then "Umístění na webu" — one click from the sidebar (Ondřej 14 Oct 2026). */
+export function discountStripItems(locale: Locale, goals: readonly OnboardingGoal[], states: DiscountPageStates = {}): SubNavItem<DiscountStripKey>[] {
+  return [...discountSubNavItems(locale, goals, states), { key: PLACEMENTS_PAGE, to: "/app/placements", label: t(locale, "webPlaces.title"), pro: false }];
+}

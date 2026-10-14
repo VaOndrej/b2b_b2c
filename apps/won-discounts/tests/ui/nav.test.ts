@@ -138,10 +138,10 @@ test("DiscountsSubNav: a labelled nav of links, exactly one marked as the curren
   }
 });
 
-test("DiscountsSubNav: default order without a provider, goal order with it; Pro said by a badge", async () => {
-  assert.deepEqual(hrefs(await renderSubNav("tiers")), ["/app/discounts", "/app/tiers", "/app/rewards", "/app/outlet", "/app/campaigns"]);
+test("DiscountsSubNav: default order without a provider, goal order with it, Umístění na webu last; Pro said by a badge", async () => {
+  assert.deepEqual(hrefs(await renderSubNav("tiers")), ["/app/discounts", "/app/tiers", "/app/rewards", "/app/outlet", "/app/campaigns", "/app/placements"]);
   const ordered = await renderSubNav("outlet", { goals: ["outlet", "rewards"], states: {} });
-  assert.deepEqual(hrefs(ordered), ["/app/discounts", "/app/outlet", "/app/rewards", "/app/tiers", "/app/campaigns"]);
+  assert.deepEqual(hrefs(ordered), ["/app/discounts", "/app/outlet", "/app/rewards", "/app/tiers", "/app/campaigns", "/app/placements"]);
   assert.match(ordered, /<a href="\/app\/outlet" aria-current="page"/);
   // Two Pro pages, two badges; the label itself has no "(Pro)".
   assert.equal(ordered.match(/>Pro<\/span>/g)?.length, 2);

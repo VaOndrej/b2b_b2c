@@ -20,7 +20,7 @@ import { createContext, useContext, useEffect, useRef, type MouseEvent } from "r
 import { useNavigate } from "react-router";
 
 import { useT } from "../../i18n/context";
-import { discountSubNavItems, NO_DISCOUNT_NAV, type DiscountNavData, type DiscountPage, type SubNavItem } from "../model/modules";
+import { discountStripItems, NO_DISCOUNT_NAV, type DiscountNavData, type DiscountStripKey, type SubNavItem } from "../model/modules";
 import { hoverMark } from "./hover";
 import { PlanBadge } from "./PlanBadge";
 import { StatusDot } from "./WonSection";
@@ -127,9 +127,12 @@ export function SubNav({ label, items, active }: SubNavProps) {
   );
 }
 
-/** The strip on the five pages of "Slevy": Slevy a kódy first, then the modules in the order of the onboarding goals. */
-export function DiscountsSubNav({ active }: { active: DiscountPage }) {
+/**
+ * The strip on the pages of "Slevy": Slevy a kódy first, then the modules in the order of the onboarding goals, then
+ * Umístění na webu (on that page too).
+ */
+export function DiscountsSubNav({ active }: { active: DiscountStripKey }) {
   const { t, locale } = useT();
   const { goals, states } = useContext(DiscountNav);
-  return <SubNav label={t("nav.discountsGroup")} items={discountSubNavItems(locale, goals, states)} active={active} />;
+  return <SubNav label={t("nav.discountsGroup")} items={discountStripItems(locale, goals, states)} active={active} />;
 }

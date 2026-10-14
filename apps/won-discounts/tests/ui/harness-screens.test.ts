@@ -400,6 +400,11 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "rewards", expect: [/<nav aria-label="Slevy" data-won-subnav="true"/, /<a href="\/app\/rewards" aria-current="page"/] },
   { path: "outlet", expect: [/<nav aria-label="Slevy" data-won-subnav="true"/, /<a href="\/app\/outlet" aria-current="page"/] },
   { path: "campaigns", expect: [/<nav aria-label="Slevy" data-won-subnav="true"/, /<a href="\/app\/campaigns" aria-current="page"/] },
+  // Umístění na webu (balík E): the strip's last item on every page of "Slevy", and the page itself carries the strip
+  // (Ondřej 14 Oct 2026: reached by clicking, Slevy → Umístění na webu).
+  { path: "tiers", expect: [/data-won-subnav-item="placements"/, /<a href="\/app\/placements" data-won-subnav-item="placements"/] },
+  { path: "campaigns", expect: [/<a href="\/app\/placements" data-won-subnav-item="placements"/] },
+  { path: "placements", expect: [/<nav aria-label="Slevy" data-won-subnav="true"/, /<a href="\/app\/placements" aria-current="page"/, /data-won-piece="msDrawer"/, /Připravit zadání pro AI|Zobrazit postup/] },
   // MVP 3: Množstevní slevy — the set, the honest sentences, the faithful preview (the storefront's K8 markup + texts +
   // money format), the table on the product page, the storefront config, the Pro sets (K1) and what Free does not run.
   {

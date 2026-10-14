@@ -2,7 +2,7 @@
 // row a place, ONE main button: "Přidat na web" where the theme takes an app block, "Připravit zadání pro AI" where
 // it does not (the cart drawer, a card that takes no block). Where a block goes, the code way is a quiet "Chci to
 // jinde". The guide under a row: copy the brief (with the theme's own file), open the file, check — and the line
-// for a developer ("Udělám to sám"). The words "blok", "značka", "embed", "Liquid" stay out of the page (zadání §11).
+// for a developer ("Udělám to sám"). Reached from the sidebar: Slevy → the strip's last item. The words "blok", "značka", "embed", "Liquid" stay out of the page (zadání §11).
 
 import { useState } from "react";
 import { useFetcher } from "react-router";
@@ -13,6 +13,7 @@ import { PIECES, PLACEMENTS_FIELD, PLACEMENTS_INTENT, pieceTone, type PieceKey, 
 import { tagDef, tagLine } from "../model/theme-brief";
 import { codeEditorUrl, type KnownShow, type ScannedTag } from "../model/theme-scan";
 import { NotePill, PlacementPill, RowNote, WonRow, WonSection, type SectionGlyphName } from "../shell/WonSection";
+import { DiscountsSubNav } from "../shell/SubNav";
 import { WON_FONT, WON_INK, WON_LINE, WON_WASH } from "../shell/tokens";
 
 export type PlacementsScreenProps = PlacementsScreenData;
@@ -221,6 +222,7 @@ export function PlacementsScreen(props: PlacementsScreenProps) {
   const theme = props.scan.theme;
   return (
     <s-page heading={t("webPlaces.title")}>
+      <DiscountsSubNav active="placements" />
       <s-stack direction="block" gap="base">
         <WonSection
           title={theme ? t("webPlaces.theme", { theme: theme.name }) : t("webPlaces.title")}

@@ -4,6 +4,22 @@ Zadání: `WonCommerce/Apps/docs/won-discounts-umisteni-na-web-zadani.md` (mimo 
 ve worktree `WonCommerce/b2b_b2c-umisteni`, protože na `main` paralelně běžel krok 6 kombinování. Po dokončení se
 sloučí do `main`. Samostatný log, aby se nepral s `docs/won-discounts-build-log.md`.
 
+**CHECKPOINT U5 (14. 10. 2026): navigace a příprava merge.** Ondřej: stránka musí jít proklikat, ne jen přes
+odkaz. Pravidlo Won (`packages/app-kit/src/admin-nav.tsx`): nejvýš 5 položek v postranním menu, související stránky
+sdílí položku a pruh. „Umístění na webu“ je proto poslední položka pruhu pod „Slevy“ (`discountStripItems`), pruh
+je i na stránce samé: Slevy → Umístění na webu. Zadání pro AI anglicky: schváleno.
+**Merge do `main` dělám já, až druhá AI skončí.** Postup:
+1. `./docs/won-discounts/merge-umisteni.sh`: zkusný merge v paměti (nic nezapíše) + kolize čísla Postgres migrace.
+   Při kolizi `--fix` přečísluje `0007_theme_tags` na další volné číslo a commitne to na této větvi. Ověřeno na
+   simulovaném `main` s `0007_other` → navrhne `0008`. SQLite migrace mají časové razítko, kolize nehrozí.
+2. `git merge main` do této větve. Čekané textové konflikty (obě strany přidávají na konec souboru):
+   `app/i18n/cs.ts`, `app/i18n/en.ts` (blok „Umístění na webu“ až za klíče z `main`), `app/lib/dev-harness.server.ts`,
+   seznam `HARNESS_SCREENS` v `dev.preview.$.tsx`, `tests/ui/harness-screens.test.ts`. Řešení: obojí ponechat.
+   `MilestonesScreen.tsx` a `CampaignsScreen.tsx`: mám jen jeden řádek `<PlacementsLink …/>` a import.
+3. Brány (core, docs:gen, test:unit:node včetně `tests/lib/migrations.test.ts`, typecheck, lint, Theme Check),
+   pak teprve merge do `main` a push po dotazu.
+Stav 14. 10.: `main` = `a73ce412`, čistý, poslední Postgres migrace `0006` → dnes bez kolize a bez konfliktu.
+
 **CHECKPOINT U4 (14. 10. 2026), balík E rozpracovaný.** Zadání pro tuhle část: `docs/won-discounts/prompt-umisteni-pokracovani.md`.
 Ověřeno (shopify.dev, Admin 2026-04): `theme.files(filenames:, first:)` bere nejvýš 50 vzorů s `*`, `first` až 2 500,
 odpověď se zkrátí podle velikosti (stránkuje se kurzorem); soubor má `checksumMd5` a `size`. Liquid soubor má
