@@ -92,7 +92,11 @@ import {
   devTryCartRewardLines,
   DEV_TRY_CART_TIER_LINES,
   isDevHarnessEnabled,
+  devPlacementsResult,
+  devPlacementsScreen,
 } from "../lib/dev-harness.server";
+import { PlacementsScreen, type PlacementsScreenProps } from "../components/screens/PlacementsScreen";
+import type { PlacementsResult } from "../components/model/placements";
 
 // Dev-only admin harness (Task 5 brief): renders the REAL admin screens (the
 // same components the embedded app/routes/app.* routes render) against fixture
@@ -191,6 +195,7 @@ export const HARNESS_SCREENS = [
   "outlet",
   "campaigns",
   "translations",
+  "placements",
 ] as const;
 export type HarnessScreen = (typeof HARNESS_SCREENS)[number];
 
@@ -566,6 +571,9 @@ const screenProps = ({ request }: LoaderFunctionArgs) => {
       return { ...devOutletScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, orders: q.get("orders") === "on", look: q.get("look") }), result: devOutletResult(q.get("result")) };
     case "translations":
       return devTranslationsScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale });
+    case "placements":
+      // Umístění na webu (balík E): ?state=horizon | copy | embed-off | nothing | unknown (dev-harness devPlacementsScreen).
+      return devPlacementsScreen({ state });
     case "margin": {
       // ?state=running&until=<epoch ms>: the read of the costs ends at that time (the page polls while it runs).
       const until = Number(q.get("until"));
@@ -587,6 +595,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     throw notFound();
   }
   const url = new URL(request.url);
+  if (harnessScreen(url.pathname) === "placements") return devPlacementsResult(await request.formData(), url.searchParams.get("state"));
   if (harnessScreen(url.pathname) === "translations") {
     const q = url.searchParams;
     const csv = devTranslationsCsv(await request.formData(), { plan: q.get("plan") === "pro" ? "pro" : "free", state: q.get("state"), locale: resolveLocale(q.get("locale")) });
@@ -617,7 +626,8 @@ export default function DevPreview() {
   const { screen: data, discountNav } = useLoaderData<typeof loader>();
   // A harness form submit answers `preview_only`; the screen shows it like any result.
   const answered = useActionData<typeof action>() ?? null;
-  const submitted = answered && !answered.ok ? answered : null;
+  // Umístění na webu answers its own fetchers (a brief, "checked", or its own refusals): never a screen's result.
+  const submitted = answered && !answered.ok && !("kind" in answered) && answered.reason !== "no_theme" ? (answered as Exclude<typeof answered, PlacementsResult>) : null;
   const location = useLocation();
   // The sections that save on their own post to the harness too (nothing is saved).
   const here = `${location.pathname}${location.search}`;
@@ -670,6 +680,9 @@ export default function DevPreview() {
       break;
     case "translations":
       content = <TranslationsScreen {...(data as TranslationsScreenProps)} result={submitted} />;
+      break;
+    case "placements":
+      content = <PlacementsScreen {...(data as PlacementsScreenProps)} />;
       break;
     case "margin":
       content = <MarginScreen {...(data as MarginScreenProps)} result={submitted ?? (data as MarginScreenProps).result} />;

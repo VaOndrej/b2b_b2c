@@ -11,6 +11,7 @@ import type { UiResult } from "../model/types";
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
+import { PlacementsLink } from "../StorefrontPlacements";
 
 export function CardPricesSection({
   cardPrices,
@@ -86,6 +87,8 @@ export function CardPricesSection({
           >
             <RowNote>{t("looks.cards.block")}</RowNote>
           </WonRow>
+          {/* Umístění na webu: whether the card line is on the web in this theme, and the way in where the card takes no block. */}
+          <PlacementsLink module="tiers" />
           <div>
             <s-button type="submit" variant="primary" disabled={boolAttr(fetcher.state !== "idle")}>
               {t("common.save")}

@@ -5,9 +5,12 @@
 // other placement (green "V tématu", red "Chybí v tématu", grey "Neověřeno"); a missing one gets the
 // primary button.
 
+import { Link } from "react-router";
+
 import { useT } from "../i18n/context";
 import type { MessageKey } from "../i18n";
 import { editorOpenUrl, placementOf, spotAdvice, type PlacementLinks } from "./model/embed";
+import { PLACEMENTS_PATH } from "./model/placements";
 import type { PlacementKey, PlacementSpot, ThemePlacements } from "./model/types";
 import { PlacementPill, type PlacementState, RowNote, WonRow } from "./shell/WonSection";
 
@@ -39,6 +42,27 @@ export function SpotNote({ placement, spot, place, spotKey }: { placement: Place
   }
   if (placement !== "missing" || (place !== "home" && place !== "product")) return null;
   return <RowNote>{t(place === "home" ? "placement.spot.howPage" : "placement.spot.howProduct")}</RowNote>;
+}
+
+/**
+ * Umístění na webu (balík E): the page with every element and every place, the code way included (the drawer, a
+ * card that takes no block, "Chci to jinde"). `module` = the module's section on that page.
+ */
+export function PlacementsLink({ module }: { module: "tiers" | "rewards" | "outlet" | "campaigns" }) {
+  const { t } = useT();
+  return (
+    <div data-won-placements-link={module}>
+      <WonRow
+        action={
+          <Link to={`${PLACEMENTS_PATH}#web-${module}`} style={{ fontSize: 13, fontWeight: 600 }}>
+            {t("webPlaces.link")}
+          </Link>
+        }
+      >
+        <RowNote>{t("webPlaces.link.text")}</RowNote>
+      </WonRow>
+    </div>
+  );
 }
 
 export function StorefrontPlacements({ links, rows, placed = {} }: { links: PlacementLinks; rows: readonly PlacementRow[]; placed?: ThemePlacements }) {

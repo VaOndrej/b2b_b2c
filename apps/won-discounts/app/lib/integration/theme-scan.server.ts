@@ -92,16 +92,36 @@ function sectionTypesIn(content: string): string[] {
   return out;
 }
 
+/** The handles of this app's blocks a JSON template / section group holds, enabled, at any depth (Horizon nests blocks). */
+function appBlocksIn(content: string): string[] {
+  const data = parseThemeJson(content);
+  const out: string[] = [];
+  const walk = (node: unknown, depth: number) => {
+    if (depth > 12 || typeof node !== "object" || node === null) return;
+    const rec = node as { disabled?: unknown; type?: unknown; blocks?: unknown; sections?: unknown };
+    if (rec.disabled === true) return;
+    const handle = typeof rec.type === "string" ? /^shopify:\/\/apps\/[^/]+\/blocks\/([\w-]+)\//.exec(rec.type)?.[1] : undefined;
+    if (handle && !out.includes(handle)) out.push(handle);
+    for (const child of [rec.blocks, rec.sections]) if (typeof child === "object" && child !== null) for (const value of Object.values(child)) walk(value, depth + 1);
+  };
+  walk(data, 0);
+  return out;
+}
+
 /** What the app keeps of one file: no content, only what it found. */
 export interface FileFacts {
   tags: ScannedTag[];
+  /** A Liquid section / theme block whose schema takes app blocks. */
   app: boolean;
+  /** JSON: the section types it uses. */
   sections: string[];
+  /** JSON: the app blocks in it by handle (any app's: the handle is checked against this app's by the caller). */
+  appBlocks: string[];
 }
 
 export function factsOf(filename: string, content: string): FileFacts {
   const json = filename.endsWith(".json");
-  return { tags: tagsIn(filename, content), app: !json && acceptsAppBlocks(content), sections: json ? sectionTypesIn(content) : [] };
+  return { tags: tagsIn(filename, content), app: !json && acceptsAppBlocks(content), sections: json ? sectionTypesIn(content) : [], appBlocks: json ? appBlocksIn(content) : [] };
 }
 
 /**
@@ -119,6 +139,14 @@ export function blockFitsOf(files: ReadonlyMap<string, FileFacts>): BlockFits {
     card: [...files].some(([name, facts]) => facts.app && /^(blocks|sections)\/_?product-card[^/]*\.liquid$/.test(name)),
     drawer: false,
   };
+}
+
+/** Where each app block handle is (the files that hold it, JSON templates and section groups). */
+export function appBlocksByFile(files: ReadonlyMap<string, FileFacts>): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const [name, facts] of files) for (const handle of facts.appBlocks) (out[handle] ??= []).push(name);
+  for (const list of Object.values(out)) list.sort();
+  return out;
 }
 
 /** The live theme's tags as the storefront config's `tg` (core themeTagsPart: sizes in order, unknown → compact). */
@@ -311,7 +339,7 @@ async function loadThemeScan(client: Graphql): Promise<ThemeScanView> {
     }
     return {
       state: "ok",
-      live: { ...themeOf({ ...main, live: true }, live), fits: blockFitsOf(live.files), files: [...live.files.keys()].sort() },
+      live: { ...themeOf({ ...main, live: true }, live), fits: blockFitsOf(live.files), files: [...live.files.keys()].sort(), blocks: appBlocksByFile(live.files) },
       copies: copyThemes,
     };
   } catch (error) {

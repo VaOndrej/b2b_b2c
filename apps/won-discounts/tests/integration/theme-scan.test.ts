@@ -99,7 +99,7 @@ test("model: the place a file stands for, the brief's file, the code editor link
   assert.equal(codeEditorUrl("evil.com", "123", null), null);
   const scan: ThemeScanView = {
     state: "ok",
-    live: { id: "1", name: "Dawn", live: true, complete: true, tags: [{ show: "cart", file: "snippets/cart-drawer.liquid", line: 3 }, { show: "carts", file: "x", line: 1 }], fits: { product: true, home: true, cart: true, header: true, card: false, drawer: false }, files: [] },
+    live: { id: "1", name: "Dawn", live: true, complete: true, tags: [{ show: "cart", file: "snippets/cart-drawer.liquid", line: 3 }, { show: "carts", file: "x", line: 1 }], fits: { product: true, home: true, cart: true, header: true, card: false, drawer: false }, files: [], blocks: {} },
     copies: [{ id: "2", name: "Dawn – kopie", live: false, complete: true, tags: [{ show: "card-tier", file: "snippets/card-product.liquid", line: 9 }] }],
   };
   assert.equal(tagPresence(scan, "cart", "drawer").in, "live");

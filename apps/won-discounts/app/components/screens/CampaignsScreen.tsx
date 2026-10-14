@@ -15,7 +15,7 @@
 // and errors are rendered beside the field, the discount or the set they are about (never through `error`).
 // Each action is its own small form; the server parses it (campaigns-admin.server.ts).
 
-import { StorefrontPlacements } from "../StorefrontPlacements";
+import { PlacementsLink, StorefrontPlacements } from "../StorefrontPlacements";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
@@ -766,6 +766,7 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
                 { place: "topBar", key: "topBarCampaign", text: "campaign.places.topBar", action: "placements.addTopBar" },
               ]}
             />
+            <PlacementsLink module="campaigns" />
           </WonSection>
         ) : null}
         {props.look ? <LookSection look={props.look} plan={plan} configVersion={props.configVersion} /> : null}

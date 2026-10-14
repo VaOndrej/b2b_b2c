@@ -89,6 +89,9 @@ import { OUTLET_FIELD } from "../components/model/outlet";
 import { CAMPAIGN_FIELD } from "../components/model/campaigns";
 import { campaignRuleChoices, campaignsOverviewOf, campaignTierChoices, campaignView, type CampaignViewOptions } from "./integration/campaigns-admin.server";
 import { OUTLET_LIMITS } from "@won/core/discounts/outlet";
+import { PIECES, PLACEMENTS_FIELD, PLACEMENTS_INTENT, otherTags, pieceRows, type BlockFound, type PlacementContent, type PlacementsResult, type PlacementsScreenData } from "../components/model/placements";
+import { composeBrief } from "../components/model/theme-brief";
+import { briefFileFor, type ScannedTag, type ThemeScanView } from "../components/model/theme-scan";
 
 export function isDevHarnessEnabled(): boolean {
   // eslint-disable-next-line no-undef
@@ -1957,4 +1960,74 @@ function devStoredCheck(opts: { plan: "free" | "pro"; locale: "cs" | "en"; sampl
 /** `?scenario=<id>` on Vyzkoušet košík (Pro), as scenarioCart prepares the manual cart. */
 export function devScenarioCart(opts: { locale: "cs" | "en"; sample?: boolean; baskets?: boolean; id: string }) {
   return scenarioCartOf(devStoredCheck({ ...opts, plan: "pro" }), opts.id, opts.locale);
+}
+
+// --- Umístění na webu (balík E) ------------------------------------------------------------------------------
+
+const DEV_DAWN_FILES = ["layout/theme.liquid", "sections/header-group.json", "sections/main-cart-footer.liquid", "sections/main-cart-items.liquid", "sections/main-product.liquid", "snippets/card-product.liquid", "snippets/cart-drawer.liquid", "templates/cart.json", "templates/collection.json", "templates/index.json", "templates/product.json"];
+const DEV_HORIZON_FILES = ["blocks/_product-card.liquid", "layout/theme.liquid", "sections/header-group.json", "sections/main-cart.liquid", "sections/product-information.liquid", "snippets/cart-drawer.liquid", "snippets/product-card.liquid", "templates/cart.json", "templates/collection.json", "templates/index.json", "templates/product.json"];
+
+/**
+ * Umístění na webu as loadPlacementsScreen hands it over (the same pure pieceRows over a fixture theme read):
+ *   default    Dawn: the card and the drawer take no block (the brief for AI); the drawer has Won's tag, the cart
+ *              page and the product page have their blocks, a Milestones bar in a file of the merchant's own;
+ *   horizon    Horizon: the card takes a block (and has one), the drawer still a tag (none yet);
+ *   copy       Dawn with the drawer's tag only in a copy of the theme, and a typo `show="carts"`;
+ *   embed-off  the drawer's tag in the live theme, Won switched off;
+ *   nothing    everything in place, nothing to show (no step, no campaign, card prices off);
+ *   unknown    the theme could not be read (every row the block's way, not verified).
+ */
+export function devPlacementsScreen(opts: { state: string | null }): PlacementsScreenData {
+  const horizon = opts.state === "horizon";
+  const tag = (show: string, file: string, line: number, extra: Partial<ScannedTag> = {}): ScannedTag => ({ show, file, line, ...extra });
+  const liveTags: ScannedTag[] =
+    opts.state === "copy"
+      ? [tag("carts", "snippets/cart-drawer.liquid", 88)]
+      : horizon
+        ? []
+        : [tag("cart", "snippets/cart-drawer.liquid", 132), tag("card-tier", "snippets/card-product.liquid", 61, { product: "{{ card_product.handle }}" }), tag("milestones", "sections/footer.liquid", 12, { size: "bar" })];
+  const scan: ThemeScanView =
+    opts.state === "unknown"
+      ? { state: "unknown" }
+      : {
+          state: "ok",
+          live: {
+            id: "184467440737",
+            name: horizon ? "Horizon" : "Dawn",
+            live: true,
+            complete: true,
+            tags: liveTags,
+            fits: { product: true, home: true, cart: true, header: true, card: horizon, drawer: false },
+            files: horizon ? DEV_HORIZON_FILES : DEV_DAWN_FILES,
+            blocks: horizon ? { card_tiers: ["templates/collection.json"] } : {},
+          },
+          copies: opts.state === "copy" ? [{ id: "184467440738", name: "Dawn – úpravy košíku", live: false, complete: true, tags: [tag("cart", "snippets/cart-drawer.liquid", 132)] }] : [],
+        };
+  const nothing = opts.state === "nothing";
+  const content: PlacementContent = { tiers: !nothing, rewards: !nothing, campaigns: !nothing, outlet: false, cards: !nothing };
+  const blocks: BlockFound = opts.state === "unknown" ? {} : { tiersTable: true, msHeader: false, msProduct: true, msCart: true, outletBadge: false, cpHeader: false, cpHome: false, cpProduct: false, ...(horizon ? { cardTier: true } : {}) };
+  const embed = opts.state === "embed-off" ? "off" : "on";
+  const files: PlacementsScreenData["files"] = {};
+  if (scan.state === "ok") for (const def of PIECES) files[def.place] = briefFileFor(def.place, scan.live.files);
+  return {
+    rows: pieceRows({ scan, blocks, embed, content }),
+    links: Object.fromEntries(PIECES.map((p) => [p.key, p.place === "drawer" ? { add: null, open: null } : { add: `https://${DEV_SHOP}/admin/themes/current/editor?addAppBlockId=dev/${p.key}`, open: `https://${DEV_SHOP}/admin/themes/current/editor?template=product` }])),
+    other: otherTags(scan),
+    scan: { state: scan.state, theme: scan.state === "ok" ? { id: scan.live.id, name: scan.live.name, complete: true } : null, copies: scan.state === "ok" ? scan.copies.map((c) => ({ id: c.id, name: c.name })) : [] },
+    files,
+    embed: { state: embed, activateUrl: DEV_ACTIVATE_URL },
+    shop: DEV_SHOP,
+    syncing: false,
+  };
+}
+
+/** The harness's answer to the page's forms: a brief over a short fixture file, or "checked". */
+export function devPlacementsResult(form: FormData, state: string | null): PlacementsResult {
+  if (form.get(PLACEMENTS_FIELD.intent) === PLACEMENTS_INTENT.check) return { ok: true, kind: "checked" };
+  const def = PIECES.find((p) => p.key === form.get(PLACEMENTS_FIELD.piece));
+  if (!def?.show) return { ok: false, reason: "bad_request" };
+  const screen = devPlacementsScreen({ state });
+  const file = screen.files[def.place] ?? null;
+  const content = file ? `{%- comment -%} ${file} (fixture) {%- endcomment -%}\n<div class="drawer__footer">\n  <div class="totals">{{ cart.total_price | money }}</div>\n  <button type="submit" name="checkout">{{ 'sections.cart.checkout' | t }}</button>\n</div>\n` : null;
+  return { ok: true, kind: "brief", piece: def.key, brief: composeBrief({ show: def.show, place: def.place, themeName: screen.scan.theme?.name ?? "Dawn", file, content }), file, read: content !== null };
 }

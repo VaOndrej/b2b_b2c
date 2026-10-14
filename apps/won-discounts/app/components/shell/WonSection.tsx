@@ -281,6 +281,11 @@ export function PlacementPill({ placement, move = false }: { placement: Placemen
   return <Pill tone={tone} label={label} marker={{ "data-won-placement": misplaced ? "misplaced" : placement }} />;
 }
 
+/** A placement state the three words do not cover (umístění na webu: "Jen v kopii", "Won vypnutý"), in the same pill. */
+export function NotePill({ tone, label, marker }: { tone: "warning" | "attention"; label: string; marker: string }) {
+  return <Pill tone={tone} label={label} marker={{ "data-won-placement": marker }} />;
+}
+
 /** The collapse affordance: a clear chevron in a ring, pointing down when open. */
 function Chevron({ open }: { open: boolean }) {
   return (

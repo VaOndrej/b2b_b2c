@@ -32,7 +32,7 @@ import { LookSection } from "../looks/LookSection";
 import { ModuleCombine } from "../shell/ModuleCombine";
 import { presetLabel } from "../model/looks";
 import { editorOpenUrl, embedPlacement, placementOf, spotAdvice } from "../model/embed";
-import { SpotNote } from "../StorefrontPlacements";
+import { PlacementsLink, SpotNote } from "../StorefrontPlacements";
 import { placementStatus } from "../model/module-status";
 import { amountInput, amountsText, emptyStepView, liveAmounts, MILESTONES_INTENT, milestoneRowsMax, MS_FIELD, overLimitColumns, rewardText, stepMissingColumns, stepSummary } from "../model/milestones";
 import { freeShippingDefaults } from "../model/rule-form";
@@ -722,6 +722,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
                   </WonRow>
                 ))}
               </div>
+              <PlacementsLink module="rewards" />
             </WonSection>
             <WonSection title={t("milestones.honest.title")} glyph="cart" anchor="cart">
               <s-stack direction="block" gap="small-300">

@@ -37,7 +37,12 @@ export type ThemeScanView =
   | { state: "unknown" }
   | {
       state: "ok";
-      live: ScannedTheme & { fits: BlockFits; files: string[] };
+      live: ScannedTheme & {
+        fits: BlockFits;
+        files: string[];
+        /** App block handle → the JSON files that hold it (e.g. `card_tiers` in `templates/collection.json`). */
+        blocks: Record<string, string[]>;
+      };
       /** The newest unpublished copies (at most 3), tags only. */
       copies: ScannedTheme[];
     };

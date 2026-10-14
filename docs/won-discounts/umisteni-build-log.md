@@ -20,6 +20,19 @@ Plán E po krocích (každý commit zvlášť):
   souborech: Horizon 268 souborů / 2 MB (karta bere blok), Dawn 106 / 0,9 MB (karta ne). Testy
   `tests/integration/theme-scan.test.ts` (10), `storefront-sync.test.ts` +2. Brány: core 1 009, app 1 945,
   typecheck, lint 0 chyb. Volání `readThemeScan` z obrazovek přijde v E2.
+- **E2–E5 hotové v kódu, naživo neověřené.** Stránka `/app/placements` („Umístění na webu“,
+  `PlacementsScreen.tsx`, `app.placements.tsx`, `lib/integration/placements.server.ts`): každý prvek každého modulu
+  a každé místo, jedno hlavní tlačítko podle vzhledu („Přidat na web“ / „Připravit zadání pro AI“), u míst s blokem
+  tiché „Chci to jinde“. Průvodce pod řádkem: zadání pro AI (anglicky, z `theme-tags.ts` + obsah souboru načtený až
+  po kliknutí), odkaz `/admin/themes/<id>?key=<soubor>`, „Zkontrolovat znovu“; záložka „Udělám to sám“. Stavy:
+  Jen v kopii, Won vypnutý (+ Zapnout), „je na webu, teď nemá co ukázat“ (žádný milník / kampaň / sleva / výprodej,
+  ceny na kartách vypnuté), neznámé `show` (překlep) v „Další vložená místa“. Karta produktu má stav (značka, nebo
+  blok `card_tiers` v JSON šablonách). Navigace je plná (5 položek), stránka je přes odkaz z Milníků, Kampaní
+  a karet v Množstevních slevách. Dev náhled `/dev/preview/placements?state=horizon|copy|embed-off|nothing|unknown`,
+  screenshoty `evidence/umisteni-2026-10-14/placements-*`, `guide-*`, `link-*` (390 i 1440, bez vodorovného
+  posunu). **Nedělané z E2:** tlačítka na stránkách modulů se podle vzhledu nemění (zásuvka v Milnících dál říká
+  „Zapnout na webu“, protože do balíku C ji umísťuje skript). Testy `tests/integration/placements.test.ts` (6).
+  Brány: core 1 009, app 1 951, typecheck, lint 0 chyb, Theme Check 4× OrphanedSnippet (známé).
 - **E1** čtení: čisté funkce (značky v Liquidu bez `{% comment %}`, `@app` ve schématu sekce → kam blok jde),
   výsledek živého vzhledu do `ShopSyncState.themeTags` (nový sloupec, sqlite i postgres), sync ho předá jako
   `themeTags` → `tg`. Změněné značky = resync.
