@@ -2,6 +2,7 @@
 ((w, d) => {
   "use strict";
   const SLOT = "[data-won-discounts-cart-slot]";
+  const TAG = 'won-discounts[show="cart"]';
   const DRAWERS = ["cart-drawer-component .cart-drawer__summary", "#CartDrawer .drawer__footer"];
   const PAGES = [".cart-page__summary", "#main-cart-footer .cart__footer"];
   const GAP_MS = 1500;
@@ -131,8 +132,9 @@
   };
 
   const panels = () => {
-    const slots = [...d.querySelectorAll([SLOT, ...DRAWERS].join(","))];
-    if (!d.querySelector(SLOT)) slots.push(...d.querySelectorAll(PAGES.join(",")));
+    const tagged = d.querySelector(TAG);
+    const slots = [...d.querySelectorAll([SLOT, TAG, ...(tagged ? [] : DRAWERS)].join(","))];
+    if (!tagged && !d.querySelector(SLOT)) slots.push(...d.querySelectorAll(PAGES.join(",")));
     return slots.map((slot) => {
       let p = slot.querySelector(":scope > [data-won-discounts-cart]");
       if (!p) {
@@ -142,7 +144,7 @@
         slot.prepend(p);
       }
       /* Milníky: every step on the cart page, the compact ladder in the cart drawer; the panel says where it stands (each place has its own look). */
-      p.__size = slot.matches?.(DRAWERS.join(",")) ? "compact" : "full";
+      p.__size = slot.matches?.(TAG) ? (slot.getAttribute("size") === "full" ? "full" : "compact") : slot.matches?.(DRAWERS.join(",")) ? "compact" : "full";
       p.className = `won-cart won-cart--${p.__size === "full" ? "page" : "drawer"}`;
       return p;
     });

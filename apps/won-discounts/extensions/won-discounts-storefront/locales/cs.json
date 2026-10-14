@@ -68,6 +68,8 @@
     "card_gift": "Ukázka. Dárkový poukaz slevu nedostane.",
     "card_margin": "Ukázka. Ochrana marže: na kartě se sleva produktu s nákupní cenou neukazuje.",
     "card_cap": "Ukázka. Ochrana marže tuhle slevu u produktu nedovolí.",
-    "card_currency": "Ukázka. Sleva nemá částku v měně {{ cur }}."
+    "card_currency": "Ukázka. Sleva nemá částku v měně {{ cur }}.",
+    "tag_unknown": "Ukázka. Won o téhle značce ve vzhledu ještě neví. V aplikaci Won Discounts klikněte u místa na Zkontrolovat znovu.",
+    "tag_card": "Ukázka. Tady bude řádek s množstevní slevou produktu, když ji produkt má."
   }
 }

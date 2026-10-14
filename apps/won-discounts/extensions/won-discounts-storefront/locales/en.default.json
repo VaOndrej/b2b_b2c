@@ -68,6 +68,8 @@
     "card_gift": "Sample. A gift card never gets a discount.",
     "card_margin": "Sample. Margin protection: a product with a purchase cost doesn't show its discount on the card.",
     "card_cap": "Sample. Margin protection doesn't allow this discount for the product.",
-    "card_currency": "Sample. The discount has no amount in {{ cur }}."
+    "card_currency": "Sample. The discount has no amount in {{ cur }}.",
+    "tag_unknown": "Sample. Won doesn't know about this tag in the theme yet. In Won Discounts, click Check again next to the place.",
+    "tag_card": "Sample. The product's quantity discount line goes here when the product has one."
   }
 }

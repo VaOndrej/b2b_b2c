@@ -51,6 +51,7 @@ import {
 
 import { MODULE_META, type AdminModule } from "../app/components/model/modules.ts";
 import { RECIPE_KEYS, recipeRule } from "../app/components/model/rule-form.ts";
+import { THEME_TAG, THEME_TAGS } from "../app/components/model/theme-tags.ts";
 import { cs } from "../app/i18n/cs.ts";
 import { en } from "../app/i18n/en.ts";
 import type { MessageKey } from "../app/i18n/index.ts";
@@ -688,9 +689,74 @@ ${list(events)}
   );
 }
 
+
+/** A block's name in the theme editor (its schema's `name`). */
+function blockName(handle: string): string {
+  const liquid = readFileSync(join(EXTENSION_DIR, "blocks", `${handle}.liquid`), "utf8");
+  const schema = /\{%\s*schema\s*%\}([\s\S]*?)\{%\s*endschema\s*%\}/.exec(liquid)?.[1] ?? "{}";
+  return (JSON.parse(schema) as { name?: string }).name ?? handle;
+}
+
+/** Umístění na webu: the tags for the theme's own code (app/components/model/theme-tags.ts). */
+function themeTagsDoc(): string {
+  const rows = THEME_TAGS.map((tag) => `| \`${tag.show}\` | ${tag.blocks.map((b) => `“${blockName(b)}”`).join(", ")} | ${tag.where} |`).join("\n");
+  const sections = THEME_TAGS.map((tag) => {
+    const attrs = tag.attrs.map((a) => `- \`${a.name}\`: ${a.about}${a.fallback !== undefined ? ` Missing or unknown: \`${a.fallback}\`.` : ""}`).join("\n");
+    return `### \`show="${tag.show}"\`\n\n${tag.where}\n\n\`\`\`liquid\n${tag.example}\n\`\`\`\n\n${attrs}`;
+  }).join("\n\n");
+  return doc(
+    {
+      title: "Tags for placing Won elements in the theme code",
+      slug: "theme-tags",
+      feature: "appearance",
+      min_plan: "free",
+      summary: "The optional tag for the theme code where an app block cannot go (cart drawer, product card, custom announcement bar) — what each show value does, its attributes, and how to check and undo it.",
+      keywords: ["won-discounts tag", "theme code", "cart drawer", "product card", "manual placement", "značka", "ruční vložení", "zásuvka košíku", "karta produktu", "umístění na webu"],
+    },
+    `# Tags for placing Won elements in the theme code
+
+The normal way to put a Won element on the store is its **app block** in the theme editor. Where the theme takes no
+app block — the cart drawer, inside a product card, a custom announcement bar, an older theme — you can paste one
+tag into the theme code instead. It is optional: use it only where the block cannot go.
+
+There is one tag for everything, \`<${THEME_TAG}>\`, and the \`show\` attribute says which element. The tag holds
+no logic: Won fills it, so it always shows what checkout gives and follows your settings in the app.
+
+## Before you start
+
+- **Won must be on** in the theme: Theme settings → App embeds → Won Discounts. Without it every tag stays empty.
+- Work on a **copy of the theme** and publish it when it looks right.
+- After pasting, open Won Discounts and click **Check again** at the place: Won reads the theme and from then on
+  fills the tag. Until then a milestones, campaign or card tag stays empty on the store and says so in the theme
+  editor (a cart tag works at once: the cart panel finds it by itself).
+
+## Which tag
+
+| \`show\` | Instead of the block | Where it shows something |
+|---|---|---|
+${rows}
+
+## The tags
+
+${sections}
+
+## Check it
+
+- In the theme editor every tag shows a labelled sample of its element, at its real size, with the reason when the
+  customer would see nothing there (no milestone set, the product has no quantity discount, …).
+- On the store an empty tag takes no room.
+
+## Undo it
+
+Delete the line you pasted. When Won is uninstalled the tags stay in the code but show nothing and break nothing.
+`,
+  );
+}
+
 export function buildDocs(): Record<string, string> {
   return {
     "reference/storefront-contract.generated.md": storefrontContractDoc(),
+    "reference/theme-tags.generated.md": themeTagsDoc(),
     "reference/plan-limits.generated.md": planLimitsDoc(),
     "reference/limits.generated.md": limitsDoc(),
     "reference/combination-defaults.generated.md": combinationDoc(),

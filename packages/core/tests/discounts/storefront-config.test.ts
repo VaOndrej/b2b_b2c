@@ -220,3 +220,14 @@ test("feedback 2, bod 7: `camps` lists the campaigns that are not killed as UTC 
   const free = gateConfigForPlan(config, "free", { now: "2026-01-01T00:00:00" }).config;
   assert.equal(buildStorefrontConfig(free, { configVersion: "v", shopTimezone: "Europe/Prague" }).camps, undefined);
 });
+
+test("tg: the embed prints the ladder only in the sizes the theme's tags ask for, and the campaign only when a tag shows it", async () => {
+  const { themeTagsPart } = await import("../../src/discounts/storefront-config.ts");
+  assert.deepEqual(themeTagsPart(null), {});
+  assert.deepEqual(themeTagsPart({}), {});
+  assert.deepEqual(themeTagsPart({ milestones: [], campaign: false }), {});
+  assert.deepEqual(themeTagsPart({ milestones: ["full", "bar", "full"] }), { tg: { ms: ["bar", "full"] } });
+  // No size, or one the block does not have: the block's default, as the script reads it.
+  assert.deepEqual(themeTagsPart({ milestones: ["", "huge"], campaign: true }), { tg: { ms: ["compact"], cp: 1 } });
+  assert.deepEqual(themeTagsPart({ card: true }), { tg: { cd: 1 } });
+});

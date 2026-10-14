@@ -304,3 +304,11 @@
 .won-cart:not(:empty) ~ [data-won-discounts-sample] {
   display: none;
 }
+/* The theme's own tags (<won-discounts show="…">, won-discounts-tags.js): a block of its own; an empty one (nothing
+   to show, or the app is uninstalled) takes no room. */
+won-discounts {
+  display: block;
+}
+won-discounts:empty {
+  display: none;
+}

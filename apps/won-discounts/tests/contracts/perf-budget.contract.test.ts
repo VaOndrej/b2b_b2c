@@ -36,7 +36,9 @@ const PAGES: Record<string, string[]> = {
  * budget above on purpose (a default install stays within it) and have a ceiling of their own; a page that uses
  * them goes over SF-2 by that much (the product page: 10 226 B + this file), which docs/won-discounts/bfs-check.md says.
  */
-const OPT_IN: Record<string, number> = { "won-discounts-blocks.js": 2048 };
+// Umístění na webu (14 Oct 2026): won-discounts-tags.js fills the theme's own <won-discounts> tags; the embed loads it
+// only when the app found such a tag in the theme (the config's `tg`) or in the theme editor.
+const OPT_IN: Record<string, number> = { "won-discounts-blocks.js": 2048, "won-discounts-tags.js": 1280 };
 const GZIP_BUDGET_BYTES = 10 * 1024; // 10240 B ceiling (SF-2), per page type
 /**
  * Feedback 3 (Ondřej 2026-10-06, bod 4 + rozhodnutí 8): the product page's ceiling is 12 kB. The quantity table

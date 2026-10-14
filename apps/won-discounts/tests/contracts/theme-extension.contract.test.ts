@@ -80,12 +80,16 @@ test("embed loads storefront JS with defer via the schema; its only <script src>
   const block = await readExtension("blocks/won_discounts_embed.liquid");
   const srcs = [...block.matchAll(/<script[^>]+src=[^>]*>/g)].map((m) => m[0]);
   // Feedback 2: + the blocks script, only with the embed's top bar switched on.
+  // Umístění na webu (14 Oct 2026): + the tags script (and the blocks script for a ladder or campaign tag), only when
+  // the app found a tag in the theme or in the theme editor (storefront-tags.contract.test.ts).
   assert.deepEqual(srcs, [
     `<script src="{{ 'won-discounts-cards.js' | asset_url }}" defer>`,
+    `<script src="{{ 'won-discounts-tags.js' | asset_url }}" defer>`,
+    `<script src="{{ 'won-discounts-blocks.js' | asset_url }}" defer>`,
     `<script src="{{ 'won-discounts-cart.js' | asset_url }}" defer>`,
     `<script src="{{ 'won-discounts-blocks.js' | asset_url }}" defer>`,
   ]);
-  const blocksScript = block.indexOf("<script src=\"{{ 'won-discounts-blocks.js'");
+  const blocksScript = block.lastIndexOf("<script src=\"{{ 'won-discounts-blocks.js'");
   assert.ok(block.lastIndexOf("{%- if block.settings.top_bar_rewards or block.settings.top_bar_campaign -%}", blocksScript) !== -1, "the blocks script only with the top bar on");
   const cards = block.indexOf("<script src=\"{{ 'won-discounts-cards.js'");
   assert.ok(block.lastIndexOf("{%- if won_discounts_config_raw.cards == 1 -%}", cards) !== -1, "the cards script only when the storefront config switches cards on");

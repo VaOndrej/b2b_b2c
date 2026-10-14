@@ -129,6 +129,23 @@ export interface StorefrontConfigV1 {
    * time zone is not known (StorefrontConfigOptions.shopTimezone).
    */
   camps?: StorefrontCampaign[];
+  /**
+   * Umístění na webu (14 Oct 2026): the `<won-discounts show="…">` tags the app found in the live theme, so the embed
+   * prints the HTML only for what the theme holds — `ms`: the Milníky ladder's sizes the tags ask for, `cp`: 1 when a
+   * tag shows the campaign, `cd`: 1 when a tag shows a card's line (the texts are the page's; this loads the script
+   * that puts them in). A `cart` tag needs nothing: the cart script draws the panel into it. Absent = no tag found.
+   */
+  tg?: StorefrontThemeTags;
+}
+
+/** The ladder sizes a `<won-discounts show="milestones" size="…">` tag may ask for (the Milestones block's). */
+export const STOREFRONT_TAG_SIZES = ["bar", "compact", "full"] as const;
+export type StorefrontTagSize = (typeof STOREFRONT_TAG_SIZES)[number];
+
+export interface StorefrontThemeTags {
+  ms?: StorefrontTagSize[];
+  cp?: 1;
+  cd?: 1;
 }
 
 export interface StorefrontCampaign {
@@ -200,6 +217,8 @@ export interface StorefrontConfigOptions {
   campaignId?: string | null;
   /** The shop's IANA time zone: campaign windows are shop-local, the storefront needs instants (`camps`). */
   shopTimezone?: string;
+  /** The tags found in the live theme (the theme scan): `milestones` with each size asked for, `campaign`. */
+  themeTags?: { milestones?: readonly string[]; campaign?: boolean; card?: boolean } | null;
 }
 
 /** A value under a key that may be an Object.prototype name ("__proto__"): always an own, enumerable entry. */
@@ -309,7 +328,20 @@ export function buildStorefrontConfig(given: ReadonlyDeep<WonDiscountsConfig>, o
     ...(gated.modules.outlet.combine.types.includes("tiers") && gated.modules.tiers.combine.types.includes("outlet") ? { ow: 1 as const } : {}),
     ...(gated.storefront.cardPricesEnabled ? { cards: 1 as const } : {}),
     ...campaignsPart(gated.campaigns, opts.shopTimezone),
+    ...themeTagsPart(opts.themeTags),
   };
+}
+
+/**
+ * `tg`: what the embed prints for the theme's tags — the ladder sizes (each once, in a fixed order; a tag without
+ * a size or with one the block does not have gets the block's default, `compact`, as the script does) and the campaign. Nothing found = absent.
+ */
+export function themeTagsPart(found: StorefrontConfigOptions["themeTags"]): { tg?: StorefrontThemeTags } {
+  if (!found) return {};
+  const size = (asked: string): StorefrontTagSize => (STOREFRONT_TAG_SIZES as readonly string[]).includes(asked) ? (asked as StorefrontTagSize) : "compact";
+  const sizes = STOREFRONT_TAG_SIZES.filter((known) => found.milestones?.some((asked) => size(asked) === known));
+  const tg: StorefrontThemeTags = { ...(sizes.length ? { ms: sizes } : {}), ...(found.campaign ? { cp: 1 as const } : {}), ...(found.card ? { cd: 1 as const } : {}) };
+  return Object.keys(tg).length ? { tg } : {};
 }
 
 /** `camps`: every campaign that is not killed, as instants; a window that cannot be read is left out. */

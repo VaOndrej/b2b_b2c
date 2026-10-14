@@ -22,6 +22,8 @@
     }
   }
   function place() {
+    // The theme's own card tags (won-discounts-tags.js) say where the line goes: nothing is guessed then.
+    if (d.querySelector('won-discounts[show="card-tier"]')) return;
     var root = d.querySelector("main") || d.body;
     var links = root.querySelectorAll('a[href*="/products/"]');
     for (var i = 0; i < links.length; i++) {

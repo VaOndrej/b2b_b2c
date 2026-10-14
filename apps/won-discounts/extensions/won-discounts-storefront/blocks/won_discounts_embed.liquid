@@ -95,6 +95,68 @@
   {%- endif -%}
 {%- endif -%}
 
+{%- comment -%}
+  Umístění na webu (14 Oct 2026): the theme's own tags, `<won-discounts show="milestones|campaign|card-tier|cart">`.
+  The HTML is made here, in Liquid, and only for what the app found in the theme (the config's `tg`);
+  assets/won-discounts-tags.js only moves it into each tag (a cart tag gets the cart script's panel). In the theme
+  editor every tag shows the sample its block shows, with the reason. Notes: README, "Tags in the theme".
+{%- endcomment -%}
+{%- assign won_tg = won_discounts_config_raw.tg -%}
+{%- if won_tg != blank or request.design_mode -%}
+  {%- if rw != blank -%}
+    {%- for won_size in won_tg.ms -%}
+      {%- capture won_ladder -%}{%- render 'won-milestones', rw: rw, cur: cur, size: won_size, tx: won_tx -%}{%- endcapture -%}
+      {%- if won_ladder contains 'won-ms' -%}
+        <template data-won-tag="milestones-{{ won_size }}">{{ won_ladder }}</template>
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
+  {%- liquid
+    assign won_camps = won_discounts_config_raw.camps
+    assign won_ends = 'campaign.ends' | t
+    assign won_ends = won_tx['campaign.ends'] | default: won_ends
+    assign won_units = 'campaign.units' | t
+    assign won_units = won_tx['campaign.units'] | default: won_units
+  -%}
+  {%- if won_tg.cp == 1 and won_camps != blank -%}
+    <template data-won-tag="campaign" data-ends="{{ won_ends | escape }}" data-units="{{ won_units | escape }}"><script type="application/json">{{ won_camps | json | replace: '</', '<\/' }}</script></template>
+  {%- endif -%}
+  {%- if request.design_mode -%}
+    {%- liquid
+      assign won_sizes = 'bar,compact,full' | split: ','
+      assign won_known = won_tg.ms | join: ','
+      assign won_sample = 'campaign.sample' | t
+      assign won_card = 'cards.pct' | t
+      assign won_card = won_tx['cards.pct'] | default: won_card | replace: '{min}', 3 | replace: '{pct}', 10
+      assign won_unknown = 'sample.tag_unknown' | t
+    -%}
+    {%- for won_size in won_sizes -%}
+      {%- liquid
+        if rw == blank
+          assign won_why = 'sample.ms_none' | t
+        elsif won_known contains won_size
+          assign won_why = 'sample.ms_currency' | t: cur: cur
+        else
+          assign won_why = won_unknown
+        endif
+      -%}
+      <template data-won-tag="milestones-{{ won_size }}-sample">{%- render 'won-sample-ladder', size: won_size, why: won_why, tx: won_tx -%}</template>
+    {%- endfor -%}
+    <template data-won-tag="campaign-sample" data-ends="{{ won_ends | escape }}" data-units="{{ won_units | escape }}" data-sample="{{ won_sample | escape }}"><script type="application/json">[]</script></template>
+    <template data-won-tag="card-tier-sample"><div data-won-discounts-sample="card"><p class="won-card-tier">{{ won_card | escape }}</p><p data-won-sample-note>{{ 'sample.tag_card' | t }}</p></div></template>
+    {%- if rw == blank -%}
+      {%- assign won_why = 'sample.ms_none' | t -%}
+    {%- else -%}
+      {%- assign won_why = won_unknown -%}
+    {%- endif -%}
+    <template data-won-tag="cart-sample"><div class="won-cart won-cart--drawer" data-won-discounts-sample="cart">{%- render 'won-sample-ladder', size: 'compact', bare: true, tx: won_tx -%}<p data-won-sample-note>{{ won_why }}</p></div></template>
+  {%- endif -%}
+  <script src="{{ 'won-discounts-tags.js' | asset_url }}" defer></script>
+  {%- if won_tg.ms != blank or won_tg.cp == 1 or request.design_mode -%}
+    <script src="{{ 'won-discounts-blocks.js' | asset_url }}" defer></script>
+  {%- endif -%}
+{%- endif -%}
+
 {%- if rw != blank -%}
   {%- capture won_gift_facts -%}
     {%- assign sep = '' -%}
