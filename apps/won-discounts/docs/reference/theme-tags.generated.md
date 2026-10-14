@@ -37,7 +37,7 @@ no logic: Won fills it, so it always shows what checkout gives and follows your 
 | `show` | Instead of the block | Where it shows something |
 |---|---|---|
 | `cart` | “Milestones and code” | The cart drawer or the cart page: the Milestones ladder, the gift and the discount code field. |
-| `card-tier` | “Quantity price (card)” | A product card on a collection or search page: the first quantity break, e.g. “From 3 items −10%”. |
+| `card-tier` | “Quantity price (card)” | A product card on any page (collections, search, the home page, recommendations): the first quantity break, e.g. “From 3 items −10%”. |
 | `milestones` | “Milestones”, “Announcement: Milestones” | Anywhere: the ladder of steps by cart value (free shipping, gifts, order discounts). |
 | `campaign` | “Campaign banner”, “Announcement: Campaign” | Anywhere: the name of the campaign running now and the time left. |
 
@@ -55,7 +55,7 @@ The cart drawer or the cart page: the Milestones ladder, the gift and the discou
 
 ### `show="card-tier"`
 
-A product card on a collection or search page: the first quantity break, e.g. “From 3 items −10%”.
+A product card on any page (collections, search, the home page, recommendations): the first quantity break, e.g. “From 3 items −10%”.
 
 ```liquid
 <won-discounts show="card-tier" product="{{ product.handle }}"></won-discounts>

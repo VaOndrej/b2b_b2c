@@ -130,6 +130,8 @@ test("the embed makes the tags' HTML only for what the theme holds (tg), the sam
   assert.match(liquid, /\{%- if won_tg\.cp == 1 and won_camps != blank -%\}\s*<template data-won-tag="campaign"/);
   assert.match(liquid, /\{%- if request\.design_mode -%\}[\s\S]*data-won-tag="milestones-\{\{ won_size \}\}-sample"[\s\S]*data-won-tag="cart-sample"/);
   assert.match(liquid, /<script src="\{\{ 'won-discounts-tags\.js' \| asset_url \}\}" defer><\/script>/);
+  // B2: the texts and the app proxy for cards the page does not list, only with card tags known and cards on.
+  assert.match(liquid, /\{%- if won_tg\.cd == 1 and won_discounts_config_raw\.cards == 1 -%\}[\s\S]*<template data-won-tag="card-tier-texts" data-pct="[^"]+" data-off="[^"]+" data-proxy="\{\{ won_proxy \| escape \}\}"/);
   assert.ok(liquid.indexOf("{{ 'won-discounts-tags.js' | asset_url }}") < liquid.indexOf("{{ 'won-discounts-cart.js' | asset_url }}"), "the tags are filled before the cart script looks for them");
 });
 
@@ -143,4 +145,39 @@ test("the tags' description (theme-tags.ts: the reference, the admin guide, the 
   assert.match(js, new RegExp(`const SIZES = ${JSON.stringify(size.values).replace(/[[\]]/g, "\\$&").replace(/,/g, ", ")};`));
   assert.match(js, new RegExp(`: "${size.fallback}";`));
   for (const tag of THEME_TAGS) for (const block of tag.blocks) assert.ok((await read(`blocks/${block}.liquid`)).length > 0, block);
+});
+
+test("card-tier for a product the page does not list: one app proxy request for all such tags, worded with the page's texts, remembered", async () => {
+  const p = await browser.newPage();
+  await p.setContent(`<!doctype html><html><body>
+    <template data-won-tag="card-tier-texts" data-pct="Od {min} ks −{pct} %" data-off="Od {min} ks −{amount} za kus" data-proxy="/apps/won-discounts/card-tiers" data-cur="CZK" data-mk="cz" data-lang="cs"></template>
+    <script type="application/json" id="won-discounts-cards">{"listed":"Od 2 ks −5 %"}</script>
+    <won-discounts id="a" show="card-tier" product="mug"></won-discounts>
+    <won-discounts id="b" show="card-tier" product="cup"></won-discounts>
+    <won-discounts id="c" show="card-tier" product="mug"></won-discounts>
+    <won-discounts id="l" show="card-tier" product="listed"></won-discounts>
+    <won-discounts id="n" show="card-tier" product="none"></won-discounts>
+    <script>
+      window.Shopify = { country: "CZ" };
+      window.WonDiscounts = { money: (cents, cur) => (cents / 100) + " " + cur };
+      window.__asked = [];
+      window.fetch = (url) => {
+        window.__asked.push(String(url));
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, cards: { mug: { min: 3, pct: 7.5 }, cup: { min: 2, off: 500 } } }) });
+      };
+    </script>
+    <script>${await read("assets/won-discounts-tags.js")}</script></body></html>`);
+  await p.waitForFunction(() => document.querySelector("#a p, #b p"));
+  const text = (id: string) => p.$eval(`#${id}`, (el) => el.textContent);
+  assert.equal(await text("a"), "Od 3 ks −7,5 %");
+  assert.equal(await text("c"), "Od 3 ks −7,5 %");
+  assert.equal(await text("b"), "Od 2 ks −5 CZK za kus");
+  assert.equal(await text("l"), "Od 2 ks −5 %", "the page's own text needs no request");
+  assert.equal(await p.$eval("#n", (el) => el.childElementCount), 0, "nothing for a product the app says nothing about");
+  assert.deepEqual(await p.evaluate(() => (window as unknown as { __asked: string[] }).__asked), ["/apps/won-discounts/card-tiers?h=mug%2Ccup%2Cnone&cur=CZK&mk=cz&c=CZ"]);
+  // A re-rendered card: the answer is remembered, no second request.
+  await p.evaluate(() => document.body.insertAdjacentHTML("beforeend", '<won-discounts id="d" show="card-tier" product="cup"></won-discounts>'));
+  assert.equal(await text("d"), "Od 2 ks −5 CZK za kus");
+  assert.equal(await p.evaluate(() => (window as unknown as { __asked: string[] }).__asked.length), 1);
+  await p.close();
 });

@@ -37,7 +37,7 @@ export const THEME_TAGS: readonly ThemeTag[] = [
   {
     show: "card-tier",
     blocks: ["card_tiers"],
-    where: "A product card on a collection or search page: the first quantity break, e.g. “From 3 items −10%”.",
+    where: "A product card on any page (collections, search, the home page, recommendations): the first quantity break, e.g. “From 3 items −10%”.",
     attrs: [{ name: "product", about: "The card's product handle, from the card's own Liquid: `{{ product.handle }}` (Dawn's card snippet: `{{ card_product.handle }}`)." }],
     example: `<${THEME_TAG} show="card-tier" product="{{ product.handle }}"></${THEME_TAG}>`,
   },

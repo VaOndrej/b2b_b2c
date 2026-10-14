@@ -135,7 +135,10 @@ Won Discounts quantity tiers block (MVP 3, contracts K6 + K8). Liquid renders th
 - `milestones`: the ladder of the tag's `size` (unknown = `compact`) in a `.won-progress[data-won-discounts-progress]`,
   so `won-discounts-blocks.js` redraws it on every cart change like the block's. `campaign`: the banner's markup
   with the tag's `text` / `align`; the blocks script picks the running one. `card-tier`: the page's text for the
-  tag's `product` from `#won-discounts-cards` (collection and search pages), as text.
+  tag's `product` from `#won-discounts-cards` (collection and search pages), as text. A product the page does not
+  list (B2): every such tag of the page in ONE app proxy request (`GET /apps/won-discounts/card-tiers?h=…`, at most
+  50 handles; core `cardTier` on the server, app/lib/integration/card-tiers.server.ts), worded with the texts of the
+  `card-tier-texts` template (the embed prints it with `tg.cd` and cards on); answers are remembered for the page.
 - `cart`: the cart script draws its panel into the tag (`TAG`) in the tag's `size` (`compact` unless `full`), and
   while a cart tag is on the page it guesses none of the theme's places (`DRAWERS`, `PAGES`). `won-discounts-cards.js`
   places nothing while a card tag is on the page.

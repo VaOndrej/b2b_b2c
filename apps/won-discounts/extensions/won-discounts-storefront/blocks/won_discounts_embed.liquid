@@ -118,6 +118,20 @@
     assign won_units = 'campaign.units' | t
     assign won_units = won_tx['campaign.units'] | default: won_units
   -%}
+  {%- if won_tg.cd == 1 and won_discounts_config_raw.cards == 1 -%}
+    {%- liquid
+      assign won_pct = 'cards.pct' | t
+      assign won_pct = won_tx['cards.pct'] | default: won_pct
+      assign won_off = 'cards.off' | t
+      assign won_off = won_tx['cards.off'] | default: won_off
+      if routes.root_url == '/'
+        assign won_proxy = '/apps/won-discounts/card-tiers'
+      else
+        assign won_proxy = routes.root_url | append: '/apps/won-discounts/card-tiers'
+      endif
+    -%}
+    <template data-won-tag="card-tier-texts" data-pct="{{ won_pct | escape }}" data-off="{{ won_off | escape }}" data-proxy="{{ won_proxy | escape }}" data-cur="{{ cur }}" data-mk="{{ localization.market.handle | escape }}" data-lang="{{ request.locale.iso_code | slice: 0, 2 | downcase }}"></template>
+  {%- endif -%}
   {%- if won_tg.cp == 1 and won_camps != blank -%}
     <template data-won-tag="campaign" data-ends="{{ won_ends | escape }}" data-units="{{ won_units | escape }}"><script type="application/json">{{ won_camps | json | replace: '</', '<\/' }}</script></template>
   {%- endif -%}

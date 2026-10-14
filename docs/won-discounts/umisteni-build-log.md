@@ -4,6 +4,17 @@ Zadání: `WonCommerce/Apps/docs/won-discounts-umisteni-na-web-zadani.md` (mimo 
 ve worktree `WonCommerce/b2b_b2c-umisteni`, protože na `main` paralelně běžel krok 6 kombinování. Po dokončení se
 sloučí do `main`. Samostatný log, aby se nepral s `docs/won-discounts-build-log.md`.
 
+**CHECKPOINT U3 (14. 10. 2026).** **Balík B2 hotový v kódu, naživo neověřený:** karta mimo kolekci a vyhledávání.
+App proxy `GET /apps/won-discounts/card-tiers?h=…&cur=…&mk=…&c=…` (`app/routes/won-discounts.card-tiers.tsx`,
+`app/lib/integration/card-tiers.server.ts`): jádro `cardTier` nad živou konfigurací pro web, metapoli produktu,
+příznaky výprodeje a nákupní ceny variant a nejnižší cenou v měně stránky (contextual pricing podle země). Keš 10 min
+na obchod a zemi, `onAdminWrite` ji zahodí, 30 čtení Shopify za minutu na obchod. Dotazy ověřené proti Admin API.
+`won-discounts-tags.js` pošle všechny chybějící handly stránky jedním dotazem, texty slov z šablony
+`card-tier-texts` (embed ji tiskne s `tg.cd` a zapnutými kartami), výsledek si pamatuje. Skript 1 724 B gzip,
+volitelný strop zvednut na 2 048 B (jako blocks). Testy: `tests/integration/card-tiers.test.ts` (6), prohlížeč +1.
+Brány: core 1 009, app 1 933, typecheck, lint 0 chyb, Theme Check bez nových nálezů. Balík B je v kódu celý.
+Další: E (čtení vzhledu, kdo plní `tg`; řádek místa; průvodce).
+
 **CHECKPOINT U2 (14. 10. 2026).** Ondřej: ruční cesta = varianta (a), volitelná; druhá AI na `main` poběží dlouho,
 živé ověření počká. **Balík B1 hotový v kódu, naživo neověřený:**
 
