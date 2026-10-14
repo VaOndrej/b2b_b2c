@@ -4,6 +4,8 @@
   the card arrives with. The product is the card's (`closest.product`); on a product page, the page's.
   What it says and when it says nothing: snippets/won-card-tier.liquid. Themes without app blocks in the card
   get the same line from the embed (assets/won-discounts-cards.js) once the merchant switches cards on.
+  In the theme editor a card that says nothing shows a labelled sample of the line and the reason (the snippet's
+  `why`), and so does the block placed outside a card (no product to read): a customer never sees it.
 {% endcomment %}
 {%- liquid
   assign cfg = app.metafields.won_discounts.storefront_config.value
@@ -16,13 +18,28 @@
   assign tx_key = 'tx_' | append: request.locale.iso_code | downcase
   assign tx = app.metafields.won_discounts[tx_key].value
 -%}
+{%- assign won_why = 'outside' -%}
 {%- if p -%}
-  {%- capture won_label -%}{%- render 'won-card-tier', p: p, cfg: cfg, cur: cart.currency.iso_code, lang: lang, tx: tx -%}{%- endcapture -%}
+  {%- capture won_label -%}{%- render 'won-card-tier', p: p, cfg: cfg, cur: cart.currency.iso_code, lang: lang, tx: tx, why: request.design_mode -%}{%- endcapture -%}
   {%- comment -%} Shopify wraps an app snippet's output in HTML comments ("BEGIN / END app snippet"): keep the text between them. The text is marked first: `split` drops a trailing empty string, and a snippet that said nothing would leave the opening comment as the label. {%- endcomment -%}
   {%- assign won_label = won_label | split: '<!-- END' | first | append: '¦' | split: '-->' | last | remove: '¦' | strip -%}
-  {%- if won_label != blank -%}
+  {%- if won_label contains '#' -%}
+    {%- assign won_why = won_label | remove: '#' -%}
+  {%- elsif won_label != blank -%}
     <p class="won-card-tier" data-won-discounts-card="{{ p.handle | escape }}" {{ block.shopify_attributes }}>{{ won_label }}</p>
+    {%- assign won_why = '' -%}
   {%- endif -%}
+{%- endif -%}
+{%- if request.design_mode and won_why != '' -%}
+  {%- liquid
+    assign won_sample = 'cards.pct' | t
+    assign won_sample = tx['cards.pct'] | default: won_sample | replace: '{min}', 3 | replace: '{pct}', 10
+    assign won_why_key = 'sample.card_' | append: won_why
+  -%}
+  <div data-won-discounts-sample="card" {{ block.shopify_attributes }}>
+    <p class="won-card-tier">{{ won_sample | escape }}</p>
+    <p data-won-sample-note>{{ won_why_key | t: cur: cart.currency.iso_code }}</p>
+  </div>
 {%- endif -%}
 
 {% schema %}

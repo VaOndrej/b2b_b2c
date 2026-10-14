@@ -74,9 +74,10 @@ export function CardPricesSection({
               </WonRow>
             </div>
           ) : null}
+          {/* The editor button is in the row above while the line is on: one button per address. */}
           <WonRow
             action={
-              cardBlockUrl ? (
+              cardBlockUrl && !(cardPrices && editorUrl) ? (
                 <s-button href={cardBlockUrl} target="_blank" variant="secondary">
                   {t("looks.cards.addBlock")}
                 </s-button>

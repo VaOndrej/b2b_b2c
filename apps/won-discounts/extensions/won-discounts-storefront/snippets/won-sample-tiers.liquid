@@ -1,0 +1,46 @@
+{%- comment -%}
+  The quantity tiers table as a labelled sample for the theme editor (blocks/quantity_tiers.liquid, request.design_mode
+  only): the block's markup at the product's price with three made-up breaks, the first one active, and the note
+  saying why the customer sees no table here. A customer never sees it.
+  Params: price (Liquid units; 0 or none = 1 000 of the currency), preset, accent, why (the translated reason),
+  t_heading, t_row_qty, t_save_pct, t_unit, t_live (the block's texts, the merchant's already applied).
+{%- endcomment -%}
+{%- liquid
+  assign won_price = price | default: 100000
+  if won_price <= 0
+    assign won_price = 100000
+  endif
+  assign won_unit = won_price | times: 95 | divided_by: 100
+  assign won_total = won_unit | times: 2 | money | strip_html
+  assign won_unit = won_unit | money | strip_html
+  assign won_live = t_live | replace: '{qty}', 2 | replace: '{total}', won_total | replace: '{price}', won_unit
+-%}
+<div class="won-tiers won-tiers--{{ preset }}" data-won-discounts-sample="tiers" {% if accent != blank %}style="--won-tiers-accent: {{ accent }};"{% endif %}>
+  <p class="won-tiers__heading">{{ t_heading | escape }}</p>
+  <ol class="won-tiers__list" role="list">
+    {%- for won_row in (1..3) -%}
+      {%- liquid
+        case won_row
+          when 1
+            assign won_min = 2
+            assign won_pct = 5
+          when 2
+            assign won_min = 5
+            assign won_pct = 10
+          else
+            assign won_min = 10
+            assign won_pct = 15
+        endcase
+        assign won_row_unit = 100 | minus: won_pct | times: won_price | divided_by: 100 | money | strip_html
+        assign won_qty_text = t_row_qty | replace: '{min}', won_min
+        assign won_save_text = t_save_pct | replace: '{pct}', won_pct
+        assign won_unit_text = t_unit | replace: '{price}', won_row_unit
+      -%}
+      <li class="won-tiers__row" data-active="{% if won_row == 1 %}true{% else %}false{% endif %}">
+        <span class="won-tiers__qty">{{ won_qty_text | escape }}</span><span class="won-tiers__save">{{ won_save_text | escape }}</span><span class="won-tiers__unit">{{ won_unit_text | escape }}</span>
+      </li>
+    {%- endfor -%}
+  </ol>
+  <p class="won-tiers__live">{{ won_live | escape }}</p>
+  <p data-won-sample-note>{{ why }}</p>
+</div>

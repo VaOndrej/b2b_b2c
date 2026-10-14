@@ -122,7 +122,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   // The table's look (MVP 7): the custom look (locked amber on Free), card prices BETA, the AI brief.
   { path: "tiers", expect: [/Vzhled tabulky na webu/, /Vzhled na webu: Zvýrazněná úroveň/, /V Pro sladíte tabulku s webem: vlastní barvy, zaoblení rohů a vlastní CSS/, /href="\/app\/plan"/, /Ceny podle množství na kartách produktů · BETA/], absent: [/Zkopírovat zadání pro AI/, /data-won-ai-prompt="tiers"/] },
   { path: "tiers?plan=pro&state=custom", expect: [/Zkopírovat zadání pro AI/, /data-won-ai-prompt="tiers"/] },
-  { path: "tiers?plan=pro&state=custom", expect: [/data-won-look-form="tiers"/, /Uložit vzhled/, /Zapnuto: karty ukazují první úroveň/, /Přidat prvek do karty produktu/, /--won-tiers-accent/, /data-won-custom-look=""/, /Platí jen uvnitř tabulky/] },
+  { path: "tiers?plan=pro&state=custom", expect: [/data-won-look-form="tiers"/, /Uložit vzhled/, /Zapnuto: karty ukazují první úroveň/, /Přidat blok → Aplikace → Quantity price \(card\)/, /--won-tiers-accent/, /data-won-custom-look=""/, /Platí jen uvnitř tabulky/] },
   { path: "tiers?plan=pro&state=issue", expect: [/Uložené vlastní CSS nejde použít/] },
   // Překlady: a table per language with human names, the default text and the merchant's own; Free's limit and the Pro CSV in amber.
   {

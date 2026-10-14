@@ -154,3 +154,14 @@
   border-color: var(--won-tiers-accent);
   background: var(--won-tiers-tint);
 }
+/* The block's labelled sample in the theme editor: the table at its own size, a frame that takes no room, why. */
+.won-tiers[data-won-discounts-sample] {
+  outline: 1px dashed currentColor;
+  outline-offset: 4px;
+}
+.won-tiers [data-won-sample-note] {
+  margin: 0.5em 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.7;
+}

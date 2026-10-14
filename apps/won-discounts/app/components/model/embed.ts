@@ -43,18 +43,6 @@ export function outletBlockAddUrl(shop: string, apiKey: string): string | null {
   return `https://${shop}/admin/themes/current/editor?template=product&addAppBlockId=${encodeURIComponent(apiKey)}/${OUTLET_BLOCK_HANDLE}&target=mainSection`;
 }
 
-/** The card block's handle (blocks/card_tiers.liquid, MVP 7 BETA). */
-export const CARD_BLOCK_HANDLE = "card_tiers";
-
-/**
- * MVP 7 (M8): the theme editor on the collection template with the card block ready to add. Themes whose product
- * card takes app blocks (Horizon) let the merchant drop it into the card; others get the line from the embed.
- */
-export function cardBlockAddUrl(shop: string, apiKey: string): string | null {
-  if (!SHOP_DOMAIN.test(shop) || !apiKey) return null;
-  return `https://${shop}/admin/themes/current/editor?template=collection&addAppBlockId=${encodeURIComponent(apiKey)}/${CARD_BLOCK_HANDLE}&target=mainSection`;
-}
-
 /**
  * Where the card line can be SEEN (feedback 9 Oct 2026, bod 6): "Všechny produkty" on the live storefront — every
  * product is there, so the whole-store levels show on its cards. The storefront's own address when a product's

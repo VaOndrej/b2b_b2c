@@ -1,0 +1,48 @@
+{%- comment -%}
+  The Milníky ladder as a labelled sample for the theme editor (request.design_mode only): the markup of
+  snippets/won-milestones.liquid at the given size with three made-up steps — free shipping reached, a gift next,
+  an order discount last — so the merchant sees where the ladder sits and how big it is when the shop has no step
+  to show yet. Amounts are in the cart's currency. A customer never sees it.
+  Params: size (bar | compact | full), why (the note: the translated reason), tx (the merchant's texts), bare
+  (optional: the ladder alone, no frame and no note, for a sample that frames it with more).
+{%- endcomment -%}
+{%- liquid
+  assign won_ship = 'cart.ms_ship' | t
+  assign won_ship = tx['cart.ms_ship'] | default: won_ship
+  assign won_gift = 'cart.ms_gift' | t
+  assign won_gift = tx['cart.ms_gift'] | default: won_gift
+  assign won_disc = 'cart.ms_disc' | t
+  assign won_disc = tx['cart.ms_disc'] | default: won_disc | replace: '{value}', '10 %'
+  assign won_from = 'cart.ms_from' | t
+  assign won_from = tx['cart.ms_from'] | default: won_from
+  assign won_at = 100000 | money
+  assign won_at1 = won_from | replace: '{amount}', won_at
+  assign won_at = 200000 | money
+  assign won_at2 = won_from | replace: '{amount}', won_at
+  assign won_at = 300000 | money
+  assign won_at3 = won_from | replace: '{amount}', won_at
+  assign won_left = 80000 | money
+  assign won_text = 'cart.ms_left' | t
+  assign won_text = tx['cart.ms_left'] | default: won_text | replace: '{amount}', won_left | replace: '{reward}', won_gift
+-%}
+{%- unless bare -%}<div data-won-discounts-sample="milestones">{%- endunless -%}
+  <div class="won-ms won-ms--{{ size }}" data-won-ms="{{ size }}">
+    <p class="won-ms__text">{{ won_text | escape }}</p>
+    <div class="won-ms__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="40">
+      <span style="width:40%"></span>
+      {%- unless size == 'bar' -%}
+        <i style="left:33%" data-done></i><i style="left:67%"></i><i style="left:100%"></i>
+      {%- endunless -%}
+    </div>
+    {%- unless size == 'bar' -%}
+      <ol class="won-ms__list">
+        <li data-won-ms-step="s" data-done><span>{{ won_ship | escape }}</span><span>{{ won_at1 }}</span></li>
+        <li data-won-ms-step="g"><span>{{ won_gift | escape }}</span><span>{{ won_at2 }}</span></li>
+        <li data-won-ms-step="d"><span>{{ won_disc | escape }}</span><span>{{ won_at3 }}</span></li>
+      </ol>
+    {%- endunless -%}
+  </div>
+{%- unless bare -%}
+  <p data-won-sample-note>{{ why }}</p>
+</div>
+{%- endunless -%}

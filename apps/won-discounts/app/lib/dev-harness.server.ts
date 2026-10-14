@@ -1118,7 +1118,7 @@ export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | nul
     look: lookView(opts.state === "custom" ? DEV_CUSTOM_LOOK_FIXTURE : opts.state === "issue" ? DEV_BAD_LOOK_FIXTURE : config, "tiers"),
     cards: {
       on: opts.state === "custom",
-      blockUrl: "https://won-dev.myshopify.com/admin/themes/current/editor?template=collection&addAppBlockId=dev/card_tiers&target=mainSection",
+      blockUrl: "https://won-dev.myshopify.com/admin/themes/current/editor?template=collection",
       viewUrl: "https://won-dev.myshopify.com/collections/all",
       editorUrl: "https://won-dev.myshopify.com/admin/themes/current/editor?template=collection",
     },

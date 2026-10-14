@@ -288,3 +288,19 @@
     transition: none;
   }
 }
+/* A block's labelled sample in the theme editor (request.design_mode only): the element's own markup at its own
+   size, a dashed frame that takes no room and a note saying why the customer sees nothing here. In the cart
+   block's slot it gives way to the real panel the moment the cart script draws it. */
+[data-won-discounts-sample] {
+  outline: 1px dashed currentColor;
+  outline-offset: 4px;
+}
+[data-won-sample-note] {
+  margin: 0.5em 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.7;
+}
+.won-cart:not(:empty) ~ [data-won-discounts-sample] {
+  display: none;
+}

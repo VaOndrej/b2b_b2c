@@ -3,7 +3,8 @@
   shipping, free gifts, discounts off the order — for any section of any template (the product page, the home
   page, an Apps section under the header), in the size the merchant picks. The ladder is rendered here from the
   cart; assets/won-discounts-blocks.js redraws it when the cart changes. Renders nothing when the shop offers no
-  step in the cart's currency (in the theme editor it says so instead of leaving a gap).
+  step in the cart's currency; in the theme editor it shows a labelled sample ladder of its size instead
+  (snippets/won-sample-ladder.liquid) and says why.
 {% endcomment %}
 {%- liquid
   assign won_rw = app.metafields.won_discounts.storefront_config.value.rewards
@@ -27,7 +28,14 @@
     {{ won_rows }}
   </div>
 {%- elsif request.design_mode -%}
-  <p class="won-progress won-progress--{{ block.settings.align }}" {{ block.shopify_attributes }}>{{ 'progress.empty' | t }}</p>
+  {%- if won_rw != blank -%}
+    {%- assign won_why = 'sample.ms_currency' | t: cur: won_cur -%}
+  {%- else -%}
+    {%- assign won_why = 'sample.ms_none' | t -%}
+  {%- endif -%}
+  <div class="won-progress won-progress--{{ block.settings.align }}" data-size="{{ block.settings.size }}" {{ block.shopify_attributes }}>
+    {%- render 'won-sample-ladder', size: block.settings.size, why: won_why, tx: won_tx -%}
+  </div>
 {%- endif -%}
 
 {% schema %}

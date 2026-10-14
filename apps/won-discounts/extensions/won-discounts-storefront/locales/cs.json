@@ -50,5 +50,24 @@
     "ends": "Končí za {time}",
     "units": "d,h,min,s",
     "sample": "Název kampaně"
+  },
+  "sample": {
+    "ms_none": "Ukázka. Milníky zatím nejsou nastavené, zákazník tu nic neuvidí. Nastavíte je v aplikaci Won Discounts → Milníky.",
+    "ms_currency": "Ukázka. Žádný milník nemá částku v měně {{ cur }}, zákazník platící v ní tu nic neuvidí.",
+    "cart_embed": "Ukázka. Skutečný panel sem doplní Won Discounts, až bude zapnutý v Nastavení vzhledu → Vložení aplikací.",
+    "tiers_none": "Ukázka. Tenhle produkt nemá množstevní slevu, zákazník tu nic neuvidí. Slevu nastavíte v aplikaci Won Discounts → Množstevní slevy.",
+    "tiers_currency": "Ukázka. Množstevní sleva tohoto produktu nemá částku v měně {{ cur }}, zákazník platící v ní tu nic neuvidí.",
+    "tiers_outlet": "Ukázka. Vybraná varianta je ve výprodeji a ten se s množstevní slevou nesčítá. Zákazník tu u ní nic neuvidí.",
+    "tiers_margin": "Ukázka. Ochrana marže u vybrané varianty slevu nedovolí, zákazník tu nic neuvidí.",
+    "tiers_gift": "Ukázka. Dárkový poukaz slevu nedostane, zákazník tu nic neuvidí.",
+    "card_outside": "Ukázka. Blok je mimo kartu produktu a nemá odkud vzít produkt. Přetáhněte ho do karty.",
+    "card_off": "Ukázka. Ceny na kartách jsou v aplikaci Won Discounts vypnuté (Množstevní slevy).",
+    "card_many": "Ukázka. Produkt má přes 50 variant, karta slevu neukáže.",
+    "card_none": "Ukázka. Produkt nemá množstevní slevu.",
+    "card_outlet": "Ukázka. Produkt je ve výprodeji.",
+    "card_gift": "Ukázka. Dárkový poukaz slevu nedostane.",
+    "card_margin": "Ukázka. Ochrana marže: na kartě se sleva produktu s nákupní cenou neukazuje.",
+    "card_cap": "Ukázka. Ochrana marže tuhle slevu u produktu nedovolí.",
+    "card_currency": "Ukázka. Sleva nemá částku v měně {{ cur }}."
   }
 }

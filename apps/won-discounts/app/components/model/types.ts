@@ -683,6 +683,8 @@ export interface TiersScreenData {
   look?: LookView;
   /** BETA: prices by quantity on product cards, and the deep link that adds the card block to the theme. */
   /** `viewUrl`: a storefront page with product cards; `editorUrl`: the live theme's editor on the collection template. */
+  /** `blockUrl`: the editor on the collection template, where the merchant drags the card block INTO a card (a deep link
+   * cannot target a block inside a card: `target=mainSection` put it beside the cards, where it has no product). */
   cards?: { on: boolean; blockUrl: string | null; viewUrl?: string | null; editorUrl?: string | null };
   /** Currencies of the enabled markets (amount inputs per currency). */
   currencies: CurrencyView[];

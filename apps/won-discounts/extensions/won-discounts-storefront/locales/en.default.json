@@ -50,5 +50,24 @@
     "ends": "Ends in {time}",
     "units": "d,h,min,s",
     "sample": "Campaign name"
+  },
+  "sample": {
+    "ms_none": "Sample. No milestones are set up yet, so customers see nothing here. Set them up in Won Discounts → Milestones.",
+    "ms_currency": "Sample. No milestone has an amount in {{ cur }}, so customers paying in it see nothing here.",
+    "cart_embed": "Sample. Won Discounts fills in the real panel here once it is on in Theme settings → App embeds.",
+    "tiers_none": "Sample. This product has no quantity discount, so customers see nothing here. Set one up in Won Discounts → Quantity discounts.",
+    "tiers_currency": "Sample. This product's quantity discount has no amount in {{ cur }}, so customers paying in it see nothing here.",
+    "tiers_outlet": "Sample. The selected variant is on sale and the sale doesn't combine with the quantity discount. Customers see nothing here for it.",
+    "tiers_margin": "Sample. Margin protection doesn't allow the discount for the selected variant, so customers see nothing here.",
+    "tiers_gift": "Sample. A gift card never gets a discount, so customers see nothing here.",
+    "card_outside": "Sample. The block is outside a product card and has no product to show. Drag it into the card.",
+    "card_off": "Sample. Prices on cards are off in Won Discounts (Quantity discounts).",
+    "card_many": "Sample. The product has over 50 variants, so the card doesn't show the discount.",
+    "card_none": "Sample. The product has no quantity discount.",
+    "card_outlet": "Sample. The product is on sale.",
+    "card_gift": "Sample. A gift card never gets a discount.",
+    "card_margin": "Sample. Margin protection: a product with a purchase cost doesn't show its discount on the card.",
+    "card_cap": "Sample. Margin protection doesn't allow this discount for the product.",
+    "card_currency": "Sample. The discount has no amount in {{ cur }}."
   }
 }

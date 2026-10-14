@@ -14,6 +14,9 @@
   Liquid renders the selected variant; assets/won-discounts-tiers.js (+ its pure
   logic in won-discounts-tiers-core.js) keeps it live from the JSON at the end.
   Neither changes nor reads the cart (SF-1).
+  In the theme editor a table the customer would not see (no set, no amount in the cart's currency, the selected
+  variant on sale, under margin protection or a gift card) is followed by a labelled sample of the same markup at
+  the product's price, saying why; the real (hidden) table stays as it was for the script.
   Text keys tiers.*: the extension locales; a merchant text in the page's language (metafield tx_<locale>) wins.
 {% endcomment %}
 {%- liquid
@@ -274,6 +277,27 @@
   if any_save and print_values
     assign state = 'ready'
   endif
+
+  # The theme editor's sample: why this table says nothing for the selected variant ("defer" is the script's).
+  assign won_why = ''
+  assign won_sale_on = false
+  if won_sale == true or won_sale == 2 or won_sale == 4 or won_sale == 6
+    assign won_sale_on = true
+  endif
+  if request.design_mode == false
+  elsif tier_set == false
+    assign won_why = 'sample.tiers_none' | t
+  elsif offered == 0
+    assign won_why = 'sample.tiers_currency' | t: cur: cur
+  elsif state == 'empty' and path != 'defer'
+    if product.gift_card? or won_sale == 0
+      assign won_why = 'sample.tiers_gift' | t
+    elsif no_outlet and path == 'none' and won_sale_on
+      assign won_why = 'sample.tiers_outlet' | t
+    else
+      assign won_why = 'sample.tiers_margin' | t
+    endif
+  endif
 -%}
 {%- if tier_set == false or offered == 0 -%}
   <div class="won-tiers won-tiers--{{ preset }}" data-won-discounts-tiers data-state="empty" data-set-id="{{ set_id | escape }}" data-count-mode="{{ mode | escape }}" data-preset="{{ preset }}" hidden></div>
@@ -425,6 +449,9 @@
     {%- comment -%} The pure logic of the schema's script (split to keep each file under Theme Check's 10 000 B). {%- endcomment -%}
     <script src="{{ 'won-discounts-tiers-core.js' | asset_url }}" defer></script>
   </div>
+{%- endif -%}
+{%- if won_why != '' -%}
+  {%- render 'won-sample-tiers', price: price, preset: preset, accent: block.settings.accent, why: won_why, t_heading: t_heading, t_row_qty: t_row_qty, t_save_pct: t_save_pct, t_unit: t_unit, t_live: t_live -%}
 {%- endif -%}
 
 {% schema %}

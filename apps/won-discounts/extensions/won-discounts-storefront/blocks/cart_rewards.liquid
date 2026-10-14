@@ -5,11 +5,40 @@
   fills it); without the block the embed puts the panel at the top of the
   cart summary. On the cart page the panel shows the full Milestones ladder
   (every step, the reached ones ticked). Renders nothing when the storefront
-  config offers no step.
+  config offers no step. In the theme editor it always shows something: a
+  labelled sample of the panel (the full ladder and the code field) that
+  says why; inside the slot the sample gives way to the real panel as soon
+  as the embed's cart script draws it (won-discounts.css), so what stays is
+  the reason the script did not (the embed is off).
 {% endcomment %}
-{%- assign won_rewards = app.metafields.won_discounts.storefront_config.value.rewards -%}
+{%- liquid
+  assign won_rewards = app.metafields.won_discounts.storefront_config.value.rewards
+  assign won_tx_key = 'tx_' | append: request.locale.iso_code | downcase
+  assign won_tx = app.metafields.won_discounts[won_tx_key].value
+  assign won_why = 'sample.ms_none' | t
+  if won_rewards != blank
+    assign won_why = 'sample.cart_embed' | t
+  endif
+-%}
+{%- capture won_sample -%}
+  {%- if request.design_mode -%}
+    {%- liquid
+      assign won_code = 'cart.code_label' | t
+      assign won_code = won_tx['cart.code_label'] | default: won_code
+      assign won_apply = 'cart.code_apply' | t
+      assign won_apply = won_tx['cart.code_apply'] | default: won_apply
+    -%}
+    <div class="won-cart won-cart--page" data-won-discounts-sample="cart">
+      {%- render 'won-sample-ladder', size: 'full', bare: true, tx: won_tx -%}
+      <div class="won-cart__code"><label>{{ won_code | escape }} <input disabled></label><button type="button" disabled>{{ won_apply | escape }}</button></div>
+      <p data-won-sample-note>{{ won_why }}</p>
+    </div>
+  {%- endif -%}
+{%- endcapture -%}
 {%- if won_rewards != blank -%}
-  <div class="won-cart-slot" data-won-discounts-cart-slot {{ block.shopify_attributes }}></div>
+  <div class="won-cart-slot" data-won-discounts-cart-slot {{ block.shopify_attributes }}>{{ won_sample }}</div>
+{%- elsif request.design_mode -%}
+  <div class="won-cart-slot" {{ block.shopify_attributes }}>{{ won_sample }}</div>
 {%- endif -%}
 
 {% schema %}

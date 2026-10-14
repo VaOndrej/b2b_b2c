@@ -5,7 +5,7 @@
   block (blocks/top_bar.liquid) carried it together with the campaign; that one stays for the themes that have it.
   The strip's markup and behaviour are the top bar's (assets/won-discounts-blocks.js: it hides itself while it has
   nothing to say, and with it on the page the embed's fallback strip is not shown a second time). In the theme
-  editor a shop without a step says so instead of leaving a gap. The ladder's look is the one picked in the app
+  editor a shop without a step shows a labelled sample strip and says why (snippets/won-sample-ladder.liquid). The ladder's look is the one picked in the app
   for the strip (Milníky → Vzhled → Pruh nahoře).
 {% endcomment %}
 {%- liquid
@@ -32,7 +32,14 @@
       {{ won_rows }}
     </div>
   {%- elsif request.design_mode -%}
-    <p class="won-topbar__empty">{{ 'progress.empty' | t }}</p>
+    {%- if won_rw != blank -%}
+      {%- assign won_why = 'sample.ms_currency' | t: cur: won_cur -%}
+    {%- else -%}
+      {%- assign won_why = 'sample.ms_none' | t -%}
+    {%- endif -%}
+    <div class="won-progress" data-size="bar">
+      {%- render 'won-sample-ladder', size: 'bar', why: won_why, tx: won_tx -%}
+    </div>
   {%- endif -%}
 </div>
 

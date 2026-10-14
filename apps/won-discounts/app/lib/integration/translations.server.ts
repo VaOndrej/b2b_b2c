@@ -43,8 +43,10 @@ import { readShopLanguages, type ShopLanguage } from "./themes.server";
 // --- The extension's own texts, read once from its locale files ------------------------------------------
 
 const LOCALE_FILES: Record<DefaultTextLang, string> = { cs: "cs.json", sk: "sk.json", en: "en.default.json" };
-/** Not a merchant's to change: a plural Shopify fills in (`{{ count }}`), and what only the theme editor shows. */
+/** Not a merchant's to change: a plural Shopify fills in (`{{ count }}`), and what only the theme editor shows
+ * (`sample.*`: why a block shows a labelled sample there). */
 const NOT_EDITABLE = new Set(["outlet.left", "outlet.sample", "progress.empty", "campaign.sample"]);
+const notEditable = (key: string) => NOT_EDITABLE.has(key) || key.startsWith("sample.");
 let extensionTexts: Record<DefaultTextLang, Record<string, string>> | null = null;
 
 /** `{group: {key: text}}` → `{"group.key": text}`. */
@@ -78,7 +80,7 @@ export function storefrontTextDefaults(): Record<DefaultTextLang, Record<string,
 
 /** The extension's keys a merchant can change: the English file's, in its order. */
 export function storefrontTextKeys(): string[] {
-  return Object.keys(storefrontTextDefaults().en).filter((key) => !NOT_EDITABLE.has(key));
+  return Object.keys(storefrontTextDefaults().en).filter((key) => !notEditable(key));
 }
 
 /**
