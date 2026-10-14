@@ -16,7 +16,7 @@ summary: Every document in the Won Discounts knowledge base with the metadata th
 
 # Documentation index
 
-68 documents. Chatbot filters: `min_plan` hides Pro-only answers from
+71 documents. Chatbot filters: `min_plan` hides Pro-only answers from
 Free merchants, `status` keeps `planned`/`beta` material out of answers, `lang`
 selects the answer language, `layer` weights concepts over tasks for "how does it
 work" questions.
@@ -55,6 +55,7 @@ Step-by-step: how do I set X up.
 
 | Document | Slug | Feature | Plan | Status | Summary |
 |---|---|---|---|---|---|
+| [Add a Won element to the theme code with AI](tasks/add-an-element-with-ai.md) | `add-an-element-with-ai` | appearance | free | beta | Copy the brief Won prepares, let your own AI change one theme file, paste the result in the code editor, then let Won check it. |
 | [Show Milestones in the cart](tasks/add-the-cart-panel-to-the-cart-page.md) | `add-the-cart-panel-to-the-cart-page` | rewards | free | beta | The app embed shows the Milestones ladder in the cart drawer by itself; on the cart page you place it with the Milestones and code block. |
 | [Add the sale badge to the product page](tasks/add-the-sale-badge.md) | `add-the-sale-badge` | outlet | pro | beta | Add the Sale badge app block to the product page so the badge and Only X left show for a variant on sale. |
 | [Add the quantity-tiers table to the product page](tasks/add-tiers-to-the-product-page.md) | `add-tiers-to-the-product-page` | tiers | free | stable | One click adds the quantity-tiers block to the active theme's product page; the admin shows whether the block is already there. |
@@ -65,6 +66,7 @@ Step-by-step: how do I set X up.
 | [Create an automatic discount](tasks/create-an-automatic-discount.md) | `create-an-automatic-discount` | discounts | free | stable | Set up a discount that applies by itself (a sale, an amount off the order, free shipping above an amount), from a recipe or blank. |
 | [End or reopen a clearance sale](tasks/end-or-reopen-a-sale.md) | `end-or-reopen-a-sale` | outlet | pro | beta | End a running sale by hand, or decide what happens with pieces returned after a sale ended. |
 | [Move Shopify discounts into Won](tasks/move-native-discounts.md) | `move-native-discounts` | native-discounts | free | stable | Move discounts created in Shopify into Won in one click, so the engine counts them and margin protection guards them. |
+| [See and place every Won element on the store](tasks/place-elements-on-the-store.md) | `place-elements-on-the-store` | appearance | free | beta | The Placement on your store page lists every Won element and every place it can show, says whether it is there, and offers the one way in your theme allows. |
 | [Prepare for uninstalling](tasks/prepare-for-uninstalling.md) | `prepare-for-uninstalling` | plans | free | beta | Before uninstalling, click Prepare for uninstalling in Settings, under Plan. It ends running sales (prices back) and restores the Shopify discounts you moved into Won. |
 | [Set up a free gift from an amount](tasks/set-up-a-free-gift.md) | `set-up-a-free-gift` | rewards | free | beta | Pick a product variant as the gift and the order amount per currency; on Pro add more thresholds, a choice of up to 3 gifts and a fallback. |
 | [Set up free shipping from an amount](tasks/set-up-free-shipping.md) | `set-up-free-shipping` | rewards | free | beta | Add a free-shipping step in Milestones and enter the cart value for each of your markets. |
@@ -109,6 +111,7 @@ Troubleshooting and FAQ.
 | [The discount is lower because of margin protection](support/discount-lowered-by-margin-protection.md) | `discount-lowered-by-margin-protection` | margin | free | stable | How to tell that margin protection lowered a discount, why it did, and what to change if the result is not what you want. |
 | [The discount is not offered in EUR (or another currency)](support/discount-not-offered-in-a-currency.md) | `discount-not-offered-in-a-currency` | markets | free | stable | Why a Won discount works in one currency but not in another (a missing value, never converted), and how to fix it. |
 | [A discount outside Won](support/discount-outside-won.md) | `discount-outside-won` | native-discounts | free | stable | What the "discounts outside Won" warning means, why it matters for checkout and margin protection, and what to do with each such discount. |
+| [A Won element added in the theme code does not show](support/element-not-showing-on-the-store.md) | `element-not-showing-on-the-store` | appearance | free | beta | Why a won-discounts tag pasted into the theme code shows nothing, in the order to check, as the Placement on your store page says it. |
 | [Free shipping or the gift is missing in a market](support/free-shipping-missing-in-a-market.md) | `free-shipping-missing-in-a-market` | rewards | free | beta | A reward is offered only in currencies that have their own amount; the admin names the market without one. |
 | [The gift is charged at checkout](support/gift-charged-at-checkout.md) | `gift-charged-at-checkout` | rewards | free | beta | Why a gift line is paid at checkout, in the order to check, from the order being below the threshold to a second item of the gift. |
 | [The gift is not added to the cart](support/gift-not-added-to-the-cart.md) | `gift-not-added-to-the-cart` | rewards | free | beta | Why the cart does not add the gift, in the order to check, from the app embed being off to the customer having declined it. |

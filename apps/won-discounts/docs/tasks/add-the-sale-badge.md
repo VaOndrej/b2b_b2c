@@ -28,3 +28,4 @@ summary: Add the Sale badge app block to the product page so the badge and Only 
   needs no block. *Nothing* keeps the sale quiet: no struck price, no badge.
 - On a product with several variants the badge names each variant on sale.
 - "Only X left" comes from the sale's real quota and disappears at zero.
+- To show the badge somewhere the block cannot go, see [place-elements-on-the-store](place-elements-on-the-store.md).

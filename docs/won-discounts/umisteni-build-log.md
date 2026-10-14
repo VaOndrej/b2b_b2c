@@ -4,6 +4,13 @@ Zadání: `WonCommerce/Apps/docs/won-discounts-umisteni-na-web-zadani.md` (mimo 
 ve worktree `WonCommerce/b2b_b2c-umisteni`, protože na `main` paralelně běžel krok 6 kombinování. Po dokončení se
 sloučí do `main`. Samostatný log, aby se nepral s `docs/won-discounts-build-log.md`.
 
+**CHECKPOINT U8 (14. 10. 2026): balík F hotový.** `docs/reference/theme-tags.generated.md` (generuje se
+z `theme-tags.ts`, už se `tiers` a `outlet`), postupy `docs/tasks/place-elements-on-the-store.md`,
+`docs/tasks/add-an-element-with-ai.md`, řešení potíží `docs/support/element-not-showing-on-the-store.md`, odkazy
+z postupů tabulky a štítku. Popisky odpovídají `en.ts`. **Odkaz „Zeptat se“ do chatbota nejde postavit:** chatbot
+v adminu zatím neexistuje (ani ve Won Toasts), `docs/` je jen korpus pro něj. Čeká na chatbota. Zbývá: C (čeká na
+rozhodnutí o zásuvce), živé ověření A, B, D, E, merge.
+
 **CHECKPOINT U7 (14. 10. 2026): balík D hotový v kódu, naživo neověřený; další F.** Značky `tiers` a `outlet`:
 snippety `won-tiers` / `won-outlet` (bloky jen `render`), embed na stránce produktu s `tg.ti` / `tg.ob`, CSS a skripty
 po `won-discounts-tags.js`, vyplněná značka skryje blok (CSS `:has`), v editoru mimo produkt `sample.tag_product`.

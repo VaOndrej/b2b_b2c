@@ -33,3 +33,4 @@ summary: One click adds the quantity-tiers block to the active theme's product p
 - If you change theme, or the block is removed from the template, add it
   again the same way. Troubleshooting:
   [tiers-table-not-showing-on-the-product](../support/tiers-table-not-showing-on-the-product.md).
+- To show the table somewhere the block cannot go, see [place-elements-on-the-store](place-elements-on-the-store.md).
