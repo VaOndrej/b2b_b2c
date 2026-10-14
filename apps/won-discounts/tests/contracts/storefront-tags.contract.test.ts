@@ -135,6 +135,44 @@ test("the embed makes the tags' HTML only for what the theme holds (tg), the sam
   assert.ok(liquid.indexOf("{{ 'won-discounts-tags.js' | asset_url }}") < liquid.indexOf("{{ 'won-discounts-cart.js' | asset_url }}"), "the tags are filled before the cart script looks for them");
 });
 
+test("balík D, tiers and outlet: the product page's table and badge go into their tags; off the product page the editor's sample says where they work; a filled tag hides the block's", async () => {
+  const TABLE = (id: string) => `<div class="won-tiers won-tiers--default" data-won-discounts-tiers data-state="ready" id="${id}"><p class="won-tiers__heading">Množstevní sleva</p></div>`;
+  const BADGE = (id: string) => `<div class="won-outlet" data-won-discounts-outlet id="${id}"><p class="won-outlet__row"><span class="won-outlet__badge">Výprodej</span></p></div>`;
+  const p = await page(`<template data-won-tag="tiers">${TABLE("in-tag")}</template><template data-won-tag="outlet">${BADGE("badge-in-tag")}</template>
+    <section class="shopify-section">${TABLE("block")}${BADGE("badge-block")}</section>
+    <won-discounts id="t" show="tiers"></won-discounts><won-discounts id="o" show="outlet"></won-discounts>`);
+  assert.equal(await p.$eval("#t > [data-won-discounts-tiers]", (el) => el.id), "in-tag");
+  assert.equal(await p.$eval("#o > [data-won-discounts-outlet]", (el) => el.id), "badge-in-tag");
+  // Never twice: the block's table and badge give way to the tag's.
+  assert.equal(await p.$eval("#block", (el) => getComputedStyle(el).display), "none");
+  assert.equal(await p.$eval("#badge-block", (el) => getComputedStyle(el).display), "none");
+  assert.notEqual(await p.$eval("#in-tag", (el) => getComputedStyle(el).display), "none");
+  await p.close();
+  const off = await page(`<template data-won-tag="tiers-sample"><div data-won-discounts-sample="tiers"><p data-won-sample-note>Jen na stránce produktu</p></div></template>
+    <section class="shopify-section">${TABLE("block")}</section><won-discounts id="t" show="tiers"></won-discounts><won-discounts id="o" show="outlet"></won-discounts>`);
+  assert.equal(await off.$eval("#t [data-won-sample-note]", (el) => el.textContent), "Jen na stránce produktu");
+  assert.equal(await off.$eval("#o", (el) => [el.childElementCount, getComputedStyle(el).display].join()), "0,none", "no template, no sample: nothing, no room");
+  assert.notEqual(await off.$eval("#block", (el) => getComputedStyle(el).display), "none", "a sample is no table: the block stays");
+  await off.close();
+});
+
+test("balík D, the embed: the table and the badge from their blocks' snippets, on the product page only, only for what the theme holds; their scripts after the tags script; in a tag the table never asks a section for its cart counts", async () => {
+  const liquid = await read("blocks/won_discounts_embed.liquid");
+  assert.match(liquid, /if template\.name == 'product' and product != blank/);
+  assert.match(liquid, /\{%- if won_tg\.ti == 1 or request\.design_mode -%\}[\s\S]*?render 'won-tiers', scripts: false[\s\S]*?<template data-won-tag="tiers">/);
+  assert.match(liquid, /\{%- if won_tg\.ob == 1 or request\.design_mode -%\}[\s\S]*?render 'won-outlet', attrs: '', scripts: false[\s\S]*?<template data-won-tag="outlet">/);
+  assert.match(liquid, /\{%- elsif request\.design_mode -%\}[\s\S]*?'sample\.tag_product' \| t[\s\S]*?data-won-tag="tiers-sample"[\s\S]*?data-won-tag="outlet-sample"/);
+  const tags = liquid.indexOf("{{ 'won-discounts-tags.js' | asset_url }}");
+  assert.ok(tags > 0 && tags < liquid.indexOf("<script src=\"{{ 'won-discounts-tiers.js' | asset_url }}\""), "the tags are filled before the table script scans");
+  assert.match(await read("blocks/quantity_tiers.liquid"), /render 'won-tiers', accent: block\.settings\.accent, scripts: true/);
+  assert.match(await read("blocks/outlet_badge.liquid"), /render 'won-outlet', attrs: block\.shopify_attributes, scripts: true/);
+  // SF-1: the table never reads the cart; a tag has no section of its own, so a cart change zeroes the counts.
+  const tiersJs = await read("assets/won-discounts-tiers.js");
+  assert.match(tiersJs, /if \(inTag\(roots\)\) return zero\(\);/);
+  assert.match(tiersJs, /n\.tagName === "WON-DISCOUNTS"/);
+  for (const locale of ["cs", "sk", "en.default"]) assert.ok(JSON.parse(await read(`locales/${locale}.json`)).sample.tag_product, locale);
+});
+
 test("the tags' description (theme-tags.ts: the reference, the admin guide, the AI brief) says what the script does", async () => {
   const { THEME_TAGS, THEME_TAG } = await import("../../app/components/model/theme-tags.ts");
   const js = await read("assets/won-discounts-tags.js");

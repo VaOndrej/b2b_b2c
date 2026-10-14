@@ -2435,6 +2435,8 @@ export const cs = {
   "webPlaces.show.card-tier": "Cena na kartě",
   "webPlaces.show.milestones": "Milníky",
   "webPlaces.show.campaign": "Kampaň",
+  "webPlaces.show.tiers": "Tabulka úrovní",
+  "webPlaces.show.outlet": "Štítek výprodeje",
   "webPlaces.link": "Umístění na webu",
   "webPlaces.link.text": "Všechny prvky Won a jejich místa na webu na jedné stránce.",
 } satisfies Record<string, string>;

@@ -83,6 +83,8 @@
         if (queue.push(el) === 1) setTimeout(ask);
         return;
       } else if ((t = tpl("card-tier-sample"))) out = t.content.cloneNode(true);
+    } else if (show === "tiers" || show === "outlet") {
+      if ((t = tpl(show) || tpl(`${show}-sample`))) out = t.content.cloneNode(true);
     } else if (show === "cart" && (t = tpl("cart-sample"))) out = t.content.cloneNode(true);
     if (out) el.append(out);
   };

@@ -133,7 +133,8 @@ export interface StorefrontConfigV1 {
    * Umístění na webu (14 Oct 2026): the `<won-discounts show="…">` tags the app found in the live theme, so the embed
    * prints the HTML only for what the theme holds — `ms`: the Milníky ladder's sizes the tags ask for, `cp`: 1 when a
    * tag shows the campaign, `cd`: 1 when a tag shows a card's line (the texts are the page's; this loads the script
-   * that puts them in). A `cart` tag needs nothing: the cart script draws the panel into it. Absent = no tag found.
+   * that puts them in), `ti`: 1 when a tag shows the tiers table, `ob`: 1 the sale badge (both on the product page
+   * only, balík D). A `cart` tag needs nothing: the cart script draws the panel into it. Absent = no tag found.
    */
   tg?: StorefrontThemeTags;
 }
@@ -146,6 +147,8 @@ export interface StorefrontThemeTags {
   ms?: StorefrontTagSize[];
   cp?: 1;
   cd?: 1;
+  ti?: 1;
+  ob?: 1;
 }
 
 export interface StorefrontCampaign {
@@ -218,7 +221,7 @@ export interface StorefrontConfigOptions {
   /** The shop's IANA time zone: campaign windows are shop-local, the storefront needs instants (`camps`). */
   shopTimezone?: string;
   /** The tags found in the live theme (the theme scan): `milestones` with each size asked for, `campaign`. */
-  themeTags?: { milestones?: readonly string[]; campaign?: boolean; card?: boolean } | null;
+  themeTags?: { milestones?: readonly string[]; campaign?: boolean; card?: boolean; tiers?: boolean; outlet?: boolean } | null;
 }
 
 /** A value under a key that may be an Object.prototype name ("__proto__"): always an own, enumerable entry. */
@@ -340,7 +343,13 @@ export function themeTagsPart(found: StorefrontConfigOptions["themeTags"]): { tg
   if (!found) return {};
   const size = (asked: string): StorefrontTagSize => (STOREFRONT_TAG_SIZES as readonly string[]).includes(asked) ? (asked as StorefrontTagSize) : "compact";
   const sizes = STOREFRONT_TAG_SIZES.filter((known) => found.milestones?.some((asked) => size(asked) === known));
-  const tg: StorefrontThemeTags = { ...(sizes.length ? { ms: sizes } : {}), ...(found.campaign ? { cp: 1 as const } : {}), ...(found.card ? { cd: 1 as const } : {}) };
+  const tg: StorefrontThemeTags = {
+    ...(sizes.length ? { ms: sizes } : {}),
+    ...(found.campaign ? { cp: 1 as const } : {}),
+    ...(found.card ? { cd: 1 as const } : {}),
+    ...(found.tiers ? { ti: 1 as const } : {}),
+    ...(found.outlet ? { ob: 1 as const } : {}),
+  };
   return Object.keys(tg).length ? { tg } : {};
 }
 

@@ -4,6 +4,28 @@ Zadání: `WonCommerce/Apps/docs/won-discounts-umisteni-na-web-zadani.md` (mimo 
 ve worktree `WonCommerce/b2b_b2c-umisteni`, protože na `main` paralelně běžel krok 6 kombinování. Po dokončení se
 sloučí do `main`. Samostatný log, aby se nepral s `docs/won-discounts-build-log.md`.
 
+**CHECKPOINT U7 (14. 10. 2026): balík D hotový v kódu, naživo neověřený; další F.** Značky `tiers` a `outlet`:
+snippety `won-tiers` / `won-outlet` (bloky jen `render`), embed na stránce produktu s `tg.ti` / `tg.ob`, CSS a skripty
+po `won-discounts-tags.js`, vyplněná značka skryje blok (CSS `:has`), v editoru mimo produkt `sample.tag_product`.
+Tabulka ve značce po změně košíku `zero()` bez dotazu na sekci (test padá bez opravy). Jádro `tg.ti/ob`, model míst
+i zadání pro AI je znají. Brány: core 1 009, app 1 957 (jednou spadl `margin.test.ts` na časování, samostatně 3× OK),
+typecheck, lint 0 chyb, Theme Check 6× OrphanedSnippet (2 nové snippety, stejný planý poplach), Liquid celkem v limitu.
+
+**CHECKPOINT U6 (14. 10. 2026): balík D rozpracovaný, F čeká.** Zásuvka: podklad k rozhodnutí
+`docs/won-discounts/rozhodnuti-zasuvka-kosiku.md` (doporučení varianta 1 + kontrola čtením vzhledu), Ondřej
+rozhodne; mezitím D a F. Plán D:
+- `snippets/won-tiers.liquid` a `snippets/won-outlet.liquid` = celý Liquid bloků (blok je jen `render`), parametry
+  `accent`, `attrs`, `scripts`.
+- Embed na stránce produktu (`template.name == 'product'`) s `tg.ti` / `tg.ob` tiskne `<template data-won-tag="tiers|outlet">`
+  a načte CSS a skripty tabulky / štítku; v editoru ukázky (`tag_unknown`, mimo produkt `tag_product`).
+- `won-discounts-tags.js`: `show="tiers|outlet"`. Značka má přednost: CSS skryje blok, když je na stránce vyplněná
+  značka.
+- **Překreslení po změně košíku:** SF-1 zakazuje skriptu tabulky číst košík a značka nemá vlastní sekci. Ve značce
+  proto po změně košíku `zero()` (počítá jen zvolené množství, nikdy víc než pokladna), jako dnes při chybě.
+  Po načtení stránky počítá košík Liquid přesně. Přesnější cesta (app proxy) až když to Ondřej bude chtít.
+- Jádro `tg.ti`, `tg.ob`; `theme-tags.ts`, model míst, zadání pro AI pro `tiers` a `outlet`.
+F potom: `docs/reference/` (značky už generuje `docs:gen`), `docs/tasks/` postupy, odkaz „Zeptat se“ z průvodce.
+
 **CHECKPOINT U5 (14. 10. 2026): navigace a příprava merge.** Ondřej: stránka musí jít proklikat, ne jen přes
 odkaz. Pravidlo Won (`packages/app-kit/src/admin-nav.tsx`): nejvýš 5 položek v postranním menu, související stránky
 sdílí položku a pruh. „Umístění na webu“ je proto poslední položka pruhu pod „Slevy“ (`discountStripItems`), pruh

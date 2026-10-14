@@ -96,7 +96,7 @@
 {%- endif -%}
 
 {%- comment -%}
-  Umístění na webu (14 Oct 2026): the theme's own tags, `<won-discounts show="milestones|campaign|card-tier|cart">`.
+  Umístění na webu (14 Oct 2026): the theme's own tags, `<won-discounts show="milestones|campaign|card-tier|cart|tiers|outlet">`.
   The HTML is made here, in Liquid, and only for what the app found in the theme (the config's `tg`);
   assets/won-discounts-tags.js only moves it into each tag (a cart tag gets the cart script's panel). In the theme
   editor every tag shows the sample its block shows, with the reason. Notes: README, "Tags in the theme".
@@ -165,8 +165,43 @@
     {%- endif -%}
     <template data-won-tag="cart-sample"><div class="won-cart won-cart--drawer" data-won-discounts-sample="cart">{%- render 'won-sample-ladder', size: 'compact', bare: true, tx: won_tx -%}<p data-won-sample-note>{{ won_why }}</p></div></template>
   {%- endif -%}
+  {%- comment -%}
+    Balík D: the tiers table and the sale badge, on the product page only (the product the page is about), from the
+    same snippets as their blocks. In the theme editor a tag Won does not know yet says so; off the product page
+    it says where it works.
+  {%- endcomment -%}
+  {%- liquid
+    assign won_on_product = false
+    if template.name == 'product' and product != blank
+      assign won_on_product = true
+    endif
+    assign won_ti = false
+    assign won_ob = false
+  -%}
+  {%- if won_on_product -%}
+    {%- if won_tg.ti == 1 or request.design_mode -%}
+      {%- assign won_ti = true -%}
+      {%- capture won_t -%}{%- render 'won-tiers', scripts: false -%}{%- endcapture -%}
+      <template data-won-tag="tiers">{{ won_t }}{%- if request.design_mode and won_tg.ti != 1 -%}<p data-won-sample-note>{{ 'sample.tag_unknown' | t }}</p>{%- endif -%}</template>
+      {{ 'won-discounts-tiers.css' | asset_url | stylesheet_tag }}
+    {%- endif -%}
+    {%- if won_tg.ob == 1 or request.design_mode -%}
+      {%- assign won_ob = true -%}
+      {%- capture won_t -%}{%- render 'won-outlet', attrs: '', scripts: false -%}{%- endcapture -%}
+      <template data-won-tag="outlet">{{ won_t }}{%- if request.design_mode and won_tg.ob != 1 -%}<p data-won-sample-note>{{ 'sample.tag_unknown' | t }}</p>{%- endif -%}</template>
+      {{ 'won-discounts-outlet.css' | asset_url | stylesheet_tag }}
+    {%- endif -%}
+  {%- elsif request.design_mode -%}
+    {%- assign won_why = 'sample.tag_product' | t -%}
+    <template data-won-tag="tiers-sample"><div data-won-discounts-sample="tiers"><p data-won-sample-note>{{ won_why }}</p></div></template>
+    <template data-won-tag="outlet-sample"><div data-won-discounts-sample="outlet"><p data-won-sample-note>{{ won_why }}</p></div></template>
+  {%- endif -%}
   <script src="{{ 'won-discounts-tags.js' | asset_url }}" defer></script>
-  {%- if won_tg.ms != blank or won_tg.cp == 1 or request.design_mode -%}
+  {%- if won_ti -%}
+    <script src="{{ 'won-discounts-tiers-core.js' | asset_url }}" defer></script>
+    <script src="{{ 'won-discounts-tiers.js' | asset_url }}" defer></script>
+  {%- endif -%}
+  {%- if won_tg.ms != blank or won_tg.cp == 1 or won_ob or request.design_mode -%}
     <script src="{{ 'won-discounts-blocks.js' | asset_url }}" defer></script>
   {%- endif -%}
 {%- endif -%}

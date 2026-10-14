@@ -12,7 +12,10 @@ import { fileURLToPath } from "node:url";
 // the shopper picks, with no script at all (SF-2) and never a cart change (SF-1).
 
 const EXT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../extensions/won-discounts-storefront");
-const liquid = readFileSync(path.join(EXT, "blocks/outlet_badge.liquid"), "utf8");
+/** A block with the snippet it renders put in its place (balík D: the table's and the badge's Liquid are snippets). */
+const inlineSnippets = (source: string, root: string) =>
+  source.replace(/\{%-?\s*render '(won-tiers|won-outlet)'[^%]*-?%\}/g, (_tag, name: string) => readFileSync(path.join(root, "snippets", `${name}.liquid`), "utf8"));
+const liquid = inlineSnippets(readFileSync(path.join(EXT, "blocks/outlet_badge.liquid"), "utf8"), EXT);
 const code = liquid.replace(/\{% comment %\}[\s\S]*?\{% endcomment %\}/g, "");
 
 test("Liquid: reads the product's `outlet` metafield (app-owned), shows only for strike_badge / strike_badge_left", () => {

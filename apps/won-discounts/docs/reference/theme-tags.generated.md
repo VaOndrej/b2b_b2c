@@ -40,6 +40,8 @@ no logic: Won fills it, so it always shows what checkout gives and follows your 
 | `card-tier` | “Quantity price (card)” | A product card on any page (collections, search, the home page, recommendations): the first quantity break, e.g. “From 3 items −10%”. |
 | `milestones` | “Milestones”, “Announcement: Milestones” | Anywhere: the ladder of steps by cart value (free shipping, gifts, order discounts). |
 | `campaign` | “Campaign banner”, “Announcement: Campaign” | Anywhere: the name of the campaign running now and the time left. |
+| `tiers` | “Quantity tiers” | The product page only, for the product the page is about: the table of quantity breaks with the live price for the picked variant and quantity. |
+| `outlet` | “Sale badge” | The product page only, for the product the page is about: the sale badge of the picked variant (with the pieces left when the sale shows them). |
 
 ## The tags
 
@@ -84,6 +86,26 @@ Anywhere: the name of the campaign running now and the time left.
 
 - `text`: The line, with `{name}` for the campaign's name. Missing or unknown: `{name}`.
 - `align`: `start` or `center`. Missing or unknown: `start`.
+
+### `show="tiers"`
+
+The product page only, for the product the page is about: the table of quantity breaks with the live price for the picked variant and quantity.
+
+```liquid
+<won-discounts show="tiers"></won-discounts>
+```
+
+
+
+### `show="outlet"`
+
+The product page only, for the product the page is about: the sale badge of the picked variant (with the pieces left when the sale shows them).
+
+```liquid
+<won-discounts show="outlet"></won-discounts>
+```
+
+
 
 ## Check it
 

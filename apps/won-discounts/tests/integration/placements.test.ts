@@ -34,7 +34,7 @@ test("the way in: the drawer is always the tag; the card the tag where it takes 
   assert.equal(row(rows, "msDrawer").way, "tag");
   assert.equal(row(rows, "cardTier").way, "tag");
   assert.equal(row(rows, "msProduct").way, "block");
-  assert.equal(row(rows, "tiersTable").way, "block", "no tag for the table yet (package D)");
+  assert.equal(row(rows, "tiersTable").way, "block", "the product page takes a block: the tag is the merchant's choice");
   const horizon = dawn([]);
   if (horizon.state === "ok") horizon.live.fits.card = true;
   assert.equal(row(pieceRows({ scan: horizon, blocks: {}, embed: "on", content: ALL }), "cardTier").way, "block");
@@ -54,6 +54,11 @@ test("the state: a tag in the live theme's file for the place wins; a block; a t
   assert.equal(row(rows, "msHeader").state.at, "unknown", "a block not read is not verified");
   assert.deepEqual(otherTags(scan).map((t) => t.show), ["milestones", "carts"]);
   assert.equal(PIECES.length, rows.length);
+  // Balík D: the table and the badge in the product section's code count for their rows.
+  const product = pieceRows({ scan: dawn([tag("tiers", "sections/main-product.liquid", 40), tag("outlet", "sections/main-product.liquid", 41)]), blocks: { tiersTable: false }, embed: "on", content: ALL });
+  assert.equal(row(product, "tiersTable").state.at, "tag_live");
+  assert.equal(row(product, "outletBadge").state.at, "tag_live");
+  assert.equal(tagLine("tiers", "product", "sections/main-product.liquid"), '<won-discounts show="tiers"></won-discounts>');
 });
 
 test("the cause: a tag with Won off (or only in a draft) says so; a piece that is there with nothing to show says why", () => {
@@ -137,7 +142,7 @@ function form(fields: Record<string, string>) {
   return data;
 }
 
-test("action brief: the live theme's drawer file, read now, in the brief; a piece without a tag or a bad piece is refused; no read_themes → no theme", async () => {
+test("action brief: the live theme's drawer file, read now, in the brief; a bad piece is refused; no read_themes → no theme", async () => {
   const api = new FakeThemes();
   const ctx = { shop: "brief.myshopify.com", db: db.prisma, client: api, locale: "cs" as const, apiKey: "k", scopes: "read_themes" };
   const result = await placementsAction(ctx, form({ intent: "brief", piece: "msDrawer" }));
@@ -147,7 +152,9 @@ test("action brief: the live theme's drawer file, read now, in the brief; a piec
   assert.match(result.brief, /<div class="drawer">\{\{ cart\.total_price \| money \}\}<\/div>/);
   assert.equal(api.calls.at(-1)!.op, "WonThemeScanBodies");
   assert.deepEqual(api.calls.at(-1)!.variables.filenames, ["snippets/cart-drawer.liquid"]);
-  assert.deepEqual(await placementsAction(ctx, form({ intent: "brief", piece: "tiersTable" })), { ok: false, reason: "bad_request" });
+  // Balík D: the table has a tag too; its brief is about the product page (no file of it in this fake theme).
+  const table = await placementsAction(ctx, form({ intent: "brief", piece: "tiersTable" }));
+  assert.equal(table.ok && table.kind === "brief" && /show="tiers"/.test(table.brief), true);
   assert.deepEqual(await placementsAction(ctx, form({ intent: "brief", piece: "nope" })), { ok: false, reason: "bad_request" });
   assert.deepEqual(await placementsAction(ctx, form({ intent: "other" })), { ok: false, reason: "bad_request" });
   clearReadCache();

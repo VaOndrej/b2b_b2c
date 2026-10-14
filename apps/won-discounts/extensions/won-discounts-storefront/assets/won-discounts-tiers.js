@@ -149,6 +149,10 @@
   // the cart). Old counts stay until the answer; when it cannot be read, zero() (never more than checkout).
   var DATA = /<script type="application\/json" data-won-discounts-tiers-data>([\s\S]*?)<\/script>/g;
   var turn = 0;
+  function inTag(roots) {
+    for (var i = 0; i < roots.length; i++) for (var n = roots[i]; n; n = n.parentNode) if (n.tagName === "WON-DISCOUNTS") return true;
+    return false;
+  }
   function refresh(event) {
     var n = ++turn;
     var wait = event && event.promise;
@@ -157,6 +161,7 @@
     function go() {
       if (n !== turn) return;
       var roots = doc.querySelectorAll(ROOT);
+      if (inTag(roots)) return zero();
       var section = roots.length ? roots[0].closest(".shopify-section") : null;
       var id = section ? String(section.getAttribute("id") || "").replace("shopify-section-", "") : "";
       var loc = w.location;

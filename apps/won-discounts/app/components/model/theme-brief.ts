@@ -29,6 +29,7 @@ export function tagLine(show: KnownShow, place: WebPlace, file: string | null): 
   }
   if (show === "cart") return place === "cart" ? `<${THEME_TAG} show="cart" size="full"></${THEME_TAG}>` : `<${THEME_TAG} show="cart"></${THEME_TAG}>`;
   if (show === "milestones") return place === "header" ? `<${THEME_TAG} show="milestones" size="bar" align="center"></${THEME_TAG}>` : `<${THEME_TAG} show="milestones" size="compact"></${THEME_TAG}>`;
+  if (show === "tiers" || show === "outlet") return `<${THEME_TAG} show="${show}"></${THEME_TAG}>`;
   return place === "header" ? `<${THEME_TAG} show="campaign" align="center"></${THEME_TAG}>` : `<${THEME_TAG} show="campaign"></${THEME_TAG}>`;
 }
 

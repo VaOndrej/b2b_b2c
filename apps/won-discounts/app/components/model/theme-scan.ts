@@ -48,7 +48,7 @@ export type ThemeScanView =
     };
 
 /** The `show` values the embed fills (theme-tags.ts THEME_TAGS). */
-export const KNOWN_SHOWS = ["cart", "card-tier", "milestones", "campaign"] as const;
+export const KNOWN_SHOWS = ["cart", "card-tier", "milestones", "campaign", "tiers", "outlet"] as const;
 export type KnownShow = (typeof KNOWN_SHOWS)[number];
 
 export function isKnownShow(show: string): show is KnownShow {

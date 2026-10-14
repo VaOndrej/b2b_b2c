@@ -230,4 +230,7 @@ test("tg: the embed prints the ladder only in the sizes the theme's tags ask for
   // No size, or one the block does not have: the block's default, as the script reads it.
   assert.deepEqual(themeTagsPart({ milestones: ["", "huge"], campaign: true }), { tg: { ms: ["compact"], cp: 1 } });
   assert.deepEqual(themeTagsPart({ card: true }), { tg: { cd: 1 } });
+  // Balík D: the table and the sale badge on the product page.
+  assert.deepEqual(themeTagsPart({ tiers: true, outlet: true }), { tg: { ti: 1, ob: 1 } });
+  assert.deepEqual(themeTagsPart({ tiers: false, outlet: false }), {});
 });

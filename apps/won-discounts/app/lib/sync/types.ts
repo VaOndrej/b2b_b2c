@@ -123,7 +123,7 @@ export interface SyncDeps {
       /** The shop's IANA zone: the campaigns as instants (`camps`). */
       shopTimezone?: string;
       /** The tags found in the live theme (umístění na webu): the embed's `tg`. */
-      themeTags?: { milestones?: readonly string[]; campaign?: boolean; card?: boolean } | null;
+      themeTags?: { milestones?: readonly string[]; campaign?: boolean; card?: boolean; tiers?: boolean; outlet?: boolean } | null;
     },
   ) => StorefrontConfigV1;
   now: () => Date;

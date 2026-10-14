@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -11,7 +12,10 @@ import { cardTier } from "@won/core/discounts/card-tier";
 // ("EUR") — in the quantity table, on product cards, in the progress to a reward and in the cart panel.
 
 const ext = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../extensions/won-discounts-storefront");
-const read = (file: string) => readFile(path.join(ext, file), "utf8");
+/** A block with the snippet it renders put in its place (balík D: the table's and the badge's Liquid are snippets). */
+const inlineSnippets = (source: string, root: string) =>
+  source.replace(/\{%-?\s*render '(won-tiers|won-outlet)'[^%]*-?%\}/g, (_tag, name: string) => readFileSync(path.join(root, "snippets", `${name}.liquid`), "utf8"));
+const read = async (file: string) => inlineSnippets(await readFile(path.join(ext, file), "utf8"), ext);
 
 test("every Liquid amount lookup tries the market's key, then the currency's", async () => {
   const tiers = await read("blocks/quantity_tiers.liquid");

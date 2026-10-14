@@ -125,7 +125,7 @@ Won Discounts quantity tiers block (MVP 3, contracts K6 + K8). Liquid renders th
 
 ## Tags in the theme (umístění na webu, 14 Oct 2026)
 
-- The optional way in where an app block cannot go: `<won-discounts show="cart|card-tier|milestones|campaign">` in
+- The optional way in where an app block cannot go: `<won-discounts show="cart|card-tier|milestones|campaign|tiers|outlet">` in
   the theme's own code. What each tag takes is written once in `app/components/model/theme-tags.ts` (the support
   reference `docs/reference/theme-tags.generated.md`, the admin guide and the AI brief read it).
 - The HTML is Liquid's: the embed prints a `<template data-won-tag="…">` per thing the app found in the theme
@@ -142,6 +142,14 @@ Won Discounts quantity tiers block (MVP 3, contracts K6 + K8). Liquid renders th
 - `cart`: the cart script draws its panel into the tag (`TAG`) in the tag's `size` (`compact` unless `full`), and
   while a cart tag is on the page it guesses none of the theme's places (`DRAWERS`, `PAGES`). `won-discounts-cards.js`
   places nothing while a card tag is on the page.
+- `tiers` and `outlet` (balík D): the product page only (`template.name == 'product'`, the page's own product). The
+  table and the badge are the snippets their blocks render (`snippets/won-tiers.liquid`, `snippets/won-outlet.liquid`),
+  printed by the embed with `tg.ti` / `tg.ob`, with the table's CSS and scripts (or the badge's CSS and the blocks
+  script) loaded after `won-discounts-tags.js`. A filled tag wins over the block on the same page (`won-discounts.css`
+  hides the block's). In a tag the table has no section to re-render after a cart change and SF-1 forbids reading
+  the cart, so it zeroes the cart counts (the chosen quantity only, never more than checkout); the next page load
+  counts the cart in Liquid again. In the editor off the product page the sample says where it works
+  (`sample.tag_product`).
 - In the theme editor the embed prints every sample (`*-sample` templates) and the script falls back to them: the
   same sample as the block, with the reason (`sample.tag_unknown`: the app does not know the tag yet). In a cart tag
   the sample gives way to the real panel (`won-discounts.css`). `won-discounts:empty` takes no room.

@@ -16,7 +16,7 @@ export interface ThemeTagAttr {
 }
 
 export interface ThemeTag {
-  show: "cart" | "card-tier" | "milestones" | "campaign";
+  show: "cart" | "card-tier" | "milestones" | "campaign" | "tiers" | "outlet";
   /** The app blocks (blocks/<handle>.liquid) the tag stands in for. */
   blocks: readonly string[];
   /** Where it shows something. */
@@ -60,5 +60,19 @@ export const THEME_TAGS: readonly ThemeTag[] = [
       { name: "align", values: ["start", "center"], fallback: "start", about: "`start` or `center`." },
     ],
     example: `<${THEME_TAG} show="campaign"></${THEME_TAG}>`,
+  },
+  {
+    show: "tiers",
+    blocks: ["quantity_tiers"],
+    where: "The product page only, for the product the page is about: the table of quantity breaks with the live price for the picked variant and quantity.",
+    attrs: [],
+    example: `<${THEME_TAG} show="tiers"></${THEME_TAG}>`,
+  },
+  {
+    show: "outlet",
+    blocks: ["outlet_badge"],
+    where: "The product page only, for the product the page is about: the sale badge of the picked variant (with the pieces left when the sale shows them).",
+    attrs: [],
+    example: `<${THEME_TAG} show="outlet"></${THEME_TAG}>`,
   },
 ];

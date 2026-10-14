@@ -70,6 +70,7 @@
     "card_cap": "Sample. Margin protection doesn't allow this discount for the product.",
     "card_currency": "Sample. The discount has no amount in {{ cur }}.",
     "tag_unknown": "Sample. Won doesn't know about this tag in the theme yet. In Won Discounts, click Check again next to the place.",
-    "tag_card": "Sample. The product's quantity discount line goes here when the product has one."
+    "tag_card": "Sample. The product's quantity discount line goes here when the product has one.",
+    "tag_product": "Sample. This tag works only on the product page, for the product the page is about."
   }
 }

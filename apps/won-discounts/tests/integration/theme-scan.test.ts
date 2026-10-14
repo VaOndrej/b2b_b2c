@@ -80,6 +80,7 @@ test("tg from the live theme's tags: sizes each once in the block's order (unkno
   assert.deepEqual(themeTagsOfScan([tag("milestones", "full"), tag("milestones", "huge"), tag("milestones", "full"), tag("card-tier"), tag("campaign")]), { ms: ["compact", "full"], cp: 1, cd: 1 });
   assert.deepEqual(themeTagsOfScan([tag("milestones")]), { ms: ["compact"] });
   assert.equal(themeTagsOfScan([tag("cart"), tag("typo")]), null, "a cart tag needs nothing in tg");
+  assert.deepEqual(themeTagsOfScan([tag("tiers"), tag("outlet")]), { ti: 1, ob: 1 }, "balík D");
 });
 
 test("model: the place a file stands for, the brief's file, the code editor link, presence live / in a copy, unknown shows", () => {

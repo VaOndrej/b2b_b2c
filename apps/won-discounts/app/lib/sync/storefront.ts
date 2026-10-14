@@ -135,10 +135,10 @@ async function giftVariantHandles(transport: Transport, ids: readonly string[], 
  * The tags the admin last found in the live theme (umístění na webu, balík E: ShopSyncState.themeTags) as the
  * builder's option; null when none were found or the bookkeeping cannot be read (the embed then prints no tag HTML).
  */
-async function storedThemeTags(db: PrismaClient, shop: string): Promise<{ milestones?: string[]; campaign?: boolean; card?: boolean } | null> {
+async function storedThemeTags(db: PrismaClient, shop: string): Promise<{ milestones?: string[]; campaign?: boolean; card?: boolean; tiers?: boolean; outlet?: boolean } | null> {
   try {
     const tg = (await loadShopSyncFacts(db, shop)).themeTags;
-    return tg ? { ...(tg.ms ? { milestones: [...tg.ms] } : {}), campaign: tg.cp === 1, card: tg.cd === 1 } : null;
+    return tg ? { ...(tg.ms ? { milestones: [...tg.ms] } : {}), campaign: tg.cp === 1, card: tg.cd === 1, tiers: tg.ti === 1, outlet: tg.ob === 1 } : null;
   } catch {
     return null;
   }

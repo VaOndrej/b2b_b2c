@@ -27,19 +27,19 @@ export interface PieceDef {
   key: PieceKey;
   module: PlacementModule;
   place: WebPlace;
-  /** The tag that can stand in for the block here; null = no tag yet (package D: `tiers`, `outlet`). */
+  /** The tag that can stand in for the block here; null = none. */
   show: KnownShow | null;
 }
 
 /** The pieces in the order of the page: module by module, as the modules come in the nav. */
 export const PIECES: readonly PieceDef[] = [
-  { key: "tiersTable", module: "tiers", place: "product", show: null },
+  { key: "tiersTable", module: "tiers", place: "product", show: "tiers" },
   { key: "cardTier", module: "tiers", place: "card", show: "card-tier" },
   { key: "msHeader", module: "rewards", place: "header", show: "milestones" },
   { key: "msProduct", module: "rewards", place: "product", show: "milestones" },
   { key: "msDrawer", module: "rewards", place: "drawer", show: "cart" },
   { key: "msCart", module: "rewards", place: "cart", show: "cart" },
-  { key: "outletBadge", module: "outlet", place: "product", show: null },
+  { key: "outletBadge", module: "outlet", place: "product", show: "outlet" },
   { key: "cpHeader", module: "campaigns", place: "header", show: "campaign" },
   { key: "cpHome", module: "campaigns", place: "home", show: "campaign" },
   { key: "cpProduct", module: "campaigns", place: "product", show: "campaign" },

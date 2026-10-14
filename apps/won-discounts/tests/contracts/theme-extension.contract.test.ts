@@ -85,6 +85,9 @@ test("embed loads storefront JS with defer via the schema; its only <script src>
   assert.deepEqual(srcs, [
     `<script src="{{ 'won-discounts-cards.js' | asset_url }}" defer>`,
     `<script src="{{ 'won-discounts-tags.js' | asset_url }}" defer>`,
+    // Balík D: the table's scripts, only for a tiers tag on the product page (storefront-tags.contract.test.ts).
+    `<script src="{{ 'won-discounts-tiers-core.js' | asset_url }}" defer>`,
+    `<script src="{{ 'won-discounts-tiers.js' | asset_url }}" defer>`,
     `<script src="{{ 'won-discounts-blocks.js' | asset_url }}" defer>`,
     `<script src="{{ 'won-discounts-cart.js' | asset_url }}" defer>`,
     `<script src="{{ 'won-discounts-blocks.js' | asset_url }}" defer>`,
@@ -232,7 +235,8 @@ test("Shopify's Liquid tokenizer: no {% … %} tag contains `%}` inside a string
 test("MVP 3: the embed and the tiers block read the same K5 config path", async () => {
   const [embed, tiers] = await Promise.all([
     readExtension("blocks/won_discounts_embed.liquid"),
-    readExtension("blocks/quantity_tiers.liquid"),
+    // The table's Liquid is the snippet the block renders (balík D).
+    readExtension("snippets/won-tiers.liquid"),
   ]);
   const k5 = /app\.metafields\.won_discounts\.storefront_config\.value/;
   assert.match(embed, k5);

@@ -155,6 +155,8 @@ export function themeTagsOfScan(tags: readonly ScannedTag[]): StorefrontThemeTag
     milestones: tags.filter((tag) => tag.show === "milestones").map((tag) => tag.size ?? ""),
     campaign: tags.some((tag) => tag.show === "campaign"),
     card: tags.some((tag) => tag.show === "card-tier"),
+    tiers: tags.some((tag) => tag.show === "tiers"),
+    outlet: tags.some((tag) => tag.show === "outlet"),
   };
   return themeTagsPart(found).tg ?? null;
 }

@@ -70,6 +70,7 @@
     "card_cap": "Ukážka. Ochrana marže túto zľavu pri produkte nedovolí.",
     "card_currency": "Ukážka. Zľava nemá sumu v mene {{ cur }}.",
     "tag_unknown": "Ukážka. Won o tejto značke v téme ešte nevie. V aplikácii Won Discounts kliknite pri mieste na Skontrolovať znova.",
-    "tag_card": "Ukážka. Tu bude riadok s množstevnou zľavou produktu, keď ju produkt má."
+    "tag_card": "Ukážka. Tu bude riadok s množstevnou zľavou produktu, keď ju produkt má.",
+    "tag_product": "Ukážka. Táto značka funguje len na stránke produktu, pre produkt, o ktorom stránka je."
   }
 }

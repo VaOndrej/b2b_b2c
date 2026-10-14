@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -27,7 +28,10 @@ import { productMetafieldValue, productRuleIndex } from "@won/core/discounts/tar
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const extensionRoot = path.join(appRoot, "extensions/won-discounts-storefront");
-const read = (relativePath: string) => readFile(path.join(extensionRoot, relativePath), "utf8");
+/** A block with the snippet it renders put in its place (balík D: the table's and the badge's Liquid are snippets). */
+const inlineSnippets = (source: string, root: string) =>
+  source.replace(/\{%-?\s*render '(won-tiers|won-outlet)'[^%]*-?%\}/g, (_tag, name: string) => readFileSync(path.join(root, "snippets", `${name}.liquid`), "utf8"));
+const read = async (relativePath: string) => inlineSnippets(await readFile(path.join(extensionRoot, relativePath), "utf8"), extensionRoot);
 
 const BLOCK = "blocks/quantity_tiers.liquid";
 const SCRIPT = "assets/won-discounts-tiers.js";
@@ -535,7 +539,9 @@ test("K8: the block renders the contract markup and markers", async () => {
     assert.ok(liquid.includes(marker), `missing K8 marker: ${marker}`);
   }
   assert.match(liquid, /data-state="empty"/, "no set / no offered break renders an empty, hidden root");
-  assert.match(liquid, /--won-tiers-accent:\s*\{\{\s*block\.settings\.accent\s*\}\}/);
+  // The block's accent reaches the snippet as `accent` (balík D: a tag has none).
+  assert.match(await readFile(path.join(extensionRoot, BLOCK), "utf8"), /render 'won-tiers', accent: block\.settings\.accent/);
+  assert.match(liquid, /--won-tiers-accent:\s*\{\{\s*accent\s*\}\}/);
   assert.match(liquid, /replace:\s*'<\/',\s*'<\\\/'/, "the data JSON can never close its <script> early");
 });
 
@@ -1165,6 +1171,22 @@ test("bod 4: when the section cannot be read (a failed request, no section id, n
   run3.flush();
   assert.equal(none.calls.length, 0);
   assert.equal(activeMin(dawn.block), null);
+});
+
+test("balík D: a table in the theme's own tag (no section of its own) asks no section after a cart change and zeroes the cart counts (SF-1: never a cart request)", async () => {
+  const { fetch, calls } = sectionFetch();
+  const page = horizonPage(globalSetData({ cart: { p: 2, s: 0 }, variants: [{ id: 901, p: 1000, m: 30, c: 2 }, { id: 902, p: 2000, m: 12.5, c: 0 }] }));
+  // The embed's table moved into <won-discounts show="tiers"> inside the theme's section.
+  const holder = page.block.parentNode!;
+  const tag = h("won-discounts", { show: "tiers" });
+  holder.children = holder.children.filter((child) => child !== page.block);
+  holder.append(tag);
+  tag.append(page.block);
+  const { flush } = await boot(page.document, { window: productWindow(fetch) });
+  page.document.fire("cart:update");
+  flush();
+  assert.equal(calls.length, 0, "no section request");
+  assert.equal(activeMin(page.block), null, "the cart counts are zeroed: only the chosen quantity counts");
 });
 
 test("bod 4: Dawn's pubsub cart-update re-reads the section too", async () => {

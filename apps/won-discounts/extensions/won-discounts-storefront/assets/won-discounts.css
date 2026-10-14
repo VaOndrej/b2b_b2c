@@ -312,3 +312,8 @@ won-discounts {
 won-discounts:empty {
   display: none;
 }
+/* Balík D: a filled tiers / sale-badge tag wins over the block on the same page (never shown twice). */
+body:has(won-discounts [data-won-discounts-tiers]) [data-won-discounts-tiers]:not(won-discounts [data-won-discounts-tiers]),
+body:has(won-discounts [data-won-discounts-outlet]) [data-won-discounts-outlet]:not(won-discounts [data-won-discounts-outlet]) {
+  display: none !important;
+}

@@ -2431,6 +2431,8 @@ export const en: Record<keyof typeof cs, string> = {
   "webPlaces.show.card-tier": "Price on the card",
   "webPlaces.show.milestones": "Milestones",
   "webPlaces.show.campaign": "Campaign",
+  "webPlaces.show.tiers": "Tier table",
+  "webPlaces.show.outlet": "Clearance badge",
   "webPlaces.link": "Placement on your store",
   "webPlaces.link.text": "Every Won element and its places on your store on one page.",
 };

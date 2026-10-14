@@ -61,7 +61,13 @@ export function parseThemeTags(text: string | null | undefined): StorefrontTheme
   if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
   const raw = value as Record<string, unknown>;
   const ms = Array.isArray(raw.ms) ? STOREFRONT_TAG_SIZES.filter((size) => (raw.ms as unknown[]).includes(size)) : [];
-  const out: StorefrontThemeTags = { ...(ms.length ? { ms } : {}), ...(raw.cp === 1 ? { cp: 1 as const } : {}), ...(raw.cd === 1 ? { cd: 1 as const } : {}) };
+  const out: StorefrontThemeTags = {
+    ...(ms.length ? { ms } : {}),
+    ...(raw.cp === 1 ? { cp: 1 as const } : {}),
+    ...(raw.cd === 1 ? { cd: 1 as const } : {}),
+    ...(raw.ti === 1 ? { ti: 1 as const } : {}),
+    ...(raw.ob === 1 ? { ob: 1 as const } : {}),
+  };
   return Object.keys(out).length ? out : null;
 }
 
