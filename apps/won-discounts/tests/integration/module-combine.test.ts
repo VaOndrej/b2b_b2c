@@ -3,8 +3,8 @@ import { after, before, beforeEach, test } from "node:test";
 
 import type { PrismaClient } from "../../app/generated/prisma/client.ts";
 import type { AdminClient } from "../../app/lib/admin-client.server.ts";
-import { loadConfig } from "../../app/lib/config.server.ts";
-import { combineAction } from "../../app/lib/integration/combine.server.ts";
+import { loadConfig, saveConfig } from "../../app/lib/config.server.ts";
+import { combineAction, mismatchViews } from "../../app/lib/integration/combine.server.ts";
 import type { ShopCtx } from "../../app/lib/integration/context.server.ts";
 import { createSync, syncIdle } from "../../app/lib/sync/sync.server.ts";
 import { productionSyncDeps } from "../../app/lib/sync/wiring.server.ts";
@@ -95,4 +95,28 @@ test("F12: a stale version → base_changed when the list changed meanwhile", as
   const late = await combineAction(ctx, post("tiers", ["shipping"], stale));
   assert.deepEqual(late, { ok: false, reason: "base_changed" });
   assert.deepEqual((await loadConfig(db.prisma, shop)).config.modules.tiers.combine.types, ["automatic"]);
+});
+
+test("a mismatch set straight in one save: allow on the other side (Free: by type), or deny here; the page lists what is left", async () => {
+  const store = new FakeStore();
+  const ctx = ctxFor(store);
+  // The sales take automatic discounts; the shop's discounts do not take the sales: one finding, Výprodej allows.
+  assert.equal((await combineAction(ctx, post("outlet", ["automatic"]))).ok, true);
+  await syncIdle(shop);
+  const config = (await loadConfig(db.prisma, shop)).config;
+  const withRule = { ...config, modules: { ...config.modules, codes: { ...config.modules.codes, rules: [{ id: "r1", name: "Jaro", enabled: true, method: "automatic" as const, value: { kind: "percentage" as const, percent: 10 }, target: { kind: "products" as const, productIds: ["gid://shopify/Product/1"], variantIds: [] }, combine: { types: [] } }] } } };
+  await saveConfig(db.prisma, shop, withRule as unknown as typeof config);
+  const loaded = await loadConfig(db.prisma, shop);
+  const views = mismatchViews(loaded.config, "free");
+  assert.deepEqual(views.map((v) => [v.id, v.refusing.map((r) => r.id)]), [["outlet", ["r1"]]]);
+  assert.equal(views[0]!.href, "/app/outlet#combine-types");
+
+  const fix = (mode: string, version: string | null) => combineAction(ctx, formOf([["intent", "fix"], ["mismatchId", "outlet"], ["mismatchMode", mode], ...(version ? [["configVersion", version] as [string, string]] : [])]));
+  assert.deepEqual(await fix("sideways", loaded.version), { ok: false, reason: "bad_request" });
+  const allowed = await fix("allow", loaded.version);
+  assert.equal(allowed.ok, true, JSON.stringify(allowed));
+  await syncIdle(shop);
+  const after = await loadConfig(db.prisma, shop);
+  assert.deepEqual(after.config.modules.codes.rules[0]!.combine, { types: ["outlet"] });
+  assert.deepEqual(mismatchViews(after.config, "free"), []);
 });

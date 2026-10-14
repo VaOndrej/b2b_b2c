@@ -19,6 +19,7 @@
 // Pro sets travel back as hidden fields and stay; the sync gates them (K1: on
 // Free a scoped set is inert, its products never fall into the global set).
 
+import { COMBINE_ENTITY, combineAddUp, combineEntities, type CombineEntity } from "@won/core/discounts/combine-config";
 import type { DiscountRule, TierSet, WonDiscountsConfig } from "@won/core/discounts/config";
 import { explainGate, gateConfigForPlan, type ProCapability } from "@won/core/discounts/plan-gate";
 
@@ -93,7 +94,10 @@ export function isProductRule(rule: Pick<DiscountRule, "enabled" | "value" | "ta
 
 /** Active product rules of the config the plan runs. */
 export function competingProductRules(gated: WonDiscountsConfig): number {
-  return gated.modules.codes.rules.filter(isProductRule).length;
+  // Only those that do not add up with a tier compete with it (combine.ts: both lists must allow).
+  const tiers: CombineEntity = { id: COMBINE_ENTITY.tiers, owner: "tiers", type: "tiers", types: [...gated.modules.tiers.combine.types], rules: [], cls: "product" };
+  const byId = new Map(combineEntities(gated).map((e) => [e.id, e]));
+  return gated.modules.codes.rules.filter((rule) => isProductRule(rule) && !combineAddUp(byId.get(rule.id)!, tiers)).length;
 }
 
 /** Currencies of the stored tier amounts whose market is not enabled: kept as hidden fields and read back (§14a). */

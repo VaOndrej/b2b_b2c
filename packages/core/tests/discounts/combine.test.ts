@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { addUp, allows, COMBINE_ALL, COMBINE_BIT, COMBINE_TYPES, combineMask, combineTypeOfRule, combineTypesOf, type CombineSide, normalizeCombineTypes } from "../../src/discounts/combine.ts";
-import { COMBINE_ENTITY, COMBINE_OFFERED, combineAddUp, combineEntities, combineMeets, combineMismatches, defaultCombineFor } from "../../src/discounts/combine-config.ts";
+import { COMBINE_ENTITY, COMBINE_OFFERED, combineAddUp, combineEntities, combineMeets, combineMismatches, combineMismatchGroups, combineMismatchIds, defaultCombineFor, fixCombineMismatch } from "../../src/discounts/combine-config.ts";
 import { createDefaultConfig, readStoredConfig, sanitizeConfig } from "../../src/discounts/config.ts";
 import { migrateCombineV1 } from "../../src/discounts/config/combine-migrate.ts";
 import { code, freeShip, orderPct, pct, type RawRule } from "./engine-fixtures.ts";
@@ -118,6 +118,40 @@ test("a mismatch is a pair where exactly one side allows — seen from the confi
   assert.deepEqual(combineMismatches(createDefaultConfig()), []);
   // An exception on one side only is a mismatch too.
   assert.deepEqual(combineMismatches(shop([pct("A", 10, { combine: { types: [], rules: ["B"] } }), pct("B", 5, { combine: { types: [] } })])), [{ allowing: "A", refusing: "B" }]);
+});
+
+test("mismatches once per discount that allows, and set straight in one save: allow on the other side, or deny here", () => {
+  const config = shop([
+    pct("A", 10, { combine: { types: ["code", "outlet"] } }),
+    pct("K", 5, { ...code(["X"]), combine: { types: [] } }),
+    pct("K2", 5, { ...code(["Y"]), combine: { types: [] } }),
+    pct("B", 5, { combine: { types: [] } }),
+  ]);
+  const groups = combineMismatchGroups(config);
+  assert.deepEqual(groups.map((g) => [g.allowing.id, g.refusing.map((r) => r.id)]), [["A", ["K", "K2", COMBINE_ENTITY.outlet]]]);
+  assert.deepEqual([...combineMismatchIds(config)].sort(), ["A", "K", "K2", COMBINE_ENTITY.outlet].sort());
+
+  // Allow, on Pro: the two codes name A (only that pair changes); the sale's list takes A's type.
+  const pro = fixCombineMismatch(config, "A", "allow", { exceptions: true });
+  // (A type in a list is for every discount of that type: the sale now allows B too, which does not allow it back.)
+  assert.deepEqual(combineMismatches(pro), [{ allowing: COMBINE_ENTITY.outlet, refusing: "B" }]);
+  const rule = (c: typeof config, id: string) => c.modules.codes.rules.find((r) => r.id === id)!.combine;
+  assert.deepEqual(rule(pro, "K"), { types: [], rules: ["A"] });
+  assert.deepEqual(pro.modules.outlet.combine.types, ["automatic"]);
+  // Allow, without exceptions: the codes take the type "automatic" — B (automatic, refusing them) is then one more finding, said before the click.
+  const free = fixCombineMismatch(config, "A", "allow", { exceptions: false });
+  assert.deepEqual(rule(free, "K"), { types: ["automatic"] });
+  assert.deepEqual(combineMismatchGroups(free).map((g) => [g.allowing.id, g.refusing.map((r) => r.id)]), [["K", ["B"]], ["K2", ["B"]], [COMBINE_ENTITY.outlet, ["B"]]]);
+  // Deny: A drops the types it allowed them by; nothing else had to change.
+  const denied = fixCombineMismatch(config, "A", "deny", { exceptions: true });
+  assert.deepEqual(rule(denied, "A"), { types: [] });
+  assert.deepEqual(combineMismatches(denied), []);
+  // An exception on one side: deny drops the exception, allow names it back.
+  const one = shop([pct("A", 10, { combine: { types: [], rules: ["B"] } }), pct("B", 5, { combine: { types: [] } })]);
+  assert.deepEqual(rule(fixCombineMismatch(one, "A", "deny", { exceptions: true }), "A"), { types: [] });
+  assert.deepEqual(rule(fixCombineMismatch(one, "A", "allow", { exceptions: true }), "B"), { types: [], rules: ["A"] });
+  // Nothing to fix: the same config.
+  assert.equal(fixCombineMismatch(config, "B", "deny", { exceptions: true }), config);
 });
 
 test("a new discount starts without a mismatch: the shop's default list, and its mirror for a shipping discount", () => {

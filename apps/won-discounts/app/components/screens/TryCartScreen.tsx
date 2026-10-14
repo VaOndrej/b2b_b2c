@@ -59,6 +59,8 @@ import { StepCard } from "../shell/StepCard";
 import { RowNote, WonRow } from "../shell/WonSection";
 import { WON_ATTENTION, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
 import { CombinationsSection } from "../try-cart/CombinationsSection";
+import { MismatchSection } from "../shell/MismatchSection";
+import type { CombineMismatchView } from "../model/combine-mismatch";
 
 /** One of the shop's discounts as the cart form offers it. */
 export interface TryCartRuleView {
@@ -102,6 +104,10 @@ export interface TryCartScreenProps {
   combos?: CombinationCheckView | null;
   /** The combination the cart was prepared from (?scenario=): said above the cart until it is calculated. */
   opened?: string;
+  /** Discounts whose "Sčítá se s" only one side allows (every plan's; from the config the plan runs). */
+  mismatches?: CombineMismatchView[];
+  /** The stored config's version, for the mismatch buttons (F12). */
+  configVersion?: string | null;
 }
 
 export function buildTryCartProps(
@@ -597,6 +603,8 @@ export function TryCartScreen(props: TryCartScreenProps) {
     <s-page heading={t("tryCart.title")}>
       <s-stack direction="block" gap="base">
         <s-paragraph color="subdued">{t("tryCart.intro")}</s-paragraph>
+        {/* Before any cart: a mismatch is in the config, every cart has it. */}
+        <MismatchSection mismatches={props.mismatches ?? []} configVersion={props.configVersion ?? null} />
         {props.combos ? (
           <ModuleTiles label={t("tryCart.view.label")} columns={3}>
             <ViewTile

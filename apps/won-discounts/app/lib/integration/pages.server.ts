@@ -5,6 +5,7 @@
 // with a fake AdminClient and a throwaway database.
 
 import type { WonDiscountsConfig } from "@won/core/discounts/config";
+import { combineMismatchIds } from "@won/core/discounts/combine-config";
 import { explainGate, gateConfigForPlan } from "@won/core/discounts/plan-gate";
 
 import type { LoadedConfig } from "../config.server";
@@ -37,6 +38,7 @@ import { buildOverviewProps } from "../../components/screens/OverviewScreen";
 import { buildRuleEditorProps } from "../../components/screens/RuleEditorScreen";
 import { buildTryCartProps } from "../../components/screens/TryCartScreen";
 import { combinationCheck, scenarioCartOf } from "./combination-check.server";
+import { mismatchViews } from "./combine.server";
 import {
   codeRuleLimit,
   deleteRule,
@@ -243,13 +245,15 @@ export async function discountsPage(ctx: ShopCtx, opts: PageOptions & { deleted:
     loadConfig(ctx.db, ctx.shop),
     readAdminContext({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql: graphql(ctx) }),
   ]);
-  const [sync, ruleSync, result, gate] = await Promise.all([
+  const [sync, ruleSync, result, gate, plan] = await Promise.all([
     loadSyncView(ctx, loaded, reads.shopContext.timezone),
     loadRuleSync(ctx, loaded.config),
     opts.deleted ? landingResult(ctx, loaded, "deleted") : Promise.resolve(null),
     planGateFor(ctx, loaded.config, reads.shopContext.timezone),
+    ctxPlan(ctx),
   ]);
-  return buildDiscountsProps(loaded.config, {
+  const mismatchIds = [...combineMismatchIds(gateConfigForPlan(loaded.config, plan).config)];
+  const built = buildDiscountsProps(loaded.config, {
     readOnly: loaded.readOnly,
     sync,
     ruleSync,
@@ -263,6 +267,7 @@ export async function discountsPage(ctx: ShopCtx, opts: PageOptions & { deleted:
     now: nowOf(ctx),
     result,
   });
+  return mismatchIds.length > 0 ? { ...built, mismatchIds } : built;
 }
 
 // --- Editor pravidla -------------------------------------------------------------------------
@@ -358,12 +363,12 @@ export function campaignOfForm(form: { get(name: string): unknown }): string | n
 // --- Vyzkoušet košík --------------------------------------------------------------------------
 
 export async function tryCartPage(ctx: ShopCtx, opts: PageOptions & { date?: string | null; time?: string | null; scenario?: string | null }) {
-  const [{ config }, reads, plan] = await Promise.all([
+  const [{ config, version }, reads, plan] = await Promise.all([
     loadConfig(ctx.db, ctx.shop),
     readAdminContext({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql: graphql(ctx) }),
     ctxPlan(ctx),
   ]);
-  const props = buildTryCartProps(config, {
+  const built = buildTryCartProps(config, {
     // Vyzkoušet košík is Pro (BILL-1): Free sees the locked frame, and tryCartAction refuses a run.
     pro: plan === "pro",
     timezone: reads.shopContext.timezone,
@@ -373,6 +378,7 @@ export async function tryCartPage(ctx: ShopCtx, opts: PageOptions & { date?: str
     date: opts.date ?? null,
     time: opts.time ?? null,
   });
+  const props = { ...built, mismatches: mismatchViews(config, plan), configVersion: version ?? null };
   // Kontrola kombinací: the stored check, read once — the page's Shopify reads above are all there are.
   const combos = await combinationCheck(ctx, { config, plan, marketNames: reads.marketNames });
   if (!combos) return props;

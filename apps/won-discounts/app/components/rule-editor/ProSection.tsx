@@ -24,6 +24,7 @@ import { MAX_STACK_CANDIDATES, unsupportedInFunction } from "@won/core/discounts
 
 import { requestScopes } from "../model/app-bridge";
 import { COMBINE_OFFERED, combineTypeLabel, type CombineType } from "../model/combine";
+import { mismatchText, type CombineMismatchView } from "../model/combine-mismatch";
 import { describeProSettings } from "../model/describe";
 import type { MarketNames } from "../model/markets";
 import { FIELD } from "../model/rule-form";
@@ -35,7 +36,7 @@ import { GateNotes } from "../shell/GateNotes";
 import { PlanBadge } from "../shell/PlanBadge";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
-import { RowNote, WonSection } from "../shell/WonSection";
+import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 import { Anchor, FieldMark, type EditorView } from "./parts";
 
 /** Shopify admin → Settings → Markets (App Bridge `shopify://admin`, §13a: the fix is there). */
@@ -53,6 +54,7 @@ export function ProSection({
   marketsScope = true,
   isNew = false,
   combineDefaults,
+  mismatches = [],
 }: {
   ed: EditorView;
   pro: boolean;
@@ -74,6 +76,8 @@ export function ProSection({
   gatePending?: boolean;
   /** read_markets granted. */
   marketsScope?: boolean;
+  /** The stored mismatches this discount is in (either side): said under its list, fixed on Vyzkoušet košík. */
+  mismatches?: readonly CombineMismatchView[];
 }) {
   const { draft, defaults, tr, readOnly } = ed;
   const { t } = tr;
@@ -118,6 +122,11 @@ export function ProSection({
           <CombineTypes owner={owner} checked={startTypes} disabled={readOnly} />
         </div>
         <RowNote>{t("combine.cap", { n: MAX_STACK_CANDIDATES })}</RowNote>
+        {mismatches.map((m) => (
+          <WonRow key={m.id} tone="attention" action={<s-button href="/app/try-cart#mismatches" variant="secondary">{t("combine.mismatch.fix")}</s-button>}>
+            <RowNote tone="attention">{mismatchText(m, tr)}</RowNote>
+          </WonRow>
+        ))}
       </s-stack>
     </Anchor>
   );

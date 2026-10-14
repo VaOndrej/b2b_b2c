@@ -46,6 +46,8 @@ export interface DiscountsScreenProps {
   enabledMarkets?: string[];
   /** Order discounts that are steps of Milníky (set up on that page; not in `rules`). Absent = none. */
   milestoneDiscounts?: number;
+  /** Rules in a mismatch of "Sčítá se s" (either side; from the config the plan runs). Absent = none. */
+  mismatchIds?: string[];
 }
 
 export function buildDiscountsProps(
@@ -139,6 +141,7 @@ export function DiscountsScreen({
   gatePending = false,
   enabledMarkets,
   milestoneDiscounts = 0,
+  mismatchIds = [],
 }: DiscountsScreenProps) {
   const tr = useT();
   const { t } = tr;
@@ -226,7 +229,9 @@ export function DiscountsScreen({
                     attention={
                       missing.length > 0
                         ? t("overview.warning.missingCurrency", { rule: ruleName(rule, tr), currencies: tr.list(missing.map((code) => currencyMarketNames(code, currencies))) })
-                        : undefined
+                        : mismatchIds.includes(rule.id)
+                          ? t("combine.mismatch.row")
+                          : undefined
                     }
                     action={
                       // P3: a rule that needs attention opens at the field that fixes it.

@@ -10,6 +10,8 @@ import { ruleStatus } from "../components/model/rule-status";
 import { storeStatuses } from "../components/model/module-status";
 import { discountPageStates, type DiscountNavData } from "../components/model/modules";
 import { NOT_WIRED_SIGNALS } from "../components/model/signals";
+import type { WonDiscountsConfig } from "@won/core/discounts/config";
+import { mismatchViews } from "../lib/integration/combine.server";
 import { FormActionsContext } from "../components/shell/form-actions";
 import { HoverStyles } from "../components/shell/hover";
 import { DiscountNav } from "../components/shell/SubNav";
@@ -235,6 +237,11 @@ function devDiscountNav(q: URLSearchParams): DiscountNavData {
   return { goals: [], states: discountPageStates(storeStatuses({ ...facts, signals: facts.signals ?? NOT_WIRED_SIGNALS }).modules) };
 }
 
+/** ?mismatch=on: the sales take automatic discounts, which do not take the sales — one mismatch of "Sčítá se s". */
+function mismatchFixture(config: WonDiscountsConfig, on: boolean): WonDiscountsConfig {
+  return on ? { ...config, modules: { ...config.modules, outlet: { ...config.modules.outlet, combine: { types: ["automatic"] } } } } : config;
+}
+
 export const loader = (args: LoaderFunctionArgs) => {
   // The guard first: screenProps 404s outside development.
   const screen = withCombinations(screenProps(args), new URL(args.request.url));
@@ -398,9 +405,10 @@ const screenProps = ({ request }: LoaderFunctionArgs) => {
           ...(state === "f2-pending" ? { gateOff: [], gatePending: true } : {}),
         });
       }
-      const config = state === "empty" ? DEV_EMPTY_FIXTURE : DEV_OVERVIEW_FIXTURE;
+      const config = mismatchFixture(state === "empty" ? DEV_EMPTY_FIXTURE : DEV_OVERVIEW_FIXTURE, q.get("mismatch") === "on");
       const syncState = q.get("sync");
-      return buildDiscountsProps(config, {
+      const mismatchIds = [...new Set(mismatchViews(config, "free").flatMap((m) => [m.id, ...m.refusing.map((r) => r.id)]))];
+      const listed = buildDiscountsProps(config, {
         readOnly,
         sync: syncState === "ok" ? DEV_SIGNALS.sync : syncState === "failed" ? DEV_SIGNALS_SYNC_FAILED.sync : sync,
         ...(syncState === "ok" ? { ruleSync: DEV_RULE_SYNC_OK } : syncState === "failed" ? { ruleSync: DEV_RULE_SYNC_FAILED } : {}),
@@ -409,13 +417,14 @@ const screenProps = ({ request }: LoaderFunctionArgs) => {
         marketNames: names,
         now: DEV_NOW,
       });
+      return mismatchIds.length > 0 ? { ...listed, mismatchIds } : listed;
     }
     case "rule-editor": {
       const recipe = q.get("recipe");
       const ruleParam = q.get("rule") ?? "dev-fixture-4";
       const f2 = ruleParam.startsWith("dev-f2-");
       const withTiers = q.get("tiers") === "1";
-      const props = buildRuleEditorProps(withTiers ? DEV_TIERS_FIXTURE : f2 ? DEV_F2_FIXTURE : DEV_OVERVIEW_FIXTURE, {
+      const props = buildRuleEditorProps(mismatchFixture(withTiers ? DEV_TIERS_FIXTURE : f2 ? DEV_F2_FIXTURE : DEV_OVERVIEW_FIXTURE, q.get("mismatch") === "on"), {
         ...(f2 && q.get("plan") !== "pro" ? devGate(locale) : {}),
         ...(f2 ? { ruleSync: DEV_RULE_SYNC_F2, marketsScope: false } : {}),
         ruleId: ruleParam,
@@ -469,6 +478,7 @@ const screenProps = ({ request }: LoaderFunctionArgs) => {
         date: q.get("date"),
         time: q.get("time"),
       });
+      Object.assign(base, { mismatches: mismatchViews(mismatchFixture(DEV_OVERVIEW_FIXTURE, q.get("mismatch") === "on"), q.get("plan") === "pro" ? "pro" : "free"), configVersion: "dev-config-version" });
       if (!base.pro) return base;
       if (state === "empty") return base;
       if (state === "warnings") return { ...base, lines: DEV_TRY_CART_LINES, ruleIds: ["dev-fixture-2"], currency: "CZK:cz", plan: devTryCartPlanWarnings(locale) };

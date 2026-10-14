@@ -22,6 +22,7 @@
 // runs — so the summary and the preview can never disagree with what Save stores.
 // The sections live in components/rule-editor/*.
 
+import { mismatchesOf, mismatchViews, type CombineMismatchView } from "../model/combine-mismatch";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Form, useSubmit } from "react-router";
 
@@ -117,6 +118,8 @@ export interface RuleEditorScreenProps {
   tiersActive?: boolean;
   /** Opened from a campaign's form ("new" or the campaign's id): the discount runs only in the campaign (13 Oct 2026). */
   forCampaign?: string | null;
+  /** The stored mismatches of "Sčítá se s" this discount is in (a red dot at its section). Absent = none. */
+  mismatches?: CombineMismatchView[];
 }
 
 /** A tier set with tiers runs on the plan (the gated config, BILL-1). */
@@ -172,8 +175,11 @@ export function buildRuleEditorProps(
     ...(opts.marketsScope !== undefined ? { marketsScope: opts.marketsScope } : {}),
     ...(opts.gatePending ? { gatePending: true } : {}),
     ...(tiersRun(config, opts.pro) ? { tiersActive: true } : {}),
+    ...withMismatches(rule ? mismatchesOf(mismatchViews(config, opts.pro ? "pro" : "free"), rule.id) : []),
   };
 }
+
+const withMismatches = (mismatches: CombineMismatchView[]) => (mismatches.length > 0 ? { mismatches } : {});
 
 /** The rule's stored markets that are not enabled (B3), by name. */
 function offMarketsOf(rule: DiscountRule, config: WonDiscountsConfig, names?: MarketNames): { offMarkets?: MarketView[] } {
@@ -394,6 +400,8 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
   };
   // The list of sections: a red dot where the live draft has something to fix, or a refused save named a field.
   const toFix = new Set<EditorSection | null>([
+    // A mismatch of "Sčítá se s" is in the stored lists: the section that holds them.
+    ...((props.mismatches?.length ?? 0) > 0 ? ["pro" as const] : []),
     ...sectionsToFix(draft, status, codes, { pendingCodes: !!pendingBatch, enabledMarkets: markets.map((m) => m.handle) }),
     ...errors.map((e) => fieldSection(e.field)),
   ]);
@@ -464,6 +472,7 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
             gate={gate}
             gatePending={props.gatePending ?? false}
             marketsScope={props.marketsScope ?? true}
+            mismatches={props.mismatches ?? []}
           />
           <div>
             <s-button type="submit" variant="primary" disabled={boolAttr(readOnly)}>

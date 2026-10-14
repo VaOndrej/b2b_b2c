@@ -2,7 +2,7 @@
 // two can meet in a cart, where the two sides disagree (a mismatch), and what a new discount starts with.
 // The rule itself is combine.ts; the checkout engine (plan.ts) reads the same lists from the function payload.
 
-import { addUp, allows, COMBINE_BIT, COMBINE_ENTITY, type CombineModule, type CombineSide, COMBINE_TYPES, type CombineType, combineMask, combineTypeOfRule, isShippingRule } from "./combine.ts";
+import { addUp, allows, COMBINE_BIT, COMBINE_ENTITY, type CombineModule, type CombineSide, COMBINE_TYPES, type CombineType, combineMask, combineTypeOfRule, isShippingRule, normalizeCombineTypes } from "./combine.ts";
 import type { DiscountRule, ReadonlyDeep, WonDiscountsConfig } from "./config/types.ts";
 import { isMilestoneRule } from "./milestones.ts";
 
@@ -102,6 +102,78 @@ export function combineMismatches(config: Config): CombineMismatch[] {
     }
   }
   return out;
+}
+
+/** One discount that allows others which do not allow it back: the finding, once per discount (navrh-kombinace, "Neshoda"). */
+export interface CombineMismatchGroup {
+  allowing: CombineEntity;
+  /** In the config's order. */
+  refusing: CombineEntity[];
+}
+
+/** combineMismatches grouped by the side that allows, in the order of the shop's discounts. */
+export function combineMismatchGroups(config: Config): CombineMismatchGroup[] {
+  const entities = combineEntities(config);
+  const byId = new Map(entities.map((e) => [e.id, e]));
+  const groups = new Map<string, CombineEntity[]>();
+  for (const m of combineMismatches(config)) groups.set(m.allowing, [...(groups.get(m.allowing) ?? []), byId.get(m.refusing)!]);
+  return entities.filter((e) => groups.has(e.id)).map((allowing) => ({ allowing, refusing: groups.get(allowing.id)! }));
+}
+
+/** The ids of every discount in some mismatch, either side (the red dots). */
+export function combineMismatchIds(config: Config): Set<string> {
+  const out = new Set<string>();
+  for (const m of combineMismatches(config)) {
+    out.add(m.allowing);
+    out.add(m.refusing);
+  }
+  return out;
+}
+
+/** Whose list an entity follows, as a key of COMBINE_OFFERED. */
+function offeredKeyOf(entity: CombineEntity): keyof typeof COMBINE_OFFERED {
+  return entity.owner === "rule" ? (entity.type as "automatic" | "code" | "shipping") : entity.owner;
+}
+
+/**
+ * Sets one mismatch straight in one save (the buttons of the finding):
+ *  - "allow": every discount that refuses `allowingId` allows it too — with an exception naming it when both are
+ *    rules and the plan runs exceptions (`exceptions`: only that pair changes), else with its type in their list;
+ *  - "deny": `allowingId` stops allowing them — its exceptions naming them go, then the types of those still left.
+ * A type added or removed changes the list for every discount of that type: the finding says so before the click.
+ * Unknown id or no mismatch: the config as it is.
+ */
+export function fixCombineMismatch(config: WonDiscountsConfig, allowingId: string, mode: "allow" | "deny", opts: { exceptions: boolean }): WonDiscountsConfig {
+  const group = combineMismatchGroups(config).find((g) => g.allowing.id === allowingId);
+  if (!group) return config;
+  const next = structuredClone(config) as WonDiscountsConfig;
+  const { allowing, refusing } = group;
+  // Edits the list an entity follows: a rule's own, else its module's.
+  const edit = (entity: CombineEntity, change: (types: CombineType[], rules: string[]) => { types: CombineType[]; rules: string[] }) => {
+    if (entity.owner === "rule") {
+      const rule = next.modules.codes.rules.find((r) => r.id === entity.id)!;
+      const done = change([...(rule.combine?.types ?? [])], [...(rule.combine?.rules ?? [])]);
+      rule.combine = { types: normalizeCombineTypes(done.types), ...(done.rules.length > 0 ? { rules: done.rules } : {}) };
+    } else {
+      const module = next.modules[entity.owner];
+      module.combine = { types: normalizeCombineTypes(change([...module.combine.types], []).types) };
+    }
+  };
+  if (mode === "allow") {
+    for (const r of refusing) {
+      const pair = opts.exceptions && r.owner === "rule" && allowing.owner === "rule";
+      edit(r, (types, rules) => (pair ? { types, rules: rules.includes(allowing.id) ? rules : [...rules, allowing.id] } : { types: COMBINE_OFFERED[offeredKeyOf(r)].includes(allowing.type) ? [...types, allowing.type] : types, rules }));
+    }
+  } else {
+    const named = new Set(refusing.map((r) => r.id));
+    edit(allowing, (types, rules) => {
+      const kept = rules.filter((id) => !named.has(id));
+      // Still allowed through the list: the type goes.
+      const viaType = new Set(refusing.filter((r) => types.includes(r.type)).map((r) => r.type));
+      return { types: types.filter((t) => !viaType.has(t)), rules: kept };
+    });
+  }
+  return next;
 }
 
 /**
