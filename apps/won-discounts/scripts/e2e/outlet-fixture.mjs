@@ -35,6 +35,8 @@ export function outletRules(ids) {
       enabled: true,
       value: { kind: "percentage", percent: OUTLET_AUTO_PERCENT },
       target: { kind: "products", productIds: OUTLET_HANDLES.map((h) => ids[h]), variantIds: [] },
+      // The two add up (since 14 Oct 2026 a list of types each; the shop's default would let the better one win).
+      combine: { types: ["code", "shipping", "rewards"] },
     },
     {
       id: OUTLET_CODE_RULE_ID,
@@ -44,6 +46,7 @@ export function outletRules(ids) {
       codes: [OUTLET_CODE],
       value: { kind: "percentage", percent: OUTLET_CODE_PERCENT },
       target: { kind: "order" },
+      combine: { types: ["automatic", "shipping", "rewards"] },
     },
   ];
 }

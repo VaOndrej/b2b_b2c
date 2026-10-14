@@ -1,0 +1,29 @@
+{
+  "theme": "Horizon",
+  "charged": 75184,
+  "rows": [
+    {
+      "label": "Mezisoučet",
+      "value": "99,50 Kč",
+      "amount": 9950
+    },
+    {
+      "label": "Expedice",
+      "value": "652,34 Kč",
+      "amount": 65234
+    },
+    {
+      "label": "Celkem",
+      "value": "751,84 Kč",
+      "amount": 75184
+    }
+  ],
+  "lines": [
+    {
+      "title": "Won E2E — Spare",
+      "allocations": [],
+      "originalPrice": null,
+      "finalPrice": 9950
+    }
+  ]
+}
