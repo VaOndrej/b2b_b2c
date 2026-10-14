@@ -674,7 +674,7 @@ export default function DevPreview() {
       <script src="https://cdn.shopify.com/shopifycloud/polaris.js" />
       <HoverStyles />
       <LocaleProvider locale={locale}>
-        <FormActionsContext.Provider value={{ looks: here, translations: here }}>
+        <FormActionsContext.Provider value={{ combine: here, looks: here, translations: here }}>
           <DiscountNav.Provider value={discountNav}>{content}</DiscountNav.Provider>
         </FormActionsContext.Provider>
       </LocaleProvider>

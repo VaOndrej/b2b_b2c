@@ -292,7 +292,7 @@ export async function loadOutletScreen(ctx: ShopCtx): Promise<OutletScreenData> 
     today: shopToday(shop.timezone, nowOf(ctx)),
     display: loaded.config.modules.outlet.display,
     reopen: loaded.config.modules.outlet.reopenOnReturnAfterEnd,
-    withOthers: loaded.config.modules.outlet.combine.types.length > 0,
+    combine: [...loaded.config.modules.outlet.combine.types],
     running: running.map(view),
     ended: ended.map(view),
     priceLists,

@@ -1138,6 +1138,7 @@ export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | nul
     // Pro only (BILL-1): products per Pro set as the last sync wrote them (tierProductCounts).
     productsWithSets: opts.plan === "pro" && opts.state !== "empty" ? { t_devautumn: 14 } : null,
     outletWithAnything: opts.state === "outlet",
+    combine: [...config.modules.tiers.combine.types],
     embed: opts.embed === "off" ? DEV_EMBED_OFF : opts.embed === "noscope" ? { state: "no_scope", activateUrl: null } : DEV_EMBED_ON,
   };
 }
@@ -1588,6 +1589,8 @@ export function devOutletScreen(opts: { plan: "free" | "pro"; state: string | nu
     today: "2026-09-28",
     display: "strike_badge",
     reopen: "ask",
+    // ?state=combine: the sales take automatic discounts and codes.
+    combine: opts.state === "combine" ? ["automatic", "code"] : [...DEFAULT_CONFIG.modules.outlet.combine.types],
     running: runs.filter((r) => r.status !== "ended").map(view),
     ended: runs.filter((r) => r.status === "ended").map(view),
     priceLists: [

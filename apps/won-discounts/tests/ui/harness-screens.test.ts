@@ -410,9 +410,9 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /Tohle je v tarifu Pro, zákazník to nedostane/,
       /Produkty v ní ve Free nedostanou žádnou množstevní slevu/,
       /Varianty produktu dohromady/,
-      /S jinou slevou na stejný produkt se nesčítá: platí ta, která dá zákazníkovi víc\./,
+      /S jinými slevami se sčítá podle části „Sčítá se s“\. Když se nesčítají, platí ta, která dá zákazníkovi víc\./,
       /Teď se to týká 1 slevy na produkty\./,
-      /href="\/app\/settings#combination"/,
+      /data-won-module-combine="tiers"/,
       /Ochrana marže je zapnutá: u produktů s nízkou marží může úroveň vyjít nižší/,
       /Zboží ve výprodeji, dárky a dárkové karty úroveň nedostanou/,
       /class="won-tiers won-tiers--highlight"/,
@@ -533,7 +533,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
     expect: [/Čepice/, /Množstevní sleva \(od 3 ks −10\u00a0%\) ušetří 156\u00a0Kč/, /Přidejte 1 ks a dostanete −15\u00a0%/, />Množstevní sleva</],
   },
   { path: "try-cart?state=tiers&plan=pro", expect: [/Množstevní sleva \(od 2 ks −30\u00a0Kč za kus\) ušetří 60\u00a0Kč/] },
-  { path: "rule-editor?rule=dev-f2-collection&tiers=1", expect: [/Na produktech s množstevní slevou platí výhodnější z nich: tahle sleva, nebo úroveň\. Nesčítají se\./, /href="\/app\/tiers"/] },
+  { path: "rule-editor?rule=dev-f2-collection&tiers=1", expect: [/Na produktech s množstevní slevou se tahle sleva a úroveň sečtou, jen když to dovolí „Sčítá se s“ tady i u Množstevních slev\. Jinak platí výhodnější z nich\./, /href="\/app\/tiers"/] },
   {
     path: "overview?state=live&locale=en",
     expect: [/Discounts &amp; codes/, /Needs attention/, /Discounts outside Won/, /Move all \(2\)/, /1 scheduled/],
@@ -683,9 +683,10 @@ test("MVP 3 screens: one save for the whole form, last on the page", async () =>
   }
   // Each further form on Množstevní slevy saves one thing and says which.
   const forms = [...(await render("tiers?plan=pro")).html.matchAll(/<form[^>]*>[\s\S]*?<\/form>/g)].map((m) => m[0]);
-  assert.deepEqual(forms.slice(1).map((f) => (f.match(/type="submit"/g) ?? []).length), [1, 1]);
-  assert.match(forms[1]!, /data-won-look-form="tiers"[\s\S]*Uložit vzhled/);
-  assert.match(forms[2]!, /data-won-cards-form=""/);
+  assert.deepEqual(forms.slice(1).map((f) => (f.match(/type="submit"/g) ?? []).length), [1, 1, 1]);
+  assert.match(forms[1]!, /data-won-module-combine="tiers"[\s\S]*name="combineModule" value="tiers"[\s\S]*Uložit/);
+  assert.match(forms[2]!, /data-won-look-form="tiers"[\s\S]*Uložit vzhled/);
+  assert.match(forms[3]!, /data-won-cards-form=""/);
 });
 
 test("the preview is the storefront's markup (K8) with the storefront CSS confined to it — never a style for the admin", async () => {

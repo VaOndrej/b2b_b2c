@@ -9,6 +9,14 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ### Kombinování slev podle typů a výjimek (13. 10. 2026) — návrh `won-discounts/navrh-kombinace-2026-10-13.md`, SB `won-discounts-kombinace-typy-vyjimky`
 
+> **CHECKPOINT K6 (14. 10.).** K5 commitnuto (`bb98e41`). **Krok 4 hotový, necommitnutý:** sekce „Sčítá se s“
+> na Množstevních slevách, Milnících (pod stupni) a Výprodeji (záložka pravidel) = `shell/ModuleCombine.tsx`, vlastní
+> formulář na `/app/combine` (`lib/integration/combine.server.ts`, test `tests/integration/module-combine.test.ts`).
+> Výprodej: vynucený režim z Nastavení zrušen; výprodej bez vlastní volby = „Jako ostatní výprodeje“ (řídí se
+> seznamem Výprodeje). Staré texty přepínačů pryč. Brány: unit 1 909/1 909, typecheck, lint 0 chyb, build.
+> Screenshoty `docs/won-discounts/evidence/kombinace-2026-10-14/`. Další: krok 5 (neshody, tečky, tlačítka; BEZ
+> hlášení ztracených dvojic), pak krok 6.
+>
 > **CHECKPOINT K5 (14. 10.).** Kroky 1–3 commitnuté a pushnuté (`ae8b897`, `main` opravený). Rozhodnutí Ondřeje
 > 14. 10. jsou v návrhu (oddíl „Upřesnění při stavbě“): upřesnění schválená; Milníky ve výchozím stavu se vším,
 > nastavení na stránce Milníků; hlášení ztracených dvojic po převodu se NESTAVÍ (appku nepoužívá žádný obchod);

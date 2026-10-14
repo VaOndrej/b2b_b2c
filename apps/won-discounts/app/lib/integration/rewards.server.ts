@@ -79,7 +79,7 @@ function gateNotesOf(config: WonDiscountsConfig, plan: "free" | "pro", locale: S
 export function rewardsScreenFacts(
   stored: WonDiscountsConfig,
   opts: { plan: "free" | "pro"; locale: ShopCtx["locale"]; titles: ReadonlyMap<string, string> },
-): Pick<RewardsScreenData, "steps" | "limit" | "limitPro" | "countOther" | "productWithOrder" | "marginOn" | "gateNotes"> {
+): Pick<RewardsScreenData, "steps" | "limit" | "limitPro" | "countOther" | "productWithOrder" | "combine" | "marginOn" | "gateNotes"> {
   return {
     steps: milestoneSteps(stored).map((step) => milestoneStepView(step, opts.titles)),
     limit: MILESTONE_LIMITS[opts.plan],
@@ -87,6 +87,7 @@ export function rewardsScreenFacts(
     countOther: stored.modules.rewards.countOtherDiscounts,
     // (A discount step adds up with product discounts when the Milníky list names their types; the page's own list says which.)
     productWithOrder: stored.modules.rewards.combine.types.some((type) => type === "automatic" || type === "code"),
+    combine: [...stored.modules.rewards.combine.types],
     marginOn: stored.modules.margin.enabled,
     gateNotes: gateNotesOf(stored, opts.plan, opts.locale),
   };

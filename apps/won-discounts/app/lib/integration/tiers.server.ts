@@ -173,6 +173,7 @@ export async function loadTiersScreen(ctx: ShopCtx, opts: { scopes: string; fres
     productsWithSets: counts,
     // A sale takes the quantity tiers when both lists name the other (@won/core combine.ts).
     outletWithAnything: stored.modules.outlet.combine.types.includes("tiers") && stored.modules.tiers.combine.types.includes("outlet"),
+    combine: [...stored.modules.tiers.combine.types],
     embed: signals.embed,
   };
 }

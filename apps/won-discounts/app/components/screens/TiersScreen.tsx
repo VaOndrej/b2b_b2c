@@ -29,6 +29,7 @@ import { Form, useSubmit } from "react-router";
 
 import { useT } from "../../i18n/context";
 import { CardPricesSection } from "../looks/CardPricesSection";
+import { ModuleCombine } from "../shell/ModuleCombine";
 import { LookSection } from "../looks/LookSection";
 import { blockPlacement } from "../model/embed";
 import { LOOK_FIELD } from "../model/looks";
@@ -76,15 +77,12 @@ function HonestNotes({ marginOn, competingRules, outletWithAnything }: { marginO
         {t("tiers.honest.best")}
         {competingRules > 0 ? ` ${tr.tp("tiers.honest.competing", competingRules)}` : ""} <s-link href="/app/discounts">{t("nav.discounts")}</s-link>
       </s-text>
-      <s-text color="subdued">
-        {t("tiers.honest.combine")} <s-link href="/app/settings#combination">{t("settings.combination.title")}</s-link>
-      </s-text>
       {marginOn ? (
         <s-text color="subdued">
           {t("tiers.honest.margin")} <s-link href="/app/margin">{t("module.margin")}</s-link>
         </s-text>
       ) : null}
-      {/* Clearance lines are left out unless the Nastavení switch lets them combine (engine.combination); gifts always (K2). */}
+      {/* Clearance lines are left out unless the lists of Výprodej and Množstevní slevy name each other; gifts always (K2). */}
       <s-text color="subdued">{t(outletWithAnything ? "tiers.honest.excludedOutlet" : "tiers.honest.excluded")}</s-text>
     </s-stack>
   );
@@ -393,6 +391,12 @@ export function TiersScreen(props: TiersScreenProps) {
           <PageSave shown={view !== "table"} />
         </s-stack>
       </Form>
+      {/* "Sčítá se s": its own form, so outside the page's (the same view as the whole-store tiers). */}
+      <div style={{ marginTop: 16 }}>
+        <ViewPanel id="global" view={view}>
+          <ModuleCombine module="tiers" stored={props.combine} configVersion={configVersion ?? null} />
+        </ViewPanel>
+      </div>
       {/* The table's look: its own form, so outside the page's (the same view as "Tabulka na webu"). */}
       <div style={{ marginTop: 16 }}>
         <ViewPanel id="table" view={view}>

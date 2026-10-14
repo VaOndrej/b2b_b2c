@@ -23,6 +23,21 @@ export const COMBINE_FIELD = {
   rules: "combineRules",
 } as const;
 
+/** Where a module's page posts its list (Množstevní slevy, Milníky, Výprodej: shell/ModuleCombine). */
+export const COMBINE_ACTION = "/app/combine";
+
+/** The module's list form: `intent=save`, the module, the list (COMBINE_FIELD), the stored version. */
+export const MODULE_COMBINE_FIELD = { intent: "intent", module: "combineModule", configVersion: "configVersion" } as const;
+export const MODULE_COMBINE_INTENT = { save: "save" } as const;
+export const COMBINE_MODULES = ["tiers", "rewards", "outlet"] as const;
+export type CombineModule = (typeof COMBINE_MODULES)[number];
+
+/** The module a form names; null for anything else. */
+export function readCombineModule(form: FormDataLike): CombineModule | null {
+  const value = form.get(MODULE_COMBINE_FIELD.module);
+  return COMBINE_MODULES.find((m) => m === value) ?? null;
+}
+
 /** The checkbox label of a type ("Automatické slevy"). */
 export function combineTypeLabel(type: CombineType, tr: Translator): string {
   return tr.t(`combine.type.${type}` as MessageKey);

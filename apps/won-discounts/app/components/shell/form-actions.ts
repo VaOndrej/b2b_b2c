@@ -3,14 +3,16 @@
 
 import { createContext, useContext } from "react";
 
+import { COMBINE_ACTION } from "../model/combine";
 import { LOOKS_ACTION } from "../model/looks";
 import { TRANSLATIONS_ACTION } from "../model/translations";
 
 export interface FormActions {
+  combine: string;
   looks: string;
   translations: string;
 }
 
-export const FormActionsContext = createContext<FormActions>({ looks: LOOKS_ACTION, translations: TRANSLATIONS_ACTION });
+export const FormActionsContext = createContext<FormActions>({ combine: COMBINE_ACTION, looks: LOOKS_ACTION, translations: TRANSLATIONS_ACTION });
 
 export const useFormActions = (): FormActions => useContext(FormActionsContext);

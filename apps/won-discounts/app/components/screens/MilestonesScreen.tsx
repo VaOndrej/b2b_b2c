@@ -29,6 +29,7 @@ import { amountKeyCurrency } from "@won/core/discounts/money";
 import type { MessageKey } from "../../i18n";
 import { useT } from "../../i18n/context";
 import { LookSection } from "../looks/LookSection";
+import { ModuleCombine } from "../shell/ModuleCombine";
 import { presetLabel } from "../model/looks";
 import { editorOpenUrl, embedPlacement, placementOf, spotAdvice } from "../model/embed";
 import { SpotNote } from "../StorefrontPlacements";
@@ -745,6 +746,12 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
         </aside>
       ) : null}
       </div>
+      {/* "Sčítá se s" of every reward: its own form, so outside the page's; under the steps (Ondřej 14 Oct 2026: set here). */}
+      {view === "steps" ? (
+        <div style={{ marginTop: 16 }}>
+          <ModuleCombine module="rewards" stored={props.combine} configVersion={configVersion} />
+        </div>
+      ) : null}
       {/* The ladder's look: its own form, so outside the page's; under its own tile. */}
       {props.look ? (
         <div style={{ marginTop: 16 }}>

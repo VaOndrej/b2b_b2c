@@ -25,6 +25,7 @@ import { useT } from "../../i18n/context";
 import { LookSection } from "../looks/LookSection";
 import { hoverMark } from "../shell/hover";
 import { pickProducts } from "../model/app-bridge";
+import { combineSummary } from "../model/combine";
 import { OUTLET_FIELD, OUTLET_INTENT, outletPreviewPrice, readOutletLive, type OutletLiveDraft } from "../model/outlet";
 import { placementStatus } from "../model/module-status";
 import { formatDateTime } from "../model/signals";
@@ -32,6 +33,7 @@ import { useRefusedSeed } from "../model/submitted";
 import type { OutletActionResult, OutletRunView, OutletScreenData, PlacementSpot, UiResult } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
 import { boolAttr } from "../shell/attrs";
+import { ModuleCombine } from "../shell/ModuleCombine";
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
 import { Notice } from "../shell/Notice";
 import { ProFrame } from "../shell/ProFrame";
@@ -109,15 +111,15 @@ type Combine = (typeof COMBINE_CLASSES)[number];
  * another the opposite (feedback 10 Oct 2026, 6th round). Native inputs: the live draft and the server read the
  * same fields; the boxes keep their ticks while the other card is chosen (they are simply not read then).
  */
-function CombineChoice({ combine, takes, forced, disabled, error }: { combine: boolean; takes: readonly Combine[]; forced: boolean; disabled: boolean; error?: string }) {
+function CombineChoice({ combine, takes, shop, disabled, error }: { combine: boolean; takes: readonly Combine[]; shop: string; disabled: boolean; error?: string }) {
   const { t } = useT();
   const [on, setOn] = useState(combine);
-  const off = disabled || forced;
+  const off = disabled;
   const head = (value: "0" | "1", picked: boolean) => (
     <>
       <input type="radio" name={F.combine} value={value} defaultChecked={picked} disabled={off} onChange={() => setOn(value === "1")} style={{ marginTop: 3 }} />
-      <span style={{ fontSize: 14.5, fontWeight: 700, color: WON_INK }}>{t(value === "1" ? "outlet.combine.choice.on" : "outlet.combine.choice.off")}</span>
-      <span style={{ gridColumn: 2, fontSize: 13, lineHeight: 1.45, color: WON_MUTED }}>{t(value === "1" ? "outlet.combine.choice.on.hint" : "outlet.combine.choice.off.hint")}</span>
+      <span style={{ fontSize: 14.5, fontWeight: 700, color: WON_INK }}>{t(value === "1" ? "outlet.combine.choice.on" : "outlet.combine.choice.shop")}</span>
+      <span style={{ gridColumn: 2, fontSize: 13, lineHeight: 1.45, color: WON_MUTED }}>{value === "1" ? t("outlet.combine.choice.on.hint") : t("outlet.combine.choice.shop.hint", { summary: shop })}</span>
     </>
   );
   return (
@@ -144,7 +146,6 @@ function CombineChoice({ combine, takes, forced, disabled, error }: { combine: b
         </div>
       </div>
       <FieldMessage text={error} />
-      {forced ? <RowNote>{t("outlet.combine.choice.forced")}</RowNote> : null}
     </div>
   );
 }
@@ -153,6 +154,28 @@ function CombineChoice({ combine, takes, forced, disabled, error }: { combine: b
  * What a sale takes, read without guessing (7th round: three struck-through chips did not say "does not apply"):
  * one sentence of the outcome, then each discount on its own line with the word "Přičte se" or "Nepřičte se".
  */
+const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/** What a sale takes: its own choice (Pro) with a mark per class, or the list of Výprodej (`shop`, a sentence). */
+function RunTakes({ run, shop }: { run: OutletRunView; shop: string }) {
+  const { t } = useT();
+  if (!run.combine) {
+    return (
+      <>
+        <div style={{ fontFamily: WON_FONT, fontSize: 14, fontWeight: 700, color: WON_INK }}>{t("outlet.combine.state.shop")}</div>
+        <RowNote>{shop}</RowNote>
+      </>
+    );
+  }
+  const takes = run.combineWith;
+  return (
+    <>
+      <div style={{ fontFamily: WON_FONT, fontSize: 14, fontWeight: 700, color: WON_INK }}>{t(takes.length === 0 ? "outlet.combine.state.none" : takes.length === COMBINE_CLASSES.length ? "outlet.combine.state.all" : "outlet.combine.state.some")}</div>
+      <CombineMarks takes={takes} />
+    </>
+  );
+}
+
 function CombineMarks({ takes }: { takes: readonly Combine[] }) {
   const tr = useT();
   const { t } = tr;
@@ -223,7 +246,7 @@ function RunCard({
   money,
   badgeOn = false,
   display,
-  withOthers = false,
+  shop,
   badge = "unknown",
   badgeAddUrl = null,
   badgeSpot,
@@ -235,8 +258,8 @@ function RunCard({
   /** The shop's display level shows a badge at all. */
   badgeOn?: boolean;
   display?: OutletScreenData["display"];
-  /** The shop-wide rule: every sale takes the other discounts too. */
-  withOthers?: boolean;
+  /** The sales' own list ("Sčítá se s" of Výprodej) as a sentence: what a sale without its own choice takes. */
+  shop: string;
   /** Where the "Sale badge" block stands in the live theme. */
   badge?: PlacementState;
   badgeAddUrl?: string | null;
@@ -262,7 +285,6 @@ function RunCard({
     if (typeof window !== "undefined" && window.location.hash === `#${runAnchor(run.id)}`) setOpen(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- a deep link is read once
   }, []);
-  const takes: readonly Combine[] = withOthers ? COMBINE_CLASSES : run.combineWith;
   const combineError = result && !result.ok && result.reason === "invalid" && "errors" in result ? result.errors?.find((e) => e.field === F.combineWith) : undefined;
   const badgeMove = badge === "in_theme" && spotAdvice(badgeSpot)?.move === true;
   const end = active ? (
@@ -362,19 +384,19 @@ function RunCard({
               marker={{ "data-won-outlet-combine-card": run.id }}
               title={t("outlet.fact.combine")}
               action={
-                pro && !withOthers && edit !== "combine" ? (
+                pro && edit !== "combine" ? (
                   <s-button variant="secondary" onClick={() => setEdit("combine")}>
                     {t("outlet.combine.edit")}
                   </s-button>
                 ) : undefined
               }
               footer={
-                pro && !withOthers && (edit === "combine" || combineError) ? (
+                pro && (edit === "combine" || combineError) ? (
                   <Form method="post" data-won-outlet-combine-edit={run.id}>
                     <input type="hidden" name={F.intent} value={OUTLET_INTENT.combine} />
                     <input type="hidden" name={F.run} value={run.id} />
                     <s-stack direction="block" gap="small-300">
-                      <CombineChoice combine={run.combine} takes={run.combine ? run.combineWith : COMBINE_CLASSES} forced={false} disabled={false} error={combineError ? t(combineError.key, combineError.params) : undefined} />
+                      <CombineChoice combine={run.combine} takes={run.combine ? run.combineWith : COMBINE_CLASSES} shop={shop} disabled={false} error={combineError ? t(combineError.key, combineError.params) : undefined} />
                       <s-stack direction="inline" gap="small-300">
                         <s-button type="submit" variant="primary">
                           {t("outlet.combine.save")}
@@ -388,9 +410,8 @@ function RunCard({
                 ) : undefined
               }
             >
-              <div style={{ fontFamily: WON_FONT, fontSize: 14, fontWeight: 700, color: WON_INK }}>{t(takes.length === 0 ? "outlet.combine.state.none" : takes.length === COMBINE_CLASSES.length ? "outlet.combine.state.all" : "outlet.combine.state.some")}</div>
-              <CombineMarks takes={takes} />
-              <RowNote>{t(withOthers ? "outlet.combine.choice.forced" : "outlet.combine.with.always")}</RowNote>
+              <RunTakes run={run} shop={shop} />
+              <RowNote>{t("outlet.combine.with.always")}</RowNote>
             </SubCard>
           </div>
         ) : null}
@@ -561,7 +582,8 @@ export function OutletScreen(props: OutletScreenProps) {
   const tr = useT();
   const { t } = tr;
   const { plan, result, running, ended, priceLists, limits, display, reopen, today, configVersion, badgeBlockAddUrl, ordersCounted, shopCurrency } = props;
-  const withOthers = props.withOthers === true;
+  // What a sale without its own choice takes: the list of Výprodej, as a sentence.
+  const shopTakes = capitalized(combineSummary(props.combine, tr));
   const badge = placementOf(props.placed?.outletBadge);
   const badgeMove = badge === "in_theme" && spotAdvice(props.placed?.spots?.outletBadge)?.move === true;
   const pro = plan === "pro";
@@ -654,8 +676,8 @@ export function OutletScreen(props: OutletScreenProps) {
     variant || live.quota !== null || live.percent !== null ? (live.endsOn ? t("outlet.summary.ends", { date: formatDateTime(live.endsOn, tr.locale) }) : t("outlet.summary.noEnd")) : null,
   ].filter((x): x is string => x !== null);
   const summary = summaryParts.length > 0 ? summaryParts.join(" · ") : t("outlet.summary.empty");
-  /** What the NEW sale will take: every discount under the shop-wide rule, else the ticked ones of the chosen card. */
-  const newTakes = withOthers ? [...COMBINE_CLASSES] : live.combine ? live.combineWith : [];
+  /** What the NEW sale will take with its own choice: the ticked ones of the chosen card (none = the list of Výprodej). */
+  const newTakes = live.combine ? live.combineWith : [];
 
   const form = (
     <Form method="post" ref={formRef} data-won-outlet-new>
@@ -830,10 +852,9 @@ export function OutletScreen(props: OutletScreenProps) {
         {/* Step 3 (feedback 10 Oct 2026, bod 5): what this sale combines with is decided with the sale, in plain words. */}
         <StepCard n={3} of={4} title={t("outlet.step.combine")} hint={t("outlet.step.combine.hint")}>
           <CombineChoice
-            combine={withOthers || live.combine}
+            combine={live.combine}
             takes={live.combineWith}
-            // The shop-wide rule already lets every sale take the other discounts: nothing to pick per sale.
-            forced={withOthers}
+            shop={shopTakes}
             disabled={!pro}
             error={err(F.combineWith)}
           />
@@ -845,7 +866,7 @@ export function OutletScreen(props: OutletScreenProps) {
               [
                 [t("outlet.check.what"), summary],
                 [t("outlet.check.web"), t(`outlet.display.${saleDisplay}` as "outlet.display.strike")],
-                [t("outlet.check.combine"), newTakes.length === 0 ? t("outlet.combine.state.none") : newTakes.length === COMBINE_CLASSES.length ? t("outlet.combine.state.all") : tr.list(newTakes.map((c) => t(`outlet.combine.${c}.short` as "outlet.combine.tiers.short")))],
+                [t("outlet.check.combine"), !live.combine ? shopTakes : newTakes.length === 0 ? t("outlet.combine.state.none") : newTakes.length === COMBINE_CLASSES.length ? t("outlet.combine.state.all") : tr.list(newTakes.map((c) => t(`outlet.combine.${c}.short` as "outlet.combine.tiers.short")))],
               ] as const
             ).map(([label, value], i) => (
               <div key={label} style={{ display: "grid", gridTemplateColumns: "minmax(110px, 180px) minmax(0, 1fr)", gap: 12, padding: "10px 14px", background: i % 2 === 0 ? WON_WASH : WON_SURFACE, borderTop: i === 0 ? "none" : `1px solid ${WON_LINE}` }}>
@@ -948,7 +969,7 @@ export function OutletScreen(props: OutletScreenProps) {
             selected={view === "web"}
             onPick={() => setView("web")}
           />
-          <ViewTile id="info" title={t("outlet.view.info.title")} glyph="sliders" active={t(withOthers ? "outlet.combine.summary.on" : "outlet.combine.summary.off")} selected={view === "info"} onPick={() => setView("info")} />
+          <ViewTile id="info" title={t("outlet.view.info.title")} glyph="sliders" active={shopTakes} selected={view === "info"} onPick={() => setView("info")} />
         </ModuleTiles>
 
         {panel(
@@ -989,7 +1010,7 @@ export function OutletScreen(props: OutletScreenProps) {
           <WonSection title={t("outlet.running.title")} glyph="calendar" anchor="running">
             <s-stack direction="block" gap="base">
               {running.map((run) => (
-                <RunCard key={run.id} run={run} pro={pro} money={money} badgeOn={display.startsWith("strike_badge")} display={display} withOthers={withOthers} badge={badge} badgeAddUrl={badgeBlockAddUrl} badgeSpot={props.placed?.spots?.outletBadge} result={result} />
+                <RunCard key={run.id} run={run} pro={pro} money={money} badgeOn={display.startsWith("strike_badge")} display={display} shop={shopTakes} badge={badge} badgeAddUrl={badgeBlockAddUrl} badgeSpot={props.placed?.spots?.outletBadge} result={result} />
               ))}
             </s-stack>
           </WonSection>
@@ -1000,7 +1021,7 @@ export function OutletScreen(props: OutletScreenProps) {
           <WonSection title={t("outlet.ended.title")} glyph="receipt" summary={t("outlet.ended.count", { n: ended.length })} anchor="ended" collapsible defaultOpen={ended.some((r) => r.returnPending > 0)}>
             <s-stack direction="block" gap="base">
               {ended.map((run) => (
-                <RunCard key={run.id} run={run} pro={pro} money={money} badgeOn={display.startsWith("strike_badge")} display={display} withOthers={withOthers} badge={badge} badgeAddUrl={badgeBlockAddUrl} badgeSpot={props.placed?.spots?.outletBadge} result={result} />
+                <RunCard key={run.id} run={run} pro={pro} money={money} badgeOn={display.startsWith("strike_badge")} display={display} shop={shopTakes} badge={badge} badgeAddUrl={badgeBlockAddUrl} badgeSpot={props.placed?.spots?.outletBadge} result={result} />
               ))}
             </s-stack>
           </WonSection>
@@ -1055,7 +1076,7 @@ export function OutletScreen(props: OutletScreenProps) {
         {panel(
           "info",
           <>
-        {/* What a clearance item combines with: said here in full, computed from the one switch in Nastavení (never left to guesswork). */}
+        {/* What a clearance item combines with: each running sale, then what always applies; the list below sets the rest. */}
         <WonSection title={t("outlet.combine.title")} glyph="sliders" anchor="combine">
           {/* Which running sale takes what (feedback 10 Oct 2026, bod 5; per discount since the 6th round). */}
           {activeRuns.length > 0 ? (
@@ -1066,14 +1087,14 @@ export function OutletScreen(props: OutletScreenProps) {
                   marker={{ "data-won-outlet-combine-row": r.id }}
                   title={titleOf(r)}
                   action={
-                    pro && !withOthers ? (
+                    pro ? (
                       <s-button href={`#${runAnchor(r.id)}`} variant="secondary" onClick={() => setView("sales")}>
                         {t("outlet.combine.edit")}
                       </s-button>
                     ) : undefined
                   }
                 >
-                  <CombineMarks takes={withOthers ? COMBINE_CLASSES : r.combineWith} />
+                  <RunTakes run={r} shop={shopTakes} />
                 </SubCard>
               ))}
             </div>
@@ -1082,24 +1103,16 @@ export function OutletScreen(props: OutletScreenProps) {
             <WonRow>
               <RowNote>{t("outlet.combine.price")}</RowNote>
             </WonRow>
-            {(["tiers", "product", "order"] as const).map((key) => (
-              <WonRow key={key}>
-                <s-text type="strong">{t(`outlet.combine.${key}.label` as "outlet.combine.tiers.label")}</s-text>
-                <RowNote>{t("outlet.combine.when.on")} {t(`outlet.combine.${key}.on` as "outlet.combine.tiers.on")}</RowNote>
-                <RowNote>{t("outlet.combine.when.off")} {t(`outlet.combine.${key}.off` as "outlet.combine.tiers.off")}</RowNote>
-              </WonRow>
-            ))}
             {(["shipping", "rewards"] as const).map((key) => (
               <WonRow key={key}>
                 <s-text type="strong">{t(`outlet.combine.${key}.label` as "outlet.combine.shipping.label")}</s-text>
                 <RowNote>{t(`outlet.combine.${key}.always` as "outlet.combine.shipping.always")}</RowNote>
               </WonRow>
             ))}
-            <WonRow action={<s-link href="/app/settings#combination">{t("outlet.combine.change")}</s-link>}>
-              <RowNote>{t(withOthers ? "outlet.combine.switch.on" : "outlet.combine.switch.off")}</RowNote>
-            </WonRow>
           </div>
         </WonSection>
+        {/* What a sale without its own choice takes: the one list of Výprodej (docs/won-discounts/navrh-kombinace-2026-10-13.md, bod 7). */}
+        <ModuleCombine module="outlet" stored={props.combine} configVersion={configVersion ?? null} />
         {settingsShown ? (
           <WonSection title={t("outlet.settings.title")} glyph="sliders" summary={t(`outlet.reopen.${reopen}` as "outlet.reopen.ask")} hint={t("outlet.settings.summary")}>
             <Form method="post">

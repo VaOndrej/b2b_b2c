@@ -255,8 +255,11 @@ test("Výprodej: four tiles instead of one long page — the sales (with their s
   const at = (marker: string) => html.indexOf(marker);
   assert.ok(at('data-won-view-panel="web"') < at('id="look-outlet"') && at('id="look-outlet"') < at('data-won-view-panel="info"'));
   assert.ok(at('data-won-view-panel="info"') < at("data-won-outlet-combine-list"));
-  // Each running sale is a row of the rules: what it takes (✓ / ✕ per discount) and the button to its card.
-  assert.match(html, /data-won-outlet-combine-row="[^"]+"[\s\S]*?data-won-outlet-combine-marks=""[\s\S]*?Změnit/);
+  // Each running sale is a row of the rules: what it takes (without its own choice: the list of Výprodej) and the
+  // button to its card; under them the list itself (14 Oct 2026: combining by type).
+  const row = html.slice(at("data-won-outlet-combine-row="), at('data-won-module-combine="outlet"'));
+  for (const text of ["Jako ostatní výprodeje", "S jinou slevou se nesčítá", "Změnit"]) assert.ok(row.includes(text), text);
+  assert.ok(at("data-won-outlet-combine-list") < at('data-won-module-combine="outlet"'));
   // No pointer under the chosen tile (6th round): the blue frame says which one is open.
   assert.doesNotMatch(html, /aria-pressed="true"\]::after/);
   // The ended sales are folded away until one of them needs a decision; a running sale shows its four facts.
@@ -336,5 +339,5 @@ test("Výprodej (10 Oct 2026): a new sale is three numbered steps — what, how 
   assert.match(placed, /Štítek je pod tlačítkem Do košíku[\s\S]*?<s-button href="[^"]*previewPath=[^"]*"[^>]*>Přesunout štítek v šabloně/);
   assert.doesNotMatch(placed.slice(placed.indexOf("data-won-outlet-web="), placed.indexOf("data-won-outlet-combine-card=")), /addAppBlockId/);
   assert.match(html, /Zobrazit produkt na webu/);
-  assert.match(placed, /data-won-outlet-combine-card="[^"]+"[\s\S]*data-won-yesno="no"[\s\S]*Množstevní sleva/);
+  assert.match(placed, /data-won-outlet-combine-card="[^"]+"[\s\S]*Jako ostatní výprodeje[\s\S]*S jinou slevou se nesčítá/);
 });

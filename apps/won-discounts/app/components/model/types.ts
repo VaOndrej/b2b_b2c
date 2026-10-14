@@ -707,10 +707,12 @@ export interface TiersScreenData {
    */
   productsWithSets?: Record<string, number> | null;
   /**
-   * engine.combination.outletWithAnything: clearance items can get a tier too
-   * (the honest sentence says so). Additive (T5 fix round 1).
+   * Clearance items can get a tier too: the lists of Výprodej and of Množstevní
+   * slevy name each other (the honest sentence says so). Additive (T5 fix round 1).
    */
   outletWithAnything?: boolean;
+  /** "Sčítá se s" of Množstevní slevy (modules.tiers.combine.types). */
+  combine: import("@won/core/discounts/combine").CombineType[];
 }
 
 /** Přehled card. */
@@ -859,8 +861,10 @@ export interface RewardsScreenData {
   limitPro: number;
   /** countOtherDiscounts: the cart value counts after the other discounts (the cart warns; checkout never takes the gift). */
   countOther: boolean;
-  /** engine.combination.productWithOrder: a discount step adds up with product discounts (said at the step). */
+  /** The Milníky list names automatic discounts or codes: a discount step can add up with product discounts (said at the step). */
   productWithOrder: boolean;
+  /** "Sčítá se s" of Milníky (modules.rewards.combine.types): every reward follows it. */
+  combine: import("@won/core/discounts/combine").CombineType[];
   /** Margin protection is on: it may lower a discount step (said at the step). */
   marginOn: boolean;
   gateNotes: GateNoteView[];
@@ -977,8 +981,8 @@ export interface OutletScreenData {
   today: string;
   display: "silent" | "strike" | "strike_badge" | "strike_badge_left";
   reopen: "auto" | "ask" | "never";
-  /** Nastavení → "Výprodej s ostatními slevami" (engine.combination.outletWithAnything): the page says what combines with a sale. Absent = off. */
-  withOthers?: boolean;
+  /** "Sčítá se s" of Výprodej (modules.outlet.combine.types): what a sale without its own choice takes. */
+  combine: import("@won/core/discounts/combine").CombineType[];
   running: OutletRunView[];
   /** The 20 last ended sales. */
   ended: OutletRunView[];
