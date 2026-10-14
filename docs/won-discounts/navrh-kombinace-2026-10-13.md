@@ -96,7 +96,14 @@ V kódu jsou dnes dva tarify: Free (zdarma) a Pro za 29 USD měsíčně (`app/li
 
 Uzavřeno 13. 10.: dnešní „Sčítá se s“ konkrétními slevami se stane výjimkami jen v Pro; v nižším tarifu se ty dvojice přestanou sčítat (Ondřej: ano).
 
-## Upřesnění při stavbě (13. 10., Ondřej ještě neviděl)
+## Upřesnění při stavbě (13. 10., schváleno 14. 10.)
+
+Rozhodnuto 14. 10. (Ondřej):
+- Body 1–10 a 14–16 schválené, jak jsou.
+- Milníky (doprava zdarma, dárek, sleva na objednávku) se ve výchozím stavu sčítají se všemi slevami a nastavuje se to přímo na stránce Milníků. Výchozí seznam Milníků to splňuje už teď; výprodej ve výchozím stavu nebere nic, to je jeho strana.
+- Body 11 a 13 se netýkají nikoho: appku zatím nepoužívá žádný obchod, jen vývojový obchod. Převod zůstává, jednorázové hlášení ztracených dvojic se nestaví.
+- Ceník: rozhodne později.
+- Brána instrukcí 9,9 M zůstává, hledat úsporu.
 
 Návrh říká pravidlo jednou větou. Tohle jsem musel při stavbě doplnit, aby šlo spočítat každý košík. Každý bod jde změnit.
 

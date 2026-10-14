@@ -6,6 +6,9 @@
 
 ## Stav
 
+**14. 10.:** otázky 1–5 vyřešené (návrh, oddíl „Upřesnění při stavbě“), kroky 1–3 pushnuté (`ae8b897`), brána
+instrukcí zelená (9,87 M). Hlášení ztracených dvojic v kroku 5 odpadá. Zbývají kroky 4–6.
+
 - Kroky 1–3 ze 6 hotové v pracovním stromu, **necommitnuto**. Kroky 4–6 nezačaté.
 - `origin/main` je rozbitý: commit `7c341ef` (13. 10. 10:15) vzal práci uprostřed kroku 1. Oprava = commit
   současného stromu. Commit a push jen na Ondřejův pokyn.

@@ -286,7 +286,8 @@ break) — each a contract change owned by core.
 
 **Rules + tier sets past 64.** The Pro partner bits (`Partners`, a `u64` up to
 64 rules, the general stack search past it) are sized over the rules only, not
-the tier pseudo-rules (`partners_of(&rules[..first_tier])`, fix round 1).
+the tier pseudo-rules (fix round 1); since 14 Oct 2026 one more row and bit
+stands for every tier set (they share one list), up to 63 rules.
 Before that, the 65th rule-or-set put every line with Pro partners on the
 general path: +1.5 points on the realistic Pro shapes, +2.9–3.2 on the
 constructed and mesh ones. On the fix-round build 64 → 65 moves as 63 → 64 and
@@ -692,7 +693,7 @@ Invariants:
 - Quantity tiers (MVP 3, the port spec in the header of `plan-tiers.ts`; contracts K1/K2):
   - A line's set: gift lines none; the product metafield's `tierRef` absent or null → the payload's global set; a string → the set with exactly that id (`SetIndex`: by a hash of the id in the run's `u64` table, never a scan over the sets), else none — "" and any other JSON value included (fail closed: never the global set). The reader resolves it once a line (`tiers::resolve_set`, `LineTier::set`); a line without an entry gets no tier.
   - Only lines that can take a product discount count and get a tier (no gift; no outlet unless `outletWithAnything`). Counted per line, per product id (`merchandise.product.id`, read only for a line whose set counts so) or across the set's lines; the reached break is the highest `minQty` ≤ count among the breaks offered in the cart currency (an amount break without an amount there is not, MKT-1).
-  - The candidate `tier:<setId>` (a pseudo-rule after the rules in `CartPlan::rules`: automatic, priority 0, ranked with the rules): a percent p → `round(subtotal × p / 100)`, an amount a → `min(a, unit price) × quantity`; 0 → none. Its message is the break's text (`describe_tier_break`, the configured amount). It never stacks and takes no place in the Pro stack pool: the pool is the 6 best-ranked RULE candidates, the search starts from the line's best single candidate, the tier included, so a stack beats it only with a larger total; the Pro partner bits are over the rules only (a tier has none), so a plan of up to 64 rules keeps the one-word stack search whatever its tier sets. Margin protection, the Free switches and the output treat it like a rule's stack, except that a tier margin protection lowered names its break without a value (port spec step 7, `describe_capped_tier_break`: "Množstevní sleva od 5 ks" / "Quantity discount from 5 items": never more than the line gets); only the automatic node emits it.
+  - The candidate `tier:<setId>` (a pseudo-rule after the rules in `CartPlan::rules`: automatic, priority 0, ranked with the rules): a percent p → `round(subtotal × p / 100)`, an amount a → `min(a, unit price) × quantity`; 0 → none. Its message is the break's text (`describe_tier_break`, the configured amount). It joins the stack pool only when it adds up with some rule candidate of the line (combining by type); otherwise it takes no place there: the pool is the 6 best-ranked candidates, the search starts from the line's best single candidate, the tier included, so a stack beats it only with a larger total. The partner bits have one row and bit for the tiers (every set has one list), so a plan of up to 63 rules keeps the one-word stack search whatever its tier sets. Margin protection, the Free switches and the output treat it like a rule's stack, except that a tier margin protection lowered names its break without a value (port spec step 7, `describe_capped_tier_break`: "Množstevní sleva od 5 ks" / "Quantity discount from 5 items": never more than the line gets); only the automatic node emits it.
   - The payload is read tolerantly (`config.rs` `read_tiers`, every rule of `readTiersPayload`): the first set of an id, only "line" / "product" / "cart", the first used break of a `minQty` (a break whose value is junk takes nothing), ascending; amounts in the cart currency only (its first exact match in the set's list). A sync-written payload (ascending, unique) is read in one pass; any other is ordered by an unstable sort of (minQty bits, position) pairs.
   - Tier data of a line (its set, its product id) is kept beside the lines (`CartInput::tiers`), and the line candidates beside the work lines: the structures every stage walks keep their MVP 2 size (a larger `WorkLine` cost ~120 instructions a line, measured).
   - The tier part of the shared config is at most 550 B (`CONFIG_LIMITS.tierPayloadBytes`; save and sync refuse more, the function does not check it): that bounds the payload read and, with it, the costliest constructed carts (task-2-report "Cap measurement").
@@ -723,15 +724,20 @@ this function ports them in `plan.rs` (`add_up`, `module_adds`, `Partners`, `pic
   types, a gift or shipping that does not add up, junk texts), Wasm = TS, each of 20 ways ≥ 20 times. The older
   generators and the scenarios are written with the switches and `combinesWith` of before; `tests/legacy-lists.js`
   gives them the lists that say exactly the same pairs, so all 156 fixtures kept their hand-written outputs.
-- **Size.** 252 851 B of 256 000 B. What it took: the lists read from one text byte by byte (no string search of
+- **Size.** 252 267 B of 256 000 B. What it took: the lists read from one text byte by byte (no string search of
   the standard library: −3.6 kB), masks as whole numbers 0–63 (a remainder of a float pulled in `fmod`: −14 kB
   before the CLI's pass), the hand-made forms only in unit tests.
-- **Instructions — OPEN.** The four heaviest budget carts are above the project's gate of 90 % of Shopify's
-  limit (they are under the limit itself): `lines-margin-pro-mesh-198` 9.91 M, `…-bridge-200` 10.02 M,
-  `…-bridge-won-codes-200` 10.09 M, `…-bridge-codes-200` 10.14 M of 11 M (gate 9.9 M; before the change the
-  heaviest was 9.72 M); `lines-200-lines-budget` 5.49 M (was 5.23 M). Measured so far: the lists themselves cost
-  ~0.11 M on the 37-rule cart (reading one text, resolving positions, asking pairs); the rest is in the stages'
-  new bookkeeping and is not found yet. `tests/contracts/function.contract.test.ts` fails on those four until it is.
+- **Instructions (14 Oct 2026).** All budget carts are under the project's gate of 9.9 M again:
+  `lines-margin-pro-bridge-codes-200` 9.87 M, `…-bridge-won-codes-200` 9.82 M, `…-bridge-200` 9.75 M,
+  `lines-margin-pro-mesh-198` 9.23 M, `lines-200-lines-budget` 5.34 M (before the change the heaviest was 9.76 M;
+  right after it 10.12 M). Found by stopping the run after each stage (old engine against new, the same cart),
+  not by the sampling profiler (its time-based samples are noise at this scale). What it took: an exception
+  resolved through a table of positions, not a search of the rules (−95 k); the exceptions as a bit matrix
+  (`Except`), every pair asked in O(1) (−0.1 M); one more row and bit in `Partners.bits` for the tiers, so a pool
+  with a tier keeps the one-word search (−71 k); the tiers skipped at once when they add up with no rule
+  (`can`, −14 k); the pool's tier known from a flag, not a pass over the pool (−18 k); the product discounts the
+  cart got collected once for the order and shipping stages (−16 k). Left against the old engine on the
+  heaviest cart, by stage: reading +22 k, pairs +31 k, products +23 k, order +21 k.
 
 ## Accepted edge differences (junk data only)
 

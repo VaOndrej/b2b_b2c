@@ -875,16 +875,40 @@ fn owner_of(rules: &[Rule], components: &[Component]) -> usize {
     owner
 }
 
+/// The exceptions as rule indices: row `a` (`words` u64) has bit `b` set when rule `a` names rule `b`.
+/// Empty when no rule names any.
+#[derive(Default)]
+struct Except {
+    words: usize,
+    bits: Vec<u64>,
+}
+
+impl Except {
+    fn new(rules: usize) -> Self {
+        let words = rules.div_ceil(64);
+        Except { words, bits: vec![0; rules * words] }
+    }
+
+    #[inline]
+    fn has(&self, a: usize, b: usize) -> bool {
+        self.bits.get(a * self.words + b / 64).is_some_and(|w| w >> (b % 64) & 1 == 1)
+    }
+
+    fn set(&mut self, a: usize, b: usize) {
+        self.bits[a * self.words + b / 64] |= 1 << (b % 64);
+    }
+}
+
 /// combine.ts `allows`: A's list has B's type, or A names B as an exception.
 #[inline]
-fn allows(rules: &[Rule], except: &[Vec<usize>], a: usize, b: usize) -> bool {
-    rules[a].mask & rules[b].bit != 0 || except.get(a).is_some_and(|list| list.contains(&b))
+fn allows(rules: &[Rule], except: &Except, a: usize, b: usize) -> bool {
+    rules[a].mask & rules[b].bit != 0 || except.has(a, b)
 }
 
 /// combine.ts `addUp` for two rules or tiers of the plan that can be in one stack
 /// or next to each other (never two shipping discounts: no stage asks about them):
 /// both allow the other; two order discounts of Milníky never do.
-fn add_up(rules: &[Rule], except: &[Vec<usize>], a: usize, b: usize) -> bool {
+fn add_up(rules: &[Rule], except: &Except, a: usize, b: usize) -> bool {
     a != b && !(rules[a].milestone && rules[b].milestone) && allows(rules, except, a, b) && allows(rules, except, b, a)
 }
 
@@ -904,8 +928,8 @@ fn module_adds(rules: &[Rule], g: usize, bit: u8, mask: u8) -> bool {
 /// exceptions as rule indices, who can be in a stack at all, and — for a plan of
 /// up to 64 rules — the pairs as a bit matrix (a pair is then tested in O(1)).
 struct Partners {
-    /// `except[a]`: the rules `a` names (`x`), as indices; empty when no rule names any.
-    except: Vec<Vec<usize>>,
+    /// The rules each rule names (`x`).
+    except: Except,
     /// `can[a]`: rule or tier `a` may add up with another one of ITS stage — a product rule with a product
     /// rule or a tier, an order rule with an order rule: only those are ever in one stack. Exact for a plan
     /// of up to 64 rules (from the bit matrix); else never false for one that does (its list has the type of
@@ -915,13 +939,22 @@ struct Partners {
     /// More than one can: only then is any stack searched.
     any: bool,
     /// Up to 64 rules, some stack possible: row `a` (one u64) has bit `b` set when rules a and b are of one
-    /// stage and add up (the rules only, `rules[..first_tier]`). Empty otherwise.
+    /// stage and add up (the rules only, `rules[..first_tier]`). Up to 63 rules and tier sets: one more row
+    /// and bit, `first_tier`, for the tiers (every set has the same list, a line has one tier). Empty otherwise.
     bits: Vec<u64>,
 }
 
 impl Partners {
     fn has_any(&self, a: usize) -> bool {
         self.can[a]
+    }
+
+    /// Tier `t` and rule `c` add up (from the tiers' row when there is one).
+    fn tier_adds(&self, rules: &[Rule], first_tier: usize, t: usize, c: usize) -> bool {
+        match self.bits.get(first_tier) {
+            Some(row) => row >> c & 1 == 1,
+            None => add_up(rules, &self.except, t, c),
+        }
     }
 
     /// `adjacent[i]`: the candidates (bit j = `positive[j]`) that candidate i adds up with.
@@ -941,9 +974,18 @@ impl Partners {
 /// `rules` = the rules, then the tier sets' pseudo-rules (`first_tier`).
 #[cfg_attr(not(test), allow(unused_variables))]
 fn partners_of(rules: &[Rule], first_tier: usize, by_id: &IdMap) -> Partners {
-    let mut except: Vec<Vec<usize>> = Vec::new();
+    let mut except = Except::default();
+    // `names_own[a]`: rule `a` names a rule of its own stage.
+    let mut names_own = vec![false; rules.len()];
     if rules[..first_tier].iter().any(|r| !r.except.is_empty()) {
-        except = vec![Vec::new(); rules.len()];
+        except = Except::new(rules.len());
+        // The first rule read at each position of the payload's list (usize::MAX: none).
+        let mut by_at = vec![usize::MAX; rules[..first_tier].iter().filter_map(|r| r.at).max().map_or(0, |m| m + 1)];
+        for (i, r) in rules[..first_tier].iter().enumerate().rev() {
+            if let Some(at) = r.at {
+                by_at[at] = i;
+            }
+        }
         for (i, rule) in rules[..first_tier].iter().enumerate() {
             for named in rule.except {
                 // By its id, or by its position in the payload's list (the rule read there; a position that
@@ -951,10 +993,11 @@ fn partners_of(rules: &[Rule], first_tier: usize, by_id: &IdMap) -> Partners {
                 let j = match named {
                     #[cfg(test)]
                     Named::Id(id) => by_id.get(&Text(id.as_str())).copied(),
-                    Named::At(at) => rules[..first_tier].iter().position(|r| r.at == Some(*at)),
+                    Named::At(at) => by_at.get(*at).copied().filter(|&j| j != usize::MAX),
                 };
-                if let Some(j) = j.filter(|&j| j != i && !except[i].contains(&j)) {
-                    except[i].push(j);
+                if let Some(j) = j.filter(|&j| j != i) {
+                    except.set(i, j);
+                    names_own[i] |= rules[j].cls == rule.cls;
                 }
             }
         }
@@ -971,7 +1014,7 @@ fn partners_of(rules: &[Rule], first_tier: usize, by_id: &IdMap) -> Partners {
                 DiscountClass::Order => order_types,
                 DiscountClass::Shipping => return false,
             };
-            r.mask & types != 0 || except.get(i).is_some_and(|list| list.iter().any(|&j| rules[j].cls == r.cls))
+            r.mask & types != 0 || names_own[i]
         })
         .collect();
     let mut any = can.iter().filter(|&&c| c).count() > 1;
@@ -995,6 +1038,14 @@ fn partners_of(rules: &[Rule], first_tier: usize, by_id: &IdMap) -> Partners {
         let tiers_can = (0..first_tier).any(|a| can[a] && with_tier(a));
         for t in first_tier..rules.len() {
             can[t] = tiers_can;
+        }
+        if first_tier < 64 && first_tier < rules.len() {
+            let mut row = 0u64;
+            for a in (0..first_tier).filter(|&a| with_tier(a)) {
+                bits[a] |= 1 << first_tier;
+                row |= 1 << a;
+            }
+            bits.push(row);
         }
         any = can.iter().any(|&c| c);
         if !any {
@@ -1086,11 +1137,13 @@ fn single(best: Component, cap: i64) -> Picked {
 fn pick(ctx: &StackContext, positive: &mut Vec<Component>, tier: Option<Component>, cap: i64) -> Picked {
     let (rules, partners) = (ctx.rules, ctx.partners);
     let mut tier = tier;
+    let mut joined = false;
     if let Some(t) = tier {
-        // (Its list first: without a rule type in it, no candidate has to be looked at.)
-        if partners.any && rules[t.rule].mask & (BIT_AUTOMATIC | BIT_CODE) != 0 && positive.iter().any(|c| add_up(rules, &partners.except, t.rule, c.rule)) {
+        // (Whether the tiers add up with any rule first: when not, no candidate has to be looked at.)
+        if partners.any && partners.has_any(t.rule) && positive.iter().any(|c| partners.tier_adds(rules, ctx.first_tier, t.rule, c.rule)) {
             positive.push(t);
             tier = None;
+            joined = true;
         }
     }
     // No candidate here can add up with another: the search below would keep the
@@ -1117,9 +1170,9 @@ fn pick(ctx: &StackContext, positive: &mut Vec<Component>, tier: Option<Componen
         _ => pool[0],
     };
     let best_total = cap.min(best.amount);
-    // (The one-word search reads the rules' own bits: not for a pool that holds a tier.)
-    let one_word = !partners.bits.is_empty() && pool.iter().all(|c| c.rule < ctx.first_tier);
-    let found = if one_word { stack_search_rules(pool, best_total, cap, &partners.bits) } else { stack_search(rules, pool, best_total, cap, partners) };
+    // (The one-word search reads the rules' own bits: for a pool that holds a tier, only with the tiers' row.)
+    let one_word = !partners.bits.is_empty() && (!joined || partners.bits.len() > ctx.first_tier);
+    let found = if one_word { stack_search_rules(pool, best_total, cap, &partners.bits, ctx.first_tier) } else { stack_search(rules, pool, best_total, cap, partners) };
     let Some(mut chosen) = found else { return single(best, cap) };
     // The chosen candidates in rank order, each capped at what is left of `cap`.
     let mut remaining = cap;
@@ -1185,19 +1238,21 @@ fn stack_search(rules: &[Rule], pool: &[Component], mut best_total: i64, cap: i6
 
 /// `stack_search` for a plan of up to 64 rules (one partner word a rule): the
 /// same seeds, sets and choice, over the rules' own partner bits (bit r = rule
-/// r; a target lists a rule once, so a rule is one position of `pool`) instead
+/// r, the tier bit `first_tier`; a target lists a rule once and has one tier, so
+/// each is one position of `pool`) instead
 /// of an adjacency built for the target: a seed's set is one pass over the pool
 /// that stops after its last partner. The chosen set, as a mask over `pool`;
 /// none = the single best candidate.
-fn stack_search_rules(pool: &[Component], mut best_total: i64, cap: i64, bits: &[u64]) -> Option<u64> {
-    let rule_bit = |c: &Component| 1u64 << c.rule;
+fn stack_search_rules(pool: &[Component], mut best_total: i64, cap: i64, bits: &[u64], first_tier: usize) -> Option<u64> {
+    let slot = |c: &Component| c.rule.min(first_tier);
+    let rule_bit = |c: &Component| 1u64 << slot(c);
     let here = pool.iter().fold(0u64, |m, c| m | rule_bit(c));
     let mut chosen: Option<u64> = None;
     // Rules already in a set.
     let mut covered: u64 = 0;
     for (si, seed) in pool.iter().enumerate() {
         // Its partners among these candidates (never itself).
-        let links = bits[seed.rule] & here;
+        let links = bits[slot(seed)] & here;
         if links == 0 || covered & rule_bit(seed) != 0 {
             continue;
         }
@@ -1215,7 +1270,7 @@ fn stack_search_rules(pool: &[Component], mut best_total: i64, cap: i64, bits: &
             }
             rest &= !rule_bit(c);
             // Taken when it stacks with every member but the seed taken so far.
-            if others & !bits[c.rule] == 0 {
+            if others & !bits[slot(c)] == 0 {
                 others |= rule_bit(c);
                 set |= 1 << ci;
                 total = total.saturating_add(c.amount);
@@ -1815,22 +1870,25 @@ fn order_of<'a>(work: &mut [WorkLine<'a>], sale_lines: &[usize], pool: &[usize],
 /// out of the base and in it — and the one that saves the most wins, a tie
 /// keeping the earlier one. Each scenario is played once: the winner's lines and
 /// order are kept as they were made (plan.ts plays the winner again; the same).
-fn plan_order_stage<'a>(work: &mut [WorkLine<'a>], tiers: &[Option<TierCandidate>], ctx: &StackContext<'_, 'a>, margin_on: bool) -> Option<PlanOrder<'a>> {
+/// With it the rules and tiers whose product discount some line has after the stage (`applied_products`).
+fn plan_order_stage<'a>(work: &mut [WorkLine<'a>], tiers: &[Option<TierCandidate>], ctx: &StackContext<'_, 'a>, margin_on: bool) -> (Option<PlanOrder<'a>>, Vec<usize>) {
     let rules = ctx.rules;
+    let applied = applied_products(work, ctx);
     let eligible: Vec<usize> =
         (0..ctx.first_tier).filter(|&i| rules[i].cls == DiscountClass::Order && rules[i].state.is_none()).collect();
     if eligible.is_empty() {
-        return None;
+        return (None, applied);
     }
     let except = &ctx.partners.except;
-    let applied = applied_products(work, ctx);
     let fitting: Vec<usize> = eligible.iter().copied().filter(|&i| applied.iter().all(|&p| add_up(rules, except, i, p))).collect();
     let sale_lines: Vec<usize> = (0..work.len()).filter(|&at| work[at].sale && work[at].excluded.is_none() && work[at].no & 4 == 0).collect();
     // One scenario, on nearly every cart: every eligible order rule fits, and no sale line could come into the base.
     if fitting.len() == eligible.len() && (sale_lines.is_empty() || !fitting.iter().any(|&i| ctx.sale_ok[i])) {
-        return order_of(work, &sale_lines, &fitting, false, false, ctx, margin_on);
+        return (order_of(work, &sale_lines, &fitting, false, false, ctx, margin_on), applied);
     }
-    order_scenarios(work, tiers, ctx, margin_on, &eligible, &fitting, &sale_lines)
+    // (The scenarios may change the product discounts.)
+    let order = order_scenarios(work, tiers, ctx, margin_on, &eligible, &fitting, &sale_lines);
+    (order, applied_products(work, ctx))
 }
 
 /// `plan_order_stage` when there is more than one scenario (its doc; plan.ts `planOrderStage`). Out of line and
@@ -1930,9 +1988,8 @@ enum ShipWinner {
 const SHIPPING_REWARD_ID: &str = "reward:shipping";
 
 /// The rules and tiers of every discount the cart got so far: the lines' product
-/// discounts, then the order discount's.
-fn given_discounts(work: &[WorkLine<'_>], order: Option<&PlanOrder<'_>>, ctx: &StackContext<'_, '_>) -> Vec<usize> {
-    let mut given = applied_products(work, ctx);
+/// discounts (`given`, as `plan_order_stage` left them), then the order discount's.
+fn given_discounts(mut given: Vec<usize>, order: Option<&PlanOrder<'_>>) -> Vec<usize> {
     for c in order.map_or(&[][..], |o| o.stack.components.as_slice()) {
         if !given.contains(&c.rule) {
             given.push(c.rule);
@@ -2174,8 +2231,8 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
     } else {
         collect_item_refs(&rules[..first_tier], retargeted.as_slice(), campaign_id, cart.lines.as_slice(), work.as_mut_slice(), looks.as_slice(), rule_scopes.as_mut_slice())
     };
-    // Who adds up with whom (the bit matrix is sized by the rules only: it keeps
-    // the one-word stack search up to 64 rules; a tier in a pool is asked directly).
+    // Who adds up with whom (the bit matrix is sized by the rules and one row for
+    // the tiers: it keeps the one-word stack search up to 63 rules, 64 without a tier in a pool).
     let partners = partners_of(&rules, first_tier, &by_id);
     drop(by_id);
 
@@ -2201,7 +2258,7 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
         compute_floors(&mut work, margin, &cart);
         apply_margin_protection(&mut work, &tiers, &ctx);
     }
-    let mut order = plan_order_stage(&mut work, &tiers, &ctx, config.margin.is_some());
+    let (mut order, applied) = plan_order_stage(&mut work, &tiers, &ctx, config.margin.is_some());
     if config.margin.is_some() {
         if let Some(order) = order.as_mut() {
             order.margin_protected = true;
@@ -2213,7 +2270,7 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
     let currency = cart.currency.as_str();
     let rewards = &config.rewards;
     let reward = threshold_in(&rewards.shipping, currency).is_some_and(|t| base >= t);
-    let given = given_discounts(&work, order.as_ref(), &ctx);
+    let given = given_discounts(applied, order.as_ref());
     let winner = plan_shipping(&given, &ctx, reward.then_some(masks.rewards));
     // The gift is free only when it adds up with every discount the cart got: the product discounts and tiers,
     // the order discount, the shipping discount (plan-rewards.ts planGifts `combines`).
@@ -2306,21 +2363,22 @@ mod search_tests {
     /// `links` as exceptions on both rules (the rules' lists are empty), as `partners_of` would read them;
     /// one more row for a tier after the rules.
     fn partners(rules: usize, links: &[(usize, usize)]) -> Partners {
-        let mut except = vec![Vec::new(); rules + 1];
+        let mut except = Except::new(rules + 1);
+        let mut can = vec![false; rules + 1];
         for &(a, b) in links {
-            if a != b && !except[a].contains(&b) {
-                except[a].push(b);
-                except[b].push(a);
+            if a != b {
+                except.set(a, b);
+                except.set(b, a);
+                (can[a], can[b]) = (true, true);
             }
         }
-        let can: Vec<bool> = except.iter().map(|list| !list.is_empty()).collect();
         let any = can.iter().filter(|&&c| c).count() > 1;
         let mut bits = Vec::new();
         if any && rules <= 64 {
             bits = vec![0u64; rules];
-            for (a, list) in except.iter().enumerate().take(rules) {
-                for &b in list {
-                    bits[a] |= 1 << b;
+            for (a, row) in bits.iter_mut().enumerate() {
+                for b in (0..rules).filter(|&b| except.has(a, b)) {
+                    *row |= 1 << b;
                 }
             }
         }

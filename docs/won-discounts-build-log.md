@@ -9,6 +9,13 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ### Kombinování slev podle typů a výjimek (13. 10. 2026) — návrh `won-discounts/navrh-kombinace-2026-10-13.md`, SB `won-discounts-kombinace-typy-vyjimky`
 
+> **CHECKPOINT K5 (14. 10.).** Kroky 1–3 commitnuté a pushnuté (`ae8b897`, `main` opravený). Rozhodnutí Ondřeje
+> 14. 10. jsou v návrhu (oddíl „Upřesnění při stavbě“): upřesnění schválená; Milníky ve výchozím stavu se vším,
+> nastavení na stránce Milníků; hlášení ztracených dvojic po převodu se NESTAVÍ (appku nepoužívá žádný obchod);
+> ceník později. **Brána instrukcí znovu zelená** (necommitnuto, jen `plan.rs` + README funkce): nejtěžší košík
+> 9,87 M (bylo 10,12 M), kontrakt funkce 205 z 205, app `test:unit:node` 1 906 z 1 906, core 1 007, cargo 107,
+> vitest 720, Wasm 252 267 B. Postup a čísla: README funkce, „Instructions (14 Oct 2026)“. Další: krok 4.
+>
 > **CHECKPOINT K4 (kroky 1–3 hotové, kroky 4–6 nezačaté; 13. 10.).** V pracovním stromu na `main`, **necommitnuto**; inline bez subagentů.
 > Pořadí stavby je v návrhu (6 kroků). Upřesnění, která návrh neříkal a která jsem při stavbě zvolil, jsou v návrhu
 > v oddílu „Upřesnění při stavbě“ — **Ondřej je ještě neviděl**.
