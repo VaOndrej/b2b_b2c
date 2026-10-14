@@ -4,6 +4,31 @@ Zadání: `WonCommerce/Apps/docs/won-discounts-umisteni-na-web-zadani.md` (mimo 
 ve worktree `WonCommerce/b2b_b2c-umisteni`, protože na `main` paralelně běžel krok 6 kombinování. Po dokončení se
 sloučí do `main`. Samostatný log, aby se nepral s `docs/won-discounts-build-log.md`.
 
+**CHECKPOINT U4 (14. 10. 2026), balík E rozpracovaný.** Zadání pro tuhle část: `docs/won-discounts/prompt-umisteni-pokracovani.md`.
+Ověřeno (shopify.dev, Admin 2026-04): `theme.files(filenames:, first:)` bere nejvýš 50 vzorů s `*`, `first` až 2 500,
+odpověď se zkrátí podle velikosti (stránkuje se kurzorem); soubor má `checksumMd5` a `size`. Liquid soubor má
+nejvýš 256 KB. Plán, jak se čte: (1) jeden dotaz na jména a součty (`layout/ sections/ snippets/ blocks/
+templates/*.liquid`), (2) obsah jen pro součty, které aplikace ještě nezná (paměť podle `checksumMd5`, sdílená mezi
+vzhledy, takže kopie živého vzhledu stojí jen dotaz na jména). Kopie: nejvýš 3 naposledy upravené `UNPUBLISHED`.
+Plán E po krocích (každý commit zvlášť):
+
+- **E1 hotové v kódu.** `app/lib/integration/theme-scan.server.ts` + `app/components/model/theme-scan.ts`, sloupce
+  `ShopSyncState.themeTags/themeTagsAt` (migrace sqlite `20261014120000_theme_tags`, postgres `0007_theme_tags`:
+  pozor na kolizi čísla, kdyby `main` mezitím přidal 0007), resync „theme“, `writeStorefrontConfig` bere značky
+  z DB. **Nalezená chyba mimo E:** `wiring.server.ts` zahazoval `shopTimezone`, takže `camps` (kampaně pro banner,
+  feedback 2 bod 7) se do konfigurace pro web ze syncu nikdy nezapsaly; opraveno a pokryto testem. Na skutečných
+  souborech: Horizon 268 souborů / 2 MB (karta bere blok), Dawn 106 / 0,9 MB (karta ne). Testy
+  `tests/integration/theme-scan.test.ts` (10), `storefront-sync.test.ts` +2. Brány: core 1 009, app 1 945,
+  typecheck, lint 0 chyb. Volání `readThemeScan` z obrazovek přijde v E2.
+- **E1** čtení: čisté funkce (značky v Liquidu bez `{% comment %}`, `@app` ve schématu sekce → kam blok jde),
+  výsledek živého vzhledu do `ShopSyncState.themeTags` (nový sloupec, sqlite i postgres), sync ho předá jako
+  `themeTags` → `tg`. Změněné značky = resync.
+- **E2** řádek místa: „Přidat na web“, nebo „Připravit zadání pro AI“ kde blok nejde; „Chci to jinde“.
+- **E3** průvodce: zadání z `theme-tags.ts` + obsah souboru (načte se až po kliknutí), odkaz do editoru kódu,
+  „Zkontrolovat“; záložka „Udělám to sám“.
+- **E4** stavy s příčinou: embed vypnutý, jen v kopii, nic k ukázání.
+- **E5** stránka „Umístění na webu“ + stav karty produktu.
+
 **CHECKPOINT U3 (14. 10. 2026).** **Balík B2 hotový v kódu, naživo neověřený:** karta mimo kolekci a vyhledávání.
 App proxy `GET /apps/won-discounts/card-tiers?h=…&cur=…&mk=…&c=…` (`app/routes/won-discounts.card-tiers.tsx`,
 `app/lib/integration/card-tiers.server.ts`): jádro `cardTier` nad živou konfigurací pro web, metapoli produktu,

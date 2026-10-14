@@ -12,6 +12,7 @@ import { syncProblems } from "../../app/lib/integration/sync-copy.ts";
 import { foldMarginCollections } from "../../app/lib/sync/products.ts";
 import { resyncIfPending, resyncShop, saveAndSync } from "../../app/lib/sync/save-and-sync.server.ts";
 import { STOREFRONT_CONFIG_MAX_BYTES, tierProductCounts } from "../../app/lib/sync/storefront.ts";
+import { recordThemeTags } from "../../app/lib/sync/sync-state.server.ts";
 import { createSync, syncIdle } from "../../app/lib/sync/sync.server.ts";
 import { productionSyncDeps } from "../../app/lib/sync/wiring.server.ts";
 import { createTestDatabase, type TestDatabase } from "../lib/test-db.ts";
@@ -110,6 +111,45 @@ test("a save writes the storefront config on the app installation (app-data, jso
       ["storefront_config.verify", true],
     ],
   );
+});
+
+test("umístění na webu (E1): tags found in the live theme reach the storefront config as tg — a change resyncs once", async () => {
+  const store = new FakeStore();
+  const plan = { current: "pro" as Plan };
+  await save(store, plan, input());
+  assert.equal((store.sync.storefrontConfig() as { tg?: unknown }).tg, undefined, "no tag found yet");
+  const common = { client: store, db: db.prisma, shop, createSync: syncFor(plan), logger: quiet, minIntervalMs: 0 };
+  assert.deepEqual(await resyncIfPending(common), { resynced: false, reason: "up_to_date" });
+
+  // Found after the run that applied the live config (a real clock: the resync's run starts after it).
+  const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
+  await tick();
+  const found = new Date();
+  assert.equal(await recordThemeTags(db.prisma, shop, { ms: ["bar", "full"], cd: 1 }, found), true);
+  assert.equal(await recordThemeTags(db.prisma, shop, { ms: ["bar", "full"], cd: 1 }, found), false, "the same tags are no change");
+  await tick();
+  const resynced = await resyncIfPending(common);
+  assert.equal(resynced.resynced && resynced.why, "theme");
+  await syncIdle(shop);
+  assert.deepEqual((store.sync.storefrontConfig() as { tg?: unknown }).tg, { ms: ["bar", "full"], cd: 1 });
+  assert.deepEqual(await resyncIfPending(common), { resynced: false, reason: "up_to_date" });
+
+  // The tags gone from the theme: tg leaves the config.
+  await tick();
+  assert.equal(await recordThemeTags(db.prisma, shop, null, new Date()), true);
+  await tick();
+  const gone = await resyncIfPending(common);
+  assert.equal(gone.resynced && gone.why, "theme");
+  await syncIdle(shop);
+  assert.equal((store.sync.storefrontConfig() as { tg?: unknown }).tg, undefined);
+});
+
+test("feedback 2, bod 7: the sync's storefront config lists the campaigns (camps) — the wiring passes the shop's time zone (it was dropped)", async () => {
+  const store = new FakeStore();
+  const plan = { current: "pro" as Plan };
+  const config = { ...input(), campaigns: [{ id: "bf", name: "Black Friday", window: { start: "2026-11-27T00:00:00", end: "2026-11-30T00:00:00" }, overrides: [], killed: false }] };
+  await save(store, plan, config);
+  assert.deepEqual((store.sync.storefrontConfig() as { camps?: unknown }).camps, [{ n: "Black Friday", s: Date.UTC(2026, 10, 26, 23) / 1000, e: Date.UTC(2026, 10, 29, 23) / 1000 }]);
 });
 
 test("unchanged: a resync of the same config does not write the storefront config again", async () => {

@@ -115,7 +115,16 @@ export interface SyncDeps {
    */
   buildStorefrontConfig: (
     config: ConfigView,
-    options: { configVersion: string; shopCurrency?: string; variantHandles?: Readonly<Record<string, string>>; campaignId?: string | null },
+    options: {
+      configVersion: string;
+      shopCurrency?: string;
+      variantHandles?: Readonly<Record<string, string>>;
+      campaignId?: string | null;
+      /** The shop's IANA zone: the campaigns as instants (`camps`). */
+      shopTimezone?: string;
+      /** The tags found in the live theme (umístění na webu): the embed's `tg`. */
+      themeTags?: { milestones?: readonly string[]; campaign?: boolean; card?: boolean } | null;
+    },
   ) => StorefrontConfigV1;
   now: () => Date;
   logger: SyncLogger;

@@ -7,10 +7,13 @@
 //   targetingStaleAt  set by the products/collections webhooks (item 2):
 //                     membership changed since the last product sync; a
 //                     product sync that STARTED after it clears it;
-//   marketsCheckedAt  the last comparison of Shopify market countries (item 12).
+//   marketsCheckedAt  the last comparison of Shopify market countries (item 12);
+//   themeTags         the `<won-discounts>` tags last found in the live theme, as the storefront config's `tg`
+//                     (umístění na webu, balík E); `themeTagsAt` = when they last changed.
 // Every write is an idempotent upsert keyed by the shop (SEC-2).
 
 import type { ShopPlan } from "@won/core/discounts/plan-gate";
+import { STOREFRONT_TAG_SIZES, type StorefrontThemeTags } from "@won/core/discounts/storefront-config";
 
 import type { PrismaClient } from "../../generated/prisma/client";
 
@@ -28,6 +31,9 @@ export interface ShopSyncFacts {
   campaignBoundaryAt: Date | null;
   /** MVP 6 K3: campaigns running at the Pro → Free downgrade (they finish); null = none. */
   campaignsFinishing: string[] | null;
+  /** The tags last found in the live theme (`tg`); null = none found, or the theme was never read. */
+  themeTags: StorefrontThemeTags | null;
+  themeTagsAt: Date | null;
 }
 
 const EMPTY: ShopSyncFacts = {
@@ -40,7 +46,24 @@ const EMPTY: ShopSyncFacts = {
   marketsCheckedAt: null,
   campaignBoundaryAt: null,
   campaignsFinishing: null,
+  themeTags: null,
+  themeTagsAt: null,
 };
+
+/** A stored `tg` read back strictly: only the known sizes and flags; anything else = null. */
+export function parseThemeTags(text: string | null | undefined): StorefrontThemeTags | null {
+  let value: unknown;
+  try {
+    value = text ? JSON.parse(text) : null;
+  } catch {
+    return null;
+  }
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  const ms = Array.isArray(raw.ms) ? STOREFRONT_TAG_SIZES.filter((size) => (raw.ms as unknown[]).includes(size)) : [];
+  const out: StorefrontThemeTags = { ...(ms.length ? { ms } : {}), ...(raw.cp === 1 ? { cp: 1 as const } : {}), ...(raw.cd === 1 ? { cd: 1 as const } : {}) };
+  return Object.keys(out).length ? out : null;
+}
 
 function idList(text: string | null): string[] | null {
   try {
@@ -65,10 +88,12 @@ export async function loadShopSyncFacts(db: PrismaClient, shop: string): Promise
     marketsCheckedAt: row.marketsCheckedAt,
     campaignBoundaryAt: row.campaignBoundaryAt,
     campaignsFinishing: idList(row.campaignsFinishing),
+    themeTags: parseThemeTags(row.themeTags),
+    themeTagsAt: row.themeTagsAt,
   };
 }
 
-type Row = Partial<Omit<ShopSyncFacts, "campaignsFinishing">> & { campaignsFinishing?: string | null };
+type Row = Partial<Omit<ShopSyncFacts, "campaignsFinishing" | "themeTags">> & { campaignsFinishing?: string | null; themeTags?: string | null };
 
 async function upsert(db: PrismaClient, shop: string, data: Row): Promise<void> {
   await db.shopSyncState.upsert({ where: { shop }, create: { shop, ...data }, update: data });
@@ -92,6 +117,19 @@ export function recordCampaignBoundary(db: PrismaClient, shop: string, at: Date 
 /** K3: the campaigns that finish after a downgrade (null clears the list). */
 export function recordCampaignsFinishing(db: PrismaClient, shop: string, ids: readonly string[] | null): Promise<void> {
   return upsert(db, shop, { campaignsFinishing: ids && ids.length ? JSON.stringify(ids) : null });
+}
+
+/**
+ * The tags the admin just found in the live theme (balík E). Written only when they differ from the stored ones, and
+ * then with `themeTagsAt` = `at`, so resyncIfPending puts them into the storefront config. true = they changed.
+ */
+export async function recordThemeTags(db: PrismaClient, shop: string, tags: StorefrontThemeTags | null, at: Date): Promise<boolean> {
+  const next = tags && Object.keys(tags).length ? JSON.stringify(tags) : null;
+  const row = await db.shopSyncState.findUnique({ where: { shop }, select: { themeTags: true } });
+  const before = parseThemeTags(row?.themeTags);
+  if ((before ? JSON.stringify(before) : null) === next) return false;
+  await upsert(db, shop, { themeTags: next, themeTagsAt: at });
+  return true;
 }
 
 export function recordMarketsChecked(db: PrismaClient, shop: string, at: Date): Promise<void> {

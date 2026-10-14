@@ -37,6 +37,9 @@ export function productionSyncDeps(client: AdminClient, db: PrismaClient, logger
         ...(options.variantHandles ? { variantHandles: options.variantHandles } : {}),
         // MVP 6.1: the campaign whose tier sets the product page shows now (live E2E found this option dropped here).
         ...(options.campaignId ? { campaignId: options.campaignId } : {}),
+        // Feedback 2, bod 7 (`camps`) and umístění na webu (`tg`): both were dropped here the same way (14 Oct 2026).
+        ...(options.shopTimezone ? { shopTimezone: options.shopTimezone } : {}),
+        ...(options.themeTags ? { themeTags: options.themeTags } : {}),
       }),
     now: () => new Date(),
     logger,

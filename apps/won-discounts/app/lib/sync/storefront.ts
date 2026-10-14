@@ -31,6 +31,7 @@ import { STOREFRONT_TEXTS_KEY_PREFIX, storefrontTexts, storefrontTextsKey } from
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import { configVersionToken, loadConfig } from "../config.server";
+import { loadShopSyncFacts } from "./sync-state.server";
 import { STOREFRONT_CONFIG_KEY, STOREFRONT_NAMESPACE } from "./graphql";
 import { TIER_SENTINEL } from "./products";
 import { errorText, setMetafields, userErrorText, type Transport, type UserErrorLike } from "./transport";
@@ -130,11 +131,25 @@ async function giftVariantHandles(transport: Transport, ids: readonly string[], 
   return handles;
 }
 
+/**
+ * The tags the admin last found in the live theme (umístění na webu, balík E: ShopSyncState.themeTags) as the
+ * builder's option; null when none were found or the bookkeeping cannot be read (the embed then prints no tag HTML).
+ */
+async function storedThemeTags(db: PrismaClient, shop: string): Promise<{ milestones?: string[]; campaign?: boolean; card?: boolean } | null> {
+  try {
+    const tg = (await loadShopSyncFacts(db, shop)).themeTags;
+    return tg ? { ...(tg.ms ? { milestones: [...tg.ms] } : {}), campaign: tg.cp === 1, card: tg.cd === 1 } : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Write the storefront config (see the header). Never throws, except a re-auth Response. */
 export async function writeStorefrontConfig(args: StorefrontWriteArgs): Promise<void> {
   const { transport, record } = args;
   const fail = (step: string, detail: string) => record({ step, ok: false, detail: `${detail} — the product page keeps the previous storefront config; the next sync retries` });
   const variantHandles = await giftVariantHandles(transport, giftVariantIds(args.config), record);
+  const themeTags = await storedThemeTags(args.deps.db, args.shop);
   let json: string;
   try {
     const configVersion = await storefrontConfigVersion(args.deps.db, args.shop, args.configVersionId, args.stored);
@@ -144,6 +159,7 @@ export async function writeStorefrontConfig(args: StorefrontWriteArgs): Promise<
       ...(args.shopTimezone ? { shopTimezone: args.shopTimezone } : {}),
       variantHandles,
       ...(args.campaignId ? { campaignId: args.campaignId } : {}),
+      ...(themeTags ? { themeTags } : {}),
     });
     json = JSON.stringify(value);
   } catch (error) {

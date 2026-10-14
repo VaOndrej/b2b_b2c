@@ -172,6 +172,12 @@ model ShopSyncState {
   /// Shopify shop.currencyCode as the last sync read it: the combination check
   /// (CombinationCheck) prices its scenarios in it without asking Shopify.
   currency           String?
+  /// Umístění na webu (balík E): the `<won-discounts show="…">` tags the admin last found in the LIVE theme, as the
+  /// storefront config's `tg` (JSON: {ms?, cp?, cd?}); null = none found / never read. The sync writes it into the
+  /// storefront config (sync/storefront.ts), so the embed prints HTML only for the tags the theme holds.
+  themeTags          String?
+  /// When `themeTags` last CHANGED: newer than the run that applied the live config → resync (resyncIfPending "theme").
+  themeTagsAt        DateTime?
   updatedAt          DateTime  @updatedAt
 }
 

@@ -305,7 +305,7 @@ export async function loadSyncStatus(db: PrismaClient, shop: string): Promise<Sy
 }
 
 /** Why resyncIfPending resynced. */
-export type ResyncReason = "never_synced" | "retry" | "not_applied" | "plan" | "storefront" | "timezone" | "markets";
+export type ResyncReason = "never_synced" | "retry" | "not_applied" | "plan" | "storefront" | "theme" | "timezone" | "markets";
 
 export type ResyncIfPendingResult =
   | { resynced: false; reason: "up_to_date" | "too_soon" | "nothing_saved" }
@@ -333,6 +333,8 @@ export interface ResyncIfPendingArgs extends Common {
  *     config in place (MVP 3): at once when it predates the storefront
  *     config (no storefront step), at most once per `minIntervalMs` when its
  *     write failed (a later run — a products-only refresh — may be ok);
+ *   - the tags found in the live theme changed after the run that applied the live config (umístění na webu,
+ *     balík E: ShopSyncState.themeTagsAt), so the storefront config gets their `tg`;
  *   - the shop's time zone changed since the last sync (rule days move);
  *   - the shop's Shopify markets changed: a market was added, switched on or
  *     off, changed its currency or its countries (T1). A shop that has saved
@@ -379,6 +381,7 @@ export async function resyncIfPending(args: ResyncIfPendingArgs): Promise<Resync
     return resync("storefront");
   }
   const facts = await loadShopSyncFacts(args.db, args.shop);
+  if (applied && facts.themeTagsAt && facts.themeTagsAt.getTime() > applied.startedAt.getTime()) return resync("theme");
   if (args.timezone && facts.timezone && args.timezone !== facts.timezone) return resync("timezone");
   if (args.checkMarkets && canReadMarkets(args.grantedScopes)) {
     const due = !facts.marketsCheckedAt || now.getTime() - facts.marketsCheckedAt.getTime() >= MARKETS_CHECK_INTERVAL_MS;
