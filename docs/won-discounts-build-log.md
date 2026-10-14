@@ -9,6 +9,14 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ### Kombinování slev podle typů a výjimek (13. 10. 2026) — návrh `won-discounts/navrh-kombinace-2026-10-13.md`, SB `won-discounts-kombinace-typy-vyjimky`
 
+> **CHECKPOINT K7 (14. 10.).** Kroky 1–5 commitnuté (krok 4 `c49f19e`, krok 5 `17b955e`). Krok 5: neshody
+> (`@won/core combine-config combineMismatchGroups / combineMismatchIds / fixCombineMismatch`; app
+> `components/model/combine-mismatch.ts mismatchViews` z configu, který plán spouští) jako sekce „Neshody ve sčítání
+> slev“ na Vyzkoušet košík s tlačítky (intent `fix` na `/app/combine`), tečka u „Kombinace a trhy“ v editoru,
+> poznámka v seznamu slev. Bod 6 upřesnění ověřen v kódu (doprava `not_combinable` → vysvětlení v košíku).
+> Brány: core 1 008, app 1 912, lint 0 chyb, typecheck, build. Screenshoty `evidence/kombinace-2026-10-14/neshoda-*`.
+> **Krok 6 čeká na „go“ od Ondřeje** (zápis do dev obchodu): dry-run `seed-mvp1.mjs --profile shapes` prošel.
+>
 > **CHECKPOINT K6 (14. 10.).** K5 commitnuto (`bb98e41`). **Krok 4 hotový, necommitnutý:** sekce „Sčítá se s“
 > na Množstevních slevách, Milnících (pod stupni) a Výprodeji (záložka pravidel) = `shell/ModuleCombine.tsx`, vlastní
 > formulář na `/app/combine` (`lib/integration/combine.server.ts`, test `tests/integration/module-combine.test.ts`).
