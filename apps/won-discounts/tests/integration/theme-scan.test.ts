@@ -4,6 +4,7 @@ import { after, before, beforeEach, test } from "node:test";
 import { briefFileFor, codeEditorUrl, placeOfFile, tagPresence, unknownTags, type ThemeScanView } from "../../app/components/model/theme-scan.ts";
 import {
   MAX_BODY_QUERIES,
+  drawerOf,
   acceptsAppBlocks,
   blockFitsOf,
   clearThemeScanMemory,
@@ -75,6 +76,16 @@ test("where a block fits: JSON templates, the header group, a product card that 
   assert.deepEqual(vintage, { product: false, home: false, cart: false, header: false, card: false, drawer: false });
 });
 
+test("the cart drawer the cart script places by itself: Horizon's and Dawn's, with both spots; anything else (or another file) is not", () => {
+  const horizon = '<cart-drawer-component><scroll-hint class="cart-drawer__content"><div class="cart-drawer__summary"></div></scroll-hint></cart-drawer-component>';
+  const dawnDrawer = '<div id="CartDrawer" class="cart-drawer"><cart-drawer-items><form></form></cart-drawer-items><div class="drawer__footer"></div></div>';
+  assert.equal(drawerOf("snippets/cart-drawer.liquid", horizon), "horizon");
+  assert.equal(drawerOf("snippets/cart-drawer.liquid", dawnDrawer), "dawn");
+  assert.equal(drawerOf("snippets/cart-drawer.liquid", horizon.replace("cart-drawer__summary", "my-summary")), undefined, "a changed drawer is not guessed at");
+  assert.equal(drawerOf("snippets/other.liquid", horizon), undefined);
+  assert.equal(factsOf("snippets/cart-drawer.liquid", dawnDrawer).drawer, "dawn");
+});
+
 test("tg from the live theme's tags: sizes each once in the block's order (unknown → compact), campaign, card; nothing → null", () => {
   const tag = (show: string, size?: string) => ({ show, ...(size ? { size } : {}), file: "f", line: 1 });
   assert.deepEqual(themeTagsOfScan([tag("milestones", "full"), tag("milestones", "huge"), tag("milestones", "full"), tag("card-tier"), tag("campaign")]), { ms: ["compact", "full"], cp: 1, cd: 1 });
@@ -100,7 +111,7 @@ test("model: the place a file stands for, the brief's file, the code editor link
   assert.equal(codeEditorUrl("evil.com", "123", null), null);
   const scan: ThemeScanView = {
     state: "ok",
-    live: { id: "1", name: "Dawn", live: true, complete: true, tags: [{ show: "cart", file: "snippets/cart-drawer.liquid", line: 3 }, { show: "carts", file: "x", line: 1 }], fits: { product: true, home: true, cart: true, header: true, card: false, drawer: false }, files: [], blocks: {} },
+    live: { id: "1", name: "Dawn", live: true, complete: true, tags: [{ show: "cart", file: "snippets/cart-drawer.liquid", line: 3 }, { show: "carts", file: "x", line: 1 }], fits: { product: true, home: true, cart: true, header: true, card: false, drawer: false }, files: [], blocks: {}, drawer: null },
     copies: [{ id: "2", name: "Dawn – kopie", live: false, complete: true, tags: [{ show: "card-tier", file: "snippets/card-product.liquid", line: 9 }] }],
   };
   assert.equal(tagPresence(scan, "cart", "drawer").in, "live");

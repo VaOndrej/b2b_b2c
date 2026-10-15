@@ -117,11 +117,25 @@ export interface FileFacts {
   sections: string[];
   /** JSON: the app blocks in it by handle (any app's: the handle is checked against this app's by the caller). */
   appBlocks: string[];
+  /** The cart drawer the cart script finds by itself (won-discounts-cart.js DRAWERS: both positions), or absent. */
+  drawer?: "horizon" | "dawn";
+}
+
+/**
+ * Is this the cart drawer of Horizon or Dawn, with every element the cart script places its panel in (above the
+ * checkout button and at the top)? Zásuvka košíku, varianta 1 (15 Oct 2026): only these two are placed by themselves.
+ */
+export function drawerOf(filename: string, content: string): "horizon" | "dawn" | undefined {
+  if (filename !== "snippets/cart-drawer.liquid") return undefined;
+  if (content.includes("<cart-drawer-component") && content.includes('class="cart-drawer__summary"') && content.includes('class="cart-drawer__content"')) return "horizon";
+  if (content.includes('id="CartDrawer"') && content.includes('class="drawer__footer"') && content.includes("<cart-drawer-items")) return "dawn";
+  return undefined;
 }
 
 export function factsOf(filename: string, content: string): FileFacts {
   const json = filename.endsWith(".json");
-  return { tags: tagsIn(filename, content), app: !json && acceptsAppBlocks(content), sections: json ? sectionTypesIn(content) : [], appBlocks: json ? appBlocksIn(content) : [] };
+  const drawer = drawerOf(filename, content);
+  return { tags: tagsIn(filename, content), app: !json && acceptsAppBlocks(content), sections: json ? sectionTypesIn(content) : [], appBlocks: json ? appBlocksIn(content) : [], ...(drawer ? { drawer } : {}) };
 }
 
 /**
@@ -341,7 +355,13 @@ async function loadThemeScan(client: Graphql): Promise<ThemeScanView> {
     }
     return {
       state: "ok",
-      live: { ...themeOf({ ...main, live: true }, live), fits: blockFitsOf(live.files), files: [...live.files.keys()].sort(), blocks: appBlocksByFile(live.files) },
+      live: {
+        ...themeOf({ ...main, live: true }, live),
+        fits: blockFitsOf(live.files),
+        files: [...live.files.keys()].sort(),
+        blocks: appBlocksByFile(live.files),
+        drawer: [...live.files.values()].find((facts) => facts.drawer)?.drawer ?? null,
+      },
       copies: copyThemes,
     };
   } catch (error) {

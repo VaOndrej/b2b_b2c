@@ -2439,4 +2439,10 @@ export const cs = {
   "webPlaces.show.outlet": "Štítek výprodeje",
   "webPlaces.link": "Umístění na webu",
   "webPlaces.link.text": "Všechny prvky Won a jejich místa na webu na jedné stránce.",
+  "webPlaces.auto": "Ukazuje se samo ve vzhledu {theme}, {position}.",
+  "webPlaces.auto.summary": "nad tlačítkem pokladny",
+  "webPlaces.auto.top": "nahoře nad produkty",
+  "webPlaces.autoOff": "V nastavení Won ve vzhledu je panel v zásuvce vypnutý.",
+  "webPlaces.autoMove": "Změnit místo",
+  "webPlaces.autoOn": "Zapnout v zásuvce",
 } satisfies Record<string, string>;

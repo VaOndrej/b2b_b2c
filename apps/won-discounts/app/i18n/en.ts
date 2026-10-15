@@ -2435,4 +2435,10 @@ export const en: Record<keyof typeof cs, string> = {
   "webPlaces.show.outlet": "Clearance badge",
   "webPlaces.link": "Placement on your store",
   "webPlaces.link.text": "Every Won element and its places on your store on one page.",
+  "webPlaces.auto": "It shows by itself in the {theme} theme, {position}.",
+  "webPlaces.auto.summary": "above the checkout button",
+  "webPlaces.auto.top": "at the top, above the products",
+  "webPlaces.autoOff": "The drawer panel is switched off in Won's settings in the theme.",
+  "webPlaces.autoMove": "Change the spot",
+  "webPlaces.autoOn": "Switch on in the drawer",
 };

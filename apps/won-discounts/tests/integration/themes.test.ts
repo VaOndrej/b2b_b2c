@@ -278,6 +278,7 @@ test("themePlacementsIn: each block by its template; the top bar from the embed'
     cartBlock: true,
     topBarRewards: true,
     topBarCampaign: false,
+    drawerPosition: "summary",
     // Where a block sits: the home page's by its section (here the only one); the product's only against buy buttons, which this template lacks.
     spots: { campaignHome: { at: "page", index: 1, of: 1 } },
   });
@@ -330,7 +331,7 @@ test("themePlacementsIn: each block by its template; the top bar from the embed'
       { filename: "config/settings_data.json", content: embedSettings({ top_bar_rewards: false, top_bar_campaign: true }) },
       { filename: "sections/header-group.json", content: JSON.stringify({ sections: {} }) },
     ]),
-    { topBarRewards: false, topBarCampaign: true },
+    { topBarRewards: false, topBarCampaign: true, drawerPosition: "summary" },
   );
   // 7th round, bod 5: an announcement strip of one thing counts as that thing's strip, and only as that.
   const strip = (handle: string, disabled = false) => JSON.stringify({ sections: { apps: { type: "apps", blocks: { a: { type: `${APP}/${handle}/019a`, disabled } } } }, order: ["apps"] });
@@ -341,6 +342,9 @@ test("themePlacementsIn: each block by its template; the top bar from the embed'
   const disabled = JSON.stringify({ sections: { main: { type: "main", blocks: { a: { type: `${APP}/outlet_badge/1`, disabled: true } } } } });
   assert.equal(themePlacementsIn([{ filename: "templates/product.json", content: disabled }]).outletBadge, false);
   assert.equal(themePlacementsIn([{ filename: "config/settings_data.json", content: embedSettings({ top_bar_rewards: true }, true) }]).topBarRewards, false);
+  // Zásuvka košíku (15 Oct 2026): the embed's drawer spot; unset or unknown = above checkout (the setting's default).
+  const spot = (settings: Record<string, unknown>) => themePlacementsIn([{ filename: "config/settings_data.json", content: embedSettings(settings) }]).drawerPosition;
+  assert.deepEqual([spot({}), spot({ drawer_position: "top" }), spot({ drawer_position: "off" }), spot({ drawer_position: "x" })], ["summary", "top", "off", "summary"]);
   // Only what was read is answered: no cart template (a Liquid one) → the cart block is not known.
   const partial = themePlacementsIn([{ filename: "templates/product.json", content: template() }]);
   assert.deepEqual(partial, { rewardsProduct: false, campaignProduct: false, outletBadge: false });

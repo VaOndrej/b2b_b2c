@@ -131,7 +131,7 @@ export async function loadPlacementsScreen(ctx: ShopCtx, opts: { fresh?: boolean
   const files: Partial<Record<WebPlace, string | null>> = {};
   if (scan.state === "ok") for (const def of PIECES) files[def.place] = briefFileFor(def.place, scan.live.files);
   return {
-    rows: pieceRows({ scan, blocks: blocksOf(look, scan), embed: signals.embed.state, content }),
+    rows: pieceRows({ scan, blocks: blocksOf(look, scan), embed: signals.embed.state, content, ...(look.placements.drawerPosition ? { drawerPosition: look.placements.drawerPosition } : {}) }),
     links: linksOf(ctx, look),
     other: otherTags(scan),
     scan: {

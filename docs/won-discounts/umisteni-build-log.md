@@ -4,6 +4,20 @@ Zadání: `WonCommerce/Apps/docs/won-discounts-umisteni-na-web-zadani.md` (mimo 
 ve worktree `WonCommerce/b2b_b2c-umisteni`, protože na `main` paralelně běžel krok 6 kombinování. Po dokončení se
 sloučí do `main`. Samostatný log, aby se nepral s `docs/won-discounts-build-log.md`.
 
+**CHECKPOINT U10 (15. 10. 2026): zásuvka košíku hotová v kódu na `main`, naživo neověřená.** Ondřej: varianta 1 (Horizon a Dawn
+automaticky) + vlastní volba místa + k tomu cesta přes AI (značka). Vlastní boční košík ne (samostatný produkt).
+Plán: nastavení embedu `drawer_position` (`summary` nad tlačítkem pokladny = dnes, `top` nahoře nad produkty, `off`),
+`won-discounts-cart.js` adresy podle polohy (`dp` v datech košíku); čtení vzhledu pozná zásuvku Horizonu / Dawnu
+podle značek v `snippets/cart-drawer.liquid` a polohu z nastavení embedu; řádek „Zásuvka košíku“ = automaticky
+(+ „Změnit místo“, „Chci to jinde“ → AI), vypnuto, nebo jiný vzhled → zadání pro AI. Značka má dál přednost.
+Hotovo: nastavení `drawer_position` v embedu, `dp` v datech košíku, `drawerOf()` (ověřeno na skutečném Horizonu
+a Dawnu), `ThemePlacements.drawerPosition`, stav `auto` / `missing off` v modelu, tlačítko „Změnit místo“ /
+„Zapnout v zásuvce“ (nastavení embedu), „Chci to jinde“ i u zásuvky, postup v `docs/tasks/place-elements-on-the-store.md`.
+Dev náhled `?state=drawer-auto|drawer-off|horizon`, screenshoty `evidence/umisteni-2026-10-14/drawer-*`.
+Brány: core 1 009, app 1 971, typecheck, lint 0 chyb, Theme Check 6× OrphanedSnippet (známé).
+Zbývá z C: smazat `won-discounts-cards.js`, `PAGES` (stránka košíku jen blokem), záložní pruh z embedu, přepínač
+karet. Naživo: A, B, D, E a zásuvka na Horizonu a Dawnu.
+
 **CHECKPOINT U9 (15. 10. 2026): sloučeno do `main`, nepushnuto.** Druhá AI skončila (`main` = `7f4138ac`), zkusný
 merge bez konfliktů, Postgres migrace `0007` volná. `main` sloučen do větve (`7960672e`), brány zelené, pak `main`
 posunut fast-forward na `7960672e`. Brány na `main`: core 1 009, app 1 969, typecheck, lint 0 chyb, Theme Check

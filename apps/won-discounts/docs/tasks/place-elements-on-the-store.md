@@ -9,8 +9,8 @@ app_version: MVP7
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-10-14
-keywords: [placement on your store, where is it on the store, add to store, check again, umístění na webu, přidat na web, zkontrolovat znovu, chci to jinde, připravit zadání pro ai]
+updated: 2026-10-15
+keywords: [cart drawer position, change the spot, placement on your store, where is it on the store, add to store, check again, umístění na webu, přidat na web, zkontrolovat znovu, chci to jinde, připravit zadání pro ai]
 summary: The Placement on your store page lists every Won element and every place it can show, says whether it is there, and offers the one way in your theme allows.
 ---
 
@@ -33,6 +33,15 @@ Open **Discounts** and click **Placement on your store**, the last tab of the st
 3. Want it somewhere the block cannot go? Click **I want it elsewhere** under the row. It opens the same guide.
 4. After any change in the theme click **Check again** at the top. Won reads the theme again, and new elements in
    the theme code start working on the store within a moment.
+
+## The cart drawer
+
+- **Horizon and Dawn:** the Milestones panel shows in the cart drawer by itself, above the checkout button. To move
+  it to the top above the products, or switch it off, click **Change the spot**: in the theme editor open
+  **App embeds → Won Discounts → Milestones panel in the cart drawer**, choose and save.
+- **Somewhere else in the drawer, or another theme:** click **I want it elsewhere** (or **Prepare a brief for AI**)
+  and follow [add-an-element-with-ai](add-an-element-with-ai.md). An element added in the theme code wins: the
+  panel then shows only there.
 
 ## Notes
 

@@ -600,7 +600,11 @@ export type PlacementKey = "cartBlock" | "rewardsProduct" | "rewardsHome" | "top
 export type SpotSelect = { section: string; block: string };
 export type PlacementSpot = ({ at: "page"; index: number; of: number } | { at: "product"; belowBuy: boolean }) & { select?: SpotSelect };
 export type SpotKey = PlacementKey | "tiersBlock";
-export type ThemePlacements = Partial<Record<PlacementKey, boolean>> & { spots?: Partial<Record<SpotKey, PlacementSpot>> };
+export type ThemePlacements = Partial<Record<PlacementKey, boolean>> & {
+  spots?: Partial<Record<SpotKey, PlacementSpot>>;
+  /** The Won embed's setting for the cart drawer panel (Horizon, Dawn): above checkout, at the top, or off. Absent = not read. */
+  drawerPosition?: "summary" | "top" | "off";
+};
 
 /**
  * The storefront config metafield (K5) as the last sync left it: `cv` (the

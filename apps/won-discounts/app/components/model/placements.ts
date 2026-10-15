@@ -57,12 +57,15 @@ export type PieceState =
   | { at: "tag_live"; tags: ScannedTag[] }
   | { at: "in_theme" }
   | { at: "tag_copy"; theme: string; tags: ScannedTag[] }
-  | { at: "missing" }
+  /** The cart script puts the panel in Horizon's / Dawn's drawer by itself (zásuvka, varianta 1). */
+  | { at: "auto"; theme: "horizon" | "dawn"; position: "summary" | "top" }
+  /** `off`: the drawer would take it by itself, but the Won embed's setting switches it off. */
+  | { at: "missing"; off?: true }
   | { at: "unknown" };
 
 export interface PieceRow extends PieceDef {
-  /** The way in this theme: an app block, or the tag. */
-  way: "block" | "tag";
+  /** The way in this theme: an app block, the tag, or by itself (the cart drawer of Horizon and Dawn). */
+  way: "block" | "tag" | "auto";
   state: PieceState;
   /** Over a piece that is there: a tag the embed cannot fill (Won off), or nothing to show now. */
   cause: { kind: "embed_off"; draft: boolean } | { kind: "nothing"; why: NothingCause } | null;
@@ -82,24 +85,36 @@ function tagsFor(tags: readonly ScannedTag[], def: PieceDef): ScannedTag[] {
   return def.show ? tags.filter((tag) => tag.show === def.show && placeOfFile(tag.file) === def.place) : [];
 }
 
-export function pieceRows(input: { scan: ThemeScanView; blocks: BlockFound; embed: EmbedStateLike; content: PlacementContent }): PieceRow[] {
-  const { scan, blocks, embed, content } = input;
+export function pieceRows(input: {
+  scan: ThemeScanView;
+  blocks: BlockFound;
+  embed: EmbedStateLike;
+  content: PlacementContent;
+  /** The Won embed's drawer setting (ThemePlacements.drawerPosition); absent = not read. */
+  drawerPosition?: "summary" | "top" | "off";
+}): PieceRow[] {
+  const { scan, blocks, embed, content, drawerPosition } = input;
   const fits = scan.state === "ok" ? scan.live.fits : null;
+  const drawer = scan.state === "ok" ? scan.live.drawer : null;
   return PIECES.map((def) => {
-    // Unknown theme: the block, as before the read existed; the drawer is a tag in every theme.
-    const way: PieceRow["way"] = def.place === "drawer" ? "tag" : fits && !fits[def.place] && def.show ? "tag" : "block";
+    // Unknown theme: the block, as before the read existed. The drawer: by itself in Horizon and Dawn (the cart
+    // script knows them), the tag in every other theme.
+    const way: PieceRow["way"] = def.place === "drawer" ? (drawer ? "auto" : "tag") : fits && !fits[def.place] && def.show ? "tag" : "block";
     const live = scan.state === "ok" ? tagsFor(scan.live.tags, def) : [];
     const copy = scan.state === "ok" ? scan.copies.map((theme) => ({ theme: theme.name, tags: tagsFor(theme.tags, def) })).find((c) => c.tags.length > 0) : undefined;
     const found = blocks[def.key];
     let state: PieceState;
     if (live.length) state = { at: "tag_live", tags: live };
+    else if (way === "auto" && drawer && (drawerPosition === "summary" || drawerPosition === "top")) state = { at: "auto", theme: drawer, position: drawerPosition };
+    else if (way === "auto" && drawerPosition === "off") state = { at: "missing", off: true };
     else if (found === true) state = { at: "in_theme" };
     else if (copy) state = { at: "tag_copy", theme: copy.theme, tags: copy.tags };
-    else if (way === "tag" ? scan.state === "ok" && scan.live.complete : found === false) state = { at: "missing" };
+    else if (way === "tag" ? scan.state === "ok" && scan.live.complete : way === "block" && found === false) state = { at: "missing" };
     else state = { at: "unknown" };
     let cause: PieceRow["cause"] = null;
-    if (state.at === "tag_live" && (embed === "off" || embed === "draft_only")) cause = { kind: "embed_off", draft: embed === "draft_only" };
-    else if (state.at === "tag_live" || state.at === "in_theme") {
+    // A tag and the drawer's own panel both need Won switched on (the embed fills / draws them).
+    if ((state.at === "tag_live" || state.at === "auto") && (embed === "off" || embed === "draft_only")) cause = { kind: "embed_off", draft: embed === "draft_only" };
+    else if (state.at === "tag_live" || state.at === "in_theme" || state.at === "auto") {
       const why = nothingCause(def, content);
       if (why) cause = { kind: "nothing", why };
     }
@@ -116,7 +131,7 @@ export function otherTags(scan: ThemeScanView): ScannedTag[] {
 /** The row's status pill, as every placement row of the admin says it. */
 export function pieceTone(row: PieceRow): "in_theme" | "missing" | "unknown" | "attention" {
   if (row.cause?.kind === "embed_off" || row.state.at === "tag_copy") return "attention";
-  if (row.state.at === "tag_live" || row.state.at === "in_theme") return "in_theme";
+  if (row.state.at === "tag_live" || row.state.at === "in_theme" || row.state.at === "auto") return "in_theme";
   return row.state.at;
 }
 

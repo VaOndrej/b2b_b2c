@@ -465,6 +465,9 @@ export function themePlacementsIn(files: readonly { filename: string; content: s
     if (embed !== undefined) {
       out.topBarRewards = embed?.top_bar_rewards === true;
       out.topBarCampaign = embed?.top_bar_campaign === true;
+      // Zásuvka košíku (15 Oct 2026): where the cart script puts the panel in Horizon's / Dawn's drawer.
+      const position = embed?.drawer_position;
+      out.drawerPosition = position === "top" || position === "off" ? position : "summary";
     }
   }
   // The block in the header (its two switches are on unless the merchant turned one off).

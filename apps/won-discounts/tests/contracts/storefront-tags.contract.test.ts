@@ -117,7 +117,16 @@ test("theme editor: every tag shows its block's sample with the reason; in a car
 test("the cart script draws its panel into a cart tag, in the tag's size, and guesses no place of the theme while one is on the page", async () => {
   const js = await read("assets/won-discounts-cart.js");
   assert.match(js, /const TAG = 'won-discounts\[show="cart"\]';/);
-  assert.match(js, /\[SLOT, TAG, \.\.\.\(tagged \? \[\] : DRAWERS\)\]/);
+  assert.match(js, /\[SLOT, TAG, \.\.\.\(tagged \? \[\] : drawers\(\)\)\]/);
+  // Zásuvka košíku, varianta 1 (15 Oct 2026): Horizon's and Dawn's drawer in the spot the Won embed's setting picks.
+  assert.match(js, /summary: \["cart-drawer-component \.cart-drawer__summary", "#CartDrawer \.drawer__footer"\]/);
+  assert.match(js, /top: \["cart-drawer-component \.cart-drawer__content", "#CartDrawer cart-drawer-items"\]/);
+  assert.match(js, /const drawers = \(\) => \(data\.dp === "off" \? \[\] : DRAWERS\[data\.dp\] \|\| DRAWERS\.summary\);/);
+  const embed = await read("blocks/won_discounts_embed.liquid");
+  assert.match(embed, /"dp":\{\{ block\.settings\.drawer_position \| default: 'summary' \| json \}\}/);
+  const schema = JSON.parse(/\{% schema %\}([\s\S]*?)\{% endschema %\}/.exec(embed)![1]!) as { settings: { id?: string; default?: string; options?: { value: string }[] }[] };
+  const setting = schema.settings.find((x) => x.id === "drawer_position")!;
+  assert.deepEqual([setting.default, setting.options!.map((o) => o.value)], ["summary", ["summary", "top", "off"]]);
   assert.match(js, /if \(!tagged && !d\.querySelector\(SLOT\)\) slots\.push\(\.\.\.d\.querySelectorAll\(PAGES/);
   assert.match(js, /slot\.matches\?\.\(TAG\) \? \(slot\.getAttribute\("size"\) === "full" \? "full" : "compact"\)/);
   assert.match(await read("assets/won-discounts-cards.js"), /if \(d\.querySelector\('won-discounts\[show="card-tier"\]'\)\) return;/);

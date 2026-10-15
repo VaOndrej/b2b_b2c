@@ -44,6 +44,8 @@ function RowNotes({ row, unknownTheme }: { row: PieceRow; unknownTheme: boolean 
   const { t } = useT();
   const notes: { key: string; text: string; attention?: boolean }[] = [];
   if (row.state.at === "tag_live") notes.push({ key: "live", text: t("webPlaces.tagLive", where(row.state.tags[0]!)) });
+  if (row.state.at === "auto") notes.push({ key: "auto", text: t("webPlaces.auto", { theme: row.state.theme === "horizon" ? "Horizon" : "Dawn", position: t(row.state.position === "top" ? "webPlaces.auto.top" : "webPlaces.auto.summary") }) });
+  if (row.state.at === "missing" && row.state.off) notes.push({ key: "off", text: t("webPlaces.autoOff"), attention: true });
   if (row.state.at === "tag_copy") notes.push({ key: "copy", text: t("webPlaces.tagCopy", { theme: row.state.theme, file: row.state.tags[0]!.file }), attention: true });
   if (row.cause?.kind === "embed_off") notes.push({ key: "embed", text: t(row.cause.draft ? "webPlaces.embedDraft" : "webPlaces.embedOff"), attention: true });
   if (row.cause?.kind === "nothing") notes.push({ key: "nothing", text: t(`webPlaces.nothing.${row.cause.why}`) });
@@ -177,6 +179,15 @@ function PieceRowView({ row, page, open, toggle }: { row: PieceRow; page: Placem
         {t("rewards.cart.activate")}
       </s-button>,
     );
+  } else if (row.way === "auto" && row.state.at !== "tag_live") {
+    // The drawer of Horizon / Dawn: its place is the Won embed's setting in the theme editor.
+    const off = row.state.at === "missing";
+    if (page.embed.activateUrl)
+      buttons.push(
+        <s-button key="auto" href={page.embed.activateUrl} target="_top" variant={off ? "primary" : "secondary"} data-won-drawer-setting="">
+          {t(off ? "webPlaces.autoOn" : "webPlaces.autoMove")}
+        </s-button>,
+      );
   } else if (row.way === "block" && row.state.at !== "tag_live") {
     const href = row.state.at === "in_theme" ? (links?.open ?? links?.add) : links?.add;
     if (href)
@@ -193,7 +204,7 @@ function PieceRowView({ row, page, open, toggle }: { row: PieceRow; page: Placem
     );
   }
   // The code way where a block goes: there, but quiet (zadání §11, varianta a).
-  const elsewhere = row.way === "block" && row.show && row.state.at !== "tag_live";
+  const elsewhere = (row.way === "block" || row.way === "auto") && row.show && row.state.at !== "tag_live";
   return (
     <WonRow tone={pieceTone(row) === "missing" || row.cause?.kind === "embed_off" ? "attention" : undefined} action={buttons.length ? <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 8 }}>{buttons}</span> : undefined}>
       <div data-won-piece={row.key} data-won-piece-state={row.state.at} data-won-piece-way={row.way}>

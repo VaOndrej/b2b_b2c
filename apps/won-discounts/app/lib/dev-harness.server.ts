@@ -1969,9 +1969,11 @@ const DEV_HORIZON_FILES = ["blocks/_product-card.liquid", "layout/theme.liquid",
 
 /**
  * Umístění na webu as loadPlacementsScreen hands it over (the same pure pieceRows over a fixture theme read):
- *   default    Dawn: the card and the drawer take no block (the brief for AI); the drawer has Won's tag, the cart
- *              page and the product page have their blocks, a Milestones bar in a file of the merchant's own;
- *   horizon    Horizon: the card takes a block (and has one), the drawer still a tag (none yet);
+ *   default    Dawn: the card takes no block (the brief for AI); the drawer has Won's tag (it wins over the panel the
+ *              cart script places by itself), the cart page and the product page have their blocks, a Milestones bar
+ *              in a file of the merchant's own;
+ *   horizon    Horizon: the card takes a block (and has one); the drawer's panel by itself, at the top;
+ *   drawer-auto | drawer-off  Dawn without the drawer tag: the panel by itself above checkout / switched off;
  *   copy       Dawn with the drawer's tag only in a copy of the theme, and a typo `show="carts"`;
  *   embed-off  the drawer's tag in the live theme, Won switched off;
  *   nothing    everything in place, nothing to show (no step, no campaign, card prices off);
@@ -1980,12 +1982,13 @@ const DEV_HORIZON_FILES = ["blocks/_product-card.liquid", "layout/theme.liquid",
 export function devPlacementsScreen(opts: { state: string | null }): PlacementsScreenData {
   const horizon = opts.state === "horizon";
   const tag = (show: string, file: string, line: number, extra: Partial<ScannedTag> = {}): ScannedTag => ({ show, file, line, ...extra });
+  const drawerTag = opts.state !== "drawer-auto" && opts.state !== "drawer-off";
   const liveTags: ScannedTag[] =
     opts.state === "copy"
       ? [tag("carts", "snippets/cart-drawer.liquid", 88)]
       : horizon
         ? []
-        : [tag("cart", "snippets/cart-drawer.liquid", 132), tag("card-tier", "snippets/card-product.liquid", 61, { product: "{{ card_product.handle }}" }), tag("milestones", "sections/footer.liquid", 12, { size: "bar" })];
+        : [...(drawerTag ? [tag("cart", "snippets/cart-drawer.liquid", 132)] : []), tag("card-tier", "snippets/card-product.liquid", 61, { product: "{{ card_product.handle }}" }), tag("milestones", "sections/footer.liquid", 12, { size: "bar" })];
   const scan: ThemeScanView =
     opts.state === "unknown"
       ? { state: "unknown" }
@@ -2000,6 +2003,8 @@ export function devPlacementsScreen(opts: { state: string | null }): PlacementsS
             fits: { product: true, home: true, cart: true, header: true, card: horizon, drawer: false },
             files: horizon ? DEV_HORIZON_FILES : DEV_DAWN_FILES,
             blocks: horizon ? { card_tiers: ["templates/collection.json"] } : {},
+            // A theme of our own (state=copy) has a drawer the cart script does not know: the brief for AI.
+            drawer: opts.state === "copy" ? null : horizon ? "horizon" : "dawn",
           },
           copies: opts.state === "copy" ? [{ id: "184467440738", name: "Dawn – úpravy košíku", live: false, complete: true, tags: [tag("cart", "snippets/cart-drawer.liquid", 132)] }] : [],
         };
@@ -2010,7 +2015,7 @@ export function devPlacementsScreen(opts: { state: string | null }): PlacementsS
   const files: PlacementsScreenData["files"] = {};
   if (scan.state === "ok") for (const def of PIECES) files[def.place] = briefFileFor(def.place, scan.live.files);
   return {
-    rows: pieceRows({ scan, blocks, embed, content }),
+    rows: pieceRows({ scan, blocks, embed, content, drawerPosition: opts.state === "drawer-off" ? "off" : horizon ? "top" : "summary" }),
     links: Object.fromEntries(PIECES.map((p) => [p.key, p.place === "drawer" ? { add: null, open: null } : { add: `https://${DEV_SHOP}/admin/themes/current/editor?addAppBlockId=dev/${p.key}`, open: `https://${DEV_SHOP}/admin/themes/current/editor?template=product` }])),
     other: otherTags(scan),
     scan: { state: scan.state, theme: scan.state === "ok" ? { id: scan.live.id, name: scan.live.name, complete: true } : null, copies: scan.state === "ok" ? scan.copies.map((c) => ({ id: c.id, name: c.name })) : [] },

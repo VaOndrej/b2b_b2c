@@ -19,10 +19,10 @@ import { createTestDatabase, type TestDatabase } from "../lib/test-db.ts";
 const ALL: PlacementContent = { tiers: true, rewards: true, campaigns: true, outlet: true, cards: true };
 const tag = (show: string, file: string, line = 1): ScannedTag => ({ show, file, line });
 
-function dawn(tags: ScannedTag[], copies: { name: string; tags: ScannedTag[] }[] = []): ThemeScanView {
+function dawn(tags: ScannedTag[], copies: { name: string; tags: ScannedTag[] }[] = [], drawer: "horizon" | "dawn" | null = null): ThemeScanView {
   return {
     state: "ok",
-    live: { id: "1", name: "Dawn", live: true, complete: true, tags, fits: { product: true, home: true, cart: true, header: true, card: false, drawer: false }, files: ["snippets/cart-drawer.liquid", "snippets/card-product.liquid"], blocks: {} },
+    live: { id: "1", name: "Dawn", live: true, complete: true, tags, fits: { product: true, home: true, cart: true, header: true, card: false, drawer: false }, files: ["snippets/cart-drawer.liquid", "snippets/card-product.liquid"], blocks: {}, drawer },
     copies: copies.map((c, i) => ({ id: String(10 + i), name: c.name, live: false, complete: true, tags: c.tags })),
   };
 }
@@ -73,6 +73,19 @@ test("the cause: a tag with Won off (or only in a draft) says so; a piece that i
   assert.deepEqual(row(empty, "outletBadge").cause, { kind: "nothing", why: "noSale" });
   assert.deepEqual(row(empty, "cardTier").cause, { kind: "nothing", why: "cardsOff" });
   assert.equal(row(empty, "msProduct").cause, null, "nothing there: no cause");
+});
+
+test("zásuvka košíku (varianta 1 + AI): Horizon's / Dawn's drawer takes the panel by itself, where the Won embed says; off; a tag wins; Won off says so; another theme = the brief for AI", async () => {
+  const auto = (drawerPosition: "summary" | "top" | "off" | undefined, tags: ScannedTag[] = [], embed: "on" | "off" = "on") =>
+    row(pieceRows({ scan: dawn(tags, [], "dawn"), blocks: {}, embed, content: ALL, ...(drawerPosition ? { drawerPosition } : {}) }), "msDrawer");
+  assert.deepEqual([auto("summary").way, auto("summary").state], ["auto", { at: "auto", theme: "dawn", position: "summary" }]);
+  assert.deepEqual(auto("top").state, { at: "auto", theme: "dawn", position: "top" });
+  assert.deepEqual(auto("off").state, { at: "missing", off: true });
+  assert.equal(auto(undefined).state.at, "unknown", "the embed's settings not read");
+  assert.equal(auto("summary", [tag("cart", "snippets/cart-drawer.liquid", 5)]).state.at, "tag_live", "the tag wins");
+  assert.deepEqual(auto("summary", [], "off").cause, { kind: "embed_off", draft: false });
+  const other = row(pieceRows({ scan: dawn([]), blocks: {}, embed: "on", content: ALL, drawerPosition: "summary" }), "msDrawer");
+  assert.deepEqual([other.way, other.state.at], ["tag", "missing"]);
 });
 
 test("what a module has to show: the gated storefront config (no tiers, no steps, no campaign in a fresh shop)", () => {
