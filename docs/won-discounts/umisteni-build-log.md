@@ -4,6 +4,20 @@ Zadání: `WonCommerce/Apps/docs/won-discounts-umisteni-na-web-zadani.md` (mimo 
 ve worktree `WonCommerce/b2b_b2c-umisteni`, protože na `main` paralelně běžel krok 6 kombinování. Po dokončení se
 sloučí do `main`. Samostatný log, aby se nepral s `docs/won-discounts-build-log.md`.
 
+**CHECKPOINT U12 (15. 10. 2026): balík C hotový, ověření lokálně hotové, živé čeká na go.** C1–C4 v commitech
+`2c574c33`, `405e737b`, `5080e1f4`, `d06fbc4a`. Ověření:
+- `tests/contracts/storefront-drawer.contract.test.ts` (Chromium, skutečné `won-discounts.js` + `won-discounts-cart.js`
+  + CSS na výřezu zásuvky Horizonu a Dawnu): panel je v `.cart-drawer__summary` / `.drawer__footer` PŘED tlačítkem
+  pokladny v DOM i na obrazovce (bez nastavení i `summary`), `top` nad produkty a pořád nad tlačítkem, `off` nic,
+  značka vyhrává. Mutace (panel na konec místo na začátek) test shodí, 4 ze 6.
+- `tests/e2e-preview/admin.placements-guide.spec.ts` (390 i 1440 px): stránka z pruhu pod Slevy, žádné technické
+  slovo v rozhraní (kromě názvů souborů), nejvýš jedno hlavní tlačítko v řádku, kroky 1–3 shora dolů, do schránky
+  jde přesně zobrazené zadání, odkaz do editoru kódu na konkrétní soubor v novém okně, Zkontrolovat odpoví, záložka
+  Udělám to sám, zásuvka Horizon/Dawn (Změnit místo, Chci to jinde, vypnuto). 6/6.
+- Celá sada náhledu adminu: 45/46; padá `admin.navigation.spec.ts` „view tiles“, padá stejně i na `main` před
+  mergem (`7f4138ac`, práce druhé AI), nesouvisí.
+Živě (deploy rozšíření + E2E na Horizonu a Dawnu) čeká na Ondřejovo go: zápis do dev obchodu.
+
 **CHECKPOINT U11 (15. 10. 2026): `main` pushnutý (`31f1f43e`), balík C rozpracovaný.** Ondřej: push, C, pak vše
 ověřit testy (panel v zásuvce nad hlavním tlačítkem pokladny, průvodce v adminu srozumitelný). Plán C po commitech:
 C1 smazat `won-discounts-cards.js` (JSON `#won-discounts-cards` zůstává pro značku karty), C2 smazat `PAGES`

@@ -56,11 +56,11 @@ test("the strip under 'Slevy': a dot per module, none for a locked one, the same
   await open(page, "tiers");
   const strip = () => page.evaluate(() => [...document.querySelectorAll("[data-won-subnav-item]")].map((a) => `${a.getAttribute("data-won-subnav-item")}:${a.querySelector("[data-won-dot]")?.getAttribute("data-won-dot") ?? "-"}`).join(" "));
   const free = await strip();
-  expect(free).toBe("discounts:active tiers:active rewards:active outlet:- campaigns:-");
+  expect(free).toBe("discounts:active tiers:active rewards:active outlet:- campaigns:- placements:-");
   await open(page, "rewards");
   expect(await strip()).toBe(free);
   await open(page, "tiers?plan=pro");
-  expect(await strip()).toBe("discounts:active tiers:active rewards:active outlet:attention campaigns:active");
+  expect(await strip()).toBe("discounts:active tiers:active rewards:active outlet:attention campaigns:active placements:-");
   // The dot is not the only carrier: the link's text says the state for screen readers.
   await expect(page.locator('[data-won-subnav-item="outlet"]')).toContainText("Vyžaduje pozornost");
 });
@@ -222,7 +222,7 @@ test("deep links from other pages: a section's anchor opens the view that holds 
 test("keyboard: Tab walks the strip, the tiles and the list in the page's order, and a tile opens with Enter", async ({ page }) => {
   await open(page, "tiers");
   const order: string[] = [];
-  for (let presses = 0; presses < 12 && order.length < 8; presses += 1) {
+  for (let presses = 0; presses < 14 && order.length < 9; presses += 1) {
     await page.keyboard.press("Tab");
     const mark = await page.evaluate(() => {
       const el = document.activeElement;
@@ -230,7 +230,8 @@ test("keyboard: Tab walks the strip, the tiles and the list in the page's order,
     });
     if (mark) order.push(mark);
   }
-  expect(order).toEqual(["discounts", "tiers", "rewards", "outlet", "campaigns", "global", "table", "exceptions"]);
+  // Umístění na webu is the strip's last item (15 Oct 2026), no dot.
+  expect(order).toEqual(["discounts", "tiers", "rewards", "outlet", "campaigns", "placements", "global", "table", "exceptions"]);
   expect(await page.evaluate(() => getComputedStyle(document.activeElement ?? document.body).outlineStyle)).toBe("solid");
   await page.keyboard.press("Enter");
   await expect(page.locator('[data-won-view-tile="exceptions"]')).toHaveAttribute("aria-pressed", "true");
