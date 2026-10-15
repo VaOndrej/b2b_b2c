@@ -129,7 +129,6 @@ test("the cart script draws its panel into a cart tag, in the tag's size, and gu
   assert.deepEqual([setting.default, setting.options!.map((o) => o.value)], ["summary", ["summary", "top", "off"]]);
   assert.match(js, /if \(!tagged && !d\.querySelector\(SLOT\)\) slots\.push\(\.\.\.d\.querySelectorAll\(PAGES/);
   assert.match(js, /slot\.matches\?\.\(TAG\) \? \(slot\.getAttribute\("size"\) === "full" \? "full" : "compact"\)/);
-  assert.match(await read("assets/won-discounts-cards.js"), /if \(d\.querySelector\('won-discounts\[show="card-tier"\]'\)\) return;/);
 });
 
 test("the embed makes the tags' HTML only for what the theme holds (tg), the samples only in the theme editor, and loads the script only then", async () => {

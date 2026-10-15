@@ -140,8 +140,10 @@ Won Discounts quantity tiers block (MVP 3, contracts K6 + K8). Liquid renders th
   50 handles; core `cardTier` on the server, app/lib/integration/card-tiers.server.ts), worded with the texts of the
   `card-tier-texts` template (the embed prints it with `tg.cd` and cards on); answers are remembered for the page.
 - `cart`: the cart script draws its panel into the tag (`TAG`) in the tag's `size` (`compact` unless `full`), and
-  while a cart tag is on the page it guesses none of the theme's places (`DRAWERS`, `PAGES`). `won-discounts-cards.js`
-  places nothing while a card tag is on the page.
+  while a cart tag is on the page it guesses none of the theme's places (`DRAWERS`, `PAGES`).
+- Cards (balík C, 15 Oct 2026): nothing places a card line by guessing any more (`won-discounts-cards.js` is gone).
+  A card shows the line through the card block (a theme whose card takes app blocks: Horizon) or a `card-tier`
+  tag; the embed prints `#won-discounts-cards` only when the app found such a tag (`tg.cd`) and cards are on.
 - `tiers` and `outlet` (balík D): the product page only (`template.name == 'product'`, the page's own product). The
   table and the badge are the snippets their blocks render (`snippets/won-tiers.liquid`, `snippets/won-outlet.liquid`),
   printed by the embed with `tg.ti` / `tg.ob`, with the table's CSS and scripts (or the badge's CSS and the blocks

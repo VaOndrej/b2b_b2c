@@ -4,6 +4,13 @@ Zadání: `WonCommerce/Apps/docs/won-discounts-umisteni-na-web-zadani.md` (mimo 
 ve worktree `WonCommerce/b2b_b2c-umisteni`, protože na `main` paralelně běžel krok 6 kombinování. Po dokončení se
 sloučí do `main`. Samostatný log, aby se nepral s `docs/won-discounts-build-log.md`.
 
+**CHECKPOINT U11 (15. 10. 2026): `main` pushnutý (`31f1f43e`), balík C rozpracovaný.** Ondřej: push, C, pak vše
+ověřit testy (panel v zásuvce nad hlavním tlačítkem pokladny, průvodce v adminu srozumitelný). Plán C po commitech:
+C1 smazat `won-discounts-cards.js` (JSON `#won-discounts-cards` zůstává pro značku karty), C2 smazat `PAGES`
+(stránka košíku jen blokem nebo značkou), C3 záložní pruh z embedu (nastavení `top_bar_*`, markup, admin ho
+přestane počítat jako „na webu“), C4 přepínač karet podle nového stavu. Pak ověření: zásuvka naživo (Horizon,
+Dawn, 390/1440, panel nad tlačítkem pokladny) a čitelnost průvodce.
+
 **CHECKPOINT U10 (15. 10. 2026): zásuvka košíku hotová v kódu na `main`, naživo neověřená.** Ondřej: varianta 1 (Horizon a Dawn
 automaticky) + vlastní volba místa + k tomu cesta přes AI (značka). Vlastní boční košík ne (samostatný produkt).
 Plán: nastavení embedu `drawer_position` (`summary` nad tlačítkem pokladny = dnes, `top` nahoře nad produkty, `off`),

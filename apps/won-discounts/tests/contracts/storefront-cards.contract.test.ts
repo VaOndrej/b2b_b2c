@@ -3,14 +3,13 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import vm from "node:vm";
 
 // SPEC-DRIVEN contract for prices by quantity on product cards (MVP 7 BETA, plan M8, decision P6).
 //   snippets/won-card-tier.liquid   decides what a card may say — the Liquid twin of core cardTier (its property
 //                                   test against planCart is packages/core/tests/discounts/card-tier.test.ts);
 //                                   every condition of the reference must be in the snippet;
 //   blocks/card_tiers.liquid        the card block (Liquid only, no script);
-//   the embed                       {handle: text} for a collection / search page + assets/won-discounts-cards.js,
+//   the embed                       {handle: text} for a collection / search page, for the card-tier tags,
 //                                   which only places the text and never touches the cart (SF-1).
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -66,116 +65,11 @@ test("the embed prints the page's {handle: text} (at most 50 products, products 
   assert.match(liquid, /\{%- if won_discounts_config_raw\.appearance\.css != blank -%\}\s*<style id="won-discounts-custom">\{\{ won_discounts_config_raw\.appearance\.css \}\}<\/style>/);
 });
 
-// --- won-discounts-cards.js in a vm with a minimal fake DOM -------------------------------------------------
-
-interface FakeEl {
-  tag: string;
-  attrs: Record<string, string>;
-  children: FakeEl[];
-  parentNode: FakeEl | null;
-  className: string;
-  textContent: string;
-  card?: FakeEl | null;
-  price?: FakeEl | null;
-  marker?: boolean;
-  nextSibling: FakeEl | null;
-  getAttribute(name: string): string | null;
-  setAttribute(name: string, value: string): void;
-  closest(selector: string): FakeEl | null;
-  querySelector(selector: string): FakeEl | null;
-  querySelectorAll(selector: string): FakeEl[];
-  appendChild(child: FakeEl): void;
-  insertBefore(child: FakeEl, before: FakeEl | null): void;
-}
-
-function el(tag: string, attrs: Record<string, string> = {}): FakeEl {
-  const node: FakeEl = {
-    tag,
-    attrs,
-    children: [],
-    parentNode: null,
-    className: "",
-    textContent: "",
-    nextSibling: null,
-    getAttribute: (name) => node.attrs[name] ?? null,
-    setAttribute: (name, value) => void (node.attrs[name] = value),
-    closest: () => node.card ?? null,
-    querySelector: (selector) => {
-      if (selector.includes("data-won-discounts-card")) {
-        // Deep, like the real querySelector.
-        const deep = (x: FakeEl): FakeEl | null => x.children.find((c) => "data-won-discounts-card" in c.attrs) ?? x.children.map(deep).find(Boolean) ?? null;
-        return deep(node);
-      }
-      return node.price ?? null;
-    },
-    querySelectorAll: () => [],
-    appendChild: (child) => {
-      child.parentNode = node;
-      node.children.push(child);
-    },
-    insertBefore: (child) => {
-      child.parentNode = node;
-      node.children.push(child);
-    },
-  };
-  return node;
-}
-
-async function runCards(map: unknown, links: FakeEl[]) {
-  const main = el("main");
-  main.querySelectorAll = () => links;
-  const data = el("script");
-  data.textContent = typeof map === "string" ? map : JSON.stringify(map);
-  const document = {
-    getElementById: (id: string) => (id === "won-discounts-cards" ? data : null),
-    querySelector: (selector: string) => (selector === "main" ? main : null),
-    createElement: (tag: string) => el(tag),
-    body: main,
-  };
-  vm.runInNewContext(await read("assets/won-discounts-cards.js"), { document, requestAnimationFrame: () => 0, MutationObserver: undefined });
-}
-
-function card(handle: string, opts: { price?: boolean; marked?: boolean; noCard?: boolean } = {}) {
-  const c = el("li");
-  const link = el("a", { href: `/products/${handle}?variant=1` });
-  link.card = opts.noCard ? null : c;
-  if (opts.price) {
-    const priceWrap = el("div");
-    c.appendChild(priceWrap);
-    const price = el("span");
-    priceWrap.appendChild(price);
-    c.price = price;
-  }
-  if (opts.marked) c.appendChild(el("p", { "data-won-discounts-card": handle }));
-  return { c, link };
-}
-const lines = (c: FakeEl): FakeEl[] => [c, ...c.children.flatMap((x) => lines(x))].filter((x) => "data-won-discounts-card" in x.attrs);
-
-test("cards.js places each product's text once: beside the price when the card has one, at the card's end otherwise; a marked card and an unlisted product are left alone", async () => {
-  const a = card("a", { price: true });
-  const a2 = card("a"); // the same card linked twice (image + title)
-  a2.link.card = a.c;
-  const b = card("b");
-  const blocked = card("c", { marked: true });
-  const unlisted = card("zzz");
-  const loose = card("a", { noCard: true });
-  await runCards({ a: "Od 3 ks −10 %", b: "Od 2 ks −5 Kč za kus", c: "X" }, [a.link, a2.link, b.link, blocked.link, unlisted.link, loose.link]);
-  assert.deepEqual(lines(a.c).map((l) => [l.className, l.textContent, l.attrs["data-won-discounts-card"], l.parentNode === a.c.children[0]]), [["won-card-tier", "Od 3 ks −10 %", "a", true]]);
-  assert.deepEqual(lines(b.c).map((l) => [l.textContent, l.parentNode === b.c]), [["Od 2 ks −5 Kč za kus", true]]);
-  assert.equal(lines(blocked.c).length, 1, "the card block's own line stays the only one");
-  assert.equal(lines(unlisted.c).length, 0);
-});
-
-test("cards.js: text goes in as text (never markup), junk data and a missing data node do nothing", async () => {
-  const a = card("a");
-  await runCards({ a: "<img src=x onerror=alert(1)>" }, [a.link]);
-  assert.equal(lines(a.c)[0]!.textContent, "<img src=x onerror=alert(1)>");
-  const js = await read("assets/won-discounts-cards.js");
-  assert.doesNotMatch(js, /innerHTML|insertAdjacentHTML|document\.write/);
-  assert.doesNotMatch(js, /\/cart\/|fetch\(|XMLHttpRequest|localStorage|cookie/, "reads its JSON, places text, nothing else (SF-1)");
-  const junk = card("a");
-  await assert.doesNotReject(runCards("{not json", [junk.link]));
-  assert.equal(lines(junk.c).length, 0);
+// Balík C (15 Oct 2026): won-discounts-cards.js is gone. A card shows its line through the card block or a
+// `card-tier` tag (storefront-tags.contract.test.ts); nothing places it by guessing.
+test("no card script: the extension has no won-discounts-cards.js and nothing loads it", async () => {
+  await assert.rejects(read("assets/won-discounts-cards.js"));
+  assert.doesNotMatch(await read("blocks/won_discounts_embed.liquid"), /'won-discounts-cards\.js' \| asset_url/);
 });
 
 test("the AI briefs' class lists are exactly the classes of the extension's stylesheets, each element's starting with its own root; the variables are the ones a custom look sets", async () => {

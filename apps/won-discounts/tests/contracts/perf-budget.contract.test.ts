@@ -11,8 +11,8 @@ import { test } from "node:test";
 //   every page          won-discounts.js (the embed) + won-discounts-cart.js (the embed loads it when the shop
 //                       has cart rewards: the cart drawer lives on every page)
 //   product page        + won-discounts-tiers.js + won-discounts-tiers-core.js (the quantity tiers block)
-//   collection / search + won-discounts-cards.js (MVP 7 BETA: prices by quantity on product cards, themes whose
-//                       card takes no app block)
+//   collection / search the embed's scripts only (balík C: the card line is the card block's or a tag's, no script
+//                       of its own)
 // Each file is served readable (no build step, nova-aplikace §8), so the budget is on real bytes.
 //
 // Theme Check's AssetSizeAppBlockJavaScript, which `shopify app dev` / deploy
@@ -28,7 +28,7 @@ const EVERY_PAGE = ["won-discounts.js", "won-discounts-cart.js"];
 const PAGES: Record<string, string[]> = {
   "product page": [...EVERY_PAGE, "won-discounts-tiers.js", "won-discounts-tiers-core.js"],
   "cart page": [...EVERY_PAGE],
-  "collection / search": [...EVERY_PAGE, "won-discounts-cards.js"],
+  "collection / search": [...EVERY_PAGE],
 };
 /**
  * Feedback 2 (2026-10-06, body 5 a 7): scripts NO page loads by default — only where the merchant adds the block

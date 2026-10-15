@@ -197,7 +197,7 @@
 .won-cart-slot {
   min-height: 3rem;
 }
-/* MVP 7 BETA: the quantity price line on a product card (the card block or won-discounts-cards.js). It inherits
+/* MVP 7 BETA: the quantity price line on a product card (the card block or a card-tier tag). It inherits
    the card's font and colour; sizes in em (Dawn's root font-size is 62.5 %). */
 .won-card-tier {
   margin: 0.25em 0 0;

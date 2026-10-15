@@ -76,14 +76,13 @@ test("embed serves the app-data config as an inline JSON script tag", async () =
   assert.match(block, /'\{\}'|"\{\}"/);
 });
 
-test("embed loads storefront JS with defer via the schema; its only <script src> are the cards script (MVP 7, only with cards on, collection / search) and the cart script (MVP 4, only with rewards), both deferred", async () => {
+test("embed loads storefront JS with defer via the schema; its only <script src> are the tags scripts (only for tags the theme holds) and the cart script (MVP 4, only with rewards), all deferred", async () => {
   const block = await readExtension("blocks/won_discounts_embed.liquid");
   const srcs = [...block.matchAll(/<script[^>]+src=[^>]*>/g)].map((m) => m[0]);
   // Feedback 2: + the blocks script, only with the embed's top bar switched on.
   // Umístění na webu (14 Oct 2026): + the tags script (and the blocks script for a ladder or campaign tag), only when
   // the app found a tag in the theme or in the theme editor (storefront-tags.contract.test.ts).
   assert.deepEqual(srcs, [
-    `<script src="{{ 'won-discounts-cards.js' | asset_url }}" defer>`,
     `<script src="{{ 'won-discounts-tags.js' | asset_url }}" defer>`,
     // Balík D: the table's scripts, only for a tiers tag on the product page (storefront-tags.contract.test.ts).
     `<script src="{{ 'won-discounts-tiers-core.js' | asset_url }}" defer>`,
@@ -94,9 +93,9 @@ test("embed loads storefront JS with defer via the schema; its only <script src>
   ]);
   const blocksScript = block.lastIndexOf("<script src=\"{{ 'won-discounts-blocks.js'");
   assert.ok(block.lastIndexOf("{%- if block.settings.top_bar_rewards or block.settings.top_bar_campaign -%}", blocksScript) !== -1, "the blocks script only with the top bar on");
-  const cards = block.indexOf("<script src=\"{{ 'won-discounts-cards.js'");
-  assert.ok(block.lastIndexOf("{%- if won_discounts_config_raw.cards == 1 -%}", cards) !== -1, "the cards script only when the storefront config switches cards on");
-  assert.match(block.slice(0, cards), /template\.name == 'collection'[\s\S]*template\.name == 'search'/, "… and only on a collection or search page");
+  // Balík C: no card script; the page's card texts only for a card tag the app found, with cards on.
+  assert.doesNotMatch(block, /'won-discounts-cards\.js' \| asset_url/);
+  assert.match(block, /\{%- if won_discounts_config_raw\.cards == 1 and won_discounts_config_raw\.tg\.cd == 1 -%\}[\s\S]*template\.name == 'collection'[\s\S]*template\.name == 'search'/);
   const at = block.indexOf("<script src=\"{{ 'won-discounts-cart.js'");
   assert.ok(block.lastIndexOf("{%- if rw != blank -%}", at) !== -1 && block.indexOf("{%- endif -%}", at) !== -1, "loaded only when the storefront config offers rewards");
 });

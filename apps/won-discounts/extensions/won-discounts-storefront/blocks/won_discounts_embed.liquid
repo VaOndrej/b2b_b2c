@@ -54,12 +54,14 @@
   <style id="won-discounts-custom">{{ won_discounts_config_raw.appearance.css }}</style>
 {%- endif -%}
 {%- comment -%}
-  MVP 7 BETA (contract M8): prices by quantity on product cards, for themes whose card takes no app block. On a
-  collection or search page the embed prints {handle: text} for the page's products (at most the first 50 the
-  page object lists; what a card may say: snippets/won-card-tier.liquid) and assets/won-discounts-cards.js places
-  each text under its card's price. A product the page did not list gets nothing.
+  MVP 7 BETA (contract M8): prices by quantity on product cards. A card that takes an app block (Horizon) has the
+  card block; any other card has the theme's own <won-discounts show="card-tier"> tag (umístění na webu). For
+  those tags, on a collection or search page the embed prints {handle: text} for the page's products (at most the
+  first 50 the page object lists; what a card may say: snippets/won-card-tier.liquid); won-discounts-tags.js puts
+  each text in its tag, a product the page did not list asks the app proxy. Nothing is placed by guessing (balík C:
+  won-discounts-cards.js is gone).
 {%- endcomment -%}
-{%- if won_discounts_config_raw.cards == 1 -%}
+{%- if won_discounts_config_raw.cards == 1 and won_discounts_config_raw.tg.cd == 1 -%}
   {%- liquid
     assign won_list = nil
     if template.name == 'collection'
@@ -90,7 +92,6 @@
     {%- endcapture -%}
     {%- if won_cards != blank -%}
       <script type="application/json" id="won-discounts-cards">{ {{- won_cards | replace: '</', '<\/' -}} }</script>
-      <script src="{{ 'won-discounts-cards.js' | asset_url }}" defer></script>
     {%- endif -%}
   {%- endif -%}
 {%- endif -%}
