@@ -15,7 +15,8 @@ import { expect } from "./fixtures.ts";
 
 export const SUBTOTAL = /^(Mezisoučet|Medzisúčet|Subtotal)/iu;
 export const SHIPPING = /^(Expedice|Doprava|Expedícia|Doručenie|Shipping)/iu;
-export const TOTAL = /^(Celkem|Celkom|Spolu|Total)$/iu;
+// Shopify may print the currency code after the label ("Celkem CZK", 14 Oct 2026).
+export const TOTAL = /^(Celkem|Celkom|Spolu|Total)(\s+[A-Z]{3})?$/iu;
 export const TAX = /(Daně|Daň|Dane|DPH|Taxes|Tax)/iu;
 /** A line or row the checkout prints as free instead of "0,00 Kč". */
 export const FREE = /^(Zdarma|Zadarmo|Free|ZDARMA|ZADARMO|FREE)$/u;
@@ -57,7 +58,9 @@ export async function priceSummary(page: Page): Promise<SummaryRow[]> {
       const cell = row.querySelector('[role="cell"]');
       // The cell repeats its value in an aria-hidden animation copy: read the visible copy (the last text node holder).
       const visible = cell ? [...cell.querySelectorAll("span,strong")].filter((el) => !el.closest('[aria-hidden="true"]')) : [];
-      const value = visible.length ? (visible[visible.length - 1]!.textContent ?? "") : (cell?.textContent ?? "");
+      let value = visible.length ? (visible[visible.length - 1]!.textContent ?? "") : (cell?.textContent ?? "");
+      // The total may say its amount only in an aria-label ("CZK" + <strong><span aria-label="664,04 Kč">, 14 Oct 2026).
+      if (!/\d/u.test(value) && !/^(Zdarma|Zadarmo|Free)$/iu.test(value.trim())) value = [...(cell?.querySelectorAll("[aria-label]") ?? [])].map((el) => el.getAttribute("aria-label") ?? "").find((label) => /\d/u.test(label)) ?? cell?.textContent ?? "";
       return { label: (header?.textContent ?? "").replace(/\s+/gu, " ").trim(), value: value.replace(/\s+/gu, " ").trim() };
     }),
   );

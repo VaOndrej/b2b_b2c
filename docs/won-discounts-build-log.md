@@ -9,6 +9,15 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ### Kombinování slev podle typů a výjimek (13. 10. 2026) — návrh `won-discounts/navrh-kombinace-2026-10-13.md`, SB `won-discounts-kombinace-typy-vyjimky`
 
+> **CHECKPOINT K8 (14. 10. večer), krok 6 naživo (dev obchod, Horizon + Dawn):** Free `shapes` (košík i pokladna),
+> `rewards` zelené; Free `tiers` zelené kromě kroku (d) Slovenska, který čte `.shopify/logs` (dnešní `app dev` logy
+> funkce nezapisuje, poslední ze 7. 10.). Pro: `rewards-pro`, `tiers-pro` zelené; `shapes` košík s výjimkami zelený na
+> obou motivech, pokladna 2× nedoběhla (Shopify nenabídl dopravu / 429 / 502); `margin-pro` padá celý jen na chybějících
+> logech funkce; `outlet` padl na novém výchozím stavu (bod 9) → fixtura `outlet-fixture.mjs` má teď výslovné sčítání,
+> opakování spadlo na seedu („Code must be unique“, kód z prvního běhu ještě v Shopify), úklid ručně, `verify-clean`
+> bez E2E slev. Testy pokladny čtou „Celkem CZK“ a částku z `aria-label`. Neověřeno naživo: `outlet` Pro s novou
+> fixturou, pokladna `shapes` Pro, marže Pro (logy).
+>
 > **CHECKPOINT K7 (14. 10.).** Kroky 1–5 commitnuté (krok 4 `c49f19e`, krok 5 `17b955e`). Krok 5: neshody
 > (`@won/core combine-config combineMismatchGroups / combineMismatchIds / fixCombineMismatch`; app
 > `components/model/combine-mismatch.ts mismatchViews` z configu, který plán spouští) jako sekce „Neshody ve sčítání
