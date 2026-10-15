@@ -4,6 +4,12 @@ Zadání: `WonCommerce/Apps/docs/won-discounts-umisteni-na-web-zadani.md` (mimo 
 ve worktree `WonCommerce/b2b_b2c-umisteni`, protože na `main` paralelně běžel krok 6 kombinování. Po dokončení se
 sloučí do `main`. Samostatný log, aby se nepral s `docs/won-discounts-build-log.md`.
 
+**CHECKPOINT U9 (15. 10. 2026): sloučeno do `main`, nepushnuto.** Druhá AI skončila (`main` = `7f4138ac`), zkusný
+merge bez konfliktů, Postgres migrace `0007` volná. `main` sloučen do větve (`7960672e`), brány zelené, pak `main`
+posunut fast-forward na `7960672e`. Brány na `main`: core 1 009, app 1 969, typecheck, lint 0 chyb, Theme Check
+6× OrphanedSnippet; Won Toasts 168 testů OK, 4 soubory potřebují lokální Postgres (P1010, nesouvisí); typecheck
+Won Toasts a B2B Companion bez chyb. Ondřej 15. 10.: zásuvka košíku = varianta 1. Další: C.
+
 **CHECKPOINT U8 (14. 10. 2026): balík F hotový.** `docs/reference/theme-tags.generated.md` (generuje se
 z `theme-tags.ts`, už se `tiers` a `outlet`), postupy `docs/tasks/place-elements-on-the-store.md`,
 `docs/tasks/add-an-element-with-ai.md`, řešení potíží `docs/support/element-not-showing-on-the-store.md`, odkazy
