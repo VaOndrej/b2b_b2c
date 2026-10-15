@@ -549,7 +549,7 @@ const screenProps = ({ request }: LoaderFunctionArgs) => {
     }
     case "tiers":
       return {
-        ...devTiersScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, theme: q.get("theme"), accent: q.get("accent"), embed: q.get("embed"), shared: q.get("markets") === "shared" }),
+        ...devTiersScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, theme: q.get("theme"), accent: q.get("accent"), embed: q.get("embed"), shared: q.get("markets") === "shared" , cards: q.get("cards")}),
         result: devTiersResult(q.get("result")),
         suggest: devSuggest(q),
       };

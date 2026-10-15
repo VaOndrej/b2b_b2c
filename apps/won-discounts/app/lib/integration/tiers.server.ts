@@ -38,6 +38,8 @@ import { readSaveOptions, saveConfigSection, type SaveOptions } from "./settings
 import { ctxPlan, loadSyncView } from "./sync-status.server";
 import { readAmountSuggest, readMarketNames, readPreviewProduct, readShopContext, readStorefrontSync, readThemeLook } from "./themes.server";
 import { loadAdminSignals } from "../ui-actions.server";
+import { pieceRows } from "../../components/model/placements";
+import { readThemeScan } from "./theme-scan.server";
 
 /** The Pro capabilities of this module (plan-gate.ts): their gate sentences go on this page. */
 const TIER_CAPABILITIES: readonly ProCapability[] = ["tier_set_scope", "tier_sets_extra", "tier_count_across_cart"];
@@ -138,6 +140,21 @@ export function tiersScreenFacts(
   };
 }
 
+/** The card row of Umístění na webu (model/placements.ts) as the card switch says it; null without a theme read. */
+async function cardLineWhere(ctx: ShopCtx, scopes: string, embed: "on" | "off" | "draft_only" | "unknown" | "no_scope", fresh?: boolean): Promise<NonNullable<NonNullable<TiersScreenData["cards"]>["where"]> | null> {
+  try {
+    const { scan } = await readThemeScan(ctx, { scopes, fresh, now: ctx.now });
+    if (scan.state !== "ok") return null;
+    const blocks = { cardTier: (scan.live.blocks.card_tiers?.length ?? 0) > 0 };
+    const row = pieceRows({ scan, blocks, embed, content: { tiers: true, rewards: true, campaigns: true, outlet: true, cards: true } }).find((r) => r.key === "cardTier");
+    if (!row || row.way === "auto") return null;
+    return { way: row.way, at: row.state.at === "auto" ? "in_theme" : row.state.at };
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    return null;
+  }
+}
+
 export async function loadTiersScreen(ctx: ShopCtx, opts: { scopes: string; fresh?: boolean }): Promise<TiersScreenData> {
   const graphql = graphqlOf(ctx);
   const loaded = await loadConfig(ctx.db, ctx.shop);
@@ -151,6 +168,8 @@ export async function loadTiersScreen(ctx: ShopCtx, opts: { scopes: string; fres
     // The picked colour goes to the storefront through the app embed only: the preview says so when it is off.
     loadAdminSignals({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql, fresh: opts.fresh }),
   ]);
+  // Balík C: where the card line stands (the card block in a template, or a tag), the read Umístění na webu shares.
+  const cardWhere = await cardLineWhere(ctx, opts.scopes, signals.embed.state, opts.fresh);
   const timezone = shopContext.timezone;
   const sync = await loadSyncView(ctx, loaded, timezone);
   const [storefront, product, counts] = await Promise.all([
@@ -166,7 +185,7 @@ export async function loadTiersScreen(ctx: ShopCtx, opts: { scopes: string; fres
     shopCurrency: shopContext.currencyCode ?? "",
     configVersion: loaded.version ?? null,
     look: lookView(stored, "tiers"),
-    cards: { on: stored.storefront.cardPricesEnabled === true, blockUrl: collectionEditorUrl(ctx.shop), viewUrl: cardsStorefrontUrl(ctx.shop, product?.url), editorUrl: collectionEditorUrl(ctx.shop) },
+    cards: { on: stored.storefront.cardPricesEnabled === true, blockUrl: collectionEditorUrl(ctx.shop), viewUrl: cardsStorefrontUrl(ctx.shop, product?.url), editorUrl: collectionEditorUrl(ctx.shop), ...(cardWhere ? { where: cardWhere } : {}) },
     currencies: currencyViews(stored.markets, { shopCurrency: shopContext.currencyCode, marketNames }),
     suggest: await readAmountSuggest(graphql, ctx.shop, opts.scopes, shopContext.currencyCode),
     ...tiersScreenFacts(stored, { plan, locale: ctx.locale, titles, syncable }),

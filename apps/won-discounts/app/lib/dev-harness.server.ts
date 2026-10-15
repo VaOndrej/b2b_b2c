@@ -1108,7 +1108,7 @@ function devStorefront(state: string | null): StorefrontSyncView {
  *   dawn           Dawn's tokens + a block accent; failed / pending — the
  *                  storefront config; block-unknown / no-scope — the block check.
  */
-export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; theme?: string | null; accent?: string | null; embed?: string | null; shared?: boolean }): TiersScreenData {
+export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; theme?: string | null; accent?: string | null; embed?: string | null; shared?: boolean; cards?: string | null }): TiersScreenData {
   const base = devSharedMarket(opts.state === "empty" ? DEV_EMPTY_FIXTURE : opts.state === "exceptions" ? DEV_TIERS_EXCEPTIONS_FIXTURE : DEV_TIERS_FIXTURE, opts.shared === true);
   // ?accent=green: a stored ready-made colour; ?embed=off | noscope: Won on the storefront is off / not readable.
   const accent = ACCENT_PRESETS.find((a) => a === opts.accent);
@@ -1124,6 +1124,18 @@ export function devTiersScreen(opts: { plan: "free" | "pro"; state: string | nul
       blockUrl: "https://won-dev.myshopify.com/admin/themes/current/editor?template=collection",
       viewUrl: "https://won-dev.myshopify.com/collections/all",
       editorUrl: "https://won-dev.myshopify.com/admin/themes/current/editor?template=collection",
+      // Balík C, ?cards=: where the card line stands — block (in a Horizon card), tag, copy, tag-missing (Dawn); default: a
+      // Horizon-like card without the block.
+      where:
+        opts.cards === "block"
+          ? { way: "block", at: "in_theme" }
+          : opts.cards === "tag"
+            ? { way: "tag", at: "tag_live" }
+            : opts.cards === "copy"
+              ? { way: "tag", at: "tag_copy" }
+              : opts.cards === "tag-missing"
+                ? { way: "tag", at: "missing" }
+                : { way: "block", at: "missing" },
     },
     currencies: currencyViews(config.markets, { marketNames: DEV_MARKET_NAMES }),
     ...tiersScreenFacts(config, { plan: opts.plan, locale: opts.locale, titles: DEV_TIER_TITLES, syncable: true }),

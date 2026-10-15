@@ -2,7 +2,7 @@
 // intent `cards`), with the table's look on Množstevní slevy. The card line itself is the extension's
 // (snippets/won-card-tier.liquid): it never says more than checkout gives.
 
-import { useFetcher } from "react-router";
+import { Link, useFetcher } from "react-router";
 
 import { useT } from "../../i18n/context";
 import { LOOK_FIELD, LOOK_INTENT } from "../model/looks";
@@ -10,8 +10,9 @@ import { useFormActions } from "../shell/form-actions";
 import type { UiResult } from "../model/types";
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
-import { RowNote, WonRow, WonSection } from "../shell/WonSection";
-import { PlacementsLink } from "../StorefrontPlacements";
+import { PLACEMENTS_PATH } from "../model/placements";
+import type { MessageKey } from "../../i18n";
+import { NotePill, PlacementPill, RowNote, WonRow, WonSection } from "../shell/WonSection";
 
 export function CardPricesSection({
   cardPrices,
@@ -20,6 +21,7 @@ export function CardPricesSection({
   editorUrl = null,
   themeName = null,
   configVersion,
+  where,
 }: {
   cardPrices: boolean;
   cardBlockUrl: string | null;
@@ -30,6 +32,8 @@ export function CardPricesSection({
   /** The live theme's name, when the page knows it. */
   themeName?: string | null;
   configVersion: string | null;
+  /** Where the card line stands in the live theme (balík C); absent = the theme was not read. */
+  where?: { way: "block" | "tag"; at: "in_theme" | "tag_live" | "tag_copy" | "missing" | "unknown" };
 }) {
   const { t } = useT();
   const fetcher = useFetcher<UiResult>();
@@ -51,7 +55,6 @@ export function CardPricesSection({
           {fetcher.data ? <Notice result={fetcher.data} /> : null}
           <s-checkbox name={LOOK_FIELD.cardPrices} value="on" label={t("looks.cards.toggle")} checked={boolAttr(cardPrices)} />
           <RowNote>{t("looks.cards.what")}</RowNote>
-          <RowNote>{t("looks.cards.auto")}</RowNote>
           {/* Bod 6: how it looks in the live theme, one click away — only while it is on (nothing to see otherwise). */}
           {cardPrices && (viewUrl || editorUrl) ? (
             <div data-won-cards-view="">
@@ -75,20 +78,8 @@ export function CardPricesSection({
               </WonRow>
             </div>
           ) : null}
-          {/* The editor button is in the row above while the line is on: one button per address. */}
-          <WonRow
-            action={
-              cardBlockUrl && !(cardPrices && editorUrl) ? (
-                <s-button href={cardBlockUrl} target="_blank" variant="secondary">
-                  {t("looks.cards.addBlock")}
-                </s-button>
-              ) : undefined
-            }
-          >
-            <RowNote>{t("looks.cards.block")}</RowNote>
-          </WonRow>
-          {/* Umístění na webu: whether the card line is on the web in this theme, and the way in where the card takes no block. */}
-          <PlacementsLink module="tiers" />
+          {/* Balík C: nothing puts the line on a card by itself any more. Where it stands and the one way in. */}
+          <CardLineRow where={where} cardBlockUrl={cardBlockUrl} />
           <div>
             <s-button type="submit" variant="primary" disabled={boolAttr(fetcher.state !== "idle")}>
               {t("common.save")}
@@ -97,5 +88,33 @@ export function CardPricesSection({
         </s-stack>
       </fetcher.Form>
     </WonSection>
+  );
+}
+
+/** The card line in the live theme: in a card (the card block, or a tag), only in a copy, or missing with its way in. */
+function CardLineRow({ where, cardBlockUrl }: { where?: { way: "block" | "tag"; at: "in_theme" | "tag_live" | "tag_copy" | "missing" | "unknown" }; cardBlockUrl: string | null }) {
+  const { t } = useT();
+  const at = where?.at ?? "unknown";
+  const there = at === "in_theme" || at === "tag_live";
+  const text: MessageKey = there ? (at === "tag_live" ? "looks.cards.where.tag" : "looks.cards.where.block") : at === "tag_copy" ? "looks.cards.where.copy" : at === "missing" ? (where?.way === "tag" ? "looks.cards.where.tagMissing" : "looks.cards.block") : "looks.cards.where.unknown";
+  const toPlacements = (
+    <Link to={`${PLACEMENTS_PATH}#web-tiers`} style={{ fontSize: 13, fontWeight: 600 }}>
+      {t("webPlaces.link")}
+    </Link>
+  );
+  const action = at === "missing" && where?.way === "block" && cardBlockUrl ? (
+    <s-button href={cardBlockUrl} target="_blank" variant="primary">
+      {t("looks.cards.addBlock")}
+    </s-button>
+  ) : (
+    toPlacements
+  );
+  return (
+    <div data-won-cards-where={at} data-won-cards-way={where?.way ?? ""}>
+      <WonRow tone={at === "missing" ? "attention" : undefined} action={action}>
+        <div style={{ marginBottom: 4 }}>{at === "tag_copy" ? <NotePill tone="warning" label={t("webPlaces.state.copy")} marker="tag_copy" /> : <PlacementPill placement={there ? "in_theme" : at === "missing" ? "missing" : "unknown"} />}</div>
+        <RowNote>{t(text)}</RowNote>
+      </WonRow>
+    </div>
   );
 }

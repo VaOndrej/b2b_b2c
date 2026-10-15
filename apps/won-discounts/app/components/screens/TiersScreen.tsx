@@ -415,7 +415,7 @@ export function TiersScreen(props: TiersScreenProps) {
               )}
             />
           ) : null}
-          {props.cards ? <CardPricesSection cardPrices={props.cards.on} cardBlockUrl={props.cards.blockUrl} viewUrl={props.cards.viewUrl ?? null} editorUrl={props.cards.editorUrl ?? null} themeName={block.state === "on" ? block.themeName : null} configVersion={configVersion} /> : null}
+          {props.cards ? <CardPricesSection cardPrices={props.cards.on} cardBlockUrl={props.cards.blockUrl} viewUrl={props.cards.viewUrl ?? null} editorUrl={props.cards.editorUrl ?? null} themeName={block.state === "on" ? block.themeName : null} configVersion={configVersion} where={props.cards.where} /> : null}
         </ViewPanel>
       </div>
     </s-page>

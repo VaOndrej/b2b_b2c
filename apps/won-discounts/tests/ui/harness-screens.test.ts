@@ -404,6 +404,11 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   // (Ondřej 14 Oct 2026: reached by clicking, Slevy → Umístění na webu).
   { path: "tiers", expect: [/data-won-subnav-item="placements"/, /<a href="\/app\/placements" data-won-subnav-item="placements"/] },
   { path: "campaigns", expect: [/<a href="\/app\/placements" data-won-subnav-item="placements"/] },
+  // Balík C: the card switch says where the card line stands and gives the one way in (no line appears by itself).
+  { path: "tiers?plan=pro&state=custom", expect: [/data-won-cards-where="missing" data-won-cards-way="block"/, /Přidat blok → Aplikace → Quantity price \(card\)/, /Otevřít kartu v úpravě vzhledu/], absent: [/objeví sám/] },
+  { path: "tiers?plan=pro&state=custom&cards=tag-missing", expect: [/data-won-cards-where="missing" data-won-cards-way="tag"/, /Karta v tomto vzhledu prvky aplikací nepouští/, /href="\/app\/placements#web-tiers"/] },
+  { path: "tiers?plan=pro&state=custom&cards=tag", expect: [/Řádek je na kartách: vložený v kódu vzhledu\./] },
+  { path: "tiers?plan=pro&state=custom&cards=copy", expect: [/data-won-placement="tag_copy"/, /jen v kopii vzhledu/] },
   { path: "placements", expect: [/<nav aria-label="Slevy" data-won-subnav="true"/, /<a href="\/app\/placements" aria-current="page"/, /data-won-piece="msDrawer"/, /Připravit zadání pro AI|Zobrazit postup/] },
   // MVP 3: Množstevní slevy — the set, the honest sentences, the faithful preview (the storefront's K8 markup + texts +
   // money format), the table on the product page, the storefront config, the Pro sets (K1) and what Free does not run.

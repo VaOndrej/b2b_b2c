@@ -689,7 +689,14 @@ export interface TiersScreenData {
   /** `viewUrl`: a storefront page with product cards; `editorUrl`: the live theme's editor on the collection template. */
   /** `blockUrl`: the editor on the collection template, where the merchant drags the card block INTO a card (a deep link
    * cannot target a block inside a card: `target=mainSection` put it beside the cards, where it has no product). */
-  cards?: { on: boolean; blockUrl: string | null; viewUrl?: string | null; editorUrl?: string | null };
+  cards?: {
+    on: boolean;
+    blockUrl: string | null;
+    viewUrl?: string | null;
+    editorUrl?: string | null;
+    /** Balík C: where the card line stands in the live theme (model/placements.ts, the card row); absent = not read. */
+    where?: { way: "block" | "tag"; at: "in_theme" | "tag_live" | "tag_copy" | "missing" | "unknown" };
+  };
   /** Currencies of the enabled markets (amount inputs per currency). */
   currencies: CurrencyView[];
   /** Config order; the global set first when there is one. Pro sets are listed on Free too (gateNotes say they do not apply). */
