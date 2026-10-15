@@ -34,7 +34,7 @@ for (const width of [390, 1440]) {
     // Every row: a name, a state, and at most one main (primary) button.
     for (const row of await page.locator("[data-won-piece]").all()) {
       const holder = row.locator("xpath=ancestor::div[2]");
-      expect(await holder.locator('s-button[variant="primary"]').count(), await row.getAttribute("data-won-piece")).toBeLessThanOrEqual(1);
+      expect(await holder.locator('s-button[variant="primary"]').count(), (await row.getAttribute("data-won-piece")) ?? "").toBeLessThanOrEqual(1);
       await expect(row.locator("[data-won-placement]").first()).toBeVisible();
     }
   });
