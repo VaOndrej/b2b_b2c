@@ -112,7 +112,6 @@ Stable hooks for scripts and tests (do not style by them; classes are for stylin
 - `data-won-discounts-tier-row`
 - `data-won-discounts-tiers`
 - `data-won-discounts-tiers-data`
-- `data-won-discounts-topbar`
 - `data-won-discounts-topbar-block`
 
 ## Events

@@ -61,21 +61,10 @@
     if (all("[data-won-discounts-campaign]").length) timer = setTimeout(start, wait);
   };
 
-  /* The embed's top bar is printed at the end of <body>: it belongs at the top of the page, and only with something to say. */
+  /* The top bar blocks stay where the merchant put them; they only hide while they have nothing to say. */
   const says = (bar) => !!bar.querySelector(".won-ms, [data-won-discounts-campaign]:not([hidden]), .won-topbar__empty");
   const topbar = () => {
-    /* The "Top bar" block stays where the merchant put it; it only hides while it has nothing to say. */
-    const blocks = all("[data-won-discounts-topbar-block]");
-    for (const el of blocks) el.hidden = !says(el);
-    const bar = d.querySelector("[data-won-discounts-topbar]");
-    if (!bar) return;
-    /* With a block on the page the embed's strip is not shown a second time. */
-    if (blocks.length) {
-      bar.hidden = true;
-      return;
-    }
-    if (d.body.firstElementChild !== bar) d.body.prepend(bar);
-    bar.hidden = !says(bar);
+    for (const el of all("[data-won-discounts-topbar-block]")) el.hidden = !says(el);
   };
   /* Sale badge: only the row of the variant the shopper has picked (the product form's `id`, else the address). */
   const outlet = () => {

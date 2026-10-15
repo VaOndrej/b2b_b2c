@@ -440,7 +440,7 @@ const TEMPLATE_PLACEMENTS: readonly { filename: string; blocks: readonly [Placem
 
 /**
  * Where the app's pieces sit in the theme's files (feedback 3, bod 5): each block by the template it belongs to,
- * the top bar by the "Top bar" block in the header group, else by the embed's two fallback switches. Only what was read is answered — a missing or unreadable file leaves
+ * the top bar by the "Top bar" or announcement blocks in the header group (balík C: the embed's fallback strip is gone). Only what was read is answered — a missing or unreadable file leaves
  * its keys out ("not verified"), it never says "missing".
  */
 export function themePlacementsIn(files: readonly { filename: string; content: string | null }[], themeId: string | null = null): ThemePlacements {
@@ -463,8 +463,6 @@ export function themePlacementsIn(files: readonly { filename: string; content: s
   if (settings) {
     const embed = embedSettingsIn(settings.content);
     if (embed !== undefined) {
-      out.topBarRewards = embed?.top_bar_rewards === true;
-      out.topBarCampaign = embed?.top_bar_campaign === true;
       // Zásuvka košíku (15 Oct 2026): where the cart script puts the panel in Horizon's / Dawn's drawer.
       const position = embed?.drawer_position;
       out.drawerPosition = position === "top" || position === "off" ? position : "summary";
@@ -477,8 +475,8 @@ export function themePlacementsIn(files: readonly { filename: string; content: s
     const shows = (key: string) => bars.some((s) => s[key] !== false);
     // An announcement strip of one thing (7th round, bod 5) counts as that thing's strip.
     const strip = (handle: string) => (headerBlocksIn(header!.content, handle)?.length ?? 0) > 0;
-    out.topBarRewards = out.topBarRewards === true || shows("show_rewards") || strip(ANNOUNCEMENT_MILESTONES_BLOCK_HANDLE);
-    out.topBarCampaign = out.topBarCampaign === true || shows("show_campaign") || strip(ANNOUNCEMENT_CAMPAIGN_BLOCK_HANDLE);
+    out.topBarRewards = shows("show_rewards") || strip(ANNOUNCEMENT_MILESTONES_BLOCK_HANDLE);
+    out.topBarCampaign = shows("show_campaign") || strip(ANNOUNCEMENT_CAMPAIGN_BLOCK_HANDLE);
   }
   return out;
 }

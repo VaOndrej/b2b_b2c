@@ -79,7 +79,7 @@ export function announcementHandleOf(handle: string): string {
   return handle === CAMPAIGN_BLOCK_HANDLE ? ANNOUNCEMENT_CAMPAIGN_BLOCK_HANDLE : ANNOUNCEMENT_MILESTONES_BLOCK_HANDLE;
 }
 
-/** One-click links into the theme editor for a block that fits anywhere, and for the embed's top bar. */
+/** One-click links into the theme editor for a block that fits anywhere. */
 export interface PlacementLinks {
   /** The product page: the block in its main section. */
   product: string | null;
@@ -89,12 +89,10 @@ export interface PlacementLinks {
   cart: string | null;
   /** The header group in the theme editor with the module's announcement strip ready to add (Add section → Apps does the same by hand). */
   topBar: string | null;
-  /** The embed's settings: the fallback top bar for a theme whose header takes no app block. */
-  topBarEmbed: string | null;
 }
 
 export function placementLinks(shop: string, apiKey: string, handle: string): PlacementLinks {
-  if (!SHOP_DOMAIN.test(shop) || !apiKey) return { product: null, home: null, cart: null, topBar: null, topBarEmbed: null };
+  if (!SHOP_DOMAIN.test(shop) || !apiKey) return { product: null, home: null, cart: null, topBar: null };
   const block = `${encodeURIComponent(apiKey)}/${handle}`;
   const editor = `https://${shop}/admin/themes/current/editor`;
   return {
@@ -102,7 +100,6 @@ export function placementLinks(shop: string, apiKey: string, handle: string): Pl
     home: `${editor}?template=index&addAppBlockId=${block}&target=newAppsSection`,
     cart: `${editor}?template=cart&addAppBlockId=${block}&target=mainSection`,
     topBar: `${editor}?template=index&addAppBlockId=${encodeURIComponent(apiKey)}/${announcementHandleOf(handle)}&target=sectionGroup:header`,
-    topBarEmbed: embedActivationUrl(shop, apiKey),
   };
 }
 

@@ -30,7 +30,7 @@ export interface PlacementRow {
  * Where a block landed, or — before it is added — where Shopify will put it (feedback 9 Oct 2026, 4th round: a
  * banner added to the home page lands at its very end, and nothing said so).
  */
-export function SpotNote({ placement, spot, place, spotKey }: { placement: PlacementState; spot: PlacementSpot | undefined; place: "product" | "home" | "cart" | "topBar" | "topBarEmbed"; spotKey: string }) {
+export function SpotNote({ placement, spot, place, spotKey }: { placement: PlacementState; spot: PlacementSpot | undefined; place: "product" | "home" | "cart" | "topBar"; spotKey: string }) {
   const { t } = useT();
   const advice = placement === "in_theme" ? spotAdvice(spot) : null;
   if (advice) {

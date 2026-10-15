@@ -262,7 +262,7 @@ const template = (...types: string[]) =>
 const embedSettings = (settings: Record<string, unknown>, disabled = false) =>
   HEADER + JSON.stringify({ current: { blocks: { "123": { type: `${APP}/won_discounts_embed/019a`, disabled, settings } } } });
 
-test("themePlacementsIn: each block by its template; the top bar from the embed's own settings; an unread file is 'not known', never 'missing'", () => {
+test("themePlacementsIn: each block by its template; the top bar only from the header group (balík C: no fallback strip in the embed); an unread file is 'not known', never 'missing'", () => {
   const all = themePlacementsIn([
     { filename: "config/settings_data.json", content: embedSettings({ top_bar_rewards: true, top_bar_campaign: false }) },
     { filename: "templates/product.json", content: template("quantity_tiers", "rewards_progress", "outlet_badge") },
@@ -276,8 +276,7 @@ test("themePlacementsIn: each block by its template; the top bar from the embed'
     rewardsHome: false,
     campaignHome: true,
     cartBlock: true,
-    topBarRewards: true,
-    topBarCampaign: false,
+    // The embed's old fallback switches no longer count: without the header group the top bar is not known.
     drawerPosition: "summary",
     // Where a block sits: the home page's by its section (here the only one); the product's only against buy buttons, which this template lacks.
     spots: { campaignHome: { at: "page", index: 1, of: 1 } },
@@ -331,7 +330,7 @@ test("themePlacementsIn: each block by its template; the top bar from the embed'
       { filename: "config/settings_data.json", content: embedSettings({ top_bar_rewards: false, top_bar_campaign: true }) },
       { filename: "sections/header-group.json", content: JSON.stringify({ sections: {} }) },
     ]),
-    { topBarRewards: false, topBarCampaign: true, drawerPosition: "summary" },
+    { topBarRewards: false, topBarCampaign: false, drawerPosition: "summary" },
   );
   // 7th round, bod 5: an announcement strip of one thing counts as that thing's strip, and only as that.
   const strip = (handle: string, disabled = false) => JSON.stringify({ sections: { apps: { type: "apps", blocks: { a: { type: `${APP}/${handle}/019a`, disabled } } } }, order: ["apps"] });
@@ -341,7 +340,7 @@ test("themePlacementsIn: each block by its template; the top bar from the embed'
   // A disabled block or a disabled embed does not count.
   const disabled = JSON.stringify({ sections: { main: { type: "main", blocks: { a: { type: `${APP}/outlet_badge/1`, disabled: true } } } } });
   assert.equal(themePlacementsIn([{ filename: "templates/product.json", content: disabled }]).outletBadge, false);
-  assert.equal(themePlacementsIn([{ filename: "config/settings_data.json", content: embedSettings({ top_bar_rewards: true }, true) }]).topBarRewards, false);
+  assert.equal(themePlacementsIn([{ filename: "config/settings_data.json", content: embedSettings({ top_bar_rewards: true }) }]).topBarRewards, undefined, "the old fallback switch says nothing");
   // Zásuvka košíku (15 Oct 2026): the embed's drawer spot; unset or unknown = above checkout (the setting's default).
   const spot = (settings: Record<string, unknown>) => themePlacementsIn([{ filename: "config/settings_data.json", content: embedSettings(settings) }]).drawerPosition;
   assert.deepEqual([spot({}), spot({ drawer_position: "top" }), spot({ drawer_position: "off" }), spot({ drawer_position: "x" })], ["summary", "top", "off", "summary"]);

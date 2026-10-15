@@ -79,7 +79,6 @@ test("embed serves the app-data config as an inline JSON script tag", async () =
 test("embed loads storefront JS with defer via the schema; its only <script src> are the tags scripts (only for tags the theme holds) and the cart script (MVP 4, only with rewards), all deferred", async () => {
   const block = await readExtension("blocks/won_discounts_embed.liquid");
   const srcs = [...block.matchAll(/<script[^>]+src=[^>]*>/g)].map((m) => m[0]);
-  // Feedback 2: + the blocks script, only with the embed's top bar switched on.
   // Umístění na webu (14 Oct 2026): + the tags script (and the blocks script for a ladder or campaign tag), only when
   // the app found a tag in the theme or in the theme editor (storefront-tags.contract.test.ts).
   assert.deepEqual(srcs, [
@@ -89,10 +88,9 @@ test("embed loads storefront JS with defer via the schema; its only <script src>
     `<script src="{{ 'won-discounts-tiers.js' | asset_url }}" defer>`,
     `<script src="{{ 'won-discounts-blocks.js' | asset_url }}" defer>`,
     `<script src="{{ 'won-discounts-cart.js' | asset_url }}" defer>`,
-    `<script src="{{ 'won-discounts-blocks.js' | asset_url }}" defer>`,
   ]);
-  const blocksScript = block.lastIndexOf("<script src=\"{{ 'won-discounts-blocks.js'");
-  assert.ok(block.lastIndexOf("{%- if block.settings.top_bar_rewards or block.settings.top_bar_campaign -%}", blocksScript) !== -1, "the blocks script only with the top bar on");
+  // Balík C: the embed's fallback top bar is gone (the announcement blocks in the header group show it), and its settings with it.
+  assert.doesNotMatch(block, /top_bar_rewards|top_bar_campaign|data-won-discounts-topbar[^-]/);
   // Balík C: no card script; the page's card texts only for a card tag the app found, with cards on.
   assert.doesNotMatch(block, /'won-discounts-cards\.js' \| asset_url/);
   assert.match(block, /\{%- if won_discounts_config_raw\.cards == 1 and won_discounts_config_raw\.tg\.cd == 1 -%\}[\s\S]*template\.name == 'collection'[\s\S]*template\.name == 'search'/);
