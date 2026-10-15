@@ -2331,7 +2331,7 @@ export const cs = {
   "milestones.places.topBar": "Jedna věta a tenký ukazatel na každé stránce. V úpravě vzhledu přidejte do záhlaví blok „Announcement: Milestones“ (Přidat sekci → Aplikace). Když to šablona nenabízí, zapněte záložní pruh ve vložení aplikace Won Discounts.",
   "milestones.places.topBar.on": "Pruh nahoře je zapnutý: jedna věta a tenký ukazatel na každé stránce.",
   "milestones.places.product": "Ukazatel se značkami stupňů a věta o nejbližším. Prvek jde v úpravě vzhledu přesunout kamkoli na stránce, přidat ho můžete i na jinou stránku.",
-  "milestones.places.drawer": "Ukazatel se značkami stupňů, věta o nejbližším, dárek a pole pro kód. Ukáže se sám, když je Won na webu zapnutý.",
+  "milestones.places.drawer": "Ukazatel se značkami stupňů, věta o nejbližším, dárek a pole pro kód. Ve vzhledech Horizon a Dawn se ukáže sám, když je Won na webu zapnutý. V jiném vzhledu ho vložíte přes Umístění na webu.",
   "milestones.places.cart": "Všechny stupně s názvem odměny, splněné odškrtnuté. Na stránku košíku ho přidáte jako prvek.",
   "milestones.honest.title": "Co platí v pokladně",
   "milestones.next.none": "Žádný stupeň není nastavený, zákazník žebříček neuvidí.",

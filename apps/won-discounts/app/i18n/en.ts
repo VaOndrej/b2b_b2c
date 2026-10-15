@@ -2327,7 +2327,7 @@ export const en: Record<keyof typeof cs, string> = {
   "milestones.places.topBar": "One sentence and a thin track on every page. In the theme editor add the block “Announcement: Milestones” to the header (Add section → Apps). When the theme does not offer that, switch on the fallback strip in the Won Discounts app embed.",
   "milestones.places.topBar.on": "The top strip is on: one sentence and a thin track on every page.",
   "milestones.places.product": "A track with a mark per step and a sentence about the next one. You can move it anywhere on the page in the theme editor, or add it to another page.",
-  "milestones.places.drawer": "A track with a mark per step, a sentence about the next one, the gift and the code field. It shows by itself while Won is on in the store.",
+  "milestones.places.drawer": "A track with a mark per step, a sentence about the next one, the gift and the code field. In the Horizon and Dawn themes it shows by itself while Won is on in the theme. In another theme, add it through Placement on your store.",
   "milestones.places.cart": "Every step with its reward, the reached ones ticked. Add it to the cart page as an element.",
   "milestones.honest.title": "What holds at checkout",
   "milestones.next.none": "No step is set, the customer sees no ladder.",

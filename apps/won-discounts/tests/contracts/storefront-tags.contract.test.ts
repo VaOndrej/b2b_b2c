@@ -114,7 +114,7 @@ test("theme editor: every tag shows its block's sample with the reason; in a car
   await p.close();
 });
 
-test("the cart script draws its panel into a cart tag, in the tag's size, and guesses no place of the theme while one is on the page", async () => {
+test("the cart script draws its panel into a cart tag, in the tag's size, and uses no drawer address while one is on the page and never guesses the cart page", async () => {
   const js = await read("assets/won-discounts-cart.js");
   assert.match(js, /const TAG = 'won-discounts\[show="cart"\]';/);
   assert.match(js, /\[SLOT, TAG, \.\.\.\(tagged \? \[\] : drawers\(\)\)\]/);
@@ -127,7 +127,8 @@ test("the cart script draws its panel into a cart tag, in the tag's size, and gu
   const schema = JSON.parse(/\{% schema %\}([\s\S]*?)\{% endschema %\}/.exec(embed)![1]!) as { settings: { id?: string; default?: string; options?: { value: string }[] }[] };
   const setting = schema.settings.find((x) => x.id === "drawer_position")!;
   assert.deepEqual([setting.default, setting.options!.map((o) => o.value)], ["summary", ["summary", "top", "off"]]);
-  assert.match(js, /if \(!tagged && !d\.querySelector\(SLOT\)\) slots\.push\(\.\.\.d\.querySelectorAll\(PAGES/);
+  // Balík C: the cart page is never guessed (the block or a tag only).
+  assert.doesNotMatch(js, /PAGES|cart-page__summary|main-cart-footer/);
   assert.match(js, /slot\.matches\?\.\(TAG\) \? \(slot\.getAttribute\("size"\) === "full" \? "full" : "compact"\)/);
 });
 

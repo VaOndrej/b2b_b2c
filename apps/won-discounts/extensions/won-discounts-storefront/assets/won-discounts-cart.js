@@ -8,7 +8,6 @@
     top: ["cart-drawer-component .cart-drawer__content", "#CartDrawer cart-drawer-items"],
   };
   const drawers = () => (data.dp === "off" ? [] : DRAWERS[data.dp] || DRAWERS.summary);
-  const PAGES = [".cart-page__summary", "#main-cart-footer .cart__footer"];
   const GAP_MS = 1500;
   let wd, data, tx, cart, view, hint, warn, coding;
   let shown = "";
@@ -138,7 +137,6 @@
   const panels = () => {
     const tagged = d.querySelector(TAG);
     const slots = [...d.querySelectorAll([SLOT, TAG, ...(tagged ? [] : drawers())].join(","))];
-    if (!tagged && !d.querySelector(SLOT)) slots.push(...d.querySelectorAll(PAGES.join(",")));
     return slots.map((slot) => {
       let p = slot.querySelector(":scope > [data-won-discounts-cart]");
       if (!p) {
