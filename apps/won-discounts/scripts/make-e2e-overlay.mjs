@@ -226,8 +226,17 @@ export function e2eTemplateOverlays(themeKey, extensionUuid = resolveExtensionUu
   ];
 }
 
-/** The embed's settings in the theme copies: the top strip with the Milestones ladder is on (the fourth placement). */
-export const EMBED_SETTINGS = { top_bar_rewards: true };
+/**
+ * The embed's settings in the theme copies. Balík C (15 Oct 2026): the embed's fallback top strip is gone; the cart
+ * drawer panel sits in its default spot (right above the checkout button).
+ */
+export const EMBED_SETTINGS = { drawer_position: "summary" };
+
+/**
+ * Variants of a theme's overlay (zásuvka košíku, 15 Oct 2026): Dawn's copy shows a cart notification by default; the
+ * drawer check needs its cart drawer — `settings_data.dawn-drawer.json`, picked with WON_E2E_DAWN_CART=drawer.
+ */
+export const OVERLAY_VARIANTS = { dawn: { "dawn-drawer": { cart_type: "drawer" } } };
 
 // Theme-editor style numeric key, derived from the block handle so it never
 // changes between runs (and never collides with the editor's random keys in
@@ -238,7 +247,7 @@ export function stableBlockKey(type) {
   return digest.readBigUInt64BE(0).toString(10);
 }
 
-export function buildOverlay(canonicalContent, type) {
+export function buildOverlay(canonicalContent, type, current = {}) {
   const header = canonicalContent.match(HEADER_COMMENT)?.[0] ?? "";
   const data = JSON.parse(canonicalContent.slice(header.length));
   if (
@@ -259,6 +268,7 @@ export function buildOverlay(canonicalContent, type) {
   }
   blocks[stableBlockKey(type)] = { type, disabled: false, settings: { ...EMBED_SETTINGS } };
   data.current.blocks = blocks; // keeps its position when it already existed
+  Object.assign(data.current, current);
   return `${header}${JSON.stringify(data, null, 2)}\n`;
 }
 
@@ -282,10 +292,11 @@ async function main() {
         `${key}: canonical settings_data.json not found at ${canonicalPath}`,
       );
     }
-    const overlay = buildOverlay(readFileSync(canonicalPath, "utf8"), type);
+    for (const [name, extra] of [[key, {}], ...Object.entries(OVERLAY_VARIANTS[key] ?? {})]) {
+    const overlay = buildOverlay(readFileSync(canonicalPath, "utf8"), type, extra);
     const overlayPath = path.join(
       OVERLAY_DIRECTORY,
-      `settings_data.${key}.json`,
+      `settings_data.${name}.json`,
     );
     const relativeOverlay = path.relative(appRoot, overlayPath);
     const current = existsSync(overlayPath)
@@ -306,6 +317,7 @@ async function main() {
     } else {
       writeFileSync(overlayPath, overlay);
       console.log(`✓ ${relativeOverlay} written from ${canonicalPath}`);
+    }
     }
   }
   // Template overlays are applied by the runner, never written here: plan them

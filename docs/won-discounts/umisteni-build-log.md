@@ -4,6 +4,15 @@ Zadání: `WonCommerce/Apps/docs/won-discounts-umisteni-na-web-zadani.md` (mimo 
 ve worktree `WonCommerce/b2b_b2c-umisteni`, protože na `main` paralelně běžel krok 6 kombinování. Po dokončení se
 sloučí do `main`. Samostatný log, aby se nepral s `docs/won-discounts-build-log.md`.
 
+**CHECKPOINT U13 (15. 10. 2026): živé ověření připravené, seed zastavila kontrola oprávnění.** Ondřej dal go.
+`shopify app dev` restartován (heslo obchodu z `.env` přes pseudo-terminál, skript ve scratchpadu), běží, rozšíření
+nahrané do dev obchodu. Dry-run seedu `rewards` OK (7 mutací). Živý seed zamítl automatický klasifikátor Claude Code
+(„Modify Shared Resources“), nic se nezapsalo. Připraveno: `tests/e2e/storefront.drawer.spec.ts` (panel v zásuvce nad
+tlačítkem pokladny, 1440 a 390), overlay `e2e/settings_data.dawn-drawer.json` (`WON_E2E_DAWN_CART=drawer`), filtr
+`WON_E2E_SPECS` v `scripts/require-e2e-contract.mjs`, overlaye bez záložního pruhu (`drawer_position: summary`).
+**Pozor:** `storefront.rewards.spec.ts` a `storefront.looks.spec.ts` čekají horní pruh z embedu
+(`[data-won-discounts-topbar]`), ten C3 smazal; před plným živým kolem je přepsat na blok oznámení.
+
 **CHECKPOINT U12 (15. 10. 2026): balík C hotový, ověření lokálně hotové, živé čeká na go.** C1–C4 v commitech
 `2c574c33`, `405e737b`, `5080e1f4`, `d06fbc4a`. Ověření:
 - `tests/contracts/storefront-drawer.contract.test.ts` (Chromium, skutečné `won-discounts.js` + `won-discounts-cart.js`

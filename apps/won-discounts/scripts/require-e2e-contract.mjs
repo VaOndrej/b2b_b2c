@@ -81,6 +81,9 @@ if (localMatrix) {
     path.join(path.dirname(playwrightPackagePath), "cli.js"),
     "test",
     `--config=${playwrightConfigPath}`,
+    // WON_E2E_SPECS="tests/e2e/a.spec.ts tests/e2e/b.spec.ts": run only those specs (the theme matrix passes the
+    // environment on), e.g. one live check without the whole storefront suite.
+    ...(process.env.WON_E2E_SPECS ? process.env.WON_E2E_SPECS.split(/\s+/u).filter(Boolean) : []),
   ];
 }
 

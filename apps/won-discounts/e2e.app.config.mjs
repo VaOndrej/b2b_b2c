@@ -27,7 +27,8 @@ export default {
     dawn: {
       remoteName: "Dawn",
       preferredPort: 9886,
-      settingsDataOverlay: "e2e/settings_data.dawn.json",
+      // WON_E2E_DAWN_CART=drawer: Dawn's cart as a drawer (the drawer check, storefront.drawer.spec.ts).
+      settingsDataOverlay: process.env.WON_E2E_DAWN_CART === "drawer" ? "e2e/settings_data.dawn-drawer.json" : "e2e/settings_data.dawn.json",
       templateOverlays: e2eTemplateOverlays("dawn"),
     },
   },

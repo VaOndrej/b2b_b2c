@@ -151,7 +151,7 @@
         "type": "shopify://apps/won-discounts/blocks/won_discounts_embed/01a0e790-ee4d-733c-ac8e-14c7baa03fff",
         "disabled": false,
         "settings": {
-          "top_bar_rewards": true
+          "drawer_position": "summary"
         }
       }
     },
