@@ -55,7 +55,8 @@ const prefix = (lang: Lang) => (lang === "cs" ? "" : `/${lang}`);
 
 const PRODUCT_BLOCK = '[data-won-discounts-progress][data-size="compact"]';
 const PRODUCT_LADDER = `${PRODUCT_BLOCK} .won-ms`;
-const TOP_LADDER = "[data-won-discounts-topbar] .won-ms";
+/** The strip: the "Announcement: Milestones" block in the header (template overlay; balík C3 took the embed's strip away). */
+const TOP_LADDER = '[data-won-discounts-topbar-block="milestones"] .won-ms';
 
 async function shots(page: Page, testInfo: TestInfo, name: string, root: string): Promise<void> {
   for (const [width, height] of [

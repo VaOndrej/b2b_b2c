@@ -4,6 +4,30 @@ Zadání: `WonCommerce/Apps/docs/won-discounts-umisteni-na-web-zadani.md` (mimo 
 ve worktree `WonCommerce/b2b_b2c-umisteni`, protože na `main` paralelně běžel krok 6 kombinování. Po dokončení se
 sloučí do `main`. Samostatný log, aby se nepral s `docs/won-discounts-build-log.md`.
 
+**CHECKPOINT U15 (16. 10. 2026): body 1–5 (Ondřej: „začni všemi“), necommitnuto.**
+1. Horní pruh v E2E = blok „Announcement: Milestones“ v nové sekci Apps skupiny záhlaví (`announcementTemplateOverlays`
+   v `make-e2e-overlay.mjs`; `@won/testing` umí `newSection`). Specs `rewards` a `looks` čtou
+   `[data-won-discounts-topbar-block="milestones"]`. Brány: `@won/testing` 55, `test-gates` 8/8, typecheck.
+2. Živé E2E `rewards` zelené: Dawn (zásuvka, `WON_E2E_DAWN_CART=drawer`) celý; Horizon celý po opakování jen
+   padlých (SIGABRT workerů během `brew upgrade`, 429 v pokladně, 401 `theme dev` jednou). Nálezy a opravy:
+   Horizon otevírá zásuvku po přidání jen s `auto_open_cart_drawer` (výchozí vypnuto) → test ji otevře ikonou košíku;
+   pruh Milníků v sekci Apps Horizonu (`_blocks`, sloupec `flex-start`) byl úzký vlevo → CSS roztáhne obal
+   `.shopify-app-block:has(> .won-topbar--block)` (+ třída v `looks.server.ts`, `docs:gen`). Screenshoty 390/1440 ve
+   scratchpadu session 7d8853a5 (`e2e-rewards*`, `e2e-strip2`). Seed `rewards` v obchodě nechán (bez `--cleanup`).
+   Brána: test:unit 1 992/1 992, typecheck, lint 0 chyb, Theme Check bez nálezů.
+3. Logy funkce: `shopify app logs` (3.92.1 i globální 4.9.4) hlásí „Malformed JWT while fetching app logs“ už
+   při pollu (subscribe projde) → `app dev` proto od 7. 10. nic nezapisuje do `.shopify/logs`. Chce to nové přihlášení
+   (`shopify auth logout`, pak `shopify app logs` interaktivně), Ondřej.
+4. `admin.navigation.spec.ts` „view tiles“: dva panely „global“ od kroku 4 kombinování → test kontroluje všechny.
+   Náhled adminu 46/46.
+5. Billing (distribuce appky) a analytika (schválení chráněných dat) čekají na Partner Dashboard, nic nespuštěno.
+Pozn.: globální `shopify version` (Homebrew) sám spustil `brew upgrade` shopify-cli 4.8.5→4.9.4 + node 26.12, git,
+sqlite, openssl@4 (openssl@3 odlinkován, `opt/openssl@3` zůstal). Repo používá svůj CLI 3.92.1.
+
+**CHECKPOINT U14 (16. 10. 2026): seed `rewards` zapsaný do dev obchodu, E2E nepuštěno (Ondřej: teď není potřeba).**
+`seed-mvp1.mjs --profile rewards --live` ok, 14 kroků ověřených zpětným čtením (verze `cmvb2zbmy0000sntnno3ya3st`).
+Záloha předchozí konfigurace jen ve scratchpadu session 7d8853a5 (`seed-rewards/seed-mvp1-backup.json`), návrat `--cleanup`.
+
 **CHECKPOINT U13 (15. 10. 2026): živé ověření připravené, seed zastavila kontrola oprávnění.** Ondřej dal go.
 `shopify app dev` restartován (heslo obchodu z `.env` přes pseudo-terminál, skript ve scratchpadu), běží, rozšíření
 nahrané do dev obchodu. Dry-run seedu `rewards` OK (7 mutací). Živý seed zamítl automatický klasifikátor Claude Code

@@ -445,3 +445,37 @@ test("parentBlockTypes fails loudly on a missing or ambiguous parent block and v
     null,
   );
 });
+
+test("newSection: makes the header group's Apps section before the header, holds the block, re-applies as a no-op", () => {
+  const group = {
+    type: "header",
+    name: "t:names.header",
+    sections: {
+      announcements: { type: "header-announcements", blocks: {}, block_order: [], settings: {} },
+      header_section: { type: "header", blocks: {}, settings: {} },
+    },
+    order: ["announcements", "header_section"],
+  };
+  const overlay = {
+    template: "sections/header-group.json",
+    newSection: { key: "won_apps", type: "_blocks", position: { beforeType: "header" } },
+    block: QUANTITY_TIERS_BLOCK,
+  };
+  const plan = planTemplateOverlay(group, overlay);
+  assert.deepEqual([plan.action, plan.sectionKey, plan.sectionType, plan.sectionIndex], ["insert", "won_apps", "_blocks", 1]);
+  const once = applyTemplateOverlay(group, overlay) as typeof group & { sections: Record<string, { type: string; blocks: Record<string, unknown>; block_order: string[] }> };
+  assert.deepEqual(once.order, ["announcements", "won_apps", "header_section"]);
+  assert.deepEqual(once.sections.won_apps!.block_order, [QUANTITY_TIERS_BLOCK.id]);
+  assert.deepEqual(once.sections.won_apps!.blocks[QUANTITY_TIERS_BLOCK.id], { type: QUANTITY_TIERS_BLOCK.type, settings: {} });
+  assert.equal(planTemplateOverlay(once, overlay).action, "noop");
+  assert.deepEqual(applyTemplateOverlay(once, overlay), once);
+  assert.deepEqual(group.order, ["announcements", "header_section"], "the input is not mutated");
+  assert.throws(
+    () => planTemplateOverlay(group, { ...overlay, newSection: { ...overlay.newSection, key: "announcements" } }),
+    /newSection "announcements" already exists .* different type/u,
+  );
+  assert.throws(
+    () => validateTemplateOverlay({ ...overlay, parentBlockTypes: ["_product-details"] }),
+    /cannot be combined with parentBlockTypes/u,
+  );
+});

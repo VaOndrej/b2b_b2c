@@ -756,11 +756,12 @@ test.describe(`Won Discounts cart rewards: cart panel, gift and checkout (MVP 4)
     // 7 Oct 2026: markup without the extension's files is a bare page — the ladder needs its stylesheet and scripts.
     await assertExtensionAssetsLoaded(page, { match: "won-discounts" });
     const probe = await priceProbe(page);
-    const TOP = "[data-won-discounts-topbar]";
+    // The strip on every page: the "Announcement: Milestones" block in the header (template overlay; balík C3 took the embed's strip away).
+    const TOP = '[data-won-discounts-topbar-block="milestones"]';
     const PRODUCT = '[data-won-discounts-progress][data-size="compact"]';
     const DRAWER = "cart-drawer-component .cart-drawer__summary, #CartDrawer .drawer__footer";
     await expect(page.locator(`${PRODUCT} .won-ms`).first(), "the Milestones block renders on the product page (template overlay)").toBeVisible({ timeout: 20_000 });
-    await expect(page.locator(`${TOP} .won-ms`), "the top strip shows the ladder (the embed's setting in the overlay)").toBeVisible({ timeout: 20_000 });
+    await expect(page.locator(`${TOP} .won-ms`), "the top strip shows the ladder (the announcement block in the header group overlay)").toBeVisible({ timeout: 20_000 });
     expect(await page.locator(`${PRODUCT} .won-ms`).first().evaluate((el) => getComputedStyle(el.querySelector(".won-ms__track")!).position), "the ladder's stylesheet applies").toBe("relative");
     let loads = 0;
     page.on("load", () => (loads += 1));

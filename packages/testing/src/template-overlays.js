@@ -110,10 +110,30 @@ export function validateTemplateOverlay(overlay) {
     );
   }
 
+  // A section the overlay creates when the file has none of its key (a header
+  // group's "Apps" section: Dawn `apps`, Horizon `_blocks`), placed in `order`.
+  const newSection = overlay.newSection ?? null;
+  if (newSection !== null) {
+    if (!isPlainObject(newSection)) {
+      throw new Error("templateOverlay.newSection must be an object when provided.");
+    }
+    requireNonEmptyString(newSection.key, "templateOverlay.newSection.key");
+    requireNonEmptyString(newSection.type, "templateOverlay.newSection.type");
+    if (parentBlockTypes !== null) {
+      throw new Error("templateOverlay.newSection cannot be combined with parentBlockTypes.");
+    }
+  }
+
   return {
     template: overlay.template,
     sectionTypes,
     parentBlockTypes,
+    newSection: newSection && {
+      key: newSection.key,
+      type: newSection.type,
+      settings: newSection.settings ?? {},
+      position: newSection.position ?? "end",
+    },
     block: {
       id: overlay.block.id,
       type: overlay.block.type,
@@ -229,6 +249,7 @@ export function planTemplateOverlay(template, overlayInput) {
   if (!isPlainObject(template)) {
     throw new Error(`Template ${overlay.template} is not a JSON object.`);
   }
+  if (overlay.newSection) return planNewSectionOverlay(template, overlay);
   const [sectionKey, section] = findMainSectionEntry(
     template.sections,
     overlay.sectionTypes,
@@ -271,6 +292,55 @@ export function planTemplateOverlay(template, overlayInput) {
 }
 
 /**
+ * The `newSection` case of planTemplateOverlay: the section of that key (made
+ * when missing, at `newSection.position` in `order`, positions by section key
+ * or type) holding just the overlay block.
+ */
+function planNewSectionOverlay(template, overlay) {
+  const { key, type, position } = overlay.newSection;
+  const sections = isPlainObject(template.sections) ? template.sections : {};
+  const existing = sections[key];
+  if (existing !== undefined && existing?.type !== type) {
+    throw new Error(
+      `templateOverlay newSection "${key}" already exists in ${overlay.template} with a different type (${existing?.type} !== ${type}).`,
+    );
+  }
+  const base = {
+    template: overlay.template,
+    sectionKey: key,
+    sectionType: type,
+    parentBlockKey: null,
+    blockId: overlay.block.id,
+    blockType: overlay.block.type,
+  };
+  if (existing === undefined) {
+    const order = Array.isArray(template.order) ? template.order : [];
+    return {
+      ...base,
+      action: "insert",
+      index: 0,
+      sectionIndex: resolveInsertIndex(order, position, sections),
+    };
+  }
+  const blocks = isPlainObject(existing.blocks) ? existing.blocks : {};
+  const blockOrder = Array.isArray(existing.block_order) ? existing.block_order : [];
+  const alreadyPresent = Object.prototype.hasOwnProperty.call(blocks, overlay.block.id);
+  if (alreadyPresent && blocks[overlay.block.id]?.type !== overlay.block.type) {
+    throw new Error(
+      `templateOverlay block id "${overlay.block.id}" already exists in ${overlay.template}#${key} with a different type ` +
+        `(${blocks[overlay.block.id]?.type} !== ${overlay.block.type}).`,
+    );
+  }
+  return {
+    ...base,
+    action: alreadyPresent ? "noop" : "insert",
+    index: alreadyPresent
+      ? blockOrder.indexOf(overlay.block.id)
+      : resolveInsertIndex(blockOrder, overlay.position, blocks),
+  };
+}
+
+/**
  * Pure: returns a new template JSON object with the overlay block inserted.
  * Idempotent — reapplying to an already-overlaid template returns an
  * equivalent (deep-cloned) object unchanged.
@@ -279,6 +349,17 @@ export function applyTemplateOverlay(template, overlayInput) {
   const overlay = validateTemplateOverlay(overlayInput);
   const plan = planTemplateOverlay(template, overlay);
   const result = structuredClone(template);
+  if (plan.sectionIndex !== undefined) {
+    if (!isPlainObject(result.sections)) result.sections = {};
+    if (!Array.isArray(result.order)) result.order = [];
+    result.sections[plan.sectionKey] = {
+      type: overlay.newSection.type,
+      blocks: {},
+      block_order: [],
+      settings: overlay.newSection.settings,
+    };
+    result.order.splice(plan.sectionIndex, 0, plan.sectionKey);
+  }
   const section = result.sections[plan.sectionKey];
   const container = plan.parentBlockKey
     ? section.blocks[plan.parentBlockKey]

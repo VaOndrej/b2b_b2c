@@ -216,13 +216,31 @@ export function milestonesTemplateOverlays(themeKey, extensionUuid = resolveExte
   throw new Error(`no milestones template overlay for theme ${themeKey}`);
 }
 
-/** Every template overlay of a theme copy (e2e.app.config.mjs): the sale badge, the Milestones ladder and the tiers block on the PDP, the rewards block on the cart. */
+/** Stable ids of the Milestones announcement strip in the theme copies' header group (16 Oct 2026). */
+export const ANNOUNCEMENT_SECTION_KEY = "won_discounts_apps";
+export const ANNOUNCEMENT_BLOCK_ID = "won_discounts_announcement_milestones";
+export const ANNOUNCEMENT_BLOCK_NAME = "announcement_milestones";
+
+/**
+ * The Milestones strip on every page (balík C3 took the embed's fallback top strip away): the "Announcement:
+ * Milestones" block in an Apps section of the header group, right below the theme's announcement bar — as the
+ * merchant adds it (Add section → Apps). The Apps section is Horizon's `_blocks`, Dawn's `apps`.
+ */
+export function announcementTemplateOverlays(themeKey, extensionUuid = resolveExtensionUuid()) {
+  const block = { id: ANNOUNCEMENT_BLOCK_ID, type: appBlockType(ANNOUNCEMENT_BLOCK_NAME, extensionUuid), settings: {} };
+  const type = { horizon: "_blocks", dawn: "apps" }[themeKey];
+  if (!type) throw new Error(`no announcement overlay for theme ${themeKey}`);
+  return [{ template: "sections/header-group.json", newSection: { key: ANNOUNCEMENT_SECTION_KEY, type, position: { beforeType: "header" } }, block }];
+}
+
+/** Every template overlay of a theme copy (e2e.app.config.mjs): the sale badge, the Milestones ladder and the tiers block on the PDP, the rewards block on the cart, the Milestones strip in the header. */
 export function e2eTemplateOverlays(themeKey, extensionUuid = resolveExtensionUuid()) {
   return [
     ...outletTemplateOverlays(themeKey, extensionUuid),
     ...milestonesTemplateOverlays(themeKey, extensionUuid),
     ...tiersTemplateOverlays(themeKey, extensionUuid),
     ...cartTemplateOverlays(themeKey, extensionUuid),
+    ...announcementTemplateOverlays(themeKey, extensionUuid),
   ];
 }
 

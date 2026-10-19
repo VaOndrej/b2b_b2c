@@ -32,6 +32,17 @@ export interface TemplateOverlay {
    * the section's own block list.
    */
   parentBlockTypes?: string[];
+  /**
+   * Insert into the section of this key, made (empty, at `position` in the
+   * file's `order`) when the file has none: an "Apps" section in a section
+   * group (Dawn `apps`, Horizon `_blocks`). `sectionTypes` is then ignored.
+   */
+  newSection?: {
+    key: string;
+    type: string;
+    settings?: Record<string, unknown>;
+    position?: TemplateOverlayPosition;
+  };
   block: TemplateOverlayBlock;
   /** Where to insert the block in the section's block_order. Defaults to "end". */
   position?: TemplateOverlayPosition;
@@ -41,6 +52,7 @@ export interface NormalizedTemplateOverlay {
   template: string;
   sectionTypes: string[];
   parentBlockTypes: string[] | null;
+  newSection: { key: string; type: string; settings: Record<string, unknown>; position: TemplateOverlayPosition } | null;
   block: { id: string; type: string; settings: Record<string, unknown> };
   position: TemplateOverlayPosition;
 }
@@ -55,6 +67,8 @@ export interface TemplateOverlayPlan {
   blockType: string;
   action: "insert" | "noop";
   index: number;
+  /** newSection only: where the missing section goes in the file's `order`. */
+  sectionIndex?: number;
 }
 
 export interface TemplateOverlayResult extends TemplateOverlayPlan {

@@ -85,6 +85,7 @@ Set them in the admin (Look → Custom look) or in your CSS on the root:
 - `.won-tiers__save`
 - `.won-tiers__unit`
 - `.won-topbar`
+- `.won-topbar--block`
 - `.won-topbar__empty`
 
 ## Data markers

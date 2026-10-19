@@ -38,7 +38,7 @@ export const LOOK_CLASSES: Readonly<Record<LookElement, readonly string[]>> = {
   msDrawer: MS_CLASSES,
   outlet: [".won-outlet", ".won-outlet__row", ".won-outlet__badge", ".won-outlet__left", ".won-outlet__time"],
   campaign: [".won-campaign", ".won-campaign--center", ".won-campaign__title", ".won-campaign__time"],
-  cart: [".won-cart", ".won-cart-slot", ".won-cart__row", ".won-cart__code", ".won-cart__applied", ".won-cart__warn", ".won-cart__saved", ".won-topbar", ".won-topbar__empty"],
+  cart: [".won-cart", ".won-cart-slot", ".won-cart__row", ".won-cart__code", ".won-cart__applied", ".won-cart__warn", ".won-cart__saved", ".won-topbar", ".won-topbar--block", ".won-topbar__empty"],
 };
 
 /** The extension's other classes, which carry no look of their own: the line on a product card and the wrapper of the Milestones block. */

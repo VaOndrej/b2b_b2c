@@ -97,6 +97,13 @@ const CART_TEMPLATES: Record<string, unknown> = {
   dawn: { sections: { "cart-footer": { type: "main-cart-footer", blocks: { subtotal: { type: "subtotal" } }, block_order: ["subtotal"] } } },
 };
 
+// The header group --check plans the Milestones strip's Apps section into (16 Oct 2026, announcementTemplateOverlays):
+// the theme's announcement bar, then its header — the new section goes between them.
+const HEADER_GROUPS: Record<string, unknown> = {
+  horizon: { type: "header", name: "Header", sections: { announcements: { type: "header-announcements" }, header_section: { type: "header" } }, order: ["announcements", "header_section"] },
+  dawn: { type: "header", name: "Header", sections: { "announcement-bar": { type: "announcement-bar" }, header: { type: "header" } }, order: ["announcement-bar", "header"] },
+};
+
 function themeWithSettings(name: string, settings: string, template: unknown = PRODUCT_TEMPLATES[name.includes("dawn") ? "dawn" : "horizon"]) {
   const dir = path.join(scratch, name);
   mkdirSync(path.join(dir, "config"), { recursive: true });
@@ -104,6 +111,8 @@ function themeWithSettings(name: string, settings: string, template: unknown = P
   writeFileSync(path.join(dir, "config/settings_data.json"), settings);
   writeFileSync(path.join(dir, "templates/product.json"), JSON.stringify(template));
   writeFileSync(path.join(dir, "templates/cart.json"), JSON.stringify(CART_TEMPLATES[name.includes("dawn") ? "dawn" : "horizon"]));
+  mkdirSync(path.join(dir, "sections"), { recursive: true });
+  writeFileSync(path.join(dir, "sections/header-group.json"), JSON.stringify(HEADER_GROUPS[name.includes("dawn") ? "dawn" : "horizon"]));
   return dir;
 }
 

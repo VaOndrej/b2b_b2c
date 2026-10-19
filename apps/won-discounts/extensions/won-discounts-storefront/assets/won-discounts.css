@@ -250,6 +250,18 @@
   line-height: 1.4;
   text-align: center;
 }
+/* The announcement blocks fill their section: Horizon's Apps section (_blocks) is a flex column aligned to the start,
+   and Shopify's wrapper of the app block is its flex item, so the strip shrank to its text (live E2E 16 Oct 2026,
+   1440 px). The wrapper stretches; the strip fills it. */
+.shopify-app-block:has(> .won-topbar--block) {
+  align-self: stretch;
+  flex: 1 1 100%;
+  width: 100%;
+}
+.won-topbar--block {
+  width: 100%;
+  box-sizing: border-box;
+}
 .won-topbar__empty {
   margin: 0;
   opacity: 0.8;

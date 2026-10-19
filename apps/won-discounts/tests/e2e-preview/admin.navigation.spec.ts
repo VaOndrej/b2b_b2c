@@ -43,7 +43,10 @@ test("view tiles: low, the sentence never cut, the state once; a click opens the
   const panels = page.locator('[data-won-view-panel="table"]');
   expect(await panels.count()).toBeGreaterThan(0);
   for (const panel of await panels.all()) await expect(panel).toBeVisible();
-  await expect(page.locator('[data-won-view-panel="global"]')).toBeHidden();
+  // The whole-store view has two panels too since 14 Oct 2026 (its levels, and "Sčítá se s" under them): both hide.
+  const global = page.locator('[data-won-view-panel="global"]');
+  expect(await global.count()).toBeGreaterThan(0);
+  for (const panel of await global.all()) await expect(panel).toBeHidden();
   // Hidden, never unmounted: the levels still belong to the one form.
   expect(await page.locator('[data-won-view-panel="global"] s-number-field').count()).toBeGreaterThan(0);
   // Narrow: two columns, the sentence wraps instead of being cut.

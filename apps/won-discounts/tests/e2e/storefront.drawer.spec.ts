@@ -31,10 +31,16 @@ test.describe(`Won Discounts cart drawer: the Milestones panel above the checkou
       await assertExtensionAssetsLoaded(page, { match: "won-discounts" });
       await page.locator('button[name="add"]:visible').first().click();
 
-      // The theme's own drawer, open, with its checkout button.
+      // The theme's own drawer, open, with its checkout button. Horizon opens it after the add only with
+      // "auto_open_cart_drawer" (off by default): there the customer opens it with the header's cart icon.
       const drawer = page.locator("cart-drawer-component, #CartDrawer").first();
       const cta = drawer.locator('button[name="checkout"]').first();
-      await expect(cta, "the theme opened its cart drawer with the checkout button").toBeVisible({ timeout: 20_000 });
+      const opened = await cta.waitFor({ state: "visible", timeout: 8_000 }).then(() => true, () => false);
+      if (!opened) {
+        await expect.poll(() => page.evaluate(async () => ((await (await fetch("/cart.js", { cache: "no-store" })).json()) as { item_count: number }).item_count), { message: "the product is in the cart", timeout: 15_000 }).toBeGreaterThan(0);
+        await page.locator('[on\\:click="#cart-drawer/toggle"]:visible').first().click();
+      }
+      await expect(cta, "the theme's cart drawer is open with the checkout button").toBeVisible({ timeout: 20_000 });
       const panel = drawer.locator("[data-won-discounts-cart]").first();
       await expect(panel, "the Milestones panel is in the drawer").toBeVisible({ timeout: 20_000 });
       await expect(panel.locator(".won-ms").first(), "with the ladder").toBeVisible();
