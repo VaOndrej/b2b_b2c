@@ -338,6 +338,10 @@ describe("shopify app function run", { concurrency: 6 }, () => {
     releaseBuildLock = await acquireBuildLock();
     workDir = mkdtempSync(path.join(tmpdir(), "won-discounts-fn-"));
     await shopify(["app", "function", "build", "--path", EXT_REL]);
+    // The CLI downloads function-runner on its first `function run`. Six parallel first runs on a fresh checkout (CI)
+    // race that download and fail with ENOENT, so one run goes first, alone; its result is checked by its own test.
+    const first = readFixture(fixtureFiles[0]!);
+    await runInput(workDir, `warmup-${fixtureFiles[0]}`, first.payload.input, first.payload.export);
   }, { timeout: 15 * 60_000 });
 
   after(() => {
