@@ -32,6 +32,9 @@ after(async () => {
 test("entry.server.tsx starts the cost reconcile once on boot (and the stale-claim sweep beside it)", async () => {
   const reconcile = await import("../app/lib/jobs/cost-reconcile.server.ts");
   const stale = await import("../app/lib/jobs/stale-claims.server.ts");
+  // The boot also starts the scheduler: left running it writes to the test database while `after` removes it
+  // (ENOTEMPTY in CI, audit 2026-10-26 TEST-01).
+  const scheduler = await import("../app/lib/jobs/scheduler.server.ts");
   reconcile.stopCostReconcileJob();
   const env = process.env.NODE_ENV;
   process.env.NODE_ENV = "development";
@@ -46,6 +49,7 @@ test("entry.server.tsx starts the cost reconcile once on boot (and the stale-cla
     process.env.NODE_ENV = env;
     reconcile.stopCostReconcileJob();
     stale.stopStaleClaimJob();
+    scheduler.stopScheduler();
   }
   const source = readFileSync(path.join(APP_ROOT, "app/entry.server.tsx"), "utf8");
   assert.equal(source.match(/ensureCostReconcileJob\(db, \{ clientFor: offlineClient \}\)/g)?.length, 1);
