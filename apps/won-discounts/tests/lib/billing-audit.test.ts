@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 
 import type { AdminClient } from "../../app/lib/admin-client.server.ts";
-import { ENTITLEMENT_STALE_MS, PRO_PLAN, recordSubscriptionUpdate, storedPlan } from "../../app/lib/billing.server.ts";
+import { confirmSubscriptionUpdate, ENTITLEMENT_STALE_MS, PRO_PLAN, recordSubscriptionUpdate, storedPlan } from "../../app/lib/billing.server.ts";
 import { BILLING_RECONCILE_BATCH, runBillingReconcileOnce } from "../../app/lib/jobs/scheduler.server.ts";
 import { createTestDatabase, type TestDatabase } from "./test-db.ts";
 
@@ -55,6 +55,28 @@ test("BILL-01: a retried ACTIVE delivered after the same subscription's CANCELLE
   await recordSubscriptionUpdate(db.prisma, shop, update(SUB_A, "CANCELLED", "2026-10-26T07:00:00Z"), T0);
   await recordSubscriptionUpdate(db.prisma, shop, update(SUB_A, "ACTIVE", "2026-10-20T10:00:00Z"), new Date(T0.getTime() + H));
   assert.equal(await storedPlan(db.prisma, shop, new Date(T0.getTime() + H)), "free", "nobody pays any more");
+});
+
+test("BILL-01: the webhook's follow-up asks Shopify — an event the guard let through (no updated_at) is undone at once, with one resync", async () => {
+  const shop = "confirmed.myshopify.com";
+  const outcome = await recordSubscriptionUpdate(db.prisma, shop, { app_subscription: { admin_graphql_api_id: SUB_A, name: PRO_PLAN.name, status: "ACTIVE" } }, T0);
+  assert.equal(outcome?.changed, true, "the event alone made the shop Pro");
+  let resyncs = 0;
+  await confirmSubscriptionUpdate(db.prisma, clientWith([]), shop, outcome.changed, async () => void (resyncs += 1), T0);
+  assert.equal(await storedPlan(db.prisma, shop, T0), "free", "Shopify lists no active subscription");
+  assert.equal(resyncs, 1);
+});
+
+test("BILL-01: a confirmed event resyncs once; an unchanged, confirmed one does not resync", async () => {
+  const shop = "confirmed-pro.myshopify.com";
+  const first = await recordSubscriptionUpdate(db.prisma, shop, update(SUB_A, "ACTIVE", "2026-10-26T07:00:00Z"), T0);
+  let resyncs = 0;
+  const resync = async () => void (resyncs += 1);
+  await confirmSubscriptionUpdate(db.prisma, clientWith([{ id: SUB_A, status: "ACTIVE" }]), shop, first?.changed === true, resync, T0);
+  const again = await recordSubscriptionUpdate(db.prisma, shop, update(SUB_A, "ACTIVE", "2026-10-26T07:00:00Z"), T0);
+  await confirmSubscriptionUpdate(db.prisma, clientWith([{ id: SUB_A, status: "ACTIVE" }]), shop, again?.changed === true, resync, T0);
+  assert.equal(await storedPlan(db.prisma, shop, T0), "pro");
+  assert.equal(resyncs, 1, "the redelivery changed nothing");
 });
 
 test("BILL-01: the daily reconcile also repairs a paying shop whose row wrongly says Free", async () => {

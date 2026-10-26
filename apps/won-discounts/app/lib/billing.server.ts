@@ -185,6 +185,17 @@ export async function recordSubscriptionUpdate(db: PrismaClient, shop: string, p
   return { plan, changed: plan !== before };
 }
 
+/**
+ * The webhook's follow-up (BILL-01): Shopify's own answer confirms what the event wrote, so an event the guard let
+ * through by mistake (clock skew against `eventAt`, a payload without `updated_at`) is undone at once. A plan changed
+ * by the event or by the confirmation resyncs the shop once.
+ */
+export async function confirmSubscriptionUpdate(db: PrismaClient, client: AdminClient, shop: string, eventChanged: boolean, resync: () => Promise<unknown>, now: Date = new Date()): Promise<ReconcileResult> {
+  const confirmed = await reconcilePlan(db, client, shop, now);
+  if (eventChanged || confirmed.changed) await resync();
+  return confirmed;
+}
+
 export type SubscribeResult = { ok: true; confirmationUrl: string } | { ok: false; detail: string };
 
 /** Ask Shopify for the Pro subscription; the merchant accepts it on the returned confirmation page. */
