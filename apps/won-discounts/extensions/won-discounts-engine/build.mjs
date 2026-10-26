@@ -8,6 +8,10 @@
 // reached by a stack 1 MiB deep. The check below fails the build if a toolchain ever lays the memory out otherwise.
 //
 // binaryen is pinned to the version the CLI bundles (wasm-opt 123), so both passes are the same optimizer.
+//
+// Our pass writes OUT (shopify.extension.toml `path`), never cargo's artifact: the CLI then puts its trampoline (a
+// second, imported memory) into OUT. Were OUT cargo's artifact, a build where cargo relinks nothing (Linux keeps the
+// file as it is) would hand the trampolined module to this wasm-opt, which refuses two memories (audit 2026-10-26).
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import { createRequire } from "node:module";
@@ -17,6 +21,7 @@ import process from "node:process";
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const WASM = path.join(HERE, "target/wasm32-unknown-unknown/release/won-discounts-engine.wasm");
+const OUT = path.join(HERE, "target/won-discounts-engine.wasm");
 const LOW_MEMORY = 1024;
 const require = createRequire(import.meta.url);
 
@@ -45,4 +50,4 @@ if (!(lowest >= LOW_MEMORY)) {
 }
 
 const wasmOpt = path.join(path.dirname(require.resolve("binaryen/package.json")), "bin/wasm-opt");
-run(process.execPath, [wasmOpt, WASM, "-Oz", "--low-memory-unused", "--enable-bulk-memory", "--enable-nontrapping-float-to-int", "-o", WASM]);
+run(process.execPath, [wasmOpt, WASM, "-Oz", "--low-memory-unused", "--enable-bulk-memory", "--enable-nontrapping-float-to-int", "-o", OUT]);

@@ -32,5 +32,6 @@ description = "t:description"
   [extensions.build]
   # cargo build, then one wasm-opt pass of our own before the CLI's (build.mjs says why).
   command = "node build.mjs"
-  path = "target/wasm32-unknown-unknown/release/won-discounts-engine.wasm"
+  # build.mjs's output, not cargo's artifact: the CLI writes its trampoline into this file (build.mjs says why).
+  path = "target/won-discounts-engine.wasm"
   watch = ["src/**/*.rs"]

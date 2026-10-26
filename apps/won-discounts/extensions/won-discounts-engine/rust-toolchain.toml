@@ -1,7 +1,5 @@
 # shopify_function 2.x builds for wasm32-unknown-unknown only (wasm32-wasip1 is
 # refused at compile time); rustup installs the target from this file.
 [toolchain]
-# Pinned (audit 2026-10-26, TEST-01): rustc 1.99 emits a module with more than one memory, which wasm-opt 123
-# (build.mjs, and the Shopify CLI's own pass) refuses. Moving on is a deliberate step, not a `rustup update`.
-channel = "1.98.1"
+channel = "stable"
 targets = ["wasm32-unknown-unknown"]

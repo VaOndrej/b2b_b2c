@@ -2,12 +2,12 @@
 // (audit P3-6). `node --test` runs every test file in its own process, in
 // parallel:
 //   - tests/contracts/function.contract.test.ts builds the Rust function
-//     (extensions/won-discounts-engine/target/wasm32-unknown-unknown/release/
-//     won-discounts-engine.wasm) and runs every fixture against it;
+//     (extensions/won-discounts-engine/target/won-discounts-engine.wasm) and
+//     runs every fixture against it;
 //   - tests/contracts/dev-harness.contract.test.ts runs `npm run build`
 //     (build/ only since the function build moved to `build:functions` /
 //     `build:all`; it keeps the lock in case that changes back).
-// A Rust build re-copies cargo's raw Wasm over the output before the CLI
+// A build rewrites the output (build.mjs's wasm-opt) before the CLI
 // re-applies its trampoline, so without the lock a fixture can run against a
 // half-built Wasm. Both take this lock for as long as they need the outputs,
 // so `npm run test:unit` stays fully parallel everywhere else.

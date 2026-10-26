@@ -326,7 +326,7 @@ test("every fixture's node variables carry campaignStart/campaignEnd (query cont
 });
 
 // Audit P3-6: dev-harness.contract's `npm run build` rewrites the same Wasm
-// (target/wasm32-unknown-unknown/release/won-discounts-engine.wasm). The build
+// (target/won-discounts-engine.wasm, shopify.extension.toml `path`). The build
 // lock is held from this build until the last fixture ran, so no fixture ever
 // runs against a half-written Wasm.
 describe("shopify app function run", { concurrency: 6 }, () => {
@@ -352,6 +352,18 @@ describe("shopify app function run", { concurrency: 6 }, () => {
     const bytes = statSync(path.join(EXT_DIR, wasm)).size;
     t.diagnostic(`${wasm}: ${bytes} B of ${WASM_LIMIT_BYTES} B`);
     assert.ok(bytes < WASM_LIMIT_BYTES, `${bytes} B ≥ ${WASM_LIMIT_BYTES} B`);
+  });
+
+  // Audit 2026-10-26 (TEST-01, found in CI): the CLI writes its trampoline (a second, imported memory) into the build
+  // output. When that output was cargo's own artifact, a build where cargo relinked nothing (Linux keeps the file)
+  // fed the trampolined module to build.mjs's wasm-opt, which refuses two memories. Cargo's artifact stays raw.
+  test("the CLI's output is not cargo's artifact, and cargo's artifact stays as cargo built it (no trampoline)", () => {
+    const toml = readFileSync(path.join(EXT_DIR, "shopify.extension.toml"), "utf8");
+    const wasm = /^\s*path = "([^"]+\.wasm)"$/m.exec(toml)?.[1];
+    const cargo = "target/wasm32-unknown-unknown/release/won-discounts-engine.wasm";
+    assert.notEqual(wasm, cargo, "[extensions.build] path must not be cargo's artifact");
+    const imports = WebAssembly.Module.imports(new WebAssembly.Module(readFileSync(path.join(EXT_DIR, cargo))));
+    assert.deepEqual(imports.filter((i) => i.kind === "memory"), [], "cargo's Wasm imports no memory");
   });
 
   for (const file of fixtureFiles) {
