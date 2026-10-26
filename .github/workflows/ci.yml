@@ -76,7 +76,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Rust toolchain from rust-toolchain.toml (stable + wasm32-unknown-unknown)
