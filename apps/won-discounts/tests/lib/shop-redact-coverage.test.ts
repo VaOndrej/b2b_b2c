@@ -8,9 +8,7 @@ import { APP_ROOT, createTestDatabase, type TestDatabase } from "./test-db.ts";
 
 // Audit 2026-10-26, finding DATA-01 (PRIV-2): GDPR shop/redact is the ONE place the app erases a shop
 // (webhooks.shop.redact.tsx → deleteShopData). CombinationCheck says in schema.prisma that it is "erased with
-// the shop", but deleteShopData does not delete it. The tests state the required behaviour; they are `todo`
-// until the production fix is approved (reported, not failing the gate) — drop `todo` with the fix.
-const TODO = "DATA-01: deleteShopData misses CombinationCheck — production fix pending approval";
+// the shop", but deleteShopData did not delete it. Fixed; the tests guard it and the next per-shop model.
 
 // Session rows are deleted by the shop/redact action itself (@won/app-kit createShopRedactAction).
 const DELETED_ELSEWHERE = new Set(["Session"]);
@@ -44,7 +42,7 @@ test("the schema scan finds the per-shop models (guards the scan itself)", () =>
   }
 });
 
-test("DATA-01: deleteShopData names every per-shop model of the schema", { todo: TODO }, () => {
+test("DATA-01: deleteShopData names every per-shop model of the schema", () => {
   const source = readFileSync(path.join(APP_ROOT, "app/lib/config.server.ts"), "utf8");
   const body = source.slice(source.indexOf("export async function deleteShopData"));
   const missing = perShopModels()
@@ -53,7 +51,7 @@ test("DATA-01: deleteShopData names every per-shop model of the schema", { todo:
   assert.deepEqual(missing, []);
 });
 
-test("DATA-01: shop/redact erases the shop's CombinationCheck row and keeps other shops'", { todo: TODO }, async () => {
+test("DATA-01: shop/redact erases the shop's CombinationCheck row and keeps other shops'", async () => {
   const target = "redact-me.myshopify.com";
   const keep = "keep-me.myshopify.com";
   for (const shop of [target, keep]) {
