@@ -69,7 +69,12 @@ export function createScopesUpdateAction({ authenticate, db }: WebhookDeps) {
     const { payload, session, topic, shop } = await authenticate.webhook(request);
     console.log(`Received ${topic} webhook for ${shop}`);
 
-    const current = payload.current as string[];
+    // An odd payload is acknowledged, never thrown: a 500 would make Shopify retry it for 48 h (audit REL-01).
+    const current = (payload as { current?: unknown } | null)?.current;
+    if (!Array.isArray(current) || !current.every((scope) => typeof scope === "string")) {
+      console.warn(`Ignored ${topic} webhook for ${shop}: payload.current is not a list of scopes`);
+      return new Response();
+    }
     if (session) {
       await db.session.update({
         where: { id: session.id },
