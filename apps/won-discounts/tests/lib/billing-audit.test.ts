@@ -42,7 +42,7 @@ test("control: in-order deliveries — cancel A, then a new subscription B — e
   assert.equal(await storedPlan(db.prisma, shop, T0), "pro");
 });
 
-test("BILL-01: a late CANCELLED of the OLD subscription after the new one's ACTIVE keeps the paying shop on Pro", { todo: "BILL-01: recordSubscriptionUpdate ignores which subscription / how recent — fix pending approval" }, async () => {
+test("BILL-01: a late CANCELLED of the OLD subscription after the new one's ACTIVE keeps the paying shop on Pro", async () => {
   const shop = "late-cancel.myshopify.com";
   await recordSubscriptionUpdate(db.prisma, shop, update(SUB_B, "ACTIVE", "2026-10-26T07:05:00Z"), T0);
   // A's CANCELLED (07:00) failed once and is retried after B's ACTIVE (07:05).
@@ -50,14 +50,14 @@ test("BILL-01: a late CANCELLED of the OLD subscription after the new one's ACTI
   assert.equal(await storedPlan(db.prisma, shop, new Date(T0.getTime() + H)), "pro", "the shop pays for B");
 });
 
-test("BILL-01: a retried ACTIVE delivered after the same subscription's CANCELLED does not turn Pro back on", { todo: "BILL-01: the payload's updated_at is not compared — fix pending approval" }, async () => {
+test("BILL-01: a retried ACTIVE delivered after the same subscription's CANCELLED does not turn Pro back on", async () => {
   const shop = "late-active.myshopify.com";
   await recordSubscriptionUpdate(db.prisma, shop, update(SUB_A, "CANCELLED", "2026-10-26T07:00:00Z"), T0);
   await recordSubscriptionUpdate(db.prisma, shop, update(SUB_A, "ACTIVE", "2026-10-20T10:00:00Z"), new Date(T0.getTime() + H));
   assert.equal(await storedPlan(db.prisma, shop, new Date(T0.getTime() + H)), "free", "nobody pays any more");
 });
 
-test("BILL-01: the daily reconcile also repairs a paying shop whose row wrongly says Free", { todo: "BILL-01: runBillingReconcileOnce reads only rows with plan = pro — fix pending approval" }, async () => {
+test("BILL-01: the daily reconcile also repairs a paying shop whose row wrongly says Free", async () => {
   const shop = "wrongly-free.myshopify.com";
   await db.prisma.shopEntitlement.create({ data: { shop, plan: "free", status: "CANCELLED", subscriptionId: SUB_A, checkedAt: T0 } });
   const now = new Date(T0.getTime() + 24 * H);

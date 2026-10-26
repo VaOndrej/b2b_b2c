@@ -202,7 +202,7 @@ export interface BillingReconcileDeps {
 }
 
 /**
- * MVP 7 (M1): billing.reconcile, daily — every shop whose row says Pro is checked against Shopify (a lost
+ * MVP 7 (M1): billing.reconcile, daily — every shop whose row says Pro or names a subscription is checked against Shopify (a lost
  * app_subscriptions/update webhook must not leave Pro on, nor let a paying shop's row go stale). A plan that
  * changed resyncs the shop. No session → left as it is: the row goes stale and the shop Free by itself.
  */
@@ -210,7 +210,8 @@ export async function runBillingReconcileOnce(deps: BillingReconcileDeps): Promi
   const now = (deps.now ?? (() => new Date()))();
   const logger = deps.logger ?? quiet;
   const out = { checked: 0, changed: [] as string[], skippedNoSession: 0 };
-  const rows = await deps.db.shopEntitlement.findMany({ where: { plan: "pro" }, orderBy: { checkedAt: "asc" }, take: BILLING_RECONCILE_BATCH, select: { shop: true } });
+  // A row with a subscription is checked even when it says Free: a late webhook may have dropped a paying shop (BILL-01).
+  const rows = await deps.db.shopEntitlement.findMany({ where: { OR: [{ plan: "pro" }, { subscriptionId: { not: null } }] }, orderBy: { checkedAt: "asc" }, take: BILLING_RECONCILE_BATCH, select: { shop: true } });
   for (const { shop } of rows) {
     const client = await deps.clientFor(shop).catch(() => null);
     if (!client) {

@@ -358,6 +358,9 @@ model ShopEntitlement {
   test           Boolean   @default(false)
   /// When Shopify last confirmed the row (a reconcile, or the app_subscriptions/update webhook).
   checkedAt      DateTime
+  /// How recent the state in the row is: the `updated_at` of the last webhook event written, or the time of the
+  /// last reconcile. An older event (out of order, a retry) changes nothing (audit 2026-10-26, BILL-01).
+  eventAt        DateTime?
   updatedAt      DateTime  @updatedAt
 }
 

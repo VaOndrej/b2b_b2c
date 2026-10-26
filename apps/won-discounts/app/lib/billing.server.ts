@@ -6,7 +6,10 @@
 //                                          by Tarif (every load, and on the return from the confirmation page) and by
 //                                          the scheduler's daily billing.reconcile;
 //   recordSubscriptionUpdate(db, shop, …)  the app_subscriptions/update webhook: Pro the moment the charge is
-//                                          accepted, Free the moment it is cancelled, expires or freezes;
+//                                          accepted, Free the moment it is cancelled, expires or freezes. Shopify
+//                                          neither orders nor dedupes deliveries (a failed one is retried for up to
+//                                          48 h), so an event older than the row (`eventAt`) or a non-ACTIVE event of
+//                                          another subscription than the ACTIVE one stored changes nothing (BILL-01);
 //   storedPlan(db, shop)                   the one answer for plan.server.ts resolvePlan (BILL-1): Pro only for a row
 //                                          saying an ACTIVE subscription of OUR plan, checked within
 //                                          ENTITLEMENT_STALE_MS; anything else — no row, another status, a check
@@ -132,6 +135,8 @@ export async function reconcilePlan(db: PrismaClient, client: AdminClient, shop:
     trialEndsAt: ours ? trialEnd(ours) : null,
     test: ours?.test === true,
     checkedAt: now,
+    // Shopify's state as of now: a webhook event from before this read is older than the row.
+    eventAt: now,
   };
   await db.shopEntitlement.upsert({ where: { shop }, create: { shop, ...data }, update: data });
   const plan: ShopPlan = data.plan === "pro" ? "pro" : "free";
@@ -145,17 +150,35 @@ export function planFromSubscriptionUpdate(payload: unknown): ShopPlan | null {
   return sub.status === "ACTIVE" ? "pro" : "free";
 }
 
-/** The webhook's write: idempotent (a redelivery changes nothing). Null = not our plan. */
+/** An event's `updated_at`; null = missing or unreadable (the event is then not compared by time). */
+function eventTime(value: unknown): Date | null {
+  if (typeof value !== "string") return null;
+  const at = new Date(value);
+  return Number.isNaN(at.getTime()) ? null : at;
+}
+
+/**
+ * The webhook's write: idempotent (a redelivery changes nothing). Null = not our plan. A stale event (see the header,
+ * BILL-01) leaves the row as it is.
+ */
 export async function recordSubscriptionUpdate(db: PrismaClient, shop: string, payload: unknown, now: Date = new Date()): Promise<{ plan: ShopPlan; changed: boolean } | null> {
   const plan = planFromSubscriptionUpdate(payload);
   if (plan === null) return null;
-  const sub = (payload as { app_subscription: { admin_graphql_api_id?: unknown; status?: unknown } }).app_subscription;
-  const before = await storedPlan(db, shop, now);
+  const sub = (payload as { app_subscription: { admin_graphql_api_id?: unknown; status?: unknown; updated_at?: unknown } }).app_subscription;
+  const row = await db.shopEntitlement.findUnique({ where: { shop }, select: { plan: true, status: true, checkedAt: true, subscriptionId: true, eventAt: true } });
+  const before = planOfRow(row, now);
+  const subscriptionId = typeof sub.admin_graphql_api_id === "string" ? sub.admin_graphql_api_id : null;
+  const status = typeof sub.status === "string" ? sub.status : null;
+  const eventAt = eventTime(sub.updated_at);
+  const older = eventAt !== null && row?.eventAt != null && eventAt.getTime() < row.eventAt.getTime();
+  const otherThanActive = status !== "ACTIVE" && row?.status === "ACTIVE" && row.subscriptionId !== null && row.subscriptionId !== subscriptionId;
+  if (older || otherThanActive) return { plan: before, changed: false };
   const data = {
     plan,
-    subscriptionId: typeof sub.admin_graphql_api_id === "string" ? sub.admin_graphql_api_id : null,
-    status: typeof sub.status === "string" ? sub.status : null,
+    subscriptionId,
+    status,
     checkedAt: now,
+    ...(eventAt ? { eventAt } : {}),
   };
   // The trial end and the test flag come from the next reconcile (the webhook payload does not carry them).
   await db.shopEntitlement.upsert({ where: { shop }, create: { shop, ...data }, update: data });
