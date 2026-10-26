@@ -46,8 +46,17 @@ export const CART_PLAN_SHOP_MAX = 2_000;
 export const CART_PLAN_CACHE_MAX = 100_000;
 /** Requests a minute per shop that may read Shopify (cached answers are not counted; audit P2: the shop's API budget belongs to its sync). */
 export const CART_PLAN_READS_PER_MINUTE = 30;
+/**
+ * Different discount codes a minute per shop the plan may be asked about, cached answers included (audit 2026-10-26,
+ * SEC-03): the answer tells a right code from a wrong one, so without a budget the endpoint is an unthrottled oracle
+ * for guessing codes. A code already asked about in the window costs nothing again (a shopper's cart repeats its codes).
+ */
+export const CART_PLAN_CODES_PER_MINUTE = 50;
 
-/** Over CART_PLAN_READS_PER_MINUTE: nothing is read, nothing planned — the route answers 429 and the panel shows no hint. */
+/**
+ * Over CART_PLAN_READS_PER_MINUTE or CART_PLAN_CODES_PER_MINUTE: nothing is read, nothing planned — the route answers
+ * 429 and the panel shows no hint.
+ */
 export class CartPlanRateLimited extends Error {}
 
 export interface CartPlanRequestLine {
@@ -247,6 +256,7 @@ const shopCaches = new Map<string, ShopCache>();
 /** Entries in shopCaches (variants + configs). */
 let cached = 0;
 const readWindows = new Map<string, { start: number; count: number }>();
+const codeWindows = new Map<string, { start: number; codes: Set<string> }>();
 let now = () => Date.now();
 
 /** Tests: a fixed clock and empty caches. */
@@ -256,6 +266,7 @@ export function setCartPlanClock(clock: () => number): void {
 export function clearCartPlanCache(): void {
   for (const shop of [...shopCaches.keys()]) invalidateCartPlan(shop);
   readWindows.clear();
+  codeWindows.clear();
 }
 /** Tests: the cached entries now (variants + configs, all shops). */
 export function cartPlanCacheSize(): number {
@@ -318,6 +329,22 @@ function takeRead(shop: string): void {
   window.count += 1;
 }
 
+/** The codes of one request of `shop`: new ones count in its minute window; over the budget the request is refused. */
+function takeCodes(shop: string, codes: readonly string[]): void {
+  if (!codes.length) return;
+  const t = now();
+  let window = codeWindows.get(shop);
+  if (!window || t - window.start >= 60_000) {
+    window = { start: t, codes: new Set() };
+    codeWindows.set(shop, window);
+    if (codeWindows.size > CART_PLAN_CACHE_MAX) codeWindows.delete(codeWindows.keys().next().value!);
+  }
+  // Shopify matches discount codes case-insensitively: SAVE10 and save10 are one guess.
+  const fresh = [...new Set(codes.map((code) => code.toUpperCase()))].filter((code) => !window.codes.has(code));
+  if (window.codes.size + fresh.length > CART_PLAN_CODES_PER_MINUTE) throw new CartPlanRateLimited(shop);
+  for (const code of fresh) window.codes.add(code);
+}
+
 const fresh = <T>(entry: CacheEntry<T> | undefined): entry is CacheEntry<T> => entry !== undefined && now() - entry.at < CART_PLAN_CACHE_MS;
 
 async function readConfig(client: AdminClient, cache: ShopCache): Promise<{ config: PlanConfig | null; timezone: string | null }> {
@@ -363,6 +390,7 @@ async function readVariants(client: AdminClient, cache: ShopCache, ids: readonly
 
 /** The live plan of a storefront cart for `shop` (the app proxy's authenticated shop, SEC-2). */
 export async function runCartPlan(client: AdminClient, shop: string, request: CartPlanRequest): Promise<CartPlanAnswer> {
+  takeCodes(shop, request.codes);
   const cache = cacheOf(shop);
   const needsRead = !fresh(cache.config) || request.lines.some((l) => !fresh(cache.variants.get(l.variantId)));
   if (needsRead) takeRead(shop);

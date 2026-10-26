@@ -6,6 +6,7 @@ import { sanitizeConfig } from "@won/core/discounts/config";
 
 import type { AdminClient } from "../../app/lib/admin-client.server.ts";
 import {
+  CART_PLAN_CODES_PER_MINUTE,
   CART_PLAN_READS_PER_MINUTE,
   CartPlanRateLimited,
   clearCartPlanCache,
@@ -19,8 +20,8 @@ import {
 // from a wrong one. The per-shop limit counts only requests that read Shopify (audit P2: the API budget); once the
 // shop config and the variant are cached, any number of requests is answered. Together: an unthrottled oracle for
 // guessing a shop's discount codes, outside Shopify's own checkout throttling.
-// The first test pins the oracle (it passes today: evidence); the second states the required behaviour and is
-// `todo` until the production fix is approved — drop `todo` with the fix.
+// The first test pins the oracle (the answer still tells codes apart: evidence); the others guard the fix — a per-shop
+// budget of DIFFERENT codes a minute (CART_PLAN_CODES_PER_MINUTE), counted for cached answers too.
 
 const SHOP = "oracle.myshopify.com";
 const SECRET_CODE = "SECRET-42";
@@ -71,7 +72,7 @@ test("evidence: the answer tells a correct code from wrong ones (saved > 0 only 
   assert.equal(right.saved, 15_000, "15 % of 1 000 Kč");
 });
 
-test("SEC-03: guessing codes through the public cart plan is throttled per shop like Shopify reads", { todo: "SEC-03: cached answers are never limited, codes come from the browser — fix pending approval" }, async () => {
+test("SEC-03: guessing codes through the public cart plan is throttled per shop like Shopify reads", async () => {
   const { client, reads } = fakeShopify();
   let limited = 0;
   for (let round = 0; round < 10 * CART_PLAN_READS_PER_MINUTE; round += 1) {
@@ -84,4 +85,22 @@ test("SEC-03: guessing codes through the public cart plan is throttled per shop 
   }
   assert.ok(reads() <= 2, "the scenario stays inside the cache (no Shopify read beyond the first two)");
   assert.ok(limited > 0, `${10 * CART_PLAN_READS_PER_MINUTE * 25} guesses within one minute were all answered`);
+});
+
+test("SEC-03: a shopper asking again and again with the same codes is never limited by the code budget", async () => {
+  const { client } = fakeShopify();
+  for (let i = 0; i < 10 * CART_PLAN_CODES_PER_MINUTE; i += 1) {
+    const answer = await runCartPlan(client, SHOP, request(["WRONG-1", SECRET_CODE.toLowerCase(), SECRET_CODE]));
+    assert.equal(answer.saved, 15_000);
+  }
+});
+
+test("SEC-03: the code budget is per shop and per minute — a new minute answers again, another shop is not affected", async () => {
+  const { client } = fakeShopify();
+  const fresh = (prefix: string) => Array.from({ length: CART_PLAN_CODES_PER_MINUTE + 1 }, (_, i) => `${prefix}-${i}`);
+  await assert.rejects(runCartPlan(client, SHOP, request(fresh("A"))), CartPlanRateLimited);
+  await runCartPlan(client, "other.myshopify.com", request(fresh("B").slice(0, CART_PLAN_CODES_PER_MINUTE)));
+  clock += 60_000;
+  const answer = await runCartPlan(client, SHOP, request(["WRONG-1", SECRET_CODE]));
+  assert.equal(answer.saved, 15_000);
 });
