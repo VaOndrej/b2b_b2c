@@ -93,6 +93,9 @@ jobs:
           DATABASE_URL: file:ci.sqlite
         run: npm run prisma:generate -w won-discounts
 
+      - name: Headless Chromium for the storefront contract tests
+        run: npx playwright install --with-deps --only-shell chromium
+
       - name: Unit gate (node tests, cargo test, vitest)
         run: npm run test:unit -w won-discounts
 
