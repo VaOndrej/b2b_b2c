@@ -65,3 +65,36 @@ jobs:
             echo 'Tracked local database or environment file found.' >&2
             exit 1
           fi
+
+  # Won Discounts (audit 2026-10-26, TEST-01): the app's own gate — node unit, integration and contract tests, the
+  # Rust function (`cargo test`) and the Wasm/parity suite (vitest), then lint. Typecheck and build run in `static`.
+  won-discounts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Rust toolchain from rust-toolchain.toml (stable + wasm32-unknown-unknown)
+        working-directory: apps/won-discounts/extensions/won-discounts-engine
+        run: |
+          rustup toolchain install
+          rustup show active-toolchain
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Generate the Prisma client
+        env:
+          DATABASE_URL: file:ci.sqlite
+        run: npm run prisma:generate -w won-discounts
+
+      - name: Unit gate (node tests, cargo test, vitest)
+        run: npm run test:unit -w won-discounts
+
+      - name: Lint
+        run: npm run lint -w won-discounts

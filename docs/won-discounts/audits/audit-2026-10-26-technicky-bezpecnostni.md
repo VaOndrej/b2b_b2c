@@ -81,6 +81,9 @@ Slabá místa:
   Instaluje jen Node, ne Rust, a Prisma klienta generuje jen pro tři jiné aplikace. 2 819 testů won-discounts tak běží
   jen lokálně. CI je navíc na `main` červené u posledních 5 pushů (`won-toasts test:unit`, běh 39228030428), takže ani
   to, co v CI je, nic nehlídá.
+  **Stav (2026-10-26):** opraveno pro won-discounts: samostatný CI job `won-discounts` (Rust z `rust-toolchain.toml`,
+  `prisma generate`, `test:unit`, `lint`). Červený krok won-toasts (chybí Postgres v CI) je podle rozhodnutí mimo rozsah,
+  job `static` proto zůstává červený.
 - Testy proti mockům ověřují logiku jednoznačně, ale nic z nich nedoloží chování skutečné Shopify (pořadí webhooků,
   throttling proxy). Na to jsou E2E, které jsou zablokované.
 - `tests/integration/cart-plan.test.ts` „audit P2“ výslovně fixuje, že nacachované odpovědi limit nemají. Je to
