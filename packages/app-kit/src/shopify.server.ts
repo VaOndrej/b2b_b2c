@@ -28,8 +28,13 @@ export function createShopifyApp(prisma: any) {
     authPathPrefix: "/auth",
     sessionStorage: new PrismaSessionStorage(prisma),
     distribution: AppDistribution.AppStore,
-    // TEMP debug: surface token-exchange / auth flow in the dev terminal.
-    logger: { level: LogSeverity.Debug, httpRequests: true },
+    // Never enable `httpRequests`: shopify-api then logs request bodies and
+    // params, i.e. the client secret, session tokens and Admin API access
+    // tokens (audit 2026-10-26, SEC-01). Debug auth-flow messages only in dev.
+    logger: {
+      level: process.env.NODE_ENV === "development" ? LogSeverity.Debug : LogSeverity.Error,
+      httpRequests: false,
+    },
     future: {
       expiringOfflineAccessTokens: true,
     },

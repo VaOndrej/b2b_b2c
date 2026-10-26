@@ -3,7 +3,7 @@ import { createHmac, randomUUID } from "node:crypto";
 import { after, before, test } from "node:test";
 
 // Audit 2026-10-26, finding SEC-01: the shared Shopify app instance
-// (@won/app-kit/shopify.server createShopifyApp) is built with
+// (@won/app-kit/shopify.server createShopifyApp) was built with
 // `logger: { level: Debug, httpRequests: true }` ("TEMP debug") in EVERY
 // environment, production included. This test drives the real production path —
 // createShopifyApp → authenticate.admin with a signed session token → the token
@@ -13,10 +13,8 @@ import { after, before, test } from "node:test";
 //     exchange POST body, logged by shopify-api fetchRequestFactory),
 //   - the shop's offline/online access token (X-Shopify-Access-Token, logged in
 //     `requestParams` by the GraphQL client's HTTP-Response event).
-// The assertions state the SAFE behaviour. Until the production fix is approved
-// they are marked `todo` (reported, never failing the unit gate); drop `todo`
-// together with the fix so the test guards it from then on.
-const TODO = "SEC-01: production fix (logger level / httpRequests) pending approval";
+// The assertions state the SAFE behaviour and guard the fix (httpRequests off,
+// Debug only in development) against a returning "TEMP debug".
 
 const SECRET = `secret-${randomUUID()}`;
 const API_KEY = "audit-api-key";
@@ -122,14 +120,14 @@ test("the admin path really ran: the token exchange and one Admin GraphQL call w
   assert.ok(fetched.some((url) => url.startsWith(`https://${SHOP}/admin/api/`) && url.endsWith("/graphql.json")), "the Admin GraphQL request was made");
 });
 
-test("SEC-01: the app's client secret never reaches the logs", { todo: TODO }, () => {
+test("SEC-01: the app's client secret never reaches the logs", () => {
   assert.equal(logged.filter((line) => line.includes(SECRET)).length, 0);
 });
 
-test("SEC-01: the merchant's session token (id token) never reaches the logs", { todo: TODO }, () => {
+test("SEC-01: the merchant's session token (id token) never reaches the logs", () => {
   assert.equal(logged.filter((line) => line.includes(sessionToken)).length, 0);
 });
 
-test("SEC-01: the shop's Admin API access token never reaches the logs", { todo: TODO }, () => {
+test("SEC-01: the shop's Admin API access token never reaches the logs", () => {
   assert.equal(logged.filter((line) => line.includes(ACCESS_TOKEN)).length, 0);
 });

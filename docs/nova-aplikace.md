@@ -125,6 +125,9 @@ npm run config:link -w <tvoje-appka>   # vytvoří app v Partner org, vyplní cl
 cp apps/<tvoje-appka>/.env.example apps/<tvoje-appka>/.env   # doplň jen co potřebuješ
 ```
 
+Logger Shopify appky nastavuje `@won/app-kit` (`createShopifyApp`). `httpRequests` v něm
+nikdy nezapínej, ani dočasně: loguje client secret, session tokeny a access tokeny shopu.
+
 ## 5. Postav feature
 
 - Čistá byznys logika → `packages/core/src/<doména>/` s `node:test` testy,
