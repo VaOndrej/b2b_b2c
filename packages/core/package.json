@@ -5,7 +5,7 @@
   "description": "Framework-free domain engine (pricing, discount, margin, catalog, segment, quantity, visibility, storefront). Consumed as a workspace package via @won/core/* subpath exports.",
   "type": "module",
   "scripts": {
-    "test": "tsx --test tests/**/*.test.ts"
+    "test": "tsx --test 'tests/**/*.test.ts'"
   },
   "exports": {
     "./*": "./src/*.ts"
