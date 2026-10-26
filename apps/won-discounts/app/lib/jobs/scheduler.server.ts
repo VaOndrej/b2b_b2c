@@ -16,8 +16,9 @@
 //   history.prune  daily          sale events 400 days after their sale ended (the sale row stays, PRIV-2), the
 //                                 config history past its retention (pruneExpiredConfigHistory, wired here at last)
 //                                 and (MVP 7) order facts 400 days after their order.
-//   billing.reconcile  daily      MVP 7 M1: shops on Pro are checked against Shopify's active subscriptions; a
-//                                 changed plan resyncs the shop (a lost app_subscriptions/update webhook).
+//   billing.reconcile  hourly     MVP 7 M1: shops on Pro are checked against Shopify's active subscriptions about
+//                                 once a day (BILLING_RECHECK_MS, at most BILLING_RECONCILE_BATCH a run); a changed
+//                                 plan resyncs the shop (a lost app_subscriptions/update webhook).
 //   combinations.daily  daily     Kontrola kombinací: every shop's stored check is planned again from the database
 //                                 (a campaign's first day, a sale that ended, a plan that changed move it). A shop
 //                                 without the cost mirror gets its few products read from Shopify here, once.
@@ -189,8 +190,14 @@ export async function pruneHistoryOnce(db: PrismaClient, now: Date): Promise<{ o
   return { outletEvents, configVersions, orderFacts };
 }
 
-/** Shops reconciled per billing.reconcile run. */
+/**
+ * Shops reconciled per billing.reconcile run. Hourly runs of this size keep every row fresher than
+ * ENTITLEMENT_STALE_MS (72 h) up to 50 × 24 × 3 = 3 600 Pro shops, and a run never holds the minute tasks for long
+ * (audit 2026-10-26, BILL-02: one daily run of 50 left shops past 150 on Free).
+ */
 export const BILLING_RECONCILE_BATCH = 50;
+/** A row checked more recently than this is not due yet (about once a day per shop). */
+export const BILLING_RECHECK_MS = 20 * 3_600_000;
 
 export interface BillingReconcileDeps {
   db: PrismaClient;
@@ -202,7 +209,7 @@ export interface BillingReconcileDeps {
 }
 
 /**
- * MVP 7 (M1): billing.reconcile, daily — every shop whose row says Pro or names a subscription is checked against Shopify (a lost
+ * MVP 7 (M1): billing.reconcile, hourly — every shop whose row says Pro or names a subscription is checked against Shopify (a lost
  * app_subscriptions/update webhook must not leave Pro on, nor let a paying shop's row go stale). A plan that
  * changed resyncs the shop. No session → left as it is: the row goes stale and the shop Free by itself.
  */
@@ -211,7 +218,12 @@ export async function runBillingReconcileOnce(deps: BillingReconcileDeps): Promi
   const logger = deps.logger ?? quiet;
   const out = { checked: 0, changed: [] as string[], skippedNoSession: 0 };
   // A row with a subscription is checked even when it says Free: a late webhook may have dropped a paying shop (BILL-01).
-  const rows = await deps.db.shopEntitlement.findMany({ where: { OR: [{ plan: "pro" }, { subscriptionId: { not: null } }] }, orderBy: { checkedAt: "asc" }, take: BILLING_RECONCILE_BATCH, select: { shop: true } });
+  const rows = await deps.db.shopEntitlement.findMany({
+    where: { OR: [{ plan: "pro" }, { subscriptionId: { not: null } }], checkedAt: { lt: new Date(now.getTime() - BILLING_RECHECK_MS) } },
+    orderBy: { checkedAt: "asc" },
+    take: BILLING_RECONCILE_BATCH,
+    select: { shop: true },
+  });
   for (const { shop } of rows) {
     const client = await deps.clientFor(shop).catch(() => null);
     if (!client) {
@@ -350,7 +362,7 @@ export function appTasks(deps: OutletDueDeps): ScheduledTask[] {
     { name: "outlet.due", everyMs: 60_000, run: (now) => runOutletDueOnce({ ...deps, now: () => now }) },
     { name: "campaigns.due", everyMs: 60_000, run: (now) => runCampaignsDueOnce({ db: deps.db, clientFor: deps.clientFor, now: () => now, ...(deps.logger ? { logger: deps.logger } : {}) }) },
     { name: "history.prune", everyMs: 24 * 3_600_000, run: (now) => pruneHistoryOnce(deps.db, now) },
-    { name: "billing.reconcile", everyMs: 24 * 3_600_000, run: (now) => runBillingReconcileOnce({ db: deps.db, clientFor: deps.clientFor, now: () => now, ...(deps.logger ? { logger: deps.logger } : {}) }) },
+    { name: "billing.reconcile", everyMs: 3_600_000, run: (now) => runBillingReconcileOnce({ db: deps.db, clientFor: deps.clientFor, now: () => now, ...(deps.logger ? { logger: deps.logger } : {}) }) },
     { name: "giftcards.hourly", everyMs: 3_600_000, run: () => runGiftCardsOnce({ db: deps.db, clientFor: deps.clientFor, ...(deps.logger ? { logger: deps.logger } : {}) }) },
     { name: "combinations.daily", everyMs: 24 * 3_600_000, run: (now) => runCombinationsDailyOnce({ db: deps.db, clientFor: deps.clientFor, now: () => now, ...(deps.plan ? { plan: deps.plan } : {}), ...(deps.logger ? { logger: deps.logger } : {}) }) },
   ];

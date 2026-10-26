@@ -208,7 +208,7 @@ test("billing.reconcile (MVP 7): shops on Pro are checked against Shopify; an en
   const { runBillingReconcileOnce } = await import("../../../app/lib/jobs/scheduler.server.ts");
   const { storedPlan } = await import("../../../app/lib/billing.server.ts");
   const now = new Date("2026-10-04T10:00:00Z");
-  const pro = (shop: string) => db.prisma.shopEntitlement.create({ data: { shop, plan: "pro", status: "ACTIVE", subscriptionId: "gid://shopify/AppSubscription/1", checkedAt: new Date(now.getTime() - 3_600_000) } });
+  const pro = (shop: string) => db.prisma.shopEntitlement.create({ data: { shop, plan: "pro", status: "ACTIVE", subscriptionId: "gid://shopify/AppSubscription/1", checkedAt: new Date(now.getTime() - 21 * 3_600_000) } }); // due: checked over BILLING_RECHECK_MS ago
   await pro("still-pro.myshopify.com");
   await pro("ended.myshopify.com");
   await pro("no-session.myshopify.com");

@@ -26,7 +26,7 @@ never `fly scale count 2`). These live in the process, not in the database:
 
 - the per-shop config lock and sync queue (`app/lib/integration/lock.server.ts`, `app/lib/sync/sync.server.ts`);
 - the scheduler (`app/lib/jobs/scheduler.server.ts`): sales ending by date, campaign boundaries and the product
-  page's tier table switch, the daily billing reconcile, history pruning;
+  page's tier table switch, the hourly billing reconcile, history pruning;
 - the cost-mirror reconcile, the stale-claim sweep and the margin-impact cache.
 
 Two machines would run every scheduled task twice and let two syncs of one shop interleave. A restart is safe:

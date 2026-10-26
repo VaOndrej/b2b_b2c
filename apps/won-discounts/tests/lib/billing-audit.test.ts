@@ -3,13 +3,12 @@ import { after, before, test } from "node:test";
 
 import type { AdminClient } from "../../app/lib/admin-client.server.ts";
 import { confirmSubscriptionUpdate, ENTITLEMENT_STALE_MS, PRO_PLAN, recordSubscriptionUpdate, storedPlan } from "../../app/lib/billing.server.ts";
-import { BILLING_RECONCILE_BATCH, runBillingReconcileOnce } from "../../app/lib/jobs/scheduler.server.ts";
+import { appTasks, BILLING_RECONCILE_BATCH, runBillingReconcileOnce, runDueTasks } from "../../app/lib/jobs/scheduler.server.ts";
 import { createTestDatabase, type TestDatabase } from "./test-db.ts";
 
 // Audit 2026-10-26 — billing robustness (the plan in force must follow Shopify, BILL-1, also when webhooks arrive
 // late or out of order — Shopify does not guarantee delivery order and retries a failed delivery for up to 48 h —
-// and also when many shops pay). The assertions state the required behaviour; the ones the code does not meet yet
-// are `todo` (reported, not failing the gate) until the production fix is approved — drop `todo` with the fix.
+// and also when many shops pay). Found as `todo` tests, fixed and guarded since (BILL-01, BILL-02).
 
 const H = 3_600_000;
 const T0 = new Date("2026-10-26T08:00:00Z");
@@ -87,17 +86,25 @@ test("BILL-01: the daily reconcile also repairs a paying shop whose row wrongly 
   assert.equal(await storedPlan(db.prisma, shop, now), "pro", "Shopify says B is ACTIVE");
 });
 
-test(`BILL-02: with more than 3 × ${BILLING_RECONCILE_BATCH} paying shops, none of them reads Free between daily reconciles`, { todo: "BILL-02: billing.reconcile checks 50 shops a day while a check goes stale after 72 h — fix pending approval" }, async () => {
+test(`BILL-02: with more than 3 × ${BILLING_RECONCILE_BATCH} paying shops, none of them reads Free between reconciles, and Shopify is asked about once a day per shop`, async () => {
   const shops = Array.from({ length: 4 * BILLING_RECONCILE_BATCH }, (_, i) => `paying-${i}.myshopify.com`);
   await db.prisma.shopEntitlement.createMany({ data: shops.map((shop) => ({ shop, plan: "pro", status: "ACTIVE", subscriptionId: SUB_A, checkedAt: T0 })) });
-  const deps = { db: db.prisma, clientFor: async () => clientWith([{ id: SUB_A, status: "ACTIVE" }]), resync: async () => undefined };
+  let calls = 0;
+  const client = clientWith([{ id: SUB_A, status: "ACTIVE" }]);
+  const counting: AdminClient = { graphql: async (...args) => ((calls += 1), client.graphql(...args)) };
+  // The real task as the scheduler runs it: a tick every hour, the task decides itself whether it is due.
+  const tasks = appTasks({ db: db.prisma, clientFor: async () => counting }).filter((task) => task.name === "billing.reconcile");
   let freeSeen = 0;
-  for (let hour = 1; hour <= 5 * 24; hour += 1) {
+  const days = 5;
+  for (let hour = 1; hour <= days * 24; hour += 1) {
     const now = new Date(T0.getTime() + hour * H);
-    if (hour % 24 === 0) await runBillingReconcileOnce({ ...deps, now: () => now });
-    if (hour === Math.ceil(ENTITLEMENT_STALE_MS / H) + 1) {
+    await runDueTasks(db.prisma, tasks, now);
+    if (hour === Math.ceil(ENTITLEMENT_STALE_MS / H) + 1 || hour === days * 24) {
       for (const shop of shops) if ((await storedPlan(db.prisma, shop, now)) === "free") freeSeen += 1;
     }
   }
   assert.equal(freeSeen, 0, "every shop keeps paying and Shopify says ACTIVE every time it is asked");
+  // The other tests' rows with a subscription are checked too (a handful); without a minimum age the hourly task
+  // would ask 50 shops every hour (6 000 calls).
+  assert.ok(calls <= (shops.length + 10) * (days + 1), `${calls} Shopify reads in ${days} days`);
 });

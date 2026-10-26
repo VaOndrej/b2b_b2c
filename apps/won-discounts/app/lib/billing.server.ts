@@ -4,7 +4,7 @@
 // The plan in force is what SHOPIFY says about the shop's active subscriptions, mirrored in ShopEntitlement:
 //   reconcilePlan(db, client, shop)        reads currentAppInstallation.activeSubscriptions and writes the row. Called
 //                                          by Tarif (every load, and on the return from the confirmation page) and by
-//                                          the scheduler's daily billing.reconcile;
+//                                          the scheduler's billing.reconcile (each shop about once a day);
 //   recordSubscriptionUpdate(db, shop, …)  the app_subscriptions/update webhook: Pro the moment the charge is
 //                                          accepted, Free the moment it is cancelled, expires or freezes. Shopify
 //                                          neither orders nor dedupes deliveries (a failed one is retried for up to
