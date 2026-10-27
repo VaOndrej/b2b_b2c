@@ -59,7 +59,9 @@ export function createTestDatabase(label: string): TestDatabase {
     connect: () => new PrismaClient({ datasourceUrl: url }),
     async drop() {
       await prisma.$disconnect();
-      rmSync(dir, { recursive: true, force: true });
+      // A query still in flight (a job a test started) reconnects and writes the journal while the dir goes:
+      // retry instead of failing the file on ENOTEMPTY (seen in CI, audit 2026-10-26 TEST-01).
+      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     },
   };
 }
