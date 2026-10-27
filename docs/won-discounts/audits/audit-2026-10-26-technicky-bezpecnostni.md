@@ -91,9 +91,10 @@ Slabá místa:
   `shopify.extension.toml`), artefakt cargo zůstává čistý; hlídá to nový test ve `function.contract.test.ts`.
   Mezikrok s připnutím Rustu na 1.98.1 vycházel z chybné hypotézy a je vrácený (`stable`).
   (3) contract testy funkce na čistém runneru závodily o stažení `function-runner` (ENOENT), opraveno sériovým
-  zahřívacím během (`7e06afcc`, v CI ověřeno). **Otevřené:** `tests/contracts/prototypes-lib.contract.test.ts` padá v CI
-  (Node 22) na `Unable to deserialize cloned data due to invalid or unsupported version` (IPC test runneru, ne assertace),
-  2× po sobě v běhu 40386760504; lokálně (Node 26) zelený. Job `won-discounts` proto zatím červený.
+  zahřívacím během (`7e06afcc`, v CI ověřeno); (4) `prototypes-lib.contract` padal na Linuxu s Node 22 v IPC test runneru
+  (`Unable to deserialize cloned data`), job `won-discounts` proto běží na Node 24 (`b9212cdc`); (5) úklid testovací DB po
+  `entry-server.boot.test.ts` padal na `ENOTEMPTY`: test zastaví i plánovač a `rmSync` opakuje (`a43e69c3`, `cc0b86e1`).
+  **Ověřeno:** CI běh 40485112615 (`cc0b86e1`), job `won-discounts` **success**.
 - Testy proti mockům ověřují logiku jednoznačně, ale nic z nich nedoloží chování skutečné Shopify (pořadí webhooků,
   throttling proxy). Na to jsou E2E, které jsou zablokované.
 - `tests/integration/cart-plan.test.ts` „audit P2“ výslovně fixuje, že nacachované odpovědi limit nemají. Je to
