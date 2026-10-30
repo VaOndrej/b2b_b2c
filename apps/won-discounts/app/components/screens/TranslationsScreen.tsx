@@ -34,6 +34,7 @@ import {
 } from "../model/translations";
 import type { TranslationsScreenData, UiResult } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
+import { PageGuide } from "../shell/PageGuide";
 import { boolAttr } from "../shell/attrs";
 import { useFormActions } from "../shell/form-actions";
 import { snapshotOf } from "../shell/form-snapshot";
@@ -230,6 +231,7 @@ export function TranslationsScreen(props: TranslationsScreenProps) {
 
   return (
     <s-page heading={t("module.translations")}>
+      <PageGuide page="translations" />
       <SectionNav label={t("common.onThisPage")} items={sections}>
       <s-stack direction="block" gap="base">
         <Notice result={csvSaved ?? (csvFailure && !csvError ? csvFailure : result)} onReplace={replaceUnreadable} />

@@ -32,6 +32,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { PageGuide } from "../shell/PageGuide";
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
 import { PageSave } from "../shell/PageSave";
 import { useView, ViewPanel } from "../shell/views";
@@ -69,7 +70,7 @@ import { FieldMessage } from "../rule-editor/parts";
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
 import { usePollWhile } from "../shell/poll";
-import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
+import { WON_FONT, WON_INK, WON_MUTED } from "../shell/tokens";
 import { WonSection } from "../shell/WonSection";
 
 export interface MarginScreenProps extends MarginScreenData {
@@ -271,6 +272,7 @@ export function MarginScreen(props: MarginScreenProps) {
 
   return (
     <s-page heading={t("module.margin")}>
+      <PageGuide page="margin" />
       <Form
         method="post"
         ref={formRef}
@@ -330,15 +332,6 @@ export function MarginScreen(props: MarginScreenProps) {
             aside={<MarginProof settings={inForce} currency={shopCurrency} />}
           >
             <s-stack direction="block" gap="base">
-              {/* Feedback 9 Oct 2026, bod 2: first what it does, in three plain steps; then what to fill in. */}
-              <div data-won-margin-how="" style={{ padding: "10px 12px", borderRadius: 11, background: WON_WASH, border: `1px solid ${WON_LINE}`, fontFamily: WON_FONT }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: WON_INK }}>{t("margin.how.title")}</div>
-                <ol style={{ margin: "6px 0 0", paddingLeft: 20, fontSize: 13, lineHeight: 1.5, color: WON_INK }}>
-                  <li>{t("margin.how.1")}</li>
-                  <li>{t("margin.how.2")}</li>
-                  <li>{t("margin.how.3")}</li>
-                </ol>
-              </div>
               <s-switch name={MARGIN_FIELD.enabled} value="on" label={t("margin.enabled")} checked={boolAttr(seed.active ? seed.one(MARGIN_FIELD.enabled, "") === "on" : settings.enabled)} />
               <s-stack direction="block" gap="small-200">
                 <s-text color="subdued">{t("margin.never")}</s-text>

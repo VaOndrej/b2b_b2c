@@ -18,6 +18,7 @@
 import { PlacementsLink, StorefrontPlacements } from "../StorefrontPlacements";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { PageGuide } from "../shell/PageGuide";
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
 import { useView, ViewPanel } from "../shell/views";
 import { Form, useNavigate, useSubmit } from "react-router";
@@ -685,6 +686,7 @@ export function CampaignsScreen(props: CampaignsScreenProps) {
   return (
     <s-page heading={t("module.campaigns")}>
       <DiscountsSubNav active="campaigns" />
+      <PageGuide page="campaigns" />
       <s-stack direction="block" gap="base">
         {isCampaignResult(result) ? <CampaignBanner result={result} /> : <Notice result={result as UiResult | null | undefined} />}
 

@@ -33,6 +33,7 @@ import {
 import { PLAN_ACTION, type PlanActionResult, type PlanScreenData } from "../model/plan";
 import type { CombineType } from "../model/combine";
 import type { SettingsScreenData, UiResult } from "../model/types";
+import { PageGuide } from "../shell/PageGuide";
 import { CombineTypes } from "../shell/CombineTypes";
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
@@ -146,6 +147,7 @@ export function SettingsScreen({ currencies, combineDefault: stored, configVersi
 
   return (
     <s-page heading={t("nav.settings")}>
+      <PageGuide page="settings" />
       <SectionNav label={t("common.onThisPage")} items={sections}>
       <s-stack direction="block" gap="base">
         <Form method="post" ref={formRef} data-save-bar>

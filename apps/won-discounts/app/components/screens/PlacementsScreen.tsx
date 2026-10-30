@@ -12,6 +12,7 @@ import type { MessageKey } from "../../i18n";
 import { PIECES, PLACEMENTS_FIELD, PLACEMENTS_INTENT, pieceTone, type PieceKey, type PieceRow, type PlacementModule, type PlacementsResult, type PlacementsScreenData } from "../model/placements";
 import { tagDef, tagLine } from "../model/theme-brief";
 import { codeEditorUrl, type KnownShow, type ScannedTag } from "../model/theme-scan";
+import { PageGuide } from "../shell/PageGuide";
 import { NotePill, PlacementPill, RowNote, WonRow, WonSection, type SectionGlyphName } from "../shell/WonSection";
 import { DiscountsSubNav } from "../shell/SubNav";
 import { WON_FONT, WON_INK, WON_LINE, WON_WASH } from "../shell/tokens";
@@ -234,6 +235,7 @@ export function PlacementsScreen(props: PlacementsScreenProps) {
   return (
     <s-page heading={t("webPlaces.title")}>
       <DiscountsSubNav active="placements" />
+      <PageGuide page="placements" />
       <s-stack direction="block" gap="base">
         <WonSection
           title={theme ? t("webPlaces.theme", { theme: theme.name }) : t("webPlaces.title")}

@@ -52,6 +52,7 @@ import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
 import { useView, ViewPanel } from "../shell/views";
 import { Finding } from "../shell/Finding";
 import { Notice, ResyncButton } from "../shell/Notice";
+import { PageGuide } from "../shell/PageGuide";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
 import { SegmentedChoice } from "../shell/SegmentedChoice";
@@ -601,8 +602,8 @@ export function TryCartScreen(props: TryCartScreenProps) {
 
   return (
     <s-page heading={t("tryCart.title")}>
+      <PageGuide page="tryCart" />
       <s-stack direction="block" gap="base">
-        <s-paragraph color="subdued">{t("tryCart.intro")}</s-paragraph>
         {/* Before any cart: a mismatch is in the config, every cart has it. */}
         <MismatchSection mismatches={props.mismatches ?? []} configVersion={props.configVersion ?? null} />
         {props.combos ? (

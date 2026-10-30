@@ -21,6 +21,7 @@ import { ruleEditHref, ruleStatus, ruleStatusSummary, type RuleStatus } from "..
 import { codeLimitNear } from "../rule-editor/ApplySection";
 import { syncText } from "../model/signals";
 import type { CodeRuleLimit, CurrencyView, GateNoteView, RuleSyncMap, SyncView, UiResult } from "../model/types";
+import { PageGuide } from "../shell/PageGuide";
 import { Notice, ResyncButton } from "../shell/Notice";
 import { DiscountsSubNav } from "../shell/SubNav";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
@@ -171,6 +172,7 @@ export function DiscountsScreen({
   return (
     <s-page heading={t("discounts.title")}>
       <DiscountsSubNav active="discounts" />
+      <PageGuide page="discounts" />
       <s-button slot="primary-action" variant="primary" href="/app/discounts/new">
         {t("discounts.new")}
       </s-button>

@@ -2,14 +2,16 @@
 import "./support/raw-import.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
-import type { DiscountRule } from "@won/core/discounts/config";
+import { DEFAULT_CONFIG, type DiscountRule, type WonDiscountsConfig } from "@won/core/discounts/config";
 
 import { collectWarnings } from "../../app/components/model/describe.ts";
 import { nativeAdminUrl, nativeNeedsSection, nativeOutsideCount, NOT_WIRED_SIGNALS, statusAllGood, statusSummary } from "../../app/components/model/signals.ts";
 import type { AdminSignals, NativeView, TryCartLineView } from "../../app/components/model/types.ts";
 import { onboardingHasNative, onboardingProgress, onboardingStep, onboardingSteps } from "../../app/components/screens/OnboardingScreen.tsx";
-import { ruleFix } from "../../app/components/screens/OverviewScreen.tsx";
+import { buildOverviewProps, OverviewScreen, ruleFix } from "../../app/components/screens/OverviewScreen.tsx";
 import { cartSnapshot, lineLabel, reconcileLines, ruleBlockedReason, type TryCartRuleView } from "../../app/components/screens/TryCartScreen.tsx";
 import { translator } from "../../app/i18n/index.ts";
 
@@ -39,7 +41,7 @@ test("P2: 'Slevy vytvořené přímo v Shopify' exists only when there is someth
 test("B10: the store status reaches 'all good' — checkout verification is not counted", () => {
   const good: AdminSignals = { ...NOT_WIRED_SIGNALS, embed: { state: "on", activateUrl: null }, sync: { state: "ok", at: "2026-09-28T16:20:00" } };
   assert.equal(good.checkout.state, "not_wired");
-  assert.equal(statusSummary(good, tr), "Slevy platí na webu i v pokladně (poslední krok objednávky)");
+  assert.equal(statusSummary(good, tr), "Slevy platí na webu i v pokladně");
   assert.equal(statusSummary({ ...good, sync: { state: "pending" } }, tr), "1 ze 2 zatím neověřeno");
   // Feedback 2, bod 1: the section carries the green "Aktivní" pill exactly when both hold.
   assert.equal(statusAllGood(good), true);
@@ -70,6 +72,18 @@ test("B16: one step count for the guide and Přehled; step 2 only with something
   assert.deepEqual(onboardingProgress(3, { embedOn: false, rules: 0, hasNative: true }), { step: 3, position: 3, total: 5 });
   assert.deepEqual(onboardingProgress(3, { embedOn: false, rules: 0, hasNative: false }), { step: 3, position: 2, total: 4 });
   assert.deepEqual(onboardingProgress(4, { embedOn: false, rules: 0, hasNative: false }), { step: 4, position: 3, total: 4 });
+});
+
+test("Přehled: Milníky finish the guide's first-discount step, so its card does not ask to go on", () => {
+  const signals: AdminSignals = { ...NOT_WIRED_SIGNALS, embed: { state: "on", activateUrl: null } };
+  const card = (config: WonDiscountsConfig) => renderToStaticMarkup(createElement(OverviewScreen, buildOverviewProps(config, { readOnly: false, signals })));
+  const shop = { ...DEFAULT_CONFIG, onboarding: { goals: ["rewards"], step: 4 } } as unknown as WonDiscountsConfig;
+
+  assert.match(card(shop), /Krok 3 z 4/, "nothing set up yet: the card stays");
+
+  const rewards = { ...shop.modules.rewards, freeShipping: { threshold: { CZK: 40_00 } } };
+  const withReward: WonDiscountsConfig = { ...shop, modules: { ...shop.modules, rewards } };
+  assert.doesNotMatch(card(withReward), /Pokračovat v průvodci/);
 });
 
 const rule = (over: Partial<DiscountRule>): DiscountRule => ({

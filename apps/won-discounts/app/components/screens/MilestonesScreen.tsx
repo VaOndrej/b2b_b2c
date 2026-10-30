@@ -29,6 +29,7 @@ import { amountKeyCurrency } from "@won/core/discounts/money";
 import type { MessageKey } from "../../i18n";
 import { useT } from "../../i18n/context";
 import { LookSection } from "../looks/LookSection";
+import { PageGuide } from "../shell/PageGuide";
 import { ModuleCombine } from "../shell/ModuleCombine";
 import { presetLabel } from "../model/looks";
 import { editorOpenUrl, embedPlacement, placementOf, spotAdvice } from "../model/embed";
@@ -401,6 +402,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
   return (
     <s-page heading={t("module.rewards")}>
       <DiscountsSubNav active="rewards" />
+      <PageGuide page="rewards" />
       {/* The notice, what to do next and the tiles are not fields: they sit above the form. */}
       <s-stack direction="block" gap="base">
       <Notice result={result} onReplace={replaceUnreadable} />

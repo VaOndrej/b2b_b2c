@@ -23,6 +23,7 @@ import { OUTLET_COMBINE_CLASSES } from "@won/core/discounts/outlet";
 
 import { useT } from "../../i18n/context";
 import { LookSection } from "../looks/LookSection";
+import { PageGuide } from "../shell/PageGuide";
 import { hoverMark } from "../shell/hover";
 import { pickProducts } from "../model/app-bridge";
 import { combineSummary } from "../model/combine";
@@ -941,6 +942,7 @@ export function OutletScreen(props: OutletScreenProps) {
   return (
     <s-page heading={t("module.outlet")}>
       <DiscountsSubNav active="outlet" />
+      <PageGuide page="outlet" />
       <s-stack direction="block" gap="base">
         {isOutletResult(result) ? <OutletBanner result={result} /> : <Notice result={result as UiResult | null | undefined} />}
         {!ordersCounted && (pro || running.length > 0) ? (

@@ -282,7 +282,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       // Feedback 9 Oct 2026, bod 2: what to fill in, with an example in numbers; how it is computed comes after.
       /Nevíte\? Nechte prázdné\./,
       /Počítá se jako marže v Shopify, z ceny, kterou zákazník zaplatí \(u cen s DPH včetně DPH\)/,
-      /data-won-margin-how=""/,
+      /U produktu bez nákupní ceny sleva nepřekročí procento, které určíte\./,
       /nikdy neblokuje objednávku/,
       /Ochrana hlídá jen slevy, které běží přes Won Discounts\. O slevách vytvořených přímo v Shopify neví\./,
       /href="\/app#native"/,

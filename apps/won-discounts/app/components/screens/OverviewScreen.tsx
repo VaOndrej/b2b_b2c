@@ -50,7 +50,7 @@ import { RefreshTargetingButton, ResyncButton } from "../shell/Notice";
 import { Finding } from "../shell/Finding";
 import { PlacementPill, RowNote, StatusPill, WonRow, WonSection } from "../shell/WonSection";
 import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
-import { onboardingHasNative, onboardingProgress } from "./OnboardingScreen";
+import { firstSetups, onboardingHasNative, onboardingProgress } from "./OnboardingScreen";
 
 export interface OverviewScreenProps {
   schemaVersion: number;
@@ -62,6 +62,8 @@ export interface OverviewScreenProps {
   currencies?: CurrencyView[];
   /** Onboarding step 1–5 and goals from the config (goals order the modules). */
   onboardingStep?: number;
+  /** Discounts and Milníky that finish the guide's first-discount step (firstSetups). Absent → the discounts alone. */
+  setups?: number;
   goals?: OnboardingGoal[];
   /** Shop-local today and zone: a rule's schedule is judged on the shop's day. */
   today?: string;
@@ -119,6 +121,7 @@ export function buildOverviewProps(
     rules,
     currencies: currencyViews(config.markets, { shopCurrency: opts.shopCurrency, rules, marketNames: opts.marketNames }),
     onboardingStep: config.onboarding.step,
+    setups: firstSetups(config),
     goals: [...config.onboarding.goals],
     today: shopToday(timezone, opts.now),
     timezone,
@@ -303,6 +306,7 @@ export function OverviewScreen({
   rules,
   currencies = [],
   onboardingStep,
+  setups,
   today,
   timezone = null,
   signals,
@@ -326,8 +330,9 @@ export function OverviewScreen({
   const targeting = status.targeting;
   const syncAttention = status.sync.state === "ok" ? (status.sync.attention ?? []) : [];
   // B16: the same step and the same number of steps as the guide itself shows.
-  const progress = onboardingProgress(onboardingStep ?? 1, { embedOn: status.embed.state === "on", rules: ruleCount, hasNative: onboardingHasNative(status.native) });
-  const showOnboarding = onboardingStep !== undefined && ruleCount === 0;
+  const firstDone = setups ?? ruleCount;
+  const progress = onboardingProgress(onboardingStep ?? 1, { embedOn: status.embed.state === "on", rules: firstDone, hasNative: onboardingHasNative(status.native) });
+  const showOnboarding = onboardingStep !== undefined && firstDone === 0;
   // The embed row's action: switch it on in the theme editor; where the state cannot be read (no permission,
   // or no link to the editor), read it again.
   const embedAction =

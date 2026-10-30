@@ -29,6 +29,7 @@ import { Form, useSubmit } from "react-router";
 
 import { useT } from "../../i18n/context";
 import { CardPricesSection } from "../looks/CardPricesSection";
+import { PageGuide } from "../shell/PageGuide";
 import { ModuleCombine } from "../shell/ModuleCombine";
 import { LookSection } from "../looks/LookSection";
 import { blockPlacement } from "../model/embed";
@@ -265,6 +266,7 @@ export function TiersScreen(props: TiersScreenProps) {
   return (
     <s-page heading={t("module.tiers")}>
       <DiscountsSubNav active="tiers" />
+      <PageGuide page="tiers" />
       <Form method="post" ref={formRef} data-save-bar>
         <input type="hidden" name={F.intent} value={TIERS_INTENT.save} />
         {configVersion ? <input type="hidden" name={F.configVersion} value={configVersion} /> : null}

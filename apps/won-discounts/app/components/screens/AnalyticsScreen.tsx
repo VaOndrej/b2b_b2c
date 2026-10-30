@@ -11,6 +11,7 @@
 
 import { useT } from "../../i18n/context";
 import type { AnalyticsScreenData } from "../model/analytics";
+import { PageGuide } from "../shell/PageGuide";
 import { ProSell } from "../shell/ProSell";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 import { WON_AMBER, WON_INK, WON_MUTED } from "../shell/tokens";
@@ -83,6 +84,7 @@ export function AnalyticsScreen(props: AnalyticsScreenProps) {
   const noData = !available || empty;
   return (
     <s-page heading={t("nav.analytics")}>
+      <PageGuide page="analytics" />
       <s-stack direction="block" gap="base">
         {noData ? (
           // One sentence and one next step: there is nothing to chart yet.

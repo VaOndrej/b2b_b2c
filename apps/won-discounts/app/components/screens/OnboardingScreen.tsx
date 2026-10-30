@@ -62,6 +62,12 @@ export function rewardsStored(config: WonDiscountsConfig): boolean {
   return config.modules.rewards.freeShipping !== undefined || config.modules.rewards.gifts.length > 0 || config.modules.codes.rules.some(isMilestoneRule);
 }
 
+/** What finishes the first-discount step: each discount, and Milníky as one (N1) — one count for the guide and Přehled. */
+export function firstSetups(config: WonDiscountsConfig): number {
+  const rules = config.modules.codes.rules.filter((rule) => !isMilestoneRule(rule)).length;
+  return rules + (rewardsStored(config) ? 1 : 0);
+}
+
 export function buildOnboardingProps(
   config: WonDiscountsConfig,
   opts: {
@@ -79,8 +85,7 @@ export function buildOnboardingProps(
   const rules = config.modules.codes.rules.filter((rule) => !isMilestoneRule(rule)).length;
   const rewards = !rewardsStored(config) ? "none" : opts.rewardsLive ? "live" : "set";
   return {
-    // N1: a stored reward is a first discount too.
-    step: onboardingStep(config.onboarding.step, { embedOn: opts.embed.state === "on", rules: rules + (rewards === "none" ? 0 : 1), hasNative: onboardingHasNative(opts.native) }),
+    step: onboardingStep(config.onboarding.step, { embedOn: opts.embed.state === "on", rules: firstSetups(config), hasNative: onboardingHasNative(opts.native) }),
     rewards,
     ...(opts.plan ? { plan: opts.plan } : {}),
     ...(opts.storeUrl ? { storeUrl: opts.storeUrl } : {}),
