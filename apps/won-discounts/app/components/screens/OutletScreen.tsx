@@ -39,7 +39,6 @@ import { PartRefusal, useOneSave } from "../shell/one-save";
 import { useFormActions } from "../shell/form-actions";
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
 import { Notice } from "../shell/Notice";
-import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
 import { DiscountsSubNav } from "../shell/SubNav";
 import { editorOnProductOf, editorOpenUrl, placementOf, spotAdvice } from "../model/embed";
@@ -1031,11 +1030,10 @@ export function OutletScreen(props: OutletScreenProps) {
         {pro ? (
           <div id="new" style={{ scrollMarginTop: 16 }}>{form}</div>
         ) : (
-          <WonSection title={t("outlet.new.title")} glyph="tag" pro locked hint={t("outlet.view.new.about")} anchor="new">
-            <s-stack direction="block" gap="base">
-              <ProSell benefit={t("outlet.pro.benefit")} />
-              <ProFrame locked>{form}</ProFrame>
-            </s-stack>
+          // Free: one Pro note with the way to the plan; the locked form is not drawn (doctrine §18h, audit F4). The tile
+          // above says "Pro · odemknout".
+          <WonSection title={t("outlet.new.title")} glyph="tag" hint={t("outlet.view.new.about")} anchor="new">
+            <ProSell benefit={t("outlet.pro.benefit")} />
           </WonSection>
         )}
 

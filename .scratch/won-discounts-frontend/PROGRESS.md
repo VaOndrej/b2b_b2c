@@ -2,9 +2,9 @@
 
 ## CHECKPOINT
 
-- **Hotové tickety:** 01–15
-- **Rozdělaný:** 16 (Pro jednou: moduly), nezačatý
-- **Další krok:** 16: žlutý banner → s-banner warning, Výprodej bez opakovaného Pro
+- **Hotové tickety:** 01–16
+- **Rozdělaný:** 17 (výklad pod PageGuide), nezačatý
+- **Další krok:** 17: Marže jeden příklad, Překlady a Množstevní slevy bez opakování PageGuide, slova −20 %
 - **Čeká na Ondřeje:** 07 formát data v adminu, 09, 10, 11 Save Bar v shopify app dev (postupy v ticketech); 10: per-run úpravy výprodeje na s-modal?
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
@@ -28,7 +28,8 @@
 | 12 | done | a39b3eee | `evidence/frontend-12/`, E2E admin.state-once |
 | 13 | done | e67ed844 | `evidence/frontend-13/` |
 | 14 | done | 65740cd4 | `evidence/frontend-14/` |
-| 15 | done | viz git log | `evidence/frontend-15/` |
+| 15 | done | 1b169162 | `evidence/frontend-15/` |
+| 16 | done | viz git log | `evidence/frontend-16/` |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 

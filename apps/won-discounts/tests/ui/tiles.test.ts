@@ -180,10 +180,8 @@ test("a theme placement says where it stands — green in the theme, red missing
 test("Pro is marked once per section — nothing amber and no second Pro marker inside", async () => {
   const cases: [string, string][] = [
     ["tiers?plan=pro", "pro"],
-    ["tiers", "pro"],
     ["margin?plan=pro", "collections"],
     ["margin", "collections"],
-    ["outlet", "new"],
     ["campaigns", "form"],
     ["analytics", "rules"],
     ["plan?plan=pro", "pro"],
@@ -193,6 +191,12 @@ test("Pro is marked once per section — nothing amber and no second Pro marker 
     assert.equal(count(markup, PRO_BADGE), 1, `${path} #${id}: exactly one Pro marker`);
     assert.doesNotMatch(markup, /data-won-pro-frame="amber"/, `${path} #${id}: no amber frame inside a Pro section`);
     assert.doesNotMatch(markup, /data-won-block="pro"/, `${path} #${id}: nested blocks are neutral`);
+  }
+  // Free, a Pro section under a Pro tile: the note is its one Pro mention, no badge of its own (doctrine §18h).
+  for (const [path, id] of [["tiers", "pro"], ["outlet", "new"]] as const) {
+    const markup = section(await render(path), id);
+    assert.equal(count(markup, PRO_BADGE), 0, `${path} #${id}: no badge`);
+    assert.equal(markup.split("data-won-pro-sell").length - 1, 1, `${path} #${id}: one Pro note`);
   }
   // The editor's last section is every plan's (which discounts add up); only its exceptions and markets are Pro.
   // On Pro: the markets carry the section's one Pro marker, nothing is locked. On Free (doctrine §18h, audit F4): one

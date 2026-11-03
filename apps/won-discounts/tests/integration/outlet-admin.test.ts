@@ -203,13 +203,13 @@ test("an unknown intent is a bad request", async () => {
   assert.deepEqual(await outletAction(ctx, formOf([[F.intent, "drop-table"]])), { ok: false, reason: "bad_request" });
 });
 
-test("screen: Free shows the form locked in the amber Pro frame (§16b), never red; Pro shows the start button enabled", async () => {
+test("screen: Free shows one amber Pro note with the plan link and no locked form (§18h), never red; Pro shows the start button enabled", async () => {
   const free = await renderPage(createElement(OutletScreen, devOutletScreen({ plan: "free", state: null, locale: "cs" })));
   assert.ok(free.includes(WON_AMBER), "amber Pro frame");
   assert.match(text(free), /S Pro doprodáte zvolený počet kusů varianty se slevou/);
   assert.match(free, /href="\/app\/plan"/, "the plan link");
   assert.doesNotMatch(text(free), /Takhle by vypadal/);
-  assert.match(free, /<s-button[^>]*type="submit"[^>]*variant="primary"[^>]*disabled/, "start disabled on Free");
+  assert.doesNotMatch(free, /data-won-outlet-new/, "no locked start form on Free");
   const pro = text((await renderPage(createElement(OutletScreen, devOutletScreen({ plan: "pro", state: null, locale: "cs" })))).replace(/<[^>]+>/g, " "));
   assert.match(pro, /Spustit výprodej/);
   assert.match(pro, /Prodáno o 1 ks víc, než bylo k doprodeji/);

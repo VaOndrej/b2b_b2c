@@ -57,3 +57,17 @@ test("the rule editor on Free: one Pro note in Kombinace a trhy, no locked contr
   await expect(page.locator("section#pro [data-won-pro-sell]")).toHaveCount(0);
   expect(await page.locator('section#pro s-checkbox[name="markets"]').evaluateAll((els) => els.filter((el) => el.hasAttribute("disabled")).length)).toBe(0);
 });
+
+test("Množstevní slevy, Milníky, Výprodej on Free: at most one Pro mention in a section; the stored-Pro banner keeps its list and plan link", async ({ page }) => {
+  for (const path of ["tiers", "rewards", "outlet"]) {
+    await open(page, path);
+    const perSection = await page.evaluate(() =>
+      [...document.querySelectorAll("section")].map((el) => ({ id: el.id, n: el.querySelectorAll("[data-won-plan-badge], [data-won-pro-sell]").length })),
+    );
+    for (const { id, n } of perSection) expect(n, `${path} #${id}`).toBeLessThanOrEqual(1);
+  }
+  await open(page, "rewards");
+  const banner = page.locator('s-banner[tone="warning"]', { hasText: "Tohle je v tarifu Pro" });
+  await expect(banner.locator("s-list-item").first()).toBeAttached();
+  await expect(banner.locator('s-button[href="/app/plan"]')).toHaveCount(1);
+});

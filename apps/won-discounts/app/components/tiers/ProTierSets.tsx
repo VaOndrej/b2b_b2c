@@ -171,7 +171,9 @@ export function ProTierSets({
   const modeOf = (set: TierSetView): Mode => modes[set.id] ?? (storedIds?.has(set.id) && set.breaks.length === 0 ? "none" : "own");
   const add = () => setOpenId(onAdd());
   return (
-    <WonSection title={t("tiers.pro.title")} glyph="target" pro locked={!pro} summary={t("tiers.view.exceptions.about")} anchor="pro">
+    // One Pro mention per section (doctrine §18h, audit 2026-11-03 F4): on Free the note below is it (the tile above
+    // carries "Pro · odemknout"); on Pro the section's own marker.
+    <WonSection title={t("tiers.pro.title")} glyph="target" pro={pro} summary={t("tiers.view.exceptions.about")} anchor="pro">
       <s-stack direction="block" gap="base">
         {!pro ? <ProSell benefit={t("tiers.pro.benefit")} /> : null}
         {capacity && capacityLine ? (
