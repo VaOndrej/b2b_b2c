@@ -186,6 +186,13 @@ export function describeRuleLine(
     .join(SEP);
 }
 
+/** The state line split for the table: what the discount gives, and how it applies. The dates have their own column. */
+export function describeRuleBrief(rule: DiscountRule, tr: Translator, currencies: readonly string[], names: RuleLineNames = {}): { what: string; how: string } {
+  const p = parts(rule, tr, currencies, names.marketNames);
+  const what = [p.value, ...p.minimum, describeItemMinimums(rule, tr), describeLimits(rule, tr), describeMarkets(rule, tr, names.marketNames), describeExceptions(rule, tr, names.ruleNames), p.notOffered ?? ""].filter(Boolean).join(SEP);
+  return { what, how: p.method.replace(/^./, (ch) => ch.toLocaleUpperCase(tr.locale)) };
+}
+
 /**
  * What the Pro block is set to (§17c: what is stored; what checkout cannot
  * evaluate yet is said, never sold as working). Without a combination it says

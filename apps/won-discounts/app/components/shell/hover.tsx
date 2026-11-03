@@ -5,6 +5,7 @@
 //   card   a surface to click (a tile, a choice card, a ready-made look): the border darkens, it lifts by a pixel;
 //   row    a header that opens what is under it (a collapsible section, <summary>): a faint wash;
 //   chip   a small pill or a segment of a segmented choice: a faint wash and a darker text;
+//   line   a whole row of a list or a table: a faint wash, no shape of its own;
 //   icon   a bare icon button (×): a wash under the glyph;
 //   link   a text button drawn as a link: the text takes the selection blue.
 // The chosen one (aria-current, aria-pressed, data-won-on) and a disabled one do not answer: hover never competes
@@ -15,7 +16,7 @@
 
 import { WON_INK, WON_SELECT } from "./tokens";
 
-export type HoverKind = "tab" | "card" | "row" | "chip" | "icon" | "link";
+export type HoverKind = "tab" | "card" | "row" | "line" | "chip" | "icon" | "link";
 
 /** The attribute that makes an element answer the pointer. `on`: it is the chosen one (it then stays as it is). */
 export function hoverMark(kind: HoverKind, on = false): Record<string, string> {
@@ -34,6 +35,7 @@ export const WON_HOVER_CSS = `
 [data-won-hover="card"]:has(input:focus-visible){outline:2px solid ${WON_SELECT};outline-offset:2px}
 [data-won-hover="row"]{border-radius:10px}
 [data-won-hover="row"]${OFF}:hover{background:${WASH}!important;box-shadow:0 0 0 6px ${WASH}}
+[data-won-hover="line"]${OFF}:hover,s-clickable:hover>[data-won-hover="line"]${OFF},button:hover>[data-won-hover="line"]${OFF}{background:#fafbfc!important}
 [data-won-hover="chip"]${OFF}:hover{color:${WON_INK}!important;background:${WASH}!important;border-color:#8fa3b8!important}
 [data-won-hover="icon"]${OFF}:hover{color:${WON_INK}!important;background:rgba(17,20,24,.09)!important}
 [data-won-hover="link"]${OFF}:hover{color:${WON_SELECT}!important}

@@ -25,7 +25,7 @@ import { needsAttention, statusLabel, type RuleStatus } from "../model/rule-stat
 import { hoverMark } from "./hover";
 import { PlanBadge } from "./PlanBadge";
 import { ProMarked } from "./pro-marked";
-import { WON_AMBER, WON_ATTENTION, WON_CARD_SHADOW, WON_FAINT, WON_FONT, WON_INK, WON_LINE, WON_LIVE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "./tokens";
+import { WON_AMBER, WON_ATTENTION, WON_CARD_SHADOW, WON_EDGE, WON_FAINT, WON_FONT, WON_INK, WON_LINE, WON_LIVE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH, WON_SCHEDULED, WON_SCHEDULED_BG, WON_SCHEDULED_EDGE } from "./tokens";
 
 export type SectionGlyphName =
   | "tag"
@@ -179,13 +179,15 @@ function Glyph({ name }: { name: SectionGlyphName }) {
 /** Is a module's piece on the storefront in the live theme? (feedback 3, bod 5; doctrine §19c) */
 export type PlacementState = "in_theme" | "missing" | "unknown";
 
-type PillTone = "live" | "attention" | "warning" | "neutral";
+type PillTone = "live" | "attention" | "warning" | "scheduled" | "neutral";
 
 const PILL_COLOR: Readonly<Record<PillTone, { text: string; dot: string; background: string; border: string }>> = {
   live: { text: WON_LIVE, dot: WON_LIVE, background: "rgba(26,143,75,.10)", border: "rgba(26,143,75,.28)" },
   attention: { text: WON_ATTENTION, dot: WON_ATTENTION, background: "rgba(180,35,24,.07)", border: "rgba(180,35,24,.3)" },
   // Orange (not the Pro amber): it is there and works, but not where it should be (feedback 10 Oct 2026, bod 6).
   warning: { text: "#B4530A", dot: "#E0700E", background: "rgba(224,112,14,.10)", border: "rgba(224,112,14,.35)" },
+  // Light orange, not the Pro amber: it will run on its date (Ondřej, 31 Oct 2026).
+  scheduled: { text: WON_SCHEDULED, dot: "#F08A3C", background: WON_SCHEDULED_BG, border: WON_SCHEDULED_EDGE },
   neutral: { text: "#5f6b78", dot: "#c3cad2", background: WON_WASH, border: WON_LINE },
 };
 
@@ -269,7 +271,7 @@ export function StatusPill({ on, status, state }: { on?: boolean; status?: RuleS
   const live = status ? status.kind === "live" : on === true;
   const attention = status ? needsAttention(status) : false;
   const label = status ? statusLabel(status, tr) : on ? tr.t("common.live") : tr.t("common.off");
-  return <Pill tone={live ? "live" : attention ? "attention" : "neutral"} label={label} />;
+  return <Pill tone={live ? "live" : attention ? "attention" : status?.kind === "scheduled" ? "scheduled" : "neutral"} label={label} />;
 }
 
 /** Green "V tématu" / red "Chybí v tématu" / grey "Neověřeno": the same three everywhere a piece sits in the theme. */
@@ -376,6 +378,8 @@ export interface WonSectionProps {
   /** Pro-gated section: amber edge + marker; `locked` sells it. */
   pro?: boolean;
   locked?: boolean;
+  /** Přehled: the outline of the home tiles (V3), so the page reads as one set of objects. */
+  outlined?: boolean;
   /** §10 consequence / mini preview under the header. */
   proof?: ReactNode;
   /** Opt-in second column for the section's local consequence (§17f); wraps under the body on narrow screens. */
@@ -407,6 +411,7 @@ export function WonSection({
   defaultOpen = true,
   anchor,
   children,
+  outlined = false,
 }: WonSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   useHashOpen(anchor, setOpen);
@@ -479,6 +484,7 @@ export function WonSection({
         scrollMarginTop: 16,
         // Amber edge = Pro, readable before any text (§16a/§16b).
         ...(pro ? { borderColor: "rgba(217,168,58,.55)" } : null),
+        ...(outlined ? { borderColor: WON_EDGE, borderRadius: 12, boxShadow: "none" } : null),
       }}
     >
       {collapsible ? (
@@ -616,7 +622,7 @@ export function WonBlock({
 }
 
 /** A section list row: text on the left, one action on the right; wraps on phones. */
-export function WonRow({ children, action, tone }: { children: ReactNode; action?: ReactNode; tone?: "attention" }) {
+export function WonRow({ children, action, below, tone }: { children: ReactNode; action?: ReactNode; /** Across the whole row, under the text and the action. */ below?: ReactNode; tone?: "attention" }) {
   return (
     <div
       style={{
@@ -632,6 +638,7 @@ export function WonRow({ children, action, tone }: { children: ReactNode; action
     >
       <div style={{ flex: "1 1 220px", minWidth: 0 }}>{children}</div>
       {action ? <div style={{ flex: "0 0 auto" }}>{action}</div> : null}
+      {below ? <div style={{ flex: "1 1 100%", minWidth: 0 }}>{below}</div> : null}
     </div>
   );
 }

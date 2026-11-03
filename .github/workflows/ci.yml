@@ -12,6 +12,22 @@ jobs:
   static:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Won Toasts runs on Postgres: its service tests build a throwaway schema here (the same image and login as
+    # apps/won-toasts/docker-compose.yml).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: won
+          POSTGRES_PASSWORD: won
+          POSTGRES_DB: won_toasts
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U won -d won_toasts"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -38,6 +54,8 @@ jobs:
         run: npm run guard:test:core -w b2b-companion
 
       - name: Won Toasts unit and contract tests
+        env:
+          DATABASE_URL: postgresql://won:won@localhost:5432/won_toasts
         run: npm run test:unit -w won-toasts
 
       - name: Lint standalone template and app

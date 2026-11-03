@@ -2,13 +2,11 @@
 // of the cart; a step is an amount for every market and one reward: a free gift, free shipping, or a discount off
 // the whole order. It replaces "Odměny" (free shipping and gifts as two separate sections); what was stored reads
 // as steps as it is (core milestones.ts).
-//   Stupně   1. the ladder as the customer sees it, from the form as it is NOW (rewards/MilestonePreview);
-//            2. the amounts as a table — a row per step, a column per market; "Navrhnout ostatní trhy" fills the
-//               empty cells from the rates set by hand in Shopify, to be checked and saved (never saved by itself);
-//            3. a numbered card per step: the reward's kind and its settings;
-//            4. what counts into the cart value (one setting for the whole ladder).
+// The page (Ondřej, 31 Oct 2026): one sentence on what milestones are, the new step by its reward, the steps as a
+// table where a row opens in place, the ladder as the customer sees it from the form as it is NOW
+// (rewards/MilestonePreview), and the settings of the whole ladder.
 //   Na webu  the four places the ladder shows (the top strip, the product page, the cart drawer, the cart page),
-//            each with its label and its one button.
+//            each with its label and its one button; opened from the settings, with the way back on top.
 // One save for the whole form; the server parses the same fields (model/milestones.ts readMilestonesForm, SEC-1).
 // Limits hold PER MARKET: Free runs the 2 steps with the lowest amount in each market, Pro 6 — here and on the
 // server. A step past a market's limit stays stored, visible and editable; the row says in which market it is
@@ -22,20 +20,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Form, useSubmit } from "react-router";
 
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
-import { formatMoney } from "@won/core/discounts/describe";
 import type { MilestoneKind } from "@won/core/discounts/milestones";
 import { amountKeyCurrency } from "@won/core/discounts/money";
 
 import type { MessageKey } from "../../i18n";
 import { useT } from "../../i18n/context";
 import { LookSection } from "../looks/LookSection";
-import { PageGuide } from "../shell/PageGuide";
 import { ModuleCombine } from "../shell/ModuleCombine";
 import { presetLabel } from "../model/looks";
 import { editorOpenUrl, embedPlacement, placementOf, spotAdvice } from "../model/embed";
 import { PlacementsLink, SpotNote } from "../StorefrontPlacements";
 import { placementStatus } from "../model/module-status";
-import { amountInput, amountsText, emptyStepView, liveAmounts, MILESTONES_INTENT, milestoneRowsMax, MS_FIELD, overLimitColumns, rewardText, stepMissingColumns, stepSummary } from "../model/milestones";
+import { amountInput, amountsText, emptyStepView, liveAmounts, MILESTONES_INTENT, milestoneRowsMax, MS_FIELD, overLimitColumns, rewardText, stepMissingColumns } from "../model/milestones";
 import { freeShippingDefaults } from "../model/rule-form";
 import type { EmbedState, EmbedView, GiftVariantView, LookView, MilestoneStepView, RewardsScreenData, UiResult } from "../model/types";
 import { pickGiftVariants } from "../rewards/gift-picker";
@@ -46,16 +42,16 @@ import { boolAttr } from "../shell/attrs";
 import { snapshotOf } from "../shell/form-snapshot";
 import { GateNotes } from "../shell/GateNotes";
 import { hoverMark } from "../shell/hover";
-import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
+import { PickList, PlainHead, type PickIcon } from "../shell/PickList";
 import { Notice } from "../shell/Notice";
 import { ProSell } from "../shell/ProSell";
 import { SegmentedChoice } from "../shell/SegmentedChoice";
 import { DiscountsSubNav } from "../shell/SubNav";
-import { WON_ATTENTION, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "../shell/tokens";
+import { WON_ATTENTION, WON_EDGE, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "../shell/tokens";
 import { PageSave } from "../shell/PageSave";
 import { useView, ViewPanel } from "../shell/views";
 import { usePolarisJump } from "../shell/scroll";
-import { PlacementPill, RowNote, WonRow, WonSection, type PlacementState } from "../shell/WonSection";
+import { PlacementPill, RowNote, StatusPill, WonRow, WonSection, type PlacementState } from "../shell/WonSection";
 
 const F = MS_FIELD;
 
@@ -89,17 +85,21 @@ const stepAnchor = (index: number) => `step-${index + 1}`;
 /** The two questions of a step's form ("1. Co zákazník dostane", "2. Od jaké hodnoty košíku"). */
 const STEP_HEADING = { fontFamily: WON_FONT, fontSize: 13.5, fontWeight: 700, color: WON_INK } as const;
 
-/** The steps and, beside them, the preview (a column that stays in view); one column under 1000 px, the preview first. */
-const LAYOUT_CSS = `
-.won-ms-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start;margin-top:16px}
-.won-ms-layout__preview{order:-1;min-width:0}
-@media (min-width:1000px){
-.won-ms-layout--preview{grid-template-columns:minmax(0,1fr) minmax(300px,380px)}
-.won-ms-layout__preview{order:0;position:sticky;top:16px}
-}
+/** The steps as a table; on a phone the amount and the state share the line under the reward. */
+const TABLE_CSS = `
+.won-ms-row{box-sizing:border-box;display:grid;grid-template-columns:minmax(120px,190px) minmax(0,1fr) 170px 150px;gap:4px 14px;align-items:center;padding:11px 16px}
+@media (max-width:640px){.won-ms-row{grid-template-columns:minmax(0,1fr) auto}.won-ms-row__market,.won-ms-head{display:none}.won-ms-row__reward{grid-column:1/-1;grid-row:1}}
 `;
 
-const BADGE = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 999, background: WON_INK, color: "#fff", fontSize: 12.5, fontWeight: 700, flex: "0 0 auto" } as const;
+/** A row of the settings: the frame around them carries no padding of its own. */
+const SETTING = { paddingInline: 16 } as const;
+
+/** The new step by its reward: the same three a step's form offers. */
+const NEW_STEPS: readonly { kind: MilestoneKind; icon: PickIcon; title: MessageKey; body: MessageKey }[] = [
+  { kind: "shipping", icon: "truck", title: "milestones.kind.shipping", body: "milestones.new.shipping" },
+  { kind: "gift", icon: "gift", title: "milestones.kind.gift", body: "milestones.new.gift" },
+  { kind: "discount", icon: "percent", title: "milestones.new.discountTitle", body: "milestones.new.discount" },
+];
 
 function errorText(result: UiResult | null | undefined, field: string, t: ReturnType<typeof useT>["t"]): string | undefined {
   if (!result || result.ok || result.reason !== "invalid") return undefined;
@@ -245,6 +245,18 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
   }, []);
   const refused = !!result && !result.ok;
 
+  // "Co se počítá" sits under the preview, and the preview stays outside the form: the switch keeps a hidden field of
+  // the form up to date (the same way a picked gift does).
+  const [countNow, setCountNow] = useState(countOther);
+  useEffect(() => setCountNow(countOther), [countOther]);
+  const countRef = useRef<HTMLElementTagNameMap["s-switch"]>(null);
+  const countTold = useRef(countOther);
+  useEffect(() => {
+    if (countTold.current === countNow) return;
+    countTold.current = countNow;
+    formRef.current?.dispatchEvent(new Event("change", { bubbles: true }));
+  }, [countNow]);
+
   // A gift picked, a step added or removed: React changes hidden fields, which fire no event of their own — tell the
   // form once it has rendered (the live draft re-reads; the save bar sees a changed form).
   const touched = useRef(false);
@@ -266,13 +278,22 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
     const onReset = () => {
       setFormKey((k) => k + 1);
       setRows(storedRows);
+      setCountNow(countOther);
+      countTold.current = countOther;
       setSnapshot(null);
       setPickError(false);
       setOpenUid(null);
     };
     el.addEventListener("reset", onReset);
     return () => el.removeEventListener("reset", onReset);
-  }, [storedRows]);
+  }, [storedRows, countOther]);
+  useEffect(() => {
+    const el = countRef.current;
+    if (!el) return;
+    const onChange = () => setCountNow(el.checked === true);
+    el.addEventListener("change", onChange);
+    return () => el.removeEventListener("change", onChange);
+  }, [formKey]);
 
   const update = (uid: string, patch: Partial<Row>) => change((list) => list.map((row) => (row.uid === uid ? { ...row, ...patch } : row)));
   const choose = async (row: Row, which: "choices" | "fallback") => {
@@ -322,7 +343,6 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
   // Where a step is past the plan's limit — per market, from the form as it is now (the server's gate ranks the same way).
   const over = overLimitColumns(liveRows.map((x) => x.live), codes, limit);
   const hasShipping = (except: string) => liveRows.some((x) => x.row.uid !== except && x.live.kind === "shipping");
-  const countOtherNow = snapshot ? snapshot.get(F.other) === "1" : countOther;
 
   // The preview and the tiles read the same live rows; a step past a market's limit is not in force there, so that market's customer does not see it.
   const previewSteps: PreviewStep[] = open.map(({ row, live }) => ({
@@ -331,32 +351,17 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
     reward: (column) => rewardText(live, codes, tr, column),
     offered: (column) => !(over.get(row.uid) ?? []).includes(column) && (!(live.kind === "discount" && live.value === "fixed") || typeof live.off[column] === "number"),
   }));
-  const ladderLine = open.length === 0 ? t("milestones.summary.none") : open.map(({ live }) => stepSummary(live, codes, tr)).join(" · ");
   const missingMarkets = [...new Set(open.flatMap(({ live }) => stepMissingColumns(live, codes)))];
-  // The tile is short: how many steps and from what cart value to what (the first column); the section says every step.
-  const firstAmounts = open.map(({ live }) => live.threshold[codes[0] ?? ""]).filter((v): v is number => typeof v === "number").sort((x, y) => x - y);
-  const money = (minor: number) => formatMoney(minor, codes[0] ?? "", tr.locale);
-  const ladderShort =
-    open.length === 0
-      ? t("milestones.summary.none")
-      : firstAmounts.length === 0
-        ? tr.tp("milestones.summary.count", open.length)
-        : firstAmounts.length === 1 || firstAmounts[0] === firstAmounts[firstAmounts.length - 1]
-          ? `${tr.tp("milestones.summary.count", open.length)} ${t("milestones.step.titleFrom", { amount: money(firstAmounts[0]!) })}`
-          : `${tr.tp("milestones.summary.count", open.length)} ${t("milestones.summary.range", { from: money(firstAmounts[0]!), to: money(firstAmounts[firstAmounts.length - 1]!) })}`;
-  const stepsTile = missingMarkets.length > 0 ? `${t("milestones.summary.missing", { markets: tr.list(missingMarkets.map(marketName)) })} · ${ladderShort}` : ladderShort;
-
   // Limits: the plan's number of steps; a gift for at most CONFIG_LIMITS.giftTiers of them.
   const maxRows = milestoneRowsMax(plan, codes.length);
   const full = rows.length >= maxRows;
-  const addStep = () =>
+  const addStep = (kind: MilestoneKind) =>
     change((list) => {
       if (list.length >= maxRows) return list;
-      const next = emptyStepView("gift");
+      const next = emptyStepView(kind);
       setOpenUid(next.id);
       return [...list, { uid: next.id, initial: next, choices: [], fallback: null, stored: false }];
     });
-
 
   // "Na webu": the four places, and what is still to do there.
   const placed = props.placed ?? {};
@@ -386,7 +391,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
   const [view, setView] = useView<"steps" | "web" | "look">({
     initial: () => "steps",
     // `#step-N` (Kontrola kombinací links to a step): the view with the list; the effect below opens that step.
-    hash: { steps: "steps", preview: "steps", amounts: "steps", count: "steps", shipping: "steps", gift: "steps", web: "web", places: "web", cart: "web", look: "look", "look-milestones": "look", "look-msBar": "look", "look-msCart": "look", "look-msDrawer": "look", "look-cart": "look", ...Object.fromEntries(rows.map((_, i) => [stepAnchor(i), "steps" as const])) },
+    hash: { steps: "steps", preview: "steps", amounts: "steps", count: "steps", shipping: "steps", gift: "steps", "new-step": "steps", settings: "steps", web: "web", places: "web", cart: "web", look: "look", "look-milestones": "look", "look-msBar": "look", "look-msCart": "look", "look-msDrawer": "look", "look-cart": "look", ...Object.fromEntries(rows.map((_, i) => [stepAnchor(i), "steps" as const])) },
     resetKey: result,
   });
   const toSteps = usePolarisJump("steps", () => setView("steps"));
@@ -402,8 +407,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
   return (
     <s-page heading={t("module.rewards")}>
       <DiscountsSubNav active="rewards" />
-      <PageGuide page="rewards" />
-      {/* The notice, what to do next and the tiles are not fields: they sit above the form. */}
+      {/* The notice and what to do next are not fields: they sit above the form. */}
       <s-stack direction="block" gap="base">
       <Notice result={result} onReplace={replaceUnreadable} />
       {/* A save says what the customer sees now and what is still to do, with the button that does it. */}
@@ -452,56 +456,62 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
         </WonSection>
       ) : null}
 
-      {/* Two tiles, one panel at a time (doctrine §19e); the panels stay in the one form with its one Save. */}
-      <ModuleTiles label={t("milestones.view.label")}>
-        <ViewTile id="steps" title={t("milestones.view.steps.title")} glyph="spark" active={stepsTile} status={props.status} selected={view === "steps"} onPick={() => setView("steps")} />
-        <ViewTile id="web" title={t("milestones.view.web.title")} glyph="store" active={webLine} status={webStatus} selected={view === "web"} onPick={() => setView("web")} />
-        {/* The look and the custom CSS have a tile of their own (feedback 9 Oct 2026, 3rd round, bod 3): at the foot of "Na webu" they were not found. */}
-        {props.look ? (
-          <ViewTile
-            id="look"
-            title={t("milestones.view.look.title")}
-            glyph="spark"
-            active={
-              props.placeLooks?.length
-                ? t("milestones.view.look.places")
-                : `${presetLabel("milestones", props.look.preset, tr)} · ${t([props.look.custom.accent, props.look.custom.line, props.look.custom.tint, props.look.custom.radius, props.look.custom.css].some((v) => v.trim() !== "") ? "looks.custom.summary.on" : "milestones.view.look.custom")}`
-            }
-            selected={view === "look"}
-            onPick={() => setView("look")}
-          />
-        ) : null}
-      </ModuleTiles>
+      {view === "steps" ? (
+        <>
+          <p data-won-ms-lead="" style={{ margin: 0, fontFamily: WON_FONT, fontSize: 14, color: WON_MUTED }}>
+            {t("milestones.lead")}
+          </p>
+          <section>
+            <PlainHead id="new-step" title={t("milestones.new.title")} sub={t("milestones.new.sub")} />
+            <PickList
+              items={NEW_STEPS.map((item) => {
+                // Free shipping is one step at most: more of them would say the same thing twice.
+                const once = item.kind === "shipping" && hasShipping("");
+                return { key: item.kind, icon: item.icon, title: t(item.title), body: t(once ? "milestones.new.shippingOnce" : item.body), disabled: full || once, onPick: () => addStep(item.kind), marker: { "data-won-ms-new": item.kind } };
+              })}
+            />
+            {full ? <div style={{ marginTop: 8 }}>{pro ? <RowNote>{t("milestones.limit.full", { max: maxRows })}</RowNote> : <ProSell benefit={t(codes.length > 1 ? "milestones.limit.proMarkets" : "milestones.limit.pro", { max: limit, pro: limitPro })} />}</div> : null}
+          </section>
+        </>
+      ) : (
+        <div>
+          <s-button variant="tertiary" onClick={() => setView("steps")} data-won-ms-back="">
+            {t("milestones.back")}
+          </s-button>
+        </div>
+      )}
       </s-stack>
-      <style dangerouslySetInnerHTML={{ __html: LAYOUT_CSS }} />
-      <div className={view === "steps" ? "won-ms-layout won-ms-layout--preview" : "won-ms-layout"}>
+      <style dangerouslySetInnerHTML={{ __html: TABLE_CSS }} />
+      <div style={{ marginTop: 20 }}>
       <Form method="post" ref={formRef} data-save-bar data-won-milestones>
         <input type="hidden" name={F.intent} value={MILESTONES_INTENT.save} />
         {configVersion ? <input type="hidden" name="configVersion" value={configVersion} /> : null}
+        {countNow ? <input type="hidden" name={F.other} value="1" /> : null}
         <s-stack key={formKey} direction="block" gap="base">
           <ViewPanel id="steps" view={view}>
             {/* The plan note is about the stored steps, so it sits with them. */}
             <GateNotes notes={gateNotes} />
 
-            <WonSection
-              title={t("milestones.steps.title")}
-              glyph="spark"
-              summary={ladderLine}
-              hint={t("milestones.steps.hint")}
-              anchor="steps"
-            >
+            <div data-won-ms-steps="">
+              {/* `#amounts` (older links: "doplnit částky") still lands on the list. */}
+              <span id="amounts" style={{ display: "block", scrollMarginTop: 16 }} />
+              <PlainHead id="steps" title={t("milestones.steps.title")} sub={pro ? tr.tp("milestones.summary.count", rows.length) : t("milestones.limit.left", { n: rows.length, max: maxRows })} />
               <s-stack direction="block" gap="base">
-                {/* Feedback 9 Oct 2026 (2nd round, bod 6): the ladder is a LIST — a row per step with what it gives and from
-                    what cart value. One step is open at a time; its form asks in order: what the customer gets, then from
-                    what cart value in each market. A closed step's fields stay mounted (hidden): they still submit (§17d). */}
-                {/* `#amounts` (older links: "doplnit částky") still lands on the list. */}
-                <span id="amounts" style={{ display: "block", scrollMarginTop: 16 }} />
+                {/* A row per step: from what cart value, what it gives, where, and its state. One step is open at a time; its
+                    form asks in order: what the customer gets, then from what cart value in each market. A closed step's
+                    fields stay mounted (hidden): they still submit (§17d). */}
                 {rows.length === 0 ? (
                   <div data-won-ms-list="empty" style={{ border: `1px dashed ${WON_LINE}`, borderRadius: 12, padding: 12 }}>
                     <RowNote>{t("milestones.steps.empty")}</RowNote>
                   </div>
-                ) : null}
-
+                ) : (
+                  <div style={{ border: `1px solid ${WON_EDGE}`, borderRadius: 12, overflow: "hidden", background: WON_SURFACE, fontFamily: WON_FONT }}>
+                    <div className="won-ms-row won-ms-head" style={{ paddingBlock: 7, fontSize: 12, fontWeight: 600, color: WON_MUTED, background: WON_WASH }}>
+                      <div>{t("milestones.table.from")}</div>
+                      <div>{t("milestones.table.reward")}</div>
+                      <div>{t("milestones.table.markets")}</div>
+                      <div>{t("milestones.table.state")}</div>
+                    </div>
                 {liveRows.map(({ row, live }, index) => {
                   const from = amountsText(live.threshold, codes, tr);
                   const isOpen = openUid === row.uid;
@@ -509,26 +519,16 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
                   const overHere = over.get(row.uid) ?? [];
                   const hasError = rowErrors.has(row.uid);
                   const noGift = live.kind === "gift" && row.choices.length === 0 && tried(row);
+                  const problem = overHere.length > 0 || hasError || noGift || (tried(row) && missing.length > 0);
+                  const moduleState = props.status?.state === "attention" ? "active" : props.status?.state;
+                  const where = codes.filter((code) => typeof live.threshold[code] === "number" && !overHere.includes(code)).map(marketName);
                   const head = (
-                    <div data-won-ms-row={row.uid} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "6px 12px", padding: "10px 12px", background: isOpen ? WON_WASH : WON_SURFACE, borderBottom: isOpen ? `1px solid ${WON_LINE}` : "none" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: "1 1 220px" }}>
-                        <span aria-hidden="true" style={BADGE}>
-                          {index + 1}
-                        </span>
-                        <span style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "2px 10px", minWidth: 0 }}>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: WON_INK, overflowWrap: "anywhere" }}>{rewardText(live, codes, tr)}</span>
-                          <span style={{ fontSize: 13, color: from ? WON_MUTED : WON_ATTENTION }}>{from ? t("milestones.step.titleFrom", { amount: from }) : t("milestones.list.noAmount")}</span>
-                        </span>
-                      </div>
-                      <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 6 }}>
-                        <s-button variant={isOpen ? "tertiary" : "secondary"} onClick={() => setOpenUid(isOpen ? null : row.uid)} aria-expanded={isOpen ? "true" : "false"}>
-                          {t(isOpen ? "milestones.list.close" : "common.edit")}
-                        </s-button>
-                        <s-button variant="tertiary" tone="critical" onClick={() => change((list) => list.filter((x) => x.uid !== row.uid))}>
-                          {t("milestones.step.remove")}
-                        </s-button>
-                      </span>
-                    </div>
+                    <button type="button" className="won-ms-row" data-won-ms-row={row.uid} aria-expanded={isOpen} {...hoverMark("line", isOpen)} onClick={() => setOpenUid(isOpen ? null : row.uid)} style={{ width: "100%", border: 0, margin: 0, font: "inherit", textAlign: "left", cursor: "pointer", background: isOpen ? "#fafbfc" : WON_SURFACE }}>
+                      <span style={{ fontSize: 14.5, fontWeight: 600, letterSpacing: "-.01em", color: from ? WON_INK : WON_ATTENTION }}>{from ? t("milestones.step.titleFrom", { amount: from }) : t("milestones.list.noAmount")}</span>
+                      <span className="won-ms-row__reward" style={{ fontSize: 14.5, fontWeight: 600, letterSpacing: "-.01em", color: WON_INK, overflowWrap: "anywhere" }}>{rewardText(live, codes, tr)}</span>
+                      <span className="won-ms-row__market" style={{ fontSize: 13, color: WON_MUTED }}>{tr.list(where)}</span>
+                      <span>{problem ? <StatusPill state="attention" /> : !row.stored ? <StatusPill status={{ kind: "draft" }} /> : moduleState ? <StatusPill state={moduleState} /> : null}</span>
+                    </button>
                   );
                   // A closed row still tells the truth: what is missing, what the plan does not run, what a save refused.
                   const notes = (
@@ -554,15 +554,15 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
                   const offField = (code: string) => F.off(row.uid, code);
                   const offMissing = live.kind === "discount" && live.value === "fixed" ? codes.filter((c) => typeof live.threshold[c] === "number" && typeof live.off[c] !== "number") : [];
                   return (
-                    <div key={row.uid} id={stepAnchor(index)} data-won-ms-step={row.uid} style={{ border: `1px solid ${WON_LINE}`, borderRadius: 12, background: WON_SURFACE, overflow: "hidden", fontFamily: WON_FONT, scrollMarginTop: 16 }}>
+                    <div key={row.uid} id={stepAnchor(index)} data-won-ms-step={row.uid} style={{ borderTop: `1px solid ${WON_LINE}`, background: WON_SURFACE, fontFamily: WON_FONT, scrollMarginTop: 16 }}>
                       <input type="hidden" name={F.step} value={row.uid} />
                       {row.choices.map((c) => (
                         <input key={c.id} type="hidden" name={F.choice(row.uid)} value={c.id} />
                       ))}
                       {row.fallback ? <input type="hidden" name={F.fallback(row.uid)} value={row.fallback.id} /> : null}
                       {head}
-                      {overHere.length > 0 || hasError || noGift || (tried(row) && missing.length > 0) ? <div style={{ padding: "0 12px 10px" }}>{notes}</div> : null}
-                      <div data-won-ms-editor={isOpen ? "open" : "closed"} style={{ padding: 12, display: isOpen ? "block" : "none" }}>
+                      {problem ? <div style={{ padding: "0 16px 10px" }}>{notes}</div> : null}
+                      <div data-won-ms-editor={isOpen ? "open" : "closed"} style={{ padding: "4px 16px 14px", display: isOpen ? "block" : "none" }}>
                         <s-stack direction="block" gap="small-300">
                           <SegmentedChoice
                             name={F.kind(row.uid)}
@@ -667,33 +667,23 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
                             {/* The other markets' amounts by the rate set by hand in Shopify: offered only where a field is still empty. */}
                             <AmountSuggestions suggest={suggest} currencies={currencies} field={(code) => F.amount(row.uid, code)} initial={Object.fromEntries(codes.map((code) => [code, amountInput(row.initial.threshold, code)]))} />
                           </div>
+                          <div>
+                            <s-button variant="tertiary" tone="critical" onClick={() => change((list) => list.filter((x) => x.uid !== row.uid))}>
+                              {t("milestones.step.remove")}
+                            </s-button>
+                          </div>
                         </s-stack>
                       </div>
                     </div>
                   );
                 })}
+                  </div>
+                )}
 
                 {pickError ? <RowNote tone="attention">{t("rewards.picker.unavailable")}</RowNote> : null}
                 <FieldMessage text={err(F.step)} />
-                {full && !pro ? (
-                  <ProSell benefit={t(codes.length > 1 ? "milestones.limit.proMarkets" : "milestones.limit.pro", { max: limit, pro: limitPro })} />
-                ) : (
-                  <s-stack direction="inline" gap="base" alignItems="center">
-                    <s-button variant="secondary" disabled={boolAttr(full)} onClick={addStep}>
-                      {t(rows.length === 0 ? "milestones.step.addFirst" : "milestones.step.add")}
-                    </s-button>
-                    <s-text color="subdued">{full ? t("milestones.limit.full", { max: maxRows }) : t("milestones.limit.left", { n: rows.length, max: maxRows })}</s-text>
-                  </s-stack>
-                )}
               </s-stack>
-            </WonSection>
-
-            <WonSection title={t("rewards.count.title")} glyph="sliders" summary={t(countOtherNow ? "milestones.count.on" : "milestones.count.off")} anchor="count">
-              <s-stack direction="block" gap="small-300">
-                <s-switch name={F.other} value="1" label={t("milestones.count.label")} checked={boolAttr(countOther)} />
-                <RowNote>{t("milestones.count.explain")}</RowNote>
-              </s-stack>
-            </WonSection>
+            </div>
           </ViewPanel>
 
           <ViewPanel id="web" view={view}>
@@ -739,16 +729,54 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
         </s-stack>
       </Form>
       {/* The preview is a tool, not a setting (feedback 9 Oct 2026, 2nd round, bod 4): OUTSIDE the form, so walking
-          the ladder with its slider never reads as an unsaved change. Beside the steps on a wide page, above them
-          on a narrow one. */}
+          the ladder with its slider never reads as an unsaved change. */}
       {view === "steps" ? (
-        <aside className="won-ms-layout__preview" data-won-ms-preview-aside="">
-          <WonSection title={t("milestones.preview.title")} glyph="store" summary={t("milestones.preview.summary")} anchor="preview">
-            <MilestonePreview steps={previewSteps} currencies={currencies} />
-          </WonSection>
+        <aside data-won-ms-preview-aside="" style={{ marginTop: 16 }}>
+          <MilestonePreview steps={previewSteps} currencies={currencies} />
         </aside>
       ) : null}
       </div>
+      {view === "steps" ? (
+        <section data-won-ms-settings="" style={{ marginTop: 28 }}>
+          <PlainHead id="settings" title={t("milestones.settings.title")} sub={t("milestones.settings.sub")} />
+          <div style={{ border: `1px solid ${WON_EDGE}`, borderRadius: 12, overflow: "hidden", background: WON_SURFACE, fontFamily: WON_FONT }}>
+            <div data-won-view-tile="web" style={SETTING}>
+              <div data-won-view-body="web">
+                <WonRow action={<s-button variant="secondary" onClick={() => setView("web")}>{t("common.edit")}</s-button>}>
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 14.5, fontWeight: 600, color: WON_INK }}>{t("milestones.settings.web")}</span>
+                    {webStatus ? <StatusPill state={webStatus.state} /> : null}
+                  </div>
+                  <RowNote>{webLine}</RowNote>
+                  {(webStatus?.issues ?? 0) > 0 ? <RowNote tone="attention">{tr.tp("tile.issues", webStatus?.issues ?? 0)}</RowNote> : null}
+                </WonRow>
+              </div>
+            </div>
+            {props.look ? (
+              <div data-won-view-tile="look" style={{ ...SETTING, borderTop: `1px solid ${WON_LINE}` }}>
+                <WonRow action={<s-button variant="secondary" onClick={() => setView("look")}>{t("common.edit")}</s-button>}>
+                  <div style={{ fontSize: 14.5, fontWeight: 600, color: WON_INK }}>{t("milestones.view.look.title")}</div>
+                  <RowNote>
+                    {props.placeLooks?.length
+                      ? t("milestones.view.look.places")
+                      : `${presetLabel("milestones", props.look.preset, tr)} · ${t([props.look.custom.accent, props.look.custom.line, props.look.custom.tint, props.look.custom.radius, props.look.custom.css].some((v) => v.trim() !== "") ? "looks.custom.summary.on" : "milestones.view.look.custom")}`}
+                  </RowNote>
+                </WonRow>
+              </div>
+            ) : null}
+            <div id="count" style={{ ...SETTING, borderTop: `1px solid ${WON_LINE}`, scrollMarginTop: 16 }}>
+              <WonRow>
+                <s-stack direction="block" gap="small-300">
+                  <div style={{ fontSize: 14.5, fontWeight: 600, color: WON_INK }}>{t("rewards.count.title")}</div>
+                  <RowNote>{t(countNow ? "milestones.count.on" : "milestones.count.off")}</RowNote>
+                  <s-switch key={formKey} ref={countRef} label={t("milestones.count.label")} checked={boolAttr(countNow)} />
+                  <RowNote>{t("milestones.count.explain")}</RowNote>
+                </s-stack>
+              </WonRow>
+            </div>
+          </div>
+        </section>
+      ) : null}
       {/* "Sčítá se s" of every reward: its own form, so outside the page's; under the steps (Ondřej 14 Oct 2026: set here). */}
       {view === "steps" ? (
         <div style={{ marginTop: 16 }}>

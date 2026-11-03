@@ -38,10 +38,10 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "overview?state=empty", expect: [/Zatím žádná sleva/, /Nastavení za 3 minuty/, /Pokračovat v průvodci/] },
   { path: "overview?readOnly=1", expect: [/Nastavení jen pro čtení/] },
   // P3: "Upravit" of a rule that needs attention opens the editor at the field that fixes it. P5: the line carries the limits.
-  { path: "discounts", expect: [/Vaše slevy/, /Černý pátek/, /v EUR se nenabízí/, /Uloženo, zatím neplatí/, /href="\/app\/discounts\/dev-fixture-4#value"/, /href="\/app\/discounts\/dev-fixture-6#segments"/, /kód VIP10 · od 1\u00a0000\u00a0Kč · 1× na zákazníka/] },
-  { path: "discounts?sync=ok", expect: [/6 slev · 3 aktivní · 1 naplánovaná · 1 neaktivní · 1 vypnutá/, /Naplánováno od 27\. 11\. 2026/] },
-  // The empty list is the recipes themselves (§15b), not a sentence pointing at another section.
-  { path: "discounts?state=empty", expect: [/Vyberte hotovou slevu/, /\/app\/discounts\/new\?recipe=percentAll/, /Uvítací kód/, /Vlastní sleva/] },
+  { path: "discounts", expect: [/Vaše slevy/, /Černý pátek/, /v EUR se nenabízí/, /Uloženo, zatím neplatí/, /href="\/app\/discounts\/dev-fixture-4#value"/, /href="\/app\/discounts\/dev-fixture-6#segments"/, /od 1\u00a0000\u00a0Kč · 1× na zákazníka/, /Kód VIP10/] },
+  { path: "discounts?sync=ok", expect: [/3 aktivní z 6/, /27\. 11\. 2026 až 30\. 11\. 2026/] },
+  // Nothing yet: the page is the choice of a type (§15b), with no table.
+  { path: "discounts?state=empty", absent: [/data-won-rule-table/], expect: [/Vyberte typ, hodnoty předvyplníme/, /\/app\/discounts\/new\?recipe=percentAll/, /Uvítací kód/, /Vlastní sleva/] },
   { path: "discounts?sync=failed", expect: [/Zatím neplatí/, /Zápis do Shopify se nepovedl/, /Zápis se nepovedl 28\. 9\. 2026/, /Zkusit zapsat znovu/] },
   // The five sections, all there; the markers at the fields (the missing EUR amount, the start date); the status sentence links to its field.
   {
@@ -496,11 +496,11 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   // A stored Pro custom look and a changed storefront text reach the preview (Pro only: BILL-1).
   { path: "tiers?plan=pro&state=custom", expect: [/data-won-custom-look=""/, /--won-tiers-accent:#0a7d4f/, /<p class="won-tiers__heading">Kup víc, plať míň<\/p>/] },
   // Odměny: the state lines say the real values; every state of the app embed check has its sentence and action.
-  { path: "rewards", expect: [/<s-page heading="Milníky"/, /Doprava zdarma od 1\u00a0000\u00a0Kč \/ 40\u00a0€/, /Dárek: Ponožky Won — M od 1\u00a0500\u00a0Kč/, /Hodnota košíku se počítá před slevami/, /Kde je to vidět na webu/, /Česko: ve Free tu tento stupeň neplatí/, /Stupňů: 3 z 4/] },
-  { path: "rewards?plan=pro", expect: [/data-won-ms-row="gift-choice"/, /Kšiltovka Won, Plátěná taška Won nebo Hrnek Won od 3\u00a0000\u00a0Kč \/ 120\u00a0€/, /Přidat stupeň/, /Změnit záložní dárek/] },
-  { path: "rewards?plan=pro&state=discounts", expect: [/Sleva 5\u00a0% od 2\u00a0000\u00a0Kč \/ 80\u00a0€/, /Sleva 500\u00a0Kč \/ 20\u00a0€ od 5\u00a0000\u00a0Kč \/ 200\u00a0€/, /Stupňů: 5 z 12/, /Na rozdíl od dárku se sleva počítá ze zboží po slevách na produkty/] },
+  { path: "rewards", expect: [/<s-page heading="Milníky"/, /od 1\u00a0000\u00a0Kč \/ 40\u00a0€/, /Dárek: Ponožky Won — M/, /od 1\u00a0500\u00a0Kč/, /Hodnota košíku se počítá před slevami/, /Kde je to vidět na webu/, /Česko: ve Free tu tento stupeň neplatí/, /Stupňů: 3 z 4/] },
+  { path: "rewards?plan=pro", expect: [/data-won-ms-row="gift-choice"/, /Kšiltovka Won, Plátěná taška Won nebo Hrnek Won/, /od 3\u00a0000\u00a0Kč \/ 120\u00a0€/, /data-won-ms-new="gift"/, /Změnit záložní dárek/] },
+  { path: "rewards?plan=pro&state=discounts", expect: [/Sleva 5\u00a0%/, /od 2\u00a0000\u00a0Kč \/ 80\u00a0€/, /Sleva 500\u00a0Kč \/ 20\u00a0€/, /od 5\u00a0000\u00a0Kč \/ 200\u00a0€/, /5 stupňů/, /Na rozdíl od dárku se sleva počítá ze zboží po slevách na produkty/] },
   { path: "rewards?plan=pro&state=discounts&markets=shared", expect: [/data-won-ms-amounts="ms-fixed"/, /name="ms\.ms-fixed\.amount\.EUR@de" label="Německo \(EUR\)"/, /name="ms\.ms-fixed\.off\.EUR@sk" label="Sleva: Slovensko \(EUR\)"/] },
-  { path: "rewards?state=empty", expect: [/Žádný stupeň/, /Přidat první stupeň/, /Košík žebříček neukazuje\. Won není na webu zapnutý/, /Zapnout na webu/] },
+  { path: "rewards?state=empty", expect: [/Zatím žádný stupeň/, /data-won-ms-new="shipping"/, /Košík žebříček neukazuje\. Won není na webu zapnutý/, /Zapnout na webu/] },
   { path: "rewards?state=embed-draft", expect: [/Won je zapnutý jen v nepublikovaném vzhledu obchodu/, /Zapněte Won i ve vzhledu, který zákazníci vidí/] },
   { path: "rewards?state=embed-unknown", expect: [/Nepodařilo se zjistit, jestli je Won na webu zapnutý/, /Otevřít úpravu vzhledu obchodu/] },
   { path: "rewards?state=embed-no-scope", expect: [/Won nemá přístup ke vzhledu obchodu/, /Otevřít úpravu vzhledu obchodu/] },
@@ -667,13 +667,11 @@ test("plan 2026-10-06, dávka 5: nothing without content or action — no room-f
   assert.doesNotMatch((await render("translations")).html.replace(/name="tx\.[^"]*"/g, ""), />(tiers|cart|cards|outlet|campaign)\.[a-z_]+</);
   assert.doesNotMatch((await render("tiers?state=custom")).html, /data-won-custom-look/, "Free never previews the Pro custom look (BILL-1)");
   const rewards = (await render("rewards")).html;
-  // The green label is the STORED state (the same as the home tile), never the page's own unsaved form: the
-  // "Stupně" tile carries it, once (the section under the tile does not repeat it).
-  // (The "Na webu" tile has its own label since 9 Oct 2026: where the ladder stands on the storefront, read from the theme.)
+  // A stored step carries the stored state (the same as the home tile), a step with a gap says so itself.
   const rewardsBody = rewards.replace(/<script[\s\S]*?<\/script>/g, "");
-  const stepsTile = rewardsBody.slice(rewardsBody.indexOf('data-won-view-tile="steps"'), rewardsBody.indexOf('data-won-view-tile="web"'));
-  assert.equal((stepsTile.match(/data-won-state="active"/g) ?? []).length, 1, "the tile alone");
-  assert.equal((rewardsBody.slice(rewardsBody.indexOf("<section")).match(/data-won-state="active"/g) ?? []).length, 0, "no section repeats it");
+  const stepRow = (uid: string) => rewardsBody.slice(rewardsBody.indexOf(`data-won-ms-row="${uid}"`), rewardsBody.indexOf("</button>", rewardsBody.indexOf(`data-won-ms-row="${uid}"`)));
+  assert.match(stepRow("shipping"), /data-won-state="active"/);
+  assert.match(stepRow("gift-socks"), /data-won-state="attention"/);
 });
 
 test("the tier note is only for a product rule (an order rule does not compete with a tier)", async () => {
@@ -832,7 +830,6 @@ test("navigace a stav, body 1 a 2: a view tile says only what changes; the secti
 
   // Milníky, Výprodej, Kampaně: the green / red label is the tile's alone; the home tile still describes the module.
   for (const [path, view, anchor] of [
-    ["rewards", "steps", "steps"],
     ["outlet?plan=pro", "sales", "running"],
     ["campaigns?plan=pro", "list", "list"],
   ] as const) {
@@ -914,23 +911,23 @@ test("navigace a stav, bod 5: the rule editor has the list of its sections; a re
   assert.equal((html.match(/<form /g) ?? []).length, 1);
 });
 
-test("Milníky (9 Oct 2026): the ladder is a list — a row per step, one form per step, no table of amounts and no row of numbers", async () => {
+test("Milníky: the steps are a table, a row opens its form in place, the preview follows outside the form", async () => {
   const html = (await render("rewards")).html;
   const rows = [...html.matchAll(/<div id="(step-\d+)" data-won-ms-step="([^"]+)"/g)].map((m) => `${m[1]}=${m[2]}`);
   assert.deepEqual(rows, ["step-1=shipping", "step-2=gift-socks", "step-3=gift-choice"]);
   const step = (uid: string) => html.slice(html.indexOf(`data-won-ms-step="${uid}"`), html.indexOf("data-won-ms-step=", html.indexOf(`data-won-ms-step="${uid}"`) + 20));
-  // A row says what the step gives and from what cart value, with "Upravit" and "Odebrat stupeň"; its form is closed.
-  assert.match(step("shipping"), /Doprava zdarma<\/span><span[^>]*>od 1\u00a0000\u00a0Kč \/ 40\u00a0€<\/span>/);
-  assert.match(step("shipping"), /aria-expanded="false">Upravit<\/s-button>[\s\S]*Odebrat stupeň/);
+  // A row says from what cart value, what it gives, where and its state; a click opens it, "Odebrat stupeň" is inside.
+  assert.match(step("shipping"), /aria-expanded="false"[\s\S]*?od 1\u00a0000\u00a0Kč \/ 40\u00a0€<\/span><span[^>]*>Doprava zdarma<\/span><span[^>]*>Česko a Slovensko/);
+  assert.match(step("shipping"), /data-won-ms-editor="closed"[\s\S]*Odebrat stupeň/);
   assert.match(step("shipping"), /data-won-ms-editor="closed" style="[^"]*display:none/);
   // A closed row still tells the truth: the second step has no amount for Slovensko.
   assert.match(step("gift-socks"), /Slovensko \(EUR\): částka chybí, v tomto trhu se stupeň nenabízí/);
   // The form asks in order: what the customer gets, then from what cart value (a field per market).
   assert.ok(step("shipping").indexOf("1. Co zákazník dostane") < step("shipping").indexOf("2. Od jaké hodnoty košíku"));
   assert.match(step("shipping"), /data-won-ms-amounts="shipping"[\s\S]*name="ms\.shipping\.amount\.CZK" label="Česko \(CZK\)" value="1000"/);
-  // Neither the common table nor the row of numbers is there any more; the tiles stay.
+  // The row of numbers is gone; the places and the look open from the settings under the preview.
   assert.doesNotMatch(html, /data-won-ms-table|data-won-jump-row|won-jumps/);
-  assert.match(html, /data-won-view-tile="steps"/);
+  assert.ok(html.indexOf("data-won-ms-preview-aside") < html.indexOf('data-won-view-tile="web"'));
   assert.doesNotMatch(html, /data-won-section-nav/);
   // The preview is a tool: it sits OUTSIDE the page's form, so its slider is never an unsaved change.
   const form = html.slice(html.indexOf("<form"), html.indexOf("</form>"));
@@ -939,7 +936,7 @@ test("Milníky (9 Oct 2026): the ladder is a list — a row per step, one form p
   assert.doesNotMatch(html, /data-won-ms-preview-tool/);
   // No step: an empty list and the one button.
   const empty = (await render("rewards?state=empty")).html;
-  assert.match(empty, /data-won-ms-list="empty"[\s\S]*Přidat první stupeň/);
+  assert.match(empty, /data-won-ms-new="shipping"[\s\S]*data-won-ms-list="empty"/);
 });
 
 test("navigace a stav, bod 7: Přehled — the module tiles come before the discounts made in Shopify; 'Vyžaduje pozornost' stays first", async () => {
@@ -962,4 +959,62 @@ test("navigace a stav, bod 7: Přehled — the module tiles come before the disc
   // The setup guide of an empty shop is still the first thing, above the tiles.
   const empty = (await render("overview?state=empty")).html;
   assert.ok(empty.indexOf("Nastavení za 3 minuty") < empty.indexOf("data-won-tiles="));
+});
+
+// Přehled, variant A of the mockup (Ondřej, 30 Oct 2026): the same tiles, under four named groups.
+const TILE_GROUPS: [string, string, string[]][] = [
+  ["discounts", "Slevy", ["codes", "tiers", "rewards"]],
+  ["sales", "Akce", ["outlet", "campaigns"]],
+  ["checks", "Kontrola", ["margin", "tryCart", "analytics"]],
+  ["setup", "Nastavení", ["translations", "settings"]],
+];
+
+function tileGroup(html: string, key: string): string {
+  const start = html.indexOf(`data-won-tile-group="${key}"`);
+  assert.notEqual(start, -1, `group ${key}`);
+  const next = html.indexOf("data-won-tile-group=", start + 10);
+  return html.slice(start, next === -1 ? html.length : next);
+}
+
+test("Přehled: every tile sits under its group, in the order of the mockup, under one list of tiles", async () => {
+  const { html } = await render("overview?state=modules");
+  assert.equal((html.match(/data-won-tiles[=\s>]/g) ?? []).length, 1);
+  assert.deepEqual([...html.matchAll(/data-won-tile-group="(\w+)"/g)].map((m) => m[1]), TILE_GROUPS.map(([key]) => key));
+  for (const [key, title, tiles] of TILE_GROUPS) {
+    const group = tileGroup(html, key);
+    assert.match(group, new RegExp(`<h2[^>]*>${title}</h2>`), key);
+    assert.deepEqual([...group.matchAll(/data-won-tile="(\w+)"/g)].map((m) => m[1]), tiles, key);
+  }
+});
+
+test("Přehled: the group says how many of its parts are active, only for the groups whose parts have a state", async () => {
+  const { html } = await render("overview?state=modules&plan=pro");
+  assert.match(tileGroup(html, "discounts"), /data-won-group-meta=""[^>]*>3 ze 3 aktivní</);
+  assert.match(tileGroup(html, "sales"), /data-won-group-meta=""[^>]*>1 ze 2 aktivní</);
+  assert.doesNotMatch(tileGroup(html, "checks"), /data-won-group-meta/);
+  assert.doesNotMatch(tileGroup(html, "setup"), /data-won-group-meta/);
+  // A module with no known state has no count: no invented number (§12).
+  assert.doesNotMatch(tileGroup((await render("overview?state=pro-cards")).html, "discounts"), /data-won-group-meta/);
+});
+
+test("Přehled: on the Pro plan a Pro part still says Pro, and a tile that runs says Aktivní", async () => {
+  const { html } = await render("overview?state=pro-cards&plan=pro");
+  for (const [key, id] of [["sales", "outlet"], ["sales", "campaigns"], ["checks", "tryCart"]] as const) {
+    const part = tileGroup(html, key).split("</s-clickable>").find((p) => p.includes(`data-won-tile="${id}"`))!;
+    assert.match(part, /data-won-plan-badge|>Pro</, id);
+    assert.doesNotMatch(part, /data-won-tile-locked/, id);
+  }
+  const running = (await render("overview?state=modules&plan=pro")).html;
+  assert.match(running, /<span[^>]*data-won-state="active"[^>]*>[\s\S]{0,200}Aktivní/);
+});
+
+test("Umístění na webu: Jiné místo is a button beside the main action, the main action says Upravit vzhled", async () => {
+  const { html } = await render("placements?state=drawer-auto");
+  assert.doesNotMatch(html, /Chci to jinde|Změnit místo/);
+  const other = html.indexOf('data-won-elsewhere="msDrawer"');
+  const main = html.indexOf("data-won-drawer-setting");
+  assert.ok(other !== -1 && main !== -1 && other < main, "Jiné místo stands before the main action");
+  assert.match(html, /<s-button[^>]*variant="secondary"[^>]*data-won-elsewhere="msDrawer"[^>]*>Jiné místo<\/s-button>/);
+  assert.match(html, /data-won-drawer-setting=""[^>]*>Upravit vzhled</);
+  assert.match(html, /data-won-elsewhere="msDrawer"[^>]*>Jiné místo<\/s-button><s-button[^>]*data-won-drawer-setting/, "the two buttons stand side by side");
 });

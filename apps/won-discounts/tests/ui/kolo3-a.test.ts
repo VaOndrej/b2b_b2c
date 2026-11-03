@@ -115,7 +115,7 @@ test("body 1 a 8: the home tile and the module page say the same state", async (
     assert.equal(viewState(tiers, "global", "global"), "active", `tiers page ${plan}`);
     // Milníky: the ladder carries the label, the same as its tile (bod 8).
     assert.equal(stateOf(tile(home, "rewards")), "active", `rewards tile ${plan}`);
-    assert.equal(viewState(rewards, "steps", "steps"), "active", `steps ${plan}`);
+    assert.match(rewards.slice(rewards.indexOf('data-won-ms-row="shipping"'), rewards.indexOf("</button>", rewards.indexOf('data-won-ms-row="shipping"'))), /data-won-state="active"/, `steps ${plan}`);
     // Ochrana marže (the label was missing on both).
     assert.equal(stateOf(tile(home, "margin")), "active", `margin tile ${plan}`);
     assert.equal(viewState(margin, "settings", "settings"), "active", `margin page ${plan}`);
@@ -130,7 +130,7 @@ test("body 1 a 8: the home tile and the module page say the same state", async (
   assert.equal(stateOf(tile(pro, "campaigns")), "active");
   assert.equal(viewState(await render("campaigns?plan=pro"), "list", "list"), "active");
   assert.equal(stateOf(tile(pro, "codes")), "active");
-  assert.equal(stateOf(section(await render("discounts?sync=ok"), "list")), "active");
+  assert.match(section(await render("discounts?sync=ok"), "list"), /3 aktivní z 6/);
   // Off → "Neaktivní" on both, in words.
   const off = await render("overview?state=modules-off");
   assert.equal(stateOf(tile(off, "tiers")), "inactive");
@@ -138,7 +138,7 @@ test("body 1 a 8: the home tile and the module page say the same state", async (
   assert.match(tile(off, "margin"), />Neaktivní</);
   assert.equal(viewState(await render("tiers?state=empty"), "global", "global"), "inactive");
   assert.equal(viewState(await render("margin?state=off"), "settings", "settings"), "inactive");
-  assert.equal(viewState(await render("rewards?state=empty"), "steps", "steps"), "inactive");
+  assert.match(await render("rewards?state=empty"), /data-won-ms-list="empty"/);
   // A failed write: "Vyžaduje pozornost" on both.
   const failed = await render("overview?state=modules-failed");
   assert.equal(stateOf(tile(failed, "tiers")), "attention");
@@ -285,7 +285,6 @@ test("Výprodej: four tiles instead of one long page — the sales (with their s
 test("the module pages are tiles and one panel at a time: Množstevní slevy, Odměny, Kampaně, Ochrana marže", async () => {
   const pages: [string, string[], string][] = [
     ["tiers?plan=pro", ["global", "table", "exceptions"], "global"],
-    ["rewards", ["steps", "web", "look"], "steps"],
     ["campaigns?plan=pro", ["list", "form", "places"], "list"],
     ["campaigns?plan=pro&edit=weekend", ["list", "form", "places"], "form"],
     ["margin?plan=pro", ["settings", "costs", "collections", "products", "impact"], "settings"],

@@ -126,7 +126,7 @@ test("Nastavení: the dot is only at the section with a state; a link of the lis
   await plain.close();
 });
 
-test("Milníky: the ladder is a list; a step's form opens on \"Upravit\", one at a time, and the rows follow what is typed", async ({ page }) => {
+test("Milníky: the ladder is a list; a step's form opens on its row, one at a time, and the rows follow what is typed", async ({ page }) => {
   const rows = () => page.evaluate(() => [...document.querySelectorAll("[data-won-ms-step]")].map((el) => `${el.id}${el.querySelector('[data-won-ms-editor="open"]') ? "*" : ""}`).join(" "));
   await open(page, "rewards");
   // Three stored steps, every form closed: nothing can be changed by a stray click.
@@ -135,7 +135,7 @@ test("Milníky: the ladder is a list; a step's form opens on \"Upravit\", one at
   // The second step has no amount for Slovensko: its closed row says so. Opened and typed in, the red goes without a save.
   const second = page.locator("[data-won-ms-step]").nth(1);
   await expect(second).toContainText("Slovensko (EUR): částka chybí");
-  await second.locator("s-button", { hasText: "Upravit" }).click();
+  await second.locator("[data-won-ms-row]").click();
   expect(await rows()).toBe("step-1 step-2* step-3");
   const empty = await page.evaluate(() => [...document.querySelectorAll<HTMLElement & { value: string }>('[data-won-ms-editor="open"] [data-won-ms-amounts] s-number-field')].filter((f) => !f.value).map((f) => f.getAttribute("name") ?? ""));
   expect(empty).toHaveLength(1);
@@ -143,7 +143,7 @@ test("Milníky: the ladder is a list; a step's form opens on \"Upravit\", one at
   await expect(second).not.toContainText("částka chybí");
   await expect(second.locator("[data-won-ms-row]")).toContainText("60");
   // Another step opened: the first one closes (its fields stay in the form).
-  await page.locator("[data-won-ms-step]").nth(2).locator("s-button", { hasText: "Upravit" }).click();
+  await page.locator("[data-won-ms-step]").nth(2).locator("[data-won-ms-row]").click();
   expect(await rows()).toBe("step-1 step-2 step-3*");
   expect(await page.evaluate((name) => new FormData(document.querySelector<HTMLFormElement>("form[data-save-bar]")!).get(name), empty[0] ?? "")).toBe("60");
   // A link to a step from another page opens that step.
@@ -152,7 +152,7 @@ test("Milníky: the ladder is a list; a step's form opens on \"Upravit\", one at
 
   // From nothing to the plan's maximum and back: a new step opens by itself, never a sideways scroll at 390 px.
   await open(page, "rewards?state=empty&plan=pro", 390);
-  const add = page.locator("s-button", { hasText: /^Přidat (první )?stupeň$/ });
+  const add = page.locator('button:has([data-won-ms-new="gift"])');
   await expect(page.locator('[data-won-ms-list="empty"]')).toHaveCount(1);
   await add.click();
   await expect(page.locator("[data-won-ms-step]")).toHaveCount(1);
@@ -163,6 +163,7 @@ test("Milníky: the ladder is a list; a step's form opens on \"Upravit\", one at
   }
   await expect(page.locator('[data-won-ms-editor="open"]')).toHaveCount(1);
   expect(await sideways(page)).toBeLessThanOrEqual(0);
+  await page.locator("[data-won-ms-step]").nth(1).locator("[data-won-ms-row]").click();
   await page.locator("[data-won-ms-step]").nth(1).locator("s-button", { hasText: "Odebrat" }).click();
   expect(await page.evaluate(() => [...document.querySelectorAll("[data-won-ms-step]")].map((el) => el.id).join(" "))).toBe(Array.from({ length: 11 }, (_, i) => `step-${i + 1}`).join(" "));
   await expect(add).toBeEnabled();
@@ -204,7 +205,7 @@ test("deep links from other pages: a section's anchor opens the view that holds 
   for (const [path, anchor, tile] of [
     ["tiers?plan=pro#pro", "pro", "exceptions"],
     ["tiers#block", "block", "table"],
-    ["rewards#amounts", "amounts", "steps"],
+    ["rewards#amounts", "amounts", null],
     ["settings#combination", "combination", null],
     ["settings#markets", "markets", null],
   ] as const) {
@@ -336,7 +337,7 @@ test("embedded admin: the Polaris links that jump inside a page open the view an
   await typeInto(page, "ms.gift-socks.amount.EUR", "");
   const fill = page.locator("[data-won-rewards-next] s-button:not([href])").first();
   await expect(fill).toBeVisible();
-  await page.locator('[data-won-view-tile="web"]').click();
+  await page.locator('[data-won-view-tile="web"] s-button').click();
   await expect(page.locator('[data-won-view-panel="steps"]')).toBeHidden();
   await fill.click();
   await expect(page.locator('[data-won-view-panel="steps"]')).toBeVisible();

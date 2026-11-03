@@ -50,6 +50,10 @@ test("entry.server.tsx starts the cost reconcile once on boot (and the stale-cla
     reconcile.stopCostReconcileJob();
     stale.stopStaleClaimJob();
     scheduler.stopScheduler();
+    // The boot also builds the Shopify session storage, which looks for its table in the background: `after` must not
+    // remove the database under it, the retry would outlive the test and fail the file (flaky in CI, 87f34777).
+    const { sessionStorage } = await import("../app/shopify.server.ts");
+    await (sessionStorage as unknown as { ready: Promise<boolean> }).ready;
   }
   const source = readFileSync(path.join(APP_ROOT, "app/entry.server.tsx"), "utf8");
   assert.equal(source.match(/ensureCostReconcileJob\(db, \{ clientFor: offlineClient \}\)/g)?.length, 1);

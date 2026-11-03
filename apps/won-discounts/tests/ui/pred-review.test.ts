@@ -209,10 +209,9 @@ test("nález 16: Časté kombinace — a finding shared by several combinations 
 
 // --- Nálezy 3, 4, 11, 13: cards and steps ---------------------------------------------------------------------
 
-test("nález 3: Slevy a kódy — 'Upravit' is a button and the ready-made discounts are not behind a disclosure", async () => {
+test("nález 3: Slevy a kódy — a row opens its discount and the ready-made discounts are not behind a disclosure", async () => {
   const html = await render("discounts?sync=ok");
-  assert.ok((html.match(/<s-button variant="secondary" href="\/app\/discounts\/[^"]+">Upravit/g) ?? []).length >= 6, "every row has its button");
-  assert.ok(!/<s-button variant="tertiary" href="\/app\/discounts\//.test(html));
+  assert.ok((html.match(/<s-clickable href="\/app\/discounts\/[^"]+"[^>]*>\s*<div[^>]*data-won-rule-row/g) ?? []).length >= 6, "every row opens its discount");
   const recipes = html.slice(html.indexOf('id="recipes"'));
   assert.ok(html.includes('id="recipes"') && !/^[^>]*>[\s\S]{0,400}aria-expanded/.test(recipes), "the section of ready-made discounts has no collapse button");
   assert.ok(text(recipes).includes("Uvítací kód"), "its content is drawn");

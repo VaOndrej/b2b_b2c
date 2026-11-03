@@ -10,7 +10,8 @@
 // the same label the page itself shows (model/module-status.ts) and one sentence
 // with the real settings; the detailed rows (the list of discounts, the table in
 // the theme, the cost prices, returned pieces of a sale) live on the pages. The
-// page does not grow when a module is added.
+// page does not grow when a module is added. Since 30 Oct 2026 (variant A) the tiles stand under four named groups:
+// Slevy, Akce, Kontrola, Nastavení.
 //
 // Above the grid sits only what is not a module, has something to say (P2) and is
 // short: the setup guide, "Vyžaduje pozornost" (every row links to the field that
@@ -45,7 +46,7 @@ import { uiText } from "../model/result-copy";
 import { NOT_WIRED_SIGNALS, embedText, nativeNeedsSection, statusAllGood, statusSummary, syncNeedsRetry, syncText, targetingText } from "../model/signals";
 import type { AdminSignals, CurrencyView, GateNoteView, RuleSyncMap, UiResult } from "../model/types";
 import { GateNotes } from "../shell/GateNotes";
-import { ModuleTile, ModuleTiles } from "../shell/ModuleTile";
+import { ModuleTile, ModuleTileGroup, ModuleTileGroups } from "../shell/ModuleTile";
 import { RefreshTargetingButton, ResyncButton } from "../shell/Notice";
 import { Finding } from "../shell/Finding";
 import { PlacementPill, RowNote, StatusPill, WonRow, WonSection } from "../shell/WonSection";
@@ -417,6 +418,9 @@ export function OverviewScreen({
   const translationsIssues = lacking.length > 0 ? lacking.map((p) => t("tile.translations.missing", { language: languageName(p.locale, tr), missing: languageProgressText(p.missing, tr).toLocaleLowerCase(tr.locale) })).join(" · ").replace(/^./, (ch) => ch.toLocaleUpperCase(tr.locale)) : undefined;
   const settingsLine = missingMarkets.length > 0 ? t("tile.settings.missing", { summary: marketsLine, markets: tr.list(missingMarkets) }) : marketsLine;
   const lockedTile = (key: "outlet" | "campaigns") => states[key]?.state === "locked";
+  // A group counts its parts only when every one has a known state: no invented number (§12).
+  const groupMeta = (keys: ("codes" | "tiers" | "rewards" | "outlet" | "campaigns")[]) =>
+    keys.every((key) => states[key]) ? t("overview.group.active", { active: keys.filter((key) => states[key]?.state === "active").length, total: keys.length }) : undefined;
 
   return (
     <s-page heading="Won Discounts">
@@ -429,6 +433,7 @@ export function OverviewScreen({
       <s-stack direction="block" gap="base">
         {showOnboarding ? (
           <WonSection
+            outlined
             title={t("overview.onboarding.title")}
             glyph="spark"
             summary={t("overview.onboarding.summary", { step: progress.position, total: progress.total })}
@@ -443,7 +448,7 @@ export function OverviewScreen({
         {gate.length > 0 ? <GateNotes notes={gate} pending={gatePending} /> : null}
 
         {warnings.length + moduleRows.length > 0 ? (
-          <WonSection title={t("overview.warnings.title")} glyph="alert" summary={tr.tp("count.warning", warnings.length + moduleRows.length)}>
+          <WonSection outlined title={t("overview.warnings.title")} glyph="alert" summary={tr.tp("count.warning", warnings.length + moduleRows.length)}>
             {/* Each thing to resolve is a finding: what happened, what to do, the button to the exact field (P7, §13c).
                 At most two are drawn, beside each other on a wide screen, so the tiles stay on the first screen (§19d);
                 the others are one line that says how many and at which module they wait (its tile counts them too). */}
@@ -470,6 +475,7 @@ export function OverviewScreen({
 
         {/* One line while everything is fine (the green label says it); open with its fixes when something is not. */}
         <WonSection
+          outlined
           key={allGood ? "status-ok" : "status-open"}
           title={t("overview.status.title")}
           glyph="store"
@@ -529,18 +535,26 @@ export function OverviewScreen({
           </div>
         </WonSection>
 
-        <ModuleTiles label={t("overview.tiles.label")}>
-          <ModuleTile id="codes" href="/app/discounts" title={t("nav.discounts")} glyph="tag" about={t("tile.about.codes")} aboutShort={t("tile.short.codes")} active={bodies.codes} status={states.codes} />
-          <ModuleTile id="tiers" href="/app/tiers" title={t("module.tiers")} glyph="layers" about={t("tile.about.tiers")} aboutShort={t("tile.short.tiers")} active={bodies.tiers} status={states.tiers} issueText={waits("tiers")} />
-          <ModuleTile id="rewards" href="/app/rewards" title={t("nav.rewards")} glyph="spark" about={t("tile.about.rewards")} aboutShort={t("tile.short.rewards")} active={bodies.rewards} status={states.rewards} issueText={waits("rewards")} />
-          <ModuleTile id="outlet" href="/app/outlet" title={t("module.outlet")} glyph="receipt" about={t("tile.about.outlet")} aboutShort={t("tile.short.outlet")} active={bodies.outlet} status={states.outlet} pro={proMark} locked={lockedTile("outlet") || (free && !states.outlet)} />
-          <ModuleTile id="campaigns" href="/app/campaigns" title={t("module.campaigns")} glyph="calendar" about={t("tile.about.campaigns")} aboutShort={t("tile.short.campaigns")} active={bodies.campaigns} status={states.campaigns} issueText={waits("campaigns")} pro={proMark} locked={lockedTile("campaigns") || (free && !states.campaigns)} />
-          <ModuleTile id="margin" href="/app/margin" title={t("module.margin")} glyph="shield" about={t("tile.about.margin")} aboutShort={t("tile.short.margin")} active={bodies.margin} status={states.margin} issueText={waits("margin")} />
-          <ModuleTile id="analytics" href="/app/analytics" title={t("nav.analytics")} glyph="check" about={t("tile.about.analytics")} aboutShort={t("tile.short.analytics")} active={bodies.analytics} />
-          <ModuleTile id="translations" href="/app/translations" title={t("nav.translations")} glyph="code" about={t("tile.about.translations")} aboutShort={t("tile.short.translations")} active={translationsLine} status={translationsStatus} issueText={translationsIssues} />
-          <ModuleTile id="tryCart" href="/app/try-cart" title={t("nav.tryCart")} glyph="cart" about={t("tile.about.tryCart")} aboutShort={t("tile.short.tryCart")} active={combos ? t("combos.summary", combos) : free ? t("tile.tryCart.locked") : undefined} pro={proMark} locked={free} />
-          <ModuleTile id="settings" href="/app/settings" title={t("nav.settings")} glyph="sliders" about={t("tile.about.settings")} aboutShort={t("tile.short.settings")} active={plan ? settingsLine : undefined} />
-        </ModuleTiles>
+        <ModuleTileGroups label={t("overview.tiles.label")}>
+          <ModuleTileGroup id="discounts" title={t("overview.group.discounts")} about={t("overview.group.discounts.about")} meta={groupMeta(["codes", "tiers", "rewards"])}>
+            <ModuleTile id="codes" href="/app/discounts" title={t("nav.discounts")} glyph="tag" about={t("tile.about.codes")} aboutShort={t("tile.short.codes")} active={bodies.codes} status={states.codes} />
+            <ModuleTile id="tiers" href="/app/tiers" title={t("module.tiers")} glyph="layers" about={t("tile.about.tiers")} aboutShort={t("tile.short.tiers")} active={bodies.tiers} status={states.tiers} issueText={waits("tiers")} />
+            <ModuleTile id="rewards" href="/app/rewards" title={t("nav.rewards")} glyph="spark" about={t("tile.about.rewards")} aboutShort={t("tile.short.rewards")} active={bodies.rewards} status={states.rewards} issueText={waits("rewards")} />
+          </ModuleTileGroup>
+          <ModuleTileGroup id="sales" title={t("overview.group.sales")} about={t("overview.group.sales.about")} meta={groupMeta(["outlet", "campaigns"])} columns={2}>
+            <ModuleTile id="outlet" href="/app/outlet" title={t("module.outlet")} glyph="receipt" about={t("tile.about.outlet")} aboutShort={t("tile.short.outlet")} active={bodies.outlet} status={states.outlet} pro={proMark} locked={lockedTile("outlet") || (free && !states.outlet)} />
+            <ModuleTile id="campaigns" href="/app/campaigns" title={t("module.campaigns")} glyph="calendar" about={t("tile.about.campaigns")} aboutShort={t("tile.short.campaigns")} active={bodies.campaigns} status={states.campaigns} issueText={waits("campaigns")} pro={proMark} locked={lockedTile("campaigns") || (free && !states.campaigns)} />
+          </ModuleTileGroup>
+          <ModuleTileGroup id="checks" title={t("overview.group.checks")} about={t("overview.group.checks.about")}>
+            <ModuleTile id="margin" href="/app/margin" title={t("module.margin")} glyph="shield" about={t("tile.about.margin")} aboutShort={t("tile.short.margin")} active={bodies.margin} status={states.margin} issueText={waits("margin")} />
+            <ModuleTile id="tryCart" href="/app/try-cart" title={t("nav.tryCart")} glyph="cart" about={t("tile.about.tryCart")} aboutShort={t("tile.short.tryCart")} active={combos ? t("combos.summary", combos) : free ? t("tile.tryCart.locked") : undefined} pro={proMark} locked={free} />
+            <ModuleTile id="analytics" href="/app/analytics" title={t("nav.analytics")} glyph="check" about={t("tile.about.analytics")} aboutShort={t("tile.short.analytics")} active={bodies.analytics} />
+          </ModuleTileGroup>
+          <ModuleTileGroup id="setup" title={t("overview.group.setup")} about={t("overview.group.setup.about")} columns={2} low>
+            <ModuleTile id="translations" href="/app/translations" title={t("nav.translations")} glyph="code" about={t("tile.about.translations")} aboutShort={t("tile.short.translations")} active={translationsLine} status={translationsStatus} issueText={translationsIssues} low />
+            <ModuleTile id="settings" href="/app/settings" title={t("nav.settings")} glyph="sliders" about={t("tile.about.settings")} aboutShort={t("tile.short.settings")} active={plan ? settingsLine : undefined} low />
+          </ModuleTileGroup>
+        </ModuleTileGroups>
 
         {/* Feedback 9 Oct 2026 (2nd round, bod 2): under the tiles, what the app watches and what it brought — the
             first quick look; the detail is Přehledy. WIP: the numbers shown are the ones the app already has
@@ -548,7 +562,7 @@ export function OverviewScreen({
             collected yet is not shown at all (the row "Připravujeme" went before the first review, 12 Oct 2026:
             doctrine §18h), and a block with no row is not drawn (§18b). */}
         {status.margin || status.analytics ? (
-        <WonSection title={t("watch.title")} glyph="shield" summary={t("watch.summary")} anchor="watch">
+        <WonSection outlined title={t("watch.title")} glyph="shield" summary={t("watch.summary")} anchor="watch">
           <div data-won-watch="">
             {status.margin ? (
               <WonRow
@@ -599,7 +613,7 @@ export function OverviewScreen({
 
         {/* Under the signpost: a list as long as the shop's own discounts, with its own actions. `#native` still leads here. */}
         {showNative ? (
-          <WonSection title={t("overview.native.title")} glyph="move" summary={nativeSummary(status.native, tr)} anchor="native">
+          <WonSection outlined title={t("overview.native.title")} glyph="move" summary={nativeSummary(status.native, tr)} anchor="native">
             <NativeDiscountsPanel native={status.native} mode="each" result={nativeResult} readOnly={readOnly} />
           </WonSection>
         ) : null}

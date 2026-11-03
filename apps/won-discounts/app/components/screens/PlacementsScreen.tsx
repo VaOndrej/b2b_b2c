@@ -186,7 +186,7 @@ function PieceRowView({ row, page, open, toggle }: { row: PieceRow; page: Placem
     if (page.embed.activateUrl)
       buttons.push(
         <s-button key="auto" href={page.embed.activateUrl} target="_top" variant={off ? "primary" : "secondary"} data-won-drawer-setting="">
-          {t(off ? "webPlaces.autoOn" : "webPlaces.autoMove")}
+          {t(off ? "webPlaces.autoOn" : "webPlaces.edit")}
         </s-button>,
       );
   } else if (row.way === "block" && row.state.at !== "tag_live") {
@@ -194,7 +194,7 @@ function PieceRowView({ row, page, open, toggle }: { row: PieceRow; page: Placem
     if (href)
       buttons.push(
         <s-button key="block" href={href} target="_top" variant={there ? "secondary" : "primary"}>
-          {t(there ? "placement.open" : "placement.add")}
+          {t(there ? "webPlaces.edit" : "placement.add")}
         </s-button>,
       );
   } else if (row.show) {
@@ -204,24 +204,27 @@ function PieceRowView({ row, page, open, toggle }: { row: PieceRow; page: Placem
       </s-button>,
     );
   }
-  // The code way where a block goes: there, but quiet (zadání §11, varianta a).
+  // The code way where a block goes: a second button before the main action (variant X, 30 Oct 2026).
   const elsewhere = (row.way === "block" || row.way === "auto") && row.show && row.state.at !== "tag_live";
+  if (elsewhere) {
+    buttons.unshift(
+      <s-button key="elsewhere" variant="secondary" onClick={toggle} aria-expanded={open} data-won-elsewhere={row.key}>
+        {t(open ? "webPlaces.hide" : "webPlaces.elsewhere")}
+      </s-button>,
+    );
+  }
   return (
-    <WonRow tone={pieceTone(row) === "missing" || row.cause?.kind === "embed_off" ? "attention" : undefined} action={buttons.length ? <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 8 }}>{buttons}</span> : undefined}>
+    <WonRow
+      tone={pieceTone(row) === "missing" || row.cause?.kind === "embed_off" ? "attention" : undefined}
+      action={buttons.length ? <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 8 }}>{buttons}</span> : undefined}
+      below={open && row.show ? <Guide row={row} show={row.show} file={page.files[row.place] ?? null} themeId={page.scan.theme?.id ?? null} shop={page.shop} /> : undefined}
+    >
       <div data-won-piece={row.key} data-won-piece-state={row.state.at} data-won-piece-way={row.way}>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 4 }}>
           <span style={{ fontFamily: WON_FONT, fontSize: 13.5, fontWeight: 700, color: WON_INK }}>{t(`webPlaces.piece.${row.key}` as MessageKey)}</span>
           <StatePill row={row} />
         </div>
         <RowNotes row={row} unknownTheme={page.scan.state !== "ok"} />
-        {elsewhere ? (
-          <div style={{ marginTop: 4 }}>
-            <s-button variant="tertiary" onClick={toggle} data-won-elsewhere={row.key}>
-              {t(open ? "webPlaces.hide" : "webPlaces.elsewhere")}
-            </s-button>
-          </div>
-        ) : null}
-        {open && row.show ? <Guide row={row} show={row.show} file={page.files[row.place] ?? null} themeId={page.scan.theme?.id ?? null} shop={page.shop} /> : null}
       </div>
     </WonRow>
   );

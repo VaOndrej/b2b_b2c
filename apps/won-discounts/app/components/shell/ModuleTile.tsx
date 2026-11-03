@@ -11,6 +11,11 @@
 // the content).
 //
 // The grid is two columns (also at 390 px, decided 6 Oct 2026) and three from 900 px of page width.
+//
+// Přehled (variant A of the mockup, 30 Oct 2026): the tiles stand under named groups (ModuleTileGroups), so ten equal
+// tiles can be scanned. The group of what is not a module (Překlady, Nastavení) holds lower tiles (`low`).
+// Variant V3 (30 Oct 2026): a clear outline on every tile, a thin line and wide gaps between the groups, the name in a
+// blue badge with its glyph and the state always top right. One column on a phone, the full description stays.
 
 import type { CSSProperties, ReactNode } from "react";
 
@@ -19,15 +24,27 @@ import type { ModuleStatus } from "../model/module-status";
 import { hoverMark } from "./hover";
 import { PlanBadge } from "./PlanBadge";
 import { SectionGlyph, StatusPill, type SectionGlyphName } from "./WonSection";
-import { WON_AMBER, WON_AMBER_TINT, WON_ATTENTION, WON_CARD_SHADOW, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "./tokens";
+import { WON_AMBER, WON_AMBER_TINT, WON_ATTENTION, WON_BADGE, WON_BADGE_TEXT, WON_CARD_SHADOW, WON_EDGE, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "./tokens";
 
 const GRID_CSS = `
 .won-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .won-tiles>*{display:grid;min-width:0}
 .won-tile{min-height:104px}
-@media (min-width:900px){.won-tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.won-tiles--4{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (min-width:900px){.won-tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.won-tiles--4{grid-template-columns:repeat(4,minmax(0,1fr))}.won-tiles--2{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (min-width:1100px){.won-tiles--5{grid-template-columns:repeat(5,minmax(0,1fr))}}
 .won-tile{height:100%;box-sizing:border-box}
+.won-tile-groups{display:grid;margin-block:12px}
+.won-tile-group{display:grid;gap:14px;min-width:0}
+.won-tile-group+.won-tile-group{margin-top:34px;padding-top:30px;border-top:1px solid ${WON_EDGE}}
+.won-tile-groups .won-tiles{gap:18px}
+.won-tile__head{display:flex;align-items:center;gap:10px}
+.won-tile-labels{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;min-width:0}
+.won-tile-state{margin-left:auto;flex:0 0 auto}
+.won-tile-group__head{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px}
+.won-tile-group__meta{margin-left:auto}
+.won-tile--low{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;min-height:0}
+.won-tile--low .won-tile__about{flex:1 1 120px;min-width:0}
+.won-tile-low__state{margin-left:auto;text-align:right}
 .won-tile__about{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .won-tile__active{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .won-tile-button{display:grid;width:100%;margin:0;padding:0;border:0;background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer;border-radius:14px}
@@ -44,9 +61,8 @@ const GRID_CSS = `
 .won-tiles--5 .won-view-tile__labels{align-self:center}
 .won-tiles--5 .won-view-tile__text,.won-tiles--5 .won-view-tile__about{grid-column:1 / -1}
 .won-tile-note{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:700;line-height:1.5;color:#48525f;background:#eef1f4;border:1px solid #d6dbe1;white-space:nowrap}
-@media (max-width:520px){.won-tile{padding:12px!important;min-height:138px}.won-tile__head{flex-direction:column;align-items:flex-start!important;gap:8px!important}
-.won-tile__about{-webkit-line-clamp:2}
-.won-tile__about--long{display:none}.won-tile__about-short{display:inline}
+@media (max-width:520px){.won-tile-groups .won-tiles{grid-template-columns:minmax(0,1fr)}
+.won-tile-group__meta{margin-left:0}
 .won-tile__active{display:block;overflow:visible;-webkit-line-clamp:unset}
 .won-view-tile{row-gap:8px}
 .won-view-tile__glyph{grid-row:1}
@@ -64,6 +80,36 @@ export function ModuleTiles({ label, children, columns = 3 }: { label: string; c
         {children}
       </div>
     </nav>
+  );
+}
+
+/** The tiles of Přehled under their groups: one list of tiles, with the groups as its headings. */
+export function ModuleTileGroups({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <nav aria-label={label}>
+      <style data-won-tiles-css="" dangerouslySetInnerHTML={{ __html: GRID_CSS }} />
+      <div className="won-tile-groups" data-won-tiles>
+        {children}
+      </div>
+    </nav>
+  );
+}
+
+/** `columns={2}`: two tiles keep one row on a desktop. `low`: lower tiles, one a row at 390 px. `meta`: the group's count, absent while it is not known. */
+export function ModuleTileGroup({ id, title, about, meta, columns = 3, low = false, children }: { id: string; title: string; about: string; meta?: string; columns?: 2 | 3; low?: boolean; children: ReactNode }) {
+  return (
+    <section className="won-tile-group" data-won-tile-group={id}>
+      <div className="won-tile-group__head" style={{ fontFamily: WON_FONT }}>
+        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, letterSpacing: "-0.01em", color: WON_INK }}>{title}</h2>
+        <p style={{ margin: 0, fontSize: 13, color: WON_MUTED }}>{about}</p>
+        {meta ? (
+          <span className="won-tile-group__meta" data-won-group-meta="" style={{ fontSize: 12.5, fontWeight: 600, color: WON_MUTED }}>
+            {meta}
+          </span>
+        ) : null}
+      </div>
+      <div className={`won-tiles${columns === 2 ? " won-tiles--2" : ""}${low ? " won-tiles--low" : ""}`}>{children}</div>
+    </section>
   );
 }
 
@@ -94,6 +140,8 @@ export interface ModuleTileProps extends TileContent {
   about: string;
   /** The same in one short sentence, for a narrow tile (two columns at 390 px), so it is never cut mid-sentence (audit N3). */
   aboutShort?: string;
+  /** A lower tile (Překlady, Nastavení): one line of glyph, name, what it is for and what is set. */
+  low?: boolean;
 }
 
 /** The surface of a tile: amber = a Pro part the plan does not run, blue = the chosen view (§11a). */
@@ -151,6 +199,31 @@ function TileLabels({ title, status, pro = false, locked = false, className, not
   );
 }
 
+/** The head of a home tile: the name in a blue badge, the Pro marker beside it, the state top right. */
+function HomeTileHead({ title, glyph, status, pro = false, locked = false }: Pick<TileContent, "title" | "glyph" | "status" | "pro" | "locked">) {
+  return (
+    <>
+      <span className="won-tile-labels">
+        <span data-won-tile-badge="" style={{ display: "inline-flex", alignItems: "center", gap: 7, minWidth: 0, padding: "4px 10px 4px 8px", borderRadius: 7, background: WON_BADGE, color: WON_BADGE_TEXT, fontSize: 13.5, fontWeight: 600, letterSpacing: "-0.01em", overflowWrap: "anywhere" }}>
+          <SectionGlyph name={glyph} />
+          {title}
+        </span>
+        {pro ? <PlanBadge tier="pro" locked={locked} /> : null}
+      </span>
+      {status && status.state !== "locked" ? (
+        <span className="won-tile-state">
+          <StatusPill state={status.state} />
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+/** A home tile's frame: one clear outline, red when something needs attention, amber when the plan does not run the part (the Pro marker says the rest). */
+function homeFrame(locked: boolean, attention: boolean): CSSProperties {
+  return { ...tileFrame({ locked }), border: `1px solid ${attention ? WON_ATTENTION : locked ? WON_AMBER : WON_EDGE}`, borderRadius: 12, boxShadow: "none" };
+}
+
 const ACTIVE_STYLE: CSSProperties = { fontSize: 12.5, lineHeight: 1.4, fontWeight: 600, color: WON_INK, overflowWrap: "anywhere" };
 
 /** Things to resolve: the module's own count, else the tile's. */
@@ -169,15 +242,35 @@ function TileIssues({ issueText, className, gap, ...counted }: Pick<TileContent,
   );
 }
 
-function TileBody({ title, glyph, about, aboutShort, active, status, issues, issueText, pro = false, locked = false, marker }: Omit<ModuleTileProps, "href" | "id"> & { marker: Record<string, string> }) {
+function TileBody({ title, glyph, about, aboutShort, active, status, issues, issueText, pro = false, locked = false, low = false, marker }: Omit<ModuleTileProps, "href" | "id"> & { marker: Record<string, string> }) {
   const hasIssues = issueCount({ status, issues }) > 0;
-  return (
-    <div className="won-tile" {...marker} {...hoverMark("card")} {...(locked ? { "data-won-tile-locked": "" } : {})} style={{ ...tileFrame({ pro, locked }), padding: 16 }}>
-      <div className="won-tile__head" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <TileGlyph name={glyph} />
-        <TileLabels title={title} status={status} pro={pro} locked={locked} />
+  const attention = hasIssues || status?.state === "attention";
+  if (low) {
+    return (
+      <div className="won-tile won-tile--low" {...marker} {...hoverMark("card")} style={{ ...homeFrame(locked, attention), padding: "10px 14px" }}>
+        <HomeTileHead title={title} glyph={glyph} status={status} pro={pro} locked={locked} />
+        <div className="won-tile__about" data-won-tile-about style={{ fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED, overflowWrap: "anywhere" }}>
+          {aboutShort ?? about}
+        </div>
+        {active || hasIssues ? (
+          <div className="won-tile-low__state">
+            {active ? (
+              <div data-won-tile-active style={ACTIVE_STYLE}>
+                {active}
+              </div>
+            ) : null}
+            <TileIssues status={status} issues={issues} issueText={issueText} gap={active ? 4 : 0} />
+          </div>
+        ) : null}
       </div>
-      <div className="won-tile__about" data-won-tile-about style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED, overflowWrap: "anywhere" }}>
+    );
+  }
+  return (
+    <div className="won-tile" {...marker} {...hoverMark("card")} {...(locked ? { "data-won-tile-locked": "" } : {})} style={{ ...homeFrame(locked, attention), padding: 16, display: "flex", flexDirection: "column" }}>
+      <div className="won-tile__head">
+        <HomeTileHead title={title} glyph={glyph} status={status} pro={pro} locked={locked} />
+      </div>
+      <div className="won-tile__about" data-won-tile-about style={{ marginTop: 12, marginBottom: 10, fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED, overflowWrap: "anywhere" }}>
         {aboutShort ? (
           <>
             <span className="won-tile__about--long">{about}</span>
@@ -188,7 +281,7 @@ function TileBody({ title, glyph, about, aboutShort, active, status, issues, iss
         )}
       </div>
       {active || hasIssues ? (
-        <div style={{ marginTop: 10, paddingTop: 9, borderTop: `1px solid ${WON_LINE}` }}>
+        <div style={{ marginTop: "auto", paddingTop: 9, borderTop: `1px solid ${WON_LINE}` }}>
           {active ? (
             <div className="won-tile__active" data-won-tile-active style={ACTIVE_STYLE}>
               {active}

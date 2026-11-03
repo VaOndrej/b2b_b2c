@@ -3,28 +3,32 @@
 // its state line from the core formatter, and what needs fixing — "Upravit" of
 // a rule that needs attention opens the editor AT the field that fixes it (P3),
 // and so do the plan notes. A failed sync carries "Synchronizovat znovu" here.
-// The cap on active code rules is said only when it is close (P2, §13). With no
-// rule yet the list IS the recipes (§15b). Rendered by
+// The cap on active code rules is said only when it is close (P2, §13). The page
+// opens with the types of discount (Ondřej, 31 Oct 2026: a discount needs no
+// explaining), the table of what exists is under them. Rendered by
 // app/routes/app.discounts._index.tsx and the harness.
 
 import type { DiscountRule, WonDiscountsConfig } from "@won/core/discounts/config";
 import { isMilestoneRule } from "@won/core/discounts/milestones";
 
 import { useT } from "../../i18n/context";
-import { RecipeGrid } from "../RecipeGrid";
-import { RuleRow } from "../RuleRow";
-import { collectWarnings, missingCurrencies, ruleName, warningCounts } from "../model/describe";
+import { RecipePicker } from "../RecipeGrid";
+import { RuleTable } from "../RuleTable";
+import { formatDate } from "@won/core/discounts/describe";
+
+import { describeRuleBrief, missingCurrencies, ruleDays, ruleName } from "../model/describe";
 import { currencyCodes, currencyMarketNames, currencyViews, type MarketNames } from "../model/markets";
 import { shopToday } from "../model/rule-form";
-import { codesStatus } from "../model/module-status";
-import { ruleEditHref, ruleStatus, ruleStatusSummary, type RuleStatus } from "../model/rule-status";
+import { ruleEditHref, ruleStatus, runsNow, type RuleStatus } from "../model/rule-status";
+import { ruleTabCounts, type RuleTableRow } from "../model/rule-table";
 import { codeLimitNear } from "../rule-editor/ApplySection";
 import { syncText } from "../model/signals";
 import type { CodeRuleLimit, CurrencyView, GateNoteView, RuleSyncMap, SyncView, UiResult } from "../model/types";
-import { PageGuide } from "../shell/PageGuide";
 import { Notice, ResyncButton } from "../shell/Notice";
 import { DiscountsSubNav } from "../shell/SubNav";
-import { RowNote, WonRow, WonSection } from "../shell/WonSection";
+import { PlainHead } from "../shell/PickList";
+import { WON_ATTENTION } from "../shell/tokens";
+import { RowNote, WonRow } from "../shell/WonSection";
 
 export interface DiscountsScreenProps {
   readOnly: boolean;
@@ -148,9 +152,6 @@ export function DiscountsScreen({
   const { t } = tr;
   const codes = currencyCodes(currencies);
   const statuses = rules.map((rule) => ruleStatus(rule, { today, timezone, sync, ruleSync, gateOff, currencies: codes, enabledMarkets }));
-  const summary = rules.length === 0 ? t("discounts.list.none") : ruleStatusSummary(statuses, tr);
-  // N4: the same count as the home page's "Vyžaduje pozornost" and its tile.
-  const warned = warningCounts(rules, collectWarnings(rules, codes, { enabledMarkets }));
   const hints = [
     // §12: say when saved rules are not (all) in Shopify, and why.
     sync.state === "error" || sync.state === "blocked" || sync.state === "running" ? sentence(syncText(sync, tr)) : "",
@@ -169,14 +170,43 @@ export function DiscountsScreen({
     return status.kind === "pro_off" ? ruleEditHref(rule, status, codes) : `/app/discounts/${encodeURIComponent(rule.id)}#pro`;
   };
 
+  const validText = (rule: DiscountRule): { valid: string; until: string | null } => {
+    const days = ruleDays(rule, timezone);
+    const date = (day: string) => formatDate(day, tr.locale);
+    const until = days.endsOn ?? null;
+    if (days.startsOn && until) return { until, valid: t("discounts.table.valid.range", { from: date(days.startsOn), to: date(until) }) };
+    if (until) return { until, valid: t("discounts.table.valid.until", { date: date(until) }) };
+    if (days.startsOn && statusOf.get(rule.id)?.kind === "scheduled") return { until, valid: t("discounts.table.valid.from", { date: date(days.startsOn) }) };
+    return { until, valid: t("discounts.table.valid.none") };
+  };
+  const tableRows: RuleTableRow[] = rules.map((rule, i) => {
+    const missing = rule.enabled ? missingCurrencies(rule, codes) : [];
+    const attention =
+      missing.length > 0
+        ? t("overview.warning.missingCurrency", { rule: ruleName(rule, tr), currencies: tr.list(missing.map((code) => currencyMarketNames(code, currencies))) })
+        : mismatchIds.includes(rule.id)
+          ? t("combine.mismatch.row")
+          : undefined;
+    return {
+      id: rule.id,
+      name: ruleName(rule, tr),
+      ...describeRuleBrief(rule, tr, codes, names),
+      code: rule.method === "code",
+      ...validText(rule),
+      status: statuses[i]!,
+      ...(attention ? { attention } : {}),
+      // P3: a rule that needs attention opens at the field that fixes it.
+      href: ruleEditHref(rule, statuses[i]!, codes),
+    };
+  });
+  const running = statuses.filter(runsNow).length;
+  const needing = ruleTabCounts(tableRows).attention;
+  const hint = hints.join(" ");
+
   return (
     <s-page heading={t("discounts.title")}>
       <DiscountsSubNav active="discounts" />
-      <PageGuide page="discounts" />
-      <s-button slot="primary-action" variant="primary" href="/app/discounts/new">
-        {t("discounts.new")}
-      </s-button>
-      <s-stack direction="block" gap="base">
+      <s-stack direction="block" gap="large">
         {readOnly ? (
           <s-banner tone="warning" heading={t("common.readOnly.heading")}>
             {t("common.readOnly.body")}
@@ -199,60 +229,25 @@ export function DiscountsScreen({
           </div>
         ) : null}
 
-        <WonSection
-          title={t("discounts.list.title")}
-          glyph="tag"
-          // The same function as the home tile (model/module-status.ts).
-          state={rules.length > 0 ? codesStatus(statuses, warned) : undefined}
-          anchor="list"
-          summary={summary}
-          hint={hints.join(" ") || undefined}
-          // §13a: a failed sync carries its fix right here.
-          proof={sync.state === "error" && !readOnly ? <ResyncButton /> : undefined}
-        >
-          {rules.length === 0 ? (
-            // §15b: the empty list is the next step itself — the recipes, one click from a pre-filled discount.
-            <s-stack direction="block" gap="base">
-              <s-paragraph>{t("discounts.empty.body")}</s-paragraph>
-              <RecipeGrid withBlank />
-            </s-stack>
-          ) : (
-            <div>
-              {rules.map((rule, i) => {
-                const missing = rule.enabled ? missingCurrencies(rule, codes) : [];
-                return (
-                  <RuleRow
-                    key={rule.id}
-                    rule={rule}
-                    status={statuses[i]}
-                    currencies={codes}
-                    timezone={timezone}
-                    names={names}
-                    attention={
-                      missing.length > 0
-                        ? t("overview.warning.missingCurrency", { rule: ruleName(rule, tr), currencies: tr.list(missing.map((code) => currencyMarketNames(code, currencies))) })
-                        : mismatchIds.includes(rule.id)
-                          ? t("combine.mismatch.row")
-                          : undefined
-                    }
-                    action={
-                      // P3: a rule that needs attention opens at the field that fixes it.
-                      // The row's main action looks like a button (it was bare text; before the first review, nález 3).
-                      <s-button variant="secondary" href={ruleEditHref(rule, statuses[i], codes)}>
-                        {t("common.edit")}
-                      </s-button>
-                    }
-                  />
-                );
-              })}
-            </div>
-          )}
-        </WonSection>
+        <section id="recipes">
+          <PlainHead title={t("discounts.new")} sub={t("discounts.pick.sub")} />
+          <RecipePicker />
+        </section>
 
         {rules.length > 0 ? (
-          <WonSection title={t("discounts.recipes.title")} glyph="spark" summary={t("discounts.recipes.summary")} anchor="recipes">
-            <RecipeGrid withBlank />
-          </WonSection>
+          <section id="list">
+            <PlainHead title={t("discounts.list.title")} sub={t("tile.codes.liveOf", { live: running, total: rules.length })}>
+              {needing > 0 ? <span data-won-list-attention="" style={{ marginLeft: "auto", fontSize: 13, fontWeight: 600, color: WON_ATTENTION }}>{tr.tp("discounts.table.attention", needing)}</span> : null}
+            </PlainHead>
+            {/* §12, §13a: what is not (all) in Shopify is said here, and a failed sync carries its fix. */}
+            {hint ? (
+              <div data-won-list-hint="" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 12px", marginBottom: 10 }}>
+                <RowNote>{hint}</RowNote>
+                {sync.state === "error" && !readOnly ? <ResyncButton /> : null}
+              </div>
+            ) : null}
+            <RuleTable rows={tableRows} />
+          </section>
         ) : null}
       </s-stack>
     </s-page>

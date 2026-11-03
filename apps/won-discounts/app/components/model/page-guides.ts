@@ -4,7 +4,7 @@
 
 import type { MessageKey } from "../../i18n";
 
-export const GUIDE_PAGES = ["discounts", "tiers", "rewards", "outlet", "campaigns", "placements", "margin", "tryCart", "analytics", "translations", "settings"] as const;
+export const GUIDE_PAGES = ["tiers", "outlet", "campaigns", "placements", "margin", "tryCart", "analytics", "translations", "settings"] as const;
 export type GuidePage = (typeof GUIDE_PAGES)[number];
 
 /** The pages of a Pro feature: the badge stays on them on the Pro plan too. */

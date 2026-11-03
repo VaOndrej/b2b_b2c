@@ -144,9 +144,9 @@ test("Milníky: the preview's slider is outside the form, so walking the ladder 
   await expect.poll(() => range.inputValue()).toBe("55");
   expect(await page.evaluate(() => (window as unknown as { __formEvents: number }).__formEvents)).toBe(0);
   await expect(page.locator("[data-won-ms-preview-tool]")).toHaveCount(0);
-  // Beside the steps on a wide page.
-  const [aside, steps] = await Promise.all([page.locator("[data-won-ms-preview-aside]").boundingBox(), page.locator("section#steps").boundingBox()]);
-  expect(aside!.x).toBeGreaterThan(steps!.x + steps!.width - 1);
+  // Under the steps.
+  const [aside, steps] = await Promise.all([page.locator("[data-won-ms-preview-aside]").boundingBox(), page.locator("[data-won-ms-steps]").boundingBox()]);
+  expect(aside!.y).toBeGreaterThanOrEqual(steps!.y + steps!.height - 1);
 });
 
 test("Množstevní slevy: the preview shows the labelled sample product at a round price, not a shop product for 20 Kč", async ({ page }) => {

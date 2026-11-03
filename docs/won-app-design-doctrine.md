@@ -156,6 +156,8 @@ Each visual code carries **exactly one meaning**, the same everywhere.
 - **§11a** — the codes are orthogonal and never collide: **blue = selected/active**,
   **amber = Pro/plan** (§16), **green = live/on** (§11d). A fourth meaning means a
   fourth deliberate code.
+  *Won Discounts:* **light orange = scheduled** ("Naplánováno", tokens `WON_SCHEDULED*`):
+  it will run on its date. Never the Pro amber (Ondřej, 31 Oct 2026).
 - **§11b** — one selection affordance, from **one shared source**, never re-typed per
   card (same lesson as §10b / DATA-4). *Example:* `selectionRing()` / `WON_SELECT`.
 - **§11c** — same meaning, pattern may differ by control type (a ring vs a raised pill);
@@ -357,7 +359,10 @@ form as §18: each rule names its symptom.
   Two columns on a phone, three on a desktop; adding a module adds a tile, not
   a screenful. *Replaces the stacked overview cards of A3. Symptom:* a home
   page that grows with every module, or a card whose only link is "Upravit".
-  *Example:* `shell/ModuleTile.tsx` (Won Discounts).
+  *Example:* `shell/ModuleTile.tsx` (Won Discounts). Won Discounts since
+  30 Oct 2026 (V3): tiles under named groups, a clear outline, a line between
+  groups, the name in a blue badge (a label, the one exception to §11a), the
+  state top right, one column on a phone.
 
 - **§19e — A module page is a few tiles and one panel at a time.** The tiles
   on top are the page's parts (what runs · make a new one · how it works, or

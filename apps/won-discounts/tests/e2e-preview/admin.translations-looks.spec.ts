@@ -140,7 +140,7 @@ for (const [path, tile, element, preset] of [
 ] as const) {
   test(`the look of ${element} on ${path}: "${preset}" is picked, previewed and posted with its colour`, async ({ page }) => {
     await open(page, path);
-    await page.locator(`[data-won-view-tile="${tile}"]`).click();
+    await page.locator(`[data-won-view-tile="${tile}"]${path.startsWith("rewards") ? " s-button" : ""}`).click();
     // Milníky keep one look per place (7th round, bod 3): the place is picked first.
     await pickPlace(page, element);
     const form = page.locator(`[data-won-look-form="${element}"]`);
@@ -161,7 +161,7 @@ for (const [path, tile, element, preset] of [
     expect(sent.has("look.css")).toBe(path.includes("plan=pro"));
     await expect(form).toContainText(PREVIEW_ONLY);
     await open(page, path, 390);
-    await page.locator(`[data-won-view-tile="${tile}"]`).click();
+    await page.locator(`[data-won-view-tile="${tile}"]${path.startsWith("rewards") ? " s-button" : ""}`).click();
     await pickPlace(page, element);
     expect(await sideways(page)).toBeLessThanOrEqual(0);
   });
@@ -198,7 +198,7 @@ test("the table's look: the ready-made look, the colour and (Pro) the CSS typed 
 test("the cart and the top strip have their own look on Milníky (Pro): the CSS typed styles the sample panel and is posted for the cart", async ({ page }) => {
   await open(page, "rewards?plan=pro");
   // The looks have their own tile (9 Oct 2026, 3rd round, bod 3), and the section is open from the start.
-  await page.locator('[data-won-view-tile="look"]').click();
+  await page.locator('[data-won-view-tile="look"] s-button').click();
   await pickPlace(page, "cart");
   const form = page.locator('[data-won-look-form="cart"]');
   await expect(form).toBeVisible();

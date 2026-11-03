@@ -100,13 +100,13 @@ for (const width of [390, 1440]) {
     expect(await sideways(page), "the open guide stays on the screen").toBeLessThanOrEqual(0);
   });
 
-  test(`${width}px: Horizon / Dawn drawer — "by itself, above the checkout button", the spot changed in Won's settings, and the AI way under "Chci to jinde"`, async ({ page }) => {
+  test(`${width}px: Horizon / Dawn drawer — "by itself, above the checkout button", the spot changed in Won's settings, and the AI way under "Jiné místo"`, async ({ page }) => {
     await open(page, "placements?state=drawer-auto", width);
     const row = page.locator('[data-won-piece="msDrawer"]');
     await expect(row).toHaveAttribute("data-won-piece-state", "auto");
     await expect(row).toContainText("Ukazuje se samo ve vzhledu Dawn, nad tlačítkem pokladny.");
     const setting = page.locator("[data-won-drawer-setting]");
-    await expect(setting).toHaveText("Změnit místo");
+    await expect(setting).toHaveText("Upravit vzhled");
     await expect(setting).toHaveAttribute("href", /\/admin\/themes\/current\/editor\?context=apps/);
     await page.locator('[data-won-elsewhere="msDrawer"]').click();
     await expect(page.locator('[data-won-guide="msDrawer"]')).toBeVisible();

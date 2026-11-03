@@ -424,9 +424,8 @@ test("screen: the stored rewards as a ladder; Free shows the step past its limit
   assert.match(freeHtml, /<s-number-field name="ms\.gift-socks\.amount\.EUR" label="Slovensko \(EUR\)" value=""/);
   // A stored step says at once where it is not offered (N2), by the market's name.
   assert.match(free, /Slovensko \(EUR\): částka chybí, v tomto trhu se stupeň nenabízí/);
-  assert.match(free, /Slovensko: některý stupeň se nenabízí · /, "the tile names the market too");
   // The state lines say the real values.
-  assert.match(free, /Doprava zdarma od 1 000 Kč \/ 40 € · Dárek: Ponožky Won — M od 1 500 Kč/);
+  assert.match(free, /od 1 000 Kč \/ 40 €[\s\S]*Doprava zdarma[\s\S]*od 1 500 Kč[\s\S]*Dárek: Ponožky Won — M/);
   // The preview: the ladder as the customer sees it.
   assert.match(freeHtml, /data-won-ms-preview=""/);
   assert.match(free, /Ještě .* a získáte: /);
@@ -441,22 +440,22 @@ test("screen: the stored rewards as a ladder; Free shows the step past its limit
   assert.doesNotMatch(proHtml, /data-won-ms-over/);
   assert.match(proHtml, /id="step-3" data-won-ms-step="gift-choice"/);
   assert.match(pro, /Dárek \(na výběr až 3\)/);
-  assert.match(pro, /Dárek: Kšiltovka Won, Plátěná taška Won nebo Hrnek Won od 3 000 Kč \/ 120 €/);
-  assert.match(pro, /Přidat stupeň/);
-  assert.match(pro, /Stupňů: 3 z 12/);
+  assert.match(pro, /od 3 000 Kč \/ 120 €[\s\S]*Dárek: Kšiltovka Won, Plátěná taška Won nebo Hrnek Won/);
+  assert.match(pro, /Nový stupeň/);
+  assert.match(pro, /3 stupně/);
   // Discount steps: a percent and an amount per market, with the sentence on how they differ from a gift.
   const discHtml = await renderPage(createElement(MilestonesScreen, devRewardsScreen({ plan: "pro", state: "discounts", locale: "cs" })));
   const disc = text(discHtml);
   assert.deepEqual([...discHtml.matchAll(/data-won-ms-step="([^"]+)"/g)].map((m) => m[1]), ["shipping", "gift-socks", "ms-five", "gift-choice", "ms-fixed"]);
-  assert.match(disc, /Sleva 5 % od 2 000 Kč \/ 80 €/);
-  assert.match(disc, /Sleva 500 Kč \/ 20 € od 5 000 Kč \/ 200 €/);
+  assert.match(disc, /od 2 000 Kč \/ 80 €[\s\S]*?Sleva 5 %/);
+  assert.match(disc, /od 5 000 Kč \/ 200 €[\s\S]*?Sleva 500 Kč \/ 20 €/);
   assert.match(discHtml, /<s-number-field name="ms\.ms-fixed\.off\.EUR" label="Sleva: Slovensko \(EUR\)" value="20"/);
   assert.match(disc, /Na rozdíl od dárku se sleva počítá ze zboží po slevách na produkty/);
   const empty = text(await renderPage(createElement(MilestonesScreen, devRewardsScreen({ plan: "free", state: "empty", locale: "cs" }))));
-  assert.match(empty, /Přidat první stupeň/);
+  assert.match(empty, /Nový stupeň/);
   assert.match(empty, /Zapnout na webu/);
   assert.match(empty, /Košík žebříček neukazuje\. Won není na webu zapnutý/);
-  assert.match(empty, /Žádný stupeň/);
+  assert.match(empty, /Zatím žádný stupeň/);
   // The setup guide's first step: free shipping with its amounts prefilled, nothing stored yet.
   const startHtml = await renderPage(createElement(MilestonesScreen, { ...devRewardsScreen({ plan: "free", state: "empty", locale: "cs" }), start: "shipping" as const }));
   assert.match(startHtml, /<s-number-field name="ms\.shipping\.amount\.CZK"[^>]* value="1500"/);

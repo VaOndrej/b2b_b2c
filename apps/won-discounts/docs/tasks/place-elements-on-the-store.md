@@ -25,21 +25,21 @@ Open **Discounts** and click **Placement on your store**, the last tab of the st
    - **Only in a copy**: it is in an unpublished copy of the theme, not the live one. Publish the copy.
    - **Won off**: the element is in the theme, but Won is not switched on there. Click **Turn on in theme**.
    - **Not verified**: the theme could not be read. Click **Check again**.
-2. Click the row's one button:
+2. Click the row's main button:
    - **Add to the theme** where your theme takes the element as a block: the theme editor opens with it added. Save
      the theme there.
    - **Prepare a brief for AI** where it does not (the cart drawer in every theme, the product card in themes
      like Dawn): follow [add-an-element-with-ai](add-an-element-with-ai.md).
-3. Want it somewhere the block cannot go? Click **I want it elsewhere** under the row. It opens the same guide.
+3. Want it somewhere the block cannot go? Click **Another spot** beside the main button. It opens the same guide.
 4. After any change in the theme click **Check again** at the top. Won reads the theme again, and new elements in
    the theme code start working on the store within a moment.
 
 ## The cart drawer
 
 - **Horizon and Dawn:** the Milestones panel shows in the cart drawer by itself, above the checkout button. To move
-  it to the top above the products, or switch it off, click **Change the spot**: in the theme editor open
+  it to the top above the products, or switch it off, click **Edit the theme**: in the theme editor open
   **App embeds → Won Discounts → Milestones panel in the cart drawer**, choose and save.
-- **Somewhere else in the drawer, or another theme:** click **I want it elsewhere** (or **Prepare a brief for AI**)
+- **Somewhere else in the drawer, or another theme:** click **Another spot** (or **Prepare a brief for AI**)
   and follow [add-an-element-with-ai](add-an-element-with-ai.md). An element added in the theme code wins: the
   panel then shows only there.
 

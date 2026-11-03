@@ -1,9 +1,8 @@
-// Milníky: the ladder as the customer sees it (feedback 6 Oct 2026, bod 9: "náhled nahoře, mění se s každou
-// úpravou"). Drawn from the page's LIVE form in the three sizes the storefront has (extensions/…/snippets/
-// won-milestones.liquid): the strip (one sentence + a thin track), the compact one (a track with a mark per step
-// + the next step's sentence) and the full list (every step, the reached ones ticked). The cart value is a slider,
-// so the merchant walks the ladder; with several markets the preview is of ONE market (a step without an amount
-// there is not offered there, so it is not drawn).
+// Milníky: the ladder as the customer sees it, under the steps (Ondřej, 31 Oct 2026: it changes with every edit of
+// the steps). Drawn from the page's LIVE form, to scale: the sentence about the next reward and a track with the
+// reward above each mark and its amount under it. The cart value is a slider, so the merchant walks the ladder; with
+// several markets the preview is of ONE market (a step without an amount there is not offered there, so it is not
+// drawn).
 
 import { useState } from "react";
 
@@ -12,7 +11,7 @@ import { formatMoney } from "@won/core/discounts/describe";
 import { useT } from "../../i18n/context";
 import type { CurrencyView } from "../model/types";
 import { hoverMark } from "../shell/hover";
-import { WON_FONT, WON_INK, WON_LINE, WON_LIVE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "../shell/tokens";
+import { WON_EDGE, WON_FAINT, WON_FONT, WON_INK, WON_LINE, WON_LIVE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "../shell/tokens";
 
 export interface PreviewStep {
   key: string;
@@ -24,7 +23,9 @@ export interface PreviewStep {
   offered: (column: string) => boolean;
 }
 
-const TRACK = { position: "relative", height: 8, borderRadius: 999, background: "#e3e7ec" } as const;
+const LABEL = { position: "absolute", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12 } as const;
+/** Marks closer than this share of the track take turns on a second line: their labels would touch. */
+const CLOSE = 22;
 const CHIP = { padding: "4px 10px", borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: WON_FONT } as const;
 
 export function MilestonePreview({ steps, currencies }: { steps: readonly PreviewStep[]; currencies: readonly CurrencyView[] }) {
@@ -52,13 +53,18 @@ export function MilestonePreview({ steps, currencies }: { steps: readonly Previe
   const max = Math.round(top * 1.15);
   const cart = Math.round((max * share) / 100);
   const next = ladder.find((step) => cart < step.at) ?? null;
-  const reached = ladder.filter((step) => cart >= step.at);
   const pct = (minor: number) => Math.max(0, Math.min(100, (minor * 100) / top));
   const sentence = next ? t("milestones.preview.left", { amount: money(next.at - cart), reward: next.reward }) : t("milestones.preview.done");
-  const fill = { position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct(cart)}%`, borderRadius: 999, background: WON_INK } as const;
+  const fill = { position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct(cart)}%`, borderRadius: 999, background: WON_LIVE } as const;
+  let lifted = false;
+  const lift = ladder.map((step, i) => {
+    lifted = i > 0 && pct(step.at) - pct(ladder[i - 1]!.at) < CLOSE && !lifted;
+    return lifted;
+  });
+  const tall = lift.some(Boolean);
 
   return (
-    <div data-won-ms-preview="" style={{ fontFamily: WON_FONT, display: "flex", flexDirection: "column", gap: 14 }}>
+    <div data-won-ms-preview="" style={{ fontFamily: WON_FONT, display: "flex", flexDirection: "column", gap: 10 }}>
       {currencies.length > 1 ? (
         <div role="group" aria-label={t("milestones.preview.market")} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {currencies.map((view) => {
@@ -84,52 +90,27 @@ export function MilestonePreview({ steps, currencies }: { steps: readonly Previe
         <span>{t("milestones.preview.cart", { amount: money(cart) })}</span>
         {/* Uncontrolled: the page's form re-reads itself on every native `input` and re-renders before React hears
             the event — a controlled slider was written back to its old value and never moved. */}
-        <input type="range" min={0} max={100} step={1} defaultValue={share} onChange={(event) => setShare(Number(event.target.value))} style={{ flex: "1 1 180px", minWidth: 0, accentColor: WON_INK }} data-won-ms-preview-range="" />
+        <input type="range" min={0} max={100} step={1} defaultValue={share} onChange={(event) => setShare(Number(event.target.value))} style={{ flex: "1 1 180px", minWidth: 0, accentColor: WON_LIVE }} data-won-ms-preview-range="" />
       </label>
 
-      {/* Compact: the track with a mark per step and the sentence about the next one (product page, cart drawer). */}
-      <div data-won-ms-preview-size="compact" style={{ padding: 14, borderRadius: 12, border: `1px solid ${WON_LINE}`, background: WON_SURFACE }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: WON_INK, marginBottom: 10 }}>{sentence}</div>
-        <div style={{ ...TRACK, margin: "0 6px" }}>
+      <div data-won-ms-preview-size="compact" style={{ padding: "16px 20px", borderRadius: 12, background: WON_WASH }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: WON_INK }}>{sentence}</div>
+        <div style={{ position: "relative", height: 8, margin: tall ? "52px 10px 46px" : "36px 10px 30px", borderRadius: 999, background: WON_EDGE }}>
           <div style={fill} />
-          {ladder.map((step) => (
-            <span
-              key={step.key}
-              title={`${step.reward} · ${money(step.at)}`}
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: `${pct(step.at)}%`,
-                width: 14,
-                height: 14,
-                marginLeft: -7,
-                marginTop: -7,
-                borderRadius: 999,
-                boxSizing: "border-box",
-                border: `2px solid ${cart >= step.at ? WON_INK : "#c3cad2"}`,
-                background: cart >= step.at ? WON_INK : WON_SURFACE,
-              }}
-            />
-          ))}
+          {ladder.map((step, i) => {
+            const done = cart >= step.at;
+            const last = i === ladder.length - 1;
+            const edge = last ? { right: -7 } : { left: "50%", transform: "translateX(-50%)" };
+            const off = lift[i] ? 32 : 16;
+            return (
+              <span key={step.key} data-won-ms-preview-step={done ? "reached" : "ahead"} title={`${step.reward} · ${money(step.at)}`} style={{ position: "absolute", top: "50%", left: `${pct(step.at)}%`, width: 14, height: 14, marginLeft: -7, marginTop: -7, borderRadius: 999, boxSizing: "border-box", border: `2px solid ${done ? WON_LIVE : WON_FAINT}`, background: done ? WON_LIVE : WON_SURFACE }}>
+                <span style={{ ...LABEL, ...edge, bottom: off, fontWeight: 600, color: WON_INK }}>{step.reward}</span>
+                <span style={{ ...LABEL, ...edge, top: off, color: WON_MUTED }}>{money(step.at)}</span>
+              </span>
+            );
+          })}
         </div>
       </div>
-
-      {/* Full: every step with its reward, the reached ones ticked (cart page). */}
-      <ol data-won-ms-preview-size="full" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-        {ladder.map((step) => {
-          const done = cart >= step.at;
-          return (
-            <li key={step.key} data-won-ms-preview-step={done ? "reached" : "ahead"} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 10, border: `1px solid ${WON_LINE}`, background: done ? "rgba(26,143,75,.07)" : WON_SURFACE }}>
-              <span aria-hidden="true" style={{ flex: "0 0 auto", width: 20, height: 20, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff", background: done ? WON_LIVE : "#c3cad2" }}>
-                {done ? "✓" : ""}
-              </span>
-              <span style={{ flex: "1 1 auto", minWidth: 0, fontSize: 13.5, fontWeight: 600, color: WON_INK, overflowWrap: "anywhere" }}>{step.reward}</span>
-              <span style={{ flex: "0 0 auto", fontSize: 13, color: WON_MUTED }}>{t("milestones.preview.from", { amount: money(step.at) })}</span>
-            </li>
-          );
-        })}
-      </ol>
-      <div style={{ fontSize: 12.5, color: WON_MUTED }}>{t("milestones.preview.note", { n: reached.length, total: ladder.length })}</div>
     </div>
   );
 }

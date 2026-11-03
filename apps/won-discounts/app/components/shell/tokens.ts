@@ -9,6 +9,8 @@
 //   red   = needs attention     (WON_ATTENTION) — the deliberate fourth code: a
 //           discount that silently does not run somewhere (missing currency value,
 //           a code rule without a code). Never used for decoration.
+//   orange = waits for its date  (WON_SCHEDULED*) — a discount that will run; lighter than and never the Pro amber.
+// One exception to blue (Ondřej, 30 Oct 2026): the name badge of a home tile (WON_BADGE*), a label, not a selection.
 
 export const WON_AMBER = "#D9A83A";
 /** Faint amber wash for Pro surfaces/badges. */
@@ -40,6 +42,11 @@ export const WON_INK = "#111418";
 export const WON_MUTED = "#5b6472";
 export const WON_FAINT = "#8892a0";
 export const WON_LINE = "#e3e7ec";
+/** The outline of a home tile and the line between its groups: darker than WON_LINE, so a tile reads as one object. */
+export const WON_EDGE = "#cfd5dc";
+/** The name badge of a home tile. */
+export const WON_BADGE = "#e3efff";
+export const WON_BADGE_TEXT = "#0f4fa8";
 export const WON_SURFACE = "#ffffff";
 /** Neutral wash behind glyphs, summaries and nested blocks. */
 export const WON_WASH = "#f5f7f9";
@@ -47,4 +54,8 @@ export const WON_WASH = "#f5f7f9";
 export const WON_LIVE = "#1a8f4b";
 /** "Needs attention" — see the header comment; the fourth deliberate code. */
 export const WON_ATTENTION = "#b42318";
+/** "Naplánováno": a light orange that must not read as the Pro amber. */
+export const WON_SCHEDULED = "#B4530A";
+export const WON_SCHEDULED_BG = "#FFF1E6";
+export const WON_SCHEDULED_EDGE = "#FBD3B0";
 export const WON_CARD_SHADOW = "0 1px 2px rgba(20,28,45,.05), 0 6px 18px rgba(20,28,45,.05)";

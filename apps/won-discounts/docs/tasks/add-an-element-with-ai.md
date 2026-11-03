@@ -19,7 +19,7 @@ summary: Copy the brief Won prepares, let your own AI change one theme file, pas
 Use this where the theme takes no app block (the cart drawer, a product card in themes like Dawn) or where you
 want an element somewhere a block cannot go. Won never changes your theme and never calls an AI itself.
 
-1. On **Placement on your store** click **Prepare a brief for AI** (or **I want it elsewhere**) at the place.
+1. On **Placement on your store** click **Prepare a brief for AI** (or **Another spot**) at the place.
 2. **Copy the brief.** Click **Prepare the brief**, then **Copy the brief**. It says what to add, where and what
    not to change, and holds the current content of the theme file it is about.
 3. **Paste it into your AI and save the result.** Any AI you can paste text into works. It answers with the whole

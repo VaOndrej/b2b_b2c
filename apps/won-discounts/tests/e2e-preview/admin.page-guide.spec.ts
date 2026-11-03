@@ -12,8 +12,8 @@ test("the explanation hides per page, stays hidden after a reload and comes back
 
   await page.reload({ waitUntil: "networkidle" });
   await expect(page.locator('[data-won-guide="tiers"]')).toHaveCount(0);
-  await open(page, "rewards");
-  await expect(page.locator('[data-won-guide="rewards"]')).toBeVisible();
+  await open(page, "outlet");
+  await expect(page.locator('[data-won-guide="outlet"]')).toBeVisible();
 
   await open(page, "tiers");
   await page.getByRole("button", { name: "Zobrazit vysvětlení" }).click();
@@ -21,7 +21,7 @@ test("the explanation hides per page, stays hidden after a reload and comes back
 });
 
 test("the explanation fits a phone", async ({ page }) => {
-  for (const path of ["discounts", "tiers", "rewards", "outlet", "campaigns", "placements", "margin", "try-cart", "analytics", "translations", "settings"]) {
+  for (const path of ["tiers", "outlet", "campaigns", "placements", "margin", "try-cart", "analytics", "translations", "settings"]) {
     await open(page, path, 390);
     expect(await sideways(page), path).toBeLessThanOrEqual(0);
   }

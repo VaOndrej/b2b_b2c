@@ -221,7 +221,7 @@ test("'Běží' per rule: a rule changed after the last applied sync is 'čeká 
   const facts = await loadRuleSync(ctx, (await loadConfig(db.prisma, shop)).config);
   assert.deepEqual(facts, { [idA]: "synced", [idB]: "pending" });
   const page = await discountsPage(ctx, { ...PAGE, deleted: false });
-  assert.match(text(await renderPage(createElement(DiscountsScreen, page))), /2 slevy · 1 aktivní · 1 čeká na zápis/);
+  assert.match(text(await renderPage(createElement(DiscountsScreen, page))), /1 aktivní z 2[\s\S]*Zatím neplatí/);
 });
 
 // --- Fix round 1, item 2: "Běží" from the version link, not from timestamps --------------------

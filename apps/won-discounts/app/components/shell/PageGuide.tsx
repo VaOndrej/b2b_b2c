@@ -14,7 +14,6 @@ import { WON_FONT, WON_INK, WON_LINE, WON_LIVE, WON_MUTED, WON_SELECT, WON_SURFA
 const ROW: CSSProperties = { display: "flex", justifyContent: "space-between", gap: 12, padding: "3px 0" };
 const OFF: CSSProperties = { color: WON_LIVE, fontWeight: 600 };
 const TOTAL: CSSProperties = { ...ROW, marginTop: 4, paddingTop: 7, borderTop: `1px solid ${WON_LINE}`, fontWeight: 700 };
-const BAR: CSSProperties = { height: 8, margin: "10px 0 6px", borderRadius: 999, background: WON_LINE, overflow: "hidden" };
 const CELL: CSSProperties = { padding: "5px 0", borderTop: `1px solid ${WON_LINE}` };
 const HEAD_CELL: CSSProperties = { padding: "5px 0", fontSize: 12, color: WON_MUTED };
 
@@ -41,36 +40,6 @@ function Rows({ rows, total }: { rows: [MessageKey, MessageKey, boolean?][]; tot
 function Preview({ page }: { page: GuidePage }) {
   const { t } = useT();
   switch (page) {
-    case "discounts":
-      return (
-        <>
-          <div style={ROW}>
-            <span>{t("guide.preview.subtotal")}</span>
-            <span>{t("guide.preview.price")}</span>
-          </div>
-          <div style={{ ...ROW, ...OFF }}>
-            <span>{t("guide.preview.code")}</span>
-            <span>{t("guide.preview.codeOff")}</span>
-          </div>
-          <div style={{ ...TOTAL }}>
-            <span>{t("guide.preview.total")}</span>
-            <span>{t("guide.preview.totalValue")}</span>
-          </div>
-        </>
-      );
-    case "rewards":
-      return (
-        <>
-          <div style={{ fontWeight: 700 }}>{t("guide.preview.reward")}</div>
-          <div style={BAR}>
-            <div style={{ width: "80%", height: "100%", background: WON_LIVE }} />
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: WON_MUTED }}>
-            <span>{t("guide.preview.rewardFrom")}</span>
-            <span>{t("guide.preview.rewardTo")}</span>
-          </div>
-        </>
-      );
     case "tiers":
       return (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
