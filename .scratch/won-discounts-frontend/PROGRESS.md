@@ -2,9 +2,9 @@
 
 ## CHECKPOINT
 
-- **Hotové tickety:** 01–24
-- **Rozdělaný:** 25 (uzavření: lint error, výjimky, finální capture), nezačatý
-- **Další krok:** 25: lint barev na error, ADMIN-UX §1 výjimky, smazat nepoužívané, finální capture vs baseline auditu, build; pak review 20–25
+- **Hotové tickety:** 01–25 (všech 25)
+- **Rozdělaný:** nic (review 20–25 hotové, viz níž)
+- **Další krok:** ruční ověření Ondřejem (Save Bar 09–11, formát data 07) a rozhodnutí 10, 17, 23
 - **Čeká na Ondřeje:** 07 formát data v adminu, 09, 10, 11 Save Bar v shopify app dev (postupy v ticketech); 10: per-run úpravy výprodeje na s-modal?; 17: přijmout −14 % slov u Marže a 0 % u Překladů?; 23: hlavní soubory Výprodeje/Kampaní/Milníků 583–679 ř.
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
@@ -37,7 +37,8 @@
 | 21 | done | 643737f7 | `evidence/frontend-21/` |
 | 22 | done | b1487706 | `evidence/frontend-22/` |
 | 23 | done, velikost souborů částečně | f6978122 | `evidence/frontend-23/` |
-| 24 | done | viz git log | `evidence/frontend-24/` |
+| 24 | done | 276150a8 | `evidence/frontend-24/` |
+| 25 | done | viz git log | `evidence/frontend-25/` (finální capture, vs-audit-baseline.md) |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 
@@ -90,3 +91,18 @@
 - Odeslaná data: editor na Free a Nastavení posílají stejná pole jako dřív (E2E porovnává FormData).
 - Nález (opraveno už v 19): sloupec „Na webu teď“ ukazoval u skončeného výprodeje stav štítku na webu.
 - Otevřené k rozhodnutí: 17 (−20 % slov u Marže a Překladů nesplněno), 10 (úprava jednoho výprodeje na s-modal?).
+
+## Review skupiny 20–25 (2026-11-03)
+
+- Hranice: backend, routy (kromě importů obrazovek po přesunu do složek), webhooky, extensions a theme beze změny.
+- Vzhled: každá dávka pixelově porovnaná s předchozí (`compare-vs-*.txt`), rozdíly jen šum vykreslování; vědomá změna jen
+  karta generovaných kódů (22).
+- Nález (opraveno v 24): kódový převod barev převedl atribut JSX `placeholder="#0a7d4f"` na `placeholder=WON_…` bez
+  závorek; typecheck to chytil, opraveno na `placeholder={WON_SAMPLE_ACCENT}`.
+- Přijato: hlavní soubory Výprodeje, Kampaní, Milníků a Vyzkoušet košík nad 400 ř.; `Surface.Card` zatím nepoužitý.
+
+## Finální stav
+
+- Všech 25 ticketů done (07, 09, 10, 11 čekají na ruční ověření; 17 a 23 s částečně splněným kritériem, zapsáno v ticketech).
+- Brána: node 2056/2056, engine 720/720, typecheck 0, lint 0 chyb (lint barev je chyba), build OK, E2E preview 66/66.
+- Baseline 2026-11-03 → teď: E2E 48 → 66 testů, node 2038 → 2056.

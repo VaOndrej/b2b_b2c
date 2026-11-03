@@ -46,6 +46,14 @@ Všechny kontrolky = `s-*` web komponenty (`s-button`, `s-switch`, `s-select`,
   `form.get("x") === "on"`.
 - Před psaním validuj: `learn_shopify_api(polaris-app-home)` →
   `validate_component_codeblocks`.
+- **Výjimky (Won Discounts, audit 2026-11-03):** surový prvek nebo vlastní barva jen tam, kde
+  Polaris nemá ekvivalent, a jen v `app/components/shell/` se zdůvodněním v hlavičce souboru:
+  dlaždice (`ModuleTile`), segmentová volba (`SegmentedChoice`), tabulka slev se záložkami
+  a řazením (`RuleTable`), posuvník, rozbalovací řádek, volba v kartě a tlačítka vzorku
+  obchodu (`Controls`), štítek stavu (`StatusBadge`), plochy Pro / pozornost / výběr /
+  naplánováno (`Surface`, `ProSell`, `PlanBadge`). Barvy jen z `shell/tokens.ts`; lint
+  (`no-restricted-syntax`, chyba) hlídá hex a `rgba(` v komponentách mimo shell. Mimo shell
+  zůstávají jen skrytá pole formuláře (`<input type="hidden">`).
 
 ### 2. Jedno uložení na stránku: Save Bar — impl. §1/§14, §18i, §19e
 Stránka má **jeden** settings `<Form>` s **`data-save-bar`**; App Bridge sám ukáže
