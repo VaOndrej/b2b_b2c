@@ -2,9 +2,9 @@
 
 ## CHECKPOINT
 
-- **Hotové tickety:** 01–14
-- **Rozdělaný:** review 12–14
-- **Další krok:** review 12–14, pak 15 (Pro jednou: editor)
+- **Hotové tickety:** 01–15
+- **Rozdělaný:** 16 (Pro jednou: moduly), nezačatý
+- **Další krok:** 16: žlutý banner → s-banner warning, Výprodej bez opakovaného Pro
 - **Čeká na Ondřeje:** 07 formát data v adminu, 09, 10, 11 Save Bar v shopify app dev (postupy v ticketech); 10: per-run úpravy výprodeje na s-modal?
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
@@ -27,7 +27,8 @@
 | 11 | done, čeká na ruční ověření | 18557663 | `evidence/frontend-11/`, ADMIN-UX §2 |
 | 12 | done | a39b3eee | `evidence/frontend-12/`, E2E admin.state-once |
 | 13 | done | e67ed844 | `evidence/frontend-13/` |
-| 14 | done | viz git log | `evidence/frontend-14/` |
+| 14 | done | 65740cd4 | `evidence/frontend-14/` |
+| 15 | done | viz git log | `evidence/frontend-15/` |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 
@@ -66,3 +67,9 @@
 - Přijaté riziko: řetěz uložení je v modulu (`chains`); když obchodník odejde ze stránky uprostřed ukládání, zůstane tam,
   dokud ho nepřepíše další uložení stejné stránky. Neškodí (čeká na výsledek, který nepřijde).
 - Neověřeno: skutečný Save Bar App Bridge (ruční postupy v ticketech 09–11).
+
+## Review skupiny 12–14 (2026-11-03)
+
+- Hranice: backend, routy a webhooky beze změny.
+- Texty skupin na Přehledu pokrývají všech 5 druhů upozornění (`RuleWarningKind`). Bez nálezů k opravě.
+- Přijato: na Přehledu dlaždice bez počtu jen když seznam drží všechny její věci; jinak počet zůstává (poctivější než 0).

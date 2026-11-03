@@ -44,3 +44,16 @@ test("on Free the look's view is short — the locked Pro form is gone, on a pho
   await page.locator('[data-won-view-tile="table"]').click();
   expect(await sideways(page)).toBeLessThanOrEqual(0);
 });
+
+test("the rule editor on Free: one Pro note in Kombinace a trhy, no locked control, and the form posts no Pro field (as before)", async ({ page }) => {
+  await open(page, "rule-editor?rule=dev-f2-collection");
+  const section = page.locator("section#pro");
+  await expect(section.locator("[data-won-pro-sell]")).toHaveCount(1);
+  await expect(section.locator("[data-won-plan-badge]")).toHaveCount(0);
+  const keys = await page.evaluate(() => [...new FormData(document.querySelector<HTMLFormElement>("form[data-save-bar]")!).keys()]);
+  expect(keys.filter((key) => key === "markets" || key === "combineRules")).toEqual([]);
+  // Pro: exceptions and markets work, nothing is locked.
+  await open(page, "rule-editor?rule=dev-f2-collection&plan=pro");
+  await expect(page.locator("section#pro [data-won-pro-sell]")).toHaveCount(0);
+  expect(await page.locator('section#pro s-checkbox[name="markets"]').evaluateAll((els) => els.filter((el) => el.hasAttribute("disabled")).length)).toBe(0);
+});

@@ -148,10 +148,53 @@ export function ProSection({
             disabled={fieldsOff}
           />
         ))}
-        {!pro && defaults.combineRules.length > 0 ? <FieldMark text={t("combine.exceptions.locked")} /> : null}
       </s-stack>
     </Anchor>
   );
+  const marketsBlock = (
+    <Anchor id="markets">
+      <div ref={marketsRef}>
+        <s-stack direction="block" gap="small-200">
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <s-text type="strong">{t("editor.pro.markets")}</s-text>
+            {/* On Pro, the section's one Pro marker (the plan has it; nothing is locked). */}
+            <PlanBadge tier="pro" />
+          </span>
+          <s-text color="subdued">{t("editor.pro.marketsIntro")}</s-text>
+          {scope !== "granted" && anyMarket ? (
+            <RowNote tone={scope === "declined" ? "attention" : undefined}>
+              {t(scope === "declined" ? "editor.pro.marketsScopeDeclined" : "editor.pro.marketsScope")}
+            </RowNote>
+          ) : null}
+          {!anyMarket ? (
+            <s-stack direction="inline" gap="small-200" alignItems="center">
+              <s-text color="subdued">{t("editor.pro.marketsNone")}</s-text>
+              <s-link href={SHOPIFY_MARKETS} target="_top">
+                {t("editor.pro.marketsOpen")}
+              </s-link>
+            </s-stack>
+          ) : null}
+          {markets.map((m) => (
+            <s-checkbox key={m.handle} name={FIELD.markets} value={m.handle} label={m.name} checked={boolAttr(defaults.markets.includes(m.handle))} disabled={fieldsOff} />
+          ))}
+          {offMarkets.map((m) => (
+            // B3: stored, switched off — kept (it is submitted while ticked) and said, never dropped silently.
+            <div key={m.handle}>
+              <s-checkbox name={FIELD.markets} value={m.handle} label={m.name} checked disabled={fieldsOff} />
+              {liveMarkets.includes(m.handle) ? <FieldMark text={t("editor.mark.marketOff", { market: m.name })} /> : null}
+            </div>
+          ))}
+          {status.kind === "market_off" ? <FieldMark text={t("editor.mark.marketsAllOff")} /> : null}
+        </s-stack>
+      </div>
+    </Anchor>
+  );
+  const segmentsBlock = storedSegments ? (
+    <Anchor id="segments">
+      {liveSegments ? <FieldMark text={t("editor.pro.segmentsStored")} /> : null}
+      <s-checkbox name={FIELD.dropSegments} value="on" label={t("editor.pro.dropSegments")} disabled={off} />
+    </Anchor>
+  ) : null;
   return (
     <WonSection
       step={editorStep(EDITOR_STEPS, ed.isNew)}
@@ -169,60 +212,33 @@ export function ProSection({
         {gate.length > 0 ? <GateNotes notes={gate} compact pending={gatePending} /> : null}
         {/* The types it adds up with are every plan's and come first; the exceptions and the markets are Pro. */}
         {combines}
-        {!pro ? <ProSell benefit={`${t("combine.exceptions.benefit")} ${t("editor.pro.benefit")}`} /> : null}
-        <ProFrame locked={!pro}>
-          <s-stack direction="block" gap="base">
-            {exceptions}
-            <Anchor id="markets">
-              <div ref={marketsRef}>
-                <s-stack direction="block" gap="small-200">
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <s-text type="strong">{t("editor.pro.markets")}</s-text>
-                    <PlanBadge tier="pro" locked={!pro} href={pro ? undefined : "/app/plan"} />
-                  </span>
-                  <s-text color="subdued">{t("editor.pro.marketsIntro")}</s-text>
-                  {scope !== "granted" && anyMarket ? (
-                    <RowNote tone={scope === "declined" ? "attention" : undefined}>
-                      {t(scope === "declined" ? "editor.pro.marketsScopeDeclined" : "editor.pro.marketsScope")}
-                    </RowNote>
-                  ) : null}
-                  {!anyMarket ? (
-                    <s-stack direction="inline" gap="small-200" alignItems="center">
-                      <s-text color="subdued">{t("editor.pro.marketsNone")}</s-text>
-                      <s-link href={SHOPIFY_MARKETS} target="_top">
-                        {t("editor.pro.marketsOpen")}
-                      </s-link>
-                    </s-stack>
-                  ) : null}
-                  {markets.map((m) => (
-                    <s-checkbox key={m.handle} name={FIELD.markets} value={m.handle} label={m.name} checked={boolAttr(defaults.markets.includes(m.handle))} disabled={fieldsOff} />
-                  ))}
-                  {offMarkets.map((m) => (
-                    // B3: stored, switched off — kept (it is submitted while ticked) and said, never dropped silently.
-                    <div key={m.handle}>
-                      <s-checkbox name={FIELD.markets} value={m.handle} label={m.name} checked disabled={fieldsOff} />
-                      {liveMarkets.includes(m.handle) ? <FieldMark text={t("editor.mark.marketOff", { market: m.name })} /> : null}
-                    </div>
-                  ))}
-                  {status.kind === "market_off" ? <FieldMark text={t("editor.mark.marketsAllOff")} /> : null}
-                  {!pro && defaults.markets.length > 0 ? (
-                    // The plan does not run market targeting (BILL-1): the rule is off until it is removed or the plan changes.
-                    <div>
-                      {liveMarkets.length > 0 ? <FieldMark text={t("editor.mark.proMarkets")} /> : null}
-                      <s-checkbox name={FIELD.dropMarkets} value="on" label={t("editor.pro.dropMarkets")} disabled={off} />
-                    </div>
-                  ) : null}
-                </s-stack>
-              </div>
-            </Anchor>
-            {storedSegments ? (
-              <Anchor id="segments">
-                {liveSegments ? <FieldMark text={t("editor.pro.segmentsStored")} /> : null}
-                <s-checkbox name={FIELD.dropSegments} value="on" label={t("editor.pro.dropSegments")} disabled={off} />
-              </Anchor>
-            ) : null}
-          </s-stack>
-        </ProFrame>
+        {pro ? (
+          <ProFrame locked={false}>
+            <s-stack direction="block" gap="base">
+              {exceptions}
+              {marketsBlock}
+              {segmentsBlock}
+            </s-stack>
+          </ProFrame>
+        ) : (
+          // Free (doctrine §18h, audit 2026-11-03 F4): one sentence of what Pro adds, with the way to the plan. The locked
+          // controls are not drawn (disabled fields never posted anyway); what is STORED and not run is said, with the
+          // switch that removes it.
+          // A deep link to #markets / #exceptions lands here, where Pro is said.
+          <Anchor id="markets">
+            <s-stack direction="block" gap="base">
+              <ProSell benefit={t("editor.pro.sell")} />
+              {defaults.combineRules.length > 0 ? <FieldMark text={t("combine.exceptions.locked")} /> : null}
+              {defaults.markets.length > 0 ? (
+                <div>
+                  {liveMarkets.length > 0 ? <FieldMark text={t("editor.mark.proMarkets")} /> : null}
+                  <s-checkbox name={FIELD.dropMarkets} value="on" label={t("editor.pro.dropMarkets")} disabled={off} />
+                </div>
+              ) : null}
+              {segmentsBlock}
+            </s-stack>
+          </Anchor>
+        )}
       </s-stack>
     </WonSection>
   );

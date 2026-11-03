@@ -300,7 +300,13 @@ test("embedded admin: a jump inside the page is not a navigation for App Bridge,
   await expect(link).toHaveAttribute("tabindex", "0");
   expect(await link.getAttribute("href")).toBeNull();
   await link.click();
-  await expect.poll(() => top("schedule")).toBeLessThan(40);
+  // At the top, or as high as the page goes (a short page cannot scroll its last sections to the top).
+  const landed = () => page.evaluate(() => {
+    const at = document.getElementById("schedule")?.getBoundingClientRect().top ?? 9999;
+    return at < 40 || window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
+  });
+  await expect.poll(landed).toBe(true);
+  expect(await top("schedule")).toBeLessThan(900);
   await expect(link).toHaveAttribute("aria-current", "location");
   // Enter does what a click does.
   const first = nav.locator("a").first();

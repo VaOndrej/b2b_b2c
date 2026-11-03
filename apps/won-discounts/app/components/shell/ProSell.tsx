@@ -9,6 +9,7 @@ export function ProSell({ benefit, href = "/app/plan" }: { benefit: string; href
   const { t } = useT();
   return (
     <div
+      data-won-pro-sell=""
       style={{
         fontFamily: WON_FONT,
         border: `1px solid ${WON_AMBER}`,
