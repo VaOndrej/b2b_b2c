@@ -2,10 +2,10 @@
 
 ## CHECKPOINT
 
-- **Hotové tickety:** 01–08
-- **Rozdělaný:** 09 (jedno uložení, pilot Množstevní slevy), nezačatý
-- **Další krok:** 09: Sčítá se s do jednoho uložení na Množstevních slevách, vybrat vzor spojení, E2E
-- **Čeká na Ondřeje:** 07 formát data v adminu (postup v ticketu 07)
+- **Hotové tickety:** 01–09
+- **Rozdělaný:** 10 (jedno uložení Milníky a Výprodej), nezačatý
+- **Další krok:** 10: vzor z 09 (useOneSave + CombinePart) na Milníky a Výprodej, jednorázové akce zůstávají tlačítky
+- **Čeká na Ondřeje:** 07 formát data v adminu, 09 Save Bar v shopify app dev (postupy v ticketech)
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
 - **Harness:** `npx react-router dev --port 3411` (příkaz v README), log ve scratchpadu session.
@@ -22,6 +22,7 @@
 | 06 | done | 8de0344a | `evidence/frontend-06/`, E2E 50 |
 | 07 | done, čeká na ruční ověření data | d5aaf8d4 | `evidence/frontend-07/` |
 | 08 | done | 1d45a30c | `evidence/frontend-08/`, docs:gen |
+| 09 | done, čeká na ruční ověření | viz git log | `evidence/frontend-09/`, E2E admin.one-save |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 

@@ -7,15 +7,12 @@ import { open, sideways } from "./support";
 
 test("the page's Save is shown only under a view whose fields it saves", async ({ page }) => {
   const save = page.locator("[data-won-page-save]");
+  // Množstevní slevy is on the one save (admin.one-save.spec.ts): no Save of the page in any view.
   await open(page, "tiers?plan=pro");
-  await expect(save).toBeVisible();
+  await expect(save).toHaveCount(0);
   await page.locator('[data-won-view-tile="table"]').click();
-  // The table's view: the block is added in the theme and the look has its own button.
-  await expect(save).toBeHidden();
   await expect(page.locator("s-button:visible", { hasText: /^Uložit$/ })).toHaveCount(0);
   await expect(page.locator("s-button:visible", { hasText: "Uložit vzhled" })).toHaveCount(1);
-  await page.locator('[data-won-view-tile="exceptions"]').click();
-  await expect(save).toBeVisible();
 
   await open(page, "rewards?plan=pro");
   await expect(save).toBeVisible();

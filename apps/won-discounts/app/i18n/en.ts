@@ -256,6 +256,8 @@ export const en: Record<keyof typeof cs, string> = {
   "common.pro": "Pro",
   "common.proLocked": "Pro · unlock",
   "common.free": "Free",
+  "oneSave.partNotSaved": "Not saved: {part}",
+  "oneSave.notPosted": "Not saved either: {parts}. Try saving again.",
   "common.save": "Save",
   "common.cancel": "Cancel",
   "common.edit": "Edit",

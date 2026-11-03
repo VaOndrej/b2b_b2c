@@ -158,7 +158,9 @@ test("PageSave is hidden, never unmounted, and every page with views uses it", a
   assert.match(draw(false), /data-won-page-save="hidden" style="display:none"><s-button type="submit"/);
   // The pages whose form spans several views draw their Save through it (the view is picked in the browser:
   // tests/e2e-preview/admin.views.spec.ts clicks through them).
-  for (const path of ["tiers", "rewards", "margin"]) assert.equal((await render(path)).split("data-won-page-save=").length - 1, 1, path);
+  for (const path of ["rewards", "margin"]) assert.equal((await render(path)).split("data-won-page-save=").length - 1, 1, path);
+  // Množstevní slevy is on the one save (shell/one-save.tsx): the save bar alone.
+  assert.equal((await render("tiers")).split("data-won-page-save=").length - 1, 0);
 });
 
 // --- One card for every warning: what happened, what to do, the button -----------------------------------------

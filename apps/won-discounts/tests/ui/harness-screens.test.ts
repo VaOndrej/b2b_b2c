@@ -679,8 +679,23 @@ test("the tier note is only for a product rule (an order rule does not compete w
   assert.doesNotMatch(html, /Na produktech s množstevní slevou/);
 });
 
+test("Množstevní slevy: one form with the save bar and no Save of its own; Sčítá se s is a part of it", async () => {
+  for (const path of ["tiers", "tiers?plan=pro"]) {
+    const { html } = await render(path);
+    const form = html.slice(html.indexOf("<form"), html.indexOf("</form>"));
+    assert.match(form, /data-save-bar/, path);
+    assert.doesNotMatch(form, /type="submit"/, `${path}: the save bar is the one save`);
+    assert.match(form, /data-won-module-combine="tiers" data-won-save-part="combine"[\s\S]*name="part:combine:combinePosted"/, path);
+  }
+  // The look and the cards are still saved on their own, in "Tabulka na webu".
+  const forms = [...(await render("tiers?plan=pro")).html.matchAll(/<form[^>]*>[\s\S]*?<\/form>/g)].map((m) => m[0]);
+  assert.deepEqual(forms.slice(1).map((f) => (f.match(/type="submit"/g) ?? []).length), [1, 1]);
+  assert.match(forms[1]!, /data-won-look-form="tiers"[\s\S]*Uložit vzhled/);
+  assert.match(forms[2]!, /data-won-cards-form=""/);
+});
+
 test("MVP 3 screens: one save for the whole form, last on the page", async () => {
-  for (const path of ["tiers", "tiers?plan=pro", "settings"]) {
+  for (const path of ["settings"]) {
     // The page's own form (the first one; a look's section below it is a form of its own with its own save).
     const { html } = await render(path);
     const form = html.slice(html.indexOf("<form"), html.indexOf("</form>"));
@@ -689,12 +704,6 @@ test("MVP 3 screens: one save for the whole form, last on the page", async () =>
     assert.equal(form.indexOf('type="submit"'), submit, `${path}: exactly one submit button`);
     assert.match(form, /data-save-bar/, `${path}: the App Bridge save bar`);
   }
-  // Each further form on Množstevní slevy saves one thing and says which.
-  const forms = [...(await render("tiers?plan=pro")).html.matchAll(/<form[^>]*>[\s\S]*?<\/form>/g)].map((m) => m[0]);
-  assert.deepEqual(forms.slice(1).map((f) => (f.match(/type="submit"/g) ?? []).length), [1, 1, 1]);
-  assert.match(forms[1]!, /data-won-module-combine="tiers"[\s\S]*name="combineModule" value="tiers"[\s\S]*Uložit/);
-  assert.match(forms[2]!, /data-won-look-form="tiers"[\s\S]*Uložit vzhled/);
-  assert.match(forms[3]!, /data-won-cards-form=""/);
 });
 
 test("the preview is the storefront's markup (K8) with the storefront CSS confined to it — never a style for the admin", async () => {

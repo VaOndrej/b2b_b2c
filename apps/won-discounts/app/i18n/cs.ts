@@ -260,6 +260,8 @@ export const cs = {
   "common.pro": "Pro",
   "common.proLocked": "Pro · odemknout",
   "common.free": "Free",
+  "oneSave.partNotSaved": "Neuloženo: {part}",
+  "oneSave.notPosted": "Neuložilo se ani: {parts}. Zkuste uložit znovu.",
   "common.save": "Uložit",
   "common.cancel": "Zrušit",
   "common.edit": "Upravit",

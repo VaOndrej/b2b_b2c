@@ -30,7 +30,10 @@ import { Form, useSubmit } from "react-router";
 import { useT } from "../../i18n/context";
 import { CardPricesSection } from "../looks/CardPricesSection";
 import { PageGuide } from "../shell/PageGuide";
-import { ModuleCombine } from "../shell/ModuleCombine";
+import { CombinePart, combinePart } from "../shell/ModuleCombine";
+import { PartRefusal, useOneSave } from "../shell/one-save";
+import { useFormActions } from "../shell/form-actions";
+import { splitSave } from "../model/one-save";
 import { LookSection } from "../looks/LookSection";
 import { blockPlacement } from "../model/embed";
 import { LOOK_FIELD } from "../model/looks";
@@ -44,7 +47,6 @@ import { snapshotOf } from "../shell/form-snapshot";
 import { GateNotes } from "../shell/GateNotes";
 import { Notice } from "../shell/Notice";
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
-import { PageSave } from "../shell/PageSave";
 import { useView, ViewPanel } from "../shell/views";
 import { usePolarisJump } from "../shell/scroll";
 import { DiscountsSubNav } from "../shell/SubNav";
@@ -215,11 +217,15 @@ export function TiersScreen(props: TiersScreenProps) {
   };
 
   const submit = useSubmit();
-  // I3: "Nahradit neplatnou konfiguraci" re-submits exactly this form, confirmed.
+  // One save for the page (shell/one-save.tsx): the tiers to this route's action, then Sčítá se s to /app/combine.
+  const actions = useFormActions();
+  const oneSave = useOneSave({ pageKey: "tiers", formRef, result, parts: [combinePart("tiers", configVersion ?? null, actions.combine)] });
+  // I3: "Nahradit neplatnou konfiguraci" re-submits exactly the page's own fields, confirmed.
   const replaceUnreadable = () => {
     const form = formRef.current;
     if (!form) return;
-    const data = new FormData(form);
+    const data = new FormData();
+    for (const [name, value] of splitSave(new FormData(form).entries()).page) data.append(name, value);
     data.set(F.replaceUnreadable, "1");
     submit(data, { method: "post" });
   };
@@ -267,11 +273,12 @@ export function TiersScreen(props: TiersScreenProps) {
     <s-page heading={t("module.tiers")}>
       <DiscountsSubNav active="tiers" />
       <PageGuide page="tiers" />
-      <Form method="post" ref={formRef} data-save-bar>
+      <Form method="post" ref={formRef} data-save-bar onSubmit={oneSave.onSubmit}>
         <input type="hidden" name={F.intent} value={TIERS_INTENT.save} />
         {configVersion ? <input type="hidden" name={F.configVersion} value={configVersion} /> : null}
         <s-stack key={formKey} direction="block" gap="base">
           <Notice result={result} onReplace={replaceUnreadable} />
+          <PartRefusal refusal={oneSave.refusal} />
           {/* A refusal about the page as a whole (a stale form, too many sets) — at the top, not in a section. */}
           <FieldMessage text={pageError ? t(pageError.key, pageError.params) : undefined} />
           {gateNotes.length > 0 ? <GateNotes notes={gateNotes} /> : null}
@@ -361,6 +368,10 @@ export function TiersScreen(props: TiersScreenProps) {
               <HonestNotes marginOn={marginOn} competingRules={competingRules} outletWithAnything={props.outletWithAnything === true} />
             </s-stack>
           </WonSection>
+          {/* "Sčítá se s": a part of this one form, stored by /app/combine on the same Save (shell/one-save.tsx). */}
+          <div style={{ marginTop: 16 }}>
+            <CombinePart module="tiers" stored={props.combine} />
+          </div>
           </ViewPanel>
           <ViewPanel id="table" view={view}>
             <TiersBlockSection block={block} storefront={storefront} product={preview.product} about={t("tiers.view.table.about")} />
@@ -388,17 +399,8 @@ export function TiersScreen(props: TiersScreenProps) {
             capacityError={capacityError}
           />
           </ViewPanel>
-          {/* One save for the whole form, last on the page (plus the App Bridge save bar). "Tabulka na webu" holds
-              nothing of this form: the block is added in the theme and the look saves itself. */}
-          <PageSave shown={view !== "table"} />
         </s-stack>
       </Form>
-      {/* "Sčítá se s": its own form, so outside the page's (the same view as the whole-store tiers). */}
-      <div style={{ marginTop: 16 }}>
-        <ViewPanel id="global" view={view}>
-          <ModuleCombine module="tiers" stored={props.combine} configVersion={configVersion ?? null} />
-        </ViewPanel>
-      </div>
       {/* The table's look: its own form, so outside the page's (the same view as "Tabulka na webu"). */}
       <div style={{ marginTop: 16 }}>
         <ViewPanel id="table" view={view}>
