@@ -2,9 +2,9 @@
 
 ## CHECKPOINT
 
-- **Hotové tickety:** 01–17
-- **Rozdělaný:** 18 (Nastavení: sbalené volby), nezačatý
-- **Další krok:** 18: sekce Zákazník mimo trhy sbalená za stavovou větou, pole dál postují, výška settings 390 < 3500
+- **Hotové tickety:** 01–18
+- **Rozdělaný:** 19 (Výprodej: jeden řádek), nezačatý
+- **Další krok:** 19: aktivní i skončené výprodeje jedním řádkem s rozbalením, akce dosažitelné. Pak review 15–19.
 - **Čeká na Ondřeje:** 07 formát data v adminu, 09, 10, 11 Save Bar v shopify app dev (postupy v ticketech); 10: per-run úpravy výprodeje na s-modal?; 17: přijmout −14 % slov u Marže a 0 % u Překladů?
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
@@ -30,7 +30,8 @@
 | 14 | done | 65740cd4 | `evidence/frontend-14/` |
 | 15 | done | 1b169162 | `evidence/frontend-15/` |
 | 16 | done | 2bc2bf2b | `evidence/frontend-16/` |
-| 17 | done, slova jen částečně | viz git log | `evidence/frontend-17/` |
+| 17 | done, slova jen částečně | 126b66b0 | `evidence/frontend-17/` |
+| 18 | done | viz git log | `evidence/frontend-18/` |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 

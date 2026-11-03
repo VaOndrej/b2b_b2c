@@ -194,10 +194,14 @@ export function SettingsScreen({ plan, currencies, combineDefault: stored, confi
               </s-stack>
             </WonSection>
             {/* 7 Oct 2026: amounts are per market. What a customer from a country in none of them gets is the merchant's call. */}
+            {/* It matters only where two markets share a currency (audit 2026-11-03 F6, zásada E6): otherwise the section is
+                folded behind the sentence that says so. Folded = hidden, never unmounted: its fields post as before (§17d). */}
             <WonSection
               title={t("settings.unknownMarket.title")}
               glyph="store"
-              summary={t(
+              collapsible
+              defaultOpen={sameCurrency.length > 0}
+              summary={sameCurrency.length === 0 ? t("settings.unknownMarket.notNow") : t(
                 !unknownMarketLowest
                   ? "settings.unknownMarket.summary.off"
                   : unknownMarketHighest.length === 0
@@ -223,26 +227,20 @@ export function SettingsScreen({ plan, currencies, combineDefault: stored, confi
                     <RowNote>{t("settings.unknownMarket.pick.note")}</RowNote>
                     {UNKNOWN_MARKET_KINDS.map((kind) => {
                       const pick = unknownMarketHighest.includes(kind) ? "highest" : "lowest";
+                      // What a choice means is in its own text ("Nejnižší z trhů (menší sleva)"), not in a note under the field.
                       return (
-                        <s-stack key={kind} direction="block" gap="small-300">
-                          <s-select name={`${COMBINATION_FIELD.unknownMarketPick}${kind}`} label={t(`settings.unknownMarket.kind.${kind}` as "settings.unknownMarket.kind.discount")} value={pick}>
-                            {UNKNOWN_MARKET_PICKS.map((p) => (
-                              <s-option key={p} value={p} selected={boolAttr(p === pick)}>
-                                {t(`settings.unknownMarket.pick.${p}` as "settings.unknownMarket.pick.lowest")}
-                              </s-option>
-                            ))}
-                          </s-select>
-                          <RowNote>{t(`settings.unknownMarket.kind.${kind}.note` as "settings.unknownMarket.kind.discount.note")}</RowNote>
-                        </s-stack>
+                        <s-select key={kind} name={`${COMBINATION_FIELD.unknownMarketPick}${kind}`} label={t(`settings.unknownMarket.kind.${kind}` as "settings.unknownMarket.kind.discount")} value={pick}>
+                          {UNKNOWN_MARKET_PICKS.map((p) => (
+                            <s-option key={p} value={p} selected={boolAttr(p === pick)}>
+                              {`${t(`settings.unknownMarket.pick.${p}` as "settings.unknownMarket.pick.lowest")} (${t(`settings.unknownMarket.kind.${kind}.${p}` as "settings.unknownMarket.kind.discount.lowest")})`}
+                            </s-option>
+                          ))}
+                        </s-select>
                       );
                     })}
                   </s-stack>
                 </WonRow>
-                <RowNote>
-                  {sameCurrency.length > 0
-                    ? t("settings.unknownMarket.yours", { markets: tr.list(sameCurrency.map((m) => `${m.name} (${m.currency})`)) })
-                    : t("settings.unknownMarket.notNow")}
-                </RowNote>
+                {sameCurrency.length > 0 ? <RowNote>{t("settings.unknownMarket.yours", { markets: tr.list(sameCurrency.map((m) => `${m.name} (${m.currency})`)) })}</RowNote> : null}
               </s-stack>
             </WonSection>
           </s-stack>

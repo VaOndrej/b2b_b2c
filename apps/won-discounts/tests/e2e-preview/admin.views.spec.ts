@@ -71,3 +71,19 @@ test("Množstevní slevy, Milníky, Výprodej on Free: at most one Pro mention i
   await expect(banner.locator("s-list-item").first()).toBeAttached();
   await expect(banner.locator('s-button[href="/app/plan"]')).toHaveCount(1);
 });
+
+test("Nastavení: 'Zákazník ze země mimo vaše trhy' is folded behind its sentence when it does not matter, and still posts its fields", async ({ page }) => {
+  const section = page.locator("section#unknown-market");
+  const picks = () => page.evaluate(() => [...new FormData(document.querySelector<HTMLFormElement>("form[data-save-bar]")!).entries()].filter(([name]) => name.startsWith("unknownMarket")).map(([name, value]) => `${name}=${value}`));
+  await open(page, "settings", 390);
+  await expect(section).toContainText("Teď se vás to netýká");
+  await expect(section.locator("button[aria-expanded]").first()).toHaveAttribute("aria-expanded", "false");
+  const folded = await picks();
+  expect(folded.length).toBeGreaterThanOrEqual(5);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThan(3500);
+  // Two markets of one currency: open, with the choices; the same fields as folded.
+  await open(page, "settings?markets=shared");
+  await expect(section.locator("button[aria-expanded]").first()).toHaveAttribute("aria-expanded", "true");
+  await expect(section.locator('s-option[value="lowest"]').first()).toContainText("Nejnižší z trhů (");
+  expect((await picks()).map((entry) => entry.split("=")[0])).toEqual(folded.map((entry) => entry.split("=")[0]));
+});

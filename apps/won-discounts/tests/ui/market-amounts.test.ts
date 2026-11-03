@@ -183,7 +183,8 @@ test("Nastavení: the switch for a customer from a country in no market explains
   ok(/<s-switch name="unknownMarketLowest"[^>]*checked/.test(on) && text(on).includes("Dostane nejnižší částku z trhů se stejnou měnou"), "on");
   // The lowest or the highest, for each of the five kinds of amount; the lowest unless chosen otherwise.
   for (const kind of ["discount", "minimum", "tier", "shipping", "gift"]) ok(new RegExp(`<s-select name="unknownMarketPick\\.${kind}"[^>]*value="lowest"`).test(on), `${kind}: the lowest by default`);
-  ok(text(on).includes("Kterou částku dostane") && text(on).includes("Nejnižší znamená dopravu zdarma dřív, v příkladu od 60 €. Nejvyšší později, od 80 €."), "each choice says what it means for the customer");
+  // What a choice means is in its own text (audit 2026-11-03 F6), not in a note under the field.
+  ok(text(on).includes("Kterou částku dostane") && text(on).includes("Nejnižší z trhů (doprava zdarma dřív)") && text(on).includes("Nejvyšší z trhů (doprava zdarma později)"), "each choice says what it means for the customer");
   const mixed = await render("settings?markets=shared&fallback=1&highest=1");
   ok(/<s-select name="unknownMarketPick\.shipping"[^>]*value="highest"/.test(mixed) && /<s-select name="unknownMarketPick\.minimum"[^>]*value="highest"/.test(mixed), "the stored choice");
   ok(/<s-select name="unknownMarketPick\.discount"[^>]*value="lowest"/.test(mixed) && text(mixed).includes("Dostane částku z trhů se stejnou měnou, někde nejnižší a někde nejvyšší"), "the rest stays the lowest and the summary says both");
