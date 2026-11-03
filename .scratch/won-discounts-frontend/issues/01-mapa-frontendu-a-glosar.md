@@ -4,8 +4,15 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] README appky má nadpis Won Discounts a krátkou tabulku: CZ název → kódové jméno → route → obrazovka → model → testy
-- [ ] Popis vrstev (route → integrace → obrazovka → shell → model) a hranice backendu na pár řádcích
-- [ ] Každá cesta v tabulce existuje (ověřit skriptem nebo ručně) a žádný soubor se nepřejmenovává
+- [x] README appky má nadpis Won Discounts a krátkou tabulku: CZ název → kódové jméno → route → obrazovka → model → testy
+- [x] Popis vrstev (route → integrace → obrazovka → shell → model) a hranice backendu na pár řádcích
+- [x] Každá cesta v tabulce existuje (ověřit skriptem nebo ručně) a žádný soubor se nepřejmenovává
+
+## Důkaz
+
+- `apps/won-discounts/README.md`: nadpis Won Discounts, mapa (17 řádků, mezi `<!-- map:start -->` a `<!-- map:end -->`), glosář, vrstvy a hranice backendu.
+- Cesty hlídá `tests/ui/readme-map.test.ts` (3 testy: nadpis, všechny položky menu, každá cesta existuje). Žádný soubor nepřejmenován.
+- Brána: node 2041/2041 (baseline 2038 + 3 nové), engine 720/720, typecheck 0, lint 0 chyb, E2E preview 48/48.
+- Harness bez regresí: `docs/won-discounts/evidence/frontend-01/metrics.json` (44 stavů, HTTP 200, přetok 0) + `overview-390.png`, `overview-1440.png`.
