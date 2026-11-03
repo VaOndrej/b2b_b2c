@@ -49,9 +49,10 @@ import { GateNotes } from "../shell/GateNotes";
 import { ModuleTile, ModuleTileGroup, ModuleTileGroups } from "../shell/ModuleTile";
 import { RefreshTargetingButton, ResyncButton } from "../shell/Notice";
 import { groupAttention, ruleWarningCause } from "../model/attention";
-import { PlacementPill, RowNote, StatusPill, WonRow, WonSection } from "../shell/WonSection";
+import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
 import { firstSetups, onboardingHasNative, onboardingProgress } from "./OnboardingScreen";
+import { StatusBadge } from "../shell/StatusBadge";
 
 export interface OverviewScreenProps {
   schemaVersion: number;
@@ -523,7 +524,7 @@ export function OverviewScreen({
             <WonRow action={embedAction}>
               <span style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
                 <s-text type="strong">{t("overview.embed.label")}</s-text>
-                <PlacementPill placement={embedPlacement(status.embed.state)} />
+                <StatusBadge placement={embedPlacement(status.embed.state)} />
               </span>
               <RowNote>{embedText(status.embed.state, tr)}</RowNote>
             </WonRow>
@@ -610,7 +611,7 @@ export function OverviewScreen({
                 <div data-won-watch-margin={!status.margin.enabled ? "off" : (watch?.state ?? "computing")}>
                   <span style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
                     <s-text type="strong">{t("watch.margin.label")}</s-text>
-                    {status.margin.enabled ? <StatusPill state="active" /> : null}
+                    {status.margin.enabled ? <StatusBadge state="active" /> : null}
                   </span>
                   <RowNote tone={status.margin.enabled ? undefined : "attention"}>{watchText}</RowNote>
                 </div>

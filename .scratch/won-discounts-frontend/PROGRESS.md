@@ -2,9 +2,9 @@
 
 ## CHECKPOINT
 
-- **Hotové tickety:** 01–19
-- **Rozdělaný:** review 15–19, pak 20 (jeden StatusBadge)
-- **Další krok:** review 15–19 proti main; pak 20: StatusPill + CardPill + Pill → jeden StatusBadge
+- **Hotové tickety:** 01–20
+- **Rozdělaný:** 21 (shell: základní komponenty), nezačatý
+- **Další krok:** 21: shell komponenty bez inline barev (karta/dlaždice, řádek s akcí, poznámka Pro, dva sloupce s náhledem), obrazovky beze změny
 - **Čeká na Ondřeje:** 07 formát data v adminu, 09, 10, 11 Save Bar v shopify app dev (postupy v ticketech); 10: per-run úpravy výprodeje na s-modal?; 17: přijmout −14 % slov u Marže a 0 % u Překladů?
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
@@ -32,13 +32,15 @@
 | 16 | done | 2bc2bf2b | `evidence/frontend-16/` |
 | 17 | done, slova jen částečně | 126b66b0 | `evidence/frontend-17/` |
 | 18 | done | 59096c7f | `evidence/frontend-18/` |
-| 19 | done | viz git log | `evidence/frontend-19/` |
+| 19 | done | d545a1e9 | `evidence/frontend-19/` |
+| 20 | done | viz git log | `evidence/frontend-20/` + compare-vs-19.txt |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 
 - `gate.sh`: unit + typecheck + lint + E2E, souhrn. `evidence.sh NN obrazovky…`: capture všech 22 stavů,
   kopie vybraných do `docs/won-discounts/evidence/frontend-NN/` + metrics.json, kontrola HTTP/přetoku.
   `shot.mjs out name=cesta…`: screenshot 390+1440 libovolné cesty harnessu. `crop.mjs`: výřez PNG k prohlédnutí.
+  `compare.py před po`: pixelové porovnání PNG (kopie v evidence/frontend-20/). Šum vykreslování ~0,001–0,01 % px.
   Chyba „missing required configuration fields: shop“ je známé omezení harnessu.
 
 ## Otevřené mimo tickety
@@ -77,3 +79,10 @@
 - Hranice: backend, routy a webhooky beze změny.
 - Texty skupin na Přehledu pokrývají všech 5 druhů upozornění (`RuleWarningKind`). Bez nálezů k opravě.
 - Přijato: na Přehledu dlaždice bez počtu jen když seznam drží všechny její věci; jinak počet zůstává (poctivější než 0).
+
+## Review skupiny 15–19 (2026-11-03)
+
+- Hranice: backend, routy a webhooky beze změny (`git diff 65740cd4..HEAD`).
+- Odeslaná data: editor na Free a Nastavení posílají stejná pole jako dřív (E2E porovnává FormData).
+- Nález (opraveno už v 19): sloupec „Na webu teď“ ukazoval u skončeného výprodeje stav štítku na webu.
+- Otevřené k rozhodnutí: 17 (−20 % slov u Marže a Překladů nesplněno), 10 (úprava jednoho výprodeje na s-modal?).

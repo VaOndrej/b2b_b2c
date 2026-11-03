@@ -44,10 +44,11 @@ import { DiscountsSubNav } from "../shell/SubNav";
 import { editorOnProductOf, editorOpenUrl, placementOf, spotAdvice } from "../model/embed";
 import { outletBadgeText, outletWebLine } from "../model/outlet-web";
 import { StepCard } from "../shell/StepCard";
-import { CardPill, choiceCardStyle, SubCard } from "../shell/SubCard";
+import { choiceCardStyle, SubCard } from "../shell/SubCard";
 import { SpotNote } from "../StorefrontPlacements";
 import { WON_CARD_SHADOW, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SURFACE, WON_WASH } from "../shell/tokens";
-import { PlacementPill, type PlacementState, RowNote, WonRow, WonSection } from "../shell/WonSection";
+import { type PlacementState, RowNote, WonRow, WonSection } from "../shell/WonSection";
+import { StatusBadge } from "../shell/StatusBadge";
 
 const F = OUTLET_FIELD;
 const DISPLAYS = ["silent", "strike", "strike_badge", "strike_badge_left"] as const;
@@ -295,9 +296,7 @@ function RunCard({
     </s-button>
   ) : null;
   const statusPill = (
-    <CardPill live={active} marker={{ "data-won-outlet-status": run.status }}>
-      {t(`outlet.status.${run.status}` as "outlet.status.active")}
-    </CardPill>
+    <StatusBadge plain badge={{ tone: active ? "live" : "neutral", label: t(`outlet.status.${run.status}` as "outlet.status.active") }} marker={{ "data-won-outlet-status": run.status }} />
   );
   const body = (
     <>
@@ -319,7 +318,7 @@ function RunCard({
             <SubCard
               marker={{ "data-won-outlet-web": run.id }}
               title={t("outlet.web.card")}
-              label={run.display.startsWith("strike_badge") && run.showBadge ? <PlacementPill placement={badge} move={badgeMove} /> : undefined}
+              label={run.display.startsWith("strike_badge") && run.showBadge ? <StatusBadge placement={badge} move={badgeMove} /> : undefined}
               tone={web.missing === "block" ? "attention" : undefined}
               action={
                 pro && levels.length > 1 && edit !== "web" ? (
@@ -539,7 +538,7 @@ function RunCard({
           <span style={cellLabel}>{t("outlet.web.card")}</span>
           {active && run.display.startsWith("strike_badge") && run.showBadge ? (
             <span>
-              <PlacementPill placement={badge} move={badgeMove} />
+              <StatusBadge placement={badge} move={badgeMove} />
             </span>
           ) : (
             <span style={{ fontSize: 13, color: WON_INK }}>{web?.text ?? "—"}</span>
@@ -837,7 +836,7 @@ export function OutletScreen(props: OutletScreenProps) {
                 // The badge is a block of the theme: said here, with the button that adds it, before the sale starts.
                 <div data-won-outlet-preview-block={badge} style={{ display: "grid", gap: 6 }}>
                   <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-                    <PlacementPill placement={badge} move={badgeMove} />
+                    <StatusBadge placement={badge} move={badgeMove} />
                     <RowNote tone={badge === "missing" ? "attention" : undefined}>{t(badge === "in_theme" ? "outlet.preview.blockOn" : badge === "missing" ? "outlet.preview.blockMissing" : "outlet.preview.blockUnknown")}</RowNote>
                   </div>
                   <SpotNote placement={badge} spot={props.placed?.spots?.outletBadge} place="product" spotKey="outletBadge" />

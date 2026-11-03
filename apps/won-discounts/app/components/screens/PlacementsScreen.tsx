@@ -13,9 +13,10 @@ import { PIECES, PLACEMENTS_FIELD, PLACEMENTS_INTENT, pieceTone, type PieceKey, 
 import { tagDef, tagLine } from "../model/theme-brief";
 import { codeEditorUrl, type KnownShow, type ScannedTag } from "../model/theme-scan";
 import { PageGuide } from "../shell/PageGuide";
-import { NotePill, PlacementPill, RowNote, WonRow, WonSection, type SectionGlyphName } from "../shell/WonSection";
+import { RowNote, WonRow, WonSection, type SectionGlyphName } from "../shell/WonSection";
 import { DiscountsSubNav } from "../shell/SubNav";
 import { WON_FONT, WON_INK, WON_LINE, WON_WASH } from "../shell/tokens";
+import { StatusBadge } from "../shell/StatusBadge";
 
 export type PlacementsScreenProps = PlacementsScreenData;
 
@@ -34,10 +35,10 @@ function where(tag: ScannedTag): { file: string; line: number } {
 
 function StatePill({ row }: { row: PieceRow }) {
   const { t } = useT();
-  if (row.cause?.kind === "embed_off") return <NotePill tone="attention" label={t("webPlaces.state.off")} marker="embed_off" />;
-  if (row.state.at === "tag_copy") return <NotePill tone="warning" label={t("webPlaces.state.copy")} marker="tag_copy" />;
+  if (row.cause?.kind === "embed_off") return <StatusBadge badge={{ tone: "attention", label: t("webPlaces.state.off") }} marker={{ "data-won-placement": "embed_off" }} />;
+  if (row.state.at === "tag_copy") return <StatusBadge badge={{ tone: "warning", label: t("webPlaces.state.copy") }} marker={{ "data-won-placement": "tag_copy" }} />;
   const tone = pieceTone(row);
-  return <PlacementPill placement={tone === "attention" ? "missing" : tone} />;
+  return <StatusBadge placement={tone === "attention" ? "missing" : tone} />;
 }
 
 /** The sentences of a row: where it is, why it is empty, why the code way. */

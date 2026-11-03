@@ -53,7 +53,8 @@ import { DiscountsSubNav } from "../shell/SubNav";
 import { WON_ATTENTION, WON_EDGE, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "../shell/tokens";
 import { useView, ViewPanel } from "../shell/views";
 import { usePolarisJump } from "../shell/scroll";
-import { PlacementPill, RowNote, StatusPill, WonRow, WonSection, type PlacementState } from "../shell/WonSection";
+import { RowNote, WonRow, WonSection, type PlacementState } from "../shell/WonSection";
+import { StatusBadge } from "../shell/StatusBadge";
 
 const F = MS_FIELD;
 
@@ -537,7 +538,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
                       <span style={{ fontSize: 14.5, fontWeight: 600, letterSpacing: "-.01em", color: from ? WON_INK : WON_ATTENTION }}>{from ? t("milestones.step.titleFrom", { amount: from }) : t("milestones.list.noAmount")}</span>
                       <span className="won-ms-row__reward" style={{ fontSize: 14.5, fontWeight: 600, letterSpacing: "-.01em", color: WON_INK, overflowWrap: "anywhere" }}>{rewardText(live, codes, tr)}</span>
                       <span className="won-ms-row__market" style={{ fontSize: 13, color: WON_MUTED }}>{tr.list(where)}</span>
-                      <span>{problem ? <StatusPill state="attention" /> : !row.stored ? <StatusPill status={{ kind: "draft" }} /> : moduleState ? <StatusPill state={moduleState} /> : null}</span>
+                      <span>{problem ? <StatusBadge state="attention" /> : !row.stored ? <StatusBadge status={{ kind: "draft" }} /> : moduleState ? <StatusBadge state={moduleState} /> : null}</span>
                     </button>
                   );
                   // A closed row still tells the truth: what is missing, what the plan does not run, what a save refused.
@@ -714,7 +715,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
                     <div data-won-ms-place={place.key}>
                       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 4 }}>
                         <span style={{ fontFamily: WON_FONT, fontSize: 13.5, fontWeight: 700, color: WON_INK }}>{t(`milestones.places.${place.key}.name` as MessageKey)}</span>
-                        <PlacementPill placement={place.placement} move={place.key === "product" && spotAdvice(placed.spots?.rewardsProduct)?.move === true} />
+                        <StatusBadge placement={place.placement} move={place.key === "product" && spotAdvice(placed.spots?.rewardsProduct)?.move === true} />
                       </div>
                       {/* Every state of the check has its own sentence, and what to do about it. */}
                       {place.key === "drawer" && embedCopy ? <RowNote tone={embedCopy.primary ? "attention" : undefined}>{t(embedCopy.summary)}</RowNote> : null}
@@ -753,7 +754,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
                 <WonRow action={<s-button variant="secondary" onClick={() => setView("web")}>{t("common.edit")}</s-button>}>
                   <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 14.5, fontWeight: 600, color: WON_INK }}>{t("milestones.settings.web")}</span>
-                    {webStatus ? <StatusPill state={webStatus.state} /> : null}
+                    {webStatus ? <StatusBadge state={webStatus.state} /> : null}
                   </div>
                   <RowNote>{webLine}</RowNote>
                   {(webStatus?.issues ?? 0) > 0 ? <RowNote tone="attention">{tr.tp("tile.issues", webStatus?.issues ?? 0)}</RowNote> : null}

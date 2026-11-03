@@ -23,8 +23,9 @@ import { useT } from "../../i18n/context";
 import type { ModuleStatus } from "../model/module-status";
 import { hoverMark } from "./hover";
 import { PlanBadge } from "./PlanBadge";
-import { SectionGlyph, StatusPill, type SectionGlyphName } from "./WonSection";
+import { SectionGlyph, type SectionGlyphName } from "./WonSection";
 import { WON_AMBER, WON_AMBER_TINT, WON_ATTENTION, WON_BADGE, WON_BADGE_TEXT, WON_CARD_SHADOW, WON_EDGE, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "./tokens";
+import { StatusBadge } from "./StatusBadge";
 
 const GRID_CSS = `
 .won-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -195,7 +196,7 @@ function TileLabels({ title, status, pro = false, locked = false, className, not
     <span className={className} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 8px", minWidth: 0 }}>
       <span style={{ fontSize: 14.5, fontWeight: 700, color: WON_INK, letterSpacing: "-0.01em", overflowWrap: "anywhere" }}>{title}</span>
       {pro ? <PlanBadge tier="pro" locked={locked} /> : null}
-      {status ? <StatusPill state={status.state} /> : null}
+      {status ? <StatusBadge state={status.state} /> : null}
       {note && !status ? (
         <span className="won-tile-note" data-won-tile-note="">
           {note}
@@ -218,7 +219,7 @@ function HomeTileHead({ title, glyph, status, pro = false, locked = false }: Pic
       </span>
       {status && status.state !== "locked" ? (
         <span className="won-tile-state">
-          <StatusPill state={status.state} />
+          <StatusBadge state={status.state} />
         </span>
       ) : null}
     </>

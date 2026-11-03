@@ -52,8 +52,9 @@ import { ProSell } from "../shell/ProSell";
 import { DiscountsSubNav } from "../shell/SubNav";
 import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
 import { StepCard } from "../shell/StepCard";
-import { CardPill, SubCard } from "../shell/SubCard";
+import { SubCard } from "../shell/SubCard";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
+import { StatusBadge } from "../shell/StatusBadge";
 
 export interface CampaignsScreenProps extends CampaignsScreenData {
   result?: CampaignsActionResult | UiResult | null;
@@ -123,7 +124,7 @@ function CampaignCard({ c, pro }: { c: CampaignView; pro: boolean }) {
     <SubCard
       marker={{ "data-won-campaign": c.status }}
       title={<span style={{ fontSize: 15 }}>{c.name}</span>}
-      label={<CardPill live={c.status === "running"}>{t(`campaign.status.${c.status}` as "campaign.status.running")}</CardPill>}
+      label={<StatusBadge plain badge={{ tone: c.status === "running" ? "live" : "neutral", label: t(`campaign.status.${c.status}` as "campaign.status.running") }} />}
       tone={c.unusedNames.length > 0 ? "attention" : undefined}
       action={
         <>

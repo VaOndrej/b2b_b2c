@@ -9,7 +9,7 @@
 //     (a mask, no colour of its own), and the current item is brought fully into view, clear of the fade;
 //   - no URL hash (WonSection anchors own it).
 //   - an item may carry its module's state: a dot before the label (green runs, red
-//     needs attention, grey does not run — the colours and words of StatusPill), so
+//     needs attention, grey does not run — the colours and words of StatusBadge), so
 //     the state of every page is seen from any of them.
 // SubNav is presentational and knows nothing about discounts; DiscountsSubNav is
 // the one for "Slevy". It reads the onboarding goals (the order) and the modules'

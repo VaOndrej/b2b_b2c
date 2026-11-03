@@ -12,7 +12,8 @@ import type { MessageKey } from "../i18n";
 import { editorOpenUrl, placementOf, spotAdvice, type PlacementLinks } from "./model/embed";
 import { PLACEMENTS_PATH } from "./model/placements";
 import type { PlacementKey, PlacementSpot, ThemePlacements } from "./model/types";
-import { PlacementPill, type PlacementState, RowNote, WonRow } from "./shell/WonSection";
+import { type PlacementState, RowNote, WonRow } from "./shell/WonSection";
+import { StatusBadge } from "./shell/StatusBadge";
 
 export interface PlacementRow {
   place: keyof PlacementLinks;
@@ -86,7 +87,7 @@ export function StorefrontPlacements({ links, rows, placed = {} }: { links: Plac
               </s-button>
             }
           >
-            <PlacementPill placement={placement} move={move} />
+            <StatusBadge placement={placement} move={move} />
             <RowNote>{t(placement === "in_theme" && row.textOn ? row.textOn : row.text)}</RowNote>
             <SpotNote placement={placement} spot={placed.spots?.[row.key]} place={row.place} spotKey={row.key} />
           </WonRow>

@@ -9,7 +9,7 @@ import { ruleTabCounts, visibleRules, type RuleMethodFilter, type RuleSort, type
 import { needsAttention, statusText } from "./model/rule-status";
 import { hoverMark } from "./shell/hover";
 import { WON_ATTENTION, WON_EDGE, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "./shell/tokens";
-import { StatusPill } from "./shell/WonSection";
+import { StatusBadge } from "./shell/StatusBadge";
 
 const TABLE_CSS = `
 .won-rt__row{display:grid;grid-template-columns:minmax(0,1.5fr) 140px 180px 150px;gap:4px 14px;align-items:center;padding:11px 16px}
@@ -136,7 +136,7 @@ export function RuleTable({ rows }: { rows: readonly RuleTableRow[] }) {
                 <div className="won-rt__opt" style={{ fontSize: 13, color: WON_MUTED }}>{row.how}</div>
                 <div className="won-rt__opt" style={{ fontSize: 13, color: WON_MUTED }}>{row.valid}</div>
                 <div>
-                  <StatusPill status={row.status} />
+                  <StatusBadge status={row.status} />
                 </div>
               </div>
             </s-clickable>
