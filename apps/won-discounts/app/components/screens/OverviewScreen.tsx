@@ -176,7 +176,7 @@ const STATUS_WARNING: Partial<Record<RuleStatusKind, RuleWarning["kind"]>> = {
 };
 
 /**
- * "Neaktivní: …" in "Aktivní slevy" → the link to the field that fixes it (P3). The anchor is the warning's own
+ * "Neuplatní se: …" in "Aktivní slevy" → the link to the field that fixes it (P3). The anchor is the warning's own
  * `field` (the editor owns the anchor names); a Pro setting the plan does not run and a switched-off
  * market are both set in the Pro block.
  */

@@ -63,7 +63,7 @@ test("per-rule sync facts decide over the shop's sync line (Běží = THIS versi
   // A code rule without a code never runs, whatever the sync says.
   const noCode = ruleStatus(rule({ method: "code", codes: [] }), { ...ok, ruleSync: { [r.id]: "synced" } });
   assert.equal(noCode.kind, "no_code");
-  assert.equal(statusText(noCode, cs), "Neaktivní: sleva s kódem zatím nemá žádný kód");
+  assert.equal(statusText(noCode, cs), "Neuplatní se: sleva s kódem zatím nemá žádný kód");
   assert.equal(
     ruleStatusSummary([noCode, ruleStatus(rule({ targeting: { segments: ["s"] } }), ok)], cs),
     "2 slevy · 2 neaktivní",
@@ -75,7 +75,7 @@ test("switched off, segment-targeted, unsaved draft", () => {
   assert.equal(ruleStatus(rule({ enabled: false, schedule: blackFriday }), ctx("2026-11-28")).kind, "off");
   const seg = ruleStatus(rule({ targeting: { segments: ["gid://shopify/Segment/1"] } }), ctx("2026-09-28"));
   assert.equal(seg.kind, "unsupported");
-  assert.equal(statusText(seg, cs), "Neaktivní: sleva jen pro skupiny zákazníků se v pokladně zatím neuplatní");
+  assert.equal(statusText(seg, cs), "Neuplatní se: pokladna zatím neumí slevu jen pro skupiny zákazníků");
   assert.equal(ruleStatus(rule(), { ...ctx("2026-09-28"), draft: true }).kind, "draft");
 });
 
@@ -97,24 +97,24 @@ test("P3-6: no products / collections picked, no value in any shop currency, onl
   const live = { ...ctx("2026-09-28"), ruleSync: { r1: "synced" as const }, currencies: ["CZK", "EUR"], enabledMarkets: ["cz"] };
   const noTarget = ruleStatus(rule({ target: { kind: "collections", ids: [] } }), live);
   assert.deepEqual(noTarget, { kind: "no_target" });
-  assert.equal(statusLabel(noTarget, cs), "Neaktivní");
-  assert.equal(statusText(noTarget, cs), "Neaktivní: nemá vybrané produkty ani kolekce.");
+  assert.equal(statusLabel(noTarget, cs), "Neuplatní se");
+  assert.equal(statusText(noTarget, cs), "Neuplatní se: nemá vybrané produkty ani kolekce.");
 
   const noValue = ruleStatus(rule({ value: { kind: "fixed", amount: { HUF: 3000_00 } } }), live);
   assert.deepEqual(noValue, { kind: "no_value" });
-  assert.equal(statusText(noValue, cs), "Neaktivní: nemá hodnotu v žádné měně obchodu.");
+  assert.equal(statusText(noValue, cs), "Neuplatní se: nemá hodnotu v žádné měně obchodu.");
   assert.equal(ruleStatus(rule({ value: { kind: "fixed", amount: { CZK: 100_00 } } }), live).kind, "live", "one currency is enough");
 
   const marketOff = ruleStatus(rule({ targeting: { markets: ["sk"] } }), live);
   assert.deepEqual(marketOff, { kind: "market_off" });
-  assert.equal(statusText(marketOff, cs), "Neaktivní: cílí jen na trhy, které jsou ve Won vypnuté.");
+  assert.equal(statusText(marketOff, cs), "Neuplatní se: cílí jen na trhy, které jsou ve Won vypnuté.");
   assert.equal(ruleStatus(rule({ targeting: { markets: ["sk", "cz"] } }), live).kind, "live");
 });
 
 test("BILL-1: a rule the plan switches off is 'Neběží' (pro_off), counted with the ones that do not run", () => {
   const s = ruleStatus(rule({ targeting: { markets: ["sk"] } }), { ...ctx("2026-09-28"), ruleSync: { r1: "synced" }, gateOff: ["r1"] });
   assert.deepEqual(s, { kind: "pro_off" });
-  assert.equal(statusText(s, cs), "Neaktivní: používá funkci Pro, kterou váš tarif v pokladně nespouští.");
+  assert.equal(statusText(s, cs), "Neuplatní se: používá funkci Pro, kterou váš tarif v pokladně nespouští.");
   assert.equal(ruleStatusSummary([s, { kind: "live" }], cs), "2 slevy · 1 aktivní · 1 neaktivní");
 });
 

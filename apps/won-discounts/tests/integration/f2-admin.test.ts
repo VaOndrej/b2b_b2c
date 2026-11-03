@@ -129,7 +129,7 @@ test("BILL-1: on Free, Přehled / Slevy a kódy / the editor say which Pro setti
   assert.equal(editor.gateOff, true);
   const editorHtml = text(await renderPage(createElement(RuleEditorScreen, editor)));
   assert.match(editorHtml, /Tohle je v tarifu Pro, zákazník to nedostane/);
-  assert.match(editorHtml, /Neaktivní/);
+  assert.match(editorHtml, /Neuplatní se/);
 });
 
 test("BILL-1: the dev-only override WON_DEV_PLAN=pro (NODE_ENV test) runs Pro: nothing gated, the rule runs", async () => {

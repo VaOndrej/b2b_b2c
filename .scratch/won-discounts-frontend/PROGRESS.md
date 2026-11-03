@@ -2,9 +2,9 @@
 
 ## CHECKPOINT
 
-- **Hotové tickety:** 01–07
-- **Rozdělaný:** 08 (Neuplatní se), nezačatý
-- **Další krok:** 08: „Neaktivní“ → „Neuplatní se“ v tabulce slev, docs:gen, drift test. Po 08 review skupiny 01–08 proti main.
+- **Hotové tickety:** 01–08
+- **Rozdělaný:** review skupiny 01–08 proti main
+- **Další krok:** review 01–08 (git diff main...HEAD), opravit nálezy, pak 09 (jedno uložení, pilot Množstevní slevy)
 - **Čeká na Ondřeje:** 07 formát data v adminu (postup v ticketu 07)
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
@@ -20,7 +20,8 @@
 | 04 | done | 440d5f01 | `evidence/frontend-04/`, `tests/ui/page-guide.test.ts` |
 | 05 | done | ff5ea0c8 | `evidence/frontend-05/`, E2E 49 |
 | 06 | done | 8de0344a | `evidence/frontend-06/`, E2E 50 |
-| 07 | done, čeká na ruční ověření data | viz git log | `evidence/frontend-07/` |
+| 07 | done, čeká na ruční ověření data | d5aaf8d4 | `evidence/frontend-07/` |
+| 08 | done | viz git log | `evidence/frontend-08/`, docs:gen |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 

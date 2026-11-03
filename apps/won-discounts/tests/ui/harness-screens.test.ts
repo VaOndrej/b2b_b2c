@@ -51,7 +51,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "rule-editor?rule=dev-fixture-2", expect: [/VIP10/, /1× na zákazníka/, /Jednou na zákazníka/, /Zákazník zadá kód VIP10\./, /V EUR chybí minimum/, /Vrátit automatický název/] },
   { path: "rule-editor?rule=dev-fixture-3", expect: [/HUF/, /Uloženo i pro HUF: 3\u00a0000\u00a0HUF\. Trh je vypnutý, hodnota zůstává\./, /Odebrat hodnotu v HUF/] },
   // B9: stored segments are said at their own block and can be removed there.
-  { path: "rule-editor?rule=dev-fixture-6", expect: [/Neaktivní/, /Pokladna je neumí vyhodnotit, proto sleva není aktivní/, /Odebrat omezení na skupiny zákazníků/, /href="#segments"/, /id="segments"/] },
+  { path: "rule-editor?rule=dev-fixture-6", expect: [/Neuplatní se/, /Pokladna je neumí vyhodnotit, proto sleva není aktivní/, /Odebrat omezení na skupiny zákazníků/, /href="#segments"/, /id="segments"/] },
   { path: "rule-editor?result=unreadable", expect: [/Uložené nastavení se nepodařilo přečíst/, /Nahradit neplatnou konfiguraci/] },
   { path: "rule-editor?result=sync-failed", expect: [/Uloženo, ale do Shopify se zatím nezapsalo/, /Sleva „Černý pátek“ se do Shopify nezapsala/, /Zkusit zapsat znovu/] },
   { path: "rule-editor?rule=dev-fixture-2&result=collision", expect: [/nejde použít zároveň, pokladna je nerozliší/, /Upravit kódy/] },

@@ -30,9 +30,9 @@ Each discount in the list shows one status. Only **Active** and
 | Not synced | Zatím neplatí | Saved, not written to Shopify yet |
 | Not synced | Zatím neplatí | Not in Shopify: the sync failed. |
 | Syncing | Propisuje se | Running, but its product targeting is being written to Shopify right now. New products get the discount within minutes. |
-| Inactive | Neaktivní | Inactive: this code discount has no code yet |
-| Inactive | Neaktivní | Inactive: no products or collections are picked. |
-| Inactive | Neaktivní | Inactive: it has no value in any of the store's currencies. |
-| Inactive | Neaktivní | Inactive: it targets only markets that are switched off in Won. |
-| Inactive | Neaktivní | Inactive: it uses a Pro feature your plan does not run at checkout. |
-| Inactive | Neaktivní | Inactive: segment targeting isn't applied at checkout yet |
+| Not applied | Neuplatní se | Not applied: this code discount has no code yet |
+| Not applied | Neuplatní se | Not applied: no products or collections are picked. |
+| Not applied | Neuplatní se | Not applied: it has no value in any of the store's currencies. |
+| Not applied | Neuplatní se | Not applied: it targets only markets that are switched off in Won. |
+| Not applied | Neuplatní se | Not applied: it uses a Pro feature your plan does not run at checkout. |
+| Not applied | Neuplatní se | Not applied: segment targeting isn't applied at checkout yet |
