@@ -6,10 +6,10 @@ import db from "../db.server";
 import { shopCtx } from "../lib/integration/context.server";
 import { adminLocale } from "../lib/integration/locale.server";
 import { campaignsAction, loadCampaignsScreen } from "../lib/integration/campaigns-admin.server";
-import { CampaignsScreen } from "../components/screens/CampaignsScreen";
+import { CampaignsScreen } from "../components/screens/campaigns/CampaignsScreen";
 
 // Kampaně (MVP 6, Pro). A static route: it wins over app.$module.tsx, so /app/campaigns keeps its URL. The screen
-// lives in components/screens/CampaignsScreen.tsx (the dev harness renders the same component); the data and the
+// lives in components/screens/campaigns/CampaignsScreen.tsx (the dev harness renders the same component); the data and the
 // actions live in app/lib/integration/campaigns-admin.server.ts. The context comes from the SESSION shop (SEC-2);
 // every form is parsed on the server (SEC-1); Pro is checked there (BILL-1, A6).
 export const loader = async ({ request }: LoaderFunctionArgs) => {

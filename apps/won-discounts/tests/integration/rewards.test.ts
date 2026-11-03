@@ -402,7 +402,7 @@ test("a step without an amount for an enabled market is something to resolve, on
 test("screen: the stored rewards as a ladder; Free shows the step past its limit as stored (not in force); Pro edits every step; discount steps; an empty shop asks for the app embed", async () => {
   const { createElement } = await import("react");
   const { renderPage } = await import("./helpers.ts");
-  const { MilestonesScreen } = await import("../../app/components/screens/MilestonesScreen.tsx");
+  const { MilestonesScreen } = await import("../../app/components/screens/milestones/MilestonesScreen.tsx");
   const { devRewardsScreen, devRewardsResult } = await import("../../app/lib/dev-harness.server.ts");
   const text = (html: string) => html.replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
   const freeHtml = await renderPage(createElement(MilestonesScreen, devRewardsScreen({ plan: "free", state: null, locale: "cs" })));

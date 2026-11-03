@@ -11,7 +11,8 @@ import { formatMoney } from "@won/core/discounts/describe";
 import { useT } from "../../i18n/context";
 import type { CurrencyView } from "../model/types";
 import { hoverMark } from "../shell/hover";
-import { WON_EDGE, WON_FAINT, WON_FONT, WON_INK, WON_LINE, WON_LIVE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "../shell/tokens";
+import { WON_CONTROL_EDGE, WON_EDGE, WON_FAINT, WON_FONT, WON_INK, WON_LINE, WON_LIVE, WON_MUTED, WON_SELECT, WON_SELECT_TINT, WON_SURFACE, WON_WASH } from "../shell/tokens";
+import { RangeInput } from "../shell/Controls";
 
 export interface PreviewStep {
   key: string;
@@ -77,7 +78,7 @@ export function MilestonePreview({ steps, currencies }: { steps: readonly Previe
                 aria-pressed={active}
                 onClick={() => setColumn(view.code)}
                 {...hoverMark("chip")}
-                style={{ ...CHIP, border: `1px solid ${active ? WON_SELECT : "#d6dbe1"}`, background: active ? "#f2f7ff" : WON_SURFACE, color: active ? WON_INK : WON_MUTED }}
+                style={{ ...CHIP, border: `1px solid ${active ? WON_SELECT : WON_CONTROL_EDGE}`, background: active ? WON_SELECT_TINT : WON_SURFACE, color: active ? WON_INK : WON_MUTED }}
               >
                 {marketName(view)}
               </button>
@@ -90,7 +91,7 @@ export function MilestonePreview({ steps, currencies }: { steps: readonly Previe
         <span>{t("milestones.preview.cart", { amount: money(cart) })}</span>
         {/* Uncontrolled: the page's form re-reads itself on every native `input` and re-renders before React hears
             the event — a controlled slider was written back to its old value and never moved. */}
-        <input type="range" min={0} max={100} step={1} defaultValue={share} onChange={(event) => setShare(Number(event.target.value))} style={{ flex: "1 1 180px", minWidth: 0, accentColor: WON_LIVE }} data-won-ms-preview-range="" />
+        <RangeInput min={0} max={100} step={1} defaultValue={share} onChange={(event) => setShare(Number(event.target.value))} style={{ flex: "1 1 180px", minWidth: 0, accentColor: WON_LIVE }} data-won-ms-preview-range="" />
       </label>
 
       <div data-won-ms-preview-size="compact" style={{ padding: "16px 20px", borderRadius: 12, background: WON_WASH }}>

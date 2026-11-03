@@ -213,7 +213,7 @@ test("Přehled card: the running and the next campaign; on Free a campaign finis
 
 test("screen: Free shows the form locked in the amber Pro frame (§16b), never red; Pro has the form enabled; no id on screen", async () => {
   const { createElement } = await import("react");
-  const { CampaignsScreen } = await import("../../app/components/screens/CampaignsScreen.tsx");
+  const { CampaignsScreen } = await import("../../app/components/screens/campaigns/CampaignsScreen.tsx");
   const { devCampaignsScreen } = await import("../../app/lib/dev-harness.server.ts");
   const { WON_AMBER } = await import("../../app/components/shell/tokens.ts");
   const { renderPage, text } = await import("./helpers.ts");
@@ -227,7 +227,7 @@ test("screen: Free shows the form locked in the amber Pro frame (§16b), never r
 
 test("editing a running campaign does not restrict its (past) start date; a new one starts today at the earliest", async () => {
   const { createElement } = await import("react");
-  const { CampaignsScreen } = await import("../../app/components/screens/CampaignsScreen.tsx");
+  const { CampaignsScreen } = await import("../../app/components/screens/campaigns/CampaignsScreen.tsx");
   const { devCampaignsScreen } = await import("../../app/lib/dev-harness.server.ts");
   const { renderPage } = await import("./helpers.ts");
   const edit = await renderPage(createElement(CampaignsScreen, devCampaignsScreen({ plan: "pro", state: null, locale: "cs", edit: "weekend" })));

@@ -20,7 +20,7 @@ import { createTestDatabase, type TestDatabase } from "../lib/test-db.ts";
 import { APP_KEY, formOf, quiet, realSync, renderPage, text } from "./helpers.ts";
 
 // Loaded here, not imported above: a static import is linked before the `?raw` hook above is registered.
-const { OutletScreen } = await import("../../app/components/screens/OutletScreen.tsx");
+const { OutletScreen } = await import("../../app/components/screens/outlet/OutletScreen.tsx");
 
 // MVP 5 contract O10: the Výprodej admin module — the forms parsed on the server (SEC-1), Pro checked there
 // (BILL-1, A6), field errors on the form's own fields, the module settings saved like every admin change.

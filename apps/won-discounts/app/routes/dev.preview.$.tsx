@@ -26,10 +26,10 @@ import { buildRuleEditorProps, RuleEditorScreen, type RuleEditorScreenProps } fr
 import { SettingsScreen, type SettingsScreenProps } from "../components/screens/SettingsScreen";
 import { TranslationsScreen, type TranslationsScreenProps } from "../components/screens/TranslationsScreen";
 import { TiersScreen, type TiersScreenProps } from "../components/screens/TiersScreen";
-import { MilestonesScreen, type MilestonesScreenProps } from "../components/screens/MilestonesScreen";
-import { OutletScreen, type OutletScreenProps } from "../components/screens/OutletScreen";
+import { MilestonesScreen, type MilestonesScreenProps } from "../components/screens/milestones/MilestonesScreen";
+import { OutletScreen, type OutletScreenProps } from "../components/screens/outlet/OutletScreen";
 import { AnalyticsScreen, type AnalyticsScreenProps } from "../components/screens/AnalyticsScreen";
-import { CampaignsScreen, type CampaignsScreenProps } from "../components/screens/CampaignsScreen";
+import { CampaignsScreen, type CampaignsScreenProps } from "../components/screens/campaigns/CampaignsScreen";
 import { MarginScreen, type MarginScreenProps } from "../components/screens/MarginScreen";
 import { buildTryCartProps, TryCartScreen, type TryCartScreenProps } from "../components/screens/TryCartScreen";
 

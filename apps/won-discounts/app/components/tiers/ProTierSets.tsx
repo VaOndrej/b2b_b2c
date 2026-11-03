@@ -32,7 +32,7 @@ import { FieldMessage } from "../rule-editor/parts";
 import { PickedAdd } from "../shell/PickedCard";
 import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
-import { selectionRing, WON_ATTENTION, WON_CARD_SHADOW, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "../shell/tokens";
+import { WON_ATTENTION, WON_CARD_SHADOW, WON_CONTROL_EDGE, WON_DASH, WON_FILL_NEUTRAL, WON_FONT, WON_INK, WON_LINE, WON_LIST_BG, WON_MUTED, WON_ON_FILL, WON_SELECT, WON_SELECT_RING, WON_SELECT_TINT, WON_SURFACE, WON_WASH, selectionRing } from "../shell/tokens";
 import { RowNote, WonSection } from "../shell/WonSection";
 import { HiddenTierSet, TierSetEditor } from "./TierSetEditor";
 
@@ -218,17 +218,17 @@ export function ProTierSets({
                       data-won-exception={open ? "open" : "closed"}
                       // A card of its own (7th round, bod 6: joined rows did not read as a list): a numbered header strip, under it
                       // what the exception is for and what those products get. The one being edited has the selection ring.
-                      style={{ border: `${open ? 2 : 1}px solid ${open ? WON_SELECT : WON_LINE}`, borderLeft: attention && !open ? `3px solid ${WON_ATTENTION}` : undefined, borderRadius: 12, background: WON_SURFACE, boxShadow: open ? "0 0 0 3px rgba(26,115,232,.12)" : WON_CARD_SHADOW, overflow: "hidden" }}
+                      style={{ border: `${open ? 2 : 1}px solid ${open ? WON_SELECT : WON_LINE}`, borderLeft: attention && !open ? `3px solid ${WON_ATTENTION}` : undefined, borderRadius: 12, background: WON_SURFACE, boxShadow: open ? `0 0 0 3px ${WON_SELECT_RING}` : WON_CARD_SHADOW, overflow: "hidden" }}
                     >
                       <input type="hidden" name={F.set} value={sid} />
                       {/* The header: its place in the list, what the exception is for, its kind, and its two buttons. */}
-                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "8px 12px", padding: "9px 12px", background: open ? "#f2f7ff" : WON_WASH, borderBottom: `1px solid ${WON_LINE}` }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "8px 12px", padding: "9px 12px", background: open ? WON_SELECT_TINT : WON_WASH, borderBottom: `1px solid ${WON_LINE}` }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flex: "1 1 220px", minWidth: 0 }}>
-                          <span aria-hidden="true" style={{ flex: "0 0 auto", width: 24, height: 24, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, fontWeight: 700, color: "#fff", background: open ? WON_SELECT : "#48525f" }}>
+                          <span aria-hidden="true" style={{ flex: "0 0 auto", width: 24, height: 24, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, fontWeight: 700, color: WON_ON_FILL, background: open ? WON_SELECT : WON_FILL_NEUTRAL }}>
                             {i + 1}
                           </span>
                           <div data-won-exception-name style={{ fontSize: 14.5, fontWeight: 700, color: WON_INK, overflowWrap: "anywhere", minWidth: 0 }}>{name}</div>
-                          <span data-won-exception-kind={mode} style={{ flex: "0 0 auto", padding: "1px 9px", borderRadius: 999, fontSize: 11.5, fontWeight: 700, lineHeight: 1.5, whiteSpace: "nowrap", color: mode === "none" ? WON_MUTED : WON_INK, background: WON_SURFACE, border: `1px solid ${mode === "none" ? "#d6dbe1" : "#b9c2cc"}` }}>
+                          <span data-won-exception-kind={mode} style={{ flex: "0 0 auto", padding: "1px 9px", borderRadius: 999, fontSize: 11.5, fontWeight: 700, lineHeight: 1.5, whiteSpace: "nowrap", color: mode === "none" ? WON_MUTED : WON_INK, background: WON_SURFACE, border: `1px solid ${mode === "none" ? WON_CONTROL_EDGE : WON_DASH}` }}>
                             {t(mode === "none" ? "tiers.pro.kind.none" : "tiers.pro.kind.own")}
                           </span>
                         </div>
@@ -268,7 +268,7 @@ export function ProTierSets({
                         </div>
                       ) : (
                         // Closed = out of sight, still in the form: the one Save of the page saves every exception.
-                        <div data-won-exception-body style={{ display: open ? "block" : "none", padding: 12, borderTop: `1px solid ${WON_LINE}`, background: "#fbfcfd" }}>
+                        <div data-won-exception-body style={{ display: open ? "block" : "none", padding: 12, borderTop: `1px solid ${WON_LINE}`, background: WON_LIST_BG }}>
                           <input type="hidden" name={F.scope(sid)} value="selection" />
                           {set.scope.products.map((p) => (
                             <input key={p.id} type="hidden" name={F.product(sid)} value={p.id} />
@@ -330,7 +330,7 @@ export function ProTierSets({
             {sets.length > 1 ? <s-text color="subdued">{t("tiers.pro.precedence")}</s-text> : null}
             {/* Nothing yet: said as a place where the first one goes, not as an empty section. */}
             {pro && sets.length === 0 ? (
-              <div data-won-exceptions-empty style={{ padding: "14px 16px", borderRadius: 12, border: "1px dashed #b9c2cc", background: WON_WASH, fontFamily: WON_FONT }}>
+              <div data-won-exceptions-empty style={{ padding: "14px 16px", borderRadius: 12, border: `1px dashed ${WON_DASH}`, background: WON_WASH, fontFamily: WON_FONT }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: WON_INK }}>{t("tiers.pro.none")}</div>
                 <div style={{ marginTop: 2, fontSize: 13, lineHeight: 1.45, color: WON_MUTED }}>{t("tiers.pro.none.hint")}</div>
               </div>

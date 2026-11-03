@@ -101,3 +101,10 @@ export const WON_CHART = "#2f6fed";
 export const WON_SAMPLE_ACCENT = "#0a7d4f";
 /** The pressed tab of a table's tab row. */
 export const WON_TAB_ON = "#e9ebee";
+/** A deeper green of "yes" in a sale's take-list; the neutral grey of a muted chart axis. */
+export const WON_LIVE_TEXT_DEEP = "#0f6b36";
+export const WON_MUTED_ALT = "#5f6b78";
+/** The brown of a quiet warning in a sentence (a text that will be replaced). */
+export const WON_WARNING_TEXT = "#8a4b00";
+/** The soft shadow of the ink (a colour swatch's ring). */
+export const WON_INK_SHADOW = "rgba(17,20,24,.18)";
