@@ -1,0 +1,4 @@
+compared 44 differing 3
+  margin-1440.png 0.002% px, bbox (598, 64, 804, 663)
+  onboarding-1440.png 0.001% px, bbox (237, 108, 240, 114)
+  onboarding-390.png 0.009% px, bbox (25, 117, 349, 492)

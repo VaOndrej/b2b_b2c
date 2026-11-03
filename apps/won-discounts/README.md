@@ -38,6 +38,19 @@ Dlaždice a stav na Přehledu i modulech `ui/tiles.test.ts`, trhy napříč obra
 stejně na všech obrazovkách `ui/screen-consistency.test.ts`, kliknutí na stránkách modulů `e2e-preview/admin.module-pages.spec.ts`
 a `e2e-preview/admin.views.spec.ts`.
 
+### Shell: odkud se skládá vzhled
+
+Obrazovky skládají tyto kusy a barvy berou jen z `components/shell/tokens.ts` (lint hlídá hex mimo shell):
+
+| Kus | Soubor | Kdy |
+|---|---|---|
+| Sekce se stavem | `components/shell/WonSection.tsx` (`WonSection`, `WonRow` řádek s akcí, `RowNote`) | každý blok stránky, řádek seznamu |
+| Štítek stavu | `components/shell/StatusBadge.tsx` (mapování `components/model/status-badge.ts`) | Aktivní, Vyžaduje pozornost, Neuplatní se, Vypnuto, Naplánováno, umístění |
+| Karta, volba, dva sloupce | `components/shell/Surface.tsx` (`Card`, `selectableStyle`, `TwoColumns`) | box obsahu, vybraná věc, nastavení s náhledem; výjimky vlastního vizuálu jsou vypsané v hlavičce |
+| Poznámka Pro | `components/shell/ProSell.tsx`, štítek `components/shell/PlanBadge.tsx` | jedna zmínka Pro na sekci |
+| Dlaždice | `components/shell/ModuleTile.tsx` | Přehled a pohledy stránek modulů |
+| Jedno uložení | `components/shell/one-save.tsx` (model `components/model/one-save.ts`) | formulář se Save Barem a části s vlastní akcí |
+
 ## Glosář: jeden pojem, víc jmen
 
 Soubory se nepřejmenovávají, tabulka říká, které jméno patří k čemu.
