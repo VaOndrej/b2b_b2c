@@ -23,14 +23,14 @@ import { snapshotOf } from "../shell/form-snapshot";
 import { Notice } from "../shell/Notice";
 import { ProSell } from "../shell/ProSell";
 import { RowNote, WonSection } from "../shell/WonSection";
-import { selectionRing, WON_FONT, WON_INK, WON_MUTED } from "../shell/tokens";
+import { WON_DIVIDER, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SAMPLE_ACCENT, WON_WASH, selectionRing } from "../shell/tokens";
 import { AccentPicker } from "./AccentPicker";
 import { LookPreview, LookPreviewStyles } from "./LookPreview";
 
 /** The settings and, beside them from 1 000 px, the live preview (it sticks while the settings scroll; above them on a narrow screen). */
 const SIDE_CSS = `
 .won-look-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
-.won-look-side{order:-1;padding:12px;border-radius:12px;background:#f5f7f9;border:1px solid #e3e7ec;font-family:${WON_FONT};min-width:0}
+.won-look-side{order:-1;padding:12px;border-radius:12px;background:${WON_WASH};border:1px solid ${WON_LINE};font-family:${WON_FONT};min-width:0}
 @media (min-width:1000px){
 .won-look-layout{grid-template-columns:minmax(0,1fr) minmax(280px,34%);gap:20px;align-items:start}
 .won-look-side{order:0;position:sticky;top:16px}
@@ -124,7 +124,7 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
       <s-grid gridTemplateColumns="repeat(auto-fit, minmax(160px, 1fr))" gap="base" alignItems="start">
         {(["accent", "line", "tint"] as const).map((key) => (
           // P6: a colour is picked, not typed — the field submits a hex the server takes (#rrggbb); empty = the theme's.
-          <s-color-field key={key} name={LOOK_FIELD[key]} label={t(`looks.custom.${key}` as "looks.custom.accent")} value={look.custom[key]} placeholder="#0a7d4f" error={errorOf(LOOK_FIELD[key])} disabled={boolAttr(!pro)} />
+          <s-color-field key={key} name={LOOK_FIELD[key]} label={t(`looks.custom.${key}` as "looks.custom.accent")} value={look.custom[key]} placeholder={WON_SAMPLE_ACCENT} error={errorOf(LOOK_FIELD[key])} disabled={boolAttr(!pro)} />
         ))}
         <s-number-field name={LOOK_FIELD.radius} label={t("looks.custom.radius")} value={look.custom.radius} min={0} max={32} step={1} inputMode="numeric" error={errorOf(LOOK_FIELD.radius)} disabled={boolAttr(!pro)} />
       </s-grid>
@@ -134,7 +134,7 @@ export function LookSection({ look, plan, configVersion, embed, preview, result:
       <s-stack direction="block" gap="small-300">
         <s-text>{t("looks.ai.title")}</s-text>
         <RowNote>{t("looks.ai.hint")}</RowNote>
-        <pre data-won-ai-prompt={element} style={{ margin: 0, padding: 10, border: "1px solid #e3e3e3", borderRadius: 8, fontSize: 12, lineHeight: 1.45, whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 180, overflow: "auto" }}>
+        <pre data-won-ai-prompt={element} style={{ margin: 0, padding: 10, border: `1px solid ${WON_DIVIDER}`, borderRadius: 8, fontSize: 12, lineHeight: 1.45, whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 180, overflow: "auto" }}>
           {look.aiPrompt}
         </pre>
         <div>

@@ -14,7 +14,7 @@ import { ProSell } from "../shell/ProSell";
 import { CartCard } from "../shell/CartCard";
 import { Finding } from "../shell/Finding";
 import { RowNote, WonSection } from "../shell/WonSection";
-import { WON_ATTENTION, WON_FONT, WON_INK, WON_MUTED } from "../shell/tokens";
+import { WON_ATTENTION, WON_FONT, WON_INK, WON_LIVE_TEXT, WON_MUTED } from "../shell/tokens";
 
 
 /**
@@ -86,7 +86,7 @@ function CombinationCarts({ scenarios }: { scenarios: readonly CombinationScenar
           <section key={combo} data-won-combo-row={combo} style={{ display: "grid", gap: 10 }}>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "4px 10px", paddingBottom: 6, borderBottom: `2px solid ${WON_INK}` }}>
               <span style={{ fontSize: 15.5, fontWeight: 700, color: WON_INK, letterSpacing: "-0.01em" }}>{first.market ? `${first.title} · ${first.market}` : first.title}</span>
-              {cells.length > 1 ? <span style={{ fontSize: 12.5, fontWeight: 600, color: warnings > 0 ? WON_ATTENTION : "#0f6b3f" }}>{t("combos.summary", { ok: cells.length - warnings, warnings })}</span> : null}
+              {cells.length > 1 ? <span style={{ fontSize: 12.5, fontWeight: 600, color: warnings > 0 ? WON_ATTENTION : WON_LIVE_TEXT }}>{t("combos.summary", { ok: cells.length - warnings, warnings })}</span> : null}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(205px, 1fr))", gap: 12, alignItems: "stretch" }}>
               {cells.map((s) => (

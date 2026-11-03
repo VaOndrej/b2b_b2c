@@ -2,9 +2,9 @@
 
 ## CHECKPOINT
 
-- **Hotové tickety:** 01–23
-- **Rozdělaný:** 24 (převod dávka C), nezačatý
-- **Další krok:** 24: codemod barev v looks/*, margin/MarginProof, Analytics, Translations, TryCart, CombinationsSection; AccentPicker, TryCart surové prvky do shellu
+- **Hotové tickety:** 01–24
+- **Rozdělaný:** 25 (uzavření: lint error, výjimky, finální capture), nezačatý
+- **Další krok:** 25: lint barev na error, ADMIN-UX §1 výjimky, smazat nepoužívané, finální capture vs baseline auditu, build; pak review 20–25
 - **Čeká na Ondřeje:** 07 formát data v adminu, 09, 10, 11 Save Bar v shopify app dev (postupy v ticketech); 10: per-run úpravy výprodeje na s-modal?; 17: přijmout −14 % slov u Marže a 0 % u Překladů?; 23: hlavní soubory Výprodeje/Kampaní/Milníků 583–679 ř.
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
@@ -36,7 +36,8 @@
 | 20 | done | feb04382 | `evidence/frontend-20/` + compare-vs-19.txt |
 | 21 | done | 643737f7 | `evidence/frontend-21/` |
 | 22 | done | b1487706 | `evidence/frontend-22/` |
-| 23 | done, velikost souborů částečně | viz git log | `evidence/frontend-23/` |
+| 23 | done, velikost souborů částečně | f6978122 | `evidence/frontend-23/` |
+| 24 | done | viz git log | `evidence/frontend-24/` |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 

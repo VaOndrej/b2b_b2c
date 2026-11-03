@@ -43,7 +43,7 @@ import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
 import { SectionNav, type SectionNavItem } from "../shell/SectionNav";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
-import { WON_FAINT, WON_INK, WON_LINE, WON_MUTED } from "../shell/tokens";
+import { WON_FAINT, WON_INK, WON_LINE, WON_MUTED, WON_WARNING_TEXT } from "../shell/tokens";
 
 /** What the CSV intents answer (translations.server.ts TranslationsResult). */
 type CsvResult = UiResult | { ok: true; message: "export"; csv: string } | { ok: true; message: "import-preview"; plan: ImportPlan; csv: string };
@@ -207,7 +207,7 @@ export function TranslationsScreen(props: TranslationsScreenProps) {
             </ul>
           ) : null}
           {preview.plan.refused.length > 0 ? (
-            <ul data-won-import-refused style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 13, lineHeight: 1.45, color: "#8a4b00", overflowWrap: "anywhere" }}>
+            <ul data-won-import-refused style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 13, lineHeight: 1.45, color: WON_WARNING_TEXT, overflowWrap: "anywhere" }}>
               {preview.plan.refused.map((r, i) => (
                 <li key={i}>
                   {r.reason === "header"

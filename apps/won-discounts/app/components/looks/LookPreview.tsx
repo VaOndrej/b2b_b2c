@@ -10,7 +10,7 @@ import outletCss from "../../../extensions/won-discounts-storefront/assets/won-d
 import type { LookElement } from "@won/core/discounts/custom-look";
 
 import { useT } from "../../i18n/context";
-import { WON_LINE } from "../shell/tokens";
+import { WON_LINE, WON_SAMPLE_INK, WON_SURFACE } from "../shell/tokens";
 import { scopeCss } from "../tiers/scope-css";
 
 /** The scope the extension's CSS is nested under in the admin. */
@@ -23,7 +23,7 @@ export function LookPreviewStyles() {
   return <style dangerouslySetInnerHTML={{ __html: SCOPED_CSS }} />;
 }
 
-const FRAME = { fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', fontSize: 15, lineHeight: 1.5, color: "#121212", background: "#ffffff", padding: 14, borderRadius: 10, border: `1px solid ${WON_LINE}`, textAlign: "start" } as const;
+const FRAME = { fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', fontSize: 15, lineHeight: 1.5, color: WON_SAMPLE_INK, background: WON_SURFACE, padding: 14, borderRadius: 10, border: `1px solid ${WON_LINE}`, textAlign: "start" } as const;
 
 /** The ladder's markup as the extension prints it (snippets/won-milestones.liquid), with a sample cart. */
 function Ladder({ size }: { size: "bar" | "compact" | "full" }) {
