@@ -218,7 +218,8 @@ test("before the first complete read of the costs, the screen and the card say o
   assert.equal(marginStatus(first, { state: "pending" }).state, "inactive", "saved, not in Shopify yet: never green");
   // The promise is not absolute any more (P3-3).
   assert.equal(cs.t("soon.margin"), "Sleva ve Won nikdy nesrazí cenu pod hranici, kterou tu nastavíte.");
-  assert.match(cs.t("margin.never"), /neklesla pod hranici/);
+  // How it acts is said once, in the page guide: a discount that would go under the limit is lowered.
+  assert.match(cs.t("guide.margin.step3.text"), /sníží na povolenou výši/);
 });
 
 test("Notice: 'Obnovit nákupní ceny' answers that the read runs in the background; a save that starts it says so too", () => {

@@ -71,28 +71,27 @@ function keptCurrencies(sets: readonly TierSetView[], enabled: readonly string[]
   return [...out];
 }
 
-function HonestNotes({ marginOn, competingRules, outletWithAnything }: { marginOn: boolean; competingRules: number; outletWithAnything: boolean }) {
-  const tr = useT();
-  const { t } = tr;
+/** How a tier meets other discounts, margin protection and clearance: one line with its links (zásada E4). */
+function HonestNotes({ marginOn, outletWithAnything }: { marginOn: boolean; outletWithAnything: boolean }) {
+  const { t } = useT();
   return (
-    <s-stack direction="block" gap="small-200">
-      <s-text color="subdued">
-        {t("tiers.honest.best")}
-        {competingRules > 0 ? ` ${tr.tp("tiers.honest.competing", competingRules)}` : ""} <s-link href="/app/discounts">{t("nav.discounts")}</s-link>
-      </s-text>
+    <s-text color="subdued">
+      {t("tiers.honest.line")} <s-link href="#combine-types">{t("combine.title")}</s-link>
       {marginOn ? (
-        <s-text color="subdued">
-          {t("tiers.honest.margin")} <s-link href="/app/margin">{t("module.margin")}</s-link>
-        </s-text>
+        <>
+          {" · "}
+          <s-link href="/app/margin">{t("module.margin")}</s-link>
+        </>
       ) : null}
+      {". "}
       {/* Clearance lines are left out unless the lists of Výprodej and Množstevní slevy name each other; gifts always (K2). */}
-      <s-text color="subdued">{t(outletWithAnything ? "tiers.honest.excludedOutlet" : "tiers.honest.excluded")}</s-text>
-    </s-stack>
+      {t(outletWithAnything ? "tiers.honest.excludedOutlet" : "tiers.honest.excluded")}
+    </s-text>
   );
 }
 
 export function TiersScreen(props: TiersScreenProps) {
-  const { plan, shopCurrency, configVersion, currencies, sets, gateNotes, marginOn, competingRules, block, storefront, preview, result } = props;
+  const { plan, shopCurrency, configVersion, currencies, sets, gateNotes, marginOn, block, storefront, preview, result } = props;
   const pro = plan === "pro";
   const tr = useT();
   const { t } = tr;
@@ -361,7 +360,7 @@ export function TiersScreen(props: TiersScreenProps) {
               <div data-won-tiers-editor={editing ? "open" : "closed"} style={{ display: editing ? "block" : "none" }}>
                 <TierSetEditor set={globalSet} currencies={currencies} kept={kept} pro={pro} live={live} errorFor={errorFor} onChange={reread} attempted={errors.length > 0} suggest={props.suggest} />
               </div>
-              <HonestNotes marginOn={marginOn} competingRules={competingRules} outletWithAnything={props.outletWithAnything === true} />
+              <HonestNotes marginOn={marginOn} outletWithAnything={props.outletWithAnything === true} />
             </s-stack>
           </WonSection>
           {/* "Sčítá se s": a part of this one form, stored by /app/combine on the same Save (shell/one-save.tsx). */}

@@ -160,7 +160,8 @@ test("Množstevní slevy: the preview shows the labelled sample product at a rou
 test("Ochrana marže: \"Nastavení podle kolekcí\" says what it is for, how to fill it in and what the whole store has", async ({ page }) => {
   await open(page, "margin?plan=pro#collections");
   const section = page.locator("section#collections");
-  await expect(section.locator("[data-won-margin-collections-how] li")).toHaveCount(3);
+  // What it is for and how to fill it in; the one numeric example of the page is the proof under Hranice (zásada E4).
+  await expect(section.locator("[data-won-margin-collections-how] li")).toHaveCount(2);
   await expect(section).toContainText("Celý obchod má teď: minimální marže 20 % · bez nákupní ceny sleva nejvýš 40 %.");
   await expect(section.locator("s-number-field[details]").first()).toHaveAttribute("details", "Kolik vám má z ceny nejmíň zůstat u produktů této kolekce.");
 });

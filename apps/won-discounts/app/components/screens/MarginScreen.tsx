@@ -68,7 +68,7 @@ import { FieldMessage } from "../rule-editor/parts";
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
 import { usePollWhile } from "../shell/poll";
-import { WON_FONT, WON_INK, WON_MUTED } from "../shell/tokens";
+import { WON_FONT, WON_INK } from "../shell/tokens";
 import { WonSection } from "../shell/WonSection";
 
 export interface MarginScreenProps extends MarginScreenData {
@@ -332,7 +332,6 @@ export function MarginScreen(props: MarginScreenProps) {
             <s-stack direction="block" gap="base">
               <s-switch name={MARGIN_FIELD.enabled} value="on" label={t("margin.enabled")} checked={boolAttr(seed.active ? seed.one(MARGIN_FIELD.enabled, "") === "on" : settings.enabled)} />
               <s-stack direction="block" gap="small-200">
-                <s-text color="subdued">{t("margin.never")}</s-text>
                 {/* Honest scope (§12): discounts outside Won are not seen by the protection; the fix is on Přehled (§13c). */}
                 <s-text color="subdued">
                   {t("margin.scope")} <s-link href="/app#native">{t("margin.scope.link")}</s-link>
@@ -347,7 +346,6 @@ export function MarginScreen(props: MarginScreenProps) {
               </s-stack>
               <div style={{ fontFamily: WON_FONT }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: WON_INK }}>{t("margin.fill.title")}</div>
-                <div style={{ marginTop: 2, fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED }}>{t("margin.fill.note")}</div>
               </div>
               <s-number-field
                 name={MARGIN_FIELD.minMarginPercent}

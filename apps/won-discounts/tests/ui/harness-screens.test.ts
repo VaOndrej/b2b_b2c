@@ -283,7 +283,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /Nevíte\? Nechte prázdné\./,
       /Počítá se jako marže v Shopify, z ceny, kterou zákazník zaplatí \(u cen s DPH včetně DPH\)/,
       /U produktu bez nákupní ceny sleva nepřekročí procento, které určíte\./,
-      /nikdy neblokuje objednávku/,
+      /sníží na povolenou výši/,
       /Ochrana hlídá jen slevy, které běží přes Won Discounts\. O slevách vytvořených přímo v Shopify neví\./,
       /href="\/app#native"/,
       /step="0\.1"/,
@@ -420,10 +420,9 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /Tohle je v tarifu Pro, zákazník to nedostane/,
       /Produkty v ní ve Free nedostanou žádnou množstevní slevu/,
       /Varianty produktu dohromady/,
-      /S jinými slevami se sčítá podle části „Sčítá se s“\. Když se nesčítají, platí ta, která dá zákazníkovi víc\./,
-      /Teď se to týká 1 slevy na produkty\./,
+      /Jak se úroveň sčítá s jinými slevami a s ochranou marže:/,
       /data-won-module-combine="tiers"/,
-      /Ochrana marže je zapnutá: u produktů s nízkou marží může úroveň vyjít nižší/,
+      /<s-link href="\/app\/margin">Ochrana marže<\/s-link>/,
       /Zboží ve výprodeji, dárky a dárkové karty úroveň nedostanou/,
       /class="won-tiers won-tiers--highlight"/,
       /data-won-discounts-tiers=""/,
@@ -812,7 +811,7 @@ test("navigace a stav, body 1 a 2: a view tile says only what changes; the secti
   const tiers = (await render("tiers")).html;
   assert.match(viewTile(tiers, "global"), /data-won-state="active"[\s\S]*Od 3 ks −10\s%, od 5 ks −15\s%, od 10 ks −20\s%/);
   assert.doesNotMatch(viewTile(tiers, "global"), /data-won-tile-about|Úrovně slevy podle počtu kusů/);
-  assert.match(section(tiers, "global"), /Úrovně slevy[\s\S]*Platí pro všechny produkty\./);
+  assert.match(section(tiers, "global"), /Úrovně slevy[\s\S]*Platí pro všechny produkty kromě výjimek\./);
   // The row under it is what is stored, without the tile's name or label again (zásada E1).
   assert.doesNotMatch(section(tiers, "global"), /Množstevní sleva pro celý obchod|data-won-state=/);
   // The section's HEADER repeats neither; under it the whole-store discount is a list row (feedback 9 Oct 2026, bod 4).

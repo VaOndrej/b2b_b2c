@@ -35,7 +35,7 @@ const PAGES: { path: string; page: string; sentence: RegExp; step: RegExp; previ
   { path: "outlet", page: "outlet", sentence: /Pak se cena sama vrátí\./, step: /Kusy se doprodávají/, preview: /700 Kč/, en: /Then the price returns by itself\./ },
   { path: "campaigns", page: "campaigns", sentence: /Spustí se a skončí sama\./, step: /Akce se sama spustí/, preview: /Black Friday: sleva 20 % do neděle/, en: /It starts and ends by itself\./ },
   { path: "placements", page: "placements", sentence: /co na webu ještě chybí/, step: /Přidáte, co chybí/, preview: /Modře jsou místa/, en: /what is still missing on your store/ },
-  { path: "margin", page: "margin", sentence: /Žádná sleva nesrazí cenu pod hranici/, step: /Pokladna hlídá cenu/, preview: /500 Kč, ne 400 Kč/, en: /No discount takes a price below the limit/ },
+  { path: "margin", page: "margin", sentence: /Žádná sleva nesrazí cenu pod hranici/, step: /Pokladna hlídá cenu/, preview: /750 Kč, ne 500 Kč/, en: /No discount takes a price below the limit/ },
   { path: "try-cart", page: "tryCart", sentence: /Dřív, než to uvidí zákazník\./, step: /Poskládáte košík/, preview: /Nesčítá se/, en: /Before a customer sees it\./ },
   { path: "analytics", page: "analytics", sentence: /Kolik objednávek mělo slevu/, step: /Won počítá objednávky/, preview: /Z toho se slevou/, en: /How many orders had a discount/ },
   { path: "translations", page: "translations", sentence: /pro každý jazyk obchodu/, step: /Upravíte texty/, preview: /Only 200 CZK away from free shipping/, en: /for every language of your store/ },
