@@ -33,6 +33,7 @@ import {
 import { PLAN_ACTION, type PlanActionResult, type PlanScreenData } from "../model/plan";
 import type { CombineType } from "../model/combine";
 import type { SettingsScreenData, UiResult } from "../model/types";
+import { settingsGuideRows } from "../model/page-guides";
 import { PageGuide } from "../shell/PageGuide";
 import { CombineTypes } from "../shell/CombineTypes";
 import { boolAttr } from "../shell/attrs";
@@ -88,9 +89,10 @@ function MarketCellView({ cell, label, off }: { cell: MarketCell; label: string;
   );
 }
 
-export function SettingsScreen({ currencies, combineDefault: stored, configVersion, result, planScreen, planAction = PLAN_ACTION, markets = [], unknownMarketLowest = false, unknownMarketHighest = [] }: SettingsScreenProps) {
+export function SettingsScreen({ plan, currencies, combineDefault: stored, configVersion, result, planScreen, planAction = PLAN_ACTION, markets: marketsRead, unknownMarketLowest = false, unknownMarketHighest = [] }: SettingsScreenProps) {
   const tr = useT();
   const { t } = tr;
+  const markets = marketsRead ?? [];
   // Two enabled markets of one currency, by name: only there can their amounts differ (the switch below).
   const sameCurrency = markets.filter((m) => m.enabled && markets.some((o) => o.enabled && o.handle !== m.handle && o.currency === m.currency));
   const withMarkets = currencies.filter((c) => c.markets.length > 0);
@@ -147,7 +149,7 @@ export function SettingsScreen({ currencies, combineDefault: stored, configVersi
 
   return (
     <s-page heading={t("nav.settings")}>
-      <PageGuide page="settings" />
+      <PageGuide page="settings" facts={settingsGuideRows({ plan, markets: marketsRead ? liveMarkets.length : null, combine: stored }, tr)} />
       <SectionNav label={t("common.onThisPage")} items={sections}>
       <s-stack direction="block" gap="base">
         <Form method="post" ref={formRef} data-save-bar>

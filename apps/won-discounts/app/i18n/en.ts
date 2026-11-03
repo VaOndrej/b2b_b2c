@@ -2586,9 +2586,6 @@ export const en: Record<keyof typeof cs, string> = {
   "guide.preview.langCs": "Ještě 200 Kč a máte dopravu zdarma",
   "guide.preview.langEn": "Only 200 CZK away from free shipping",
   "guide.preview.setCombine": "Combining discounts",
-  "guide.preview.setCombineValue": "Set",
   "guide.preview.setMarkets": "Markets",
-  "guide.preview.setMarketsValue": "2 markets",
   "guide.preview.setPlan": "Plan",
-  "guide.preview.setPlanValue": "Pro",
 };

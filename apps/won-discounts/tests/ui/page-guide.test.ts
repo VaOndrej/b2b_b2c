@@ -66,3 +66,35 @@ test("Ochrana marže has one explanation: the old block is gone", async () => {
 test("the explanation starts open and offers to hide itself", async () => {
   assert.match(await render("tiers"), /data-won-guide-toggle[^>]*>Skrýt vysvětlení/);
 });
+
+// Nastavení: the preview is the shop's own plan, markets and combining, never a value written into the dictionary (§5, §12).
+test("Nastavení: 'Váš obchod' says the shop's own plan, its markets and how a new discount combines", async () => {
+  const { settingsGuideRows } = await import("../../app/components/model/page-guides.ts");
+  const { translator } = await import("../../app/i18n/index.ts");
+  const tr = translator("cs");
+  const free = settingsGuideRows({ plan: "free", markets: 2, combine: [] }, tr);
+  assert.deepEqual(free, [
+    { label: "Kombinování slev", value: "S jinou slevou se nesčítá" },
+    { label: "Trhy", value: "2 trhy" },
+    { label: "Tarif", value: "Free" },
+  ]);
+  assert.ok(!free.some((row) => /Pro/.test(row.value)), "a Free shop is never told it has Pro");
+  const pro = settingsGuideRows({ plan: "pro", markets: 1, combine: ["automatic", "shipping"] }, tr);
+  assert.deepEqual(pro.map((row) => row.value), ["Sčítá se s automatickými slevami a dopravou zdarma", "1 trh", "Pro"]);
+  // No markets read: the row is left out rather than guessed.
+  assert.deepEqual(settingsGuideRows({ plan: "free", markets: null, combine: [] }, tr).map((row) => row.label), ["Kombinování slev", "Tarif"]);
+
+  const guide = (html: string) => html.slice(html.indexOf('data-won-guide="settings"'), html.indexOf("data-won-section-nav"));
+  const onFree = guide(await render("settings"));
+  assert.match(onFree, /Tarif<\/span><span[^>]*>Free</);
+  assert.doesNotMatch(onFree, />Pro</);
+  assert.match(guide(await render("settings?plan=pro")), /Tarif<\/span><span[^>]*>Pro</);
+});
+
+test("the dictionary has no sample values posing as the shop's settings", async () => {
+  const { cs } = await import("../../app/i18n/cs.ts");
+  const { en } = await import("../../app/i18n/en.ts");
+  for (const dict of [cs, en] as Record<string, string>[]) {
+    for (const key of ["guide.preview.setCombineValue", "guide.preview.setMarketsValue", "guide.preview.setPlanValue"]) assert.equal(dict[key], undefined, key);
+  }
+});

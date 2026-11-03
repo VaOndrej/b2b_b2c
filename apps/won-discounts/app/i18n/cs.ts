@@ -2590,9 +2590,6 @@ export const cs = {
   "guide.preview.langCs": "Ještě 200 Kč a máte dopravu zdarma",
   "guide.preview.langEn": "Only 200 CZK away from free shipping",
   "guide.preview.setCombine": "Kombinování slev",
-  "guide.preview.setCombineValue": "Nastaveno",
   "guide.preview.setMarkets": "Trhy",
-  "guide.preview.setMarketsValue": "2 trhy",
   "guide.preview.setPlan": "Tarif",
-  "guide.preview.setPlanValue": "Pro",
 } satisfies Record<string, string>;
