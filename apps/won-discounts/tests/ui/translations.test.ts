@@ -164,7 +164,7 @@ test("an empty cell of an import puts the extension's own text back", () => {
   assert.deepEqual(plan.changes, [{ key: "tiers.heading", locale: "cs", from: "Kup víc, plať míň", to: "" }]);
 });
 
-test("feedback 9 Oct 2026, bod 1: a language is complete when the customer never reads another language in it", async () => {
+test("a language is complete when the customer never reads another language in it", async () => {
   const { missingTexts, languageProgressText } = await import("../../app/components/model/translations.ts");
   const { translator } = await import("../../app/i18n/index.ts");
   const cs = translator("cs");

@@ -1,37 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { sanitizeConfig } from "@won/core/discounts/config";
+// Vyzkoušet košík: what the combination check reports and how the frequent combinations are shown per basket.
 
-import { tiersSetsStatus } from "../../app/components/model/module-status.ts";
-import type { SyncView } from "../../app/components/model/types.ts";
-import { tiersOverviewOf } from "../../app/lib/integration/tiers.server.ts";
-
-// Feedback of 12 Oct 2026 (Ondřej, four points on the dev shop).
-
-const OK: SyncView = { state: "ok", at: "2026-10-12T10:00:00.000Z" } as SyncView;
-
-test("1: an exception that takes a product OUT of the quantity discount is an exception that runs ('Aktivní')", () => {
-  const { config } = sanitizeConfig({
-    modules: {
-      tiers: {
-        sets: [
-          { id: "g", scope: "global", countAcross: "product", breaks: [{ minQty: 3, percent: 10 }] },
-          { id: "x", scope: { productIds: ["gid://shopify/Product/1"] }, countAcross: "product", breaks: [] },
-        ],
-      },
-    },
-  });
-  assert.equal(config.modules.tiers.sets.length, 2, "the exclusion is stored");
-  const overview = tiersOverviewOf(config, "pro", { state: "on", themeName: "Horizon" });
-  assert.equal(overview.sets, 0, "no set with its own levels");
-  assert.equal(overview.excluded, 1);
-  assert.equal(tiersSetsStatus(overview, OK, "pro").state, "active");
-  // On Free the plan does not run it.
-  assert.equal(tiersSetsStatus(tiersOverviewOf(config, "free", { state: "on", themeName: "Horizon" }), OK, "free").state, "locked");
-});
-
-test("4: a cart an automatic discount keeps under a gift step lost nothing — only a typed code takes a gift away", async () => {
+test("a cart an automatic discount keeps under a gift step lost nothing — only a typed code takes a gift away", async () => {
   const { findingsOf } = await import("../../app/lib/integration/combination-check.ts");
   const plan = { lines: [], rules: [], tiers: [], warnings: [{ code: "code_loses_gift", ruleId: "gift:g1" }] } as unknown as Parameters<typeof findingsOf>[0];
   const preview = { degraded: false, shortfall: 0, droppedCandidates: [] } as unknown as Parameters<typeof findingsOf>[1];
@@ -39,7 +11,7 @@ test("4: a cart an automatic discount keeps under a gift step lost nothing — o
   assert.deepEqual(findingsOf(plan, preview, { codes: true }).map((f) => f.kind), ["code_loses_gift"]);
 });
 
-test("13 Oct 2026: with more products known, every combination is shown per basket — the cheapest, a middle, the most expensive product and a mix", async () => {
+test("with more products known, every combination is shown per basket — the cheapest, a middle, the most expensive product and a mix", async () => {
   await import("./support/raw-import.ts");
   const { createStaticHandler, createStaticRouter, StaticRouterProvider } = await import("react-router");
   const { createElement } = await import("react");

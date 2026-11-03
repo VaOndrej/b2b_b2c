@@ -7,7 +7,8 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { createStaticHandler, createStaticRouter, StaticRouterProvider } from "react-router";
 
-// Feedback 3 (6 Oct 2026), dávka A — body 1, 2, 3, 5, 6, 8, 15. Every check renders the real screen in the dev
+// Tiles on the home page and the module pages: one link per tile, the same state on the tile and the page, the
+// theme placement labels, Pro once per section. Every check renders the real screen in the dev
 // harness (the same loader → component path as a request) and reads the markers the shell writes:
 // `data-won-state` on a status label, `data-won-placement` on a theme-placement label, `data-won-tile` on a home tile.
 
@@ -59,7 +60,7 @@ function viewTile(html: string, id: string): string {
  * the label (doctrine §19e: the state once and on top).
  */
 function viewState(html: string, view: string, anchor: string): string | null {
-  // (Under the header, Množstevní slevy lists the whole-store discount as a row with its label — feedback 9 Oct 2026, bod 4.)
+  // (Under the header, Množstevní slevy lists the whole-store discount as a row with its label — a list, not a form.)
   assert.equal(stateOf(section(html, anchor).split("data-won-tiers-list")[0]!), null, `section #${anchor} does not repeat the tile's label`);
   return stateOf(viewTile(html, view));
 }
@@ -69,7 +70,7 @@ const count = (markup: string, re: RegExp) => (markup.match(re) ?? []).length;
 /** Plan markers: "Pro" and "Pro · odemknout". */
 const PRO_BADGE = /data-won-plan-badge="pro"/g;
 
-test("body 2 a 3: the home page is a grid of tiles, each one a single link; no module cards, no 'Upravit' buttons", async () => {
+test("the home page is a grid of tiles, each one a single link; no module cards, no 'Upravit' buttons", async () => {
   const html = await render("overview?state=modules&plan=pro");
   assert.match(html, /data-won-tiles/);
   const hrefs = ["/app/discounts", "/app/tiers", "/app/rewards", "/app/outlet", "/app/campaigns", "/app/margin", "/app/analytics", "/app/translations", "/app/try-cart", "/app/settings"];
@@ -90,7 +91,7 @@ test("body 2 a 3: the home page is a grid of tiles, each one a single link; no m
   assert.ok(live.indexOf("Vyžaduje pozornost") < live.indexOf("data-won-tiles"), "attention sits above the tiles");
 });
 
-test("body 2 a 3: Pro modules on Free are amber tiles that lead to the module page; an empty shop still gets every tile", async () => {
+test("Pro modules on Free are amber tiles that lead to the module page; an empty shop still gets every tile", async () => {
   const free = await render("overview?state=modules");
   for (const key of ["outlet", "campaigns", "tryCart"]) {
     assert.equal(count(tile(free, key), PRO_BADGE), 1, `${key}: one Pro marker`);
@@ -103,7 +104,7 @@ test("body 2 a 3: Pro modules on Free are amber tiles that lead to the module pa
   assert.match(empty, /Krok 1 z/);
 });
 
-test("body 1 a 8: the home tile and the module page say the same state", async () => {
+test("the home tile and the module page say the same state", async () => {
   for (const plan of ["", "&plan=pro"]) {
     const home = await render(`overview?state=modules${plan}`);
     const q = plan ? "?plan=pro" : "";
@@ -113,7 +114,7 @@ test("body 1 a 8: the home tile and the module page say the same state", async (
     // Množstevní slevy: set up, written → "Aktivní" on both.
     assert.equal(stateOf(tile(home, "tiers")), "active", `tiers tile ${plan}`);
     assert.equal(viewState(tiers, "global", "global"), "active", `tiers page ${plan}`);
-    // Milníky: the ladder carries the label, the same as its tile (bod 8).
+    // Milníky: the ladder carries the label, the same as its tile.
     assert.equal(stateOf(tile(home, "rewards")), "active", `rewards tile ${plan}`);
     assert.match(rewards.slice(rewards.indexOf('data-won-ms-row="shipping"'), rewards.indexOf("</button>", rewards.indexOf('data-won-ms-row="shipping"'))), /data-won-state="active"/, `steps ${plan}`);
     // Ochrana marže (the label was missing on both).
@@ -146,13 +147,13 @@ test("body 1 a 8: the home tile and the module page say the same state", async (
   assert.equal(viewState(await render("tiers?state=sync-failed"), "global", "global"), "attention");
 });
 
-test("bod 1: the English label is 'Active'", async () => {
+test("the English label is 'Active'", async () => {
   const html = await render("overview?state=modules&plan=pro&locale=en");
   assert.match(tile(html, "tiers"), />Active</);
   assert.doesNotMatch(html, />Live</);
 });
 
-test("bod 5: a theme placement says where it stands — green in the theme, red missing with the add button in the header, grey not verified", async () => {
+test("a theme placement says where it stands — green in the theme, red missing with the add button in the header, grey not verified", async () => {
   const on = section(await render("tiers"), "block");
   assert.match(on, /data-won-placement="in_theme"[^>]*>.*?Na webu/s);
   assert.doesNotMatch(on, /Přidat na web/);
@@ -176,7 +177,7 @@ test("bod 5: a theme placement says where it stands — green in the theme, red 
   assert.match(section(await render("outlet?plan=pro"), "badge"), /data-won-placement="(in_theme|missing|unknown)"/);
 });
 
-test("bod 6: Pro is marked once per section — nothing amber and no second Pro marker inside", async () => {
+test("Pro is marked once per section — nothing amber and no second Pro marker inside", async () => {
   const cases: [string, string][] = [
     ["tiers?plan=pro", "pro"],
     ["tiers", "pro"],
@@ -193,7 +194,7 @@ test("bod 6: Pro is marked once per section — nothing amber and no second Pro 
     assert.doesNotMatch(markup, /data-won-pro-frame="amber"/, `${path} #${id}: no amber frame inside a Pro section`);
     assert.doesNotMatch(markup, /data-won-block="pro"/, `${path} #${id}: nested blocks are neutral`);
   }
-  // 13 Oct 2026: the editor's last section is every plan's (which discounts add up); only its markets are Pro —
+  // The editor's last section is every plan's (which discounts add up); only its markets are Pro —
   // a Pro piece inside a section that is not Pro, with its one marker.
   for (const path of ["rule-editor?rule=dev-fixture-2&plan=pro", "rule-editor?rule=dev-fixture-2"]) {
     const markup = section(await render(path), "pro");
@@ -209,7 +210,7 @@ test("bod 6: Pro is marked once per section — nothing amber and no second Pro 
   assert.equal(count(section(await render("tiers"), "global"), PRO_BADGE), 1, "Free: Celý košík (the link to the table's look is every plan's)");
 });
 
-test("bod 15: 'Prázdná sleva' is 'Vlastní sleva', with what it is, set apart from the recipes", async () => {
+test("'Prázdná sleva' is 'Vlastní sleva', with what it is, set apart from the recipes", async () => {
   const html = await render("discounts?state=empty");
   assert.match(html, /data-won-recipe="blank"/);
   assert.match(html, /Vlastní sleva/);
@@ -220,7 +221,7 @@ test("bod 15: 'Prázdná sleva' is 'Vlastní sleva', with what it is, set apart 
   assert.match(en, /You start with a clean form and set everything yourself\./);
 });
 
-// --- Feedback 6 Oct 2026 (after dávka A): what a tile covers + what is active; Výprodej as tiles ---------------
+// --- What a tile covers and what is active; Výprodej as tiles ----------------------------------------------------
 
 test("home tiles: each says what is under it, and below that what is active now", async () => {
   const html = await render("overview?state=modules&plan=pro");
@@ -250,13 +251,13 @@ test("Výprodej: four tiles instead of one long page — the sales (with their s
   assert.equal(panel("new"), "none");
   assert.equal(panel("info"), "none");
   assert.equal(panel("web"), "none");
-  // 10 Oct 2026, body 5 a 7: the badge's block and its look sit under "Štítek na webu", never under the rules;
+  // The badge's block and its look sit under "Štítek na webu", never under the rules;
   // the rules say which running sale takes the other discounts, each with its switch.
   const at = (marker: string) => html.indexOf(marker);
   assert.ok(at('data-won-view-panel="web"') < at('id="look-outlet"') && at('id="look-outlet"') < at('data-won-view-panel="info"'));
   assert.ok(at('data-won-view-panel="info"') < at("data-won-outlet-combine-list"));
   // Each running sale is a row of the rules: what it takes (without its own choice: the list of Výprodej) and the
-  // button to its card; under them the list itself (14 Oct 2026: combining by type).
+  // button to its card; under them the list itself (combining by type).
   const row = html.slice(at("data-won-outlet-combine-row="), at('data-won-module-combine="outlet"'));
   for (const text of ["Jako ostatní výprodeje", "S jinou slevou se nesčítá", "Změnit"]) assert.ok(row.includes(text), text);
   assert.ok(at("data-won-outlet-combine-list") < at('data-won-module-combine="outlet"'));
@@ -311,7 +312,7 @@ test("the module pages are tiles and one panel at a time: Množstevní slevy, Od
   assert.match(await render("margin"), /data-won-view-tile="collections"[^>]*data-won-tile-locked/);
 });
 
-test("Výprodej (10 Oct 2026): a new sale is three numbered steps — what, how it shows (per sale, with a preview and the block's state), the start; the shop-wide display setting is gone", async () => {
+test("Výprodej: a new sale is three numbered steps — what, how it shows (per sale, with a preview and the block's state), the start; the shop-wide display setting is gone", async () => {
   const html = await render("outlet?plan=pro");
   const form = html.slice(html.indexOf("data-won-outlet-new"));
   const at = (marker: string) => form.indexOf(marker);

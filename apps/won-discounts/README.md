@@ -16,13 +16,13 @@ Shopify na `/dev/preview/<harness>`. Že každá cesta v tabulce existuje, hlíd
 | Onboarding | `onboarding` | `routes/app.onboarding.tsx` | `components/screens/OnboardingScreen.tsx` | `components/model/rule-form.ts` | `lib/integration/pages.server.ts` | `integration/overview.test.ts` |
 | Slevy a kódy | `discounts` | `routes/app.discounts._index.tsx` | `components/screens/DiscountsScreen.tsx`, `components/RuleTable.tsx`, `components/MoveDialog.tsx` | `components/model/rule-status.ts`, `components/model/rule-table.ts` | `lib/integration/pages.server.ts`, `lib/integration/native.server.ts` | `ui/rule-status.test.ts`, `ui/rule-table.test.ts`, `integration/native-move.test.ts` |
 | Editor slevy | `rule-editor` | `routes/app.discounts.$id.tsx` | `components/screens/RuleEditorScreen.tsx`, `components/rule-editor/` | `components/model/rule-form.ts`, `components/model/describe.ts` | `lib/integration/pages.server.ts` | `ui/rule-form.test.ts`, `ui/describe.test.ts`, `integration/rule-save.test.ts` |
-| Množstevní slevy | `tiers` | `routes/app.tiers.tsx` | `components/screens/TiersScreen.tsx`, `components/tiers/` | `components/model/tiers.ts` | `lib/integration/tiers.server.ts` | `ui/tiers.test.ts`, `ui/kolo3-c.test.ts`, `integration/tiers.test.ts` |
+| Množstevní slevy | `tiers` | `routes/app.tiers.tsx` | `components/screens/TiersScreen.tsx`, `components/tiers/` | `components/model/tiers.ts` | `lib/integration/tiers.server.ts` | `ui/tiers.test.ts`, `ui/tier-exceptions.test.ts`, `integration/tiers.test.ts` |
 | Milníky | `rewards` / `milestones` | `routes/app.rewards.tsx` | `components/screens/MilestonesScreen.tsx`, `components/rewards/` | `components/model/milestones.ts` | `lib/integration/rewards.server.ts` | `ui/rewards.test.ts`, `integration/rewards.test.ts` |
 | Výprodej | `outlet` | `routes/app.outlet.tsx` | `components/screens/OutletScreen.tsx` | `components/model/outlet.ts`, `components/model/outlet-web.ts` | `lib/integration/outlet-admin.server.ts` | `ui/outlet-web-line.test.ts`, `integration/outlet-admin.test.ts` |
 | Kampaně | `campaigns` | `routes/app.campaigns.tsx` | `components/screens/CampaignsScreen.tsx` | `components/model/campaigns.ts` | `lib/integration/campaigns-admin.server.ts` | `integration/campaigns-admin.test.ts` |
 | Umístění na webu | `placements` | `routes/app.placements.tsx` | `components/screens/PlacementsScreen.tsx` | `components/model/placements.ts` | `lib/integration/placements.server.ts` | `integration/placements.test.ts`, `e2e-preview/admin.placements-guide.spec.ts` |
 | Ochrana marže | `margin` | `routes/app.margin.tsx` | `components/screens/MarginScreen.tsx`, `components/margin/` | `components/model/margin.ts` | `lib/integration/margin.server.ts` | `ui/margin.test.ts`, `integration/margin.test.ts` |
-| Vyzkoušet košík | `try-cart` | `routes/app.try-cart.tsx` | `components/screens/TryCartScreen.tsx`, `components/try-cart/` | `components/model/try-cart-form.ts` | `lib/integration/try-cart.server.ts` | `ui/try-cart-form.test.ts`, `integration/try-cart.test.ts` |
+| Vyzkoušet košík | `try-cart` | `routes/app.try-cart.tsx` | `components/screens/TryCartScreen.tsx`, `components/try-cart/` | `components/model/try-cart-form.ts` | `lib/integration/try-cart.server.ts` | `ui/try-cart-form.test.ts`, `ui/try-cart-combinations.test.ts`, `integration/try-cart.test.ts` |
 | Přehledy | `analytics` | `routes/app.analytics.tsx` | `components/screens/AnalyticsScreen.tsx` | `components/model/analytics.ts` | `lib/integration/analytics-admin.server.ts` | `lib/analytics/analytics.test.ts` |
 | Překlady | `translations` | `routes/app.translations.tsx` | `components/screens/TranslationsScreen.tsx` | `components/model/translations.ts` | `lib/integration/translations.server.ts` | `ui/translations.test.ts`, `integration/translations.test.ts` |
 | Nastavení | `settings` | `routes/app.settings.tsx` | `components/screens/SettingsScreen.tsx` | `components/model/combination.ts`, `components/model/markets-overview.ts` | `lib/integration/settings.server.ts` | `integration/settings.test.ts` |
@@ -34,6 +34,9 @@ Shopify na `/dev/preview/<harness>`. Že každá cesta v tabulce existuje, hlíd
 Napříč obrazovkami: menu a záložky `components/model/modules.ts` + `components/shell/SubNav.tsx` (`ui/nav.test.ts`),
 PageGuide `components/model/page-guides.ts` + `components/shell/PageGuide.tsx` (`ui/page-guide.test.ts`), harness
 `routes/dev.preview.$.tsx` (`ui/harness-screens.test.ts`, `e2e-preview/`), texty `i18n/cs.ts` a `i18n/en.ts` (`ui/i18n.test.ts`).
+Dlaždice a stav na Přehledu i modulech `ui/tiles.test.ts`, trhy napříč obrazovkami `ui/markets-and-tiles.test.ts`, stejné věci
+stejně na všech obrazovkách `ui/screen-consistency.test.ts`, kliknutí na stránkách modulů `e2e-preview/admin.module-pages.spec.ts`
+a `e2e-preview/admin.views.spec.ts`.
 
 ## Glosář: jeden pojem, víc jmen
 

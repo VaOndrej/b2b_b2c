@@ -188,7 +188,7 @@ test("retry: a failed end is finished by 'Zkusit znovu'; a sale without a failed
   assert.equal((await db.prisma.outletRun.findUnique({ where: { id: run.id } }))!.status, "ended");
 });
 
-test("audit A3: a new display level reaches the storefront value of the running sales at once (not with the next order)", async () => {
+test("a new display level reaches the storefront value of the running sales at once (not with the next order)", async () => {
   const { fake, ctx, product, variant } = setup("pro");
   await outletAction(ctx, startForm(variant, product.id));
   const value = () => JSON.parse(fake.products.get(product.id)!.metafields.get("$app:won_discounts/outlet")!.value) as { d: string };

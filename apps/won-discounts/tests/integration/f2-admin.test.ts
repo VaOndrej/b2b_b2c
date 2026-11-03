@@ -493,7 +493,7 @@ test("F12: an onboarding step saved while another instance writes the config is 
   assert.deepEqual(stored.onboarding, { goals: ["rewards"], step: 2 }, "and the step is saved on top of it");
 });
 
-test("13 Oct 2026: a discount created from a campaign's form is stored switched off and the save leads back to the campaign with it ticked and switched on", async () => {
+test("a discount created from a campaign's form is stored switched off and the save leads back to the campaign with it ticked and switched on", async () => {
   const { loadCampaignsScreen } = await import("../../app/lib/integration/campaigns-admin.server.ts");
   const { campaignFormValues, CAMPAIGN_FIELD } = await import("../../app/components/model/campaigns.ts");
   const ctx = testCtx(db.prisma, shop, new FakeStore());

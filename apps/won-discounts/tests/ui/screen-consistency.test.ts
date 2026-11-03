@@ -1,5 +1,5 @@
-// Uzavření před první review (12 Oct 2026): one test per finding of docs/won-discounts/matice-pred-review.md, so a
-// finding that was repaired cannot come back on another screen. The screens are rendered in the dev harness.
+// The same thing looks and behaves the same on every screen (docs/won-discounts/matice-pred-review.md): place labels,
+// warning cards, numbered steps, single places. A repaired screen cannot drift back on another one. The screens are rendered in the dev harness.
 import "./support/raw-import.ts";
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
@@ -40,24 +40,24 @@ function tile(html: string, id: string): string {
 /** The label of a tile: "active" | "attention" | "inactive" | null (no label). */
 const stateOf = (html: string) => html.match(/data-won-state="([a-z]+)"/)?.[1] ?? null;
 
-// --- Nálezy 6, 9, 10, 12: a tile about a place on the web tells the truth -------------------------------------
+// --- A tile about a place on the web tells the truth -----------------------------------------------------------
 
 test("placementStatus: nothing to show = no label; a wrong spot is never green; the rows' red places are counted", () => {
   assert.deepEqual(placementStatus("in_theme"), { state: "active", issues: 0 });
   assert.deepEqual(placementStatus("missing"), { state: "attention", issues: 1 });
   assert.equal(placementStatus("unknown"), undefined);
-  // Nález 6: a shop with no level / no step has nothing to resolve on the web, whatever the theme holds.
+  // A shop with no level / no step has nothing to resolve on the web, whatever the theme holds.
   assert.equal(placementStatus("missing", { runs: false }), undefined);
   assert.equal(placementStatus("in_theme", { runs: false }), undefined);
   assert.deepEqual(placementStatus("missing", { runs: true }), { state: "attention", issues: 1 });
-  // Nálezy 10 a 12: in the theme where nobody sees it.
+  // In the theme where nobody sees it.
   assert.deepEqual(placementStatus("in_theme", { misplaced: true }), { state: "attention", issues: 1 });
-  // Nález 9: the module runs (green stays, §19a) and the red rows under the tile are counted beside it.
+  // The module runs (green stays, §19a) and the red rows under the tile are counted beside it.
   assert.deepEqual(placementStatus("in_theme", { alsoMissing: 2 }), { state: "active", issues: 2 });
   assert.deepEqual(placementStatus("missing", { alsoMissing: 1 }), { state: "attention", issues: 2 });
 });
 
-test("nález 6: an empty shop has no red tile on Množstevní slevy and Milníky", async () => {
+test("an empty shop has no red tile on Množstevní slevy and Milníky", async () => {
   const tiers = tile(await render("tiers?state=empty"), "table");
   assert.equal(stateOf(tiers), null, "no level yet: the table's tile has no label");
   assert.ok(!text(tiers).includes("k vyřešení"), text(tiers));
@@ -69,7 +69,7 @@ test("nález 6: an empty shop has no red tile on Množstevní slevy and Milníky
   assert.equal(stateOf(tile(await render("tiers?state=block-off"), "table")), "attention");
 });
 
-test("nález 9: Milníky na webu — the tile counts the place whose row is red", async () => {
+test("Milníky na webu — the tile counts the place whose row is red", async () => {
   const html = await render("rewards");
   const web = tile(html, "web");
   assert.equal(stateOf(web), "active", "the ladder runs in the cart: the green stays");
@@ -78,14 +78,14 @@ test("nález 9: Milníky na webu — the tile counts the place whose row is red"
   assert.ok(text(web).includes(red === 1 ? "1 věc k vyřešení" : `${red} věci k vyřešení`), text(web));
 });
 
-test("nález 10: Výprodej — the tile of the badge has the label every other tile has", async () => {
+test("Výprodej — the tile of the badge has the label every other tile has", async () => {
   const web = tile(await render("outlet?plan=pro"), "web");
   assert.equal(stateOf(web), "attention", "a sale runs and its badge is not in the template");
   assert.ok(text(web).includes("1 věc k vyřešení"), text(web));
   assert.equal(stateOf(tile(await render("outlet?plan=pro&state=empty"), "web")), null, "no sale runs: nothing to resolve");
 });
 
-test("nález 12: Kampaň na webu — a banner in the wrong spot is not green", async () => {
+test("Kampaň na webu — a banner in the wrong spot is not green", async () => {
   const html = await render("campaigns?plan=pro");
   const places = tile(html, "places");
   assert.ok(html.includes('data-won-placement="misplaced"'), "the fixture's only banner is in the wrong spot");
@@ -93,9 +93,9 @@ test("nález 12: Kampaň na webu — a banner in the wrong spot is not green", a
   assert.ok(text(places).includes("1 místo je na webu · 1 na špatném místě"), text(places));
 });
 
-// --- Nález 14: a collection's or a product's own limits say that they run -------------------------------------
+// --- A collection's or a product's own limits say that they run ------------------------------------------------
 
-test("nález 14: Ochrana marže — the tile of stored own limits is labelled, the one with none is not", async () => {
+test("Ochrana marže — the tile of stored own limits is labelled, the one with none is not", async () => {
   const html = await render("margin?plan=pro");
   assert.equal(stateOf(tile(html, "collections")), "active", "two collections have their own limits and the guard runs");
   assert.equal(stateOf(tile(html, "products")), null, "no product has its own limits");
@@ -104,9 +104,9 @@ test("nález 14: Ochrana marže — the tile of stored own limits is labelled, t
   assert.equal(stateOf(tile(await render("margin"), "collections")), null);
 });
 
-// --- Nález 1: the setup guide never says "Vypnuto" about a step that is merely not done ------------------------
+// --- The setup guide never says "Vypnuto" about a step that is merely not done ---------------------------------
 
-test("nález 1: the guide's steps 4 and 5 have no label until they are done; the switch of step 3 keeps its own", async () => {
+test("the guide's steps 4 and 5 have no label until they are done; the switch of step 3 keeps its own", async () => {
   const sections = (html: string) => html.split(/(?=<section\b)/).filter((s) => /^<section\b/.test(s));
   const open = sections(await render("onboarding?step=4&embed=on"));
   const first = open.find((s) => text(s).includes("4. První sleva"))!;
@@ -133,9 +133,9 @@ test("the document stream never carries a NUL byte: a chunk with one comes out w
   assert.equal(Buffer.concat(out).toString("utf8"), "nepustí větší slevu, vráceno 0 ks");
 });
 
-// --- Nález 8: on Free the custom look is one sentence, not a locked form --------------------------------------
+// --- On Free the custom look is one sentence, not a locked form -------------------------------------------------
 
-test("nález 8: Free sees what Pro gives in one sentence — no locked fields, no brief for an AI; Pro has the form", async () => {
+test("Free sees what Pro gives in one sentence — no locked fields, no brief for an AI; Pro has the form", async () => {
   for (const path of ["tiers", "rewards", "tiers?state=empty"]) {
     const free = await render(path);
     assert.ok(free.includes("data-won-look-custom"), `${path}: the custom look is still offered`);
@@ -146,9 +146,9 @@ test("nález 8: Free sees what Pro gives in one sentence — no locked fields, n
   assert.ok(pro.includes('name="look.css"') && text(pro).includes("Zadání pro AI"));
 });
 
-// --- Nález 7: the page's Save is one shared piece, shown only where the page's form has something to save ------
+// --- The page's Save is one shared piece, shown only where the page's form has something to save ---------------
 
-test("nález 7: PageSave is hidden, never unmounted, and every page with views uses it", async () => {
+test("PageSave is hidden, never unmounted, and every page with views uses it", async () => {
   const { createElement } = await import("react");
   const { renderToString } = await import("react-dom/server");
   const { PageSave } = await import("../../app/components/shell/PageSave.tsx");
@@ -157,19 +157,19 @@ test("nález 7: PageSave is hidden, never unmounted, and every page with views u
   assert.match(draw(true), /data-won-page-save="shown" style="display:block"><s-button type="submit"/);
   assert.match(draw(false), /data-won-page-save="hidden" style="display:none"><s-button type="submit"/);
   // The pages whose form spans several views draw their Save through it (the view is picked in the browser:
-  // tests/e2e-preview/admin.pred-review.spec.ts clicks through them).
+  // tests/e2e-preview/admin.views.spec.ts clicks through them).
   for (const path of ["tiers", "rewards", "margin"]) assert.equal((await render(path)).split("data-won-page-save=").length - 1, 1, path);
 });
 
-// --- Nálezy 2, 16, 17: one card for every warning — what happened, what to do, the button ----------------------
+// --- One card for every warning: what happened, what to do, the button -----------------------------------------
 
 /** The pieces of a page marked with `marker`, one piece of HTML each (up to the next one). */
 const pieces = (html: string, marker: string) => html.split(new RegExp(`(?=<div data-won-finding="" ${marker}=)`)).slice(1);
 
-test("nález 2: Přehled — every thing to resolve says what happened, what to do, and has the primary button to the field", async () => {
+test("Přehled — every thing to resolve says what happened, what to do, and has the primary button to the field", async () => {
   const html = await render("overview?state=modules&plan=pro");
   const findings = pieces(html, "data-won-overview-finding");
-  // Two at most are drawn as cards (decided 12 Oct 2026, the test "C14" below); the fixture has five.
+  // Two at most are drawn as cards (the test "at most two things to resolve as cards" below); the fixture has five.
   assert.equal(findings.length, 2);
   for (const finding of findings) {
     const words = text(finding);
@@ -179,7 +179,7 @@ test("nález 2: Přehled — every thing to resolve says what happened, what to 
   assert.ok(!text(html).includes("Pozor ·"), "the old one-line rows are gone");
 });
 
-test("nález 17: the cart's result — each difference from checkout is a finding with its 'Co s tím'; a retry where it helps", async () => {
+test("the cart's result — each difference from checkout is a finding with its 'Co s tím'; a retry where it helps", async () => {
   const html = await render("try-cart?state=warnings&plan=pro");
   const findings = pieces(html, "data-won-try-cart-warning");
   assert.deepEqual(findings.map((f) => f.match(/data-won-try-cart-warning="([^"]+)"/)![1]), ["tryCart.warning.tie", "tryCart.warning.targeting", "tryCart.warning.notApplied"]);
@@ -189,7 +189,7 @@ test("nález 17: the cart's result — each difference from checkout is a findin
   assert.ok(!html.includes("<s-banner tone=\"warning\" heading=\"Pokladna se může lišit\""), "not a banner with a list any more");
 });
 
-test("nález 16: Časté kombinace — a finding shared by several combinations is shown once, with their names", async () => {
+test("Časté kombinace — a finding shared by several combinations is shown once, with their names", async () => {
   const { distinctFindings } = await import("../../app/components/try-cart/CombinationsSection.tsx");
   const finding = (kind: string, href: string, textOf: string) => ({ kind, href, text: textOf, label: "Otevřít" });
   const scenario = (title: string, findings: ReturnType<typeof finding>[], market?: string) => ({ title, market, findings }) as never;
@@ -204,12 +204,12 @@ test("nález 16: Časté kombinace — a finding shared by several combinations 
   const warnings = html.split('data-won-combo-status="warning"').length - 1;
   const cards = html.split("data-won-combo-finding=").length - 1;
   assert.ok(warnings > 1 && cards > 0 && cards < warnings * 2, `${cards} cards for ${warnings} combinations with a warning`);
-  assert.ok(text(html).includes("Košíky, ve kterých se to ukázalo:"), "each with its cart (12 Oct 2026, bod 4)");
+  assert.ok(text(html).includes("Košíky, ve kterých se to ukázalo:"), "each with its cart");
 });
 
-// --- Nálezy 3, 4, 11, 13: cards and steps ---------------------------------------------------------------------
+// --- Cards and steps -------------------------------------------------------------------------------------------
 
-test("nález 3: Slevy a kódy — a row opens its discount and the ready-made discounts are not behind a disclosure", async () => {
+test("Slevy a kódy — a row opens its discount and the ready-made discounts are not behind a disclosure", async () => {
   const html = await render("discounts?sync=ok");
   assert.ok((html.match(/<s-clickable href="\/app\/discounts\/[^"]+"[^>]*>\s*<div[^>]*data-won-rule-row/g) ?? []).length >= 6, "every row opens its discount");
   const recipes = html.slice(html.indexOf('id="recipes"'));
@@ -217,14 +217,14 @@ test("nález 3: Slevy a kódy — a row opens its discount and the ready-made di
   assert.ok(text(recipes).includes("Uvítací kód"), "its content is drawn");
 });
 
-test("nález 4: the rule editor's four sections are numbered steps; the optional Pro section is not", async () => {
+test("the rule editor's four sections are numbered steps; the optional Pro section is not", async () => {
   for (const path of ["rule-editor", "rule-editor?rule=new&recipe=code", "rule-editor?plan=pro"]) {
     const html = await render(path);
     assert.deepEqual([...html.matchAll(/data-won-section-step="(\d)"[^>]*>([^<]+)</g)].map((m) => m[2]), ["Krok 1 / 4", "Krok 2 / 4", "Krok 3 / 4", "Krok 4 / 4"], path);
   }
 });
 
-test("nález 11: a campaign is a card like a running sale — the name, its state and its buttons in the header strip", async () => {
+test("a campaign is a card like a running sale — the name, its state and its buttons in the header strip", async () => {
   const html = await render("campaigns?plan=pro");
   const cards = html.split(/(?=<div data-won-campaign=")/).slice(1);
   assert.deepEqual(cards.map((c) => c.match(/data-won-campaign="([a-z]+)"/)![1]), ["running", "scheduled", "ended", "killed"]);
@@ -237,7 +237,7 @@ test("nález 11: a campaign is a card like a running sale — the name, its stat
   assert.equal((await render("campaigns")).split('data-won-campaign="').length - 1, 4);
 });
 
-test("nález 13: the last step of a new campaign says where the customer sees it, with the way there; the intro is said once", async () => {
+test("the last step of a new campaign says where the customer sees it, with the way there; the intro is said once", async () => {
   const html = await render("campaigns?plan=pro&state=empty");
   const web = html.slice(html.indexOf("data-won-campaign-web="));
   assert.match(web, /^data-won-campaign-web="(seen|missing)"/);
@@ -247,29 +247,29 @@ test("nález 13: the last step of a new campaign says where the customer sees it
   assert.ok(text(html).includes("Co je kampaň."));
 });
 
-// --- Nálezy 5, 15, 18, 19: single places ----------------------------------------------------------------------
+// --- Single places ---------------------------------------------------------------------------------------------
 
-test("nález 5: a batch of codes says how it is made — no grey number posing as a value, the codes come with Save", async () => {
+test("a batch of codes says how it is made — no grey number posing as a value, the codes come with Save", async () => {
   const html = await render("rule-editor?rule=dev-fixture-2&batch=20");
   const count = html.match(/<s-number-field name="[^"]*"[^>]*label="Kolik kódů"[^>]*>/)?.[0] ?? "";
   assert.ok(count && !count.includes("placeholder="), count);
   assert.ok(text(html).includes("Napište, kolik kódů chcete, a slevu uložte tlačítkem Uložit dole."));
 });
 
-test("nález 15: Nákupní ceny — the panel says it is an overview, and its list is not a disclosure", async () => {
+test("Nákupní ceny — the panel says it is an overview, and its list is not a disclosure", async () => {
   const html = await render("margin?plan=pro");
   const costs = html.slice(html.indexOf('id="costs"'), html.indexOf('data-won-view-panel="collections"'));
   assert.ok(text(costs).includes("Jen přehled") && text(costs).includes("Tady nic nezapínáte ani neukládáte."), text(costs).slice(0, 300));
   assert.ok(text(costs).includes("Produkty bez nákupní ceny") && !costs.includes("aria-expanded"), "the list is always open");
 });
 
-test("nález 18: Přehledy on Free — what Pro shows in one sentence, no invented rows", async () => {
+test("Přehledy on Free — what Pro shows in one sentence, no invented rows", async () => {
   const words = text(await render("analytics"));
   assert.ok(words.includes("Zobrazit tarif Pro") && !words.includes("Ukázka, ne vaše čísla") && !words.includes("113 400"), "no sample table");
   assert.ok(text(await render("analytics?plan=pro")).includes("Slevy jednotlivě"));
 });
 
-test("nález 19: a block that is on the cart page is opened, never added a second time", async () => {
+test("a block that is on the cart page is opened, never added a second time", async () => {
   const html = await render("rewards");
   const cart = html.slice(html.indexOf('data-won-ms-place="cart"'));
   const row = cart.slice(0, cart.indexOf("data-won-ms-place=", 30) > 0 ? cart.indexOf("data-won-ms-place=", 30) : 3000);
@@ -279,9 +279,9 @@ test("nález 19: a block that is on the cart page is opened, never added a secon
   assert.ok(!href.includes("addAppBlockId"), `the link only opens the editor: ${href}`);
 });
 
-// --- Decided after the walkthrough (12 Oct 2026): C1, C3, C8, C9, C13, C14 ------------------------------------
+// --- Přehled, the guide and the side list ----------------------------------------------------------------------
 
-test("C14: Přehled draws at most two things to resolve as cards; the rest is one line with how many wait at which module", async () => {
+test("Přehled draws at most two things to resolve as cards; the rest is one line with how many wait at which module", async () => {
   const html = await render("overview?state=modules&plan=pro");
   assert.equal(pieces(html, "data-won-overview-finding").length, 2);
   const more = text(html.slice(html.indexOf("data-won-overview-more"), html.indexOf("data-won-overview-more") + 1500));
@@ -292,7 +292,7 @@ test("C14: Přehled draws at most two things to resolve as cards; the rest is on
   assert.ok(!(await render("overview?state=empty")).includes("data-won-overview-more"));
 });
 
-test("C1: Přehled promises nothing that is not collected — no 'Připravujeme', and the block is not drawn without a row", async () => {
+test("Přehled promises nothing that is not collected — no 'Připravujeme', and the block is not drawn without a row", async () => {
   for (const path of ["overview?state=modules&plan=pro", "overview?state=margin&watch=1&plan=pro", "overview?state=conflict", "overview?state=empty"]) {
     const html = await render(path);
     assert.ok(!text(html).includes("Připravujeme"), path);
@@ -301,12 +301,12 @@ test("C1: Přehled promises nothing that is not collected — no 'Připravujeme'
   assert.ok(!(await render("overview?state=conflict")).includes('data-won-watch=""'), "nothing to show: no block");
 });
 
-test("C3: the guide's step 2 — going on without the move is a visible button that says so", async () => {
+test("the guide's step 2 — going on without the move is a visible button that says so", async () => {
   const html = await render("onboarding?step=2");
   assert.match(html, /<s-button type="submit" variant="secondary"[^>]*>Pokračovat bez přesunu/);
 });
 
-test("C8: the rule editor's Pro section is open for a Pro shop; C13: the sale's returns are saved by a primary button", async () => {
+test("the rule editor's Pro section is open for a Pro shop; the sale's returns are saved by a primary button", async () => {
   const pro = await render("rule-editor?plan=pro");
   const section = pro.slice(pro.indexOf('id="pro"'));
   assert.match(section.slice(0, 3000), /aria-expanded="true"/);
@@ -314,10 +314,10 @@ test("C8: the rule editor's Pro section is open for a Pro shop; C13: the sale's 
   assert.match(outlet, /<s-button type="submit" variant="primary">Uložit<\/s-button>/);
 });
 
-test("C9: a page with one place to jump to has no side list; with more it has one", async () => {
+test("a page with one place to jump to has no side list; with more it has one", async () => {
   assert.ok(!(await render("try-cart")).includes("data-won-section-nav"), "Free: only the cart");
   assert.ok(!(await render("try-cart?state=empty&plan=pro")).includes("data-won-section-nav"), "an empty cart, no combinations");
-  // 13 Oct 2026: Vyzkoušet košík has two tiles instead of the side list (the automatic check, your own cart).
+  // Vyzkoušet košík has two tiles instead of the side list (the automatic check, your own cart).
   const both = await render("try-cart?state=warnings&plan=pro&combos=on");
   assert.ok(!both.includes("data-won-section-nav") && both.includes('data-won-view-tile="auto"') && both.includes('data-won-view-tile="manual"'));
 });

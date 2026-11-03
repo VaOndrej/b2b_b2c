@@ -189,7 +189,7 @@ test("O5: an end that fails stays `ending` (flag kept, next attempt scheduled) a
   assert.equal(fake.variants.get(large)!.price, "18.00");
 });
 
-test("audit A1: two ends of the same sale at once (the admin's button, a webhook's quota, the scheduler) run one after the other: one history entry, prices back once", async () => {
+test("two ends of the same sale at once (the admin's button, a webhook's quota, the scheduler) run one after the other: one history entry, prices back once", async () => {
   const { fake, deps, product, large } = setup();
   const r = await startOutletRun(deps, draft(large, product.id));
   assert.ok(r.ok);

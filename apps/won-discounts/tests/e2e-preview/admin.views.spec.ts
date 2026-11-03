@@ -2,10 +2,10 @@ import { expect, test } from "@playwright/test";
 
 import { open, sideways } from "./support";
 
-// Uzavření před první review (12 Oct 2026): what docs/won-discounts/matice-pred-review.md found and only a browser
-// can check — a view picked by a click, the pointer, the width of a phone.
+// Views of a module page (docs/won-discounts/matice-pred-review.md), what only a browser can check: a view picked
+// by a click, the pointer, the width of a phone.
 
-test("nález 7: the page's Save is shown only under a view whose fields it saves", async ({ page }) => {
+test("the page's Save is shown only under a view whose fields it saves", async ({ page }) => {
   const save = page.locator("[data-won-page-save]");
   await open(page, "tiers?plan=pro");
   await expect(save).toBeVisible();
@@ -33,7 +33,7 @@ test("nález 7: the page's Save is shown only under a view whose fields it saves
   await expect(save).toBeVisible();
 });
 
-test("nález 8: on Free the look's view is short — the locked Pro form is gone, on a phone too", async ({ page }) => {
+test("on Free the look's view is short — the locked Pro form is gone, on a phone too", async ({ page }) => {
   await open(page, "tiers");
   await page.locator('[data-won-view-tile="table"]').click();
   const form = page.locator('[data-won-look-form="tiers"]');

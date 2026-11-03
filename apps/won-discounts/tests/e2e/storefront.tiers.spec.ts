@@ -386,7 +386,7 @@ test.describe(`Won Discounts quantity tiers: PDP, cart and checkout (MVP 3)${PRO
 
   // Feedback 3 (6 Oct 2026), bod 4: the table counts what is in the cart and follows the cart WITHOUT a page load.
   // The test clicks the theme's own add-to-cart button; nothing is posted to the cart by the test itself.
-  test("bod 4: adding from the product page moves the table — one piece in the cart says how many are missing, the next one makes the tier active; a reload agrees", async ({ page }, testInfo) => {
+  test("adding from the product page moves the table — one piece in the cart says how many are missing, the next one makes the tier active; a reload agrees", async ({ page }, testInfo) => {
     test.setTimeout(240_000);
     const [low] = TIERS_BREAKS;
     await page.setViewportSize({ width: 1440, height: 900 });

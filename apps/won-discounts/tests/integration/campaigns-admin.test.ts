@@ -225,7 +225,7 @@ test("screen: Free shows the form locked in the amber Pro frame (§16b), never r
   assert.doesNotMatch(text(pro.replace(/<[^>]+>/g, " ")), /gid:\/\/shopify|dev-fixture/, "never an id on screen (§4c)");
 });
 
-test("audit C2: editing a running campaign does not restrict its (past) start date; a new one starts today at the earliest", async () => {
+test("editing a running campaign does not restrict its (past) start date; a new one starts today at the earliest", async () => {
   const { createElement } = await import("react");
   const { CampaignsScreen } = await import("../../app/components/screens/CampaignsScreen.tsx");
   const { devCampaignsScreen } = await import("../../app/lib/dev-harness.server.ts");
@@ -258,7 +258,7 @@ test("form model: an unticked discount's fields are never read (B7); the times a
   assert.ok(names.includes(`${F.percent}auto`) && names.includes(`${F.tierQty}g.9`) && names.includes(F.endTime));
 });
 
-test("12 Oct 2026, bod 2: a campaign creates its own discount off the whole order — stored switched off, switched on by the campaign, in one write", async () => {
+test("a campaign creates its own discount off the whole order — stored switched off, switched on by the campaign, in one write", async () => {
   const { ctx } = await setup("pro");
   const fields = async (extra: [string, string][]): Promise<[string, string][]> => [
     ["configVersion", await version()],

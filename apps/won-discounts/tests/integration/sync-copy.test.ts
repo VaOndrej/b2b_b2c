@@ -76,7 +76,7 @@ test("margin sync problems have their own sentences with the collection title an
   assert.match(t("cs", currency.key, currency.params), /měn/);
 });
 
-test("audit fix rounds 2 + 3: a rule collection over the limit is named „by title“ in Czech (fallback 'kolekce bez názvu'); a held config says why; refused products are counted, never listed by GID; a failed prune is quiet", () => {
+test("a rule collection over the limit is named „by title“ in Czech (fallback 'kolekce bez názvu'); a held config says why; refused products are counted, never listed by GID; a failed prune is quiet", () => {
   const tooLarge = (params: Record<string, string | number | null>) =>
     say({ step: "products.too_large:vip", ok: false, detail: '"VIP10" does not apply at checkout to gid://shopify/Collection/9 …', params } as never);
   assert.equal(
@@ -102,7 +102,7 @@ test("audit fix rounds 2 + 3: a rule collection over the limit is named „by ti
   assert.doesNotMatch(prune, /Throttled|Cílení na produkty se do Shopify nezapsalo/);
 });
 
-test("audit fix round 4: a tripped refusal breaker never says the other products were written; an older run's too-large step ({collections, untitled}) still names its collections; an unread membership words the margin hold", () => {
+test("a tripped refusal breaker never says the other products were written; an older run's too-large step ({collections, untitled}) still names its collections; an unread membership words the margin hold", () => {
   const breaker = { step: "products.set", ok: false, detail: "Shopify refused 80 product(s): …", params: { refused: 80, breaker: 1 } };
   assert.equal(say(breaker as never), "Shopify teď odmítá zápisy cílení slev u produktů: nezapsalo se jich 80. Další synchronizace to zkusí znovu.");
   assert.equal(say(breaker as never, "en"), "Shopify is refusing the discount targeting writes for products right now: 80 product(s) were not written. The next sync tries again.");
@@ -123,7 +123,7 @@ test("audit fix round 4: a tripped refusal breaker never says the other products
   assert.match(say({ step: "shop_config.phase1.write", ok: false, detail: "campaign switch held" } as never), /^Přepnutí kampaně se zatím nedokončilo/);
 });
 
-test("audit fix round 5: a products.membership READ failure has its own sentence, never configHeldMargin's 'could not write'; a phase1.build over budget tells the merchant what would help", () => {
+test("a products.membership READ failure has its own sentence, never configHeldMargin's 'could not write'; a phase1.build over budget tells the merchant what would help", () => {
   const unread = { step: "products.membership", ok: false, detail: "could not read whether 3 product(s) are in 1 collection(s): Throttled" };
   const heldMargin = { step: "shop_config.write", ok: false, detail: "held", params: { held: "margin_refs" } };
   for (const locale of ["cs", "en"] as const) {

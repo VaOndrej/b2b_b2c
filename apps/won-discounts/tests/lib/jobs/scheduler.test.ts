@@ -129,7 +129,7 @@ test("outlet.due (audit A5): an end in progress holds a lease — another proces
   assert.equal((await db.prisma.outletRun.findUnique({ where: { id: r.runId } }))!.status, "ended", "an expired lease is taken over");
 });
 
-test("audit A5: while an end runs, its row already holds the lease (a tick elsewhere skips it)", async () => {
+test("while an end runs, its row already holds the lease (a tick elsewhere skips it)", async () => {
   const { fake, deps, product, variant } = setup();
   const r = await startOutletRun(deps, { variantId: variant, productId: product.id, quota: 5, percent: 25, priceListIds: [] });
   assert.ok(r.ok);

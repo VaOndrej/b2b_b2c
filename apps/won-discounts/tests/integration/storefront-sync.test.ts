@@ -144,7 +144,7 @@ test("umístění na webu (E1): tags found in the live theme reach the storefron
   assert.equal((store.sync.storefrontConfig() as { tg?: unknown }).tg, undefined);
 });
 
-test("feedback 2, bod 7: the sync's storefront config lists the campaigns (camps) — the wiring passes the shop's time zone (it was dropped)", async () => {
+test("the sync's storefront config lists the campaigns (camps) — the wiring passes the shop's time zone (it was dropped)", async () => {
   const store = new FakeStore();
   const plan = { current: "pro" as Plan };
   const config = { ...input(), campaigns: [{ id: "bf", name: "Black Friday", window: { start: "2026-11-27T00:00:00", end: "2026-11-30T00:00:00" }, overrides: [], killed: false }] };

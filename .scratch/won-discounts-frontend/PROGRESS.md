@@ -2,9 +2,9 @@
 
 ## CHECKPOINT
 
-- **Hotové tickety:** 01
-- **Rozdělaný:** 02 (testy podle funkce), nezačatý
-- **Další krok:** 02: přejmenovat/rozdělit 7 souborů testů, odstranit čísla nálezů z názvů testů, porovnat počty
+- **Hotové tickety:** 01, 02
+- **Rozdělaný:** 03 (lint barvy jen v shellu), nezačatý
+- **Další krok:** 03: ESLint varování na hex/rgba mimo shell, zapsat výchozí počet
 - **Čeká na Ondřeje:** nic
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48.
@@ -14,7 +14,8 @@
 
 | Ticket | Stav | Commit | Důkaz |
 |---|---|---|---|
-| 01 | done | viz git log | `docs/won-discounts/evidence/frontend-01/`, `tests/ui/readme-map.test.ts` |
+| 01 | done | 611ab3a5 | `docs/won-discounts/evidence/frontend-01/`, `tests/ui/readme-map.test.ts` |
+| 02 | done | viz git log | počty testů v ticketu, `evidence/frontend-02/` |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 

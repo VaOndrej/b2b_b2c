@@ -1,5 +1,5 @@
-// Kolo 3, dávka C (bod 7): výjimky v Množstevních slevách — a list of exceptions, one open at a time
-// (docs/won-discounts/nakres-bod7-vyjimky.md). The screens are rendered in the dev harness.
+// Množstevní slevy, exceptions: a list of exceptions, one open at a time (docs/won-discounts/nakres-bod7-vyjimky.md).
+// The screens are rendered in the dev harness.
 import "./support/raw-import.ts";
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
@@ -8,8 +8,13 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { createStaticHandler, createStaticRouter, StaticRouterProvider } from "react-router";
 
+import { sanitizeConfig } from "@won/core/discounts/config";
+
 import { translator } from "../../app/i18n/index.ts";
+import { tiersSetsStatus } from "../../app/components/model/module-status.ts";
 import { exceptionTitle, readTiersForm } from "../../app/components/model/tiers.ts";
+import type { SyncView } from "../../app/components/model/types.ts";
+import { tiersOverviewOf } from "../../app/lib/integration/tiers.server.ts";
 
 let prevEnv: string | undefined;
 before(() => {
@@ -38,6 +43,7 @@ function exceptions(html: string): string[] {
   return list.split(/(?=<div data-won-exception="(?:open|closed)")/).slice(1);
 }
 const ok = (cond: boolean, message: string) => assert.ok(cond, message);
+const OK: SyncView = { state: "ok", at: "2026-10-12T10:00:00.000Z" } as SyncView;
 
 test("an exception is named by what it is for: the first two names, then how many more", () => {
   const tr = translator("cs");
@@ -51,7 +57,7 @@ test("an exception is named by what it is for: the first two names, then how man
   assert.equal(exceptionTitle(scope(["A", "B", "C"]), translator("en")), "A, B and 1 more");
 });
 
-test("stav 1: every exception is one row — its name, what it gives, Upravit and Odebrat; none is open", async () => {
+test("every exception is one row — its name, what it gives, Upravit and Odebrat; none is open", async () => {
   const html = await render("tiers?plan=pro&state=exceptions");
   const rows = exceptions(html);
   assert.equal(rows.length, 2);
@@ -99,7 +105,7 @@ test("a closed exception stays in the form: the one Save of the page still saves
   );
 });
 
-test("stav 2: a refused save opens the exception it is about — the sentence, what it is for, the two cards, the levels, Hotovo", async () => {
+test("a refused save opens the exception it is about — the sentence, what it is for, the two cards, the levels, Hotovo", async () => {
   const html = await render("tiers?plan=pro&state=exceptions&result=invalid-exception");
   const [first, second] = exceptions(html);
   ok(first!.startsWith('<div data-won-exception="open"'), "the refused one is open");
@@ -151,4 +157,24 @@ test("an exception that counts like the whole store keeps counting and kind fold
   ok(text(same).includes("Teď stejně jako zbytek obchodu: varianty produktu dohromady; sleva: procenta."), text(same).slice(0, 200));
   ok(/name="set\.t_x\.count"/.test(same) && /name="set\.t_x\.kind"/.test(same), "the two choices are still submitted");
   ok(/data-won-tier-own="open"/.test(render1({ count: "line", kind: "percent" })), "a different counting opens it");
+});
+
+test("an exception that takes a product OUT of the quantity discount is an exception that runs ('Aktivní')", () => {
+  const { config } = sanitizeConfig({
+    modules: {
+      tiers: {
+        sets: [
+          { id: "g", scope: "global", countAcross: "product", breaks: [{ minQty: 3, percent: 10 }] },
+          { id: "x", scope: { productIds: ["gid://shopify/Product/1"] }, countAcross: "product", breaks: [] },
+        ],
+      },
+    },
+  });
+  assert.equal(config.modules.tiers.sets.length, 2, "the exclusion is stored");
+  const overview = tiersOverviewOf(config, "pro", { state: "on", themeName: "Horizon" });
+  assert.equal(overview.sets, 0, "no set with its own levels");
+  assert.equal(overview.excluded, 1);
+  assert.equal(tiersSetsStatus(overview, OK, "pro").state, "active");
+  // On Free the plan does not run it.
+  assert.equal(tiersSetsStatus(tiersOverviewOf(config, "free", { state: "on", themeName: "Horizon" }), OK, "free").state, "locked");
 });

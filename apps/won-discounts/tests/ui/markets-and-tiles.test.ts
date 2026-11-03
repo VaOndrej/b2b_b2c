@@ -19,8 +19,8 @@ import { campaignRuleChoices } from "../../app/lib/integration/campaigns-admin.s
 import { readMarketRates } from "../../app/lib/integration/themes.server.ts";
 import { tiersOverviewOf } from "../../app/lib/integration/tiers.server.ts";
 
-// Audit of 6 Oct 2026 (docs/won-discounts/audit-dlazdice-trhy-2026-10-06.md): the findings N1–N21 and the
-// proposals for markets. Screens are rendered in the dev harness (the same loader → component path as a request).
+// Markets on every screen (amounts per market, what a market does not get) and what the tiles count and say
+// (docs/won-discounts/audit-dlazdice-trhy-2026-10-06.md). Screens are rendered in the dev harness (the same loader → component path as a request).
 
 let prevEnv: string | undefined;
 before(() => {
@@ -58,9 +58,9 @@ const MARKETS = [
   { handle: "hu", currency: "HUF", enabled: false },
 ];
 
-test("N2 + N4: the home page lists a gift a market does not get, and the tile counts what the list shows", async () => {
+test("the home page lists a gift a market does not get, and the tile counts what the list shows", async () => {
   const html = await render("overview?state=modules");
-  // Přehled draws two things to resolve as cards and counts the rest by module (decided 12 Oct 2026): the gift is
+  // Přehled draws two things to resolve as cards and counts the rest by module (decided): the gift is
   // the fourth, so the home page says it waits at Milníky; the sentence itself is on the module's page.
   const more = html.slice(html.indexOf("data-won-overview-more"));
   assert.match(more.slice(0, 1500), /<s-link href="\/app\/rewards">Milníky<!-- --> \(<!-- -->1<!-- -->\)/);
@@ -75,14 +75,14 @@ test("N2 + N4: the home page lists a gift a market does not get, and the tile co
   assert.match(tile(html, "settings"), /2 trhy · tarif Free · chybí částky: Slovensko/);
 });
 
-test("N4: a discount that runs but has warnings counts them; a stopped one without a warning counts once", () => {
+test("a discount that runs but has warnings counts them; a stopped one without a warning counts once", () => {
   const live = { kind: "live" } as RuleStatus;
   const failed = { kind: "sync_failed" } as RuleStatus;
   assert.deepEqual(codesStatus([live, live]), { state: "active", issues: 0 });
   assert.deepEqual(codesStatus([live, live, failed], [2, 0, 0]), { state: "active", issues: 3 });
 });
 
-test("N5 + N3: a new shop is 'ready', not 'active'; a narrow tile has its short sentence", async () => {
+test("a new shop is 'ready', not 'active'; a narrow tile has its short sentence", async () => {
   const off = await render("overview?state=modules-off");
   assert.match(off, /Připraveno\. Zatím není co ukazovat\./);
   assert.doesNotMatch(off.slice(off.indexOf('id="status"'), off.indexOf("data-won-tiles")), /data-won-state="active"/);
@@ -93,14 +93,14 @@ test("N5 + N3: a new shop is 'ready', not 'active'; a narrow tile has its short 
   assert.match(tile(on, "codes"), /data-won-tile-active[^>]*>3 aktivní z 6 · /, "what runs comes first");
 });
 
-test("N13: a failed write names its one cause on the tiles that wait for it; no English detail, no informal address", async () => {
+test("a failed write names its one cause on the tiles that wait for it; no English detail, no informal address", async () => {
   const html = await render("overview?state=modules-failed");
   for (const key of ["tiers", "rewards", "margin"]) assert.match(tile(html, key), /data-won-tile-issues[^>]*>Čeká na opravu slevy „VIP10“/, key);
   assert.doesNotMatch(html, /could not create|Code must be unique|přesuň do Won/);
   assert.match(html, /nebo tu slevu přesuňte do Won\./);
 });
 
-test("N17 (changed by Ondřej, 7 Oct 2026): a Pro part says 'Pro' on its tile on every plan; a running sale is worded 'Běží výprodej'", async () => {
+test("a Pro part says 'Pro' on its tile on every plan; a running sale is worded 'Běží výprodej'", async () => {
   const pro = await render("overview?state=modules&plan=pro");
   for (const key of ["outlet", "campaigns", "tryCart"]) {
     assert.match(tile(pro, key), /data-won-plan-badge="pro"/, key);
@@ -110,7 +110,7 @@ test("N17 (changed by Ondřej, 7 Oct 2026): a Pro part says 'Pro' on its tile on
   assert.match(tile(await render("overview?state=modules"), "tryCart"), /data-won-tile-locked/, "Free: locked");
 });
 
-test("návrh 2: an amount for another market is suggested only from the rate set by hand in Shopify; without one the form says so", async () => {
+test("an amount for another market is suggested only from the rate set by hand in Shopify; without one the form says so", async () => {
   // 1 500 Kč × 0,04 = 60 €; 1 494 × 0,04 = 59,76 → a round 60; forints have no decimals.
   assert.equal(suggestedAmount(1500, 0.04, 2), 60);
   assert.equal(suggestedAmount(1494, 0.04, 2), 60);
@@ -141,7 +141,7 @@ test("návrh 2: an amount for another market is suggested only from the rate set
   assert.equal(asked, 1);
 
   // The gift of the fixture has 1 500 Kč and no amount for Slovakia: the suggestion, or the sentence that no rate is set.
-  // Milníky (since 9 Oct 2026): the amounts are in each step's own form, with the same suggestion box under the
+  // Milníky: the amounts are in each step's own form, with the same suggestion box under the
   // fields as every other amount form — no page-wide "Navrhnout ostatní trhy" (its one sentence for two opposite
   // cases confused: "Není co doplnit…" with every field filled in).
   const withRate = await render("rewards");
@@ -151,7 +151,7 @@ test("návrh 2: an amount for another market is suggested only from the rate set
   assert.doesNotMatch(without, /Navrhnout ostatní trhy/);
 });
 
-test("N9 + N1: Milníky opened from the guide has a first step (free shipping) with the recipe's amounts; a new form shows no error yet", async () => {
+test("Milníky opened from the guide has a first step (free shipping) with the recipe's amounts; a new form shows no error yet", async () => {
   const html = await render("rewards?state=empty&start=shipping");
   assert.match(html, /<input type="hidden" name="ms\.step" value="shipping"\/>/);
   assert.match(html, /<input type="radio" name="ms\.shipping\.kind"[^>]*checked=""[^>]*value="shipping"\/>/);
@@ -165,7 +165,7 @@ test("N9 + N1: Milníky opened from the guide has a first step (free shipping) w
   assert.doesNotMatch(plain, /částka chybí/);
 });
 
-test("N6 + N7 + N10 + N19 + N21: Milníky says where the ladder shows, what to do after a save, and keeps the plan note with the steps", async () => {
+test("Milníky says where the ladder shows, what to do after a save, and keeps the plan note with the steps", async () => {
   const html = await render("rewards?result=saved");
   assert.match(tile(html, "web", "data-won-view-body"), /Pruh nahoře ano · na stránce produktu ne · v košíku ano/);
   assert.match(html, /Pruh nahoře je zapnutý: jedna věta a tenký ukazatel na každé stránce\./);
@@ -173,18 +173,18 @@ test("N6 + N7 + N10 + N19 + N21: Milníky says where the ladder shows, what to d
   assert.deepEqual([...html.matchAll(/data-won-ms-place="(\w+)"/g)].map((m) => m[1]), ["topBar", "product", "drawer", "cart"]);
   const next = html.slice(html.indexOf("data-won-rewards-next"));
   assert.match(next.slice(0, 2600), /Zákazník uvidí 3 stupně\.[\s\S]*Slovensko: některý stupeň tam nemá částku a nenabízí se\.[\s\S]*Doplnit částky[\s\S]*Košík žebříček ukazuje\.[\s\S]*Na stránce produktu žebříček zatím není\.[\s\S]*Přidat na stránku produktu/);
-  // N21: the plan note sits in the steps panel, under the tiles — not over the whole page.
+  // The plan note sits in the steps panel, under the tiles — not over the whole page.
   assert.ok(html.indexOf("Tohle je v tarifu Pro, zákazník to nedostane") > html.indexOf('data-won-view-panel="steps"'));
-  // N19: the save button is hidden while "Odměny na webu" is open (nothing to save there) — it is shown for the form panels.
+  // The save button is hidden while "Odměny na webu" is open (nothing to save there) — it is shown for the form panels.
   assert.match(html, /data-won-page-save="shown"[^>]*><s-button type="submit" variant="primary">Uložit/);
   const empty = await render("rewards?state=empty");
   assert.match(tile(empty, "web", "data-won-view-body"), / · v košíku ne/);
-  // No step yet: Won being off on the web is not a thing to resolve on this tile (before the first review, nález 6;
-  // tests/ui/pred-review.test.ts). The sentence still says where the ladder is not.
+  // No step yet: Won being off on the web is not a thing to resolve on this tile (an empty shop has no red tile;
+  // tests/ui/screen-consistency.test.ts). The sentence still says where the ladder is not.
   assert.doesNotMatch(tile(empty, "web", "data-won-view-body"), /data-won-tile-issues/);
 });
 
-test("N18: a tile has ONE border declaration, so a tile that stops being selected never keeps a stray colour", async () => {
+test("a tile has ONE border declaration, so a tile that stops being selected never keeps a stray colour", async () => {
   const html = await render("rewards");
   for (const body of html.match(/<div class="won-tile"[^>]*>/g) ?? []) {
     assert.match(body, /border:1px solid/);
@@ -192,7 +192,7 @@ test("N18: a tile has ONE border declaration, so a tile that stops being selecte
   }
 });
 
-test("N8: quantity levels name the market in one sentence, and a level that is not offered somewhere is something to resolve", async () => {
+test("quantity levels name the market in one sentence, and a level that is not offered somewhere is something to resolve", async () => {
   const html = await render("tiers?plan=pro");
   assert.match(html, /Slovensko \(EUR\): úroveň od 6 ks se nenabízí\. Doplňte částku, nebo použijte procenta\./);
   assert.match(html, /label="Za kus: Slovensko \(EUR\)"/);
@@ -201,13 +201,13 @@ test("N8: quantity levels name the market in one sentence, and a level that is n
     modules: { tiers: { sets: [{ id: "g", scope: "global", countAcross: "product", breaks: [{ minQty: 3, amountOff: { CZK: 3000, EUR: 120 } }, { minQty: 6, amountOff: { CZK: 6000 } }] }] } },
   });
   // The admin reads a config in its columns (loadConfig → core expandConfigAmounts): one amount key per market.
-  // 7 Oct 2026: both euro markets lack the level, each is named by its market (one thing to resolve on the tile).
+  // Both euro markets lack the level, each is named by its market (one thing to resolve on the tile).
   const overview = tiersOverviewOf(expandConfigAmounts(config), "free", { state: "on", themeName: "Horizon" });
   assert.deepEqual(overview.missing, { global: ["EUR@sk", "EUR@de"], sets: [] }, "HUF is switched off: not asked for");
   assert.deepEqual(tiersStatus(overview, OK), { state: "active", issues: 1 });
 });
 
-test("N14: a campaign asks for the currencies of enabled markets only and says where the discount is not offered", async () => {
+test("a campaign asks for the currencies of enabled markets only and says where the discount is not offered", async () => {
   const { config } = sanitizeConfig({
     markets: MARKETS,
     modules: {
@@ -230,7 +230,7 @@ test("N14: a campaign asks for the currencies of enabled markets only and says w
   assert.match(html, /Slovensko: tahle sleva tam nemá částku, proto se tam nenabízí ani v kampani\./);
 });
 
-test("N15: the markets table — amounts, what is missing with its link, percent levels, switched-off markets last", () => {
+test("the markets table — amounts, what is missing with its link, percent levels, switched-off markets last", () => {
   const { config } = sanitizeConfig({
     markets: MARKETS,
     modules: {
@@ -253,7 +253,7 @@ test("N15: the markets table — amounts, what is missing with its link, percent
   assert.deepEqual(sk.discounts, { kind: "missing", href: "/app/discounts/czk#value", count: 1 });
   assert.deepEqual(sk.tiers, { kind: "percent" });
   assert.deepEqual(rows[0]!.discounts, { kind: "ok" });
-  // 7 Oct 2026: two markets of one currency no longer share an amount — each row is its own market's.
+  // Two markets of one currency no longer share an amount — each row is its own market's.
   const own = sanitizeConfig({ markets: MARKETS, modules: { rewards: { freeShipping: { threshold: { CZK: 100000, "EUR@sk": 4000, "EUR@de": 6000 } }, gifts: [] } } }).config;
   const ownRows = marketRows(own, { plan: "free", names: { cz: "Česko", sk: "Slovensko", de: "Německo", hu: "Maďarsko" }, locale: "cs" });
   assert.deepEqual(ownRows.map((r) => (r.shipping.kind === "amount" ? r.shipping.text.replace(/\s/g, " ") : r.shipping.kind)), ["1 000 Kč", "40 €", "60 €", "missing"]);
@@ -261,7 +261,7 @@ test("N15: the markets table — amounts, what is missing with its link, percent
   assert.deepEqual(marketRows(onlySk, { plan: "free", locale: "cs" }).map((r) => r.shipping.kind), ["amount", "amount", "missing", "missing"], "Germany has no amount of its own: missing there, not Slovakia's");
 });
 
-test("N16: the sale page lists what there is to resolve, each row with the link to its sale", async () => {
+test("the sale page lists what there is to resolve, each row with the link to its sale", async () => {
   const html = await render("outlet?plan=pro");
   const todo = html.slice(html.indexOf("data-won-outlet-todo"), html.indexOf('id="running"'));
   assert.equal((todo.match(/href="#run-/g) ?? []).length, 2);
@@ -269,14 +269,14 @@ test("N16: the sale page lists what there is to resolve, each row with the link 
   assert.match(tile(html, "sales", "data-won-view-body"), /data-won-tile-issues[^>]*>2 věci k vyřešení/, "the tile counts the same rows");
 });
 
-test("slovníček: the words a merchant does not know are gone from the screens", async () => {
+test("the words a merchant does not know are gone from the screens", async () => {
   for (const path of ["overview?state=modules", "rewards", "tiers", "onboarding?step=3", "settings"]) {
     const text = (await render(path)).replace(/<style[\s\S]*?<\/style>/g, "").replace(/<[^>]+>/g, " ");
     assert.doesNotMatch(text, /V tématu|Chybí v tématu|editor(u)? tématu|Synchronizovat znovu|Synchronizace se Shopify|zapsáno do Shopify|Počítání prahu|strop slevy/i, path);
   }
 });
 
-test("7 Oct 2026: quantity levels are numbered cards, suggestions sit in their own box; the table's look is picked in one place, with a colour picker", async () => {
+test("quantity levels are numbered cards, suggestions sit in their own box; the table's look is picked in one place, with a colour picker", async () => {
   const html = await render("tiers");
   assert.equal((html.match(/data-won-tier-row/g) ?? []).length, 3);
   assert.match(html, />Úroveň 1<\/span><span[^>]*>od 3 ks</);
@@ -299,12 +299,12 @@ test("7 Oct 2026: quantity levels are numbered cards, suggestions sit in their o
   assert.doesNotMatch(rewards, /data-won-ms-suggest=""/);
 });
 
-test("7 Oct 2026: Ochrana marže says 'Takhle by zasáhla' only above rows it describes", async () => {
+test("Ochrana marže says 'Takhle by zasáhla' only above rows it describes", async () => {
   const off = (await render("margin?state=off&plan=pro")).replace(/<[^>]+>/g, " ");
   if (/Ochrana teď žádnou slevu nesnižuje/.test(off)) assert.doesNotMatch(off, /Takhle by zasáhla/);
 });
 
-test("úkol 1 (7 Oct 2026): with Won switched off on the storefront, the colour picker says the colour cannot show there", async () => {
+test("with Won switched off on the storefront, the colour picker says the colour cannot show there", async () => {
   // Won on: a picked colour needs no warning.
   const on = await render("tiers?accent=green");
   assert.ok(/<input type="radio" name="accent"[^>]*checked=""[^>]*value="green"/.test(on), "the stored colour is the picked one");
@@ -323,7 +323,7 @@ test("úkol 1 (7 Oct 2026): with Won switched off on the storefront, the colour 
   assert.match(en, /Won is switched off on your storefront, so the colour will not show there\./);
 });
 
-test("úkol 3 (7 Oct 2026): a campaign's amount fields suggest the other market's amount, or say there is no rate", async () => {
+test("a campaign's amount fields suggest the other market's amount, or say there is no rate", async () => {
   const text = (part: string) => part.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
   const boxesOf = (html: string) => html.match(/<div data-won-suggest="[a-z]+"[\s\S]*?<\/div>/g) ?? [];
   // "Black Friday": 400 Kč off, typed only for Česko. Rate 0,04 → 16 € for Slovensko, offered with its button.

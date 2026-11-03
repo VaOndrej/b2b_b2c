@@ -82,7 +82,7 @@ async function deadCreateFirst(env: ReturnType<typeof setup>, title: string) {
 
 // --- N1: the stale-claim sweep reads what Shopify runs ------------------------------------------
 
-test("N1 (a): died after the create, before the delete → the sweep rolls the live Won rule back; nothing changed", async () => {
+test("died after the create, before the delete → the sweep rolls the live Won rule back; nothing changed", async () => {
   const env = setup();
   const { nativeId, ruleId, rowId } = await deadCreateFirst(env, "Pád po vytvoření");
   assert.match(env.shopify.shopFunctionConfig ?? "", new RegExp(ruleId), "both apply right now");
@@ -97,7 +97,7 @@ test("N1 (a): died after the create, before the delete → the sweep rolls the l
   assert.equal(parseSnapshot(row.snapshot)?.restoredAs?.nativeId, nativeId);
 });
 
-test("N1 (a'): …and the rollback fails → listed with 'both may apply, click Undo now'", async () => {
+test("…and the rollback fails → listed with 'both may apply, click Undo now'", async () => {
   const env = setup();
   const { ruleId } = await deadCreateFirst(env, "Pád, rollback selže");
   env.sync.failures.push("before_save");
@@ -111,7 +111,7 @@ test("N1 (a'): …and the rollback fails → listed with 'both may apply, click 
   assert.deepEqual(listed.map((m) => m.state), ["attention"]);
 });
 
-test("N1 (b): died during the rollback (DB saved without the rule, Shopify still runs it) → resynced, never hidden as untouched", async () => {
+test("died during the rollback (DB saved without the rule, Shopify still runs it) → resynced, never hidden as untouched", async () => {
   const env = setup();
   const { ruleId } = await deadCreateFirst(env, "Pád v rollbacku");
   // The rollback's save landed, its sync never ran.
@@ -124,7 +124,7 @@ test("N1 (b): died during the rollback (DB saved without the rule, Shopify still
   assert.equal((await rows(env.shop))[0].status, "failed");
 });
 
-test("N1 (b'): …and the resync fails → the row stays listed until the live state is clean", async () => {
+test("…and the resync fails → the row stays listed until the live state is clean", async () => {
   const env = setup();
   const { ruleId } = await deadCreateFirst(env, "Pád v rollbacku, resync selže");
   assert.ok((await saveConfig(db.prisma, env.shop, createDefaultConfig())).ok);

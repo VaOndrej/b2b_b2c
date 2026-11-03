@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { open, sideways } from "./support";
 
-// Feedback 9 Oct 2026 (docs/won-discounts/plan-zmen-2026-10-09.md), in a real browser against the dev harness:
+// The module pages (docs/won-discounts/plan-zmen-2026-10-09.md), in a real browser against the dev harness:
 // what only real input events and a real layout can show.
 
 test("Milníky: the preview's slider moves with the keyboard and the mouse, and the ladder follows", async ({ page }) => {
@@ -47,7 +47,7 @@ test("Množstevní slevy: the tile \"Tabulka na webu\" carries the state of the 
   for (const [path, placement, label] of [
     ["tiers", "in_theme", "Aktivní"],
     ["tiers?state=block-off", "missing", "Vyžaduje pozornost"],
-    // No level yet: a table that is not in the template is not a thing to resolve (before the first review, nález 6).
+    // No level yet: a table that is not in the template is not a thing to resolve (an empty shop has no red tile).
     ["tiers?state=empty", "missing", null],
     ["tiers?state=block-unknown", "unknown", null],
   ] as const) {
@@ -171,7 +171,7 @@ test("Přehled: under the tiles, what Won watches and what it brought — Free w
   await expect(block.locator('[data-won-watch-margin="some"]')).toContainText("Hlídá a zkracuje 2 slevy u 14 variant");
   await expect(block.locator("s-button", { hasText: "Zobrazit, kde zasahuje" })).toHaveAttribute("href", "/app/margin#impact");
   await expect(block.locator("[data-won-watch-number]")).toHaveCount(4);
-  // What is not collected yet is not promised (the row "Připravujeme" went before the first review, 12 Oct 2026).
+  // What is not collected yet is not promised (no row "Připravujeme").
   await expect(page.locator("s-page")).not.toContainText("Připravujeme");
   // Free: the same answer, no number (the list of where and by how much is Pro).
   await open(page, "overview?state=margin&watch=some");

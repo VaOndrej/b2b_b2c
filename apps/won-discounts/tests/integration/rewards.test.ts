@@ -370,7 +370,7 @@ test("Přehled card: the steps the PLAN runs in the shop currency (Free: the fir
   assert.deepEqual(rewardsOverviewOf(config, "pro", "EUR").missing, { shipping: ["EUR"], gifts: [["EUR"], []], discounts: [["EUR"]] });
 });
 
-test("N2: a step without an amount for an enabled market is something to resolve, on the tile and on the page", () => {
+test("a step without an amount for an enabled market is something to resolve, on the tile and on the page", () => {
   const { config } = sanitizeConfig({
     markets: [
       { handle: "cz", currency: "CZK", enabled: true },
