@@ -3,8 +3,8 @@
 ## CHECKPOINT
 
 - **Hotové tickety:** 01–08
-- **Rozdělaný:** review skupiny 01–08 proti main
-- **Další krok:** review 01–08 (git diff main...HEAD), opravit nálezy, pak 09 (jedno uložení, pilot Množstevní slevy)
+- **Rozdělaný:** 09 (jedno uložení, pilot Množstevní slevy), nezačatý
+- **Další krok:** 09: Sčítá se s do jednoho uložení na Množstevních slevách, vybrat vzor spojení, E2E
 - **Čeká na Ondřeje:** 07 formát data v adminu (postup v ticketu 07)
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
@@ -21,7 +21,7 @@
 | 05 | done | ff5ea0c8 | `evidence/frontend-05/`, E2E 49 |
 | 06 | done | 8de0344a | `evidence/frontend-06/`, E2E 50 |
 | 07 | done, čeká na ruční ověření data | d5aaf8d4 | `evidence/frontend-07/` |
-| 08 | done | viz git log | `evidence/frontend-08/`, docs:gen |
+| 08 | done | 1d45a30c | `evidence/frontend-08/`, docs:gen |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 
@@ -29,3 +29,16 @@
   kopie vybraných do `docs/won-discounts/evidence/frontend-NN/` + metrics.json, kontrola HTTP/přetoku.
   `shot.mjs out name=cesta…`: screenshot 390+1440 libovolné cesty harnessu. `crop.mjs`: výřez PNG k prohlédnutí.
   Chyba „missing required configuration fields: shop“ je známé omezení harnessu.
+
+## Review skupiny 01–08 (proti main, 2026-11-03)
+
+- Hranice: žádná změna v `lib/integration/**`, `*.server.ts`, Prisma, `extensions/`, `themes/`, routách. V testech backendu se
+  měnily jen názvy testů (ticket 02).
+- Nález (opraveno): maska pruhu záložek (06) se počítala jen při mountu, posunu a resize. Po načtení písma se záložky rozšíří
+  a stav okrajů mohl být starý → přepočet i po `document.fonts.ready`.
+- Přijaté riziko: `s-drop-zone` (05) po přečtení souboru nastavuje `files = []`; opakovaný výběr téhož souboru v harnessu
+  neověřen. Text Polaris při přetahování („Drop files to upload“) v harnessu anglicky.
+- Bez dalších nálezů: page-guides importuje jen čistý `model/combine.ts`, lint pravidlo je scoped na `apps/won-discounts`.
+- Známý flake (není z této práce, backend se nemění): `tests/integration/margin.test.ts` „a loader never reads the catalogue…“
+  padá zhruba 1× z 5 i samostatně (`impact.status` „updating“ místo „ready“, výpočet na pozadí vs. `settle()`). Při pádu
+  se unit brána pouští znovu; opravu by měl udělat někdo, kdo smí sahat na backend.

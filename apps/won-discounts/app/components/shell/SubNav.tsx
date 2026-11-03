@@ -95,6 +95,8 @@ export function SubNav({ label, items, active }: SubNavProps) {
     if (!list) return;
     const read = () => setMore(stripMore(list.scrollLeft, list.clientWidth, list.scrollWidth));
     read();
+    // The tabs widen once the font has loaded: read again then.
+    void document.fonts?.ready.then(read);
     list.addEventListener("scroll", read, { passive: true });
     window.addEventListener("resize", read);
     return () => {
