@@ -17,7 +17,7 @@ import {
   orderedModules,
 } from "../../app/components/model/modules.ts";
 import type { DiscountNavData } from "../../app/components/model/modules.ts";
-import { DiscountNav, DiscountsSubNav } from "../../app/components/shell/SubNav.tsx";
+import { DiscountNav, DiscountsSubNav, stripMore } from "../../app/components/shell/SubNav.tsx";
 import { SectionNav } from "../../app/components/shell/SectionNav.tsx";
 import { JumpRow } from "../../app/components/shell/JumpRow.tsx";
 
@@ -219,4 +219,12 @@ test("@won/app-kit WonNavMenu: homeLabel is optional, default unchanged", async 
   assert.match(plain, /<a href="\/app" rel="home">Overview<\/a>/);
   const localized = renderToStaticMarkup(createElement(WonNavMenu, { homeLabel: "Přehled", items: [] }));
   assert.match(localized, /<a href="\/app" rel="home">Přehled<\/a>/);
+});
+
+test("the strip fades only an edge with tabs behind it; a pixel of rounding is not more", () => {
+  assert.deepEqual(stripMore(0, 390, 700), { left: false, right: true });
+  assert.deepEqual(stripMore(310, 390, 700), { left: true, right: false });
+  assert.deepEqual(stripMore(150, 390, 700), { left: true, right: true });
+  assert.deepEqual(stripMore(0, 900, 700), { left: false, right: false });
+  assert.deepEqual(stripMore(0.5, 390, 390.5), { left: false, right: false });
 });
