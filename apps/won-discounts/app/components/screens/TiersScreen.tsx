@@ -18,9 +18,9 @@
 //      one "Přidat tabulku na stránku produktu" deep link (§13), the storefront
 //      config's state (K5), "Zobrazit na mém webu";
 //   3. Pro sets (ProTierSets) with the K1 precedence said once.
-// One save for the whole form (App Bridge save bar + "Uložit" last on the page,
-// like the margin screen); the server parses the same fields (readTiersForm,
-// SEC-1). A presentational component: app/routes/app.tiers.tsx renders it from
+// One save for the whole page: the App Bridge save bar, with Sčítá se s as a part
+// of the form (shell/one-save.tsx); the server parses the same fields
+// (readTiersForm, SEC-1). A presentational component: app/routes/app.tiers.tsx renders it from
 // loadTiersScreen (app/lib/integration/tiers.server.ts), the dev harness from
 // fixtures.
 

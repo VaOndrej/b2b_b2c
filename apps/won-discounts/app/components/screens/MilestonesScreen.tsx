@@ -7,7 +7,7 @@
 // (rewards/MilestonePreview), and the settings of the whole ladder.
 //   Na webu  the four places the ladder shows (the top strip, the product page, the cart drawer, the cart page),
 //            each with its label and its one button; opened from the settings, with the way back on top.
-// One save for the whole form; the server parses the same fields (model/milestones.ts readMilestonesForm, SEC-1).
+// One save for the whole page (the App Bridge save bar, shell/one-save.tsx); the server parses the same fields (model/milestones.ts readMilestonesForm, SEC-1).
 // Limits hold PER MARKET: Free runs the 2 steps with the lowest amount in each market, Pro 6 — here and on the
 // server. A step past a market's limit stays stored, visible and editable; the row says in which market it is
 // not in force (§14a, §16).

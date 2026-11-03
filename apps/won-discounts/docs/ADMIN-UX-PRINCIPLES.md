@@ -47,11 +47,22 @@ Všechny kontrolky = `s-*` web komponenty (`s-button`, `s-switch`, `s-select`,
 - Před psaním validuj: `learn_shopify_api(polaris-app-home)` →
   `validate_component_codeblocks`.
 
-### 2. Kontextový Save Bar všude — impl. §1/§14
-Každý settings `<Form>` má **`data-save-bar`**; App Bridge sám ukáže Save/Discard
-lištu a hlídá odchod. Inline „Save" tlačítko se **nepoužívá**. Formuláře drž
-**uncontrolled** (initial `value` z loaderu); Discard = form reset (`onReset` pro
-resync živého preview). Výjimka: jednorázové akce (upgrade plánu) zůstávají tlačítkem.
+### 2. Jedno uložení na stránku: Save Bar — impl. §1/§14, §18i, §19e
+Stránka má **jeden** settings `<Form>` s **`data-save-bar`**; App Bridge sám ukáže
+Save/Discard lištu a hlídá odchod. Inline „Uložit" tlačítko se **nepoužívá**, ani
+pod formulářem, ani u sekce. Formuláře drž **uncontrolled** (initial `value`
+z loaderu); Discard = form reset (`onReset` pro resync živého preview).
+- **Část stránky s vlastní akcí** (Won Discounts: „Sčítá se s" → `/app/combine`) je
+  uvnitř téhož formuláře, její pole mají předponu `part:<klíč>:`. Při uložení se
+  formulář rozdělí: pole stránky jdou na akci routy, po úspěchu každá změněná část
+  na svou akci s poli, která posílala dřív (`model/one-save.ts`, `shell/one-save.tsx`).
+  Odmítnutá část řekne „Neuloženo: …" a nic dalšího se nepošle. Kontrakty akcí se nemění.
+- **Výjimka: jednorázové akce** zůstávají tlačítkem s vlastním formulářem: upgrade
+  plánu, Přesunout, Vyzkoušet Pro, Zapnout na webu, Spustit / Ukončit výprodej,
+  Zkusit znovu, Smazat. Destruktivní se ptají (§14).
+- **Dosud mimo jedno uložení (Won Discounts, zapsané v auditu 2026-11-03):** vzhled
+  prvku („Uložit vzhled"), Ceny na kartách, úprava jednoho běžícího výprodeje
+  (Upravit → Uložit/Zrušit) a formuláře Kampaní.
 
 ### 3. Živý preview přes NATIVNÍ event, ne React `onChange` — impl. §2 `[PLAT]`
 React synthetic `onChange`/`onInput` se u `s-*` custom elementů **nevyvolá** (React je

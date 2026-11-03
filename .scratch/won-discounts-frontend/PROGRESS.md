@@ -2,10 +2,10 @@
 
 ## CHECKPOINT
 
-- **Hotové tickety:** 01–10
-- **Rozdělaný:** 11 (PageSave pryč: editor, Marže, Překlady, Nastavení), nezačatý
-- **Další krok:** 11: PageSave pryč z editoru, Marže, Překladů, Nastavení; ADMIN-UX §2; smazat PageSave. Pak review 09–11.
-- **Čeká na Ondřeje:** 07 formát data v adminu, 09 a 10 Save Bar v shopify app dev (postupy v ticketech); 10: per-run úpravy výprodeje na s-modal?
+- **Hotové tickety:** 01–11
+- **Rozdělaný:** review skupiny 09–11 proti main
+- **Další krok:** review 09–11, pak 12 (Přehled: pozornost seskupená podle příčiny)
+- **Čeká na Ondřeje:** 07 formát data v adminu, 09, 10, 11 Save Bar v shopify app dev (postupy v ticketech); 10: per-run úpravy výprodeje na s-modal?
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
 - **Harness:** `npx react-router dev --port 3411` (příkaz v README), log ve scratchpadu session.
@@ -23,7 +23,8 @@
 | 07 | done, čeká na ruční ověření data | d5aaf8d4 | `evidence/frontend-07/` |
 | 08 | done | 1d45a30c | `evidence/frontend-08/`, docs:gen |
 | 09 | done, čeká na ruční ověření | 9a4bb437 | `evidence/frontend-09/`, E2E admin.one-save |
-| 10 | done, čeká na ruční ověření | viz git log | `evidence/frontend-10/`, E2E 58 |
+| 10 | done, čeká na ruční ověření | 2b5a65ca | `evidence/frontend-10/`, E2E 58 |
+| 11 | done, čeká na ruční ověření | viz git log | `evidence/frontend-11/`, ADMIN-UX §2 |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 

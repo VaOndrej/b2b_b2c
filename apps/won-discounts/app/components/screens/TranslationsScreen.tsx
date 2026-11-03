@@ -369,11 +369,6 @@ export function TranslationsScreen(props: TranslationsScreenProps) {
               );
             })}
 
-            <div>
-              <s-button type="submit" variant="primary">
-                {t("common.save")}
-              </s-button>
-            </div>
           </s-stack>
         </Form>
 

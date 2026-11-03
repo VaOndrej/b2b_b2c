@@ -5,24 +5,28 @@ import { open, sideways } from "./support";
 // Views of a module page (docs/won-discounts/matice-pred-review.md), what only a browser can check: a view picked
 // by a click, the pointer, the width of a phone.
 
-test("the page's Save is shown only under a view whose fields it saves", async ({ page }) => {
-  const save = page.locator("[data-won-page-save]");
-  // Množstevní slevy is on the one save (admin.one-save.spec.ts): no Save of the page in any view.
+test("no view of a page shows a Save of its own: the save bar is the one save", async ({ page }) => {
+  const saves = page.locator("s-button:visible", { hasText: /^Uložit$/ });
+  const views: [string, string[]][] = [
+    ["tiers?plan=pro", ["global", "table", "exceptions"]],
+    ["margin?plan=pro", ["collections", "costs", "impact"]],
+  ];
+  for (const [path, tiles] of views) {
+    await open(page, path);
+    for (const tile of tiles) {
+      const at = page.locator(`[data-won-view-tile="${tile}"]`).first();
+      if ((await at.count()) > 0) await at.click();
+      await expect(saves, `${path} ${tile}`).toHaveCount(0);
+    }
+  }
+  for (const path of ["rewards?plan=pro", "settings", "translations?plan=pro", "rule-editor", "rule-editor?rule=new&recipe=percent"]) {
+    await open(page, path);
+    await expect(saves, path).toHaveCount(0);
+  }
+  // The look keeps its own save, in its own view (Tabulka na webu).
   await open(page, "tiers?plan=pro");
-  await expect(save).toHaveCount(0);
   await page.locator('[data-won-view-tile="table"]').click();
-  await expect(page.locator("s-button:visible", { hasText: /^Uložit$/ })).toHaveCount(0);
   await expect(page.locator("s-button:visible", { hasText: "Uložit vzhled" })).toHaveCount(1);
-
-  // So is Milníky: no Save of the page in any view.
-  await open(page, "rewards?plan=pro");
-  await expect(save).toHaveCount(0);
-
-  await open(page, "margin?plan=pro");
-  await page.locator('[data-won-view-tile="costs"]').click();
-  await expect(save).toBeHidden();
-  await page.locator('[data-won-view-tile="collections"]').click();
-  await expect(save).toBeVisible();
 });
 
 test("on Free the look's view is short — the locked Pro form is gone, on a phone too", async ({ page }) => {

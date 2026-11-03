@@ -146,21 +146,16 @@ test("Free sees what Pro gives in one sentence — no locked fields, no brief fo
   assert.ok(pro.includes('name="look.css"') && text(pro).includes("Zadání pro AI"));
 });
 
-// --- The page's Save is one shared piece, shown only where the page's form has something to save ---------------
+// --- One save per page: the App Bridge save bar, no Save button of the page's own -------------------------------
 
-test("PageSave is hidden, never unmounted, and every page with views uses it", async () => {
-  const { createElement } = await import("react");
-  const { renderToString } = await import("react-dom/server");
-  const { PageSave } = await import("../../app/components/shell/PageSave.tsx");
-  const { LocaleProvider } = await import("../../app/i18n/context.tsx");
-  const draw = (shown: boolean) => renderToString(createElement(LocaleProvider, { locale: "cs", children: createElement(PageSave, { shown }) }));
-  assert.match(draw(true), /data-won-page-save="shown" style="display:block"><s-button type="submit"/);
-  assert.match(draw(false), /data-won-page-save="hidden" style="display:none"><s-button type="submit"/);
-  // The pages whose form spans several views draw their Save through it (the view is picked in the browser:
-  // tests/e2e-preview/admin.views.spec.ts clicks through them).
-  for (const path of ["margin"]) assert.equal((await render(path)).split("data-won-page-save=").length - 1, 1, path);
-  // Množstevní slevy and Milníky are on the one save (shell/one-save.tsx): the save bar alone.
-  for (const path of ["tiers", "rewards"]) assert.equal((await render(path)).split("data-won-page-save=").length - 1, 0, path);
+test("no page draws a Save of its own: the save bar of the page's one form is the save", async () => {
+  for (const path of ["tiers", "rewards", "margin", "margin?plan=pro", "settings", "translations?plan=pro", "rule-editor", "rule-editor?rule=new&recipe=percent"]) {
+    const html = await render(path);
+    assert.doesNotMatch(html, /data-won-page-save=/, path);
+    const form = html.slice(html.indexOf("<form"), html.indexOf("</form>"));
+    assert.match(form, /data-save-bar/, path);
+    assert.doesNotMatch(form, /type="submit"/, `${path}: no Save button in the page's form`);
+  }
 });
 
 // --- One card for every warning: what happened, what to do, the button -----------------------------------------

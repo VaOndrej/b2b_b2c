@@ -9,17 +9,13 @@ import { open, typeInto } from "./support";
 
 const PAGE_FORM = "form[data-save-bar]";
 
-/** Every POST the page sends while `act` runs, as the fields each one carried. */
-async function posts(page: Page, act: () => Promise<void>, settle: () => Promise<void>): Promise<URLSearchParams[]> {
-  const sent: Request[] = [];
-  const listen = (request: Request) => {
-    if (request.method() === "POST") sent.push(request);
-  };
-  page.on("request", listen);
-  await act();
-  await settle();
-  page.off("request", listen);
-  return sent.map((request) => new URLSearchParams(request.postData() ?? ""));
+/** Every POST the page sends from now on, as the fields each one carried. */
+function posts(page: Page): URLSearchParams[] {
+  const sent: URLSearchParams[] = [];
+  page.on("request", (request: Request) => {
+    if (request.method() === "POST") sent.push(new URLSearchParams(request.postData() ?? ""));
+  });
+  return sent;
 }
 
 /** The name of the first level field of the whole-store discount (a closed editor still posts it). */
@@ -52,11 +48,8 @@ test("Množstevní slevy: a level and Sčítá se s changed go out on ONE save �
   await typeInto(page, field, "12");
   const before = await page.locator('[data-won-module-combine="tiers"] s-checkbox[value="code"]').evaluate((el) => (el as HTMLElement & { checked: boolean }).checked);
   await tickCode(page);
-  const sent = await posts(
-    page,
-    () => saveBarSave(page),
-    () => expect.poll(async () => page.evaluate(() => document.querySelectorAll("[data-won-part-refusal]").length)).toBe(0),
-  );
+  const sent = posts(page);
+  await saveBarSave(page);
   await expect.poll(() => sent.length).toBe(2);
   const [tiers, combine] = sent;
   // The page's own form, as before: its fields, no list.

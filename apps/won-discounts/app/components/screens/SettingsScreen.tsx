@@ -245,11 +245,6 @@ export function SettingsScreen({ plan, currencies, combineDefault: stored, confi
                 </RowNote>
               </s-stack>
             </WonSection>
-            <div>
-              <s-button type="submit" variant="primary">
-                {t("common.save")}
-              </s-button>
-            </div>
           </s-stack>
         </Form>
 

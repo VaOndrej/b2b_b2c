@@ -60,7 +60,6 @@ import { ApplySection } from "../rule-editor/ApplySection";
 import { DiscountSection } from "../rule-editor/DiscountSection";
 import { ProSection } from "../rule-editor/ProSection";
 import { jumpToAnchor, type EditorView } from "../rule-editor/parts";
-import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
 import { SectionNav } from "../shell/SectionNav";
 
@@ -474,11 +473,6 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
             marketsScope={props.marketsScope ?? true}
             mismatches={props.mismatches ?? []}
           />
-          <div>
-            <s-button type="submit" variant="primary" disabled={boolAttr(readOnly)}>
-              {t("common.save")}
-            </s-button>
-          </div>
         </s-stack>
         </SectionNav>
       </Form>

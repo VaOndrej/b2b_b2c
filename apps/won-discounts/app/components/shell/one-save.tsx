@@ -42,25 +42,35 @@ const chains = new Map<string, Chain>();
 const refusals = new Map<string, { label: MessageKey; result: UiResult; notPosted: MessageKey[] }>();
 const FETCHER_KEY = "won-one-save";
 
-/** Reads the form once its Polaris fields are defined: what "unchanged" is measured against. */
+/**
+ * Reads the form once its Polaris fields are defined: what "unchanged" is measured against. A change that comes before
+ * that read leaves no baseline, so the save posts everything (never a part skipped as unchanged by mistake).
+ */
 function useBaseline(formRef: RefObject<HTMLFormElement>, resetKey: unknown): RefObject<SplitSave | null> {
   const baseline = useRef<SplitSave | null>(null);
   useEffect(() => {
     const form = formRef.current;
     if (!form) return;
     baseline.current = null;
-    let cancelled = false;
+    let settled = false;
+    const read = () => {
+      if (settled || !formRef.current) return;
+      settled = true;
+      baseline.current = splitSave(new FormData(formRef.current).entries());
+    };
+    const early = () => {
+      settled = true;
+    };
+    form.addEventListener("input", early, { capture: true });
+    form.addEventListener("change", early, { capture: true });
     const tags = [...new Set([...form.querySelectorAll("*")].map((el) => el.localName).filter((name) => name.startsWith("s-")))];
-    void Promise.all(tags.map((tag) => customElements.whenDefined(tag))).then(() =>
-      requestAnimationFrame(() =>
-        requestAnimationFrame(() => {
-          if (!cancelled && formRef.current) baseline.current = splitSave(new FormData(formRef.current).entries());
-        }),
-      ),
-    );
+    if (tags.every((tag) => customElements.get(tag) !== undefined)) read();
+    else void Promise.all(tags.map((tag) => customElements.whenDefined(tag))).then(() => requestAnimationFrame(read));
     // Discard puts the form back as it was loaded: the baseline stays.
     return () => {
-      cancelled = true;
+      settled = true;
+      form.removeEventListener("input", early, { capture: true });
+      form.removeEventListener("change", early, { capture: true });
     };
   }, [formRef, resetKey]);
   return baseline;

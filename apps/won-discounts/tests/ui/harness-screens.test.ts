@@ -694,16 +694,11 @@ test("Množstevní slevy: one form with the save bar and no Save of its own; Sč
   assert.match(forms[2]!, /data-won-cards-form=""/);
 });
 
-test("MVP 3 screens: one save for the whole form, last on the page", async () => {
-  for (const path of ["settings"]) {
-    // The page's own form (the first one; a look's section below it is a form of its own with its own save).
-    const { html } = await render(path);
-    const form = html.slice(html.indexOf("<form"), html.indexOf("</form>"));
-    const submit = form.lastIndexOf('type="submit"');
-    assert.ok(submit > 0, `${path}: a submit button`);
-    assert.equal(form.indexOf('type="submit"'), submit, `${path}: exactly one submit button`);
-    assert.match(form, /data-save-bar/, `${path}: the App Bridge save bar`);
-  }
+test("Nastavení: one form with the save bar, no Save button of its own", async () => {
+  const { html } = await render("settings");
+  const form = html.slice(html.indexOf("<form"), html.indexOf("</form>"));
+  assert.match(form, /data-save-bar/);
+  assert.doesNotMatch(form, /type="submit"/);
 });
 
 test("the preview is the storefront's markup (K8) with the storefront CSS confined to it — never a style for the admin", async () => {
@@ -755,14 +750,13 @@ test("the harness answers the CSV of Překlady for real (Pro), saves nothing, an
   assert.equal(free.errors[0]?.key, "translations.error.pro");
 });
 
-test("Ochrana marže: one save for the whole form, last on the page — after the read-only Přehled zásahů", async () => {
+test("Ochrana marže: one form with the save bar for every section, no Save button of its own", async () => {
   for (const path of ["margin", "margin?plan=pro"]) {
     const { html } = await render(path);
-    const submit = html.lastIndexOf('type="submit"');
-    assert.equal(html.indexOf('type="submit"'), submit, `${path}: exactly one submit button`);
-    for (const section of ["Ochrana marže", "Nákupní ceny", "Nastavení podle kolekcí", "Snížené slevy"]) {
-      assert.ok(html.indexOf(section) < submit, `${path}: "${section}" comes before Uložit`);
-    }
+    assert.doesNotMatch(html, /type="submit"/, path);
+    const form = html.slice(html.indexOf("<form"), html.indexOf("</form>"));
+    assert.match(form, /data-save-bar/, path);
+    for (const section of ["Ochrana marže", "Nákupní ceny", "Nastavení podle kolekcí", "Snížené slevy"]) assert.ok(form.includes(section), `${path}: "${section}" is in the one form`);
   }
 });
 
