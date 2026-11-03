@@ -3,8 +3,8 @@
 ## CHECKPOINT
 
 - **Hotové tickety:** 01–11
-- **Rozdělaný:** review skupiny 09–11 proti main
-- **Další krok:** review 09–11, pak 12 (Přehled: pozornost seskupená podle příčiny)
+- **Rozdělaný:** 12 (Přehled: pozornost seskupená), nezačatý
+- **Další krok:** 12: seskupení problémů v model/ + unit test, karta Vyžaduje pozornost jako řádky, dlaždice bez počtu
 - **Čeká na Ondřeje:** 07 formát data v adminu, 09, 10, 11 Save Bar v shopify app dev (postupy v ticketech); 10: per-run úpravy výprodeje na s-modal?
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
@@ -24,7 +24,7 @@
 | 08 | done | 1d45a30c | `evidence/frontend-08/`, docs:gen |
 | 09 | done, čeká na ruční ověření | 9a4bb437 | `evidence/frontend-09/`, E2E admin.one-save |
 | 10 | done, čeká na ruční ověření | 2b5a65ca | `evidence/frontend-10/`, E2E 58 |
-| 11 | done, čeká na ruční ověření | viz git log | `evidence/frontend-11/`, ADMIN-UX §2 |
+| 11 | done, čeká na ruční ověření | 18557663 | `evidence/frontend-11/`, ADMIN-UX §2 |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 
@@ -51,3 +51,15 @@
 - Známý flake (není z této práce, backend se nemění): `tests/integration/margin.test.ts` „a loader never reads the catalogue…“
   padá zhruba 1× z 5 i samostatně (`impact.status` „updating“ místo „ready“, výpočet na pozadí vs. `settle()`). Při pádu
   se unit brána pouští znovu; opravu by měl udělat někdo, kdo smí sahat na backend.
+
+## Review skupiny 09–11 (proti main, 2026-11-03)
+
+- Hranice: žádná změna backendu, rout `app.*` ani webhooků. Měnil se jen harness (`dev.preview.$.tsx`: `?save=ok`,
+  `?save=combine-fails`, výsledek akce i pro Výprodej).
+- Nález (opraveno): odmítnutí části se drželo v mapě modulu a po návratu na stránku by se ukázalo znovu → jen stav komponenty
+  (odmítnutá část nic neuloží, stránka se po ní neremountuje).
+- Nález (opraveno): na Milnících se základ změn četl dřív, než portál přidal skrytá pole Sčítá se s → Sčítá se s by šlo
+  při každém uložení. Základ se čte o snímek později; nový E2E „a step alone changed posts only the page“.
+- Přijaté riziko: řetěz uložení je v modulu (`chains`); když obchodník odejde ze stránky uprostřed ukládání, zůstane tam,
+  dokud ho nepřepíše další uložení stejné stránky. Neškodí (čeká na výsledek, který nepřijde).
+- Neověřeno: skutečný Save Bar App Bridge (ruční postupy v ticketech 09–11).

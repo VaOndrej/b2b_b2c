@@ -38,8 +38,6 @@ interface Chain {
 
 /** The chain of the page being saved, by the page's key (one page saves at a time). */
 const chains = new Map<string, Chain>();
-/** The last refusal of a part, by the page's key, until the next save. */
-const refusals = new Map<string, { label: MessageKey; result: UiResult; notPosted: MessageKey[] }>();
 const FETCHER_KEY = "won-one-save";
 
 /**
@@ -64,8 +62,8 @@ function useBaseline(formRef: RefObject<HTMLFormElement>, resetKey: unknown): Re
     form.addEventListener("input", early, { capture: true });
     form.addEventListener("change", early, { capture: true });
     const tags = [...new Set([...form.querySelectorAll("*")].map((el) => el.localName).filter((name) => name.startsWith("s-")))];
-    if (tags.every((tag) => customElements.get(tag) !== undefined)) read();
-    else void Promise.all(tags.map((tag) => customElements.whenDefined(tag))).then(() => requestAnimationFrame(read));
+    // One frame after the fields are defined: fields a page draws into the form from outside it (a portal) are in by then.
+    void Promise.all(tags.map((tag) => customElements.whenDefined(tag))).then(() => requestAnimationFrame(read));
     // Discard puts the form back as it was loaded: the baseline stays.
     return () => {
       settled = true;
@@ -91,7 +89,8 @@ export function useOneSave({ pageKey, formRef, result, parts }: { pageKey: strin
   const submit = useSubmit();
   const fetcher = useFetcher<UiResult>({ key: FETCHER_KEY });
   const baseline = useBaseline(formRef, pageKey);
-  const [refusal, setRefusal] = useState(() => refusals.get(pageKey) ?? null);
+  // A part's refusal is the page's state: a refused part is not saved, so nothing remounts the page after it.
+  const [refusal, setRefusal] = useState<{ label: MessageKey; result: UiResult; notPosted: MessageKey[] } | null>(null);
 
   const postNext = useCallback(
     (chain: Chain) => {
@@ -113,7 +112,6 @@ export function useOneSave({ pageKey, formRef, result, parts }: { pageKey: strin
       const form = event.currentTarget;
       const now = splitSave(new FormData(form).entries());
       const plan = planSave(now, baseline.current, parts.map((p) => p.key));
-      refusals.delete(pageKey);
       setRefusal(null);
       const queue = plan.parts.map((key) => ({ part: parts.find((p) => p.key === key)!, entries: now.parts.get(key) ?? [] }));
       const chain: Chain = { page: pageKey, waitingForPage: plan.page, queue, inFlight: null, answered: false };
@@ -150,7 +148,6 @@ export function useOneSave({ pageKey, formRef, result, parts }: { pageKey: strin
     }
     const failed = { label: done.label, result: fetcher.data, notPosted: chain.queue.map((q) => q.part.label) };
     chains.delete(pageKey);
-    refusals.set(pageKey, failed);
     setRefusal(failed);
   }, [fetcher.data, fetcher.state, pageKey, postNext]);
 

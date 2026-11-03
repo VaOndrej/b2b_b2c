@@ -188,3 +188,15 @@ test("Výprodej: the reopen setting and Sčítá se s go out on one save; a refu
   await saveBarSave(page);
   await expect(page.locator("[data-won-part-refusal]")).toContainText("Neuloženo: Sčítá se s");
 });
+
+test("Milníky: a step alone changed posts only the page — Sčítá se s, drawn outside the form, is not saved again", async ({ page }) => {
+  await open(page, "rewards?plan=pro&save=ok");
+  await page.waitForTimeout(300);
+  const field = await page.evaluate(() => document.querySelector("form[data-won-milestones] s-number-field, form[data-won-milestones] s-money-field")?.getAttribute("name") ?? "");
+  await typeInto(page, field, "1234");
+  const sent = posts(page);
+  await saveBarSave(page);
+  await expect.poll(() => sent.length).toBe(1);
+  await page.waitForTimeout(500);
+  expect(sent.map((form) => form.get("combineModule") ?? "page")).toEqual(["page"]);
+});
