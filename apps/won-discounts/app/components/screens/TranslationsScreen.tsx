@@ -156,6 +156,21 @@ export function TranslationsScreen(props: TranslationsScreenProps) {
       () => setReadFailed(true),
     );
   };
+  // The upload is Polaris' s-drop-zone (pick or drop a file). React 18 does not pass a custom element's events through
+  // props, so its change is listened to here; the zone has no name, so the page's own form never posts the file.
+  const dropZone = useRef<HTMLElementTagNameMap["s-drop-zone"]>(null);
+  const onFileRef = useRef(onFile);
+  onFileRef.current = onFile;
+  useEffect(() => {
+    const zone = dropZone.current;
+    if (!zone) return;
+    const read = () => {
+      onFileRef.current(zone.files?.[0]);
+      zone.files = [];
+    };
+    zone.addEventListener("change", read);
+    return () => zone.removeEventListener("change", read);
+  }, []);
   const rowByKey = useMemo(() => new Map(rows.map((row) => [row.key, row])), [rows]);
   const place = (key: string) => {
     const row = rowByKey.get(key);
@@ -169,11 +184,10 @@ export function TranslationsScreen(props: TranslationsScreenProps) {
         <s-button variant="secondary" onClick={() => post(TRANSLATIONS_INTENT.exportCsv)} disabled={boolAttr(!pro)}>
           {t("translations.csv.export")}
         </s-button>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, color: WON_INK, opacity: pro ? 1 : 0.55 }}>
-          <span>{t("translations.csv.import")}</span>
-          <input type="file" accept=".csv,text/csv" disabled={!pro} data-won-csv-file onChange={(e) => onFile(e.currentTarget.files?.[0])} />
-        </label>
       </s-stack>
+      <s-drop-zone ref={dropZone} label={t("translations.csv.import")} accept=".csv,text/csv" disabled={boolAttr(!pro)} data-won-csv-file="">
+        <s-text>{t("translations.csv.drop")}</s-text>
+      </s-drop-zone>
       <RowNote>{t("translations.csv.exportNote")}</RowNote>
       {readFailed ? <RowNote tone="attention">{t("translations.csv.readFailed")}</RowNote> : null}
       {csvError ? <RowNote tone="attention">{t(csvError.key, csvError.params)}</RowNote> : null}

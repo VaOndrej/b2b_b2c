@@ -2225,6 +2225,7 @@ export const cs = {
   "translations.csv.benefit": "V Pro si texty stáhnete do tabulky, přeložíte je najednou a nahrajete zpět.",
   "translations.csv.export": "Stáhnout CSV",
   "translations.csv.import": "Nahrát CSV",
+  "translations.csv.drop": "Přetáhněte sem soubor CSV, nebo ho vyberte kliknutím",
   "translations.csv.exportNote": "Soubor obsahuje uložené texty. Neuložené změny na stránce v něm nejsou.",
   "translations.csv.readFailed": "Soubor se nepodařilo přečíst.",
   "translations.csv.preview": "Co import změní",

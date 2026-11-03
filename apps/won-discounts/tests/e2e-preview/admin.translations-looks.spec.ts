@@ -83,7 +83,7 @@ test("Překlady: the CSV downloads, an upload is planned first — one row chang
   expect(csv).toContain("Ušetříte celkem {amount}");
   // One text changed, one that lost its {amount}.
   const edited = csv.replace("Kúp viac, zaplať menej", "Kúp viac a ušetri").replace("Ušetříte celkem {amount}", "Ušetříte celkem");
-  await page.locator("[data-won-csv-file]").setInputFiles({ name: "preklady.csv", mimeType: "text/csv", buffer: Buffer.from(edited, "utf8") });
+  await page.locator("[data-won-csv-file] input[type=file]").setInputFiles({ name: "preklady.csv", mimeType: "text/csv", buffer: Buffer.from(edited, "utf8") });
   const preview = page.locator("[data-won-import-preview]");
   await expect(preview).toBeVisible();
   await expect(preview.locator("[data-won-import-changes] li")).toHaveCount(1);
@@ -105,7 +105,20 @@ test("Překlady: the CSV downloads, an upload is planned first — one row chang
   await page.locator("s-button", { hasText: "Zrušit import" }).click();
   await expect(page.locator("[data-won-import-preview]")).toHaveCount(0);
   await open(page, "translations");
-  await expect(page.locator("[data-won-csv-file]")).toBeDisabled();
+  await expect(page.locator("[data-won-csv-file] input[type=file]")).toBeDisabled();
+});
+
+test("Překlady: the CSV section is Polaris only — no browser file input, no unstyled button, Czech labels", async ({ page }) => {
+  for (const path of ["translations?plan=pro", "translations"]) {
+    await open(page, path);
+    const section = page.locator("#csv");
+    await expect(section.locator("s-drop-zone[data-won-csv-file]")).toHaveCount(1);
+    // Light DOM only: the controls inside Polaris' own shadow roots are Polaris'.
+    expect(await section.evaluate((el) => el.querySelectorAll("button, input, select, textarea").length)).toBe(0);
+    await expect(section).not.toContainText("Choose File");
+    await expect(section).not.toContainText("No file chosen");
+    await expect(section.locator("s-drop-zone")).toContainText("Přetáhněte sem soubor CSV");
+  }
 });
 
 test("Překlady without the permission: once the merchant grants it, the page tells the app to look — it does not wait for a manual reload", async ({ page, baseURL }) => {

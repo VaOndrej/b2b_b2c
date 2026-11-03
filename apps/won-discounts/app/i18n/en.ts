@@ -2221,6 +2221,7 @@ export const en: Record<keyof typeof cs, string> = {
   "translations.csv.benefit": "On Pro you download the texts into a spreadsheet, translate them at once and upload them back.",
   "translations.csv.export": "Download CSV",
   "translations.csv.import": "Upload CSV",
+  "translations.csv.drop": "Drop a CSV file here, or click to pick one",
   "translations.csv.exportNote": "The file holds the saved texts. Unsaved changes on this page are not in it.",
   "translations.csv.readFailed": "The file could not be read.",
   "translations.csv.preview": "What the import changes",

@@ -2,12 +2,12 @@
 
 ## CHECKPOINT
 
-- **Hotové tickety:** 01, 02, 03, 04
-- **Rozdělaný:** 05 (Překlady CSV prvky Polaris), nezačatý
-- **Další krok:** 05: Export a import v Překladech přes s-* prvky, E2E CSV beze změny chování
+- **Hotové tickety:** 01–05
+- **Rozdělaný:** 06 (mobil: pruh záložek), nezačatý
+- **Další krok:** 06: SubNav na 390 px, aktivní záložka v pohledu + náznak dalších, hlavička Vaše slevy
 - **Čeká na Ondřeje:** nic
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
-  (import/no-duplicates v themes.server.ts), E2E preview 48/48.
+  (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
 - **Harness:** `npx react-router dev --port 3411` (příkaz v README), log ve scratchpadu session.
 
 ## Log
@@ -17,7 +17,8 @@
 | 01 | done | 611ab3a5 | `docs/won-discounts/evidence/frontend-01/`, `tests/ui/readme-map.test.ts` |
 | 02 | done | 7f1821a5 | počty testů v ticketu, `evidence/frontend-02/` |
 | 03 | done | 165f12e8 | lint 54 varování výchozí stav, `evidence/frontend-03/` |
-| 04 | done | viz git log | `evidence/frontend-04/`, `tests/ui/page-guide.test.ts` |
+| 04 | done | 440d5f01 | `evidence/frontend-04/`, `tests/ui/page-guide.test.ts` |
+| 05 | done | viz git log | `evidence/frontend-05/`, E2E 49 |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 
