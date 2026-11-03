@@ -4,7 +4,7 @@
 
 **Blocked by:** 17, 19, 21
 
-**Status:** done, kritérium ≤ ~400 řádků splněné jen částečně
+**Status:** done, kritérium ≤ ~400 řádků splněné částečně, přijato Ondřejem 2026-11-03
 
 - [x] Lint bez varování o barvách v těchto obrazovkách
 - [ ] Žádný soubor obrazovky nad ~400 řádků
@@ -26,3 +26,7 @@
   dané obrazovky (audit D3: „Dělit až při skutečné úpravě dané obrazovky“). `TiersScreen.tsx` 422 ř. zůstal na místě.
 - Pixelové porovnání 44 stavů s ticketem 22 (`compare-vs-22.txt`): 4 snímky, 0,001–0,003 % pixelů, šum vykreslování.
 - Brána: node 2057/2057, engine 720/720, typecheck 0, lint 0 chyb, E2E preview 66/66.
+
+## Rozhodnutí Ondřeje 2026-11-03
+
+- Částečné splnění přijato, nic dalšího se nedělá.

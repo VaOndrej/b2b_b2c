@@ -4,7 +4,7 @@
 
 **Blocked by:** 14
 
-**Status:** done, kritérium −20 % slov splněné jen částečně
+**Status:** done, kritérium −20 % slov splněné částečně, přijato Ondřejem 2026-11-03
 
 - [ ] Počet slov (capture.mjs metrics.json) klesne u margin, translations, tiers aspoň o 20 %
 - [x] Žádná obrazovka nemá dvě různé číselné ukázky
@@ -37,3 +37,7 @@ jazycích (~430 slov). Další škrt by bral obsah, ne duplicitu. K rozhodnutí:
 
 - Brána: node 2052/2052, engine 720/720, typecheck 0, lint 0 chyb, E2E preview 64/64.
 - Screenshoty a metrics: `docs/won-discounts/evidence/frontend-17/`.
+
+## Rozhodnutí Ondřeje 2026-11-03
+
+- Částečné splnění přijato, nic dalšího se nedělá.

@@ -49,3 +49,7 @@ cd /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts && npm 
 3. Slevy → Výprodej → dlaždice „Nastavení“ (pohled s Vratkami): změň „Vratka po konci výprodeje“ a Sčítá se s, ulož,
    obnov: obojí drží.
 4. Výprodej s běžícím výprodejem: Ukončit výprodej se dál ptá a Zkusit znovu funguje jedním kliknutím.
+
+## Rozhodnutí Ondřeje 2026-11-03
+
+- Úpravy jednoho běžícího výprodeje (Upravit → Uložit/Zrušit) zůstávají jak jsou, jako zapsaná výjimka „editor jedné věci“. Do `s-modal` se nepřesouvají.

@@ -4,8 +4,8 @@
 
 - **Hotové tickety:** 01–25 (všech 25)
 - **Rozdělaný:** nic (review 20–25 hotové, viz níž)
-- **Další krok:** ruční ověření Ondřejem (Save Bar 09–11, formát data 07) a rozhodnutí 10, 17, 23
-- **Čeká na Ondřeje:** 07 formát data v adminu, 09, 10, 11 Save Bar v shopify app dev (postupy v ticketech); 10: per-run úpravy výprodeje na s-modal?; 17: přijmout −14 % slov u Marže a 0 % u Překladů?; 23: hlavní soubory Výprodeje/Kampaní/Milníků 583–679 ř.
+- **Další krok:** ruční ověření Ondřejem (Save Bar 09–11, formát data 07). Rozhodnutí 10, 17, 23 padla 2026-11-03: 10 zůstává jak je (výjimka), 17 a 23 přijaté.
+- **Čeká na Ondřeje:** 07 formát data v adminu, 09, 10, 11 Save Bar v shopify app dev (postupy v ticketech)
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
 - **Harness:** `npx react-router dev --port 3411` (příkaz v README), log ve scratchpadu session.
