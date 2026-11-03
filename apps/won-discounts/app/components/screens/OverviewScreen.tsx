@@ -30,7 +30,7 @@ import { storefrontTexts, textLanguages } from "@won/core/discounts/storefront-t
 
 import { useT } from "../../i18n/context";
 import { usePollWhile } from "../shell/poll";
-import type { Translator } from "../../i18n";
+import type { PluralBase, Translator } from "../../i18n";
 import { describeMarginSettings, formatMoney, formatPercent } from "@won/core/discounts/describe";
 
 import { NativeDiscountsPanel, nativeSummary } from "../NativeDiscounts";
@@ -48,7 +48,7 @@ import type { AdminSignals, CurrencyView, GateNoteView, RuleSyncMap, UiResult } 
 import { GateNotes } from "../shell/GateNotes";
 import { ModuleTile, ModuleTileGroup, ModuleTileGroups } from "../shell/ModuleTile";
 import { RefreshTargetingButton, ResyncButton } from "../shell/Notice";
-import { Finding } from "../shell/Finding";
+import { groupAttention, ruleWarningCause } from "../model/attention";
 import { PlacementPill, RowNote, StatusPill, WonRow, WonSection } from "../shell/WonSection";
 import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
 import { firstSetups, onboardingHasNative, onboardingProgress } from "./OnboardingScreen";
@@ -147,8 +147,6 @@ function translationsOf(config: WonDiscountsConfig, textCount?: number): NonNull
 }
 
 /** How many things to resolve Přehled draws as cards; the rest is one line (decided 12 Oct 2026: the tiles stay on the first screen). */
-const FINDINGS_SHOWN = 2;
-
 function warningText(w: RuleWarning, tr: Translator, currencies: readonly CurrencyView[] = []): string {
   const rule = w.ruleName.trim() || tr.t("common.untitled");
   if (w.kind === "unsupported") return tr.t("overview.warning.unsupported", { rule });
@@ -364,15 +362,34 @@ export function OverviewScreen({
   // Ondřej, 7 Oct 2026: a Pro part says "Pro" on its tile on every plan (on Pro the plain marker, on Free "Pro · odemknout").
   const proMark = true;
   const moduleRows = moduleAttention(status, currencies, tr);
-  // One list of things to resolve, in the order they are said: the discounts' own, then the modules' amounts.
-  const findings = [
-    ...warnings.map((w) => ({ key: `${w.kind}-${w.ruleId}`, kind: w.kind as string, what: warningText(w, tr, currencies), how: t(`overview.warning.${w.kind}.how`), href: `/app/discounts/${encodeURIComponent(w.ruleId)}#${w.field}`, fix: warningFix(w, tr), page: "/app/discounts", pageLabel: t("nav.discounts") })),
-    ...moduleRows.map((row) => {
-      const tiers = row.href.startsWith("/app/tiers");
-      return { key: row.key, kind: "amountMissing", what: row.text, how: t("overview.attention.how"), href: row.href, fix: t("overview.warning.missingCurrency.fix"), page: tiers ? "/app/tiers" : "/app/rewards", pageLabel: t(tiers ? "nav.tiers" : "nav.rewards") };
-    }),
+  // One list of things to resolve, in the order they are said: the discounts' own, then the modules' amounts. Things
+  // with the same cause are one row (model/attention.ts): "2 slevy nemají hodnotu pro Slovensko", a link to each.
+  const things = [
+    ...warnings.map((w) => ({
+      key: `${w.kind}-${w.ruleId}`,
+      kind: w.kind as string,
+      cause: ruleWarningCause(w.kind, w.currencies),
+      text: warningText(w, tr, currencies),
+      name: w.ruleName.trim() || t("common.untitled"),
+      href: `/app/discounts/${encodeURIComponent(w.ruleId)}#${w.field}`,
+      how: t(`overview.warning.${w.kind}.how`),
+      fix: warningFix(w, tr),
+      group: (n: number) => tr.tp(`overview.group.${w.kind}` as PluralBase, n, { currencies: tr.list((w.currencies ?? []).map((code) => currencyMarketNames(code, currencies))) }),
+      page: "/app/discounts",
+    })),
+    ...moduleRows.map((row) => ({ key: row.key, kind: "amountMissing", cause: row.key, text: row.text, name: row.text, href: row.href, how: t("overview.attention.how"), fix: t("overview.warning.missingCurrency.fix"), group: () => row.text, page: row.href.startsWith("/app/tiers") ? "/app/tiers" : "/app/rewards" })),
   ];
-  const moreFindings = [...findings.slice(FINDINGS_SHOWN).reduce((pages, f) => pages.set(f.page, { href: f.page, label: f.pageLabel, count: (pages.get(f.page)?.count ?? 0) + 1 }), new Map<string, { href: string; label: string; count: number }>()).values()];
+  const attention = groupAttention(things);
+  const thingOf = new Map(things.map((thing) => [thing.key, thing]));
+  // The list says what is to resolve: a tile whose things are all in it keeps its label and red frame, not the count.
+  // Only when the list holds every one of them: a tile that counts more (a failed write) keeps its count, and a tile
+  // that waits for a failed write says that instead (its own sentence).
+  const listed = (page: string) => things.filter((thing) => thing.page === page).length;
+  const quiet = (key: "codes" | "tiers" | "rewards", page: string) => {
+    const state = states[key];
+    if (!state || (key !== "codes" && waits(key))) return state;
+    return state.issues > 0 && state.issues <= listed(page) ? { ...state, issues: 0 } : state;
+  };
   // N5: "Aktivní" only when something runs. A new shop with everything connected is ready, not live.
   const somethingRuns = Object.values(states).some((s) => s?.state === "active");
   const marketCount = (enabledMarkets ?? []).length;
@@ -447,29 +464,46 @@ export function OverviewScreen({
 
         {gate.length > 0 ? <GateNotes notes={gate} pending={gatePending} /> : null}
 
-        {warnings.length + moduleRows.length > 0 ? (
-          <WonSection outlined title={t("overview.warnings.title")} glyph="alert" summary={tr.tp("count.warning", warnings.length + moduleRows.length)}>
-            {/* Each thing to resolve is a finding: what happened, what to do, the button to the exact field (P7, §13c).
-                At most two are drawn, beside each other on a wide screen, so the tiles stay on the first screen (§19d);
-                the others are one line that says how many and at which module they wait (its tile counts them too). */}
-            <div data-won-overview-findings="" style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 400px), 1fr))", alignItems: "stretch" }}>
-              {findings.slice(0, FINDINGS_SHOWN).map((finding) => (
-                <Finding key={finding.key} marker={{ "data-won-overview-finding": finding.kind }} what={finding.what} how={finding.how} primary={{ href: finding.href, label: finding.fix }} />
-              ))}
+        {things.length > 0 ? (
+          <WonSection outlined title={t("overview.warnings.title")} glyph="alert" summary={tr.tp("count.warning", things.length)}>
+            {/* One row per cause (model/attention.ts): what happened, what to do, and the way to the exact field (P7, §13c).
+                A cause met once has its button; a cause shared by several discounts names each one, a link to its field. */}
+            <div data-won-overview-findings="">
+              {attention.map((group) => {
+                const first = thingOf.get(group.items[0]!.key)!;
+                const many = group.items.length > 1;
+                return (
+                  <div key={group.cause} data-won-overview-finding={first.kind} data-won-overview-count={group.items.length}>
+                    <WonRow
+                      tone="attention"
+                      action={
+                        many ? undefined : (
+                          <s-button href={first.href} variant="primary">
+                            {first.fix}
+                          </s-button>
+                        )
+                      }
+                    >
+                      <s-stack direction="block" gap="small-100">
+                        <s-text type="strong">{many ? first.group(group.items.length) : first.text}</s-text>
+                        <RowNote>{first.how}</RowNote>
+                        {many ? (
+                          <span data-won-overview-items="" style={{ fontFamily: WON_FONT, fontSize: 13, lineHeight: 1.5 }}>
+                            {first.fix}:{" "}
+                            {group.items.map((item, i) => (
+                              <span key={item.key}>
+                                {i > 0 ? " · " : ""}
+                                <s-link href={item.href}>{item.name}</s-link>
+                              </span>
+                            ))}
+                          </span>
+                        ) : null}
+                      </s-stack>
+                    </WonRow>
+                  </div>
+                );
+              })}
             </div>
-            {moreFindings.length > 0 ? (
-              <div data-won-overview-more="" style={{ marginTop: 10, fontFamily: WON_FONT, fontSize: 13, lineHeight: 1.5, color: WON_INK }}>
-                <strong>{tr.tp("overview.warnings.more", findings.length - FINDINGS_SHOWN)}</strong>{" "}
-                {moreFindings.map((group, i) => (
-                  <span key={group.href}>
-                    {i > 0 ? " · " : ""}
-                    <s-link href={group.href}>
-                      {group.label} ({group.count})
-                    </s-link>
-                  </span>
-                ))}
-              </div>
-            ) : null}
           </WonSection>
         ) : null}
 
@@ -537,9 +571,9 @@ export function OverviewScreen({
 
         <ModuleTileGroups label={t("overview.tiles.label")}>
           <ModuleTileGroup id="discounts" title={t("overview.group.discounts")} about={t("overview.group.discounts.about")} meta={groupMeta(["codes", "tiers", "rewards"])}>
-            <ModuleTile id="codes" href="/app/discounts" title={t("nav.discounts")} glyph="tag" about={t("tile.about.codes")} aboutShort={t("tile.short.codes")} active={bodies.codes} status={states.codes} />
-            <ModuleTile id="tiers" href="/app/tiers" title={t("module.tiers")} glyph="layers" about={t("tile.about.tiers")} aboutShort={t("tile.short.tiers")} active={bodies.tiers} status={states.tiers} issueText={waits("tiers")} />
-            <ModuleTile id="rewards" href="/app/rewards" title={t("nav.rewards")} glyph="spark" about={t("tile.about.rewards")} aboutShort={t("tile.short.rewards")} active={bodies.rewards} status={states.rewards} issueText={waits("rewards")} />
+            <ModuleTile id="codes" href="/app/discounts" title={t("nav.discounts")} glyph="tag" about={t("tile.about.codes")} aboutShort={t("tile.short.codes")} active={bodies.codes} status={quiet("codes", "/app/discounts")} />
+            <ModuleTile id="tiers" href="/app/tiers" title={t("module.tiers")} glyph="layers" about={t("tile.about.tiers")} aboutShort={t("tile.short.tiers")} active={bodies.tiers} status={quiet("tiers", "/app/tiers")} issueText={waits("tiers")} />
+            <ModuleTile id="rewards" href="/app/rewards" title={t("nav.rewards")} glyph="spark" about={t("tile.about.rewards")} aboutShort={t("tile.short.rewards")} active={bodies.rewards} status={quiet("rewards", "/app/rewards")} issueText={waits("rewards")} />
           </ModuleTileGroup>
           <ModuleTileGroup id="sales" title={t("overview.group.sales")} about={t("overview.group.sales.about")} meta={groupMeta(["outlet", "campaigns"])} columns={2}>
             <ModuleTile id="outlet" href="/app/outlet" title={t("module.outlet")} glyph="receipt" about={t("tile.about.outlet")} aboutShort={t("tile.short.outlet")} active={bodies.outlet} status={states.outlet} pro={proMark} locked={lockedTile("outlet") || (free && !states.outlet)} />

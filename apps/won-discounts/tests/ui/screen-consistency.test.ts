@@ -163,15 +163,14 @@ test("no page draws a Save of its own: the save bar of the page's one form is th
 /** The pieces of a page marked with `marker`, one piece of HTML each (up to the next one). */
 const pieces = (html: string, marker: string) => html.split(new RegExp(`(?=<div data-won-finding="" ${marker}=)`)).slice(1);
 
-test("Přehled — every thing to resolve says what happened, what to do, and has the primary button to the field", async () => {
+test("Přehled — every row of things to resolve says what happened, what to do, and the way to the field", async () => {
   const html = await render("overview?state=modules&plan=pro");
-  const findings = pieces(html, "data-won-overview-finding");
-  // Two at most are drawn as cards (the test "at most two things to resolve as cards" below); the fixture has five.
-  assert.equal(findings.length, 2);
-  for (const finding of findings) {
-    const words = text(finding);
-    assert.ok(words.includes("Co se stalo") && words.includes("Co s tím"), words.slice(0, 200));
-    assert.match(finding, /<s-button href="\/app\/[^"]+" variant="primary">/);
+  const rows = html.split(/(?=<div data-won-overview-finding=)/).slice(1).map((row) => row.slice(0, row.indexOf('id="status"') > 0 ? row.indexOf('id="status"') : undefined));
+  assert.ok(rows.length >= 3, `rows: ${rows.length}`);
+  for (const row of rows) {
+    assert.match(row, /<s-text type="strong">/, "what happened");
+    assert.match(row, /Doplňte|Zrušte|Přidejte|Vyberte/, "what to do");
+    assert.match(row, /<s-button href="\/app\/[^"]+" variant="primary">|data-won-overview-items/, "the way to the field");
   }
   assert.ok(!text(html).includes("Pozor ·"), "the old one-line rows are gone");
 });
@@ -283,15 +282,17 @@ test("a block that is on the cart page is opened, never added a second time", as
 
 // --- Přehled, the guide and the side list ----------------------------------------------------------------------
 
-test("Přehled draws at most two things to resolve as cards; the rest is one line with how many wait at which module", async () => {
-  const html = await render("overview?state=modules&plan=pro");
-  assert.equal(pieces(html, "data-won-overview-finding").length, 2);
-  const more = text(html.slice(html.indexOf("data-won-overview-more"), html.indexOf("data-won-overview-more") + 1500));
-  assert.match(more, /A ještě 3 věci k vyřešení:/);
-  assert.match(more, /Slevy a kódy\s*\(\s*1\s*\)[\s\S]*Milníky\s*\(\s*1\s*\)[\s\S]*Množstevní slevy\s*\(\s*1\s*\)/);
-  assert.match(html.slice(html.indexOf("data-won-overview-more")), /<s-link href="\/app\/discounts">/);
-  // Two or fewer: no line at all.
-  assert.ok(!(await render("overview?state=empty")).includes("data-won-overview-more"));
+test("Přehled: things with the same cause are one row with a link to each; nothing is said twice", async () => {
+  const html = await render("overview?state=live");
+  const list = text(html.slice(html.indexOf("data-won-overview-findings"), html.indexOf('id="status"')));
+  // Two discounts without an amount for Slovensko: one row, each discount a link to its field.
+  assert.match(list, /2 slevy nemají hodnotu pro Slovensko\./);
+  assert.match(html, /data-won-overview-finding="missingCurrency" data-won-overview-count="2"/);
+  assert.match(html, /data-won-overview-items=""[\s\S]*?<s-link href="\/app\/discounts\/dev-fixture-2#conditions">VIP10<\/s-link>[\s\S]*?<s-link href="\/app\/discounts\/dev-fixture-4#value">Černý pátek<\/s-link>/);
+  // Each discount is named once in the list, and the Slevy a kódy tile does not count them again.
+  for (const name of ["VIP10", "Černý pátek", "Stálí zákazníci 5 %"]) assert.equal(list.split(name).length - 1, 1, name);
+  assert.doesNotMatch(html.slice(html.indexOf('data-won-tile="codes"')).slice(0, 3000), /data-won-tile-issues/);
+  assert.ok(!(await render("overview?state=empty")).includes("data-won-overview-findings"));
 });
 
 test("Přehled promises nothing that is not collected — no 'Připravujeme', and the block is not drawn without a row", async () => {

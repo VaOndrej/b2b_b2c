@@ -115,7 +115,7 @@ test("BILL-1: on Free, Přehled / Slevy a kódy / the editor say which Pro setti
   assert.match(html, /Tohle je v tarifu Pro, zákazník to nedostane/);
   assert.match(html, /Sleva „Jen Slovensko“ cílí na vybrané trhy/);
   // The home tile counts the discount among what needs attention; the list of discounts says why.
-  assert.match(html, /1 neaktivní/);
+  assert.match(html, /1 se neuplatní/);
   // The shop config Shopify runs has the market rule off; the lists of types run on Free too.
   const shipped = JSON.parse(store.sync.shopMetafieldValue("function_config")!);
   assert.match(JSON.stringify(shipped), /"cx":"/);

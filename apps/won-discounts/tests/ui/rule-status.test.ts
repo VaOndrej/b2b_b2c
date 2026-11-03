@@ -66,7 +66,7 @@ test("per-rule sync facts decide over the shop's sync line (Běží = THIS versi
   assert.equal(statusText(noCode, cs), "Neuplatní se: sleva s kódem zatím nemá žádný kód");
   assert.equal(
     ruleStatusSummary([noCode, ruleStatus(rule({ targeting: { segments: ["s"] } }), ok)], cs),
-    "2 slevy · 2 neaktivní",
+    "2 slevy · 2 se neuplatní",
     "without a code and segment-targeted both count as 'neběží'",
   );
 });
@@ -86,7 +86,7 @@ test("the section summary counts real states, not `enabled`", () => {
     ruleStatus(rule({ enabled: false }), ctx("2026-09-28")),
     ruleStatus(rule({ targeting: { segments: ["s"] } }), ctx("2026-09-28")),
   ];
-  assert.equal(ruleStatusSummary(statuses, cs), "4 slevy · 1 aktivní · 1 naplánovaná · 1 neaktivní · 1 vypnutá");
+  assert.equal(ruleStatusSummary(statuses, cs), "4 slevy · 1 aktivní · 1 naplánovaná · 1 se neuplatní · 1 vypnutá");
   const unsynced = [rule(), rule(), rule()].map((r) => ruleStatus(r, ctx("2026-09-28", NOT_WIRED)));
   assert.equal(ruleStatusSummary(unsynced, cs), "3 slevy · 3 čekají na zápis");
 });
@@ -115,7 +115,7 @@ test("BILL-1: a rule the plan switches off is 'Neběží' (pro_off), counted wit
   const s = ruleStatus(rule({ targeting: { markets: ["sk"] } }), { ...ctx("2026-09-28"), ruleSync: { r1: "synced" }, gateOff: ["r1"] });
   assert.deepEqual(s, { kind: "pro_off" });
   assert.equal(statusText(s, cs), "Neuplatní se: používá funkci Pro, kterou váš tarif v pokladně nespouští.");
-  assert.equal(ruleStatusSummary([s, { kind: "live" }], cs), "2 slevy · 1 aktivní · 1 neaktivní");
+  assert.equal(ruleStatusSummary([s, { kind: "live" }], cs), "2 slevy · 1 aktivní · 1 se neuplatní");
 });
 
 test("items 2 + 7: a rule whose product targeting is being written is 'Propisuje se', neither green nor red", () => {

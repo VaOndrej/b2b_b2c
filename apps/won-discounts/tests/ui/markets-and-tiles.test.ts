@@ -58,19 +58,18 @@ const MARKETS = [
   { handle: "hu", currency: "HUF", enabled: false },
 ];
 
-test("the home page lists a gift a market does not get, and the tile counts what the list shows", async () => {
+test("the home page lists a gift a market does not get once, in the list; the tiles keep their label, not a second count", async () => {
   const html = await render("overview?state=modules");
-  // Přehled draws two things to resolve as cards and counts the rest by module (decided): the gift is
-  // the fourth, so the home page says it waits at Milníky; the sentence itself is on the module's page.
-  const more = html.slice(html.indexOf("data-won-overview-more"));
-  assert.match(more.slice(0, 1500), /<s-link href="\/app\/rewards">Milníky<!-- --> \(<!-- -->1<!-- -->\)/);
+  // "Vyžaduje pozornost" is one row per cause: the gift has its own row and its button to the amounts.
+  const list = html.slice(html.indexOf("data-won-overview-findings"), html.indexOf('id="status"'));
+  assert.match(list, /Dárek Ponožky Won — M nemá částku pro Slovensko\.[\s\S]*?href="\/app\/rewards#amounts"/);
   assert.match(await render("rewards"), /Slovensko \(EUR\): částka chybí, v tomto trhu se stupeň nenabízí\./);
   const rewards = tile(html, "rewards");
   assert.match(rewards, /data-won-state="active"/, "it still runs in Czechia");
   assert.match(rewards, /Slovensko: dárek se nenabízí · /);
-  assert.match(rewards, /data-won-tile-issues[^>]*>1 věc k vyřešení/);
-  // Three warnings about discounts on the page → three things on the Slevy a kódy tile (it said one).
-  assert.match(tile(html, "codes"), /data-won-tile-issues[^>]*>3 věci k vyřešení/);
+  // The list says what is to resolve: the tiles do not count it again.
+  assert.doesNotMatch(rewards, /data-won-tile-issues/);
+  assert.doesNotMatch(tile(html, "codes"), /data-won-tile-issues/);
   assert.match(html, /4 upozornění/, "three discounts and the gift");
   assert.match(tile(html, "settings"), /2 trhy · tarif Free · chybí částky: Slovensko/);
 });

@@ -25,11 +25,11 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "overview?state=pro-cards&plan=pro", expect: [/Žádná kampaň není naplánovaná/, /Žádný výprodej není aktivní/] },
   {
     path: "overview?state=live",
-    expect: [/Vyžaduje pozornost/, /LETO15/, /Přesunout vše \(2\)/, /Vrátit zpět/, /3 aktivní z 6 · 1 naplánovaná · 1 neaktivní/, /nemá hodnotu pro Slovensko/, /Doplnit hodnotu/, /A ještě 1 věc k vyřešení:/],
+    expect: [/Vyžaduje pozornost/, /LETO15/, /Přesunout vše \(2\)/, /Vrátit zpět/, /3 aktivní z 6 · 1 naplánovaná · 1 se neuplatní/, /hodnotu pro Slovensko/, /Doplnit hodnotu/, /2 slevy nemají hodnotu pro Slovensko/],
   },
   {
     path: "overview?state=sync-failed",
-    expect: [/Zápis se nepovedl 28\. 9\. 2026 16:20/, /Kód slevy „VIP10“ už v Shopify používá jiná sleva/, /Zkusit zapsat znovu/, /2 aktivní z 6 · 1 naplánovaná · 1 zatím neplatí · 1 neaktivní · 1 vypnutá/, /data-won-tile-issues/],
+    expect: [/Zápis se nepovedl 28\. 9\. 2026 16:20/, /Kód slevy „VIP10“ už v Shopify používá jiná sleva/, /Zkusit zapsat znovu/, /2 aktivní z 6 · 1 naplánovaná · 1 zatím neplatí · 1 se neuplatní · 1 vypnutá/, /data-won-overview-finding/],
   },
   {
     path: "overview?state=moved",
@@ -270,7 +270,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   // B14: a failed start keeps the picked variant and the typed values; the price before → after is computed.
   { path: "outlet?plan=pro&result=failed", expect: [/Mikina Won — L · 10 ks · −30\s% · bez data konce/, /data-won-outlet-price=""[\s\S]*?Nová cena[\s\S]*?1\s490\sKč[\s\S]*?1\s043\sKč/, /Změnit variantu/] },
   { path: "outlet?result=settings-pro&state=empty", expect: [/Zobrazení výprodeje jde nastavit v tarifu Pro/] },
-  { path: "overview?state=outlet", expect: [/Výprodej/, /data-won-state="attention"/, /3 věci k vyřešení/, /<s-clickable href="\/app\/outlet"/] },
+  { path: "overview?state=outlet", expect: [/Výprodej/, /data-won-state="attention"/, /3 upozornění/, /<s-clickable href="\/app\/outlet"/] },
   // 5a (F-O1): no order access yet — the module and the card say the quota is not counted (harness default).
   { path: "outlet?plan=pro&state=empty", expect: [/Prodané kusy se zatím nepočítají\. Výprodej skončí datem nebo ručně/, /href="#outlet-ends"/, /Bez přístupu k objednávkám výprodej po doprodání neskončí\. Nastavte datum konce/] },
   // Ochrana marže (MVP 2): the module screen per state, the Přehled card, the editor note, a capped cart line.
