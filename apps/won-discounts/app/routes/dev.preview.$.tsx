@@ -683,7 +683,7 @@ export default function DevPreview() {
       content = <AnalyticsScreen {...(data as AnalyticsScreenProps)} />;
       break;
     case "outlet":
-      content = <OutletScreen {...(data as OutletScreenProps)} result={(data as OutletScreenProps).result} />;
+      content = <OutletScreen {...(data as OutletScreenProps)} result={submitted ?? (data as OutletScreenProps).result} />;
       break;
     case "translations":
       content = <TranslationsScreen {...(data as TranslationsScreenProps)} result={submitted} />;

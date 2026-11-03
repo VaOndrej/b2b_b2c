@@ -63,12 +63,14 @@ export interface SavePlan {
 /**
  * What a Save posts: what changed against the form as it was loaded. Without that baseline (not read yet) everything
  * is posted — the page as it always was, a part only when it is in the form. Nothing changed: the page alone (the save
- * bar was used, so the merchant expects a save).
+ * bar was used, so the merchant expects a save). A page whose form holds only parts (no field of its own) is never posted.
  */
 export function planSave(now: SplitSave, baseline: SplitSave | null, order: readonly string[]): SavePlan {
   const present = order.filter((key) => now.parts.has(key));
-  if (!baseline) return { page: true, parts: present };
-  const parts = present.filter((key) => !sameEntries(now.parts.get(key) ?? [], baseline.parts.get(key) ?? []));
-  const page = !sameEntries(now.page, baseline.page) || parts.length === 0;
-  return { page, parts };
+  const own = now.page.length > 0;
+  if (!baseline) return { page: own, parts: present };
+  const changed = present.filter((key) => !sameEntries(now.parts.get(key) ?? [], baseline.parts.get(key) ?? []));
+  if (!own) return { page: false, parts: changed.length > 0 ? changed : present };
+  const page = !sameEntries(now.page, baseline.page) || changed.length === 0;
+  return { page, parts: changed };
 }

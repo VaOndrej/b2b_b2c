@@ -26,7 +26,10 @@ import { amountKeyCurrency } from "@won/core/discounts/money";
 import type { MessageKey } from "../../i18n";
 import { useT } from "../../i18n/context";
 import { LookSection } from "../looks/LookSection";
-import { ModuleCombine } from "../shell/ModuleCombine";
+import { CombinePart, combinePart } from "../shell/ModuleCombine";
+import { PartRefusal, useOneSave } from "../shell/one-save";
+import { useFormActions } from "../shell/form-actions";
+import { splitSave } from "../model/one-save";
 import { presetLabel } from "../model/looks";
 import { editorOpenUrl, embedPlacement, placementOf, spotAdvice } from "../model/embed";
 import { PlacementsLink, SpotNote } from "../StorefrontPlacements";
@@ -48,7 +51,6 @@ import { ProSell } from "../shell/ProSell";
 import { SegmentedChoice } from "../shell/SegmentedChoice";
 import { DiscountsSubNav } from "../shell/SubNav";
 import { WON_ATTENTION, WON_EDGE, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "../shell/tokens";
-import { PageSave } from "../shell/PageSave";
 import { useView, ViewPanel } from "../shell/views";
 import { usePolarisJump } from "../shell/scroll";
 import { PlacementPill, RowNote, StatusPill, WonRow, WonSection, type PlacementState } from "../shell/WonSection";
@@ -215,6 +217,12 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
 
   // §2 / B2: the live form. null = not read yet (the server render, before the first event): what is stored.
   const formRef = useRef<HTMLFormElement>(null);
+  // One save for the page (shell/one-save.tsx): the steps to this route's action, then Sčítá se s to /app/combine.
+  const actions = useFormActions();
+  const oneSave = useOneSave({ pageKey: "rewards", formRef, result, parts: [combinePart("rewards", configVersion, actions.combine)] });
+  // The form element for the parts drawn outside it (Sčítá se s under the preview).
+  const [formEl, setFormEl] = useState<HTMLFormElement | null>(null);
+  useEffect(() => setFormEl(formRef.current), []);
   const [snapshot, setSnapshot] = useState<Map<string, string> | null>(null);
   const recompute = useCallback(() => {
     if (formRef.current) setSnapshot(snapshotOf(formRef.current));
@@ -311,7 +319,8 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
   const replaceUnreadable = () => {
     const form = formRef.current;
     if (!form) return;
-    const data = new FormData(form);
+    const data = new FormData();
+    for (const [name, value] of splitSave(new FormData(form).entries()).page) data.append(name, value);
     data.set("replaceUnreadable", "1");
     submit(data, { method: "post" });
   };
@@ -410,6 +419,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
       {/* The notice and what to do next are not fields: they sit above the form. */}
       <s-stack direction="block" gap="base">
       <Notice result={result} onReplace={replaceUnreadable} />
+      <PartRefusal refusal={oneSave.refusal} />
       {/* A save says what the customer sees now and what is still to do, with the button that does it. */}
       {saved ? (
         <WonSection title={t("rewards.next.title")} glyph="store" anchor="next">
@@ -483,7 +493,7 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
       </s-stack>
       <style dangerouslySetInnerHTML={{ __html: TABLE_CSS }} />
       <div style={{ marginTop: 20 }}>
-      <Form method="post" ref={formRef} data-save-bar data-won-milestones>
+      <Form method="post" ref={formRef} data-save-bar data-won-milestones onSubmit={oneSave.onSubmit}>
         <input type="hidden" name={F.intent} value={MILESTONES_INTENT.save} />
         {configVersion ? <input type="hidden" name="configVersion" value={configVersion} /> : null}
         {countNow ? <input type="hidden" name={F.other} value="1" /> : null}
@@ -724,8 +734,6 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
             </WonSection>
           </ViewPanel>
 
-          {/* "Na webu" has nothing to save (every button there leads to the store's design) and a look saves itself. */}
-          <PageSave shown={view === "steps"} />
         </s-stack>
       </Form>
       {/* The preview is a tool, not a setting (feedback 9 Oct 2026, 2nd round, bod 4): OUTSIDE the form, so walking
@@ -777,12 +785,11 @@ export function MilestonesScreen(props: MilestonesScreenProps) {
           </div>
         </section>
       ) : null}
-      {/* "Sčítá se s" of every reward: its own form, so outside the page's; under the steps (Ondřej 14 Oct 2026: set here). */}
-      {view === "steps" ? (
-        <div style={{ marginTop: 16 }}>
-          <ModuleCombine module="rewards" stored={props.combine} configVersion={configVersion} />
-        </div>
-      ) : null}
+      {/* "Sčítá se s" of every reward, under the steps (Ondřej 14 Oct 2026: set here): drawn outside the form (the preview
+          above it must stay outside), saved with it by the page's one save. Hidden, never unmounted, in the other views. */}
+      <div style={{ marginTop: 16, display: view === "steps" ? "block" : "none" }}>
+        <CombinePart key={formKey} module="rewards" stored={props.combine} form={formEl} />
+      </div>
       {/* The ladder's look: its own form, so outside the page's; under its own tile. */}
       {props.look ? (
         <div style={{ marginTop: 16 }}>

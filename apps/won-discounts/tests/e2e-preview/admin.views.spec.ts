@@ -14,14 +14,9 @@ test("the page's Save is shown only under a view whose fields it saves", async (
   await expect(page.locator("s-button:visible", { hasText: /^Uložit$/ })).toHaveCount(0);
   await expect(page.locator("s-button:visible", { hasText: "Uložit vzhled" })).toHaveCount(1);
 
+  // So is Milníky: no Save of the page in any view.
   await open(page, "rewards?plan=pro");
-  await expect(save).toBeVisible();
-  for (const tile of ["web", "look"]) {
-    await page.locator(`[data-won-view-tile="${tile}"] s-button`).click();
-    await expect(save).toBeHidden();
-    await page.locator("[data-won-ms-back]").click();
-  }
-  await expect(save).toBeVisible();
+  await expect(save).toHaveCount(0);
 
   await open(page, "margin?plan=pro");
   await page.locator('[data-won-view-tile="costs"]').click();

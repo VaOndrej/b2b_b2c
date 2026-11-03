@@ -119,3 +119,79 @@ test("Množstevní slevy: Discard puts the levels and Sčítá se s back as stor
   await page.evaluate((sel) => document.querySelector<HTMLFormElement>(sel)!.reset(), PAGE_FORM);
   await expect.poll(() => page.locator('[data-won-module-combine="tiers"] s-checkbox[value="code"]').evaluate((el) => (el as HTMLElement & { checked: boolean }).checked)).toBe(before);
 });
+
+// --- Milníky and Výprodej: the same one save; a sale's own actions stay buttons -----------------------------------
+
+const checked = (page: Page, module: string) =>
+  page.locator(`[data-won-module-combine="${module}"] s-checkbox[value="code"]`).evaluate((el) => (el as HTMLElement & { checked: boolean }).checked);
+const tick = (page: Page, module: string) => page.locator(`[data-won-module-combine="${module}"] s-checkbox[value="code"] input[type="checkbox"]`).click();
+/** Visible buttons that save something of a page ("Uložit" alone): the save bar replaces them all. */
+const pageSaves = (page: Page) => page.locator("s-button:visible", { hasText: /^Uložit$/ });
+
+test("Milníky and Výprodej: no Save of a page in any view, on Free and on Pro — a sale's own actions stay buttons", async ({ page }) => {
+  for (const plan of ["", "?plan=pro"]) {
+    await open(page, `rewards${plan}`);
+    await expect(pageSaves(page), `rewards${plan}`).toHaveCount(0);
+    await expect(page.locator('[data-won-module-combine="rewards"] s-button')).toHaveCount(0);
+    await open(page, `outlet${plan}`);
+    for (const view of ["sales", "info"]) {
+      await page.locator(`[data-won-view-tile="${view}"]`).first().click();
+      await expect(pageSaves(page), `outlet${plan} ${view}`).toHaveCount(0);
+    }
+    // The settings form is the one with the save bar; Sčítá se s is a part of it.
+    expect(await page.locator(`${PAGE_FORM}[data-won-outlet-settings] [data-won-module-combine="outlet"]`).count()).toBe(1);
+  }
+  // A sale's one-off actions are still there as buttons (a sale with a problem: "Zkusit znovu").
+  await open(page, "outlet?plan=pro");
+  await expect(page.locator('s-button[type="submit"]', { hasText: "Zkusit znovu" }).first()).toBeAttached();
+});
+
+test("Milníky: a step and Sčítá se s changed go out on one save; Sčítá se s stays under the preview, outside the form", async ({ page }) => {
+  await open(page, "rewards?plan=pro&save=ok");
+  // Drawn outside the form (the preview's slider must never be an unsaved change), saved with it.
+  expect(await page.locator(`${PAGE_FORM} [data-won-module-combine="rewards"]`).count()).toBe(0);
+  const field = await page.evaluate(() => document.querySelector("form[data-won-milestones] s-number-field, form[data-won-milestones] s-money-field")?.getAttribute("name") ?? "");
+  expect(field).not.toBe("");
+  await typeInto(page, field, "1234");
+  const before = await checked(page, "rewards");
+  await tick(page, "rewards");
+  const sent: URLSearchParams[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST") sent.push(new URLSearchParams(request.postData() ?? ""));
+  });
+  await saveBarSave(page);
+  await expect.poll(() => sent.length).toBe(2);
+  expect(sent[0]!.get(field)).toBe("1234");
+  expect([...sent[0]!.keys()].some((name) => name.startsWith("part:") || name.startsWith("combine"))).toBe(false);
+  expect(sent[1]!.get("combineModule")).toBe("rewards");
+  expect(sent[1]!.getAll("combineTypes").includes("code")).toBe(!before);
+  // Discard puts Sčítá se s back too.
+  await open(page, "rewards?plan=pro");
+  await tick(page, "rewards");
+  await page.evaluate((sel) => document.querySelector<HTMLFormElement>(sel)!.reset(), PAGE_FORM);
+  await expect.poll(() => checked(page, "rewards")).toBe(before);
+});
+
+test("Výprodej: the reopen setting and Sčítá se s go out on one save; a refused Sčítá se s says so", async ({ page }) => {
+  await open(page, "outlet?plan=pro&save=ok");
+  await page.locator('[data-won-view-tile="info"]').first().click();
+  await typeInto(page, "ol.reopen", "never");
+  const before = await checked(page, "outlet");
+  await tick(page, "outlet");
+  const sent: URLSearchParams[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST") sent.push(new URLSearchParams(request.postData() ?? ""));
+  });
+  await saveBarSave(page);
+  await expect.poll(() => sent.length).toBe(2);
+  expect(sent[0]!.get("intent")).toBe("settings");
+  expect(sent[0]!.get("ol.reopen")).toBe("never");
+  expect(sent[1]!.get("combineModule")).toBe("outlet");
+  expect(sent[1]!.getAll("combineTypes").includes("code")).toBe(!before);
+
+  await open(page, "outlet?plan=pro&save=combine-fails");
+  await page.locator('[data-won-view-tile="info"]').first().click();
+  await tick(page, "outlet");
+  await saveBarSave(page);
+  await expect(page.locator("[data-won-part-refusal]")).toContainText("Neuloženo: Sčítá se s");
+});

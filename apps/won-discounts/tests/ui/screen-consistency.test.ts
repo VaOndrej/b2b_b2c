@@ -158,9 +158,9 @@ test("PageSave is hidden, never unmounted, and every page with views uses it", a
   assert.match(draw(false), /data-won-page-save="hidden" style="display:none"><s-button type="submit"/);
   // The pages whose form spans several views draw their Save through it (the view is picked in the browser:
   // tests/e2e-preview/admin.views.spec.ts clicks through them).
-  for (const path of ["rewards", "margin"]) assert.equal((await render(path)).split("data-won-page-save=").length - 1, 1, path);
-  // Množstevní slevy is on the one save (shell/one-save.tsx): the save bar alone.
-  assert.equal((await render("tiers")).split("data-won-page-save=").length - 1, 0);
+  for (const path of ["margin"]) assert.equal((await render(path)).split("data-won-page-save=").length - 1, 1, path);
+  // Množstevní slevy and Milníky are on the one save (shell/one-save.tsx): the save bar alone.
+  for (const path of ["tiers", "rewards"]) assert.equal((await render(path)).split("data-won-page-save=").length - 1, 0, path);
 });
 
 // --- One card for every warning: what happened, what to do, the button -----------------------------------------
@@ -313,12 +313,15 @@ test("the guide's step 2 — going on without the move is a visible button that 
   assert.match(html, /<s-button type="submit" variant="secondary"[^>]*>Pokračovat bez přesunu/);
 });
 
-test("the rule editor's Pro section is open for a Pro shop; the sale's returns are saved by a primary button", async () => {
+test("the rule editor's Pro section is open for a Pro shop; the sale's returns are saved by the save bar", async () => {
   const pro = await render("rule-editor?plan=pro");
   const section = pro.slice(pro.indexOf('id="pro"'));
   assert.match(section.slice(0, 3000), /aria-expanded="true"/);
   const outlet = await render("outlet?plan=pro");
-  assert.match(outlet, /<s-button type="submit" variant="primary">Uložit<\/s-button>/);
+  const settings = outlet.slice(outlet.indexOf("data-won-outlet-settings"), outlet.indexOf("</form>", outlet.indexOf("data-won-outlet-settings")));
+  assert.match(outlet, /<form[^>]*data-save-bar[^>]*data-won-outlet-settings/);
+  assert.match(settings, /name="ol.reopen"/);
+  assert.doesNotMatch(settings, /type="submit"/);
 });
 
 test("a page with one place to jump to has no side list; with more it has one", async () => {

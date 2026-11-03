@@ -34,7 +34,9 @@ import { useRefusedSeed } from "../model/submitted";
 import type { OutletActionResult, OutletRunView, OutletScreenData, PlacementSpot, UiResult } from "../model/types";
 import { FieldMessage } from "../rule-editor/parts";
 import { boolAttr } from "../shell/attrs";
-import { ModuleCombine } from "../shell/ModuleCombine";
+import { CombinePart, combinePart } from "../shell/ModuleCombine";
+import { PartRefusal, useOneSave } from "../shell/one-save";
+import { useFormActions } from "../shell/form-actions";
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
 import { Notice } from "../shell/Notice";
 import { ProFrame } from "../shell/ProFrame";
@@ -590,6 +592,20 @@ export function OutletScreen(props: OutletScreenProps) {
   const pro = plan === "pro";
   const money = (minor: number, currency: string) => formatMoney(minor, currency, tr.locale);
   const submit = useSubmit();
+  // One save for the settings of Výprodej (shell/one-save.tsx): the reopen setting to this route's action, then
+  // Sčítá se s to /app/combine. A sale's own actions (start, end, retry, keep, reopen, the badge) stay buttons.
+  const actions = useFormActions();
+  const settingsRef = useRef<HTMLFormElement>(null);
+  const oneSave = useOneSave({ pageKey: "outlet", formRef: settingsRef, result: isOutletResult(result) ? null : (result as UiResult | null | undefined), parts: [combinePart("outlet", configVersion ?? null, actions.combine)] });
+  // Discard in the save bar resets the form: remount its fields with what is stored.
+  const [settingsKey, setSettingsKey] = useState(0);
+  useEffect(() => {
+    const el = settingsRef.current;
+    if (!el) return;
+    const onReset = () => setSettingsKey((k) => k + 1);
+    el.addEventListener("reset", onReset);
+    return () => el.removeEventListener("reset", onReset);
+  }, []);
 
   // B14: what a refused start posted comes back with the result; the fields are seeded from it and remount once.
   const { seed, key: seedKey } = useRefusedSeed(result);
@@ -1113,32 +1129,31 @@ export function OutletScreen(props: OutletScreenProps) {
             ))}
           </div>
         </WonSection>
-        {/* What a sale without its own choice takes: the one list of Výprodej (docs/won-discounts/navrh-kombinace-2026-10-13.md, bod 7). */}
-        <ModuleCombine module="outlet" stored={props.combine} configVersion={configVersion ?? null} />
-        {settingsShown ? (
-          <WonSection title={t("outlet.settings.title")} glyph="sliders" summary={t(`outlet.reopen.${reopen}` as "outlet.reopen.ask")} hint={t("outlet.settings.summary")}>
-            <Form method="post">
-              <input type="hidden" name={F.intent} value={OUTLET_INTENT.settings} />
-              {configVersion ? <input type="hidden" name="configVersion" value={configVersion} /> : null}
-              <s-stack direction="block" gap="base">
-                {/* How a sale shows is set with each sale (step 2 of a new one, "Upravit zobrazení" of a running one). */}
-                <RowNote>{t("outlet.settings.displayMoved")}</RowNote>
-                <s-select name={F.reopen} label={t("outlet.reopen.label")} value={reopen}>
-                  {REOPENS.map((r) => (
-                    <s-option key={r} value={r} selected={boolAttr(r === reopen)}>
-                      {t(`outlet.reopen.${r}` as "outlet.reopen.ask")}
-                    </s-option>
-                  ))}
-                </s-select>
-                <div>
-                  <s-button type="submit" variant="primary">
-                    {t("outlet.settings.save")}
-                  </s-button>
-                </div>
-              </s-stack>
-            </Form>
-          </WonSection>
-        ) : null}
+        {/* The settings of Výprodej: one form with the save bar (shell/one-save.tsx), no Save of its own. Sčítá se s (what a
+            sale without its own choice takes, docs/won-discounts/navrh-kombinace-2026-10-13.md, bod 7) is a part of it. */}
+        <Form method="post" ref={settingsRef} data-save-bar data-won-outlet-settings="" onSubmit={oneSave.onSubmit}>
+          <s-stack key={settingsKey} direction="block" gap="base">
+            <PartRefusal refusal={oneSave.refusal} />
+            <CombinePart module="outlet" stored={props.combine} />
+            {settingsShown ? (
+              <WonSection title={t("outlet.settings.title")} glyph="sliders" summary={t(`outlet.reopen.${reopen}` as "outlet.reopen.ask")} hint={t("outlet.settings.summary")}>
+                <input type="hidden" name={F.intent} value={OUTLET_INTENT.settings} />
+                {configVersion ? <input type="hidden" name="configVersion" value={configVersion} /> : null}
+                <s-stack direction="block" gap="base">
+                  {/* How a sale shows is set with each sale (step 2 of a new one, "Upravit zobrazení" of a running one). */}
+                  <RowNote>{t("outlet.settings.displayMoved")}</RowNote>
+                  <s-select name={F.reopen} label={t("outlet.reopen.label")} value={reopen}>
+                    {REOPENS.map((r) => (
+                      <s-option key={r} value={r} selected={boolAttr(r === reopen)}>
+                        {t(`outlet.reopen.${r}` as "outlet.reopen.ask")}
+                      </s-option>
+                    ))}
+                  </s-select>
+                </s-stack>
+              </WonSection>
+            ) : null}
+          </s-stack>
+        </Form>
           </>,
         )}
       </s-stack>

@@ -47,3 +47,11 @@ test("a save posts what changed: the level alone, Sčítá se s alone, or both �
 test("without a baseline everything in the form is posted; a part not in the form never is", () => {
   assert.deepEqual(planSave(splitSave(form(["code"])), null, ["combine", "look"]), { page: true, parts: ["combine"] });
 });
+
+test("a form of parts only (no field of the page's own) posts the parts, never an empty page", () => {
+  const parts = (types: string[]) => splitSave([[partField("combine", "combinePosted"), "1"], ...types.map((t): [string, string] => [partField("combine", "combineTypes"), t])]);
+  assert.deepEqual(planSave(parts(["code"]), parts([]), ["combine"]), { page: false, parts: ["combine"] });
+  assert.deepEqual(planSave(parts(["code"]), null, ["combine"]), { page: false, parts: ["combine"] });
+  // Nothing changed: the list is posted, as its own Save did.
+  assert.deepEqual(planSave(parts(["code"]), parts(["code"]), ["combine"]), { page: false, parts: ["combine"] });
+});

@@ -2,10 +2,10 @@
 
 ## CHECKPOINT
 
-- **Hotové tickety:** 01–09
-- **Rozdělaný:** 10 (jedno uložení Milníky a Výprodej), nezačatý
-- **Další krok:** 10: vzor z 09 (useOneSave + CombinePart) na Milníky a Výprodej, jednorázové akce zůstávají tlačítky
-- **Čeká na Ondřeje:** 07 formát data v adminu, 09 Save Bar v shopify app dev (postupy v ticketech)
+- **Hotové tickety:** 01–10
+- **Rozdělaný:** 11 (PageSave pryč: editor, Marže, Překlady, Nastavení), nezačatý
+- **Další krok:** 11: PageSave pryč z editoru, Marže, Překladů, Nastavení; ADMIN-UX §2; smazat PageSave. Pak review 09–11.
+- **Čeká na Ondřeje:** 07 formát data v adminu, 09 a 10 Save Bar v shopify app dev (postupy v ticketech); 10: per-run úpravy výprodeje na s-modal?
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
 - **Harness:** `npx react-router dev --port 3411` (příkaz v README), log ve scratchpadu session.
@@ -22,7 +22,8 @@
 | 06 | done | 8de0344a | `evidence/frontend-06/`, E2E 50 |
 | 07 | done, čeká na ruční ověření data | d5aaf8d4 | `evidence/frontend-07/` |
 | 08 | done | 1d45a30c | `evidence/frontend-08/`, docs:gen |
-| 09 | done, čeká na ruční ověření | viz git log | `evidence/frontend-09/`, E2E admin.one-save |
+| 09 | done, čeká na ruční ověření | 9a4bb437 | `evidence/frontend-09/`, E2E admin.one-save |
+| 10 | done, čeká na ruční ověření | viz git log | `evidence/frontend-10/`, E2E 58 |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 
@@ -30,6 +31,12 @@
   kopie vybraných do `docs/won-discounts/evidence/frontend-NN/` + metrics.json, kontrola HTTP/přetoku.
   `shot.mjs out name=cesta…`: screenshot 390+1440 libovolné cesty harnessu. `crop.mjs`: výřez PNG k prohlédnutí.
   Chyba „missing required configuration fields: shop“ je známé omezení harnessu.
+
+## Otevřené mimo tickety
+
+- Vzhled (LookSection) a Ceny na kartách mají dál vlastní formulář s „Uložit vzhled“ / „Uložit“ (Množstevní slevy, Milníky,
+  Výprodej, Kampaně). Pole vzhledu mají stejná jména na víc místech, do jednoho uložení potřebují předponu části.
+  Řešit při 11 nebo 25, jinak zapsat jako zbývající výjimku.
 
 ## Review skupiny 01–08 (proti main, 2026-11-03)
 

@@ -175,8 +175,8 @@ test("Milníky says where the ladder shows, what to do after a save, and keeps t
   assert.match(next.slice(0, 2600), /Zákazník uvidí 3 stupně\.[\s\S]*Slovensko: některý stupeň tam nemá částku a nenabízí se\.[\s\S]*Doplnit částky[\s\S]*Košík žebříček ukazuje\.[\s\S]*Na stránce produktu žebříček zatím není\.[\s\S]*Přidat na stránku produktu/);
   // The plan note sits in the steps panel, under the tiles — not over the whole page.
   assert.ok(html.indexOf("Tohle je v tarifu Pro, zákazník to nedostane") > html.indexOf('data-won-view-panel="steps"'));
-  // The save button is hidden while "Odměny na webu" is open (nothing to save there) — it is shown for the form panels.
-  assert.match(html, /data-won-page-save="shown"[^>]*><s-button type="submit" variant="primary">Uložit/);
+  // The save bar is the page's one save (shell/one-save.tsx): no Save button in any panel.
+  assert.doesNotMatch(html, /data-won-page-save=/);
   const empty = await render("rewards?state=empty");
   assert.match(tile(empty, "web", "data-won-view-body"), / · v košíku ne/);
   // No step yet: Won being off on the web is not a thing to resolve on this tile (an empty shop has no red tile;

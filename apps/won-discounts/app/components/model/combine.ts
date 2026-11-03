@@ -23,7 +23,7 @@ export const COMBINE_FIELD = {
   rules: "combineRules",
 } as const;
 
-/** Where a module's page posts its list (Množstevní slevy, Milníky, Výprodej: shell/ModuleCombine). */
+/** Where a module's page posts its list (Množstevní slevy, Milníky, Výprodej: shell/ModuleCombine CombinePart, the page's one save). */
 export const COMBINE_ACTION = "/app/combine";
 
 /** The module's list form: `intent=save`, the module, the list (COMBINE_FIELD), the stored version. */
