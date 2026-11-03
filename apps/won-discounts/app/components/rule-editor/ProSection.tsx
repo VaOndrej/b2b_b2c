@@ -38,6 +38,7 @@ import { ProFrame } from "../shell/ProFrame";
 import { ProSell } from "../shell/ProSell";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 import { Anchor, FieldMark, type EditorView } from "./parts";
+import { EDITOR_STEPS, editorStep } from "./steps";
 
 /** Shopify admin → Settings → Markets (App Bridge `shopify://admin`, §13a: the fix is there). */
 const SHOPIFY_MARKETS = "shopify://admin/settings/markets";
@@ -153,6 +154,7 @@ export function ProSection({
   );
   return (
     <WonSection
+      step={editorStep(EDITOR_STEPS, ed.isNew)}
       title={t("editor.pro.title")}
       glyph="target"
       summary={describeProSettings(draft, tr, ruleNames, marketNames)}

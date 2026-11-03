@@ -2,10 +2,10 @@
 
 ## CHECKPOINT
 
-- **Hotové tickety:** 01–06
-- **Rozdělaný:** 07 (editor: kroky jen u nové slevy), nezačatý
-- **Další krok:** 07: číslování sekcí editoru jen u nové slevy, zapsat zjištění k formátu data
-- **Čeká na Ondřeje:** nic
+- **Hotové tickety:** 01–07
+- **Rozdělaný:** 08 (Neuplatní se), nezačatý
+- **Další krok:** 08: „Neaktivní“ → „Neuplatní se“ v tabulce slev, docs:gen, drift test. Po 08 review skupiny 01–08 proti main.
+- **Čeká na Ondřeje:** 07 formát data v adminu (postup v ticketu 07)
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
 - **Harness:** `npx react-router dev --port 3411` (příkaz v README), log ve scratchpadu session.
@@ -19,7 +19,8 @@
 | 03 | done | 165f12e8 | lint 54 varování výchozí stav, `evidence/frontend-03/` |
 | 04 | done | 440d5f01 | `evidence/frontend-04/`, `tests/ui/page-guide.test.ts` |
 | 05 | done | ff5ea0c8 | `evidence/frontend-05/`, E2E 49 |
-| 06 | done | viz git log | `evidence/frontend-06/`, E2E 50 |
+| 06 | done | 8de0344a | `evidence/frontend-06/`, E2E 50 |
+| 07 | done, čeká na ruční ověření data | viz git log | `evidence/frontend-07/` |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 

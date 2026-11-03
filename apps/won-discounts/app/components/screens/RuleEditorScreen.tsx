@@ -361,7 +361,7 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
     const e = errors.find((x) => x.field === field);
     return e ? t(e.key, e.params) : undefined;
   };
-  const ed: EditorView = { draft, defaults, codes, currencyViews: currencies, suggest: props.suggest, timezone, readOnly, errorFor, tr };
+  const ed: EditorView = { draft, defaults, codes, currencyViews: currencies, suggest: props.suggest, timezone, readOnly, isNew: mode === "new", errorFor, tr };
   // The plan gate is the server's verdict on the STORED rule; the live draft is off only while it still holds that targeting.
   const gateOffLive = !!props.gateOff && !!rule && ((draft.targeting?.markets?.length ?? 0) > 0 || (draft.targeting?.segments?.length ?? 0) > 0);
   const status = ruleStatus(draft, {

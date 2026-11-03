@@ -17,7 +17,7 @@ import { useT } from "../../i18n/context";
 import { PlanBadge } from "../shell/PlanBadge";
 import { SelectedList, type SelectedItem } from "../shell/SelectedList";
 import { RowNote, WonSection } from "../shell/WonSection";
-import { EDITOR_STEPS } from "./steps";
+import { editorStep } from "./steps";
 import { WON_ATTENTION, WON_FAINT, WON_FONT } from "../shell/tokens";
 import { describeRuleLine, missingAmountCurrencies, type RuleLineNames } from "../model/describe";
 import { FIELD, NAME_MAX } from "../model/rule-form";
@@ -136,7 +136,7 @@ export function DiscountSection({
   }, [autoName]);
 
   return (
-    <WonSection step={{ n: 1, of: EDITOR_STEPS }}
+    <WonSection step={editorStep(1, ed.isNew)}
       title={t("editor.section.discount")}
       glyph="tag"
       summary={describeRuleLine(draft, tr, codes, ed.timezone, names)}

@@ -21,7 +21,7 @@ import { boolAttr } from "../shell/attrs";
 import { SegmentedChoice } from "../shell/SegmentedChoice";
 import { RowNote, WonSection } from "../shell/WonSection";
 import { WON_FONT, WON_INK, WON_MUTED, WON_SELECT, WON_SURFACE } from "../shell/tokens";
-import { EDITOR_STEPS } from "./steps";
+import { editorStep } from "./steps";
 import { CodeGenerator, GeneratedBatches } from "./GeneratedCodes";
 import { FieldMark, Shown, type EditorView } from "./parts";
 
@@ -97,7 +97,7 @@ export function ApplySection({
     mounted.current = true;
   }, [mode]);
   return (
-    <WonSection step={{ n: 3, of: EDITOR_STEPS }}
+    <WonSection step={editorStep(3, ed.isNew)}
       title={t("editor.section.apply")}
       glyph="code"
       summary={[describeMethod(draft, tr), describeLimits(draft, tr)].filter(Boolean).join(" · ")}

@@ -217,10 +217,15 @@ test("Slevy a kódy — a row opens its discount and the ready-made discounts ar
   assert.ok(text(recipes).includes("Uvítací kód"), "its content is drawn");
 });
 
-test("the rule editor's four sections are numbered steps; the optional Pro section is not", async () => {
-  for (const path of ["rule-editor", "rule-editor?rule=new&recipe=code", "rule-editor?plan=pro"]) {
+test("a new discount numbers all five sections of the editor as steps; an existing one has no step numbers", async () => {
+  for (const path of ["rule-editor?rule=new&recipe=code", "rule-editor?rule=new&recipe=percent&plan=pro"]) {
     const html = await render(path);
-    assert.deepEqual([...html.matchAll(/data-won-section-step="(\d)"[^>]*>([^<]+)</g)].map((m) => m[2]), ["Krok 1 / 4", "Krok 2 / 4", "Krok 3 / 4", "Krok 4 / 4"], path);
+    assert.deepEqual([...html.matchAll(/data-won-section-step="(\d)"[^>]*>([^<]+)</g)].map((m) => m[2]), ["Krok 1 / 5", "Krok 2 / 5", "Krok 3 / 5", "Krok 4 / 5", "Krok 5 / 5"], path);
+  }
+  for (const path of ["rule-editor", "rule-editor?rule=dev-f2-collection", "rule-editor?rule=dev-f2-collection&plan=pro"]) {
+    const html = await render(path);
+    assert.doesNotMatch(html, /data-won-section-step=/, path);
+    assert.doesNotMatch(text(html), /Krok \d/, path);
   }
 });
 
