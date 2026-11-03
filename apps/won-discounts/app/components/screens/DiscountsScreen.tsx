@@ -20,14 +20,13 @@ import { describeRuleBrief, missingCurrencies, ruleDays, ruleName } from "../mod
 import { currencyCodes, currencyMarketNames, currencyViews, type MarketNames } from "../model/markets";
 import { shopToday } from "../model/rule-form";
 import { ruleEditHref, ruleStatus, runsNow, type RuleStatus } from "../model/rule-status";
-import { ruleTabCounts, type RuleTableRow } from "../model/rule-table";
+import type { RuleTableRow } from "../model/rule-table";
 import { codeLimitNear } from "../rule-editor/ApplySection";
 import { syncText } from "../model/signals";
 import type { CodeRuleLimit, CurrencyView, GateNoteView, RuleSyncMap, SyncView, UiResult } from "../model/types";
 import { Notice, ResyncButton } from "../shell/Notice";
 import { DiscountsSubNav } from "../shell/SubNav";
 import { PlainHead } from "../shell/PickList";
-import { WON_ATTENTION } from "../shell/tokens";
 import { RowNote, WonRow } from "../shell/WonSection";
 
 export interface DiscountsScreenProps {
@@ -200,7 +199,6 @@ export function DiscountsScreen({
     };
   });
   const running = statuses.filter(runsNow).length;
-  const needing = ruleTabCounts(tableRows).attention;
   const hint = hints.join(" ");
 
   return (
@@ -236,9 +234,8 @@ export function DiscountsScreen({
 
         {rules.length > 0 ? (
           <section id="list">
-            <PlainHead title={t("discounts.list.title")} sub={t("tile.codes.liveOf", { live: running, total: rules.length })}>
-              {needing > 0 ? <span data-won-list-attention="" style={{ marginLeft: "auto", fontSize: 13, fontWeight: 600, color: WON_ATTENTION }}>{tr.tp("discounts.table.attention", needing)}</span> : null}
-            </PlainHead>
+            {/* How many need attention is said once, on the tab "Vyžaduje pozornost N" (zásada E1); the reason is in the row. */}
+            <PlainHead title={t("discounts.list.title")} sub={t("tile.codes.liveOf", { live: running, total: rules.length })} />
             {/* §12, §13a: what is not (all) in Shopify is said here, and a failed sync carries its fix. */}
             {hint ? (
               <div data-won-list-hint="" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 12px", marginBottom: 10 }}>

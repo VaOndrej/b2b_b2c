@@ -19,3 +19,19 @@ test("Přehled: every thing to resolve is named once — the list says it, the t
   await open(page, "overview?state=live", 390);
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThan(2600);
 });
+
+test("Slevy a kódy: how many need attention is said once, on the tab; the reason stays in each row", async ({ page }) => {
+  for (const width of [1440, 390]) {
+    await open(page, "discounts?sync=ok", width);
+    const tab = page.locator(".won-rt__tab", { hasText: "Vyžaduje pozornost" });
+    await expect(tab).toContainText("3");
+    // Outside the tab and the rows: no "vyžadují pozornost" anywhere.
+    const outside = await page.evaluate(() => {
+      const clone = document.body.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll(".won-rt__tab, [data-won-rule-row], tr, script, style").forEach((el) => el.remove());
+      return /vyžaduj[eí] pozornost/i.test(clone.innerText);
+    });
+    expect(outside, String(width)).toBe(false);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBe(0);
+  }
+});
