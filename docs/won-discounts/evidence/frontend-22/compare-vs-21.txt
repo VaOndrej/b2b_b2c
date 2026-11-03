@@ -1,0 +1,4 @@
+compared 44 differing 3
+  discounts-empty-390.png 0.009% px, bbox (8, 161, 382, 508)
+  onboarding-390.png 0.009% px, bbox (25, 117, 349, 492)
+  plan-1440.png 0.002% px, bbox (512, 233, 572, 235)

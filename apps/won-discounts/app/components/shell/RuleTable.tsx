@@ -1,25 +1,27 @@
 // "Vaše slevy" as one table (Ondřej, 31 Oct 2026): a tab per state, a search, a filter by how the discount applies and
 // a sort; a row opens the discount, at the field that fixes it when it needs attention (P3). The choices live on this
 // page only and nothing is fetched: model/rule-table.ts picks the rows.
+// A shell exception of the custom look (audit 2026-11-03 D2): Polaris' s-table has no tab row, no inline search with a
+// filter and no sortable header, so the table draws its own controls; its colours come from tokens.ts.
 
 import { useMemo, useState, type CSSProperties } from "react";
 
-import { useT } from "../i18n/context";
-import { ruleTabCounts, visibleRules, type RuleMethodFilter, type RuleSort, type RuleTab, type RuleTableRow } from "./model/rule-table";
-import { needsAttention, statusText } from "./model/rule-status";
-import { hoverMark } from "./shell/hover";
-import { WON_ATTENTION, WON_EDGE, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "./shell/tokens";
-import { StatusBadge } from "./shell/StatusBadge";
+import { useT } from "../../i18n/context";
+import { ruleTabCounts, visibleRules, type RuleMethodFilter, type RuleSort, type RuleTab, type RuleTableRow } from "../model/rule-table";
+import { needsAttention, statusText } from "../model/rule-status";
+import { hoverMark } from "./hover";
+import { WON_ATTENTION, WON_EDGE, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SELECT_FOCUS, WON_SURFACE, WON_TAB_ON, WON_WASH } from "./tokens";
+import { StatusBadge } from "./StatusBadge";
 
 const TABLE_CSS = `
 .won-rt__row{display:grid;grid-template-columns:minmax(0,1.5fr) 140px 180px 150px;gap:4px 14px;align-items:center;padding:11px 16px}
 .won-rt__tab,.won-rt__sort{font:inherit;border:0;background:transparent;cursor:pointer}
 .won-rt__tab{font-size:13px;font-weight:500;padding:4px 10px;border-radius:7px;color:${WON_MUTED}}
-.won-rt__tab[aria-pressed="true"]{background:#e9ebee;color:${WON_INK};font-weight:600}
+.won-rt__tab[aria-pressed="true"]{background:${WON_TAB_ON};color:${WON_INK};font-weight:600}
 .won-rt__sort{all:unset;display:inline-flex;align-items:center;gap:4px;cursor:pointer;border-radius:4px}
 .won-rt__sort:hover,.won-rt__sort[data-on]{color:${WON_INK}}
 .won-rt__sort:focus-visible,.won-rt__tab:focus-visible{outline:2px solid ${WON_SELECT};outline-offset:2px}
-.won-rt__search:focus-within,.won-rt__select:focus-within{border-color:${WON_SELECT};box-shadow:0 0 0 2px rgba(26,115,232,.15)}
+.won-rt__search:focus-within,.won-rt__select:focus-within{border-color:${WON_SELECT};box-shadow:0 0 0 2px ${WON_SELECT_FOCUS}}
 @media (max-width:640px){.won-rt__row{grid-template-columns:minmax(0,1fr) auto}.won-rt__opt{display:none}}
 `;
 

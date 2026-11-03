@@ -20,7 +20,7 @@ import type { CodeRuleLimit, GeneratedBatchView } from "../model/types";
 import { boolAttr } from "../shell/attrs";
 import { SegmentedChoice } from "../shell/SegmentedChoice";
 import { RowNote, WonSection } from "../shell/WonSection";
-import { WON_FONT, WON_INK, WON_MUTED, WON_SELECT, WON_SURFACE } from "../shell/tokens";
+import { WON_CONTROL_EDGE, WON_FONT, WON_INK, WON_MUTED, WON_SELECT, WON_SELECT_TINT, WON_SURFACE } from "../shell/tokens";
 import { editorStep } from "./steps";
 import { CodeGenerator, GeneratedBatches } from "./GeneratedCodes";
 import { FieldMark, Shown, type EditorView } from "./parts";
@@ -54,7 +54,7 @@ function CodeModeTiles({ mode, onPick, disabled }: { mode: CodeMode; onPick: (mo
             aria-pressed={selected}
             disabled={disabled}
             onClick={() => onPick(value)}
-            style={{ textAlign: "left", padding: selected ? "11px 13px" : "12px 14px", borderRadius: 12, border: selected ? `2px solid ${WON_SELECT}` : "1px solid #d6dbe1", background: selected ? "#f2f7ff" : WON_SURFACE, cursor: disabled ? "not-allowed" : "pointer", font: "inherit", display: "grid", gap: 3 }}
+            style={{ textAlign: "left", padding: selected ? "11px 13px" : "12px 14px", borderRadius: 12, border: selected ? `2px solid ${WON_SELECT}` : `1px solid ${WON_CONTROL_EDGE}`, background: selected ? WON_SELECT_TINT : WON_SURFACE, cursor: disabled ? "not-allowed" : "pointer", font: "inherit", display: "grid", gap: 3 }}
           >
             <span style={{ fontSize: 14, fontWeight: 700, color: WON_INK }}>{t(`editor.codes.mode.${value}`)}</span>
             <span style={{ fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED }}>{t(`editor.codes.mode.${value}.about`)}</span>

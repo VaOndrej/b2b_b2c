@@ -2,9 +2,9 @@
 
 ## CHECKPOINT
 
-- **Hotové tickety:** 01–21
-- **Rozdělaný:** 22 (převod dávka A: Přehled, Slevy, editor), nezačatý
-- **Další krok:** 22: hex v Overview, Discounts (RuleTable, RecipeGrid), editoru (ApplySection) → tokeny/Surface; pixelové porovnání s cap-21
+- **Hotové tickety:** 01–22
+- **Rozdělaný:** 23 (převod dávka B: Množstevní slevy, Milníky, Výprodej, Kampaně + rozdělení do složek), nezačatý
+- **Další krok:** 23: tokeny v tiers/*, rewards/*, Outlet, Milestones; surové prvky (MilestonePreview range, Outlet, TiersPreview, Milestones) do shellu/Polaris; Outlet/Campaigns/Milestones do složek ≤ ~400 ř.
 - **Čeká na Ondřeje:** 07 formát data v adminu, 09, 10, 11 Save Bar v shopify app dev (postupy v ticketech); 10: per-run úpravy výprodeje na s-modal?; 17: přijmout −14 % slov u Marže a 0 % u Překladů?
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
@@ -34,7 +34,8 @@
 | 18 | done | 59096c7f | `evidence/frontend-18/` |
 | 19 | done | d545a1e9 | `evidence/frontend-19/` |
 | 20 | done | feb04382 | `evidence/frontend-20/` + compare-vs-19.txt |
-| 21 | done | viz git log | `evidence/frontend-21/` |
+| 21 | done | 643737f7 | `evidence/frontend-21/` |
+| 22 | done | viz git log | `evidence/frontend-22/` |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 

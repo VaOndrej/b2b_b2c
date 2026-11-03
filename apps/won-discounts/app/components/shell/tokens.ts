@@ -99,3 +99,5 @@ export const WON_SAMPLE_PAPER = "#ffffff";
 export const WON_CHART = "#2f6fed";
 /** The sample colour a colour field suggests. */
 export const WON_SAMPLE_ACCENT = "#0a7d4f";
+/** The pressed tab of a table's tab row. */
+export const WON_TAB_ON = "#e9ebee";

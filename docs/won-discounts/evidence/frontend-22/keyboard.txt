@@ -1,0 +1,72 @@
+
+== overview?state=live 
+ pointer-but-not-focusable: [] 
+ tab order:
+  S-LINK>A[ring] VIP10
+  S-LINK>A[ring] Černý pátek
+  S-BUTTON>A[ring] Upravit, pro koho platí
+  BUTTON[ring] Stav v obchodě Na webu se sl
+  S-BUTTON>A[ring] Zapnout na webu
+  S-CLICKABLE>A[ring] Slevy a kódy Aktivní Sleva v
+  S-CLICKABLE>A[ring] Množstevní slevy Kupte víc, 
+  S-CLICKABLE>A[ring] Milníky Stupně podle hodnoty
+  S-CLICKABLE>A[ring] Výprodej Pro · odemknout Dop
+  S-CLICKABLE>A[ring] Kampaně Pro · odemknout Blac
+  S-CLICKABLE>A[ring] Ochrana marže Žádná sleva ne
+  S-CLICKABLE>A[ring] Vyzkoušet košík Pro · odemkn
+  S-CLICKABLE>A[ring] Přehledy Kolik objednávek mě
+  S-CLICKABLE>A[ring] Překlady Texty na webu v kaž
+
+== discounts?sync=ok 
+ pointer-but-not-focusable: [] 
+ tab order:
+  A[ring] Aktivní: Slevy a kódy
+  A[ring] Aktivní: Množstevní slevy
+  A[ring] Aktivní: Milníky
+  A[ring] Výprodej Pro
+  A[ring] Kampaně Pro
+  A[ring] Umístění na webu
+  S-CLICKABLE>A[ring] % na vše Automatická sleva n
+  S-CLICKABLE>A[ring] Částka z objednávky Pevná čá
+  S-CLICKABLE>A[ring] Doprava zdarma Od částky, kt
+  S-CLICKABLE>A[ring] Uvítací kód Kód pro newslett
+  S-CLICKABLE>A[ring] Vlastní sleva Začnete s čist
+  BUTTON[ring] Vše 6
+  BUTTON[ring] Vyžaduje pozornost 3
+  BUTTON[ring] Aktivní 3
+
+== tiers 
+ pointer-but-not-focusable: [] 
+ tab order:
+  A[ring] Aktivní: Slevy a kódy
+  A[ring] Aktivní: Množstevní slevy
+  A[ring] Aktivní: Milníky
+  A[ring] Výprodej Pro
+  A[ring] Kampaně Pro
+  A[ring] Umístění na webu
+  BUTTON[ring] Skrýt vysvětlení
+  S-BUTTON>A[ring] Zobrazit tarif Pro
+  BUTTON[ring] Pro celý obchod Aktivní Od 3
+  BUTTON[ring] Tabulka na webu Aktivní Tabu
+  BUTTON[ring] Výjimky Pro · odemknout Ulož
+  S-BUTTON>BUTTON[ring] Upravit
+  S-LINK>A[ring] Sčítá se s
+  S-LINK>A[ring] Ochrana marže
+
+== outlet 
+ pointer-but-not-focusable: [] 
+ tab order:
+  A[ring] Aktivní: Slevy a kódy
+  A[ring] Aktivní: Množstevní slevy
+  A[ring] Aktivní: Milníky
+  A[ring] Výprodej Pro
+  A[ring] Kampaně Pro
+  A[ring] Umístění na webu
+  BUTTON[ring] Skrýt vysvětlení
+  BUTTON[ring] Výprodeje Vyžaduje pozornost
+  BUTTON[ring] Nový výprodej Pro · odemknou
+  BUTTON[ring] Štítek na webu Vyžaduje pozo
+  BUTTON[ring] Pravidla výprodeje S jinou s
+  S-BUTTON>BUTTON[ring] Podrobnosti
+  S-BUTTON>BUTTON[ring] Ukončit výprodej
+  S-BUTTON>BUTTON[ring] Skrýt podrobnosti

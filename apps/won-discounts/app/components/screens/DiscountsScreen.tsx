@@ -13,7 +13,7 @@ import { isMilestoneRule } from "@won/core/discounts/milestones";
 
 import { useT } from "../../i18n/context";
 import { RecipePicker } from "../RecipeGrid";
-import { RuleTable } from "../RuleTable";
+import { RuleTable } from "../shell/RuleTable";
 import { formatDate } from "@won/core/discounts/describe";
 
 import { describeRuleBrief, missingCurrencies, ruleDays, ruleName } from "../model/describe";
