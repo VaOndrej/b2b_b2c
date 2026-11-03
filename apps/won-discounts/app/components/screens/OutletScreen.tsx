@@ -282,7 +282,7 @@ function RunCard({
   }, [result]);
   // The row's details: open by themselves when the sale needs a decision, a save was refused, or a link leads here.
   const refused = !!result && !result.ok;
-  const [open, setOpen] = useState(run.oversold > 0 || (!!run.problem && run.retry) || refused);
+  const [open, setOpen] = useState(run.oversold > 0 || (!!run.problem && run.retry) || (run.status === "ended" && run.returnPending > 0) || refused);
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.hash === `#${runAnchor(run.id)}`) setOpen(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- a deep link is read once
@@ -498,27 +498,15 @@ function RunCard({
         ) : null}
     </>
   );
-  if (!active) {
-    return (
-      <div id={runAnchor(run.id)} style={{ scrollMarginTop: 16 }}>
-        <SubCard title={<span style={{ fontSize: 16 }}>{run.title || t("outlet.run.unknown")}</span>} label={statusPill} tone={run.oversold > 0 || (run.problem && run.retry) || (ended && run.returnPending > 0) ? "attention" : undefined}>
-          <RowNote>
-            {run.price ? `${t("outlet.run.price", { before: money(run.price.before, run.price.currency), after: money(run.price.sale, run.price.currency), percent: run.percent })} · ` : ""}
-            {t("outlet.run.ledger", { sold: run.sold, quota: run.quota, returned: run.returned, left: run.left })}
-          </RowNote>
-          {body}
-        </SubCard>
-      </div>
-    );
-  }
-  // 13 Oct 2026: a running sale is ONE ROW with columns (the product, the price, what is left, the end, the web),
-  // so several sales read as a table. What is set up under it — the badge, the other discounts, the history — opens
-  // with "Podrobnosti"; it is open by itself only when the sale needs a decision.
+  // Every sale is ONE ROW with the same columns, whatever its state (audit 2026-11-03 F9): the product with its state,
+  // the price, what is left, the end, the web — so the sales read as one table. A problem is the state label plus its
+  // sentence and action in the details; what is set up under it and the history open with "Podrobnosti", by themselves
+  // only when the sale needs a decision.
   const cell = { display: "grid", gap: 2, alignContent: "start", minWidth: 0, flex: "1 1 120px" } as const;
   const cellLabel = { fontSize: 11, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: WON_MUTED } as const;
-  const attention = run.oversold > 0 || (!!run.problem && run.retry);
+  const attention = run.oversold > 0 || (!!run.problem && run.retry) || (ended && run.returnPending > 0);
   return (
-    <div id={runAnchor(run.id)} data-won-outlet-run={run.id} style={{ scrollMarginTop: 16, border: `1px solid ${attention ? "#eab5b5" : WON_LINE}`, borderRadius: 12, background: "#ffffff", fontFamily: WON_FONT, overflow: "hidden" }}>
+    <div id={runAnchor(run.id)} data-won-outlet-run={run.id} data-won-outlet-run-status={run.status} style={{ scrollMarginTop: 16, border: `1px solid ${attention ? "#eab5b5" : WON_LINE}`, borderRadius: 12, background: "#ffffff", fontFamily: WON_FONT, overflow: "hidden" }}>
       <div data-won-outlet-facts="" style={{ display: "flex", flexWrap: "wrap", gap: "10px 16px", alignItems: "flex-start", padding: "12px 14px" }}>
         <div style={{ ...cell, flex: "1.6 1 170px" }}>
           <span style={cellLabel}>{t("outlet.fact.product")}</span>
@@ -544,17 +532,17 @@ function RunCard({
         </div>
         <div style={cell}>
           <span style={cellLabel}>{t("outlet.fact.end")}</span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: WON_INK }}>{run.endsAt ?? t("outlet.fact.noEnd")}</span>
-          {run.endsAt ? null : <span style={{ fontSize: 12.5, color: WON_MUTED }}>{t("outlet.fact.noEndHint")}</span>}
+          <span style={{ fontSize: 14, fontWeight: 700, color: WON_INK }}>{active ? (run.endsAt ?? t("outlet.fact.noEnd")) : (run.endedAt ?? "—")}</span>
+          {!active || run.endsAt ? null : <span style={{ fontSize: 12.5, color: WON_MUTED }}>{t("outlet.fact.noEndHint")}</span>}
         </div>
         <div style={cell}>
           <span style={cellLabel}>{t("outlet.web.card")}</span>
-          {run.display.startsWith("strike_badge") && run.showBadge ? (
+          {active && run.display.startsWith("strike_badge") && run.showBadge ? (
             <span>
               <PlacementPill placement={badge} move={badgeMove} />
             </span>
           ) : (
-            <span style={{ fontSize: 13, color: WON_INK }}>{web?.text ?? ""}</span>
+            <span style={{ fontSize: 13, color: WON_INK }}>{web?.text ?? "—"}</span>
           )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "stretch", flex: "0 0 auto", marginLeft: "auto" }}>

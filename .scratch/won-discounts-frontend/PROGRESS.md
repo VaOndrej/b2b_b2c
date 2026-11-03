@@ -2,9 +2,9 @@
 
 ## CHECKPOINT
 
-- **Hotové tickety:** 01–18
-- **Rozdělaný:** 19 (Výprodej: jeden řádek), nezačatý
-- **Další krok:** 19: aktivní i skončené výprodeje jedním řádkem s rozbalením, akce dosažitelné. Pak review 15–19.
+- **Hotové tickety:** 01–19
+- **Rozdělaný:** review 15–19, pak 20 (jeden StatusBadge)
+- **Další krok:** review 15–19 proti main; pak 20: StatusPill + CardPill + Pill → jeden StatusBadge
 - **Čeká na Ondřeje:** 07 formát data v adminu, 09, 10, 11 Save Bar v shopify app dev (postupy v ticketech); 10: per-run úpravy výprodeje na s-modal?; 17: přijmout −14 % slov u Marže a 0 % u Překladů?
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
@@ -31,7 +31,8 @@
 | 15 | done | 1b169162 | `evidence/frontend-15/` |
 | 16 | done | 2bc2bf2b | `evidence/frontend-16/` |
 | 17 | done, slova jen částečně | 126b66b0 | `evidence/frontend-17/` |
-| 18 | done | viz git log | `evidence/frontend-18/` |
+| 18 | done | 59096c7f | `evidence/frontend-18/` |
+| 19 | done | viz git log | `evidence/frontend-19/` |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 
