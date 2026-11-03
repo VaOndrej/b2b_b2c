@@ -936,13 +936,7 @@ export function OutletScreen(props: OutletScreenProps) {
       <s-stack direction="block" gap="base">{children}</s-stack>
     </div>
   );
-  // N16: "3 věci k vyřešení" names them — one row each at the top of the panel, with the link to the sale.
   const titleOf = (run: OutletRunView) => run.title || t("outlet.run.unknown");
-  const todo: { key: string; text: string; runId: string }[] = [
-    ...running.filter((r) => r.status === "active" && r.oversold > 0).map((r) => ({ key: `o${r.id}`, text: t("outlet.todo.oversold", { title: titleOf(r), n: r.oversold }), runId: r.id })),
-    ...running.filter((r) => r.problem).map((r) => ({ key: `p${r.id}`, text: t("outlet.todo.problem", { title: titleOf(r), problem: r.problem ?? "" }), runId: r.id })),
-    ...ended.filter((r) => r.returnPending > 0).map((r) => ({ key: `r${r.id}`, text: t("outlet.todo.pending", { title: titleOf(r), n: r.returnPending }), runId: r.id })),
-  ];
   const runningTitles = running.map((r) => r.title).filter(Boolean);
   // The editor opens on a product that IS on sale: on the default product the badge has nothing to say.
   const saleEditorUrl = running.find((r) => r.editorUrl)?.editorUrl ?? null;
@@ -1005,25 +999,8 @@ export function OutletScreen(props: OutletScreenProps) {
                 }
               />
             ) : null}
-        {todo.length > 0 ? (
-          <WonSection title={t("outlet.todo.title")} glyph="alert" anchor="todo">
-            <div data-won-outlet-todo>
-              {todo.map((item) => (
-                <WonRow
-                  key={item.key}
-                  tone="attention"
-                  action={
-                    <s-button href={`#${runAnchor(item.runId)}`} variant="secondary">
-                      {t("outlet.todo.show")}
-                    </s-button>
-                  }
-                >
-                  <RowNote tone="attention">{item.text}</RowNote>
-                </WonRow>
-              ))}
-            </div>
-          </WonSection>
-        ) : null}
+        {/* What is to resolve is said once, on the sale's own card with its action (retry, end, reopen or keep, zásada E1);
+            the tile above says that something waits. */}
         {running.length > 0 ? (
           <WonSection title={t("outlet.running.title")} glyph="calendar" anchor="running">
             <s-stack direction="block" gap="base">

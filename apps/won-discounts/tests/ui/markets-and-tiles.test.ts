@@ -260,12 +260,13 @@ test("the markets table — amounts, what is missing with its link, percent leve
   assert.deepEqual(marketRows(onlySk, { plan: "free", locale: "cs" }).map((r) => r.shipping.kind), ["amount", "amount", "missing", "missing"], "Germany has no amount of its own: missing there, not Slovakia's");
 });
 
-test("the sale page lists what there is to resolve, each row with the link to its sale", async () => {
+test("the sale page says each thing to resolve once, on its sale with its action; the tile counts them", async () => {
   const html = await render("outlet?plan=pro");
-  const todo = html.slice(html.indexOf("data-won-outlet-todo"), html.indexOf('id="running"'));
-  assert.equal((todo.match(/href="#run-/g) ?? []).length, 2);
-  assert.match(todo, /Ponožky Won — 39–42: po konci se vrátilo 2 ks\./);
-  assert.match(tile(html, "sales", "data-won-view-body"), /data-won-tile-issues[^>]*>2 věci k vyřešení/, "the tile counts the same rows");
+  assert.doesNotMatch(html, /data-won-outlet-todo|K vyřešení/);
+  const words = html.replace(/<[^>]+>/g, " ");
+  assert.equal(words.split("Cenu se nepodařilo změnit").length - 1, 1);
+  assert.match(html, /Po konci výprodeje se vrátily 2 ks|vrátil[oy]? 2 ks/);
+  assert.match(tile(html, "sales", "data-won-view-body"), /data-won-tile-issues[^>]*>2 věci k vyřešení/, "the tile counts what waits on the cards");
 });
 
 test("the words a merchant does not know are gone from the screens", async () => {

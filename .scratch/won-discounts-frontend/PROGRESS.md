@@ -2,9 +2,9 @@
 
 ## CHECKPOINT
 
-- **Hotové tickety:** 01–13
-- **Rozdělaný:** 14 (moduly: stav jednou), nezačatý
-- **Další krok:** 14: Množstevní slevy, Výprodej, Marže: sekce neopakuje stav dlaždice; chyba výprodeje jednou. Pak review 12–14.
+- **Hotové tickety:** 01–14
+- **Rozdělaný:** review 12–14
+- **Další krok:** review 12–14, pak 15 (Pro jednou: editor)
 - **Čeká na Ondřeje:** 07 formát data v adminu, 09, 10, 11 Save Bar v shopify app dev (postupy v ticketech); 10: per-run úpravy výprodeje na s-modal?
 - **Baseline 2026-11-03 (před 01):** node testy 2038/2038, engine 720/720, typecheck čistý, lint 0 chyb / 4 varování
   (import/no-duplicates v themes.server.ts), E2E preview 48/48 (od 05: 49).
@@ -26,7 +26,8 @@
 | 10 | done, čeká na ruční ověření | 2b5a65ca | `evidence/frontend-10/`, E2E 58 |
 | 11 | done, čeká na ruční ověření | 18557663 | `evidence/frontend-11/`, ADMIN-UX §2 |
 | 12 | done | a39b3eee | `evidence/frontend-12/`, E2E admin.state-once |
-| 13 | done | viz git log | `evidence/frontend-13/` |
+| 13 | done | e67ed844 | `evidence/frontend-13/` |
+| 14 | done | viz git log | `evidence/frontend-14/` |
 
 ## Pomůcky (scratchpad session, nejsou v repu)
 

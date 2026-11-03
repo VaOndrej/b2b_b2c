@@ -313,7 +313,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /nastavení kolekce/,
       /Slevy z objednávky/,
       /ne z objednávek/,
-      /Sleva ve Won nikdy nesrazí cenu pod hranici, kterou tu nastavíte\./,
+      /Hranice a co se sníží/,
     ],
   },
   // Audit P2-1: before the first complete read, unread products have only the ceiling — said, and the impact is still being computed.
@@ -415,7 +415,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   {
     path: "tiers",
     expect: [
-      /Množstevní sleva pro celý obchod/,
+      /Úrovně slevy/,
       /Od 3 ks −10\u00a0%, od 5 ks −15\u00a0%, od 10 ks −20\u00a0%/,
       /Tohle je v tarifu Pro, zákazník to nedostane/,
       /Produkty v ní ve Free nedostanou žádnou množstevní slevu/,
@@ -515,7 +515,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "tiers?result=invalid", expect: [/Sleva tady musí být aspoň taková jako od 3 ks/, /Úroveň od 5 ks už tu je/] },
   {
     path: "tiers?locale=en",
-    expect: [/Quantity discounts/, /Quantity discount for the whole store/, /From 3 items −10%, from 5 items −15%, from 10 items −20%/, /Quantity discount/, /900,00 Kč each/, /Add table to the product page|View on my site/],
+    expect: [/Quantity discounts/, /Discount levels/, /From 3 items −10%, from 5 items −15%, from 10 items −20%/, /Quantity discount/, /900,00 Kč each/, /Add table to the product page|View on my site/],
   },
   {
     path: "settings",
@@ -812,7 +812,9 @@ test("navigace a stav, body 1 a 2: a view tile says only what changes; the secti
   const tiers = (await render("tiers")).html;
   assert.match(viewTile(tiers, "global"), /data-won-state="active"[\s\S]*Od 3 ks −10\s%, od 5 ks −15\s%, od 10 ks −20\s%/);
   assert.doesNotMatch(viewTile(tiers, "global"), /data-won-tile-about|Úrovně slevy podle počtu kusů/);
-  assert.match(section(tiers, "global"), /Množstevní sleva pro celý obchod[\s\S]*Platí pro všechny produkty\./);
+  assert.match(section(tiers, "global"), /Úrovně slevy[\s\S]*Platí pro všechny produkty\./);
+  // The row under it is what is stored, without the tile's name or label again (zásada E1).
+  assert.doesNotMatch(section(tiers, "global"), /Množstevní sleva pro celý obchod|data-won-state=/);
   // The section's HEADER repeats neither; under it the whole-store discount is a list row (feedback 9 Oct 2026, bod 4).
   assert.doesNotMatch(section(tiers, "global").split("data-won-tiers-list")[0]!, /data-won-state=|Od 3 ks −10\s%, od 5 ks −15\s%/);
   assert.match(section(tiers, "global"), /data-won-tiers-list="stored"[\s\S]*data-won-tiers-editor="closed"/);

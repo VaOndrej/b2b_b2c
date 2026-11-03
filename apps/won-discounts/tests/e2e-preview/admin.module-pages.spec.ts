@@ -104,10 +104,11 @@ test("Ceny na kartách: while it is on, one click opens the storefront's cards a
 test("Množstevní slevy: the whole-store discount is a list; its fields open only after \"Upravit\" / \"Přidat\"", async ({ page }) => {
   const list = page.locator("[data-won-tiers-list]");
   const editor = page.locator("[data-won-tiers-editor]");
-  // A stored discount: one row that says it runs and what it gives; no field to change by accident.
+  // A stored discount: one row that says what it gives (that it runs is the tile's label); no field to change by accident.
   await open(page, "tiers");
   await expect(list).toHaveAttribute("data-won-tiers-list", "stored");
-  await expect(list.locator("[data-won-state]")).toHaveText("Aktivní");
+  await expect(page.locator('[data-won-view-tile="global"] [data-won-state]')).toHaveText("Aktivní");
+  await expect(list.locator("[data-won-state]")).toHaveCount(0);
   await expect(list).toContainText("Od ");
   await expect(editor).toBeHidden();
   // The closed editor is still in the form: a save posts the stored levels unchanged (never an empty set).

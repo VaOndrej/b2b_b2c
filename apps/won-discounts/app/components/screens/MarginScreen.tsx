@@ -322,10 +322,10 @@ export function MarginScreen(props: MarginScreenProps) {
           </ModuleTiles>
           <ViewPanel id="settings" view={view}>
           <WonSection
-            title={t("module.margin")}
+            // The tile above carries the label and what is set, the page guide what the page is for (§19e, zásada E1):
+            // the section header repeats neither.
+            title={t("margin.settings.title")}
             glyph="shield"
-            // The label and the sentence of what is set are on the tile above (§19e); here only what the section is for.
-            hint={t("soon.margin")}
             anchor="settings"
             aside={<MarginProof settings={inForce} currency={shopCurrency} />}
           >

@@ -50,7 +50,7 @@ import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
 import { useView, ViewPanel } from "../shell/views";
 import { usePolarisJump } from "../shell/scroll";
 import { DiscountsSubNav } from "../shell/SubNav";
-import { RowNote, StatusPill, WonRow, WonSection } from "../shell/WonSection";
+import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 import { WON_LINE } from "../shell/tokens";
 import { ProTierSets, TIERS_CAPACITY_ANCHOR } from "../tiers/ProTierSets";
 import { TierSetEditor } from "../tiers/TierSetEditor";
@@ -302,7 +302,8 @@ export function TiersScreen(props: TiersScreenProps) {
           </ModuleTiles>
           <ViewPanel id="global" view={view}>
           <WonSection
-            title={t("tiers.global.title")}
+            // The tile above is "Pro celý obchod" with its label (§19e): the header says what is set here, not the tile again.
+            title={t("tiers.global.levels")}
             glyph="layers"
             // The label and the sentence of what is set are on the tile above (§19e); here only what the section is for.
             hint={t("tiers.global.hint")}
@@ -348,14 +349,9 @@ export function TiersScreen(props: TiersScreenProps) {
                     )
                   }
                 >
+                  {/* What is stored, in one line: its name and label are on the tile above (zásada E1). */}
                   {storedGlobal ? (
-                    <>
-                      <span style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-                        <s-text type="strong">{t("tiers.global.title")}</s-text>
-                        {props.status?.global ? <StatusPill state={props.status.global.state} /> : null}
-                      </span>
-                      <RowNote>{storedSummary}</RowNote>
-                    </>
+                    <s-text type="strong">{storedSummary}</s-text>
                   ) : (
                     <RowNote>{t("tiers.list.empty")}</RowNote>
                   )}
