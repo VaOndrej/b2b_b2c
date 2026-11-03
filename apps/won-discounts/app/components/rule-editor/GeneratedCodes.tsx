@@ -13,7 +13,7 @@
 //
 // The seed of a batch never reaches the browser: the loader sends the codes.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
 import { CODE_BATCH_DEFAULTS, codeBatchMinLength, codeBatchPattern, type CodeBatchSpec } from "@won/core/discounts/code-batch";
@@ -22,7 +22,6 @@ import { useT } from "../../i18n/context";
 import { FIELD } from "../model/rule-form";
 import type { GeneratedBatchView } from "../model/types";
 import { boolAttr } from "../shell/attrs";
-import { hoverMark } from "../shell/hover";
 import { PlanBadge } from "../shell/PlanBadge";
 import { ProFrame } from "../shell/ProFrame";
 import { SegmentedChoice } from "../shell/SegmentedChoice";
@@ -38,17 +37,6 @@ function touchForm(el: HTMLElement | null) {
   window.setTimeout(() => el?.closest("form")?.dispatchEvent(new Event("change", { bubbles: true })), 0);
 }
 
-const linkButton = {
-  border: "none",
-  background: "transparent",
-  padding: 0,
-  font: "inherit",
-  fontSize: 13,
-  color: WON_INK,
-  textDecoration: "underline",
-  textUnderlineOffset: 2,
-  cursor: "pointer",
-} as const;
 
 function BatchCard({ batch, disabled }: { batch: GeneratedBatchView; disabled: boolean }) {
   const tr = useT();
@@ -56,6 +44,14 @@ function BatchCard({ batch, disabled }: { batch: GeneratedBatchView; disabled: b
   const [gone, setGone] = useState<string[]>([]);
   const [dropped, setDropped] = useState(false);
   const [query, setQuery] = useState("");
+  const filterRef = useRef<HTMLElementTagNameMap["s-search-field"]>(null);
+  useEffect(() => {
+    const field = filterRef.current;
+    if (!field) return;
+    const read = () => setQuery(String(field.value ?? ""));
+    field.addEventListener("input", read);
+    return () => field.removeEventListener("input", read);
+  });
   const [all, setAll] = useState(false);
   const [copied, setCopied] = useState<"ok" | "failed" | null>(null);
   const left = batch.codes.filter((code) => !gone.includes(code));
@@ -83,51 +79,38 @@ function BatchCard({ batch, disabled }: { batch: GeneratedBatchView; disabled: b
       {dropped ? (
         <div style={{ fontSize: 12.5, color: WON_ATTENTION }}>
           {t("editor.batch.dropped")}{" "}
-          <button type="button" {...hoverMark("link")} style={linkButton} onClick={(event) => { setDropped(false); touchForm(event.currentTarget); }}>
+          <s-button variant="tertiary" onClick={(event) => { setDropped(false); touchForm(event.currentTarget as HTMLElement); }}>
             {t("editor.batch.keep")}
-          </button>
+          </s-button>
         </div>
       ) : (
         <>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px", alignItems: "center" }}>
-            <button type="button" {...hoverMark("link")} style={linkButton} onClick={copy}>
+            <s-button variant="tertiary" onClick={() => void copy()}>
               {t("editor.batch.copy")}
-            </button>
-            <a href={csv} download={`${batch.pattern.replace(/[^A-Za-z0-9_-]+/g, "") || "kody"}.csv`} style={{ ...linkButton, display: "inline-block" }}>
+            </s-button>
+            <s-link href={csv} download={`${batch.pattern.replace(/[^A-Za-z0-9_-]+/g, "") || "kody"}.csv`}>
               {t("editor.batch.csv")}
-            </a>
+            </s-link>
             {!disabled ? (
-              <button type="button" {...hoverMark("link")} style={{ ...linkButton, color: WON_ATTENTION }} onClick={(event) => { setDropped(true); touchForm(event.currentTarget); }}>
+              <s-button variant="tertiary" tone="critical" onClick={(event) => { setDropped(true); touchForm(event.currentTarget as HTMLElement); }}>
                 {t("editor.batch.drop")}
-              </button>
+              </s-button>
             ) : null}
             {copied ? <span style={{ fontSize: 12.5, color: copied === "ok" ? WON_MUTED : WON_ATTENTION }}>{t(copied === "ok" ? "editor.batch.copied" : "editor.batch.copyFailed")}</span> : null}
           </div>
           {left.length > CODES_SHOWN ? (
-            <input
-              type="search"
-              // Uncontrolled: the editor re-renders from a native `input` listener on the form (see SelectedList).
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={t("editor.batch.filter", { n: left.length })}
-              aria-label={t("editor.batch.filter", { n: left.length })}
-              style={{ font: "inherit", fontSize: 13, padding: "6px 10px", border: `1px solid ${WON_LINE}`, borderRadius: 8, background: WON_SURFACE, color: WON_INK, maxWidth: 320 }}
-            />
+            <div style={{ maxWidth: 320 }}>
+              {/* No name: the filter is never posted. Polaris fields have no React onChange; read on the native input. */}
+              <s-search-field ref={filterRef} label={t("editor.batch.filter", { n: left.length })} labelAccessibilityVisibility="exclusive" placeholder={t("editor.batch.filter", { n: left.length })} />
+            </div>
           ) : null}
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 200px), 1fr))", gap: 4 }}>
             {shown.map((code) => (
               <li key={code} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, background: WON_WASH, borderRadius: 6, padding: "3px 4px 3px 8px", fontSize: 13, color: WON_INK, fontVariantNumeric: "tabular-nums" }}>
                 <span style={{ overflowWrap: "anywhere" }}>{code}</span>
                 {!disabled ? (
-                  <button
-                    type="button"
-                    aria-label={t("editor.batch.removeCode", { code })}
-                    title={t("editor.batch.removeCode", { code })}
-                    onClick={(event) => { setGone((list) => [...list, code]); touchForm(event.currentTarget); }}
-                    {...hoverMark("icon")}
-                    style={{ flex: "0 0 auto", width: 24, height: 24, border: "none", borderRadius: 6, background: "transparent", color: WON_MUTED, cursor: "pointer", fontSize: 16, lineHeight: 1 }}
-                  >
-                    ×
-                  </button>
+                  <s-button variant="tertiary" icon="x" accessibilityLabel={t("editor.batch.removeCode", { code })} onClick={(event) => { setGone((list) => [...list, code]); touchForm(event.currentTarget as HTMLElement); }} />
                 ) : null}
               </li>
             ))}
@@ -135,9 +118,9 @@ function BatchCard({ batch, disabled }: { batch: GeneratedBatchView; disabled: b
           {shown.length === 0 ? <div style={{ fontSize: 13, color: WON_MUTED }}>{t(left.length === 0 ? "editor.batch.allRemoved" : "selected.noMatch")}</div> : null}
           {left.length > CODES_SHOWN && !needle ? (
             <div>
-              <button type="button" {...hoverMark("link")} style={linkButton} onClick={() => setAll((value) => !value)}>
+              <s-button variant="tertiary" onClick={() => setAll((value) => !value)}>
                 {all ? t("selected.showLess") : t("selected.showAll", { n: left.length })}
-              </button>
+              </s-button>
             </div>
           ) : null}
           {gone.length > 0 ? <div style={{ fontSize: 12.5, color: WON_ATTENTION }}>{tr.tp("editor.batch.goneOnSave", gone.length)}</div> : null}

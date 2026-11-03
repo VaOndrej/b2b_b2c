@@ -52,6 +52,10 @@ Každý settings `<Form>` má **`data-save-bar`**; App Bridge sám ukáže Save/
 lištu a hlídá odchod. Inline „Save" tlačítko se **nepoužívá**. Formuláře drž
 **uncontrolled** (initial `value` z loaderu); Discard = form reset (`onReset` pro
 resync živého preview). Výjimka: jednorázové akce (upgrade plánu) zůstávají tlačítkem.
+Na stránce je **jeden** takový formulář: část, kterou ukládá jiná akce, patří do
+téhož formuláře a při uložení se pošle za stránkou (vzor: Won Discounts
+`model/one-save.ts` + `shell/one-save.tsx`). Druhý formulář s vlastním „Uložit"
+vedle Save Baru obchodníka mate, co se vlastně uložilo (audit Won Discounts 2026-11-03, F3).
 
 ### 3. Živý preview přes NATIVNÍ event, ne React `onChange` — impl. §2 `[PLAT]`
 React synthetic `onChange`/`onInput` se u `s-*` custom elementů **nevyvolá** (React je

@@ -7,13 +7,14 @@ import { useT } from "../../i18n/context";
 import { COMBINE_FIELD, COMBINE_OFFERED, combineTypeLabel, type CombineOwner, type CombineType } from "../model/combine";
 import { boolAttr } from "./attrs";
 
-export function CombineTypes({ owner, checked, disabled = false }: { owner: CombineOwner; checked: readonly CombineType[]; disabled?: boolean }) {
+/** `name`: how a field is named in the form (the page's one form prefixes a part's fields, model/one-save.ts). */
+export function CombineTypes({ owner, checked, disabled = false, name = (field) => field }: { owner: CombineOwner; checked: readonly CombineType[]; disabled?: boolean; name?: (field: string) => string }) {
   const tr = useT();
   return (
     <s-stack direction="block" gap="small-200">
-      <input type="hidden" name={COMBINE_FIELD.posted} value="1" />
+      <input type="hidden" name={name(COMBINE_FIELD.posted)} value="1" />
       {COMBINE_OFFERED[owner].map((type) => (
-        <s-checkbox key={type} name={COMBINE_FIELD.types} value={type} label={combineTypeLabel(type, tr)} checked={boolAttr(checked.includes(type))} disabled={boolAttr(disabled)} />
+        <s-checkbox key={type} name={name(COMBINE_FIELD.types)} value={type} label={combineTypeLabel(type, tr)} checked={boolAttr(checked.includes(type))} disabled={boolAttr(disabled)} />
       ))}
     </s-stack>
   );

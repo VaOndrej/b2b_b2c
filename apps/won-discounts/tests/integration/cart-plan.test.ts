@@ -206,7 +206,7 @@ test("Shopify reads are cached per shop for CART_PLAN_CACHE_MS (10 min, injected
   assert.deepEqual(calls.slice(5), ["WonCartPlanConfig", "WonCartPlanVariants"], "another shop never reads this shop's cache (SEC-2)");
 });
 
-test("audit P1: the cache never grows past its cap — random variant ids from a public endpoint cannot exhaust memory", async () => {
+test("the cache never grows past its cap — random variant ids from a public endpoint cannot exhaust memory", async () => {
   const config = payload({ tiers: TIERS });
   const { client } = fakeAdmin(config, {});
   const lines = (from: number) => Array.from({ length: CART_PLAN_MAX_LINES }, (_, i) => ({ key: `k${i}`, variantId: from + i, productId: 1, quantity: 1, unitPrice: 100_00 }));
@@ -285,7 +285,7 @@ test("every mutation sent through the app's admin client drops that shop's cart 
   assert.equal(calls.length, 4, "a write drops it");
 });
 
-test("audit P2: Shopify reads per shop are limited per minute; over the limit no read and no answer (the panel shows no hint, fail closed)", async () => {
+test("Shopify reads per shop are limited per minute; over the limit no read and no answer (the panel shows no hint, fail closed)", async () => {
   const config = payload({ tiers: TIERS });
   const { client, calls } = fakeAdmin(config, {});
   const line = (variantId: number) => ({ key: `k${variantId}`, variantId, productId: 1, quantity: 1, unitPrice: 100_00 });

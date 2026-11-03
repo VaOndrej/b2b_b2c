@@ -1,0 +1,625 @@
+// Výprodej (MVP 5, Pro) — the module screen (contract O10). "Doprodat N kusů, pak zpět na plnou cenu":
+//   1. Nový výprodej — a variant (Shopify's picker; with several variants ticked the merchant picks ONE here, never
+//      the app, B5), the pieces to sell off (every piece sold counts, the screen says so), a whole percent, an
+//      optional end day (shop-local), the price lists with fixed prices; one button starts it. The section's summary
+//      and the price before → after are computed from the live form (P5). Free (amber, §16): the form is shown
+//      locked under one sentence of what the feature does and the plan link, nothing starts (BILL-1, A6);
+//   2. Aktivní výprodeje — price before → during, the ledger (sold / returned / left), an exact "sold past the
+//      pieces", the end, the steps, "Ukončit výprodej" (asks first), "Zkusit znovu" at a failed step;
+//   3. Skončené výprodeje — why and when; returned pieces after the end ask "Znovu otevřít" / "Nechat skončený";
+//   4. Zobrazení a vratky — the 4 display levels, the return-after-end setting, the badge block deep link. Hidden
+//      on Free unless earlier sales still run (B15; the server refuses the same save).
+// A section without content is not rendered (P2). Without order access (5a, F-O1) a warning says the sold pieces are
+// not counted, and the end-date field carries the marker (P3).
+// B14: a refused start keeps what was typed: the action returns the posted values, the fields are seeded from them
+// and errors are rendered beside the fields (never through `error`, which resets a Polaris field).
+// Each action is its own small form (one button = one action, §13); the server parses it (outlet-admin.server.ts).
+
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Form, useSubmit } from "react-router";
+import { formatMoney } from "@won/core/discounts/describe";
+import { useT } from "../../../i18n/context";
+import { LookSection } from "../../looks/LookSection";
+import { PageGuide } from "../../shell/PageGuide";
+import { pickProducts } from "../../model/app-bridge";
+import { combineSummary } from "../../model/combine";
+import { OUTLET_INTENT, outletPreviewPrice, readOutletLive, type OutletLiveDraft } from "../../model/outlet";
+import { placementStatus } from "../../model/module-status";
+import { formatDateTime } from "../../model/signals";
+import { useRefusedSeed } from "../../model/submitted";
+import type { OutletRunView, UiResult } from "../../model/types";
+import { FieldMessage } from "../../rule-editor/parts";
+import { boolAttr } from "../../shell/attrs";
+import { CombinePart, combinePart } from "../../shell/ModuleCombine";
+import { PartRefusal, useOneSave } from "../../shell/one-save";
+import { useFormActions } from "../../shell/form-actions";
+import { ModuleTiles, ViewTile } from "../../shell/ModuleTile";
+import { Notice } from "../../shell/Notice";
+import { ProSell } from "../../shell/ProSell";
+import { DiscountsSubNav } from "../../shell/SubNav";
+import { editorOnProductOf, editorOpenUrl, placementOf, spotAdvice } from "../../model/embed";
+import { StepCard } from "../../shell/StepCard";
+import { SubCard } from "../../shell/SubCard";
+import { SpotNote } from "../../StorefrontPlacements";
+import { WON_DASH, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT_EDGE, WON_SELECT_TINT, WON_SURFACE, WON_WASH } from "../../shell/tokens";
+import { RowNote, WonRow, WonSection } from "../../shell/WonSection";
+import { StatusBadge } from "../../shell/StatusBadge";
+import { COMBINE_CLASSES, CombineChoice, DISPLAYS, ENDS_ANCHOR, F, HASH_VIEW, OutletBanner, OutletScreenProps, OutletView, PickedSaleVariant, REOPENS, RunCard, RunTakes, SalePreview, capitalized, endDialogId, isOutletResult, nextDay, runAnchor } from "./RunCard";
+import { hoverMark } from "../../shell/hover";
+export type { OutletScreenProps } from "./RunCard";
+
+export function OutletScreen(props: OutletScreenProps) {
+  const tr = useT();
+  const { t } = tr;
+  const { plan, result, running, ended, priceLists, limits, display, reopen, today, configVersion, badgeBlockAddUrl, ordersCounted, shopCurrency } = props;
+  // What a sale without its own choice takes: the list of Výprodej, as a sentence.
+  const shopTakes = capitalized(combineSummary(props.combine, tr));
+  const badge = placementOf(props.placed?.outletBadge);
+  const badgeMove = badge === "in_theme" && spotAdvice(props.placed?.spots?.outletBadge)?.move === true;
+  const pro = plan === "pro";
+  const money = (minor: number, currency: string) => formatMoney(minor, currency, tr.locale);
+  const submit = useSubmit();
+  // One save for the settings of Výprodej (shell/one-save.tsx): the reopen setting to this route's action, then
+  // Sčítá se s to /app/combine. A sale's own actions (start, end, retry, keep, reopen, the badge) stay buttons.
+  const actions = useFormActions();
+  const settingsRef = useRef<HTMLFormElement>(null);
+  const oneSave = useOneSave({ pageKey: "outlet", formRef: settingsRef, result: isOutletResult(result) ? null : (result as UiResult | null | undefined), parts: [combinePart("outlet", configVersion ?? null, actions.combine)] });
+  // Discard in the save bar resets the form: remount its fields with what is stored.
+  const [settingsKey, setSettingsKey] = useState(0);
+  useEffect(() => {
+    const el = settingsRef.current;
+    if (!el) return;
+    const onReset = () => setSettingsKey((k) => k + 1);
+    el.addEventListener("reset", onReset);
+    return () => el.removeEventListener("reset", onReset);
+  }, []);
+
+  // B14: what a refused start posted comes back with the result; the fields are seeded from it and remount once.
+  const { seed, key: seedKey } = useRefusedSeed(result);
+  const seededVariant = (): PickedSaleVariant | null => {
+    const id = seed.one(F.variant, "");
+    const productId = seed.one(F.product, "");
+    if (!id || !productId) return null;
+    return { id, productId, title: seed.one(F.variantTitle, ""), ...(seed.one(F.variantPrice, "") ? { price: seed.one(F.variantPrice, "") } : {}) };
+  };
+  const [variant, setVariant] = useState<PickedSaleVariant | null>(seededVariant);
+  /** Several variants ticked in the picker: the merchant picks the one to sell off (one sale = one variant). */
+  const [choices, setChoices] = useState<PickedSaleVariant[] | null>(null);
+  const [pickNote, setPickNote] = useState<"unavailable" | "empty" | null>(null);
+  const err = (field: string) => {
+    if (!result || result.ok || result.reason !== "invalid") return undefined;
+    const e = result.errors?.find((x) => x.field === field);
+    return e ? t(e.key, e.params) : undefined;
+  };
+
+  // P5: the summary follows the form (native input / change: React 18 wires only onClick on `s-*`).
+  const formRef = useRef<HTMLFormElement>(null);
+  const [live, setLive] = useState<OutletLiveDraft>(() => {
+    const whole = (name: string) => (/^\d{1,7}$/.test(seed.one(name, "")) ? Number(seed.one(name, "")) : null);
+    return { quota: whole(F.quota), percent: whole(F.percent), endsOn: seed.one(F.endsOn, ""), priceListIds: seed.all(F.priceList, []), display: seed.one(F.saleDisplay, ""), message: seed.one(F.message, ""), combine: seed.one(F.combine, "") === "1", combineWith: COMBINE_CLASSES.filter((c) => seed.all(F.combineWith, [...COMBINE_CLASSES]).includes(c)) };
+  });
+  useEffect(() => {
+    const el = formRef.current;
+    if (!el) return;
+    const read = () => setLive(readOutletLive(new FormData(el)));
+    el.addEventListener("input", read);
+    el.addEventListener("change", read);
+    return () => {
+      el.removeEventListener("input", read);
+      el.removeEventListener("change", read);
+    };
+  }, []);
+
+  const pick = async () => {
+    // The picker lists the product's variants and returns the ticked ones (even with one product allowed).
+    const picked = await pickProducts(variant ? [variant.productId] : [], { multiple: false });
+    setPickNote(!picked.ok && picked.reason === "unavailable" ? "unavailable" : null);
+    if (!picked.ok) return;
+    const product = picked.items[0];
+    if (!product) return;
+    const options = product.variants.map((v) => ({
+      id: v.id,
+      productId: product.id,
+      title: v.title && v.title !== "Default Title" ? `${product.title} — ${v.title}` : product.title,
+      ...(v.price ? { price: v.price } : {}),
+    }));
+    if (options.length === 0) {
+      setPickNote("empty");
+      return;
+    }
+    if (options.length === 1) {
+      setVariant(options[0]!);
+      setChoices(null);
+      return;
+    }
+    // B5: never choose silently. The earlier variant stays until the merchant picks one of these.
+    setChoices(options);
+  };
+  const priceOf = (v: PickedSaleVariant) => {
+    const preview = outletPreviewPrice(v.price, shopCurrency, 1, "silent");
+    return preview ? money(preview.before, shopCurrency) : null;
+  };
+
+  // How the NEW sale shows: picked in step 2; until then the level the shop used so far.
+  const saleDisplay = (DISPLAYS as readonly string[]).includes(live.display) ? (live.display as (typeof DISPLAYS)[number]) : display;
+  const saleBadge = saleDisplay.startsWith("strike_badge");
+  const preview = variant ? outletPreviewPrice(variant.price, shopCurrency, live.percent, saleDisplay) : null;
+  const priceLine = !variant
+    ? t("outlet.summary.priceNeedsVariant")
+    : !variant.price || priceOf(variant) === null
+      ? t("outlet.summary.priceMissing")
+      : live.percent === null
+        ? t("outlet.summary.priceNeedsPercent", { price: priceOf(variant)! })
+        : preview
+          ? t("outlet.summary.price", { before: money(preview.before, shopCurrency), after: money(preview.after, shopCurrency) })
+          : t("outlet.summary.priceNotLower", { price: priceOf(variant)! });
+  const summaryParts = [
+    variant ? variant.title || t("outlet.summary.variantPicked") : null,
+    live.quota !== null ? t("outlet.summary.pieces", { n: live.quota }) : null,
+    live.percent !== null ? t("outlet.summary.percent", { percent: live.percent }) : null,
+    variant || live.quota !== null || live.percent !== null ? (live.endsOn ? t("outlet.summary.ends", { date: formatDateTime(live.endsOn, tr.locale) }) : t("outlet.summary.noEnd")) : null,
+  ].filter((x): x is string => x !== null);
+  const summary = summaryParts.length > 0 ? summaryParts.join(" · ") : t("outlet.summary.empty");
+  /** What the NEW sale will take with its own choice: the ticked ones of the chosen card (none = the list of Výprodej). */
+  const newTakes = live.combine ? live.combineWith : [];
+
+  const form = (
+    <Form method="post" ref={formRef} data-won-outlet-new>
+      <input type="hidden" name={F.intent} value={OUTLET_INTENT.start} />
+      {variant ? <input type="hidden" name={F.variant} value={variant.id} /> : null}
+      {variant ? <input type="hidden" name={F.product} value={variant.productId} /> : null}
+      {variant ? <input type="hidden" name={F.variantTitle} value={variant.title} /> : null}
+      {variant?.price ? <input type="hidden" name={F.variantPrice} value={variant.price} /> : null}
+      <div key={seedKey}>
+        <StepCard n={1} of={4} title={t("outlet.step.what")} hint={t("outlet.step.what.hint")}>
+          {/* The picked variant is a card of its own with its price and the button that changes it. */}
+          <div data-won-outlet-picked="" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", borderRadius: 12, border: variant ? `1px solid ${WON_LINE}` : `1px dashed ${WON_DASH}`, background: variant ? WON_WASH : WON_SURFACE, fontFamily: WON_FONT }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: WON_MUTED }}>{t("outlet.new.variant")}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: variant ? WON_INK : WON_MUTED, overflowWrap: "anywhere" }}>{variant ? variant.title || t("outlet.summary.variantPicked") : t("outlet.new.none")}</div>
+              {variant && priceOf(variant) ? <div style={{ fontSize: 13, color: WON_MUTED }}>{t("outlet.new.priceNow", { price: priceOf(variant)! })}</div> : null}
+            </div>
+            <s-button variant={variant ? "secondary" : "primary"} onClick={() => void pick()} disabled={boolAttr(!pro)}>
+              {t(variant ? "outlet.new.change" : "outlet.new.pick")}
+            </s-button>
+          </div>
+          {choices ? (
+            <s-box padding="small-300" border="base" borderRadius="base" data-won-outlet-choices>
+              <s-stack direction="block" gap="small-300">
+                <RowNote tone="attention">{t("outlet.new.chooseOne")}</RowNote>
+                {choices.map((c) => (
+                  <WonRow
+                    key={c.id}
+                    action={
+                      <s-button
+                        variant="secondary"
+                        onClick={() => {
+                          setVariant(c);
+                          setChoices(null);
+                        }}
+                      >
+                        {t("outlet.new.choose")}
+                      </s-button>
+                    }
+                  >
+                    <s-text>{priceOf(c) ? `${c.title} · ${priceOf(c)}` : c.title}</s-text>
+                  </WonRow>
+                ))}
+              </s-stack>
+            </s-box>
+          ) : null}
+          {pickNote ? <RowNote tone="attention">{t(pickNote === "unavailable" ? "outlet.new.pickUnavailable" : "outlet.new.pickEmpty")}</RowNote> : null}
+          <FieldMessage text={err(F.variant)} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12, alignItems: "start" }}>
+            <div>
+              <s-number-field name={F.quota} label={t("outlet.new.quota")} value={seed.one(F.quota, "")} min={1} max={limits.quotaMax} step={1} inputMode="numeric" disabled={boolAttr(!pro)} details={t("outlet.new.quotaShort")} />
+              <FieldMessage text={err(F.quota)} />
+            </div>
+            <div>
+              <s-number-field
+                name={F.percent}
+                label={t("outlet.new.percent")}
+                value={seed.one(F.percent, "")}
+                min={limits.percentMin}
+                max={limits.percentMax}
+                step={1}
+                suffix="%"
+                inputMode="numeric"
+                disabled={boolAttr(!pro)}
+              />
+              <FieldMessage text={err(F.percent)} />
+            </div>
+            <div id={ENDS_ANCHOR}>
+              <s-date-field name={F.endsOn} label={t("outlet.new.endsOn")} value={seed.one(F.endsOn, "")} allow={`${nextDay(today)}--`} disabled={boolAttr(!pro)} details={t("outlet.new.endsOnShort")} />
+              <FieldMessage text={err(F.endsOn)} />
+              {/* P3: the warning sits at the field that answers it. */}
+              {pro && !ordersCounted && !live.endsOn ? <RowNote tone="attention">{t("outlet.orders.quotaHint")}</RowNote> : null}
+            </div>
+          </div>
+          {/* The result of the three fields: the price before and after, as large as a result deserves. */}
+          <div data-won-outlet-price="" style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "4px 12px", padding: "12px 14px", borderRadius: 12, background: preview ? WON_SELECT_TINT : WON_WASH, border: `1px solid ${preview ? WON_SELECT_EDGE : WON_LINE}`, fontFamily: WON_FONT }}>
+            {preview ? (
+              <>
+                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: WON_MUTED }}>{t("outlet.new.priceResult")}</span>
+                <s style={{ fontSize: 15, color: WON_MUTED }}>{money(preview.before, shopCurrency)}</s>
+                <span aria-hidden="true" style={{ color: WON_MUTED }}>→</span>
+                <span style={{ fontSize: 20, fontWeight: 700, color: WON_INK }}>{money(preview.after, shopCurrency)}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: WON_INK }}>−{live.percent} %</span>
+              </>
+            ) : (
+              <span style={{ fontSize: 13.5, color: WON_MUTED }}>{priceLine}</span>
+            )}
+          </div>
+          <details style={{ fontFamily: WON_FONT }}>
+            <summary {...hoverMark("link")} style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: WON_MUTED }}>{t("outlet.new.more")}</summary>
+            <div style={{ display: "grid", gap: 4, marginTop: 6 }}>
+              <RowNote>{t("outlet.new.quotaHint")}</RowNote>
+              <RowNote>{t("outlet.new.endsOnHint")}</RowNote>
+            </div>
+          </details>
+          {priceLists.length > 0 ? (
+            <s-stack direction="block" gap="small-300">
+              <s-text type="strong">{t("outlet.new.lists")}</s-text>
+              {priceLists.map((l) => (
+                <s-checkbox
+                  key={l.id}
+                  name={F.priceList}
+                  value={l.id}
+                  label={`${l.title} (${l.currency})`}
+                  checked={boolAttr(seed.all(F.priceList, []).includes(l.id))}
+                  disabled={boolAttr(!pro)}
+                />
+              ))}
+              {err(F.priceList) ? <RowNote tone="attention">{err(F.priceList)}</RowNote> : <RowNote>{t("outlet.new.listsHint")}</RowNote>}
+            </s-stack>
+          ) : err(F.priceList) ? (
+            <RowNote tone="attention">{err(F.priceList)}</RowNote>
+          ) : null}
+        </StepCard>
+        {/* Step 2 (feedback 9 Oct 2026, 4th round): how THIS sale shows is set with the sale, next to what the customer will see. */}
+        <StepCard n={2} of={4} title={t("outlet.step.web")} hint={t("outlet.step.web.hint")}>
+          {/* Left what is set, right what the customer will see: the two never sit under each other on a wide screen. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, alignItems: "start" }}>
+            <s-stack direction="block" gap="base">
+              <div>
+                <s-select name={F.saleDisplay} label={t("outlet.display.label")} value={seed.one(F.saleDisplay, display)} disabled={boolAttr(!pro)}>
+                  {DISPLAYS.map((d) => (
+                    <s-option key={d} value={d} selected={boolAttr(d === seed.one(F.saleDisplay, display))}>
+                      {t(`outlet.display.${d}` as "outlet.display.strike")}
+                    </s-option>
+                  ))}
+                </s-select>
+                <FieldMessage text={err(F.saleDisplay)} />
+              </div>
+              {/* The badge's text exists only for a level with a badge (B7: a field that is shown is always read). */}
+              {saleBadge ? (
+                <div>
+                  <s-text-field name={F.message} label={t("outlet.message.label")} value={seed.one(F.message, "")} placeholder={t("looks.sample.outlet.badge")} maxLength={80} details={t("outlet.message.hint")} disabled={boolAttr(!pro)} />
+                  <FieldMessage text={err(F.message)} />
+                </div>
+              ) : null}
+              <details style={{ fontFamily: WON_FONT }}>
+                <summary {...hoverMark("link")} style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: WON_MUTED }}>{t("outlet.display.more")}</summary>
+                <div style={{ marginTop: 6 }}>
+                  <RowNote>{t("outlet.display.note")}</RowNote>
+                </div>
+              </details>
+            </s-stack>
+            <div style={{ display: "grid", gap: 10 }}>
+              <SalePreview
+                price={preview ? { now: money(preview.after, shopCurrency), before: money(preview.before, shopCurrency) } : null}
+                display={saleDisplay}
+                message={live.message}
+                left={live.quota ?? 0}
+                emptyText={t("outlet.preview.priceUnknown")}
+              />
+              {saleBadge ? (
+                // The badge is a block of the theme: said here, with the button that adds it, before the sale starts.
+                <div data-won-outlet-preview-block={badge} style={{ display: "grid", gap: 6 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                    <StatusBadge placement={badge} move={badgeMove} />
+                    <RowNote tone={badge === "missing" ? "attention" : undefined}>{t(badge === "in_theme" ? "outlet.preview.blockOn" : badge === "missing" ? "outlet.preview.blockMissing" : "outlet.preview.blockUnknown")}</RowNote>
+                  </div>
+                  <SpotNote placement={badge} spot={props.placed?.spots?.outletBadge} place="product" spotKey="outletBadge" />
+                  {badge !== "in_theme" && badgeBlockAddUrl ? (
+                    <div>
+                      <s-button href={badgeBlockAddUrl} target="_top" variant={badge === "missing" ? "primary" : "secondary"}>
+                        {t("outlet.web.addBlock")}
+                      </s-button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </StepCard>
+        {/* Step 3 (feedback 10 Oct 2026, bod 5): what this sale combines with is decided with the sale, in plain words. */}
+        <StepCard n={3} of={4} title={t("outlet.step.combine")} hint={t("outlet.step.combine.hint")}>
+          <CombineChoice
+            combine={live.combine}
+            takes={live.combineWith}
+            shop={shopTakes}
+            disabled={!pro}
+            error={err(F.combineWith)}
+          />
+        </StepCard>
+        <StepCard n={4} of={4} title={t("outlet.step.start")} hint={t("outlet.step.start.hint")} last>
+          {/* The whole sale once more, one row a decision, before the one button. */}
+          <div data-won-outlet-summary="" style={{ border: `1px solid ${WON_LINE}`, borderRadius: 12, overflow: "hidden", fontFamily: WON_FONT }}>
+            {(
+              [
+                [t("outlet.check.what"), summary],
+                [t("outlet.check.web"), t(`outlet.display.${saleDisplay}` as "outlet.display.strike")],
+                [t("outlet.check.combine"), !live.combine ? shopTakes : newTakes.length === 0 ? t("outlet.combine.state.none") : newTakes.length === COMBINE_CLASSES.length ? t("outlet.combine.state.all") : tr.list(newTakes.map((c) => t(`outlet.combine.${c}.short` as "outlet.combine.tiers.short")))],
+              ] as const
+            ).map(([label, value], i) => (
+              <div key={label} style={{ display: "grid", gridTemplateColumns: "minmax(110px, 180px) minmax(0, 1fr)", gap: 12, padding: "10px 14px", background: i % 2 === 0 ? WON_WASH : WON_SURFACE, borderTop: i === 0 ? "none" : `1px solid ${WON_LINE}` }}>
+                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: WON_MUTED }}>{label}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: WON_INK, overflowWrap: "anywhere" }}>{value}</span>
+              </div>
+            ))}
+          </div>
+          <RowNote>{t("outlet.new.backup")}</RowNote>
+          <div>
+            <s-button type="submit" variant="primary" disabled={boolAttr(!pro)}>
+              {t("outlet.new.start")}
+            </s-button>
+          </div>
+        </StepCard>
+      </div>
+    </Form>
+  );
+
+  // Which panel is open: a result decides first (a sale just started or ended → the sales; a refused start → the
+  // form with what was typed; a refused setting → the settings), then a deep link (#running, #new, #combine…),
+  // else the sales when something runs and the form when nothing does.
+  const viewFor = (): OutletView => {
+    if (isOutletResult(result)) {
+      if (result.ok) return "sales";
+      if (result.reason === "invalid" && result.errors.some((e) => e.field === F.display || e.field === F.reopen)) return "info";
+      return "new";
+    }
+    return running.length > 0 || (!pro && ended.length > 0) ? "sales" : "new";
+  };
+  const [view, setView] = useState<OutletView>(viewFor);
+  useEffect(() => {
+    setView(viewFor());
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new result moves the page
+  }, [result]);
+  useEffect(() => {
+    const fromHash = HASH_VIEW[window.location.hash.slice(1)];
+    if (fromHash && !isOutletResult(result)) setView(fromHash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a deep link is read once
+  }, []);
+
+  // B15: on Free the settings matter only while earlier sales still run (the server refuses the save the same way).
+  const settingsShown = pro || running.length > 0;
+  const activeRuns = running.filter((r) => r.status === "active");
+
+  // The page is three tiles and ONE panel at a time (feedback 6 Oct 2026: no long scroll; a running sale is the
+  // first thing seen, a sale just started is shown, not hidden under the form).
+  const panel = (key: OutletView, children: ReactNode) => (
+    <div data-won-view-panel={key} style={{ display: view === key ? "block" : "none" }}>
+      <s-stack direction="block" gap="base">{children}</s-stack>
+    </div>
+  );
+  const titleOf = (run: OutletRunView) => run.title || t("outlet.run.unknown");
+  const runningTitles = running.map((r) => r.title).filter(Boolean);
+  // The editor opens on a product that IS on sale: on the default product the badge has nothing to say.
+  const saleEditorUrl = running.find((r) => r.editorUrl)?.editorUrl ?? null;
+  const salesActive =
+    running.length > 0
+      ? runningTitles.length > 0
+        ? t("overview.outlet.runningNamed", { names: tr.list(runningTitles) })
+        : tr.tp("overview.outlet.running", running.length)
+      : ended.length > 0
+        ? t("outlet.view.sales.endedOnly", { n: ended.length })
+        : t("overview.outlet.none");
+
+  return (
+    <s-page heading={t("module.outlet")}>
+      <DiscountsSubNav active="outlet" />
+      <PageGuide page="outlet" />
+      <s-stack direction="block" gap="base">
+        {isOutletResult(result) ? <OutletBanner result={result} /> : <Notice result={result as UiResult | null | undefined} />}
+        {!ordersCounted && (pro || running.length > 0) ? (
+          <s-banner tone="warning" heading={t("outlet.orders.off")} data-won-outlet-orders="off">
+            <s-paragraph>
+              {t("outlet.orders.offDetail")}{" "}
+              {pro ? (
+                <s-link href={`#${ENDS_ANCHOR}`} onClick={() => setView("new")}>
+                  {t("outlet.orders.link")}
+                </s-link>
+              ) : null}
+            </s-paragraph>
+          </s-banner>
+        ) : null}
+        {!pro && running.length > 0 ? <RowNote>{t("outlet.pro.running")}</RowNote> : null}
+
+        <ModuleTiles label={t("outlet.view.label")} columns={4}>
+          <ViewTile id="sales" title={t("outlet.view.sales.title")} glyph="calendar" active={salesActive} status={running.length > 0 ? props.status : undefined} selected={view === "sales"} onPick={() => setView("sales")} />
+          <ViewTile id="new" title={t("outlet.view.new.title")} glyph="tag" action about={t("outlet.view.new.tile")} active={pro ? (view === "new" ? summary : undefined) : t("overview.outlet.locked")} pro={!pro} locked={!pro} selected={view === "new"} onPick={() => setView("new")} />
+          <ViewTile
+            id="web"
+            title={t("outlet.view.web.title")}
+            glyph="store"
+            active={t(badge === "in_theme" ? (badgeMove ? "outlet.view.web.move" : "outlet.view.web.on") : badge === "missing" ? "outlet.view.web.missing" : "outlet.view.web.unknown")}
+            status={placementStatus(badge, { runs: running.length > 0, misplaced: badgeMove })}
+            selected={view === "web"}
+            onPick={() => setView("web")}
+          />
+          <ViewTile id="info" title={t("outlet.view.info.title")} glyph="sliders" active={shopTakes} selected={view === "info"} onPick={() => setView("info")} />
+        </ModuleTiles>
+
+        {panel(
+          "sales",
+          <>
+            {running.length === 0 && ended.length === 0 ? (
+              <WonSection
+                title={t("outlet.view.sales.title")}
+                glyph="calendar"
+                summary={t("outlet.sales.empty")}
+                action={
+                  <s-button variant="primary" onClick={() => setView("new")}>
+                    {t("outlet.view.new.title")}
+                  </s-button>
+                }
+              />
+            ) : null}
+        {/* What is to resolve is said once, on the sale's own card with its action (retry, end, reopen or keep, zásada E1);
+            the tile above says that something waits. */}
+        {running.length > 0 ? (
+          <WonSection title={t("outlet.running.title")} glyph="calendar" anchor="running">
+            <s-stack direction="block" gap="base">
+              {running.map((run) => (
+                <RunCard key={run.id} run={run} pro={pro} money={money} badgeOn={display.startsWith("strike_badge")} display={display} shop={shopTakes} badge={badge} badgeAddUrl={badgeBlockAddUrl} badgeSpot={props.placed?.spots?.outletBadge} result={result} />
+              ))}
+            </s-stack>
+          </WonSection>
+        ) : null}
+
+            {/* Ended sales are the last thing of the panel. */}
+        {ended.length > 0 ? (
+          <WonSection title={t("outlet.ended.title")} glyph="receipt" summary={t("outlet.ended.count", { n: ended.length })} anchor="ended" collapsible defaultOpen={ended.some((r) => r.returnPending > 0)}>
+            <s-stack direction="block" gap="base">
+              {ended.map((run) => (
+                <RunCard key={run.id} run={run} pro={pro} money={money} badgeOn={display.startsWith("strike_badge")} display={display} shop={shopTakes} badge={badge} badgeAddUrl={badgeBlockAddUrl} badgeSpot={props.placed?.spots?.outletBadge} result={result} />
+              ))}
+            </s-stack>
+          </WonSection>
+        ) : null}
+
+          </>,
+        )}
+
+        {panel("new", <>
+        {/* Pro: the tile above is the heading (7th round: a second "Nový výprodej" under it said nothing new) and carries the
+            live summary; the four steps stand on the page as four cards of their own. */}
+        {pro ? (
+          <div id="new" style={{ scrollMarginTop: 16 }}>{form}</div>
+        ) : (
+          // Free: one Pro note with the way to the plan; the locked form is not drawn (doctrine §18h, audit F4). The tile
+          // above says "Pro · odemknout".
+          <WonSection title={t("outlet.new.title")} glyph="tag" hint={t("outlet.view.new.about")} anchor="new">
+            <ProSell benefit={t("outlet.pro.benefit")} />
+          </WonSection>
+        )}
+
+        </>)}
+
+        {panel(
+          "web",
+          <>
+        {/* Bod 5: the sale badge in the theme — the same label and header button as every placement. */}
+        {settingsShown && badgeBlockAddUrl ? (
+          <WonSection
+            title={t("outlet.badge.title")}
+            glyph="store"
+            summary={t("outlet.badge.hint")}
+            anchor="badge"
+            placement={badge}
+            placementMove={badgeMove}
+            action={
+              <s-button href={editorOnProductOf(badge === "in_theme" ? (editorOpenUrl(badgeBlockAddUrl, props.placed?.spots?.outletBadge) ?? badgeBlockAddUrl) : badgeBlockAddUrl, saleEditorUrl) ?? badgeBlockAddUrl} target="_top" variant={badge === "missing" ? "primary" : "secondary"}>
+                {t(badge === "in_theme" ? "placement.open" : "placement.add")}
+              </s-button>
+            }
+          >
+            <SpotNote placement={badge} spot={props.placed?.spots?.outletBadge} place="product" spotKey="outletBadge" />
+          </WonSection>
+        ) : null}
+        {/* The badge's look on the storefront (its own form). */}
+        {settingsShown && props.look ? <LookSection look={props.look} plan={plan} configVersion={configVersion} /> : null}
+
+          </>,
+        )}
+
+        {panel(
+          "info",
+          <>
+        {/* What a clearance item combines with: each running sale, then what always applies; the list below sets the rest. */}
+        <WonSection title={t("outlet.combine.title")} glyph="sliders" anchor="combine">
+          {/* Which running sale takes what (feedback 10 Oct 2026, bod 5; per discount since the 6th round). */}
+          {activeRuns.length > 0 ? (
+            <div data-won-outlet-combine-list="" style={{ display: "grid", gap: 10, marginBottom: 14 }}>
+              {activeRuns.map((r) => (
+                <SubCard
+                  key={r.id}
+                  marker={{ "data-won-outlet-combine-row": r.id }}
+                  title={titleOf(r)}
+                  action={
+                    pro ? (
+                      <s-button href={`#${runAnchor(r.id)}`} variant="secondary" onClick={() => setView("sales")}>
+                        {t("outlet.combine.edit")}
+                      </s-button>
+                    ) : undefined
+                  }
+                >
+                  <RunTakes run={r} shop={shopTakes} />
+                </SubCard>
+              ))}
+            </div>
+          ) : null}
+          <div>
+            <WonRow>
+              <RowNote>{t("outlet.combine.price")}</RowNote>
+            </WonRow>
+            {(["shipping", "rewards"] as const).map((key) => (
+              <WonRow key={key}>
+                <s-text type="strong">{t(`outlet.combine.${key}.label` as "outlet.combine.shipping.label")}</s-text>
+                <RowNote>{t(`outlet.combine.${key}.always` as "outlet.combine.shipping.always")}</RowNote>
+              </WonRow>
+            ))}
+          </div>
+        </WonSection>
+        {/* The settings of Výprodej: one form with the save bar (shell/one-save.tsx), no Save of its own. Sčítá se s (what a
+            sale without its own choice takes, docs/won-discounts/navrh-kombinace-2026-10-13.md, bod 7) is a part of it. */}
+        <Form method="post" ref={settingsRef} data-save-bar data-won-outlet-settings="" onSubmit={oneSave.onSubmit}>
+          <s-stack key={settingsKey} direction="block" gap="base">
+            <PartRefusal refusal={oneSave.refusal} />
+            <CombinePart module="outlet" stored={props.combine} />
+            {settingsShown ? (
+              <WonSection title={t("outlet.settings.title")} glyph="sliders" summary={t(`outlet.reopen.${reopen}` as "outlet.reopen.ask")} hint={t("outlet.settings.summary")}>
+                <input type="hidden" name={F.intent} value={OUTLET_INTENT.settings} />
+                {configVersion ? <input type="hidden" name="configVersion" value={configVersion} /> : null}
+                <s-stack direction="block" gap="base">
+                  {/* How a sale shows is set with each sale (step 2 of a new one, "Upravit zobrazení" of a running one). */}
+                  <RowNote>{t("outlet.settings.displayMoved")}</RowNote>
+                  <s-select name={F.reopen} label={t("outlet.reopen.label")} value={reopen}>
+                    {REOPENS.map((r) => (
+                      <s-option key={r} value={r} selected={boolAttr(r === reopen)}>
+                        {t(`outlet.reopen.${r}` as "outlet.reopen.ask")}
+                      </s-option>
+                    ))}
+                  </s-select>
+                </s-stack>
+              </WonSection>
+            ) : null}
+          </s-stack>
+        </Form>
+          </>,
+        )}
+      </s-stack>
+
+      {/* "Ukončit výprodej" asks first (the confirm pattern of the rule editor's delete). */}
+      {activeRuns.map((run) => (
+        <s-modal key={run.id} id={endDialogId(run.id)} heading={t("outlet.run.end.heading", { name: run.title || t("outlet.run.unknown") })}>
+          <s-paragraph>{t("outlet.run.end.body")}</s-paragraph>
+          <s-button
+            slot="primary-action"
+            variant="primary"
+            tone="critical"
+            commandFor={endDialogId(run.id)}
+            command="--hide"
+            onClick={() => submit({ [F.intent]: OUTLET_INTENT.end, [F.run]: run.id }, { method: "post" })}
+          >
+            {t("outlet.run.end")}
+          </s-button>
+          <s-button slot="secondary-actions" commandFor={endDialogId(run.id)} command="--hide">
+            {t("common.cancel")}
+          </s-button>
+        </s-modal>
+      ))}
+    </s-page>
+  );
+}

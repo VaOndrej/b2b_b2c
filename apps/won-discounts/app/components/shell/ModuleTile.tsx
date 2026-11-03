@@ -23,8 +23,9 @@ import { useT } from "../../i18n/context";
 import type { ModuleStatus } from "../model/module-status";
 import { hoverMark } from "./hover";
 import { PlanBadge } from "./PlanBadge";
-import { SectionGlyph, StatusPill, type SectionGlyphName } from "./WonSection";
+import { SectionGlyph, type SectionGlyphName } from "./WonSection";
 import { WON_AMBER, WON_AMBER_TINT, WON_ATTENTION, WON_BADGE, WON_BADGE_TEXT, WON_CARD_SHADOW, WON_EDGE, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "./tokens";
+import { StatusBadge } from "./StatusBadge";
 
 const GRID_CSS = `
 .won-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -61,7 +62,13 @@ const GRID_CSS = `
 .won-tiles--5 .won-view-tile__labels{align-self:center}
 .won-tiles--5 .won-view-tile__text,.won-tiles--5 .won-view-tile__about{grid-column:1 / -1}
 .won-tile-note{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:700;line-height:1.5;color:#48525f;background:#eef1f4;border:1px solid #d6dbe1;white-space:nowrap}
-@media (max-width:520px){.won-tile-groups .won-tiles{grid-template-columns:minmax(0,1fr)}
+@media (max-width:520px){.won-tile-groups .won-tiles{grid-template-columns:minmax(0,1fr);gap:12px}
+.won-tile-group+.won-tile-group{margin-top:22px;padding-top:20px}
+.won-tile{min-height:0}
+.won-tile:not(.won-tile--low){padding:12px 14px!important}
+.won-tile:not(.won-tile--low) .won-tile__about{margin-top:8px!important;margin-bottom:4px!important}
+.won-tile__about--long{display:none}
+.won-tile__about-short{display:inline}
 .won-tile-group__meta{margin-left:0}
 .won-tile__active{display:block;overflow:visible;-webkit-line-clamp:unset}
 .won-view-tile{row-gap:8px}
@@ -189,7 +196,7 @@ function TileLabels({ title, status, pro = false, locked = false, className, not
     <span className={className} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 8px", minWidth: 0 }}>
       <span style={{ fontSize: 14.5, fontWeight: 700, color: WON_INK, letterSpacing: "-0.01em", overflowWrap: "anywhere" }}>{title}</span>
       {pro ? <PlanBadge tier="pro" locked={locked} /> : null}
-      {status ? <StatusPill state={status.state} /> : null}
+      {status ? <StatusBadge state={status.state} /> : null}
       {note && !status ? (
         <span className="won-tile-note" data-won-tile-note="">
           {note}
@@ -212,7 +219,7 @@ function HomeTileHead({ title, glyph, status, pro = false, locked = false }: Pic
       </span>
       {status && status.state !== "locked" ? (
         <span className="won-tile-state">
-          <StatusPill state={status.state} />
+          <StatusBadge state={status.state} />
         </span>
       ) : null}
     </>

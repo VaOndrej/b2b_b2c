@@ -96,7 +96,7 @@ const rule = (over: Partial<DiscountRule>): DiscountRule => ({
   ...over,
 });
 
-test("P3: 'Neaktivní: …' in Aktivní slevy links to the field that fixes it, built from the warning's own anchor", () => {
+test("'Neuplatní se: …' in Aktivní slevy links to the field that fixes it, built from the warning's own anchor", () => {
   const noCode = rule({ id: "c1", method: "code", codes: [] });
   const noTarget = rule({ id: "t1", target: { kind: "products", productIds: [], variantIds: [] } });
   const warnings = collectWarnings([noCode, noTarget], ["CZK"]);

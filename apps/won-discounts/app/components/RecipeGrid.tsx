@@ -9,7 +9,7 @@ import { useT } from "../i18n/context";
 import type { RecipeKey } from "./model/rule-form";
 import { hoverMark } from "./shell/hover";
 import { PickList, type PickIcon } from "./shell/PickList";
-import { WON_FONT, WON_INK, WON_LINE, WON_MUTED } from "./shell/tokens";
+import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SURFACE } from "./shell/tokens";
 
 const RECIPES: readonly { key: Exclude<RecipeKey, "blank">; icon: PickIcon; title: MessageKey; body: MessageKey }[] = [
   { key: "percentAll", icon: "percent", title: "recipe.percentAll.title", body: "recipe.percentAll.body" },
@@ -53,7 +53,7 @@ export function RecipeGrid() {
                 border: `1px solid ${WON_LINE}`,
                 borderRadius: 11,
                 padding: "11px 12px",
-                background: "#fff",
+                background: WON_SURFACE,
                 minHeight: 62,
               }}
             >

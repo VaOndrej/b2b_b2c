@@ -9,7 +9,7 @@ import { formatMoney } from "@won/core/discounts/describe";
 import { useT } from "../../i18n/context";
 import { marginProof, percentText } from "../model/margin";
 import type { MarginSettingsView } from "../model/types";
-import { WON_FAINT, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
+import { WON_FAINT, WON_FILL_NEUTRAL, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SURFACE, WON_TRACK, WON_WASH } from "../shell/tokens";
 
 function Bar({ label, pays, price, cost, note }: { label: string; pays: number; price: number; cost: number | null; note: string }) {
   const width = price > 0 ? Math.max(0, Math.min(100, (pays / price) * 100)) : 0;
@@ -20,10 +20,10 @@ function Bar({ label, pays, price, cost, note }: { label: string; pays: number; 
         <span style={{ fontWeight: 700, color: WON_INK }}>{label}</span>
         <span style={{ display: "block", color: WON_MUTED }}>{note}</span>
       </div>
-      <div aria-hidden="true" style={{ position: "relative", height: 10, borderRadius: 999, background: "#e9edf1", overflow: "hidden" }}>
-        <div style={{ position: "absolute", inset: 0, width: `${width}%`, background: "#48525f", borderRadius: 999 }} />
+      <div aria-hidden="true" style={{ position: "relative", height: 10, borderRadius: 999, background: WON_TRACK, overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0, width: `${width}%`, background: WON_FILL_NEUTRAL, borderRadius: 999 }} />
         {costAt !== null ? (
-          <div style={{ position: "absolute", top: 0, bottom: 0, left: `calc(${costAt}% - 1px)`, width: 2, background: "#ffffff" }} />
+          <div style={{ position: "absolute", top: 0, bottom: 0, left: `calc(${costAt}% - 1px)`, width: 2, background: WON_SURFACE }} />
         ) : null}
       </div>
     </div>

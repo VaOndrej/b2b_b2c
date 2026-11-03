@@ -28,6 +28,8 @@ export interface EditorView {
   timezone: string | null;
   /** B11: the stored config is read-only — every field and button is disabled, not just Save. */
   readOnly: boolean;
+  /** A new discount (its sections are numbered steps, model rule-editor/steps.ts). */
+  isNew: boolean;
   errorFor: (field: string) => string | undefined;
   tr: Translator;
 }

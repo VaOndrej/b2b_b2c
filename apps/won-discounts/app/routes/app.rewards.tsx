@@ -7,10 +7,10 @@ import { shopCtx } from "../lib/integration/context.server";
 import { adminLocale } from "../lib/integration/locale.server";
 import { loadRewardsScreen, rewardsAction } from "../lib/integration/rewards.server";
 import type { UiResult } from "../components/model/types";
-import { MilestonesScreen } from "../components/screens/MilestonesScreen";
+import { MilestonesScreen } from "../components/screens/milestones/MilestonesScreen";
 
 // Milníky (dřív „Odměny za košík“, MVP 4; feedback 6 Oct 2026 bod 9). A static route: it wins over
-// app.$module.tsx, and /app/rewards keeps its URL. The screen lives in components/screens/MilestonesScreen.tsx
+// app.$module.tsx, and /app/rewards keeps its URL. The screen lives in components/screens/milestones/MilestonesScreen.tsx
 // (the dev harness renders the same component); the data and the writes live in
 // app/lib/integration/rewards.server.ts. The context comes from the SESSION shop
 // (SEC-2); the form is parsed on the server (SEC-1); BILL-1 gates in the sync.

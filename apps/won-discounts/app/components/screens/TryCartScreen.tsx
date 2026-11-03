@@ -58,10 +58,11 @@ import { ProSell } from "../shell/ProSell";
 import { SegmentedChoice } from "../shell/SegmentedChoice";
 import { StepCard } from "../shell/StepCard";
 import { RowNote, WonRow } from "../shell/WonSection";
-import { WON_ATTENTION, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
+import { WON_ATTENTION, WON_CONTROL_EDGE_STRONG, WON_DASH, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
 import { CombinationsSection } from "../try-cart/CombinationsSection";
 import { MismatchSection } from "../shell/MismatchSection";
 import type { CombineMismatchView } from "../model/combine-mismatch";
+import { CardCheckbox } from "../shell/Controls";
 
 /** One of the shop's discounts as the cart form offers it. */
 export interface TryCartRuleView {
@@ -571,7 +572,7 @@ export function TryCartScreen(props: TryCartScreenProps) {
                   <WonRow key={rule.id}>
                     <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontFamily: WON_FONT, fontSize: 13, color: WON_INK, opacity: off ? 0.6 : 1, cursor: off ? "not-allowed" : "pointer" }}>
                       {/* A native checkbox: a disabled one is not submitted, and disabling it never resets the others. */}
-                      <input type="checkbox" name="ruleId" value={rule.id} defaultChecked={(props.ruleIds ?? []).includes(rule.id)} disabled={off} style={{ marginTop: 2 }} />
+                      <CardCheckbox name="ruleId" value={rule.id} defaultChecked={(props.ruleIds ?? []).includes(rule.id)} disabled={off} style={{ marginTop: 2 }} />
                       <span>
                         <span style={{ fontWeight: 600 }}>{rule.name.trim() || t("common.untitled")}</span>
                         {rule.codes[0] ? <span style={{ color: WON_MUTED }}> · {t("overview.native.kind.code", { code: rule.codes[0] })}</span> : null}
@@ -643,7 +644,7 @@ export function TryCartScreen(props: TryCartScreenProps) {
           <div id="result" style={{ scrollMarginTop: 16 }}>
           <StepCard n={3} of={steps} last title={t("tryCart.result.title")} hint={resultHint}>
               {!counted ? (
-                <div data-won-try-cart-empty="" style={{ padding: "14px 16px", borderRadius: 12, border: "1px dashed #b9c2cc", background: WON_WASH, fontFamily: WON_FONT, fontSize: 13, color: WON_MUTED }}>
+                <div data-won-try-cart-empty="" style={{ padding: "14px 16px", borderRadius: 12, border: `1px dashed ${WON_DASH}`, background: WON_WASH, fontFamily: WON_FONT, fontSize: 13, color: WON_MUTED }}>
                   {t(lines.length === 0 ? "tryCart.result.empty" : running || touched ? "tryCart.result.running" : "tryCart.result.waiting")}
                 </div>
               ) : (
@@ -762,7 +763,7 @@ function LineChip({ label }: { label: string }) {
         whiteSpace: "nowrap",
         color: WON_INK,
         background: WON_WASH,
-        border: "1px solid #c9d0d8",
+        border: `1px solid ${WON_CONTROL_EDGE_STRONG}`,
       }}
     >
       {label}

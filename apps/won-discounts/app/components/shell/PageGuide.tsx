@@ -6,7 +6,7 @@ import { useSyncExternalStore, type CSSProperties, type ReactNode } from "react"
 
 import { useT } from "../../i18n/context";
 import type { MessageKey } from "../../i18n";
-import { guideHidden, guideIsPro, guideSteps, setGuideHidden, subscribeGuideHidden, type GuidePage } from "../model/page-guides";
+import { guideHidden, guideIsPro, guideSteps, setGuideHidden, subscribeGuideHidden, type GuideFact, type GuidePage } from "../model/page-guides";
 import { hoverMark } from "./hover";
 import { PlanBadge } from "./PlanBadge";
 import { WON_FONT, WON_INK, WON_LINE, WON_LIVE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "./tokens";
@@ -37,7 +37,21 @@ function Rows({ rows, total }: { rows: [MessageKey, MessageKey, boolean?][]; tot
   );
 }
 
-function Preview({ page }: { page: GuidePage }) {
+/** The shop's own values (Nastavení), already worded by the model. */
+function Facts({ facts }: { facts: GuideFact[] }) {
+  return (
+    <>
+      {facts.map(({ label, value }) => (
+        <div key={label} style={ROW}>
+          <span style={{ whiteSpace: "nowrap" }}>{label}</span>
+          <span style={{ color: WON_MUTED, textAlign: "right" }}>{value}</span>
+        </div>
+      ))}
+    </>
+  );
+}
+
+function Preview({ page, facts }: { page: GuidePage; facts?: GuideFact[] }) {
   const { t } = useT();
   switch (page) {
     case "tiers":
@@ -122,15 +136,7 @@ function Preview({ page }: { page: GuidePage }) {
         </div>
       );
     case "settings":
-      return (
-        <Rows
-          rows={[
-            ["guide.preview.setCombine", "guide.preview.setCombineValue", false],
-            ["guide.preview.setMarkets", "guide.preview.setMarketsValue", false],
-            ["guide.preview.setPlan", "guide.preview.setPlanValue", false],
-          ]}
-        />
-      );
+      return <Facts facts={facts ?? []} />;
   }
 }
 
@@ -148,7 +154,8 @@ function Toggle({ page, hidden, children }: { page: GuidePage; hidden: boolean; 
   );
 }
 
-export function PageGuide({ page }: { page: GuidePage }) {
+/** `facts`: the shop's own values for a preview that shows the shop (Nastavení, model/page-guides.ts settingsGuideRows). */
+export function PageGuide({ page, facts }: { page: GuidePage; facts?: GuideFact[] }) {
   const { t } = useT();
   const hidden = useSyncExternalStore(
     subscribeGuideHidden,
@@ -197,7 +204,7 @@ export function PageGuide({ page }: { page: GuidePage }) {
       <div style={{ minWidth: 0, padding: 18, borderRadius: 14, background: WON_WASH }}>
         <small style={{ display: "block", marginBottom: 10, fontSize: 12, fontWeight: 600, color: WON_MUTED }}>{t(`guide.${page}.preview`)}</small>
         <div style={{ padding: 14, borderRadius: 10, background: WON_SURFACE, border: `1px solid ${WON_LINE}`, fontSize: 13.5, lineHeight: 1.4 }}>
-          <Preview page={page} />
+          <Preview page={page} facts={facts} />
         </div>
       </div>
     </div>

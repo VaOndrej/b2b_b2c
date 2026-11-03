@@ -17,9 +17,8 @@ import {
   orderedModules,
 } from "../../app/components/model/modules.ts";
 import type { DiscountNavData } from "../../app/components/model/modules.ts";
-import { DiscountNav, DiscountsSubNav } from "../../app/components/shell/SubNav.tsx";
+import { DiscountNav, DiscountsSubNav, stripMore } from "../../app/components/shell/SubNav.tsx";
 import { SectionNav } from "../../app/components/shell/SectionNav.tsx";
-import { JumpRow } from "../../app/components/shell/JumpRow.tsx";
 
 // The menu after 6 Oct 2026 (docs/won-discounts/plan-zmen-2026-10-06.md, P1): the
 // Shopify sidebar has five items after the home link; the discount pages share
@@ -195,21 +194,6 @@ test("SectionNav: a dot only at a section that has a state, the same dot as the 
   assert.equal(html.match(/data-won-dot=/g)?.length, 2);
 });
 
-test("JumpRow: plain anchors with the part's name for screen readers; red and dotted only where a part has a state", () => {
-  const items = [
-    { target: "step-1", mark: "1", name: "1. stupeň" },
-    { target: "step-2", mark: "2", name: "2. stupeň", state: "attention" as const },
-  ];
-  // eslint-disable-next-line react/no-children-prop -- LocaleProvider types `children` as a required prop
-  const html = renderToStaticMarkup(createElement(LocaleProvider, { locale: "cs", children: createElement(JumpRow, { label: "Přejít na stupeň", items }) }));
-  assert.match(html, /<nav class="won-jumps" aria-label="Přejít na stupeň"/);
-  assert.match(html, /<a class="won-jumps__link" href="#step-1" title="1\. stupeň"><span aria-hidden="true">1<\/span><span data-won-reader-only[^>]*><span[^>]*>1\. stupeň<\/span><\/span><\/a>/);
-  assert.match(html, /<a class="won-jumps__link" href="#step-2" title="2\. stupeň" data-won-jump-state="attention"><span data-won-dot="attention"/);
-  assert.equal(html.match(/data-won-dot=/g)?.length, 1);
-  // It wraps instead of scrolling sideways.
-  assert.match(html, /\.won-jumps__list\{display:flex;flex-wrap:wrap/);
-});
-
 test("@won/app-kit WonNavMenu: homeLabel is optional, default unchanged", async () => {
   // packages/app-kit has no tsconfig of its own, so tsx compiles its JSX with the
   // classic runtime (React.createElement); the app's bundler uses the automatic one.
@@ -219,4 +203,12 @@ test("@won/app-kit WonNavMenu: homeLabel is optional, default unchanged", async 
   assert.match(plain, /<a href="\/app" rel="home">Overview<\/a>/);
   const localized = renderToStaticMarkup(createElement(WonNavMenu, { homeLabel: "Přehled", items: [] }));
   assert.match(localized, /<a href="\/app" rel="home">Přehled<\/a>/);
+});
+
+test("the strip fades only an edge with tabs behind it; a pixel of rounding is not more", () => {
+  assert.deepEqual(stripMore(0, 390, 700), { left: false, right: true });
+  assert.deepEqual(stripMore(310, 390, 700), { left: true, right: false });
+  assert.deepEqual(stripMore(150, 390, 700), { left: true, right: true });
+  assert.deepEqual(stripMore(0, 900, 700), { left: false, right: false });
+  assert.deepEqual(stripMore(0.5, 390, 390.5), { left: false, right: false });
 });

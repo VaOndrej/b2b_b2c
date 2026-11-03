@@ -43,8 +43,9 @@ import { AccentPicker } from "../looks/AccentPicker";
 import { presetLabel as lookLabel } from "../model/looks";
 import { formatLiquidMoney, previewTiersLiquid, TIERS_SAMPLE_SET, TIER_MIN_QTY_MAX } from "../model/tiers";
 import type { AppearancePresetView, EmbedView, PreviewLookView, PreviewProductView, ThemeTokensView, TierSetView } from "../model/types";
-import { selectionRing, WON_AMBER_TEXT, WON_FAINT, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SURFACE } from "../shell/tokens";
+import { WON_AMBER_TEXT, WON_CONTROL_EDGE_STRONG, WON_FAINT, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SAMPLE_INK, WON_SURFACE, selectionRing } from "../shell/tokens";
 import { scopeCss } from "./scope-css";
+import { SampleButton } from "../shell/Controls";
 
 /** The texts the block uses (extension locales, `tiers.*`). */
 export const STOREFRONT_TEXT_KEYS = ["heading", "row_qty", "save_pct", "save_off", "unit", "live", "next"] as const;
@@ -157,8 +158,8 @@ function pageStyle(tokens: ThemeTokensView | null): CSSProperties {
   const radius = tokens?.radius;
   return {
     fontFamily: fontStack(tokens?.fontBody ?? null),
-    color: tokens?.colorText ?? "#121212",
-    background: tokens?.colorBackground ?? "#ffffff",
+    color: tokens?.colorText ?? WON_SAMPLE_INK,
+    background: tokens?.colorBackground ?? WON_SURFACE,
     fontSize: tokens?.fontSize ? `${tokens.fontSize}px` : "16px",
     lineHeight: 1.5,
     padding: 16,
@@ -327,15 +328,15 @@ export function TiersPreview({
           ) : null}
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: WON_MUTED }}>
             <span>{t("tiers.preview.quantity")}</span>
-            <button type="button" aria-label={t("tiers.preview.less")} onClick={() => setQuantity((q) => Math.max(1, q - 1))} style={stepper}>
+            <SampleButton aria-label={t("tiers.preview.less")} onClick={() => setQuantity((q) => Math.max(1, q - 1))} style={stepper}>
               −
-            </button>
+            </SampleButton>
             <span style={{ minWidth: 20, textAlign: "center", fontWeight: 700, color: WON_INK }} aria-live="polite">
               {quantity}
             </span>
-            <button type="button" aria-label={t("tiers.preview.more")} onClick={() => setQuantity((q) => Math.min(TIER_MIN_QTY_MAX, q + 1))} style={stepper}>
+            <SampleButton aria-label={t("tiers.preview.more")} onClick={() => setQuantity((q) => Math.min(TIER_MIN_QTY_MAX, q + 1))} style={stepper}>
               +
-            </button>
+            </SampleButton>
           </div>
         </div>
       ) : null}
@@ -370,7 +371,7 @@ const stepper: CSSProperties = {
   width: 28,
   height: 28,
   borderRadius: 8,
-  border: `1px solid #c9d0d8`,
+  border: `1px solid ${WON_CONTROL_EDGE_STRONG}`,
   background: WON_SURFACE,
   color: WON_INK,
   fontSize: 15,

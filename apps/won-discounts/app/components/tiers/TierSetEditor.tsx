@@ -229,7 +229,7 @@ export function TierSetEditor({
               <input type="hidden" name={F.row(sid)} value={row.key} />
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "6px 12px", padding: "8px 12px", background: WON_WASH, borderBottom: `1px solid ${WON_LINE}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                  <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 999, background: WON_INK, color: "#fff", fontSize: 12.5, fontWeight: 700, flex: "0 0 auto" }}>
+                  <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 999, background: WON_INK, color: WON_SURFACE, fontSize: 12.5, fontWeight: 700, flex: "0 0 auto" }}>
                     {index + 1}
                   </span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: WON_INK }}>{t("tiers.break.title", { n: index + 1 })}</span>

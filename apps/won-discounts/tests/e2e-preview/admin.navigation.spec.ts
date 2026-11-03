@@ -68,6 +68,33 @@ test("the strip under 'Slevy': a dot per module, none for a locked one, the same
   await expect(page.locator('[data-won-subnav-item="outlet"]')).toContainText("Vyžaduje pozornost");
 });
 
+test("the strip under 'Slevy' on a phone: the current tab is whole in view, a fade says there is more, every tab is reachable", async ({ page }) => {
+  for (const path of ["discounts", "tiers", "rewards", "outlet", "campaigns", "placements"]) {
+    await open(page, path, 390);
+    const list = page.locator("[data-won-subnav] ul");
+    const box = (await list.boundingBox())!;
+    const current = (await page.locator('[data-won-subnav] [aria-current="page"]').boundingBox())!;
+    expect(current.x, `${path}: the current tab starts in view`).toBeGreaterThanOrEqual(box.x);
+    expect(current.x + current.width, `${path}: the current tab ends in view`).toBeLessThanOrEqual(box.x + box.width + 0.5);
+    // Six tabs do not fit 390 px: at least one edge fades, so the strip says it scrolls.
+    await expect(list, path).toHaveAttribute("data-won-subnav-more", /left|right/);
+    expect(await sideways(page), path).toBe(0);
+  }
+  // From the first page the last tab is reached by scrolling the strip (touch) and by the keyboard (focus scrolls it in).
+  await open(page, "discounts", 390);
+  const list = page.locator("[data-won-subnav] ul");
+  await expect(list).toHaveAttribute("data-won-subnav-more", "right");
+  await list.evaluate((el) => el.scrollTo({ left: el.scrollWidth }));
+  await expect(list).toHaveAttribute("data-won-subnav-more", "left");
+  await list.evaluate((el) => el.scrollTo({ left: 0 }));
+  const last = page.locator('[data-won-subnav-item="placements"]');
+  await page.locator('[data-won-subnav-item="discounts"]').focus();
+  for (let i = 0; i < 6 && !(await last.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press("Tab");
+  await expect(last).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/placements/);
+});
+
 test("rule editor: the list of sections follows the live form, opens a collapsed section and leaves the URL and the form alone", async ({ page }) => {
   await open(page, "rule-editor");
   const nav = "[data-won-section-nav]";
@@ -273,7 +300,13 @@ test("embedded admin: a jump inside the page is not a navigation for App Bridge,
   await expect(link).toHaveAttribute("tabindex", "0");
   expect(await link.getAttribute("href")).toBeNull();
   await link.click();
-  await expect.poll(() => top("schedule")).toBeLessThan(40);
+  // At the top, or as high as the page goes (a short page cannot scroll its last sections to the top).
+  const landed = () => page.evaluate(() => {
+    const at = document.getElementById("schedule")?.getBoundingClientRect().top ?? 9999;
+    return at < 40 || window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
+  });
+  await expect.poll(landed).toBe(true);
+  expect(await top("schedule")).toBeLessThan(900);
   await expect(link).toHaveAttribute("aria-current", "location");
   // Enter does what a click does.
   const first = nav.locator("a").first();

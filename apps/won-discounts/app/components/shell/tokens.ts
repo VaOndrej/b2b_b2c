@@ -59,3 +59,52 @@ export const WON_SCHEDULED = "#B4530A";
 export const WON_SCHEDULED_BG = "#FFF1E6";
 export const WON_SCHEDULED_EDGE = "#FBD3B0";
 export const WON_CARD_SHADOW = "0 1px 2px rgba(20,28,45,.05), 0 6px 18px rgba(20,28,45,.05)";
+
+// --- Named shades the screens used as raw values (audit 2026-11-03 D1): one name per meaning, so a screen composes
+// shell pieces and tokens and never types a colour. The values are the ones the screens had, so nothing looks different.
+
+/** A chosen thing's tint and its ring (selection, §11b). */
+export const WON_SELECT_TINT = "#f2f7ff";
+export const WON_SELECT_EDGE = "#c7dcfb";
+export const WON_SELECT_RING = "rgba(26,115,232,.12)";
+export const WON_SELECT_FOCUS = "rgba(26,115,232,.15)";
+/** The edge of a control that can be picked but is not (a chip, a card choice). */
+export const WON_CONTROL_EDGE = "#d6dbe1";
+/** A stronger control edge (a hover, a preview's frame) and the dashed "add here" outline. */
+export const WON_CONTROL_EDGE_STRONG = "#c9d0d8";
+export const WON_DASH = "#b9c2cc";
+/** Text and marks on a dark or coloured fill (a numbered step, a filled chip). */
+export const WON_ON_FILL = "#ffffff";
+/** A neutral dark fill (an unselected numbered mark, a bar in a chart). */
+export const WON_FILL_NEUTRAL = "#48525f";
+/** Light neutral fills: a track, a chip, a quiet panel. */
+export const WON_TRACK = "#e9edf1";
+export const WON_CHIP = "#eef1f4";
+export const WON_PANEL = "#f1f1f1";
+/** The near-white of an open row and of a dense list's background. */
+export const WON_ROW_OPEN = "#fafbfc";
+export const WON_LIST_BG = "#fbfcfd";
+/** The plain divider of Polaris-like tables (Přehledy, a look's code box). */
+export const WON_DIVIDER = "#e3e3e3";
+/** The red-tinted edge of a row that needs attention (a sale that waits for a decision). */
+export const WON_ATTENTION_EDGE = "#eab5b5";
+/** The quiet green of "it is on" inside a sentence (a combination that applies, a sale's yes). */
+export const WON_LIVE_TEXT = "#0f6b3f";
+export const WON_LIVE_TINT = "#e6f6ed";
+export const WON_LIVE_EDGE = "#bfe3cd";
+/** A storefront sample's own ink and paper (a preview shows the theme, not the admin). */
+export const WON_SAMPLE_INK = "#121212";
+export const WON_SAMPLE_PAPER = "#ffffff";
+/** A chart's accent (Přehledy). */
+export const WON_CHART = "#2f6fed";
+/** The sample colour a colour field suggests. */
+export const WON_SAMPLE_ACCENT = "#0a7d4f";
+/** The pressed tab of a table's tab row. */
+export const WON_TAB_ON = "#e9ebee";
+/** A deeper green of "yes" in a sale's take-list; the neutral grey of a muted chart axis. */
+export const WON_LIVE_TEXT_DEEP = "#0f6b36";
+export const WON_MUTED_ALT = "#5f6b78";
+/** The brown of a quiet warning in a sentence (a text that will be replaced). */
+export const WON_WARNING_TEXT = "#8a4b00";
+/** The soft shadow of the ink (a colour swatch's ring). */
+export const WON_INK_SHADOW = "rgba(17,20,24,.18)";

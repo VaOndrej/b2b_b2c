@@ -375,7 +375,8 @@ form as §18: each rule names its symptom.
   and at the content.** Further sections of the same panel, which have no
   tile, keep their own summary (§17). What runs is the first panel, never under a form; after an action the
   page opens the panel that shows its result. A panel that is not shown is
-  hidden, never unmounted, so the page keeps one form and one Save; a refused
+  hidden, never unmounted, so the page keeps one form and one Save (the App
+  Bridge save bar, no Save button of its own); a refused
   save opens the panel with the error, and a deep link to a section opens its
   panel. A home tile (§19d) is a signpost, so it carries both lines (what it
   covers, what is active): the merchant knows what is under it before

@@ -33,6 +33,7 @@ import {
 import { PLAN_ACTION, type PlanActionResult, type PlanScreenData } from "../model/plan";
 import type { CombineType } from "../model/combine";
 import type { SettingsScreenData, UiResult } from "../model/types";
+import { settingsGuideRows } from "../model/page-guides";
 import { PageGuide } from "../shell/PageGuide";
 import { CombineTypes } from "../shell/CombineTypes";
 import { boolAttr } from "../shell/attrs";
@@ -88,9 +89,10 @@ function MarketCellView({ cell, label, off }: { cell: MarketCell; label: string;
   );
 }
 
-export function SettingsScreen({ currencies, combineDefault: stored, configVersion, result, planScreen, planAction = PLAN_ACTION, markets = [], unknownMarketLowest = false, unknownMarketHighest = [] }: SettingsScreenProps) {
+export function SettingsScreen({ plan, currencies, combineDefault: stored, configVersion, result, planScreen, planAction = PLAN_ACTION, markets: marketsRead, unknownMarketLowest = false, unknownMarketHighest = [] }: SettingsScreenProps) {
   const tr = useT();
   const { t } = tr;
+  const markets = marketsRead ?? [];
   // Two enabled markets of one currency, by name: only there can their amounts differ (the switch below).
   const sameCurrency = markets.filter((m) => m.enabled && markets.some((o) => o.enabled && o.handle !== m.handle && o.currency === m.currency));
   const withMarkets = currencies.filter((c) => c.markets.length > 0);
@@ -147,7 +149,7 @@ export function SettingsScreen({ currencies, combineDefault: stored, configVersi
 
   return (
     <s-page heading={t("nav.settings")}>
-      <PageGuide page="settings" />
+      <PageGuide page="settings" facts={settingsGuideRows({ plan, markets: marketsRead ? liveMarkets.length : null, combine: stored }, tr)} />
       <SectionNav label={t("common.onThisPage")} items={sections}>
       <s-stack direction="block" gap="base">
         <Form method="post" ref={formRef} data-save-bar>
@@ -192,10 +194,14 @@ export function SettingsScreen({ currencies, combineDefault: stored, configVersi
               </s-stack>
             </WonSection>
             {/* 7 Oct 2026: amounts are per market. What a customer from a country in none of them gets is the merchant's call. */}
+            {/* It matters only where two markets share a currency (audit 2026-11-03 F6, zásada E6): otherwise the section is
+                folded behind the sentence that says so. Folded = hidden, never unmounted: its fields post as before (§17d). */}
             <WonSection
               title={t("settings.unknownMarket.title")}
               glyph="store"
-              summary={t(
+              collapsible
+              defaultOpen={sameCurrency.length > 0}
+              summary={sameCurrency.length === 0 ? t("settings.unknownMarket.notNow") : t(
                 !unknownMarketLowest
                   ? "settings.unknownMarket.summary.off"
                   : unknownMarketHighest.length === 0
@@ -221,33 +227,22 @@ export function SettingsScreen({ currencies, combineDefault: stored, configVersi
                     <RowNote>{t("settings.unknownMarket.pick.note")}</RowNote>
                     {UNKNOWN_MARKET_KINDS.map((kind) => {
                       const pick = unknownMarketHighest.includes(kind) ? "highest" : "lowest";
+                      // What a choice means is in its own text ("Nejnižší z trhů (menší sleva)"), not in a note under the field.
                       return (
-                        <s-stack key={kind} direction="block" gap="small-300">
-                          <s-select name={`${COMBINATION_FIELD.unknownMarketPick}${kind}`} label={t(`settings.unknownMarket.kind.${kind}` as "settings.unknownMarket.kind.discount")} value={pick}>
-                            {UNKNOWN_MARKET_PICKS.map((p) => (
-                              <s-option key={p} value={p} selected={boolAttr(p === pick)}>
-                                {t(`settings.unknownMarket.pick.${p}` as "settings.unknownMarket.pick.lowest")}
-                              </s-option>
-                            ))}
-                          </s-select>
-                          <RowNote>{t(`settings.unknownMarket.kind.${kind}.note` as "settings.unknownMarket.kind.discount.note")}</RowNote>
-                        </s-stack>
+                        <s-select key={kind} name={`${COMBINATION_FIELD.unknownMarketPick}${kind}`} label={t(`settings.unknownMarket.kind.${kind}` as "settings.unknownMarket.kind.discount")} value={pick}>
+                          {UNKNOWN_MARKET_PICKS.map((p) => (
+                            <s-option key={p} value={p} selected={boolAttr(p === pick)}>
+                              {`${t(`settings.unknownMarket.pick.${p}` as "settings.unknownMarket.pick.lowest")} (${t(`settings.unknownMarket.kind.${kind}.${p}` as "settings.unknownMarket.kind.discount.lowest")})`}
+                            </s-option>
+                          ))}
+                        </s-select>
                       );
                     })}
                   </s-stack>
                 </WonRow>
-                <RowNote>
-                  {sameCurrency.length > 0
-                    ? t("settings.unknownMarket.yours", { markets: tr.list(sameCurrency.map((m) => `${m.name} (${m.currency})`)) })
-                    : t("settings.unknownMarket.notNow")}
-                </RowNote>
+                {sameCurrency.length > 0 ? <RowNote>{t("settings.unknownMarket.yours", { markets: tr.list(sameCurrency.map((m) => `${m.name} (${m.currency})`)) })}</RowNote> : null}
               </s-stack>
             </WonSection>
-            <div>
-              <s-button type="submit" variant="primary">
-                {t("common.save")}
-              </s-button>
-            </div>
           </s-stack>
         </Form>
 

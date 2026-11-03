@@ -20,7 +20,7 @@ import { createTestDatabase, type TestDatabase } from "../lib/test-db.ts";
 import { APP_KEY, formOf, quiet, realSync, renderPage, text } from "./helpers.ts";
 
 // Loaded here, not imported above: a static import is linked before the `?raw` hook above is registered.
-const { OutletScreen } = await import("../../app/components/screens/OutletScreen.tsx");
+const { OutletScreen } = await import("../../app/components/screens/outlet/OutletScreen.tsx");
 
 // MVP 5 contract O10: the Výprodej admin module — the forms parsed on the server (SEC-1), Pro checked there
 // (BILL-1, A6), field errors on the form's own fields, the module settings saved like every admin change.
@@ -188,7 +188,7 @@ test("retry: a failed end is finished by 'Zkusit znovu'; a sale without a failed
   assert.equal((await db.prisma.outletRun.findUnique({ where: { id: run.id } }))!.status, "ended");
 });
 
-test("audit A3: a new display level reaches the storefront value of the running sales at once (not with the next order)", async () => {
+test("a new display level reaches the storefront value of the running sales at once (not with the next order)", async () => {
   const { fake, ctx, product, variant } = setup("pro");
   await outletAction(ctx, startForm(variant, product.id));
   const value = () => JSON.parse(fake.products.get(product.id)!.metafields.get("$app:won_discounts/outlet")!.value) as { d: string };
@@ -203,13 +203,13 @@ test("an unknown intent is a bad request", async () => {
   assert.deepEqual(await outletAction(ctx, formOf([[F.intent, "drop-table"]])), { ok: false, reason: "bad_request" });
 });
 
-test("screen: Free shows the form locked in the amber Pro frame (§16b), never red; Pro shows the start button enabled", async () => {
+test("screen: Free shows one amber Pro note with the plan link and no locked form (§18h), never red; Pro shows the start button enabled", async () => {
   const free = await renderPage(createElement(OutletScreen, devOutletScreen({ plan: "free", state: null, locale: "cs" })));
   assert.ok(free.includes(WON_AMBER), "amber Pro frame");
   assert.match(text(free), /S Pro doprodáte zvolený počet kusů varianty se slevou/);
   assert.match(free, /href="\/app\/plan"/, "the plan link");
   assert.doesNotMatch(text(free), /Takhle by vypadal/);
-  assert.match(free, /<s-button[^>]*type="submit"[^>]*variant="primary"[^>]*disabled/, "start disabled on Free");
+  assert.doesNotMatch(free, /data-won-outlet-new/, "no locked start form on Free");
   const pro = text((await renderPage(createElement(OutletScreen, devOutletScreen({ plan: "pro", state: null, locale: "cs" })))).replace(/<[^>]+>/g, " "));
   assert.match(pro, /Spustit výprodej/);
   assert.match(pro, /Prodáno o 1 ks víc, než bylo k doprodeji/);

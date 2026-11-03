@@ -21,11 +21,13 @@ import { useContext, useEffect, useId, useState, type CSSProperties, type ReactN
 
 import { useT } from "../../i18n/context";
 import { moduleStateLabel, type ModuleState, type ModuleStatus } from "../model/module-status";
-import { needsAttention, statusLabel, type RuleStatus } from "../model/rule-status";
+import type { RuleStatus } from "../model/rule-status";
+import { STATE_TONE, type DotState, type PlacementState } from "../model/status-badge";
+import { BADGE_COLOR, StatusBadge } from "./StatusBadge";
 import { hoverMark } from "./hover";
 import { PlanBadge } from "./PlanBadge";
 import { ProMarked } from "./pro-marked";
-import { WON_AMBER, WON_ATTENTION, WON_CARD_SHADOW, WON_EDGE, WON_FAINT, WON_FONT, WON_INK, WON_LINE, WON_LIVE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH, WON_SCHEDULED, WON_SCHEDULED_BG, WON_SCHEDULED_EDGE } from "./tokens";
+import { WON_AMBER, WON_ATTENTION, WON_CARD_SHADOW, WON_EDGE, WON_FAINT, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_SELECT, WON_SURFACE, WON_WASH } from "./tokens";
 
 export type SectionGlyphName =
   | "tag"
@@ -176,53 +178,10 @@ function Glyph({ name }: { name: SectionGlyphName }) {
   }
 }
 
-/** Is a module's piece on the storefront in the live theme? (feedback 3, bod 5; doctrine §19c) */
-export type PlacementState = "in_theme" | "missing" | "unknown";
+/** Is a module's piece on the storefront in the live theme? (doctrine §19c; the badge: shell/StatusBadge.tsx) */
+export type { PlacementState } from "../model/status-badge";
 
-type PillTone = "live" | "attention" | "warning" | "scheduled" | "neutral";
-
-const PILL_COLOR: Readonly<Record<PillTone, { text: string; dot: string; background: string; border: string }>> = {
-  live: { text: WON_LIVE, dot: WON_LIVE, background: "rgba(26,143,75,.10)", border: "rgba(26,143,75,.28)" },
-  attention: { text: WON_ATTENTION, dot: WON_ATTENTION, background: "rgba(180,35,24,.07)", border: "rgba(180,35,24,.3)" },
-  // Orange (not the Pro amber): it is there and works, but not where it should be (feedback 10 Oct 2026, bod 6).
-  warning: { text: "#B4530A", dot: "#E0700E", background: "rgba(224,112,14,.10)", border: "rgba(224,112,14,.35)" },
-  // Light orange, not the Pro amber: it will run on its date (Ondřej, 31 Oct 2026).
-  scheduled: { text: WON_SCHEDULED, dot: "#F08A3C", background: WON_SCHEDULED_BG, border: WON_SCHEDULED_EDGE },
-  neutral: { text: "#5f6b78", dot: "#c3cad2", background: WON_WASH, border: WON_LINE },
-};
-
-/** The one pill shape (A7): a dot and a word. `marker` is the data attribute the tests read. */
-function Pill({ tone, label, marker }: { tone: PillTone; label: string; marker?: Record<string, string> }) {
-  const color = PILL_COLOR[tone];
-  return (
-    <span
-      {...marker}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 5,
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: ".01em",
-        padding: "2px 9px 2px 7px",
-        borderRadius: 999,
-        whiteSpace: "nowrap",
-        color: color.text,
-        background: color.background,
-        border: `1px solid ${color.border}`,
-      }}
-    >
-      <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: 999, background: color.dot, flex: "0 0 auto" }} />
-      {label}
-    </span>
-  );
-}
-
-/** A state a dot can say ("locked" is said by the Pro marker). */
-export type DotState = Exclude<ModuleState, "locked">;
-
-/** The tone of a module's state: the pill and the dot read the same table, so they cannot drift (§11b). */
-const STATE_TONE: Readonly<Record<DotState, PillTone>> = { active: "live", attention: "attention", inactive: "neutral" };
+export type { DotState } from "../model/status-badge";
 
 const READER_ONLY: CSSProperties = { position: "absolute", width: 1, height: 1, margin: -1, padding: 0, overflow: "hidden", clipPath: "inset(50%)", whiteSpace: "nowrap", border: 0 };
 
@@ -249,43 +208,11 @@ export function StatusDot({ state }: { state: DotState }) {
   const tr = useT();
   return (
     <span data-won-dot={state} style={{ display: "inline-flex", flex: "0 0 auto" }}>
-      <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 999, background: PILL_COLOR[STATE_TONE[state]].dot }} />
+      <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 999, background: BADGE_COLOR[STATE_TONE[state]].dot }} />
       {/* Read before the label the dot stands at: "Aktivní: Slevy a kódy". */}
       <ReaderOnly>{`${moduleStateLabel(state, tr)}: `}</ReaderOnly>
     </span>
   );
-}
-
-/**
- * State legible at rest (§11d). Green ONLY for "really running" — `state` for a
- * module or a section of it (model/module-status.ts: Aktivní / Neaktivní /
- * Vyžaduje pozornost; "locked" is said by the Pro marker, so no pill), `status`
- * for a rule (model/rule-status.ts), `on` for a switch-like thing.
- */
-export function StatusPill({ on, status, state }: { on?: boolean; status?: RuleStatus; state?: ModuleState }) {
-  const tr = useT();
-  if (state) {
-    if (state === "locked") return null;
-    return <Pill tone={STATE_TONE[state]} label={moduleStateLabel(state, tr)} marker={{ "data-won-state": state }} />;
-  }
-  const live = status ? status.kind === "live" : on === true;
-  const attention = status ? needsAttention(status) : false;
-  const label = status ? statusLabel(status, tr) : on ? tr.t("common.live") : tr.t("common.off");
-  return <Pill tone={live ? "live" : attention ? "attention" : status?.kind === "scheduled" ? "scheduled" : "neutral"} label={label} />;
-}
-
-/** Green "V tématu" / red "Chybí v tématu" / grey "Neověřeno": the same three everywhere a piece sits in the theme. */
-export function PlacementPill({ placement, move = false }: { placement: PlacementState; /** In the theme, but in a spot a customer misses (model/embed.ts spotAdvice): orange. */ move?: boolean }) {
-  const { t } = useT();
-  const misplaced = placement === "in_theme" && move;
-  const tone: PillTone = misplaced ? "warning" : placement === "in_theme" ? "live" : placement === "missing" ? "attention" : "neutral";
-  const label = t(misplaced ? "placement.misplaced" : placement === "in_theme" ? "placement.inTheme" : placement === "missing" ? "placement.missing" : "placement.unknown");
-  return <Pill tone={tone} label={label} marker={{ "data-won-placement": misplaced ? "misplaced" : placement }} />;
-}
-
-/** A placement state the three words do not cover (umístění na webu: "Jen v kopii", "Won vypnutý"), in the same pill. */
-export function NotePill({ tone, label, marker }: { tone: "warning" | "attention"; label: string; marker: string }) {
-  return <Pill tone={tone} label={label} marker={{ "data-won-placement": marker }} />;
 }
 
 /** The collapse affordance: a clear chevron in a ring, pointing down when open. */
@@ -449,8 +376,8 @@ export function WonSection({
         <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: WON_INK, letterSpacing: "-0.01em" }}>{title}</span>
           {pro ? <PlanBadge tier="pro" locked={locked} /> : null}
-          {moduleState ? <StatusPill state={moduleState} /> : status ? <StatusPill status={status} /> : on !== undefined ? <StatusPill on={on} /> : null}
-          {placement ? <PlacementPill placement={placement} move={placementMove} /> : null}
+          {moduleState ? <StatusBadge state={moduleState} /> : status ? <StatusBadge status={status} /> : on !== undefined ? <StatusBadge on={on} /> : null}
+          {placement ? <StatusBadge placement={placement} move={placementMove} /> : null}
         </span>
         {summary ? (
           <span style={{ display: "block", marginTop: 3, fontSize: 12.5, lineHeight: 1.35, color: WON_MUTED }}>

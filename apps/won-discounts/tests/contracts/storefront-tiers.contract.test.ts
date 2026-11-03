@@ -1070,7 +1070,7 @@ function sectionFetch() {
 }
 const productWindow = (fetch: unknown): Record<string, unknown> => ({ fetch, location: { pathname: "/products/mikina", search: "?variant=901" } });
 
-test("bod 4: after a cart change the block re-reads its own section and counts the items now in the cart (no page load)", async () => {
+test("after a cart change the block re-reads its own section and counts the items now in the cart (no page load)", async () => {
   for (const signal of ["shopify:cart:lines-update", "cart:update"]) {
     const { fetch, calls } = sectionFetch();
     const page = horizonPage(globalSetData());
@@ -1093,7 +1093,7 @@ test("bod 4: after a cart change the block re-reads its own section and counts t
   }
 });
 
-test("bod 4: piece by piece — 1 in the cart says 'Ještě 1 ks', 2 in the cart make 'od 3 ks' active, an emptied cart goes back", async () => {
+test("piece by piece — 1 in the cart says 'Ještě 1 ks', 2 in the cart make 'od 3 ks' active, an emptied cart goes back", async () => {
   const { fetch, calls } = sectionFetch();
   const page = horizonPage(globalSetData());
   const { flush } = await boot(page.document, { window: productWindow(fetch) });
@@ -1118,7 +1118,7 @@ test("bod 4: piece by piece — 1 in the cart says 'Ještě 1 ks', 2 in the cart
   assert.match(liveOf(page.block).textContent, /^1\sks\sza\s10,00\sKč\s\(10,00\sKč\/ks\)$/);
 });
 
-test("bod 4: the theme's own cart request is awaited (event.promise); the old counts stay until the answer; only the latest answer counts", async () => {
+test("the theme's own cart request is awaited (event.promise); the old counts stay until the answer; only the latest answer counts", async () => {
   const { fetch, calls } = sectionFetch();
   const page = horizonPage(globalSetData({ cart: { p: 2, s: 0 }, variants: [{ id: 901, p: 1000, m: 30, c: 2 }, { id: 902, p: 2000, m: 12.5, c: 0 }] }));
   const { flush } = await boot(page.document, { window: productWindow(fetch) });
@@ -1143,7 +1143,7 @@ test("bod 4: the theme's own cart request is awaited (event.promise); the old co
   assert.equal(activeMin(page.block), "5");
 });
 
-test("bod 4: when the section cannot be read (a failed request, no section id, no fetch) the cart counts are zeroed — never more than checkout gives", async () => {
+test("when the section cannot be read (a failed request, no section id, no fetch) the cart counts are zeroed — never more than checkout gives", async () => {
   const stored = () => globalSetData({ cart: { p: 2, s: 0 }, variants: [{ id: 901, p: 1000, m: 30, c: 2 }, { id: 902, p: 2000, m: 12.5, c: 0 }] });
   // A failed request.
   const { fetch, calls } = sectionFetch();
@@ -1189,7 +1189,7 @@ test("balík D: a table in the theme's own tag (no section of its own) asks no s
   assert.equal(activeMin(page.block), null, "the cart counts are zeroed: only the chosen quantity counts");
 });
 
-test("bod 4: Dawn's pubsub cart-update re-reads the section too", async () => {
+test("Dawn's pubsub cart-update re-reads the section too", async () => {
   const { fetch, calls } = sectionFetch();
   const subscribers: Record<string, Array<() => void>> = {};
   const window = { ...productWindow(fetch), subscribe: (name: string, cb: () => void) => (subscribers[name] ??= []).push(cb) };

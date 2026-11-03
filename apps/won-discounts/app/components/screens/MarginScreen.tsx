@@ -12,9 +12,8 @@
 //   3. Pro (amber, visible, never blocking Free — A2, §16): settings per
 //      collection and Přehled zásahů (read-only). BILL-1 on the server: Free
 //      gets no impact data, only the sample preview.
-// One save for the whole form, like the rule editor: the App Bridge save bar
-// (`data-save-bar`) and "Uložit" as the last thing on the page — never between
-// sections, so it cannot read as saving only the section above it.
+// One save for the whole form: the App Bridge save bar (`data-save-bar`), no Save
+// button of the page's own (shell/one-save.tsx, audit 2026-11-03 F3).
 // Percents keep ONE decimal (the core sanitizer rounds to the stricter side):
 // the fields step by a tenth and a second decimal is refused before the save
 // (model/margin.ts marginDecimalErrors), so no value changes silently (§12);
@@ -34,7 +33,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { PageGuide } from "../shell/PageGuide";
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
-import { PageSave } from "../shell/PageSave";
 import { useView, ViewPanel } from "../shell/views";
 import { usePolarisJump } from "../shell/scroll";
 import { Form, useSubmit } from "react-router";
@@ -70,7 +68,7 @@ import { FieldMessage } from "../rule-editor/parts";
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
 import { usePollWhile } from "../shell/poll";
-import { WON_FONT, WON_INK, WON_MUTED } from "../shell/tokens";
+import { WON_FONT, WON_INK } from "../shell/tokens";
 import { WonSection } from "../shell/WonSection";
 
 export interface MarginScreenProps extends MarginScreenData {
@@ -324,17 +322,16 @@ export function MarginScreen(props: MarginScreenProps) {
           </ModuleTiles>
           <ViewPanel id="settings" view={view}>
           <WonSection
-            title={t("module.margin")}
+            // The tile above carries the label and what is set, the page guide what the page is for (§19e, zásada E1):
+            // the section header repeats neither.
+            title={t("margin.settings.title")}
             glyph="shield"
-            // The label and the sentence of what is set are on the tile above (§19e); here only what the section is for.
-            hint={t("soon.margin")}
             anchor="settings"
             aside={<MarginProof settings={inForce} currency={shopCurrency} />}
           >
             <s-stack direction="block" gap="base">
               <s-switch name={MARGIN_FIELD.enabled} value="on" label={t("margin.enabled")} checked={boolAttr(seed.active ? seed.one(MARGIN_FIELD.enabled, "") === "on" : settings.enabled)} />
               <s-stack direction="block" gap="small-200">
-                <s-text color="subdued">{t("margin.never")}</s-text>
                 {/* Honest scope (§12): discounts outside Won are not seen by the protection; the fix is on Přehled (§13c). */}
                 <s-text color="subdued">
                   {t("margin.scope")} <s-link href="/app#native">{t("margin.scope.link")}</s-link>
@@ -349,7 +346,6 @@ export function MarginScreen(props: MarginScreenProps) {
               </s-stack>
               <div style={{ fontFamily: WON_FONT }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: WON_INK }}>{t("margin.fill.title")}</div>
-                <div style={{ marginTop: 2, fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED }}>{t("margin.fill.note")}</div>
               </div>
               <s-number-field
                 name={MARGIN_FIELD.minMarginPercent}
@@ -415,9 +411,6 @@ export function MarginScreen(props: MarginScreenProps) {
           <ViewPanel id="impact" view={view}>
             <ImpactSection pro={pro} enabled={draft.enabled} unsaved={unsaved} impact={impact} currency={shopCurrency} />
           </ViewPanel>
-          {/* One save for the whole form, last on the page like the rule editor (plus the App Bridge save bar). */}
-          {/* Not under a panel that only shows something: a Save there reads as "this is a setting" (6th round). */}
-          <PageSave shown={view !== "impact" && view !== "costs"} marker={{ "data-won-margin-save": "" }} />
         </s-stack>
       </Form>
     </s-page>

@@ -115,7 +115,7 @@ test("BILL-1: on Free, Přehled / Slevy a kódy / the editor say which Pro setti
   assert.match(html, /Tohle je v tarifu Pro, zákazník to nedostane/);
   assert.match(html, /Sleva „Jen Slovensko“ cílí na vybrané trhy/);
   // The home tile counts the discount among what needs attention; the list of discounts says why.
-  assert.match(html, /1 neaktivní/);
+  assert.match(html, /1 se neuplatní/);
   // The shop config Shopify runs has the market rule off; the lists of types run on Free too.
   const shipped = JSON.parse(store.sync.shopMetafieldValue("function_config")!);
   assert.match(JSON.stringify(shipped), /"cx":"/);
@@ -129,7 +129,7 @@ test("BILL-1: on Free, Přehled / Slevy a kódy / the editor say which Pro setti
   assert.equal(editor.gateOff, true);
   const editorHtml = text(await renderPage(createElement(RuleEditorScreen, editor)));
   assert.match(editorHtml, /Tohle je v tarifu Pro, zákazník to nedostane/);
-  assert.match(editorHtml, /Neaktivní/);
+  assert.match(editorHtml, /Neuplatní se/);
 });
 
 test("BILL-1: the dev-only override WON_DEV_PLAN=pro (NODE_ENV test) runs Pro: nothing gated, the rule runs", async () => {
@@ -493,7 +493,7 @@ test("F12: an onboarding step saved while another instance writes the config is 
   assert.deepEqual(stored.onboarding, { goals: ["rewards"], step: 2 }, "and the step is saved on top of it");
 });
 
-test("13 Oct 2026: a discount created from a campaign's form is stored switched off and the save leads back to the campaign with it ticked and switched on", async () => {
+test("a discount created from a campaign's form is stored switched off and the save leads back to the campaign with it ticked and switched on", async () => {
   const { loadCampaignsScreen } = await import("../../app/lib/integration/campaigns-admin.server.ts");
   const { campaignFormValues, CAMPAIGN_FIELD } = await import("../../app/components/model/campaigns.ts");
   const ctx = testCtx(db.prisma, shop, new FakeStore());

@@ -456,7 +456,7 @@ test("B9 + P3: stored segments, and on Free stored markets, are removed only by 
 
 // --- Bod 8 (plan 2026-10-06): a minimum quantity per selected product / collection (Pro) ----------
 
-test("bod 8: on Pro each selected product / collection may carry its own minimum; an empty field is none, a bad number is an error at that field; a field of an item no longer selected is ignored", () => {
+test("on Pro each selected product / collection may carry its own minimum; an empty field is none, a bad number is an error at that field; a field of an item no longer selected is ignored", () => {
   const P1 = "gid://shopify/Product/1";
   const P2 = "gid://shopify/Product/2";
   const products: [string, string][] = [...base.filter(([k]) => k !== FIELD.target), [FIELD.target, "products"], [FIELD.productIds, P1], [FIELD.productIds, P2]];
@@ -485,7 +485,7 @@ test("bod 8: on Pro each selected product / collection may carry its own minimum
   assert.deepEqual(ruleFormDefaults(readRuleForm(form(collections), pro).rule, ["CZK", "EUR"]).itemMinimums, { [C1]: "4" });
 });
 
-test("bod 8: on Free the form cannot write a per-item minimum (BILL-1); stored ones stay for the items still selected until removed explicitly", () => {
+test("on Free the form cannot write a per-item minimum (BILL-1); stored ones stay for the items still selected until removed explicitly", () => {
   const P1 = "gid://shopify/Product/1";
   const P2 = "gid://shopify/Product/2";
   const products: [string, string][] = [...base.filter(([k]) => k !== FIELD.target), [FIELD.target, "products"], [FIELD.productIds, P1]];
@@ -512,7 +512,7 @@ const seededBytes = () => {
   return (n: number) => Uint8Array.from({ length: n }, () => (x = (x * 73 + 41) % 251));
 };
 
-test("bod 6: a count in the generator makes a batch on the server (core createCodeBatch) and the rule needs no hand-typed code; the live draft only reports the pending spec", async () => {
+test("a count in the generator makes a batch on the server (core createCodeBatch) and the rule needs no hand-typed code; the live draft only reports the pending spec", async () => {
   const { createCodeBatch, listBatchCodes, ruleHasCodes } = await import("@won/core/discounts/code-batch");
   const code: [string, string][] = [...base.filter(([k]) => k !== FIELD.method && k !== FIELD.codes), [FIELD.method, "code"], [FIELD.codes, ""]];
   // No code and no generator: the old error.
@@ -543,7 +543,7 @@ test("bod 6: a count in the generator makes a batch on the server (core createCo
   assert.ok(!listBatchCodes(sneaky.rule.codeBatches![0]!)[0]!.startsWith("VIP-"));
 });
 
-test("bod 6: on Pro the pattern is read (prefix, middle, suffix, length, characters) and a refusal lands on its field; stored batches are kept, a deleted batch or code goes on save", async () => {
+test("on Pro the pattern is read (prefix, middle, suffix, length, characters) and a refusal lands on its field; stored batches are kept, a deleted batch or code goes on save", async () => {
   const { createCodeBatch, listBatchCodes } = await import("@won/core/discounts/code-batch");
   const code: [string, string][] = [...base.filter(([k]) => k !== FIELD.method && k !== FIELD.codes), [FIELD.method, "code"], [FIELD.codes, ""]];
   const pro = (existing?: DiscountRule, otherPrefixes: string[] = []) => ({

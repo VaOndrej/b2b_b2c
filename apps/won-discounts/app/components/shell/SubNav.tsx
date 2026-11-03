@@ -5,10 +5,11 @@
 //   - React Router navigation (the same client-side router the `s-link href`
 //     navigations end in), so it works inside the embedded admin and in the dev
 //     harness; with unsaved changes App Bridge asks first (leaveConfirmation);
-//   - one row, scrolls sideways on a narrow screen (390 px), never wraps;
+//   - one row, scrolls sideways on a narrow screen (390 px), never wraps; an edge with more items behind it fades out
+//     (a mask, no colour of its own), and the current item is brought fully into view, clear of the fade;
 //   - no URL hash (WonSection anchors own it).
 //   - an item may carry its module's state: a dot before the label (green runs, red
-//     needs attention, grey does not run — the colours and words of StatusPill), so
+//     needs attention, grey does not run — the colours and words of StatusBadge), so
 //     the state of every page is seen from any of them.
 // SubNav is presentational and knows nothing about discounts; DiscountsSubNav is
 // the one for "Slevy". It reads the onboarding goals (the order) and the modules'
@@ -16,7 +17,7 @@
 // The embedded layout (app/routes/app.tsx) provides them from its loader, the dev
 // harness from its fixtures; with no provider the default order applies, no dots.
 
-import { createContext, useContext, useEffect, useRef, type MouseEvent } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router";
 
 import { useT } from "../../i18n/context";
@@ -44,6 +45,29 @@ async function confirmLeave(): Promise<void> {
   }
 }
 
+/** How wide the fade at an edge with more items behind it is (px). */
+const FADE = 28;
+
+/** Which edges of the strip have items behind them. */
+export interface StripMore {
+  left: boolean;
+  right: boolean;
+}
+
+const NO_MORE: StripMore = { left: false, right: false };
+
+/** Reads the edges from the strip's scroll position; a pixel of rounding is not "more". */
+export function stripMore(scrollLeft: number, clientWidth: number, scrollWidth: number): StripMore {
+  return { left: scrollLeft > 1, right: scrollLeft + clientWidth < scrollWidth - 1 };
+}
+
+/** The fade as a mask: the items fade out towards an edge with more behind it, whatever the background. */
+function fadeMask(more: StripMore): { maskImage?: string; WebkitMaskImage?: string } {
+  if (!more.left && !more.right) return {};
+  const image = `linear-gradient(to right, ${more.left ? "transparent" : "black"}, black ${FADE}px, black calc(100% - ${FADE}px), ${more.right ? "transparent" : "black"})`;
+  return { maskImage: image, WebkitMaskImage: image };
+}
+
 export interface SubNavProps {
   /** What the strip navigates (read by screen readers). */
   label: string;
@@ -54,16 +78,32 @@ export interface SubNavProps {
 
 export function SubNav({ label, items, active }: SubNavProps) {
   const navigate = useNavigate();
-  // On a narrow screen the current item may sit outside the strip: bring it into view (sideways only).
+  // On a narrow screen the current item may sit outside the strip: bring it into view (sideways only), clear of the fade.
   const listRef = useRef<HTMLUListElement>(null);
+  const [more, setMore] = useState<StripMore>(NO_MORE);
   useEffect(() => {
     const list = listRef.current;
     const current = list?.querySelector<HTMLElement>('[aria-current="page"]');
     if (!list || !current) return;
-    const overflow = current.offsetLeft + current.offsetWidth - (list.scrollLeft + list.clientWidth);
+    const overflow = current.offsetLeft + current.offsetWidth + FADE - (list.scrollLeft + list.clientWidth);
     if (overflow > 0) list.scrollLeft += overflow;
-    else if (current.offsetLeft < list.scrollLeft) list.scrollLeft = current.offsetLeft;
+    else if (current.offsetLeft - FADE < list.scrollLeft) list.scrollLeft = Math.max(0, current.offsetLeft - FADE);
   }, [active]);
+  // Which edges have items behind them: read on scroll and on resize.
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const read = () => setMore(stripMore(list.scrollLeft, list.clientWidth, list.scrollWidth));
+    read();
+    // The tabs widen once the font has loaded: read again then.
+    void document.fonts?.ready.then(read);
+    list.addEventListener("scroll", read, { passive: true });
+    window.addEventListener("resize", read);
+    return () => {
+      list.removeEventListener("scroll", read);
+      window.removeEventListener("resize", read);
+    };
+  }, []);
   const go = (event: MouseEvent<HTMLAnchorElement>, to: string, current: boolean) => {
     // A new tab / window stays the browser's business.
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -87,7 +127,11 @@ export function SubNav({ label, items, active }: SubNavProps) {
           overflowX: "auto",
           WebkitOverflowScrolling: "touch",
           scrollbarWidth: "none",
+          // A tab focused from the keyboard scrolls in clear of the fade too.
+          scrollPaddingInline: FADE,
+          ...fadeMask(more),
         }}
+        data-won-subnav-more={[more.left ? "left" : "", more.right ? "right" : ""].filter(Boolean).join(" ") || undefined}
       >
         {items.map((item) => {
           const current = item.key === active;

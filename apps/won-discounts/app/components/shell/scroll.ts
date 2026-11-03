@@ -1,5 +1,5 @@
 // How a jump inside a page moves: smoothly, unless the system asks for less motion. One answer for the list
-// "Na této stránce" (SectionNav), the row of numbers (JumpRow) and the rule editor's deep links.
+// "Na této stránce" (SectionNav) and the rule editor's deep links.
 
 import { useEffect, useState, type KeyboardEvent } from "react";
 

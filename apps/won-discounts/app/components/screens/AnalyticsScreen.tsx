@@ -14,18 +14,18 @@ import type { AnalyticsScreenData } from "../model/analytics";
 import { PageGuide } from "../shell/PageGuide";
 import { ProSell } from "../shell/ProSell";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
-import { WON_AMBER, WON_INK, WON_MUTED } from "../shell/tokens";
+import { WON_AMBER, WON_CHART, WON_DIVIDER, WON_INK, WON_MUTED, WON_PANEL } from "../shell/tokens";
 
 export type AnalyticsScreenProps = AnalyticsScreenData;
 
-const BAR = "#2f6fed";
+const BAR = WON_CHART;
 
 function Tiles({ tiles }: { tiles: AnalyticsScreenData["tiles"] }) {
   const { t } = useT();
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }} data-won-analytics-tiles>
       {tiles.map((tile) => (
-        <div key={tile.id} style={{ border: "1px solid #e3e3e3", borderRadius: 12, padding: 12 }}>
+        <div key={tile.id} style={{ border: `1px solid ${WON_DIVIDER}`, borderRadius: 12, padding: 12 }}>
           <div style={{ color: WON_MUTED, fontSize: 12 }}>{t(`analytics.tile.${tile.id}` as "analytics.tile.orders")}</div>
           <div style={{ color: WON_INK, fontSize: 22, fontWeight: 600 }}>{tile.value}</div>
         </div>
@@ -38,7 +38,7 @@ function Chart({ series }: { series: AnalyticsScreenData["series"] }) {
   const { t } = useT();
   return (
     <div role="img" aria-label={t("analytics.chart.label")} data-won-analytics-chart>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 120, borderBottom: "1px solid #e3e3e3" }}>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 120, borderBottom: `1px solid ${WON_DIVIDER}` }}>
         {series.map((day) => (
           <div key={day.label} title={day.title} style={{ flex: "1 1 0", minWidth: 0, height: `${Math.max(day.height, day.height > 0 ? 3 : 0)}%`, background: BAR, borderRadius: "3px 3px 0 0" }} />
         ))}
@@ -67,7 +67,7 @@ function RuleTable({ rows }: { rows: AnalyticsScreenData["rules"] }) {
             )}
             <span style={{ color: WON_MUTED }}>{t("analytics.row.line", { orders: row.orders, cost: row.cost, revenue: row.revenue })}</span>
           </div>
-          <div style={{ height: 6, background: "#f1f1f1", borderRadius: 3 }}>
+          <div style={{ height: 6, background: WON_PANEL, borderRadius: 3 }}>
             <div style={{ width: `${row.share}%`, height: 6, background: WON_AMBER, borderRadius: 3 }} />
           </div>
         </div>

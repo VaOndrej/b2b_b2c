@@ -12,7 +12,8 @@ import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
 import { PLACEMENTS_PATH } from "../model/placements";
 import type { MessageKey } from "../../i18n";
-import { NotePill, PlacementPill, RowNote, WonRow, WonSection } from "../shell/WonSection";
+import { RowNote, WonRow, WonSection } from "../shell/WonSection";
+import { StatusBadge } from "../shell/StatusBadge";
 
 export function CardPricesSection({
   cardPrices,
@@ -112,7 +113,7 @@ function CardLineRow({ where, cardBlockUrl }: { where?: { way: "block" | "tag"; 
   return (
     <div data-won-cards-where={at} data-won-cards-way={where?.way ?? ""}>
       <WonRow tone={at === "missing" ? "attention" : undefined} action={action}>
-        <div style={{ marginBottom: 4 }}>{at === "tag_copy" ? <NotePill tone="warning" label={t("webPlaces.state.copy")} marker="tag_copy" /> : <PlacementPill placement={there ? "in_theme" : at === "missing" ? "missing" : "unknown"} />}</div>
+        <div style={{ marginBottom: 4 }}>{at === "tag_copy" ? <StatusBadge badge={{ tone: "warning", label: t("webPlaces.state.copy") }} marker={{ "data-won-placement": "tag_copy" }} /> : <StatusBadge placement={there ? "in_theme" : at === "missing" ? "missing" : "unknown"} />}</div>
         <RowNote>{t(text)}</RowNote>
       </WonRow>
     </div>

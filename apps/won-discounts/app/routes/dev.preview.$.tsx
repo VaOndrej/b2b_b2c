@@ -12,10 +12,11 @@ import { discountPageStates, type DiscountNavData } from "../components/model/mo
 import { NOT_WIRED_SIGNALS } from "../components/model/signals";
 import type { WonDiscountsConfig } from "@won/core/discounts/config";
 import { mismatchViews } from "../lib/integration/combine.server";
+import { MODULE_COMBINE_FIELD } from "../components/model/combine";
 import { FormActionsContext } from "../components/shell/form-actions";
 import { HoverStyles } from "../components/shell/hover";
 import { DiscountNav } from "../components/shell/SubNav";
-import type { NativeDiscountView } from "../components/model/types";
+import type { NativeDiscountView, UiResult } from "../components/model/types";
 import { WonSection } from "../components/shell/WonSection";
 import { buildDiscountsProps, DiscountsScreen, type DiscountsScreenProps } from "../components/screens/DiscountsScreen";
 import { buildOnboardingProps, onboardingHasNative, OnboardingScreen, type OnboardingScreenProps, onboardingStep } from "../components/screens/OnboardingScreen";
@@ -25,10 +26,10 @@ import { buildRuleEditorProps, RuleEditorScreen, type RuleEditorScreenProps } fr
 import { SettingsScreen, type SettingsScreenProps } from "../components/screens/SettingsScreen";
 import { TranslationsScreen, type TranslationsScreenProps } from "../components/screens/TranslationsScreen";
 import { TiersScreen, type TiersScreenProps } from "../components/screens/TiersScreen";
-import { MilestonesScreen, type MilestonesScreenProps } from "../components/screens/MilestonesScreen";
-import { OutletScreen, type OutletScreenProps } from "../components/screens/OutletScreen";
+import { MilestonesScreen, type MilestonesScreenProps } from "../components/screens/milestones/MilestonesScreen";
+import { OutletScreen, type OutletScreenProps } from "../components/screens/outlet/OutletScreen";
 import { AnalyticsScreen, type AnalyticsScreenProps } from "../components/screens/AnalyticsScreen";
-import { CampaignsScreen, type CampaignsScreenProps } from "../components/screens/CampaignsScreen";
+import { CampaignsScreen, type CampaignsScreenProps } from "../components/screens/campaigns/CampaignsScreen";
 import { MarginScreen, type MarginScreenProps } from "../components/screens/MarginScreen";
 import { buildTryCartProps, TryCartScreen, type TryCartScreenProps } from "../components/screens/TryCartScreen";
 
@@ -96,7 +97,6 @@ import {
   devPlacementsScreen,
 } from "../lib/dev-harness.server";
 import { PlacementsScreen, type PlacementsScreenProps } from "../components/screens/PlacementsScreen";
-import type { PlacementsResult } from "../components/model/placements";
 
 // Dev-only admin harness (Task 5 brief): renders the REAL admin screens (the
 // same components the embedded app/routes/app.* routes render) against fixture
@@ -596,11 +596,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
   const url = new URL(request.url);
   if (harnessScreen(url.pathname) === "placements") return devPlacementsResult(await request.formData(), url.searchParams.get("state"));
+  const form = await request.formData();
   if (harnessScreen(url.pathname) === "translations") {
     const q = url.searchParams;
-    const csv = devTranslationsCsv(await request.formData(), { plan: q.get("plan") === "pro" ? "pro" : "free", state: q.get("state"), locale: resolveLocale(q.get("locale")) });
+    const csv = devTranslationsCsv(form, { plan: q.get("plan") === "pro" ? "pro" : "free", state: q.get("state"), locale: resolveLocale(q.get("locale")) });
     if (csv) return csv;
   }
+  // The one save of a page (shell/one-save.tsx) in a browser test: `?save=ok` answers every post "saved" (nothing is
+  // stored), `?save=combine-fails` refuses the Sčítá se s part (another write holds the lock) and saves the rest.
+  const save = url.searchParams.get("save");
+  if (save === "combine-fails" && form.has(MODULE_COMBINE_FIELD.module)) return { ok: false as const, reason: "busy" as const };
+  if (save === "ok" || save === "combine-fails") return { ok: true as const, message: "saved" as const };
   return { ok: false as const, reason: "preview_only" as const };
 };
 
@@ -627,7 +633,8 @@ export default function DevPreview() {
   // A harness form submit answers `preview_only`; the screen shows it like any result.
   const answered = useActionData<typeof action>() ?? null;
   // Umístění na webu answers its own fetchers (a brief, "checked", or its own refusals): never a screen's result.
-  const submitted = answered && !answered.ok && !("kind" in answered) && answered.reason !== "no_theme" ? (answered as Exclude<typeof answered, PlacementsResult>) : null;
+  // `?save=ok`: a "saved" is a screen's result too (the one save goes on after it).
+  const submitted = answered && !("kind" in answered) && (answered.ok ? answered.message === "saved" : answered.reason !== "no_theme") ? (answered as UiResult) : null;
   const location = useLocation();
   // The sections that save on their own post to the harness too (nothing is saved).
   const here = `${location.pathname}${location.search}`;
@@ -676,7 +683,7 @@ export default function DevPreview() {
       content = <AnalyticsScreen {...(data as AnalyticsScreenProps)} />;
       break;
     case "outlet":
-      content = <OutletScreen {...(data as OutletScreenProps)} result={(data as OutletScreenProps).result} />;
+      content = <OutletScreen {...(data as OutletScreenProps)} result={submitted ?? (data as OutletScreenProps).result} />;
       break;
     case "translations":
       content = <TranslationsScreen {...(data as TranslationsScreenProps)} result={submitted} />;

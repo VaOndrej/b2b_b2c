@@ -18,9 +18,9 @@
 //      one "Přidat tabulku na stránku produktu" deep link (§13), the storefront
 //      config's state (K5), "Zobrazit na mém webu";
 //   3. Pro sets (ProTierSets) with the K1 precedence said once.
-// One save for the whole form (App Bridge save bar + "Uložit" last on the page,
-// like the margin screen); the server parses the same fields (readTiersForm,
-// SEC-1). A presentational component: app/routes/app.tiers.tsx renders it from
+// One save for the whole page: the App Bridge save bar, with Sčítá se s as a part
+// of the form (shell/one-save.tsx); the server parses the same fields
+// (readTiersForm, SEC-1). A presentational component: app/routes/app.tiers.tsx renders it from
 // loadTiersScreen (app/lib/integration/tiers.server.ts), the dev harness from
 // fixtures.
 
@@ -30,7 +30,10 @@ import { Form, useSubmit } from "react-router";
 import { useT } from "../../i18n/context";
 import { CardPricesSection } from "../looks/CardPricesSection";
 import { PageGuide } from "../shell/PageGuide";
-import { ModuleCombine } from "../shell/ModuleCombine";
+import { CombinePart, combinePart } from "../shell/ModuleCombine";
+import { PartRefusal, useOneSave } from "../shell/one-save";
+import { useFormActions } from "../shell/form-actions";
+import { splitSave } from "../model/one-save";
 import { LookSection } from "../looks/LookSection";
 import { blockPlacement } from "../model/embed";
 import { LOOK_FIELD } from "../model/looks";
@@ -44,11 +47,10 @@ import { snapshotOf } from "../shell/form-snapshot";
 import { GateNotes } from "../shell/GateNotes";
 import { Notice } from "../shell/Notice";
 import { ModuleTiles, ViewTile } from "../shell/ModuleTile";
-import { PageSave } from "../shell/PageSave";
 import { useView, ViewPanel } from "../shell/views";
 import { usePolarisJump } from "../shell/scroll";
 import { DiscountsSubNav } from "../shell/SubNav";
-import { RowNote, StatusPill, WonRow, WonSection } from "../shell/WonSection";
+import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 import { WON_LINE } from "../shell/tokens";
 import { ProTierSets, TIERS_CAPACITY_ANCHOR } from "../tiers/ProTierSets";
 import { TierSetEditor } from "../tiers/TierSetEditor";
@@ -69,28 +71,27 @@ function keptCurrencies(sets: readonly TierSetView[], enabled: readonly string[]
   return [...out];
 }
 
-function HonestNotes({ marginOn, competingRules, outletWithAnything }: { marginOn: boolean; competingRules: number; outletWithAnything: boolean }) {
-  const tr = useT();
-  const { t } = tr;
+/** How a tier meets other discounts, margin protection and clearance: one line with its links (zásada E4). */
+function HonestNotes({ marginOn, outletWithAnything }: { marginOn: boolean; outletWithAnything: boolean }) {
+  const { t } = useT();
   return (
-    <s-stack direction="block" gap="small-200">
-      <s-text color="subdued">
-        {t("tiers.honest.best")}
-        {competingRules > 0 ? ` ${tr.tp("tiers.honest.competing", competingRules)}` : ""} <s-link href="/app/discounts">{t("nav.discounts")}</s-link>
-      </s-text>
+    <s-text color="subdued">
+      {t("tiers.honest.line")} <s-link href="#combine-types">{t("combine.title")}</s-link>
       {marginOn ? (
-        <s-text color="subdued">
-          {t("tiers.honest.margin")} <s-link href="/app/margin">{t("module.margin")}</s-link>
-        </s-text>
+        <>
+          {" · "}
+          <s-link href="/app/margin">{t("module.margin")}</s-link>
+        </>
       ) : null}
+      {". "}
       {/* Clearance lines are left out unless the lists of Výprodej and Množstevní slevy name each other; gifts always (K2). */}
-      <s-text color="subdued">{t(outletWithAnything ? "tiers.honest.excludedOutlet" : "tiers.honest.excluded")}</s-text>
-    </s-stack>
+      {t(outletWithAnything ? "tiers.honest.excludedOutlet" : "tiers.honest.excluded")}
+    </s-text>
   );
 }
 
 export function TiersScreen(props: TiersScreenProps) {
-  const { plan, shopCurrency, configVersion, currencies, sets, gateNotes, marginOn, competingRules, block, storefront, preview, result } = props;
+  const { plan, shopCurrency, configVersion, currencies, sets, gateNotes, marginOn, block, storefront, preview, result } = props;
   const pro = plan === "pro";
   const tr = useT();
   const { t } = tr;
@@ -215,11 +216,15 @@ export function TiersScreen(props: TiersScreenProps) {
   };
 
   const submit = useSubmit();
-  // I3: "Nahradit neplatnou konfiguraci" re-submits exactly this form, confirmed.
+  // One save for the page (shell/one-save.tsx): the tiers to this route's action, then Sčítá se s to /app/combine.
+  const actions = useFormActions();
+  const oneSave = useOneSave({ pageKey: "tiers", formRef, result, parts: [combinePart("tiers", configVersion ?? null, actions.combine)] });
+  // I3: "Nahradit neplatnou konfiguraci" re-submits exactly the page's own fields, confirmed.
   const replaceUnreadable = () => {
     const form = formRef.current;
     if (!form) return;
-    const data = new FormData(form);
+    const data = new FormData();
+    for (const [name, value] of splitSave(new FormData(form).entries()).page) data.append(name, value);
     data.set(F.replaceUnreadable, "1");
     submit(data, { method: "post" });
   };
@@ -267,11 +272,12 @@ export function TiersScreen(props: TiersScreenProps) {
     <s-page heading={t("module.tiers")}>
       <DiscountsSubNav active="tiers" />
       <PageGuide page="tiers" />
-      <Form method="post" ref={formRef} data-save-bar>
+      <Form method="post" ref={formRef} data-save-bar onSubmit={oneSave.onSubmit}>
         <input type="hidden" name={F.intent} value={TIERS_INTENT.save} />
         {configVersion ? <input type="hidden" name={F.configVersion} value={configVersion} /> : null}
         <s-stack key={formKey} direction="block" gap="base">
           <Notice result={result} onReplace={replaceUnreadable} />
+          <PartRefusal refusal={oneSave.refusal} />
           {/* A refusal about the page as a whole (a stale form, too many sets) — at the top, not in a section. */}
           <FieldMessage text={pageError ? t(pageError.key, pageError.params) : undefined} />
           {gateNotes.length > 0 ? <GateNotes notes={gateNotes} /> : null}
@@ -295,7 +301,8 @@ export function TiersScreen(props: TiersScreenProps) {
           </ModuleTiles>
           <ViewPanel id="global" view={view}>
           <WonSection
-            title={t("tiers.global.title")}
+            // The tile above is "Pro celý obchod" with its label (§19e): the header says what is set here, not the tile again.
+            title={t("tiers.global.levels")}
             glyph="layers"
             // The label and the sentence of what is set are on the tile above (§19e); here only what the section is for.
             hint={t("tiers.global.hint")}
@@ -341,14 +348,9 @@ export function TiersScreen(props: TiersScreenProps) {
                     )
                   }
                 >
+                  {/* What is stored, in one line: its name and label are on the tile above (zásada E1). */}
                   {storedGlobal ? (
-                    <>
-                      <span style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-                        <s-text type="strong">{t("tiers.global.title")}</s-text>
-                        {props.status?.global ? <StatusPill state={props.status.global.state} /> : null}
-                      </span>
-                      <RowNote>{storedSummary}</RowNote>
-                    </>
+                    <s-text type="strong">{storedSummary}</s-text>
                   ) : (
                     <RowNote>{t("tiers.list.empty")}</RowNote>
                   )}
@@ -358,9 +360,13 @@ export function TiersScreen(props: TiersScreenProps) {
               <div data-won-tiers-editor={editing ? "open" : "closed"} style={{ display: editing ? "block" : "none" }}>
                 <TierSetEditor set={globalSet} currencies={currencies} kept={kept} pro={pro} live={live} errorFor={errorFor} onChange={reread} attempted={errors.length > 0} suggest={props.suggest} />
               </div>
-              <HonestNotes marginOn={marginOn} competingRules={competingRules} outletWithAnything={props.outletWithAnything === true} />
+              <HonestNotes marginOn={marginOn} outletWithAnything={props.outletWithAnything === true} />
             </s-stack>
           </WonSection>
+          {/* "Sčítá se s": a part of this one form, stored by /app/combine on the same Save (shell/one-save.tsx). */}
+          <div style={{ marginTop: 16 }}>
+            <CombinePart module="tiers" stored={props.combine} />
+          </div>
           </ViewPanel>
           <ViewPanel id="table" view={view}>
             <TiersBlockSection block={block} storefront={storefront} product={preview.product} about={t("tiers.view.table.about")} />
@@ -388,17 +394,8 @@ export function TiersScreen(props: TiersScreenProps) {
             capacityError={capacityError}
           />
           </ViewPanel>
-          {/* One save for the whole form, last on the page (plus the App Bridge save bar). "Tabulka na webu" holds
-              nothing of this form: the block is added in the theme and the look saves itself. */}
-          <PageSave shown={view !== "table"} />
         </s-stack>
       </Form>
-      {/* "Sčítá se s": its own form, so outside the page's (the same view as the whole-store tiers). */}
-      <div style={{ marginTop: 16 }}>
-        <ViewPanel id="global" view={view}>
-          <ModuleCombine module="tiers" stored={props.combine} configVersion={configVersion ?? null} />
-        </ViewPanel>
-      </div>
       {/* The table's look: its own form, so outside the page's (the same view as "Tabulka na webu"). */}
       <div style={{ marginTop: 16 }}>
         <ViewPanel id="table" view={view}>

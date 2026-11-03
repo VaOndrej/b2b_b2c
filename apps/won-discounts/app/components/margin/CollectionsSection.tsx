@@ -158,7 +158,6 @@ export function CollectionsSection({
               <ol style={{ margin: "6px 0 0", paddingLeft: 20, fontSize: 13, lineHeight: 1.5, color: WON_INK }}>
                 <li>{t("margin.collections.how.1")}</li>
                 <li>{t("margin.collections.how.2")}</li>
-                <li>{t("margin.collections.how.3")}</li>
               </ol>
             </div>
             {store ? (

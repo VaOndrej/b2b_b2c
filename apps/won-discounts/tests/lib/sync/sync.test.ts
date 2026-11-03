@@ -237,7 +237,7 @@ test("a code moved from one rule to another in one save ends on the new rule's n
   assert.deepEqual(byTitle.get("Rule b"), ["B1", "MOVE"]);
 });
 
-test("C1: a DISABLED rule's node is deactivated (usage history kept); a DELETED rule's node is deleted; foreign discounts untouched", async () => {
+test("a DISABLED rule's node is deactivated (usage history kept); a DELETED rule's node is deleted; foreign discounts untouched", async () => {
   const fake = new FakeShopify();
   const foreignCode = fake.addForeignNode({ kind: "code", title: "Native 5%", codes: [{ id: "gid://shopify/DiscountRedeemCode/1", code: "NATIVE5" }] });
   const foreignAuto = fake.addForeignNode({ kind: "automatic", title: AUTO_NODE_TITLE });
@@ -272,7 +272,7 @@ test("C1: a DISABLED rule's node is deactivated (usage history kept); a DELETED 
   assert.deepEqual(fake.mutations(), []);
 });
 
-test("C1: re-enabling a rule ACTIVATES its old node (same node, history kept) and applies its schedule", async () => {
+test("re-enabling a rule ACTIVATES its old node (same node, history kept) and applies its schedule", async () => {
   const fake = new FakeShopify();
   const deps = makeDeps(fake, db.prisma);
   const sync = createSync(deps);
@@ -293,7 +293,7 @@ test("C1: re-enabling a rule ACTIVATES its old node (same node, history kept) an
   assert.ok(activate < update, "activate first, then the schedule update");
 });
 
-test("C1: a code moved from a DEACTIVATED rule to another rule is removed from the old node first", async () => {
+test("a code moved from a DEACTIVATED rule to another rule is removed from the old node first", async () => {
   const fake = new FakeShopify();
   const deps = makeDeps(fake, db.prisma);
   const sync = createSync(deps);

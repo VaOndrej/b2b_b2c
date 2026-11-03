@@ -10,7 +10,8 @@ import { ACCENT_COLORS } from "@won/core/discounts/custom-look";
 import { useT } from "../../i18n/context";
 import type { EmbedView } from "../model/types";
 import { hoverMark } from "../shell/hover";
-import { selectionRing, WON_ATTENTION, WON_FONT, WON_INK, WON_MUTED } from "../shell/tokens";
+import { WON_ATTENTION, WON_CONTROL_EDGE_STRONG, WON_FONT, WON_INK, WON_INK_SHADOW, WON_MUTED, selectionRing } from "../shell/tokens";
+import { CardRadio } from "../shell/Controls";
 
 export function AccentPicker({ name, value, stored, onPick, embed }: { name: string; value: string; stored: string; onPick: (accent: string) => void; embed?: EmbedView | null }) {
   const { t } = useT();
@@ -41,10 +42,10 @@ export function AccentPicker({ name, value, stored, onPick, embed }: { name: str
               fontFamily: WON_FONT,
             }}
           >
-            <input type="radio" name={name} value={a} checked={value === a} onChange={() => onPick(a)} style={{ position: "absolute", opacity: 0, width: 1, height: 1, margin: 0, pointerEvents: "none" }} />
+            <CardRadio name={name} value={a} checked={value === a} onChange={() => onPick(a)} style={{ position: "absolute", opacity: 0, width: 1, height: 1, margin: 0, pointerEvents: "none" }} />
             <span
               aria-hidden="true"
-              style={{ width: 14, height: 14, borderRadius: 999, flex: "0 0 auto", background: ACCENT_COLORS[a] ?? "conic-gradient(#111418 0 50%, #c9d0d8 0 100%)", border: "1px solid rgba(17,20,24,.18)" }}
+              style={{ width: 14, height: 14, borderRadius: 999, flex: "0 0 auto", background: ACCENT_COLORS[a] ?? `conic-gradient(${WON_INK} 0 50%, ${WON_CONTROL_EDGE_STRONG} 0 100%)`, border: `1px solid ${WON_INK_SHADOW}` }}
             />
             {t(`tiers.preview.accent.${a}` as "tiers.preview.accent.theme")}
           </label>

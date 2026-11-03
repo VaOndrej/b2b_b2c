@@ -103,7 +103,7 @@ test("SEC-2: shop A never sees shop B's config", async () => {
   assert.equal(b.config.locales.cs.marker, "shop-b-preset");
 });
 
-test("audit P2-1 / C3: a config whose function payload is over budget is refused, nothing is written", async () => {
+test("a config whose function payload is over budget is refused, nothing is written", async () => {
   const shop = "too-big.myshopify.com";
   const first = await saveConfig(db.prisma, shop, { modules: { codes: { rules: [rule("keep")] } } });
   assert.equal(first.ok, true);

@@ -25,11 +25,11 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "overview?state=pro-cards&plan=pro", expect: [/Žádná kampaň není naplánovaná/, /Žádný výprodej není aktivní/] },
   {
     path: "overview?state=live",
-    expect: [/Vyžaduje pozornost/, /LETO15/, /Přesunout vše \(2\)/, /Vrátit zpět/, /3 aktivní z 6 · 1 naplánovaná · 1 neaktivní/, /nemá hodnotu pro Slovensko/, /Doplnit hodnotu/, /A ještě 1 věc k vyřešení:/],
+    expect: [/Vyžaduje pozornost/, /LETO15/, /Přesunout vše \(2\)/, /Vrátit zpět/, /3 aktivní z 6 · 1 naplánovaná · 1 se neuplatní/, /hodnotu pro Slovensko/, /Doplnit hodnotu/, /2 slevy nemají hodnotu pro Slovensko/],
   },
   {
     path: "overview?state=sync-failed",
-    expect: [/Zápis se nepovedl 28\. 9\. 2026 16:20/, /Kód slevy „VIP10“ už v Shopify používá jiná sleva/, /Zkusit zapsat znovu/, /2 aktivní z 6 · 1 naplánovaná · 1 zatím neplatí · 1 neaktivní · 1 vypnutá/, /data-won-tile-issues/],
+    expect: [/Zápis se nepovedl 28\. 9\. 2026 16:20/, /Kód slevy „VIP10“ už v Shopify používá jiná sleva/, /Zkusit zapsat znovu/, /2 aktivní z 6 · 1 naplánovaná · 1 zatím neplatí · 1 se neuplatní · 1 vypnutá/, /data-won-overview-finding/],
   },
   {
     path: "overview?state=moved",
@@ -46,12 +46,12 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   // The five sections, all there; the markers at the fields (the missing EUR amount, the start date); the status sentence links to its field.
   {
     path: "rule-editor",
-    expect: [/Částka: Česko \(CZK\)/, /Částka: Slovensko \(EUR\)/, /nenabízí se/, /Europe\/Prague/, /Pro · odemknout/, /Naplánováno/, /Podmínky/, /Jak se uplatní/, /Kdy platí/, /Zapnuto/, /V EUR chybí částka/, /Sleva začne platit 27\. 11\. 2026\./, /href="#schedule"/, /id="conditions"/, /id="target"/, /id="markets"/],
+    expect: [/Částka: Česko \(CZK\)/, /Částka: Slovensko \(EUR\)/, /nenabízí se/, /Europe\/Prague/, /S Pro povolíte sčítání/, /Naplánováno/, /Podmínky/, /Jak se uplatní/, /Kdy platí/, /Zapnuto/, /V EUR chybí částka/, /Sleva začne platit 27\. 11\. 2026\./, /href="#schedule"/, /id="conditions"/, /id="target"/, /id="markets"/],
   },
   { path: "rule-editor?rule=dev-fixture-2", expect: [/VIP10/, /1× na zákazníka/, /Jednou na zákazníka/, /Zákazník zadá kód VIP10\./, /V EUR chybí minimum/, /Vrátit automatický název/] },
   { path: "rule-editor?rule=dev-fixture-3", expect: [/HUF/, /Uloženo i pro HUF: 3\u00a0000\u00a0HUF\. Trh je vypnutý, hodnota zůstává\./, /Odebrat hodnotu v HUF/] },
   // B9: stored segments are said at their own block and can be removed there.
-  { path: "rule-editor?rule=dev-fixture-6", expect: [/Neaktivní/, /Pokladna je neumí vyhodnotit, proto sleva není aktivní/, /Odebrat omezení na skupiny zákazníků/, /href="#segments"/, /id="segments"/] },
+  { path: "rule-editor?rule=dev-fixture-6", expect: [/Neuplatní se/, /Pokladna je neumí vyhodnotit, proto sleva není aktivní/, /Odebrat omezení na skupiny zákazníků/, /href="#segments"/, /id="segments"/] },
   { path: "rule-editor?result=unreadable", expect: [/Uložené nastavení se nepodařilo přečíst/, /Nahradit neplatnou konfiguraci/] },
   { path: "rule-editor?result=sync-failed", expect: [/Uloženo, ale do Shopify se zatím nezapsalo/, /Sleva „Černý pátek“ se do Shopify nezapsala/, /Zkusit zapsat znovu/] },
   { path: "rule-editor?rule=dev-fixture-2&result=collision", expect: [/nejde použít zároveň, pokladna je nerozliší/, /Upravit kódy/] },
@@ -270,7 +270,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   // B14: a failed start keeps the picked variant and the typed values; the price before → after is computed.
   { path: "outlet?plan=pro&result=failed", expect: [/Mikina Won — L · 10 ks · −30\s% · bez data konce/, /data-won-outlet-price=""[\s\S]*?Nová cena[\s\S]*?1\s490\sKč[\s\S]*?1\s043\sKč/, /Změnit variantu/] },
   { path: "outlet?result=settings-pro&state=empty", expect: [/Zobrazení výprodeje jde nastavit v tarifu Pro/] },
-  { path: "overview?state=outlet", expect: [/Výprodej/, /data-won-state="attention"/, /3 věci k vyřešení/, /<s-clickable href="\/app\/outlet"/] },
+  { path: "overview?state=outlet", expect: [/Výprodej/, /data-won-state="attention"/, /3 upozornění/, /<s-clickable href="\/app\/outlet"/] },
   // 5a (F-O1): no order access yet — the module and the card say the quota is not counted (harness default).
   { path: "outlet?plan=pro&state=empty", expect: [/Prodané kusy se zatím nepočítají\. Výprodej skončí datem nebo ručně/, /href="#outlet-ends"/, /Bez přístupu k objednávkám výprodej po doprodání neskončí\. Nastavte datum konce/] },
   // Ochrana marže (MVP 2): the module screen per state, the Přehled card, the editor note, a capped cart line.
@@ -283,7 +283,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /Nevíte\? Nechte prázdné\./,
       /Počítá se jako marže v Shopify, z ceny, kterou zákazník zaplatí \(u cen s DPH včetně DPH\)/,
       /U produktu bez nákupní ceny sleva nepřekročí procento, které určíte\./,
-      /nikdy neblokuje objednávku/,
+      /sníží na povolenou výši/,
       /Ochrana hlídá jen slevy, které běží přes Won Discounts\. O slevách vytvořených přímo v Shopify neví\./,
       /href="\/app#native"/,
       /step="0\.1"/,
@@ -313,7 +313,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
       /nastavení kolekce/,
       /Slevy z objednávky/,
       /ne z objednávek/,
-      /Sleva ve Won nikdy nesrazí cenu pod hranici, kterou tu nastavíte\./,
+      /Hranice a co se sníží/,
     ],
   },
   // Audit P2-1: before the first complete read, unread products have only the ceiling — said, and the impact is still being computed.
@@ -415,15 +415,14 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   {
     path: "tiers",
     expect: [
-      /Množstevní sleva pro celý obchod/,
+      /Úrovně slevy/,
       /Od 3 ks −10\u00a0%, od 5 ks −15\u00a0%, od 10 ks −20\u00a0%/,
       /Tohle je v tarifu Pro, zákazník to nedostane/,
       /Produkty v ní ve Free nedostanou žádnou množstevní slevu/,
       /Varianty produktu dohromady/,
-      /S jinými slevami se sčítá podle části „Sčítá se s“\. Když se nesčítají, platí ta, která dá zákazníkovi víc\./,
-      /Teď se to týká 1 slevy na produkty\./,
+      /Jak se úroveň sčítá s jinými slevami a s ochranou marže:/,
       /data-won-module-combine="tiers"/,
-      /Ochrana marže je zapnutá: u produktů s nízkou marží může úroveň vyjít nižší/,
+      /<s-link href="\/app\/margin">Ochrana marže<\/s-link>/,
       /Zboží ve výprodeji, dárky a dárkové karty úroveň nedostanou/,
       /class="won-tiers won-tiers--highlight"/,
       /data-won-discounts-tiers=""/,
@@ -515,7 +514,7 @@ const SCREENS: { path: string; expect: RegExp[]; absent?: RegExp[] }[] = [
   { path: "tiers?result=invalid", expect: [/Sleva tady musí být aspoň taková jako od 3 ks/, /Úroveň od 5 ks už tu je/] },
   {
     path: "tiers?locale=en",
-    expect: [/Quantity discounts/, /Quantity discount for the whole store/, /From 3 items −10%, from 5 items −15%, from 10 items −20%/, /Quantity discount/, /900,00 Kč each/, /Add table to the product page|View on my site/],
+    expect: [/Quantity discounts/, /Discount levels/, /From 3 items −10%, from 5 items −15%, from 10 items −20%/, /Quantity discount/, /900,00 Kč each/, /Add table to the product page|View on my site/],
   },
   {
     path: "settings",
@@ -679,22 +678,26 @@ test("the tier note is only for a product rule (an order rule does not compete w
   assert.doesNotMatch(html, /Na produktech s množstevní slevou/);
 });
 
-test("MVP 3 screens: one save for the whole form, last on the page", async () => {
-  for (const path of ["tiers", "tiers?plan=pro", "settings"]) {
-    // The page's own form (the first one; a look's section below it is a form of its own with its own save).
+test("Množstevní slevy: one form with the save bar and no Save of its own; Sčítá se s is a part of it", async () => {
+  for (const path of ["tiers", "tiers?plan=pro"]) {
     const { html } = await render(path);
     const form = html.slice(html.indexOf("<form"), html.indexOf("</form>"));
-    const submit = form.lastIndexOf('type="submit"');
-    assert.ok(submit > 0, `${path}: a submit button`);
-    assert.equal(form.indexOf('type="submit"'), submit, `${path}: exactly one submit button`);
-    assert.match(form, /data-save-bar/, `${path}: the App Bridge save bar`);
+    assert.match(form, /data-save-bar/, path);
+    assert.doesNotMatch(form, /type="submit"/, `${path}: the save bar is the one save`);
+    assert.match(form, /data-won-module-combine="tiers" data-won-save-part="combine"[\s\S]*name="part:combine:combinePosted"/, path);
   }
-  // Each further form on Množstevní slevy saves one thing and says which.
+  // The look and the cards are still saved on their own, in "Tabulka na webu".
   const forms = [...(await render("tiers?plan=pro")).html.matchAll(/<form[^>]*>[\s\S]*?<\/form>/g)].map((m) => m[0]);
-  assert.deepEqual(forms.slice(1).map((f) => (f.match(/type="submit"/g) ?? []).length), [1, 1, 1]);
-  assert.match(forms[1]!, /data-won-module-combine="tiers"[\s\S]*name="combineModule" value="tiers"[\s\S]*Uložit/);
-  assert.match(forms[2]!, /data-won-look-form="tiers"[\s\S]*Uložit vzhled/);
-  assert.match(forms[3]!, /data-won-cards-form=""/);
+  assert.deepEqual(forms.slice(1).map((f) => (f.match(/type="submit"/g) ?? []).length), [1, 1]);
+  assert.match(forms[1]!, /data-won-look-form="tiers"[\s\S]*Uložit vzhled/);
+  assert.match(forms[2]!, /data-won-cards-form=""/);
+});
+
+test("Nastavení: one form with the save bar, no Save button of its own", async () => {
+  const { html } = await render("settings");
+  const form = html.slice(html.indexOf("<form"), html.indexOf("</form>"));
+  assert.match(form, /data-save-bar/);
+  assert.doesNotMatch(form, /type="submit"/);
 });
 
 test("the preview is the storefront's markup (K8) with the storefront CSS confined to it — never a style for the admin", async () => {
@@ -746,14 +749,13 @@ test("the harness answers the CSV of Překlady for real (Pro), saves nothing, an
   assert.equal(free.errors[0]?.key, "translations.error.pro");
 });
 
-test("Ochrana marže: one save for the whole form, last on the page — after the read-only Přehled zásahů", async () => {
+test("Ochrana marže: one form with the save bar for every section, no Save button of its own", async () => {
   for (const path of ["margin", "margin?plan=pro"]) {
     const { html } = await render(path);
-    const submit = html.lastIndexOf('type="submit"');
-    assert.equal(html.indexOf('type="submit"'), submit, `${path}: exactly one submit button`);
-    for (const section of ["Ochrana marže", "Nákupní ceny", "Nastavení podle kolekcí", "Snížené slevy"]) {
-      assert.ok(html.indexOf(section) < submit, `${path}: "${section}" comes before Uložit`);
-    }
+    assert.doesNotMatch(html, /type="submit"/, path);
+    const form = html.slice(html.indexOf("<form"), html.indexOf("</form>"));
+    assert.match(form, /data-save-bar/, path);
+    for (const section of ["Ochrana marže", "Nákupní ceny", "Nastavení podle kolekcí", "Snížené slevy"]) assert.ok(form.includes(section), `${path}: "${section}" is in the one form`);
   }
 });
 
@@ -809,7 +811,9 @@ test("navigace a stav, body 1 a 2: a view tile says only what changes; the secti
   const tiers = (await render("tiers")).html;
   assert.match(viewTile(tiers, "global"), /data-won-state="active"[\s\S]*Od 3 ks −10\s%, od 5 ks −15\s%, od 10 ks −20\s%/);
   assert.doesNotMatch(viewTile(tiers, "global"), /data-won-tile-about|Úrovně slevy podle počtu kusů/);
-  assert.match(section(tiers, "global"), /Množstevní sleva pro celý obchod[\s\S]*Platí pro všechny produkty\./);
+  assert.match(section(tiers, "global"), /Úrovně slevy[\s\S]*Platí pro všechny produkty kromě výjimek\./);
+  // The row under it is what is stored, without the tile's name or label again (zásada E1).
+  assert.doesNotMatch(section(tiers, "global"), /Množstevní sleva pro celý obchod|data-won-state=/);
   // The section's HEADER repeats neither; under it the whole-store discount is a list row (feedback 9 Oct 2026, bod 4).
   assert.doesNotMatch(section(tiers, "global").split("data-won-tiers-list")[0]!, /data-won-state=|Od 3 ks −10\s%, od 5 ks −15\s%/);
   assert.match(section(tiers, "global"), /data-won-tiers-list="stored"[\s\S]*data-won-tiers-editor="closed"/);

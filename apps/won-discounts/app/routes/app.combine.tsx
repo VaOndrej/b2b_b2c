@@ -8,7 +8,7 @@ import { combineAction } from "../lib/integration/combine.server";
 import type { UiResult } from "../components/model/types";
 
 // "Sčítá se s" of a module (docs/won-discounts/navrh-kombinace-2026-10-13.md): Množstevní slevy, Milníky and
-// Výprodej post their list here (components/shell/ModuleCombine). An action only. Data and writes in
+// Výprodej post their list here (components/shell/ModuleCombine, the page's one save). An action only. Data and writes in
 // app/lib/integration/combine.server.ts, the SESSION shop (SEC-2), the form parsed on the server (SEC-1).
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { redirect } = await authenticate.admin(request);

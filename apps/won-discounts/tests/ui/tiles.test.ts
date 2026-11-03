@@ -1,0 +1,352 @@
+// The admin preview imports the storefront CSS / locales with Vite `?raw`: node needs the hook first.
+import "./support/raw-import.ts";
+import assert from "node:assert/strict";
+import { after, before, test } from "node:test";
+
+import { createElement } from "react";
+import { renderToString } from "react-dom/server";
+import { createStaticHandler, createStaticRouter, StaticRouterProvider } from "react-router";
+
+// Tiles on the home page and the module pages: one link per tile, the same state on the tile and the page, the
+// theme placement labels, Pro once per section. Every check renders the real screen in the dev
+// harness (the same loader → component path as a request) and reads the markers the shell writes:
+// `data-won-state` on a status label, `data-won-placement` on a theme-placement label, `data-won-tile` on a home tile.
+
+let prevEnv: string | undefined;
+before(() => {
+  prevEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = "test";
+});
+after(() => {
+  if (prevEnv === undefined) delete process.env.NODE_ENV;
+  else process.env.NODE_ENV = prevEnv;
+});
+
+async function render(path: string): Promise<string> {
+  const mod = await import("../../app/routes/dev.preview.$.tsx");
+  const routes = [{ path: "/dev/preview/*", loader: mod.loader, action: mod.action, Component: mod.default }];
+  const handler = createStaticHandler(routes);
+  const context = await handler.query(new Request(`http://localhost/dev/preview/${path}`));
+  assert.ok(!(context instanceof Response), `${path}: a redirect`);
+  assert.equal(context.statusCode, 200, path);
+  const router = createStaticRouter(handler.dataRoutes, context);
+  return renderToString(createElement(StaticRouterProvider, { router, context })).replace(/<script[\s\S]*?<\/script>/g, "");
+}
+
+/** The markup of one WonSection (sections are never nested). */
+function section(html: string, id: string): string {
+  const start = html.indexOf(`<section id="${id}"`);
+  assert.ok(start >= 0, `section #${id} is on the page`);
+  return html.slice(start, html.indexOf("</section>", start));
+}
+
+/** The markup of one home tile. */
+function tile(html: string, key: string): string {
+  const start = html.indexOf(`data-won-tile="${key}"`);
+  assert.ok(start >= 0, `tile ${key} is on the home page`);
+  const next = html.indexOf("data-won-tile=", start + 10);
+  return html.slice(start, next < 0 ? undefined : next);
+}
+
+/** A view tile of a module page (the button that opens one panel). */
+function viewTile(html: string, id: string): string {
+  const start = html.indexOf(`data-won-view-tile="${id}"`);
+  assert.ok(start >= 0, `view tile ${id} is on the page`);
+  return html.slice(start, html.indexOf("</button>", start));
+}
+
+/**
+ * The state of a view: said ONCE, by the tile on top — the header of the section the tile opens does not repeat
+ * the label (doctrine §19e: the state once and on top).
+ */
+function viewState(html: string, view: string, anchor: string): string | null {
+  // (Under the header, Množstevní slevy lists the whole-store discount as a row with its label — a list, not a form.)
+  assert.equal(stateOf(section(html, anchor).split("data-won-tiers-list")[0]!), null, `section #${anchor} does not repeat the tile's label`);
+  return stateOf(viewTile(html, view));
+}
+
+const stateOf = (markup: string) => /data-won-state="(\w+)"/.exec(markup)?.[1] ?? null;
+const count = (markup: string, re: RegExp) => (markup.match(re) ?? []).length;
+/** Plan markers: "Pro" and "Pro · odemknout". */
+const PRO_BADGE = /data-won-plan-badge="pro"/g;
+
+test("the home page is a grid of tiles, each one a single link; no module cards, no 'Upravit' buttons", async () => {
+  const html = await render("overview?state=modules&plan=pro");
+  assert.match(html, /data-won-tiles/);
+  const hrefs = ["/app/discounts", "/app/tiers", "/app/rewards", "/app/outlet", "/app/campaigns", "/app/margin", "/app/analytics", "/app/translations", "/app/try-cart", "/app/settings"];
+  for (const href of hrefs) assert.match(html, new RegExp(`<s-clickable href="${href}"[^>]*>\\s*<div[^>]*data-won-tile=`), `tile → ${href}`);
+  assert.equal(count(html, /data-won-tile="/g), hrefs.length);
+  // The whole tile is the link: nothing inside it is a button or a second link.
+  for (const key of ["codes", "tiers", "rewards", "outlet", "campaigns", "margin"]) assert.doesNotMatch(tile(html, key), /<s-button|<s-link|<a /, key);
+  // The module cards and their rows moved to the module pages.
+  assert.doesNotMatch(html, /<section id="(tiers|rewards|outlet|campaigns|margin|analytics)"/);
+  assert.doesNotMatch(html, /Spravovat slevy|Upravit množstevní slevy|Otevřít kampaně/);
+  // One sentence with the real settings (P5), not a generic line.
+  assert.match(tile(html, "tiers"), /Od 3 ks −10\s%, od 5 ks −15\s%/);
+  assert.match(tile(html, "rewards"), /Doprava zdarma od 1\s000\sKč/);
+  assert.match(tile(html, "margin"), /Min\. marže|nejvýš/);
+  // What needs the merchant stays above the grid, each row with its link to the field.
+  const live = await render("overview?state=live");
+  assert.match(live, /href="\/app\/discounts\/dev-fixture-[^"]+#\w+"/);
+  assert.ok(live.indexOf("Vyžaduje pozornost") < live.indexOf("data-won-tiles"), "attention sits above the tiles");
+});
+
+test("Pro modules on Free are amber tiles that lead to the module page; an empty shop still gets every tile", async () => {
+  const free = await render("overview?state=modules");
+  for (const key of ["outlet", "campaigns", "tryCart"]) {
+    assert.equal(count(tile(free, key), PRO_BADGE), 1, `${key}: one Pro marker`);
+    assert.match(tile(free, key), /data-won-tile-locked/);
+  }
+  assert.match(free, /<s-clickable href="\/app\/outlet"/);
+  const empty = await render("overview?state=empty");
+  assert.equal(count(empty, /data-won-tile="/g), 10);
+  assert.equal(stateOf(tile(empty, "codes")), "inactive");
+  assert.match(empty, /Krok 1 z/);
+});
+
+test("the home tile and the module page say the same state", async () => {
+  for (const plan of ["", "&plan=pro"]) {
+    const home = await render(`overview?state=modules${plan}`);
+    const q = plan ? "?plan=pro" : "";
+    const tiers = await render(`tiers${q}`);
+    const rewards = await render(`rewards${q}`);
+    const margin = await render(`margin${q}`);
+    // Množstevní slevy: set up, written → "Aktivní" on both.
+    assert.equal(stateOf(tile(home, "tiers")), "active", `tiers tile ${plan}`);
+    assert.equal(viewState(tiers, "global", "global"), "active", `tiers page ${plan}`);
+    // Milníky: the ladder carries the label, the same as its tile.
+    assert.equal(stateOf(tile(home, "rewards")), "active", `rewards tile ${plan}`);
+    assert.match(rewards.slice(rewards.indexOf('data-won-ms-row="shipping"'), rewards.indexOf("</button>", rewards.indexOf('data-won-ms-row="shipping"'))), /data-won-state="active"/, `steps ${plan}`);
+    // Ochrana marže (the label was missing on both).
+    assert.equal(stateOf(tile(home, "margin")), "active", `margin tile ${plan}`);
+    assert.equal(viewState(margin, "settings", "settings"), "active", `margin page ${plan}`);
+    assert.match(viewTile(margin, "settings"), />Aktivní</);
+  }
+  // Pro modules: running → active on both; on Free → locked (the Pro marker), never a green or grey label.
+  const pro = await render("overview?state=modules&plan=pro");
+  // (the sale fixture has a failed step: "Vyžaduje pozornost" on both, with the count on the tile)
+  assert.equal(stateOf(tile(pro, "outlet")), "attention");
+  assert.match(tile(pro, "outlet"), /data-won-tile-issues/);
+  assert.equal(viewState(await render("outlet?plan=pro&orders=on"), "sales", "running"), "attention");
+  assert.equal(stateOf(tile(pro, "campaigns")), "active");
+  assert.equal(viewState(await render("campaigns?plan=pro"), "list", "list"), "active");
+  assert.equal(stateOf(tile(pro, "codes")), "active");
+  assert.match(section(await render("discounts?sync=ok"), "list"), /3 aktivní z 6/);
+  // Off → "Neaktivní" on both, in words.
+  const off = await render("overview?state=modules-off");
+  assert.equal(stateOf(tile(off, "tiers")), "inactive");
+  assert.equal(stateOf(tile(off, "margin")), "inactive");
+  assert.match(tile(off, "margin"), />Neaktivní</);
+  assert.equal(viewState(await render("tiers?state=empty"), "global", "global"), "inactive");
+  assert.equal(viewState(await render("margin?state=off"), "settings", "settings"), "inactive");
+  assert.match(await render("rewards?state=empty"), /data-won-ms-list="empty"/);
+  // A failed write: "Vyžaduje pozornost" on both.
+  const failed = await render("overview?state=modules-failed");
+  assert.equal(stateOf(tile(failed, "tiers")), "attention");
+  assert.match(tile(failed, "tiers"), />Vyžaduje pozornost</);
+  assert.equal(viewState(await render("tiers?state=sync-failed"), "global", "global"), "attention");
+});
+
+test("the English label is 'Active'", async () => {
+  const html = await render("overview?state=modules&plan=pro&locale=en");
+  assert.match(tile(html, "tiers"), />Active</);
+  assert.doesNotMatch(html, />Live</);
+});
+
+test("a theme placement says where it stands — green in the theme, red missing with the add button in the header, grey not verified", async () => {
+  const on = section(await render("tiers"), "block");
+  assert.match(on, /data-won-placement="in_theme"[^>]*>.*?Na webu/s);
+  assert.doesNotMatch(on, /Přidat na web/);
+  const off = section(await render("tiers?state=alternate"), "block");
+  assert.match(off, /data-won-placement="missing"[^>]*>.*?Na webu chybí/s);
+  assert.match(off, /data-won-section-action[^>]*>\s*<s-button[^>]*variant="primary"[^>]*>Přidat na web/);
+  const unknown = section(await render("tiers?state=block-unknown"), "block");
+  assert.match(unknown, /data-won-placement="unknown"[^>]*>.*?Nepodařilo se zjistit/s);
+  assert.match(unknown, /Zkontrolovat znovu/);
+  // The same pattern for every placement: Won in the theme, the cart block, the rewards progress, the top bar,
+  // the campaign banner, the sale badge.
+  // Milníky: four places in one section — the top strip, the product page, the cart drawer, the cart page.
+  const rewards = await render("rewards");
+  assert.equal(count(section(rewards, "places"), /data-won-placement="/g), 4);
+  assert.equal(count(section(rewards, "places"), /data-won-placement="in_theme"/g), 3);
+  assert.match(section(rewards, "places"), /data-won-placement="missing"[\s\S]*Přidat na web/);
+  const draft = section(await render("rewards?state=embed-draft"), "places");
+  assert.match(draft, /data-won-ms-place="drawer"[\s\S]*?data-won-placement="missing"/);
+  assert.match(draft, /Zapnout na webu/);
+  assert.equal(count(section(await render("campaigns?plan=pro"), "places"), /data-won-placement="/g), 3);
+  assert.match(section(await render("outlet?plan=pro"), "badge"), /data-won-placement="(in_theme|missing|unknown)"/);
+});
+
+test("Pro is marked once per section — nothing amber and no second Pro marker inside", async () => {
+  const cases: [string, string][] = [
+    ["tiers?plan=pro", "pro"],
+    ["margin?plan=pro", "collections"],
+    ["margin", "collections"],
+    ["campaigns", "form"],
+    ["analytics", "rules"],
+    ["plan?plan=pro", "pro"],
+  ];
+  for (const [path, id] of cases) {
+    const markup = section(await render(path), id);
+    assert.equal(count(markup, PRO_BADGE), 1, `${path} #${id}: exactly one Pro marker`);
+    assert.doesNotMatch(markup, /data-won-pro-frame="amber"/, `${path} #${id}: no amber frame inside a Pro section`);
+    assert.doesNotMatch(markup, /data-won-block="pro"/, `${path} #${id}: nested blocks are neutral`);
+  }
+  // Free, a Pro section under a Pro tile: the note is its one Pro mention, no badge of its own (doctrine §18h).
+  for (const [path, id] of [["tiers", "pro"], ["outlet", "new"]] as const) {
+    const markup = section(await render(path), id);
+    assert.equal(count(markup, PRO_BADGE), 0, `${path} #${id}: no badge`);
+    assert.equal(markup.split("data-won-pro-sell").length - 1, 1, `${path} #${id}: one Pro note`);
+  }
+  // The editor's last section is every plan's (which discounts add up); only its exceptions and markets are Pro.
+  // On Pro: the markets carry the section's one Pro marker, nothing is locked. On Free (doctrine §18h, audit F4): one
+  // sentence of what Pro adds with the way to the plan; no locked control, no second marker.
+  const proSection = section(await render("rule-editor?rule=dev-fixture-2&plan=pro"), "pro");
+  assert.equal(count(proSection, PRO_BADGE), 1, "Pro: the markets carry the one Pro marker");
+  assert.ok(proSection.indexOf('id="combines"') < proSection.indexOf('id="markets"'), "Pro: the combinations come first");
+  assert.doesNotMatch(proSection, /data-won-pro-sell|<s-checkbox[^>]*name="(combineRules|markets)"[^>]*disabled=""/, "Pro: nothing locked");
+  for (const path of ["rule-editor?rule=dev-fixture-2", "rule-editor?rule=dev-f2-collection"]) {
+    const free = section(await render(path), "pro");
+    assert.equal(count(free, PRO_BADGE), 0, `${path}: no Pro badge`);
+    assert.equal(free.split("data-won-pro-sell").length - 1, 1, `${path}: one Pro note`);
+    assert.doesNotMatch(free, /data-won-pro-frame|name="(combineRules|markets)"/, `${path}: no locked list of exceptions or markets`);
+    assert.ok(free.indexOf('id="combines"') < free.indexOf("data-won-pro-sell"), `${path}: the combinations first`);
+    assert.doesNotMatch(free.slice(0, free.indexOf("data-won-pro-sell")), /<s-checkbox[^>]*name="combineTypes"[^>]*disabled=""/, `${path}: and can be ticked`);
+  }
+  // On the Pro plan the choice "Celý košík" inside an exception has no marker of its own (the shop has it).
+  assert.doesNotMatch(section(await render("tiers?plan=pro"), "global"), PRO_BADGE);
+  // A Pro piece inside a section that is not Pro keeps its one marker (Free: "Celý košík").
+  assert.equal(count(section(await render("tiers"), "global"), PRO_BADGE), 1, "Free: Celý košík (the link to the table's look is every plan's)");
+});
+
+test("'Prázdná sleva' is 'Vlastní sleva', with what it is, set apart from the recipes", async () => {
+  const html = await render("discounts?state=empty");
+  assert.match(html, /data-won-recipe="blank"/);
+  assert.match(html, /Vlastní sleva/);
+  assert.match(html, /Začnete s čistým formulářem a nastavíte vše sami\./);
+  assert.doesNotMatch(html, /Prázdná sleva/);
+  const en = await render("discounts?state=empty&locale=en");
+  assert.match(en, /Custom discount/);
+  assert.match(en, /You start with a clean form and set everything yourself\./);
+});
+
+// --- What a tile covers and what is active; Výprodej as tiles ----------------------------------------------------
+
+test("home tiles: each says what is under it, and below that what is active now", async () => {
+  const html = await render("overview?state=modules&plan=pro");
+  for (const key of ["codes", "tiers", "rewards", "outlet", "campaigns", "margin", "analytics", "translations", "tryCart", "settings"]) {
+    assert.match(tile(html, key), /data-won-tile-about/, `${key}: what the part is for`);
+  }
+  const rewards = tile(html, "rewards");
+  assert.match(rewards, /data-won-tile-about[^>]*><span[^>]*>[^<]*dárek[^<]*doprava zdarma[^<]*sleva/i, "Milníky: what it covers");
+  assert.match(rewards, /data-won-tile-active[^>]*>[^<]*Doprava zdarma od 1\s000\sKč/, "…and what is set");
+  assert.ok(rewards.indexOf("data-won-tile-about") < rewards.indexOf("data-won-tile-active"), "the explanation first, the state under it");
+  assert.match(tile(html, "tiers"), /data-won-tile-about[^>]*><span[^>]*>[^<]*podle počtu kusů/);
+  assert.match(tile(html, "tiers"), /data-won-tile-active[^>]*>[^<]*Od 3 ks/);
+  // Nothing set up: the explanation stays, the state line says so.
+  const off = await render("overview?state=modules-off");
+  assert.match(tile(off, "rewards"), /data-won-tile-about/);
+  assert.match(tile(off, "rewards"), /data-won-tile-active[^>]*>[^<]*Žádný stupeň/);
+});
+
+test("Výprodej: four tiles instead of one long page — the sales (with their state), a new sale, the badge in the store, the rules; one panel at a time", async () => {
+  const html = await render("outlet?plan=pro&orders=on");
+  assert.equal(count(html, /data-won-view-tile="/g), 4);
+  for (const key of ["sales", "new", "web", "info"]) assert.match(html, new RegExp(`data-won-view-tile="${key}"`));
+  // The sales tile carries the module's state; a shop with running sales lands on them, not on the form.
+  assert.match(html, /data-won-view-tile="sales"[^>]*aria-pressed="true"/);
+  const panel = (key: string) => new RegExp(`data-won-view-panel="${key}"[^>]*style="display:(block|none)"`).exec(html)?.[1];
+  assert.equal(panel("sales"), "block");
+  assert.equal(panel("new"), "none");
+  assert.equal(panel("info"), "none");
+  assert.equal(panel("web"), "none");
+  // The badge's block and its look sit under "Štítek na webu", never under the rules;
+  // the rules say which running sale takes the other discounts, each with its switch.
+  const at = (marker: string) => html.indexOf(marker);
+  assert.ok(at('data-won-view-panel="web"') < at('id="look-outlet"') && at('id="look-outlet"') < at('data-won-view-panel="info"'));
+  assert.ok(at('data-won-view-panel="info"') < at("data-won-outlet-combine-list"));
+  // Each running sale is a row of the rules: what it takes (without its own choice: the list of Výprodej) and the
+  // button to its card; under them the list itself (combining by type).
+  const row = html.slice(at("data-won-outlet-combine-row="), at('data-won-module-combine="outlet"'));
+  for (const text of ["Jako ostatní výprodeje", "S jinou slevou se nesčítá", "Změnit"]) assert.ok(row.includes(text), text);
+  assert.ok(at("data-won-outlet-combine-list") < at('data-won-module-combine="outlet"'));
+  // No pointer under the chosen tile (6th round): the blue frame says which one is open.
+  assert.doesNotMatch(html, /aria-pressed="true"\]::after/);
+  // The ended sales are folded away until one of them needs a decision; a running sale shows its four facts.
+  assert.match(html, /data-won-outlet-facts/);
+  assert.match(html, /<section id="ended"[\s\S]*?aria-expanded="(true|false)"/);
+  // Inside the sales panel the running ones come first, the ended ones last.
+  assert.ok(html.indexOf('<section id="running"') < html.indexOf('<section id="ended"'));
+  assert.ok(html.indexOf('data-won-view-panel="sales"') < html.indexOf('<section id="running"'));
+  // A sale just started: the page shows the sales (the new one on top), not the empty form again.
+  const started = await render("outlet?plan=pro&result=started");
+  assert.match(started, /data-won-view-tile="sales"[^>]*aria-pressed="true"/);
+  // A refused start stays on the form with what was typed.
+  const invalid = await render("outlet?plan=pro&result=invalid");
+  assert.match(invalid, /data-won-view-tile="new"[^>]*aria-pressed="true"/);
+  // Nothing yet: the form.
+  const empty = await render("outlet?plan=pro&state=empty");
+  assert.match(empty, /data-won-view-tile="new"[^>]*aria-pressed="true"/);
+  // Free: the new-sale tile is the one Pro marker of the row.
+  const free = await render("outlet");
+  assert.match(free, /data-won-view-tile="new"[^>]*data-won-tile-locked/);
+});
+
+test("the module pages are tiles and one panel at a time: Množstevní slevy, Odměny, Kampaně, Ochrana marže", async () => {
+  const pages: [string, string[], string][] = [
+    ["tiers?plan=pro", ["global", "table", "exceptions"], "global"],
+    ["campaigns?plan=pro", ["list", "form", "places"], "list"],
+    ["campaigns?plan=pro&edit=weekend", ["list", "form", "places"], "form"],
+    ["margin?plan=pro", ["settings", "costs", "collections", "products", "impact"], "settings"],
+  ];
+  for (const [path, views, open] of pages) {
+    const html = await render(path);
+    assert.deepEqual([...html.matchAll(/data-won-view-tile="(\w+)"/g)].map((m) => m[1]), views, path);
+    for (const view of views) {
+      // A view tile carries what changes, never the standing description (that is the home tile's and the section's);
+      // exactly the open panel is shown, the others stay mounted (their fields submit).
+      assert.doesNotMatch(viewTile(html, view), /data-won-tile-about/, `${path} ${view}`);
+      const shown = new RegExp(`data-won-view-panel="${view}" style="display:(block|none)"`).exec(html)?.[1];
+      assert.equal(shown, view === open ? "block" : "none", `${path}: panel ${view}`);
+    }
+    assert.match(html, new RegExp(`data-won-view-tile="${open}"[^>]*aria-pressed="true"`), path);
+  }
+  // One form, one Save, outside the panels: still the last control of the page.
+  const tiers = await render("tiers?plan=pro");
+  assert.ok(tiers.lastIndexOf('type="submit"') > tiers.lastIndexOf("data-won-view-panel="));
+  // The tile of a part carries the same state as its section and as the home tile.
+  assert.match(tiers, /data-won-view-tile="global"[\s\S]*?data-won-state="active"/);
+  // Free: the Pro parts are amber tiles.
+  assert.match(await render("tiers"), /data-won-view-tile="exceptions"[^>]*data-won-tile-locked/);
+  assert.match(await render("margin"), /data-won-view-tile="collections"[^>]*data-won-tile-locked/);
+});
+
+test("Výprodej: a new sale is three numbered steps — what, how it shows (per sale, with a preview and the block's state), the start; the shop-wide display setting is gone", async () => {
+  const html = await render("outlet?plan=pro");
+  const form = html.slice(html.indexOf("data-won-outlet-new"));
+  const at = (marker: string) => form.indexOf(marker);
+  for (const n of [1, 2, 3, 4]) assert.ok(at(`data-won-step="${n}"`) !== -1, `step ${n}`);
+  // Step 3: what this sale combines with, two cards to click.
+  assert.ok(at('data-won-step="3"') < at('data-won-outlet-combine="0"') && at('data-won-outlet-combine="1"') < at('data-won-step="4"'));
+  assert.ok(at('data-won-step="1"') < at('name="ol.quota"') && at('name="ol.quota"') < at('data-won-step="2"'));
+  assert.ok(at('data-won-step="2"') < at('name="ol.saleDisplay"') && at('name="ol.saleDisplay"') < at("data-won-outlet-preview") && at("data-won-outlet-preview") < at('data-won-step="3"'));
+  assert.ok(at('data-won-step="4"') < at("data-won-outlet-summary"));
+  assert.match(form, /Takhle to vidí zákazník/);
+  // Step 3 (6th round): under "I s vybranými slevami" a box for each discount, and the marker that says the boxes are there.
+  for (const c of ["_", "tiers", "product", "order"]) assert.match(form, new RegExp(`name="ol\\.combineWith"[^>]* value="${c}"`), c);
+  assert.doesNotMatch(html, /name="ol\.hideBadge"/);
+  // The shop-wide select is gone: how a sale shows is set with the sale.
+  assert.doesNotMatch(html, /name="ol\.display"/);
+  assert.match(html, /Jak je výprodej vidět na webu, nastavujete u každého výprodeje zvlášť\./);
+  // A running sale says what the store shows now, with its own text, and offers the two ways to look.
+  // A running sale: a card that draws what the customer sees now, and a card of what it combines with.
+  assert.match(html, /data-won-outlet-web="[^"]+"[\s\S]*Štítek se zákazníkovi neukáže\. V šabloně produktu chybí prvek „Sale badge“\.[\s\S]*Přidat štítek do šablony/);
+  const placed = await render("outlet?plan=pro&state=badge");
+  assert.match(placed, /data-won-outlet-web="[^"]+"[\s\S]*data-won-outlet-preview-badge=""[^>]*>Doprodej · zbývá \d+ ks/);
+  assert.match(placed, /Je až pod tlačítkem pro vložení do košíku/);
+  // The block is in the theme: the button opens the editor on the product (nothing is added), in orange words.
+  assert.match(placed, /Štítek je pod tlačítkem Do košíku[\s\S]*?<s-button href="[^"]*previewPath=[^"]*"[^>]*>Přesunout štítek v šabloně/);
+  assert.doesNotMatch(placed.slice(placed.indexOf("data-won-outlet-web="), placed.indexOf("data-won-outlet-combine-card=")), /addAppBlockId/);
+  assert.match(html, /Zobrazit produkt na webu/);
+  assert.match(placed, /data-won-outlet-combine-card="[^"]+"[\s\S]*Jako ostatní výprodeje[\s\S]*S jinou slevou se nesčítá/);
+});

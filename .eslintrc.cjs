@@ -76,6 +76,26 @@ module.exports = {
       ],
     },
 
+    // Won Discounts admin: a colour is born only in the shell (components/shell/, tokens.ts), screens and their parts
+    // compose shell pieces (audit 2026-11-03 D1, zásada E8). An error since every screen moved over (ticket 25).
+    {
+      files: ["apps/won-discounts/app/components/**/*.tsx"],
+      excludedFiles: ["apps/won-discounts/app/components/shell/**"],
+      rules: {
+        "no-restricted-syntax": [
+          "error",
+          {
+            selector: "Literal[value=/#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\\b|rgba?\\(/]",
+            message: "Barva patří do components/shell/ (tokens.ts), ne do obrazovky.",
+          },
+          {
+            selector: "TemplateElement[value.raw=/#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\\b|rgba?\\(/]",
+            message: "Barva patří do components/shell/ (tokens.ts), ne do obrazovky.",
+          },
+        ],
+      },
+    },
+
     // Node
     {
       files: [

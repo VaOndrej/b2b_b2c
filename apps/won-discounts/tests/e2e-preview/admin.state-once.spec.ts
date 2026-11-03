@@ -1,0 +1,70 @@
+import { expect, test, type Page } from "@playwright/test";
+
+import { open } from "./support";
+
+// The state of one thing is said once on a screen (audit 2026-11-03 F2, zásada E1): a tile, a section header, a row
+// and a banner never all say the same thing about the same thing.
+
+/** How often `text` is on the page as the merchant reads it. */
+const count = (page: Page, text: string) => page.evaluate((needle) => document.body.innerText.split(needle).length - 1, text);
+
+test("Přehled: every thing to resolve is named once — the list says it, the tiles do not count it again; short on a phone", async ({ page }) => {
+  for (const plan of ["", "&plan=pro"]) {
+    await open(page, `overview?state=live${plan}`);
+    for (const name of ["VIP10", "Černý pátek", "Stálí zákazníci 5 %"]) expect(await count(page, name), `${name}${plan}`).toBe(1);
+    expect(await count(page, "věci k vyřešení"), plan).toBe(0);
+    // A link to each discount still leads to the field that fixes it.
+    await expect(page.locator('[data-won-overview-items] s-link[href="/app/discounts/dev-fixture-2#conditions"]')).toHaveCount(1);
+  }
+  await open(page, "overview?state=live", 390);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThan(2600);
+});
+
+test("Slevy a kódy: how many need attention is said once, on the tab; the reason stays in each row", async ({ page }) => {
+  for (const width of [1440, 390]) {
+    await open(page, "discounts?sync=ok", width);
+    const tab = page.locator(".won-rt__tab", { hasText: "Vyžaduje pozornost" });
+    await expect(tab).toContainText("3");
+    // Outside the tab and the rows: no "vyžadují pozornost" anywhere.
+    const outside = await page.evaluate(() => {
+      const clone = document.body.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll(".won-rt__tab, [data-won-rule-row], tr, script, style").forEach((el) => el.remove());
+      return /vyžaduj[eí] pozornost/i.test(clone.innerText);
+    });
+    expect(outside, String(width)).toBe(false);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBe(0);
+  }
+});
+
+/** The visible text of the page, without the strip under "Slevy" (its dots name each page's state for screen readers). */
+const visible = (page: Page) =>
+  page.evaluate(() => {
+    const clone = document.querySelector("s-page")!.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll("[data-won-subnav], script, style, [hidden]").forEach((el) => el.remove());
+    return clone.textContent ?? "";
+  });
+const times = (text: string, needle: string) => text.split(needle).length - 1;
+
+test("module pages with tiles: the section under a tile repeats neither its name nor its label; an error of a sale is said once", async ({ page }) => {
+  for (const plan of ["", "?plan=pro"]) {
+    await open(page, `tiers${plan}`);
+    const tiers = await visible(page);
+    expect(times(tiers, "Množstevní sleva pro celý obchod"), `tiers${plan}`).toBe(0);
+    // The whole-store label: on the tile only.
+    expect(await page.locator('[data-won-tiers-list] [data-won-state]').count(), `tiers${plan}`).toBe(0);
+    await expect(page.locator('[data-won-view-tile="global"] [data-won-state]')).toHaveCount(1);
+
+    await open(page, `margin${plan}`);
+    const margin = await visible(page);
+    expect(times(margin, "Sleva ve Won nikdy nesrazí cenu pod hranici"), `margin${plan}`).toBe(0);
+
+    await open(page, `outlet${plan}`);
+    const outlet = await visible(page);
+    expect(times(outlet, "Cenu se nepodařilo změnit"), `outlet${plan}`).toBe(1);
+    expect(times(outlet, "K vyřešení"), `outlet${plan}`).toBe(0);
+  }
+  // The error of a sale has its action beside it.
+  await open(page, "outlet?plan=pro");
+  const card = page.locator(`[id^="run-"]`, { hasText: "Cenu se nepodařilo změnit" });
+  await expect(card.locator('s-button[type="submit"]', { hasText: "Zkusit znovu" })).toHaveCount(1);
+});

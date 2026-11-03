@@ -307,7 +307,7 @@ test("a scenario opens in the manual cart (Pro) from the stored check — its pr
   assert.deepEqual([free.lines, free.opened], [[], undefined]);
 });
 
-test("13 Oct 2026: the shop's cheapest, middle and most expensive product are named, and every combination is planned on each of them and on a mix", async () => {
+test("the shop's cheapest, middle and most expensive product are named, and every combination is planned on each of them and on a mix", async () => {
   const many = "many-shop.myshopify.com";
   const row = (n: number, title: string, price: string, cost: string | null) => ({ shop: many, variantId: V(n), productId: P(n), inventoryItemId: `gid://shopify/InventoryItem/${n}`, title, price, cost, currency: cost === null ? null : "CZK" });
   await db.prisma.variantCost.createMany({
